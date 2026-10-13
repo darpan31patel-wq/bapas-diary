@@ -6,7 +6,7 @@
 
 Writes out/bapas-diary.jpg (2796 x 1290, iPhone landscape), out/date.txt and out/summary.txt.
 """
-import argparse, concurrent.futures, datetime, hashlib, json, os, random, re, time, urllib.request
+import argparse, concurrent.futures, datetime, hashlib, json, os, random, re, threading, time, urllib.request
 from zoneinfo import ZoneInfo
 
 import cv2
@@ -71,6 +71,7 @@ RECOGNISE = cv2.FaceRecognizerSF.create(os.path.join(MODELS, 'face_recognition_s
 BAPA = {k: np.array(v) for k, v in json.load(open(os.path.join(MODELS, 'bapa-faces.json'))).items()}
 PSM_UNTIL = '2016-08-13'   # Pramukh Swami Maharaj before this date, Mahant Swami Maharaj after
 SAME_PERSON = .5           # cosine similarity; strangers and murtis score below .35
+FACE_LOCK = threading.Lock()   # the face models can only look at one photo at a time
 
 
 def bapa_face(im, when):
@@ -78,21 +79,23 @@ def bapa_face(im, when):
     small = im.copy(); small.thumbnail((1280, 1280))
     k = im.width / small.width
     bgr = cv2.cvtColor(np.array(small), cv2.COLOR_RGB2BGR)
-    DETECT.setInputSize((bgr.shape[1], bgr.shape[0]))
-    faces = DETECT.detect(bgr)[1]
     ref = BAPA['psm' if when < PSM_UNTIL else 'msm']
     best, best_sim = None, 0
-    for f in faces if faces is not None else []:
-        e = RECOGNISE.feature(RECOGNISE.alignCrop(bgr, f))[0]
-        sim = float(ref @ (e / np.linalg.norm(e)))
-        if sim > best_sim:
-            best, best_sim = tuple(float(v) * k for v in f[:4]), sim
+    with FACE_LOCK:
+        DETECT.setInputSize((bgr.shape[1], bgr.shape[0]))
+        faces = DETECT.detect(bgr)[1]
+        for f in faces if faces is not None else []:
+            e = RECOGNISE.feature(RECOGNISE.alignCrop(bgr, f))[0]
+            sim = float(ref @ (e / np.linalg.norm(e)))
+            if sim > best_sim:
+                best, best_sim = tuple(float(v) * k for v in f[:4]), sim
     return (best, best_sim) if best_sim >= SAME_PERSON else (None, best_sim)
 
 
 def pick_one_per_year(items, seed):
     """Per year, a photo where Bapa is recognised, favouring a close darshan, with a touch of variety.
-    A year where he can't be recognised in any photo still gets one, shown whole so he isn't cropped out."""
+    Years where he can't be recognised in any photo are left out, unless that would leave fewer than five;
+    then they're kept and shown whole so he isn't cropped out."""
     rnd = random.Random(seed)
     best = {}
     for x in items:
@@ -106,7 +109,10 @@ def pick_one_per_year(items, seed):
         score = (1 + min(face[3] / im.height, .35) + sim if face else 0) + rnd.uniform(0, .04)
         if x['y'] not in best or score > best[x['y']][0]:
             best[x['y']] = (score, dict(x, im=im, face=face, sim=sim))
-    return [best[y][1] for y in sorted(best)]
+    years = sorted(best)
+    if sum(1 for y in years if best[y][1]['face']) >= 5:
+        years = [y for y in years if best[y][1]['face']]
+    return [best[y][1] for y in years]
 
 
 def crop_to(im, face, w, h):
@@ -244,7 +250,7 @@ class Card:
         cd.rectangle((B - 7, B - 7, B + PW + 6, B + PH + 6), outline=FRAME_LINE, width=2)
         # year (bold) and place (regular, letter spaced) as a centred pair in the bottom band
         yf, yt = fell(50 * s), str(x['y'])
-        pl, track, size = (x.get('p') or '').split(',')[0].strip().upper(), 3 * s, 25 * s
+        pl, track, size = re.sub(r'\s*\(.*?\)', '', (x.get('p') or '').split(',')[0]).strip().upper(), 3 * s, 25 * s
         while True:
             pf = arimo(size)
             pw = sum(cd.textlength(ch, font=pf) for ch in pl) + track * max(0, len(pl) - 1)
@@ -312,6 +318,10 @@ def main():
     day = datetime.date.fromisoformat(a.date) if a.date else datetime.datetime.now(ZoneInfo('Europe/London')).date()
     mmdd = f'{day:%m-%d}'
     items = json.load(open(a.data)) if a.data else json.loads(fetch(DATA_URL.format(mmdd=mmdd)))
+    collected = os.path.join(HERE, 'archive', mmdd + '.json')      # newer years found by collect.py
+    if os.path.exists(collected):
+        have = {x['i'] for x in items}
+        items += [x for x in json.load(open(collected)) if x['i'] not in have]
     print(f'{day}: {len(items)} photos across {len({x["y"] for x in items})} years')
 
     download_all(items, a.cache)
