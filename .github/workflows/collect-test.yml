@@ -15,7 +15,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements.txt
-      - run: time python collect.py --today 2026-10-13 2>&1 | tee archive/run.txt
+      - run: set -o pipefail; time python collect.py --today 2026-10-13 2>&1 | tee archive/run.txt
       - run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898283+github-actions[bot]@users.noreply.github.com'
