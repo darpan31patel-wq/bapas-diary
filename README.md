@@ -1,7 +1,7 @@
 # Bapa's Diary
 
 Every evening this makes one picture: **today's date in Bapa's Diary**, with one darshan of Bapa
-from every year on this date, hung like polaroids on gold cords. It lands in Darpan's Google Drive at 7:30pm UK time.
+from every year on this date, hung like ivory polaroids on cords. It lands in Darpan's Google Drive at 7:30pm UK time.
 
 ![Tonight's picture](https://github.com/darpan31patel-wq/bapas-diary/releases/download/today/bapas-diary.jpg)
 
@@ -12,7 +12,7 @@ from every year on this date, hung like polaroids on gold cords. It lands in Dar
    (`darshan-screensaver.pages.dev/memories/MM-DD.json`), downloads the photos from baps.org,
    picks one photo per year where it recognises Bapa's face (favouring a close darshan),
    crops around his whole head (a year where his face can't be seen is shown whole, never cropped),
-   lays them out (two cords, cards shrink a little on days with many years) and saves
+   lays them out (two cords; on busy days the cards get narrower and the photos taller) and saves
    `bapas-diary.jpg` to the release called **today**.
 2. **Google puts it in Drive** (`google/deliver.gs`, a script in Darpan's own Google account):
    at 7:30pm it copies the picture into the Drive folder **Bapa's Diary**, named like `13 October 2026.jpg`.
@@ -38,4 +38,4 @@ On a computer: `pip install -r requirements.txt` then `python make.py --date 202
 
 ## Fonts
 
-IM Fell DW Pica (OFL), Cinzel (OFL, for the day number, see `fonts/OFL-Cinzel.txt`), Arimo (Apache 2.0).
+EB Garamond (OFL, see `fonts/OFL-EB-Garamond.txt`) for the title, years and footer; Arimo (Apache 2.0) for the places.

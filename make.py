@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bapa's Diary: one darshan of Bapa from every year on today's date, hung like polaroids on gold cords.
+"""Bapa's Diary: one darshan of Bapa from every year on today's date, hung like ivory polaroids on cords.
 
     python make.py                     today's date in London
     python make.py --date 2026-10-12   any date (only the day and month matter)
@@ -16,19 +16,14 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_URL = 'https://darshan-screensaver.pages.dev/memories/{mmdd}.json'
 W, H = 2796, 1290
-MAROON_IN, MAROON_OUT = (74, 21, 32), (18, 4, 8)
+MAROON_OUT = (18, 4, 8)
 GOLD, GOLD_SOFT = (255, 207, 107), (217, 164, 65)
-FRAME_TOP, FRAME_BOTTOM = (224, 196, 142), (193, 160, 104)     # between antique gold and champagne
-YEAR_C, PLACE_C, FRAME_LINE = (88, 18, 30), (104, 36, 36), (135, 95, 55)
-CORD, PEG, PEG_EDGE = (176, 140, 80), (150, 104, 66), (92, 58, 34)
 FOOTER = 'Darpan’s Smruti Project'
 
 
 def font(name, size):
     return ImageFont.truetype(os.path.join(HERE, 'fonts', name + '.woff2'), max(8, round(size)))
 
-fell = lambda s: font('im-fell-dw-pica-latin-400-normal', s)
-arimo = lambda s: font('arimo-latin-400-normal', s)
 
 
 # ---------------------------------------------------------------- photos
@@ -134,176 +129,176 @@ def crop_to(im, face, w, h):
     return im.crop((x0, y0, x0 + cw, y0 + ch)).resize((w, h), Image.LANCZOS)
 
 
-# ---------------------------------------------------------------- drawing helpers
-
-def background():
-    small = Image.new('RGB', (64, 64)); px = small.load()
-    for j in range(64):
-        for i in range(64):
-            d = min(1, (((i - 32) / 32 / .8) ** 2 + ((j - 64 * .4) / 32 / .9) ** 2) ** .5)
-            px[i, j] = tuple(round(a + (b - a) * d) for a, b in zip(MAROON_IN, MAROON_OUT))
-    img = small.resize((W, H), Image.BICUBIC)
-    # warm light behind the title
-    g = Image.new('L', (W // 6, H // 6), 0)
-    ImageDraw.Draw(g).ellipse(((W / 2 - 520) / 6, 0, (W / 2 + 520) / 6, 660 / 6), fill=120)
-    g = g.filter(ImageFilter.GaussianBlur(27)).resize((W, H), Image.BICUBIC)
-    img.paste(Image.new('RGB', (W, H), (125, 62, 30)), (0, 0), g)
-    # soft gold dust
-    rnd = random.Random(7)
-    layer = Image.new('RGBA', (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(layer)
-    for _ in range(45):
-        x, y = rnd.uniform(0, W), rnd.uniform(0, H)
-        r = rnd.choice([2, 3, 4, 5, 7, 10]); a = rnd.randint(30, 90) if r < 6 else rnd.randint(15, 40)
-        d.ellipse((x - r, y - r, x + r, y + r), fill=(255, 210, 130, a))
-    layer = layer.filter(ImageFilter.GaussianBlur(1.8)); img.paste(layer, (0, 0), layer)
-    # gentle vignette
-    m = Image.new('L', (78, 36), 0); p = m.load()
-    for j in range(36):
-        for i in range(78):
-            dd = (((i - 38.5) / 39) ** 2 + ((j - 17.5) / 18) ** 2) ** .5
-            p[i, j] = int(150 * max(0, dd - .72) / .6)
-    img.paste(Image.new('RGB', (W, H), (0, 0, 0)), (0, 0), m.resize((W, H), Image.BICUBIC))
-    return img
-
+# ---------------------------------------------------------------- drawing
 
 def diamond(dr, cx, cy, r, fill):
     dr.polygon([(cx, cy - r), (cx + r, cy), (cx, cy + r), (cx - r, cy)], fill=fill)
 
 
-def ornament_line(dr, y, x0, x1, side, dsize):
-    """Gold rule fading outwards, with a small diamond at the inner end."""
+IVORY_TOP, IVORY_BOTTOM, IVORY_EDGE = (248, 242, 228), (234, 223, 200), (196, 178, 146)
+YEAR_C2, PLACE_C2 = (96, 20, 32), (88, 34, 34)
+garamond = lambda s, w=700: font(f'eb-garamond-latin-{w}-normal', s)
+arimo_bold = lambda s: font('arimo-latin-700-normal', s)
+
+
+def gold_text(img, xy, text, f, shadow=True, top=(255, 226, 150), bottom=(206, 152, 64)):
+    """Text filled with a soft top to bottom gold gradient, over a faint dark shadow."""
+    x, y = round(xy[0]), round(xy[1])
+    box = [round(v) for v in ImageDraw.Draw(img).textbbox((x, y), text, font=f)]
+    w, h = box[2] - box[0] + 40, box[3] - box[1] + 40
+    mask = Image.new('L', (w, h), 0); ImageDraw.Draw(mask).text((x - box[0] + 20, y - box[1] + 20), text, font=f, fill=255)
+    if shadow:
+        sh = Image.new('RGBA', (w, h), (0, 0, 0, 0)); sh.putalpha(mask.point(lambda v: v * 170 // 255))
+        sh = sh.filter(ImageFilter.GaussianBlur(7)); img.paste(sh, (box[0] - 20, box[1] - 20 + 4), sh)
+    grad = Image.new('RGB', (w, h)); gd = ImageDraw.Draw(grad)
+    for j in range(h):
+        t = min(1, max(0, (j - 20) / max(1, h - 40)))
+        gd.line((0, j, w, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(top, bottom)))
+    img.paste(grad, (box[0] - 20, box[1] - 20), mask)
+
+
+def spaced(dr, text, f, track):
+    return sum(dr.textlength(ch, font=f) for ch in text) + track * (len(text) - 1)
+
+
+def draw_spaced(dr, x, y, text, f, track, fill):
+    for ch in text:
+        dr.text((x, y), ch, font=f, fill=fill); x += dr.textlength(ch, font=f) + track
+
+
+def thin_rule(dr, y, x0, x1, fade_to_left):
     for xp in range(int(x0), int(x1)):
-        t = (xp - x0) / (x1 - x0); a = t if side == 'L' else 1 - t
+        t = (xp - x0) / (x1 - x0); a = t if fade_to_left else 1 - t
         dr.line((xp, y, xp, y + 1), fill=tuple(round(m + (g - m) * a) for m, g in zip(MAROON_OUT, GOLD_SOFT)))
-    diamond(dr, x1 + 12 + dsize if side == 'L' else x0 - 12 - dsize, y + 1, dsize, GOLD)
 
 
-def segments(dr, text, f):
-    """IM Fell only has old style figures (a short 1 and 2, a 5 that drops below the line), so a
-    leading day number is set in Cinzel, whose figures stand as tall as the month's capital."""
-    m = re.match(r'^(\d+)(\s.*)$', text)
-    if not m:
-        return [(text, f, 0)]
-    num, rest = m.groups()
-    ob = dr.textbbox((0, 0), 'O', font=f, anchor='ls')
-    probe = font('cinzel-latin-600-normal', 100)
-    nf = font('cinzel-latin-600-normal', 100 * (-ob[1]) / -dr.textbbox((0, 0), '1', font=probe, anchor='ls')[1])
-    # text is drawn from the ascender line, so match baselines by the difference in ascent
-    return [(num, nf, f.getmetrics()[0] - nf.getmetrics()[0]), (rest, f, 0)]
-
-
-def headline(img, parts, y, shadow=True, sp=36, reach=None, dsize=9):
-    """Parts (text, font, colour) on one centred line with gold rules either side."""
+def header(img, title, subtitle):
+    """Big bold gold title, then a smaller spaced capital line between two thin gold rules."""
     dr = ImageDraw.Draw(img)
-    segs = [segments(dr, t, f) for t, f, c in parts]
-    ws = [sum(dr.textlength(tt, font=ff) for tt, ff, _ in s) for s in segs]
-    total = sum(ws) + sp * (len(parts) - 1)
-    big = max(f.size for t, f, c in parts)
-    x = (W - total) / 2
-    for (t, f, c), s, w in zip(parts, segs, ws):
-        yy = y + (big - f.size) * .74
-        if shadow and f.size == big:
-            sh = Image.new('RGBA', (int(w) + 60, big * 2), (0, 0, 0, 0)); sd = ImageDraw.Draw(sh); xx = 30
-            for tt, ff, dy in s:
-                sd.text((xx, 10 + dy), tt, font=ff, fill=(0, 0, 0, 200)); xx += dr.textlength(tt, font=ff)
-            sh = sh.filter(ImageFilter.GaussianBlur(8)); img.paste(sh, (int(x) - 30, int(yy)), sh)
-        xx = x
-        for tt, ff, dy in s:
-            dr.text((xx, yy + dy), tt, font=ff, fill=c); xx += dr.textlength(tt, font=ff)
-        x += w + sp
-    mid = y + big * .62
-    l1, r0 = (W - total) / 2 - 60, (W + total) / 2 + 60
-    ornament_line(dr, mid, 110 if reach is None else l1 - reach, l1, 'L', dsize)
-    ornament_line(dr, mid, r0, W - 110 if reach is None else r0 + reach, 'R', dsize)
+    tf = garamond(118)
+    tw = dr.textlength(title, font=tf)
+    gold_text(img, ((W - tw) / 2, 4), title, tf)
+    sf, track = garamond(40, 600), 9
+    sub = subtitle.upper()
+    sw = spaced(dr, sub, sf, track)
+    sy = 142
+    draw_spaced(dr, (W - sw) / 2, sy, sub, sf, track, (240, 214, 160))
+    mid = sy + 24
+    thin_rule(dr, mid, (W - sw) / 2 - 50 - 330, (W - sw) / 2 - 50, True)
+    thin_rule(dr, mid, (W + sw) / 2 + 50, (W + sw) / 2 + 50 + 330, False)
+
+
+def footer(img):
+    dr = ImageDraw.Draw(img)
+    f = garamond(40, 500)
+    w = dr.textlength(FOOTER, font=f)
+    y = H - 88
+    dr.text(((W - w) / 2, y), FOOTER, font=f, fill=(226, 184, 104))
+    mid = y + 27
+    thin_rule(dr, mid, (W - w) / 2 - 40 - 220, (W - w) / 2 - 40, True)
+    thin_rule(dr, mid, (W + w) / 2 + 40, (W + w) / 2 + 40 + 220, False)
+    diamond(dr, (W - w) / 2 - 28, mid + 1, 5, GOLD); diamond(dr, (W + w) / 2 + 28, mid + 1, 5, GOLD)
+
+
+def background():
+    small = Image.new('RGB', (64, 64)); px = small.load()
+    inner, outer = (66, 16, 28), (22, 5, 10)
+    for j in range(64):
+        for i in range(64):
+            d = min(1, (((i - 32) / 32 / .85) ** 2 + ((j - 64 * .45) / 32 / .95) ** 2) ** .5)
+            px[i, j] = tuple(round(a + (b - a) * d) for a, b in zip(inner, outer))
+    img = small.resize((W, H), Image.BICUBIC)
+    noise = Image.effect_noise((W // 2, H // 2), 10).resize((W, H)).convert('L')     # faint paper grain, stops banding
+    img = Image.composite(Image.new('RGB', (W, H), (0, 0, 0)), img, noise.point(lambda v: max(0, v - 118) // 3))
+    m = Image.new('L', (78, 36), 0); p = m.load()
+    for j in range(36):
+        for i in range(78):
+            dd = (((i - 38.5) / 39) ** 2 + ((j - 17.5) / 18) ** 2) ** .5
+            p[i, j] = int(140 * max(0, dd - .7) / .6)
+    img.paste(Image.new('RGB', (W, H), (0, 0, 0)), (0, 0), m.resize((W, H), Image.BICUBIC))
+    return img
 
 
 class Card:
-    """Polaroid sizes; everything scales from the photo width (262 px in the approved design)."""
-    def __init__(self, pw):
-        s = pw / 262
-        self.s, self.PW, self.PH = s, round(262 * s), round(312 * s)
-        self.B, self.BB = round(15 * s), round(118 * s)
+    """Ivory polaroid: thin border, nearly square photo, year and place in the bottom band."""
+    def __init__(self, pw, aspect=1.08):
+        self.PW, self.PH = round(pw), round(pw * aspect)
+        self.B, self.BB = max(6, round(pw * .045)), round(pw * .32)
         self.CW, self.CH = self.PW + 2 * self.B, self.PH + self.B + self.BB
 
     def make(self, x):
-        PW, PH, B, BB, CW, CH, s = self.PW, self.PH, self.B, self.BB, self.CW, self.CH, self.s
+        PW, PH, B, BB, CW, CH = self.PW, self.PH, self.B, self.BB, self.CW, self.CH
         card = Image.new('RGBA', (CW, CH)); d = ImageDraw.Draw(card)
         for j in range(CH):
             t = j / CH
-            d.line((0, j, CW, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(FRAME_TOP, FRAME_BOTTOM)) + (255,))
+            d.line((0, j, CW, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(IVORY_TOP, IVORY_BOTTOM)) + (255,))
+        d.rectangle((0, 0, CW - 1, CH - 1), outline=IVORY_EDGE, width=1)
         card.paste(crop_to(x['im'], x['face'], PW, PH), (B, B))
-        cd = ImageDraw.Draw(card)
-        for i in range(7):   # bevel: light top and left edge, dark bottom and right edge
-            a = int(90 * (1 - i / 7))
-            cd.line((i, i, CW - 1 - i, i), fill=(255, 255, 255, a)); cd.line((i, i, i, CH - 1 - i), fill=(255, 255, 255, a))
-            cd.line((i, CH - 1 - i, CW - 1 - i, CH - 1 - i), fill=(0, 0, 0, a)); cd.line((CW - 1 - i, i, CW - 1 - i, CH - 1 - i), fill=(0, 0, 0, a))
-        ov = Image.new('RGBA', (CW, CH), (0, 0, 0, 0)); od = ImageDraw.Draw(ov)
-        for i in range(6):   # photo sits slightly inset
-            a = int(110 * (1 - i / 6))
-            od.line((B + i, B + i, B + PW - 1 - i, B + i), fill=(0, 0, 0, a)); od.line((B + i, B + i, B + i, B + PH - 1 - i), fill=(0, 0, 0, a))
-            od.line((B - 1 - i, B + PH + i, B + PW + i, B + PH + i), fill=(255, 255, 255, a // 2)); od.line((B + PW + i, B - 1 - i, B + PW + i, B + PH + i), fill=(255, 255, 255, a // 2))
-        yy, xx = np.mgrid[0:PH, 0:PW]   # gloss: soft diagonal sheen across the top left of the photo
-        dist = (xx + yy * 1.15) / (PW + PH * 1.15)
-        sheen = Image.new('RGBA', (PW, PH), (255, 255, 255, 0))
-        sheen.putalpha(Image.fromarray(np.clip(80 * (1 - dist / .55), 0, 80).astype('uint8')))
-        ov.alpha_composite(sheen, (B, B)); card.alpha_composite(ov); cd = ImageDraw.Draw(card)
-        cd.rectangle((B - 7, B - 7, B + PW + 6, B + PH + 6), outline=FRAME_LINE, width=2)
-        # year (bold) and place (regular, letter spaced) as a centred pair in the bottom band
-        yf, yt = fell(50 * s), str(x['y'])
-        pl, track, size = re.sub(r'\s*\(.*?\)', '', (x.get('p') or '').split(',')[0]).strip().upper(), 3 * s, 25 * s
-        while True:
-            pf = arimo(size)
-            pw = sum(cd.textlength(ch, font=pf) for ch in pl) + track * max(0, len(pl) - 1)
-            if pw <= CW - 24 * s or size <= 16 * s:
-                break
+        d.rectangle((B - 1, B - 1, B + PW, B + PH), outline=(150, 130, 100), width=1)
+        yf, yt = garamond(PW * .16, 600), str(x['y'])
+        pl = re.sub(r'\s*\(.*?\)', '', (x.get('p') or '').split(',')[0]).strip().upper()
+        size, track = PW * .08, PW * .014
+        while size > PW * .04 and spaced(d, pl, arimo_bold(size), track) > CW - 2 * B - 4:
             size -= 1
-        yb = cd.textbbox((0, 0), yt, font=yf, stroke_width=1); ab = cd.textbbox((0, 0), 'A', font=pf)
-        yh, plh, gap = yb[3] - yb[1], (ab[3] - ab[1]) if pl else 0, 12 * s if pl else 0
-        top = B + PH + (BB - B - (yh + gap + plh)) / 2
-        cd.text(((CW - cd.textlength(yt, font=yf)) / 2, top - yb[1]), yt, font=yf, fill=YEAR_C, stroke_width=1, stroke_fill=YEAR_C)
-        px, py = (CW - pw) / 2, top + yh + gap - ab[1]
-        for ch in pl:
-            cd.text((px, py), ch, font=pf, fill=PLACE_C); px += cd.textlength(ch, font=pf) + track
+        pf = arimo_bold(size)
+        yb = d.textbbox((0, 0), yt, font=yf, anchor='ls'); ab = d.textbbox((0, 0), 'A', font=pf, anchor='ls')
+        yh, ph, gap = -yb[1], (-ab[1]) if pl else 0, PW * .055 if pl else 0
+        top = B + PH + (BB - (yh + gap + ph)) / 2 - B * .2
+        d.text(((CW - d.textlength(yt, font=yf)) / 2, top + yh), yt, font=yf, fill=YEAR_C2, anchor='ls')
+        draw_spaced(d, (CW - spaced(d, pl, pf, track)) / 2, top + yh + gap + ph - pf.getmetrics()[0], pl, pf, track, PLACE_C2)
         return card
 
-    def hang(self, card, angle):
-        sh = Image.new('RGBA', (self.CW + 100, self.CH + 100), (0, 0, 0, 0))
-        ImageDraw.Draw(sh).rectangle((50, 58, self.CW + 50, self.CH + 58), fill=(0, 0, 0, 175))
-        sh = sh.filter(ImageFilter.GaussianBlur(12)); sh.alpha_composite(card, (50, 50))
-        return sh.rotate(angle, resample=Image.BICUBIC, expand=True)
+    def hang(self, card):
+        sh = Image.new('RGBA', (self.CW + 80, self.CH + 80), (0, 0, 0, 0))
+        ImageDraw.Draw(sh).rectangle((40, 48, self.CW + 40, self.CH + 46), fill=(0, 0, 0, 150))
+        sh = sh.filter(ImageFilter.GaussianBlur(13)); sh.alpha_composite(card, (40, 40))
+        return sh
 
 
-# ---------------------------------------------------------------- the picture
+def peg(dr, cx, cy, s):
+    w, h = 9 * s, 30 * s
+    dr.rounded_rectangle((cx - w, cy - h * .45, cx + w, cy + h * .55), radius=3 * s, fill=(138, 94, 58), outline=(84, 52, 30), width=max(1, round(2 * s)))
+    dr.line((cx - w + 3 * s, cy - h * .45 + 3 * s, cx - w + 3 * s, cy + h * .55 - 3 * s), fill=(176, 128, 84), width=max(1, round(2 * s)))
+    dr.line((cx, cy - h * .4, cx, cy + h * .5), fill=(84, 52, 30), width=1)
+
 
 def compose(photos, day, seed):
     rnd = random.Random(seed)
     img = background(); dr = ImageDraw.Draw(img)
-    headline(img, [(f'{day.day} {day:%B}', fell(116), GOLD), ('in Bapa’s Diary', fell(64), GOLD_SOFT)], 30)
+    header(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
 
     n = len(photos)
     rows = [photos] if n <= 5 else [photos[:(n + 1) // 2], photos[(n + 1) // 2:]]
-    cols, M, min_gap = len(rows[0]), 100, 24
-    cw_max = (W - 2 * M - min_gap * (cols - 1)) / cols
-    card = Card(min(262, cw_max / (1 + 30 / 262)))
-    gap = min(90, (W - 2 * M - cols * card.CW) / max(1, cols - 1))
-    pitch = card.CH + 66
-    top_space, bottom_space = 190, H - 120
+    cols, M, min_gap = len(rows[0]), 100, 30
+    top_space, bottom_space = 222, H - 128
+    row_gap = 58
+    pw_w = ((W - 2 * M - min_gap * (cols - 1)) / cols) / 1.09
+    row_h = (bottom_space - top_space - row_gap * (len(rows) - 1)) / len(rows)
+    pw = min(300, pw_w, row_h / (1.08 + .045 + .32))
+    # on busy days the cards are narrower, so let the photos grow taller to fill the height instead
+    card = Card(pw, max(1.08, min(1.45, row_h / pw - .045 - .32)))
+    gap = min(70, (W - 2 * M - cols * card.CW) / max(1, cols - 1))
+    pitch = card.CH + row_gap
     block = (len(rows) - 1) * pitch + card.CH
-    first = top_space + max(0, (bottom_space - top_space - block) / 2) + 6
+    first = top_space + max(0, (bottom_space - top_space - block) / 2)
+    s = card.PW / 220
 
     for r, row in enumerate(rows):
         y_top = first + r * pitch
-        sag = lambda xp: y_top - 18 + 30 * 4 * (xp / W) * (1 - xp / W)
-        dr.line([(xp, sag(xp)) for xp in range(0, W + 1, 6)], fill=CORD, width=2)
-        x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2 + card.CW / 2
+        sag = lambda xp: y_top - 4 + 12 * 4 * (xp / W) * (1 - xp / W)
+        dr.line([(xp, sag(xp)) for xp in range(0, W + 1, 6)], fill=(170, 132, 78), width=2)
+        x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
         for c, x in enumerate(row):
-            cx = x0 + c * (card.CW + gap); cy = sag(cx)
-            rot = card.hang(card.make(x), rnd.uniform(-3, 3))
-            img.paste(rot, (int(cx - rot.width / 2), int(cy + card.CH / 2 + 3 - rot.height / 2)), rot)
-            dr.rounded_rectangle((cx - 9, cy - 18, cx + 9, cy + 24), radius=4, fill=PEG, outline=PEG_EDGE, width=2)
-            dr.line((cx, cy - 15, cx, cy + 21), fill=PEG_EDGE, width=1)
+            cx = x0 + c * (card.CW + gap) + card.CW / 2
+            # each polaroid swings a little on its peg, like a real one would
+            a = rnd.uniform(-2.2, 2.2); t = np.radians(a)
+            hung = card.hang(card.make(x)).rotate(a, resample=Image.BICUBIC, expand=True)
+            px, py = cx, y_top                                  # the peg holds the middle of the top edge
+            mx, my = px + card.CH / 2 * np.sin(t), py + card.CH / 2 * np.cos(t)
+            img.paste(hung, (int(mx - hung.width / 2), int(my - hung.height / 2)), hung)
+            peg(dr, cx, sag(cx) + 4, s)
 
-    headline(img, [(FOOTER, fell(38), GOLD_SOFT)], H - 92, shadow=False, reach=240, dsize=6)
+    footer(img)
     return img
 
 
