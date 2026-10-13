@@ -2,11 +2,11 @@ name: Bapa's Diary
 
 on:
   schedule:
-    # GitHub's clock is UTC and often runs late, so build twice well before 7:30pm UK time:
-    # 17:15 and 18:15 UTC = 18:15 and 19:15 in summer (BST), 17:15 and 18:15 in winter (GMT).
+    # GitHub's clock is UTC and often runs late, so build twice well before 8:30am UK time:
+    # 05:15 and 06:15 UTC = 6:15 and 7:15am in summer (BST), 5:15 and 6:15am in winter (GMT).
     # The second run only does anything if the first one didn't finish.
-    - cron: '15 17 * * *'
-    - cron: '15 18 * * *'
+    - cron: '15 5 * * *'
+    - cron: '15 6 * * *'
   workflow_dispatch:
     inputs:
       date:
@@ -23,7 +23,7 @@ concurrency:
 jobs:
   make:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
@@ -59,7 +59,7 @@ jobs:
           days=$(( ( $(date +%s) - $(date -d "$last" +%s) ) / 86400 ))
           open=$(gh issue list --state open --search "No new vicharan photos in:title" --json number -q '.[].number')
           if [ "$days" -ge 14 ] && [ -z "$open" ]; then
-            gh issue create --title "No new vicharan photos since $last" --body "The evening collector hasn't found new vicharan photos of Bapa for $days days. Either baps.org hasn't uploaded any, or it has changed how its photos are named (see collect.py and archive/state.json). The daily picture keeps working with every photo already saved. Close this issue once it's sorted."
+            gh issue create --title "No new vicharan photos since $last" --body "The daily collector hasn't found new vicharan photos of Bapa for $days days. Either baps.org hasn't uploaded any, or it has changed how its photos are named (see collect.py and archive/state.json). The daily picture keeps working with every photo already saved. Close this issue once it's sorted."
           fi
 
       - name: Make the picture
@@ -76,13 +76,15 @@ jobs:
           path: out/
           retention-days: 14
 
-      - name: Publish tonight's picture for Google Drive to collect
+      - name: Publish today's picture for Google Drive to collect
         if: steps.done.outputs.skip != '1'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view today >/dev/null 2>&1 || gh release create today --title "Tonight's picture" \
-            --notes "Rebuilt every evening. Your Google script collects bapas-diary.jpg from here at 7:30pm."
+          gh release view today >/dev/null 2>&1 || gh release create today --title "Today's picture" \
+            --notes "Rebuilt every morning. Your Google script collects bapas-diary.jpg from here at 8:30am."
+          gh release edit today --title "Today's picture" \
+            --notes "Rebuilt every morning. Your Google script collects bapas-diary.jpg from here at 8:30am."
           gh release upload today out/bapas-diary.jpg out/date.txt --clobber
 
       - name: Log it (this also keeps GitHub's daily timer switched on)

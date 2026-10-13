@@ -43,21 +43,29 @@ def fetch(url, tries=3, timeout=25):
 def download_all(items, cache):
     os.makedirs(cache, exist_ok=True)
 
-    def one(x):
+    def one(x, timeout=25, quiet=True):
         path = os.path.join(cache, hashlib.sha1(x['i'].encode()).hexdigest() + '.jpg')
         if not os.path.exists(path):
             try:
-                data = fetch(x['i'])
+                data = fetch(x['i'], tries=2, timeout=timeout)
             except Exception as e:
-                print('  could not download', x['i'], e)
+                if not quiet:
+                    print('  could not download', x['i'], e)
                 return
             if len(data) < 2000:
                 return
             open(path, 'wb').write(data)
         x['path'] = path
 
-    with concurrent.futures.ThreadPoolExecutor(8) as pool:
+    with concurrent.futures.ThreadPoolExecutor(4) as pool:   # baps.org gets slow when asked for too much at once
         list(pool.map(one, items))
+    have_years = {x['y'] for x in items if 'path' in x}
+    missed = sorted((x for x in items if 'path' not in x), key=lambda x: x['y'] in have_years)   # empty years first
+    if missed:   # give the slow ones a second, gentler go (unless baps.org is plainly down)
+        print(f'  {len(missed)} photos were slow, trying {min(len(missed), 40)} of them again', flush=True)
+        time.sleep(20)
+        with concurrent.futures.ThreadPoolExecutor(2) as pool:
+            list(pool.map(lambda x: one(x, timeout=60, quiet=False), missed[:40]))
 
 
 MODELS = os.path.join(HERE, 'models')
