@@ -39,7 +39,7 @@ def exists(url):
     req = urllib.request.Request(url, method='HEAD', headers={'User-Agent': UA, 'Accept': 'image/*'})
     for _ in range(2):
         try:
-            with urllib.request.urlopen(req, timeout=20):
+            with urllib.request.urlopen(req, timeout=10):
                 return True
         except urllib.error.HTTPError as e:
             if e.code == 404:
@@ -85,20 +85,21 @@ def find_albums(state, today, schedule):
     if not days:
         return []
     quiet = (today - last_date).days
-    window = min(200, 40 + 20 * quiet)          # more albums get uploaded while we wait
-    combos = []
+    window = min(120, 40 + 10 * quiet)          # more albums get uploaded while we wait
+    tries = []                                   # (date, file name place, photo numbers to try)
     for d in days:
         names = [n for n, _ in schedule_names(d, schedule)] + state['names']
-        combos += [(d, n) for n in dict.fromkeys(names)]
-    if quiet > 3:                                # nothing found for a while: also try his usual places
+        tries += [(d, n, (1, 2)) for n in dict.fromkeys(names)]
+    if quiet > 3 and not any(schedule_names(d, schedule) for d in days[-2:]):
+        # no schedule and nothing found for a while: also try his usual places for the newest day
         usual = sorted(PLACES.values(), key=lambda p: -p['since_2017'])[:12]
-        combos += [(d, p['names'][0]) for d in days[-2:] for p in usual if (d, p['names'][0]) not in combos]
+        tries += [(days[-1], p['names'][0], (1,)) for p in usual if p['names'][0] not in state['names']]
     print(f'Looking for {len(days)} day(s) {days[0]} to {days[-1]} in albums {state["last_album"] + 1} to '
-          f'{state["last_album"] + window}, names {sorted({n for _, n in combos})}')
+          f'{state["last_album"] + window}, places {sorted({n for _, n, _ in tries})}', flush=True)
 
     def album(a):
-        for d, name in combos:
-            for n in (1, 2, 3):
+        for d, name, nums in tries:
+            for n in nums:
                 if exists(PHOTO.format(album=a, d=d, n=n, name=name)):
                     return a, d, name
         return None
@@ -157,7 +158,7 @@ def main():
         urls = list_album(album, d, name)
         place = display_place(name, schedule_names(d, schedule))
         keep = bapa_photos(urls, str(d))[:KEEP]
-        print(f'Album {album}: {d} {place}, {len(urls)} photos, Bapa recognised in {len(keep)} kept')
+        print(f'Album {album}: {d} {place}, {len(urls)} photos, Bapa recognised in {len(keep)} kept', flush=True)
         path = os.path.join(ARCHIVE, f'{d:%m-%d}.json')
         items = json.load(open(path)) if os.path.exists(path) else []
         have = {x['i'] for x in items}

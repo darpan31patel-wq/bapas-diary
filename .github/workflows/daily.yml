@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 concurrency:
   group: diary
@@ -38,13 +39,34 @@ jobs:
           python-version: '3.12'
           cache: pip
 
+      - name: Install
+        if: steps.done.outputs.skip != '1'
+        run: pip install -q -r requirements.txt
+
+      - name: Collect new vicharan photos of Bapa (they join this date's picture from next year)
+        if: steps.done.outputs.skip != '1'
+        continue-on-error: true
+        timeout-minutes: 15
+        run: python collect.py
+
+      - name: Open an issue (GitHub emails you) if no new photos have turned up for two weeks
+        if: steps.done.outputs.skip != '1'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          last=$(python -c "import json; print(json.load(open('archive/state.json'))['last_date'])")
+          days=$(( ( $(date +%s) - $(date -d "$last" +%s) ) / 86400 ))
+          open=$(gh issue list --state open --search "No new vicharan photos in:title" --json number -q '.[].number')
+          if [ "$days" -ge 14 ] && [ -z "$open" ]; then
+            gh issue create --title "No new vicharan photos since $last" --body "The evening collector hasn't found new vicharan photos of Bapa for $days days. Either baps.org hasn't uploaded any, or it has changed how its photos are named (see collect.py and archive/state.json). The daily picture keeps working with every photo already saved. Close this issue once it's sorted."
+          fi
+
       - name: Make the picture
         if: steps.done.outputs.skip != '1'
         env:
           DATE: ${{ inputs.date }}
-        run: |
-          pip install -q -r requirements.txt
-          python make.py ${DATE:+--date "$DATE"}
+        run: python make.py ${DATE:+--date "$DATE"}
 
       - name: Keep a copy on this run's page
         if: steps.done.outputs.skip != '1'
@@ -69,6 +91,6 @@ jobs:
           echo "$(cat out/date.txt) $(cat out/summary.txt)" >> log.md
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add log.md
+          git add log.md archive
           git commit -q -m "Bapa's Diary for $(cat out/date.txt)"
           git push -q

@@ -18,8 +18,16 @@ from every year on this date, hung like polaroids on gold cords. It lands in Dar
    at 7:30pm it copies the picture into the Drive folder **Bapa's Diary**, named like `13 October 2026.jpg`.
    It tries again at 9:30pm and sends an email if the picture never arrived.
 
-Nothing here needs Claude. New years' photos for each date are added to the screensaver's
-On This Day lists by the screensaver's own routine; if that ever stops, this keeps working with the photos already there.
+**New photos each year** (`collect.py`, in the same evening run). baps.org pages are behind a Cloudflare check
+GitHub can't pass, but its photos load fine and vicharan photos are named
+`GalleryImages/<album>/WebImages/<YYYY>_<MM>_<DD>_<NNN>_<Place>.jpg` with album numbers that only go up.
+So each evening it tries the next album numbers with the last few days' dates and Bapa's likely place
+(the vicharan schedule, where he was last, or his usual places), lists the album it finds, keeps up to 30 photos
+where it recognises Bapa and adds them to `archive/MM-DD.json`. `make.py` adds those to the On This Day list,
+so 13 October 2027 includes 13 October 2026. `archive/state.json` says how far it has got.
+
+Nothing here needs Claude. If no new photos turn up for two weeks (say baps.org renames its photos), the run opens
+an issue on this repo, which GitHub emails to you; the pictures keep working with every photo already saved.
 
 ## Make one by hand
 

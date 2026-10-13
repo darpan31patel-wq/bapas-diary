@@ -92,7 +92,8 @@ def bapa_face(im, when):
 
 def pick_one_per_year(items, seed):
     """Per year, a photo where Bapa is recognised, favouring a close darshan, with a touch of variety.
-    A year where he can't be recognised in any photo still gets one, shown whole so he isn't cropped out."""
+    Years where he can't be recognised in any photo are left out, unless that would leave fewer than five;
+    then they're kept and shown whole so he isn't cropped out."""
     rnd = random.Random(seed)
     best = {}
     for x in items:
@@ -106,7 +107,10 @@ def pick_one_per_year(items, seed):
         score = (1 + min(face[3] / im.height, .35) + sim if face else 0) + rnd.uniform(0, .04)
         if x['y'] not in best or score > best[x['y']][0]:
             best[x['y']] = (score, dict(x, im=im, face=face, sim=sim))
-    return [best[y][1] for y in sorted(best)]
+    years = sorted(best)
+    if sum(1 for y in years if best[y][1]['face']) >= 5:
+        years = [y for y in years if best[y][1]['face']]
+    return [best[y][1] for y in years]
 
 
 def crop_to(im, face, w, h):
@@ -244,7 +248,7 @@ class Card:
         cd.rectangle((B - 7, B - 7, B + PW + 6, B + PH + 6), outline=FRAME_LINE, width=2)
         # year (bold) and place (regular, letter spaced) as a centred pair in the bottom band
         yf, yt = fell(50 * s), str(x['y'])
-        pl, track, size = (x.get('p') or '').split(',')[0].strip().upper(), 3 * s, 25 * s
+        pl, track, size = re.sub(r'\s*\(.*?\)', '', (x.get('p') or '').split(',')[0]).strip().upper(), 3 * s, 25 * s
         while True:
             pf = arimo(size)
             pw = sum(cd.textlength(ch, font=pf) for ch in pl) + track * max(0, len(pl) - 1)
