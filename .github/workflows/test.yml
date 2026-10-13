@@ -1,0 +1,29 @@
+name: test
+on:
+  push:
+    branches: [test]
+    paths: [.github/workflows/test.yml, dates.txt]
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - run: |
+          mkdir -p results
+          for d in $(cat dates.txt); do
+            python make.py --date $d --out out/$d > results/$d.txt 2>&1 || echo "FAILED" >> results/$d.txt
+            cp out/$d/bapas-diary.jpg results/$d.jpg 2>/dev/null || true
+          done
+      - run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898283+github-actions[bot]@users.noreply.github.com'
+          git add results
+          git commit -m 'Test pictures'
+          git push
