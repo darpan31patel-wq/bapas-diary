@@ -1,0 +1,25 @@
+A. single images
+ HEAD 37019/WebImages/2026_10_09_009_London.jpg (200, 'image/jpeg', '279108')
+ GET  37019/WebImages/2026_10_09_009_London.jpg (200, 'image/jpeg', '279108')
+ HEAD 37019/WebImages/2026_10_09_001_London.jpg (200, 'image/jpeg', '113167')
+ GET  37019/WebImages/2026_10_09_001_London.jpg (200, 'image/jpeg', '113167')
+ HEAD 37019/WebImages/2026_10_09_009_Londonx.jpg (404, 'text/html; charset=utf-8', None)
+ GET  37019/WebImages/2026_10_09_009_Londonx.jpg (404, 'text/html; charset=utf-8', None)
+B. album folders
+ HEAD 37019/ (403, 'text/html; charset=UTF-8', 'challenge')
+ HEAD 37019/WebImages/ (403, 'text/html; charset=UTF-8', 'challenge')
+ HEAD 37019/Thumbnails/ (403, 'text/html; charset=UTF-8', 'challenge')
+ HEAD 37100/ (403, 'text/html; charset=UTF-8', 'challenge')
+ HEAD 37100/WebImages/ (403, 'text/html; charset=UTF-8', 'challenge')
+ HEAD 99999990/ (403, 'text/html; charset=UTF-8', 'challenge')
+ HEAD 99999990/WebImages/ (403, 'text/html; charset=UTF-8', 'challenge')
+C. rediscover 3 Oct 2026 (known album 37012) scanning 37002..37013
+  {"37012": [1, 2, 4, 5, 7, 8, 9, 10, 11, 12, 13, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]} 58s
+D. new days 10..13 Oct 2026, London, albums 37020..37050
+  2026-10-10 {"37022": [1, 2, 3, 4, 6, 9, 10, 11, 13, 17, 18, 21, 22, 24, 25, 26, 29]} 95s
+  2026-10-11 {"37023": [1, 2, 3, 4, 6, 7, 9, 10, 14, 16, 17, 18, 21, 24, 25, 26, 27, 29, 30]} 156s
+  2026-10-12 {} 206s
+  2026-10-13 {} 258s
+E. full count in album 37019 (9 Oct), numbers 1..400
+  117 photos [1, 2, 3, 4, 6, 8, 9, 10, 12, 15, 16, 17, 20, 21, 24, 25, 26, 27, 30, 31, 32, 35, 36, 37, 40, 41, 42, 44, 46, 48, 51, 52, 53, 54, 55, 56, 58, 59, 60, 62, 64, 66, 67, 69, 71, 73, 74, 75, 78, 80, 81, 82, 83, 84, 85, 86, 87, 111, 112, 116]
+total requests 4493
