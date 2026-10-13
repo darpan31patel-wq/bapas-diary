@@ -1,0 +1,24 @@
+name: collect-test
+on:
+  push:
+    branches: [collect-test]
+    paths: [.github/workflows/collect-test.yml, collect.py]
+permissions:
+  contents: write
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - run: time python collect.py --today 2026-10-13 2>&1 | tee archive/run.txt
+      - run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898283+github-actions[bot]@users.noreply.github.com'
+          git add archive
+          git commit -m 'Collector test results'
+          git push

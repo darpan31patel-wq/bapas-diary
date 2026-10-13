@@ -312,6 +312,10 @@ def main():
     day = datetime.date.fromisoformat(a.date) if a.date else datetime.datetime.now(ZoneInfo('Europe/London')).date()
     mmdd = f'{day:%m-%d}'
     items = json.load(open(a.data)) if a.data else json.loads(fetch(DATA_URL.format(mmdd=mmdd)))
+    collected = os.path.join(HERE, 'archive', mmdd + '.json')      # newer years found by collect.py
+    if os.path.exists(collected):
+        have = {x['i'] for x in items}
+        items += [x for x in json.load(open(collected)) if x['i'] not in have]
     print(f'{day}: {len(items)} photos across {len({x["y"] for x in items})} years')
 
     download_all(items, a.cache)
