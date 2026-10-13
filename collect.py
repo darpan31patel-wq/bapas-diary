@@ -14,7 +14,7 @@ make.py adds those to the On This Day list, so next year's picture for that date
     python collect.py                  look for albums up to today (London)
     python collect.py --today 2026-10-12
 """
-import argparse, concurrent.futures, datetime, io, json, os, urllib.error, urllib.request
+import argparse, collections, concurrent.futures, datetime, io, json, os, urllib.error, urllib.request
 from zoneinfo import ZoneInfo
 
 from PIL import Image
@@ -30,12 +30,15 @@ LOOKBACK = 6          # albums usually appear within a day or two; look back thi
 KEEP = 30             # photos of Bapa kept per day
 UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36'
 PLACES = json.load(open(os.path.join(HERE, 'places.json')))
-errors = 0
+errors, error_kinds = 0, collections.Counter()
+GIVE_UP = 30          # baps.org is struggling or refusing: stop for today rather than hammer it
 
 
 def exists(url):
-    """True when the photo is there, False when baps.org says it isn't."""
+    """True when the photo is there, False when baps.org says it isn't (or we've given up for today)."""
     global errors
+    if errors >= GIVE_UP:
+        return False
     req = urllib.request.Request(url, method='HEAD', headers={'User-Agent': UA, 'Accept': 'image/*'})
     for _ in range(2):
         try:
@@ -44,9 +47,10 @@ def exists(url):
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 return False
-        except Exception:
-            pass
-    errors += 1
+            kind = f'HTTP {e.code}'
+        except Exception as e:
+            kind = type(e).__name__
+    errors += 1; error_kinds[kind] += 1
     return False
 
 
@@ -148,14 +152,16 @@ def main():
         schedule = {}
 
     found = find_albums(state, today, schedule)
-    if errors > 50:
-        raise SystemExit(f'baps.org refused {errors} requests; trying again next time')
+    if errors >= GIVE_UP:
+        raise SystemExit(f'baps.org is not answering properly ({dict(error_kinds)}); trying again next time')
     if not found:
         print('No new vicharan albums yet')
         return
 
     for album, d, name in sorted(found):
         urls = list_album(album, d, name)
+        if errors >= GIVE_UP:
+            raise SystemExit(f'baps.org stopped answering properly ({dict(error_kinds)}); trying again next time')
         place = display_place(name, schedule_names(d, schedule))
         keep = bapa_photos(urls, str(d))[:KEEP]
         print(f'Album {album}: {d} {place}, {len(urls)} photos, Bapa recognised in {len(keep)} kept', flush=True)

@@ -33,7 +33,7 @@ arimo = lambda s: font('arimo-latin-400-normal', s)
 
 # ---------------------------------------------------------------- photos
 
-def fetch(url, tries=3, timeout=40):
+def fetch(url, tries=3, timeout=25):
     for i in range(tries):
         try:
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (bapas-diary)'})
