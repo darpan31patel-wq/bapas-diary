@@ -1,0 +1,74 @@
+name: Bapa's Diary
+
+on:
+  schedule:
+    # GitHub's clock is UTC and often runs late, so build twice well before 7:30pm UK time:
+    # 17:15 and 18:15 UTC = 18:15 and 19:15 in summer (BST), 17:15 and 18:15 in winter (GMT).
+    # The second run only does anything if the first one didn't finish.
+    - cron: '15 17 * * *'
+    - cron: '15 18 * * *'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Date to make (YYYY-MM-DD). Leave blank for today.'
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: diary
+
+jobs:
+  make:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Already made today?
+        id: done
+        if: github.event_name == 'schedule'
+        run: |
+          if grep -q "^$(TZ=Europe/London date +%F) " log.md; then echo "skip=1" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: actions/setup-python@v5
+        if: steps.done.outputs.skip != '1'
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Make the picture
+        if: steps.done.outputs.skip != '1'
+        env:
+          DATE: ${{ inputs.date }}
+        run: |
+          pip install -q -r requirements.txt
+          python make.py ${DATE:+--date "$DATE"}
+
+      - name: Keep a copy on this run's page
+        if: steps.done.outputs.skip != '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bapas-diary
+          path: out/
+          retention-days: 14
+
+      - name: Publish tonight's picture for Google Drive to collect
+        if: steps.done.outputs.skip != '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view today >/dev/null 2>&1 || gh release create today --title "Tonight's picture" \
+            --notes "Rebuilt every evening. Your Google script collects bapas-diary.jpg from here at 7:30pm."
+          gh release upload today out/bapas-diary.jpg out/date.txt --clobber
+
+      - name: Log it (this also keeps GitHub's daily timer switched on)
+        if: steps.done.outputs.skip != '1'
+        run: |
+          echo "$(cat out/date.txt) $(cat out/summary.txt)" >> log.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add log.md
+          git commit -q -m "Bapa's Diary for $(cat out/date.txt)"
+          git push -q
