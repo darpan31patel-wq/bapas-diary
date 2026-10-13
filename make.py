@@ -65,23 +65,34 @@ def download_all(items, cache):
         list(pool.map(one, items))
 
 
-FACES = cv2.CascadeClassifier(os.path.join(cv2.data.haarcascades, 'haarcascade_frontalface_default.xml'))
+MODELS = os.path.join(HERE, 'models')
+DETECT = cv2.FaceDetectorYN.create(os.path.join(MODELS, 'face_detection_yunet_2023mar.onnx'), '', (320, 320), .6, .3, 5000)
+RECOGNISE = cv2.FaceRecognizerSF.create(os.path.join(MODELS, 'face_recognition_sface_2021dec.onnx'), '')
+BAPA = {k: np.array(v) for k, v in json.load(open(os.path.join(MODELS, 'bapa-faces.json'))).items()}
+PSM_UNTIL = '2016-08-13'   # Pramukh Swami Maharaj before this date, Mahant Swami Maharaj after
+SAME_PERSON = .5           # cosine similarity; strangers and murtis score below .35
 
-def biggest_face(im):
-    """Largest frontal face as (x, y, w, h) in image pixels, or None."""
-    small = im.copy(); small.thumbnail((900, 900))
+
+def bapa_face(im, when):
+    """Bapa's face in the photo as ((x, y, w, h), similarity), or (None, 0) when he can't be recognised."""
+    small = im.copy(); small.thumbnail((1280, 1280))
     k = im.width / small.width
-    grey = cv2.cvtColor(np.array(small), cv2.COLOR_RGB2GRAY)
-    side = min(grey.shape)
-    found = FACES.detectMultiScale(grey, scaleFactor=1.08, minNeighbors=6, minSize=(int(side * .07),) * 2)
-    if len(found) == 0:
-        return None
-    x, y, w, h = max(found, key=lambda f: f[2] * f[3])
-    return tuple(int(v * k) for v in (x, y, w, h))
+    bgr = cv2.cvtColor(np.array(small), cv2.COLOR_RGB2BGR)
+    DETECT.setInputSize((bgr.shape[1], bgr.shape[0]))
+    faces = DETECT.detect(bgr)[1]
+    ref = BAPA['psm' if when < PSM_UNTIL else 'msm']
+    best, best_sim = None, 0
+    for f in faces if faces is not None else []:
+        e = RECOGNISE.feature(RECOGNISE.alignCrop(bgr, f))[0]
+        sim = float(ref @ (e / np.linalg.norm(e)))
+        if sim > best_sim:
+            best, best_sim = tuple(float(v) * k for v in f[:4]), sim
+    return (best, best_sim) if best_sim >= SAME_PERSON else (None, best_sim)
 
 
 def pick_one_per_year(items, seed):
-    """Per year, the photo where Bapa's face is largest (a close darshan), with a touch of variety."""
+    """Per year, a photo where Bapa is recognised, favouring a close darshan, with a touch of variety.
+    A year where he can't be recognised in any photo still gets one, shown whole so he isn't cropped out."""
     rnd = random.Random(seed)
     best = {}
     for x in items:
@@ -91,26 +102,28 @@ def pick_one_per_year(items, seed):
             im = Image.open(x['path']).convert('RGB')
         except Exception:
             continue
-        face = biggest_face(im)
-        size = face[3] / im.height if face else 0
-        score = min(size, .5) + rnd.uniform(0, .04)
+        face, sim = bapa_face(im, x.get('d', str(x['y'])))
+        score = (1 + min(face[3] / im.height, .35) + sim if face else 0) + rnd.uniform(0, .04)
         if x['y'] not in best or score > best[x['y']][0]:
-            best[x['y']] = (score, dict(x, im=im, face=face))
+            best[x['y']] = (score, dict(x, im=im, face=face, sim=sim))
     return [best[y][1] for y in sorted(best)]
 
 
 def crop_to(im, face, w, h):
-    """Biggest w:h crop, centred on the face (face about a third of the way down) or the upper middle."""
+    """A w:h window keeping Bapa's whole head in view (face about a third of the way down).
+    Without a recognised face the whole photo is shown, softened into its own colours at the edges."""
     iw, ih = im.size
-    if iw / ih > w / h:
-        cw, ch = ih * w / h, ih
-    else:
-        cw, ch = iw, iw * h / w
-    if face:
-        fx, fy = face[0] + face[2] / 2, face[1] + face[3] / 2
-        x0, y0 = fx - cw / 2, fy - ch * .38
-    else:
-        x0, y0 = (iw - cw) / 2, (ih - ch) * .25
+    if not face:
+        fill = im.resize((w, h), Image.LANCZOS).filter(ImageFilter.GaussianBlur(14))
+        fill = Image.blend(fill, Image.new('RGB', (w, h), MAROON_OUT), .3)
+        whole = im.copy(); whole.thumbnail((w, h), Image.LANCZOS)
+        fill.paste(whole, ((w - whole.width) // 2, (h - whole.height) // 2))
+        return fill
+    cw, ch = (ih * w / h, ih) if iw / ih > w / h else (iw, iw * h / w)
+    fx, fy, fw, fh = face
+    head = (fx - .35 * fw, fy - .75 * fh, fx + 1.35 * fw, fy + 1.4 * fh)   # top of the head down to the chin and neck
+    x0, y0 = fx + fw / 2 - cw / 2, fy + fh / 2 - ch * .38
+    y0 = max(y0, head[3] - ch); y0 = min(y0, head[1])                        # never slice through the head
     x0 = min(max(0, x0), iw - cw); y0 = min(max(0, y0), ih - ch)
     return im.crop((x0, y0, x0 + cw, y0 + ch)).resize((w, h), Image.LANCZOS)
 
@@ -306,7 +319,7 @@ def main():
     if not photos:
         raise SystemExit('No photos could be downloaded for ' + mmdd)
     for x in photos:
-        print(f'  {x["y"]}  {x.get("p", "")[:28]:28}  face {"yes" if x["face"] else "no "}  {x.get("c", "")[:60]}')
+        print(f'  {x["y"]}  {x.get("p", "")[:28]:28}  Bapa {"%.2f" % x["sim"] if x["face"] else "not found, shown whole"}  {x.get("c", "")[:60]}')
 
     os.makedirs(a.out, exist_ok=True)
     compose(photos, day, seed=mmdd).save(os.path.join(a.out, 'bapas-diary.jpg'), quality=92, optimize=True)

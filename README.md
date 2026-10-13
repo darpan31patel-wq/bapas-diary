@@ -10,7 +10,8 @@ from every year on this date, hung like polaroids on gold cords. It lands in Dar
 1. **GitHub makes the picture** (`.github/workflows/daily.yml`, around 6:15pm UK time, with a second try an hour later).
    `make.py` reads the day's On This Day list from the Darshan Screensaver
    (`darshan-screensaver.pages.dev/memories/MM-DD.json`), downloads the photos from baps.org,
-   picks one photo per year (the one where Bapa's face is largest, so it's a close darshan),
+   picks one photo per year where it recognises Bapa's face (favouring a close darshan),
+   crops around his whole head (a year where his face can't be seen is shown whole, never cropped),
    lays them out (two cords, cards shrink a little on days with many years) and saves
    `bapas-diary.jpg` to the release called **today**.
 2. **Google puts it in Drive** (`google/deliver.gs`, a script in Darpan's own Google account):
