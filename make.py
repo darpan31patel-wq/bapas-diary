@@ -19,8 +19,8 @@ W, H = 2796, 1290
 MAROON_OUT = (18, 4, 8)
 GOLD, GOLD_SOFT = (255, 207, 107), (217, 164, 65)
 FOOTER = 'Darpan’s Smruti Project'
-BORDER = 'whisper'   # light: 'whisper', 'hairline', 'gilded'; bolder: 'line', 'double', 'corners'; or None
-LIFE = True          # warm lamp glow and faint gold dust behind the polaroids
+GLOW = .5           # soft lamp light behind the title (0 = none)
+JALI = .13          # faint carved lattice at the edges (0 = none)
 
 
 def font(name, size):
@@ -242,7 +242,7 @@ def background():
             dd = (((i - 38.5) / 39) ** 2 + ((j - 17.5) / 18) ** 2) ** .5
             p[i, j] = int(140 * max(0, dd - .7) / .6)
     img.paste(Image.new('RGB', (W, H), (0, 0, 0)), (0, 0), m.resize((W, H), Image.BICUBIC))
-    return gold_dust(warm_glow(img)) if LIFE else img
+    return jali_edge(warm_glow(img))
 
 
 def warm_glow(img):
@@ -251,77 +251,22 @@ def warm_glow(img):
     yy, xx = np.mgrid[0:sh, 0:sw]
     top = np.clip(1 - np.hypot((xx - sw / 2) / (sw * .42), (yy - sh * .06) / (sh * .42)), 0, 1) ** 1.6
     bottom = np.clip(1 - np.hypot((xx - sw / 2) / (sw * .55), (yy - sh * 1.02) / (sh * .30)), 0, 1) ** 1.6 * .45
-    light = np.array([132, 74, 34]) * np.clip(top + bottom, 0, 1)[..., None]
+    light = np.array([132, 74, 34]) * np.clip(top + bottom, 0, 1)[..., None] * GLOW
     return ImageChops.add(img, Image.fromarray(light.astype('uint8')).resize((W, H), Image.BICUBIC))
 
 
-def gold_dust(img, seed='dust'):
-    """A few soft out of focus lights (kept clear of the words) and fine gold specks, some with a twinkle."""
-    rnd = random.Random(seed)
-    layer = Image.new('RGBA', (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(layer)
-    placed = 0
-    while placed < 10:
-        x, y = rnd.uniform(60, W - 60), rnd.choice([rnd.uniform(40, 220), rnd.uniform(H - 140, H - 40), rnd.uniform(0, H)])
-        if abs(x - W / 2) < 760 and (y < 215 or y > H - 130):
-            continue
-        placed += 1
-        r = rnd.uniform(16, 44)
-        d.ellipse((x - r, y - r, x + r, y + r), fill=(255, 200, 120, rnd.randint(10, 26)))
-    layer = layer.filter(ImageFilter.GaussianBlur(4)); d = ImageDraw.Draw(layer)
-    for _ in range(170):
-        x, y = rnd.uniform(0, W), rnd.uniform(0, H)
-        r, a = rnd.choice([1, 1, 1.5, 2, 2.5]), rnd.randint(70, 190)
-        d.ellipse((x - r, y - r, x + r, y + r), fill=(255, 220, 150, a))
-        if r >= 2.5 and rnd.random() < .5:
-            d.line((x - 5 * r, y, x + 5 * r, y), fill=(255, 225, 160, a // 2)); d.line((x, y - 5 * r, x, y + 5 * r), fill=(255, 225, 160, a // 2))
-    base = img.convert('RGBA'); base.alpha_composite(layer.filter(ImageFilter.GaussianBlur(.7)))
-    return base.convert('RGB')
-
-
-def smooth_mask(draw, k=2):
-    """Draw at twice the size and shrink, so thin curves come out smooth."""
-    m = Image.new('L', (W * k, H * k), 0); draw(ImageDraw.Draw(m), k)
-    return m.resize((W, H), Image.LANCZOS)
-
-
-def gild(img, mask, alpha=1.0, glow=0, glow_alpha=None):
-    if glow:
-        ga = alpha * 1.6 if glow_alpha is None else glow_alpha
-        img.paste(Image.new('RGB', (W, H), (230, 170, 80)), (0, 0), mask.filter(ImageFilter.GaussianBlur(glow)).point(lambda v: min(255, int(v * ga))))
-    t = np.linspace(0, 1, H)[:, None, None]
-    fill = Image.fromarray(((np.array([255, 222, 150]) * (1 - t) + np.array([200, 148, 66]) * t) * np.ones((1, W, 1))).astype('uint8'))
-    img.paste(fill, (0, 0), mask.point(lambda v: int(v * alpha)))
-
-
-def border(img, style):
-    """A fine gold border whose corners follow the iPhone screen's own rounded corners."""
-    def rule(inset, radius, width):
-        return lambda d, k: d.rounded_rectangle((inset * k, inset * k, (W - inset) * k - 1, (H - inset) * k - 1),
-                                                radius=radius * k, outline=255, width=max(1, round(width * k)))
-    if style == 'whisper':                                   # a faint gold hairline, barely there
-        gild(img, smooth_mask(rule(26, 172, 1.6)), alpha=.38)
-    elif style == 'hairline':                                # a fine line with a faint warm haze around it
-        gild(img, smooth_mask(rule(26, 172, 1.1)), alpha=.5, glow=12, glow_alpha=2.2)
-    elif style == 'gilded':                                  # no line: a soft gold light just at the very edge
-        edge = Image.new('L', (W, H), 255)
-        ImageDraw.Draw(edge).rounded_rectangle((14, 14, W - 15, H - 15), radius=186, fill=0)
-        gild(img, edge.filter(ImageFilter.GaussianBlur(26)), alpha=.32)
-    elif style == 'line':
-        gild(img, smooth_mask(rule(26, 172, 3)), alpha=.95, glow=6)
-    elif style == 'double':
-        gild(img, smooth_mask(rule(22, 176, 3.5)), glow=5)
-        gild(img, smooth_mask(rule(36, 162, 1.4)), alpha=.75)
-    elif style == 'corners':                                  # gold only at the corners, fading along the edges
-        xs = np.minimum(np.arange(W), W - 1 - np.arange(W)); ys = np.minimum(np.arange(H), H - 1 - np.arange(H))
-        fx, fy = np.clip(1 - (xs - 200) / 430, 0, 1), np.clip(1 - (ys - 200) / 430, 0, 1)
-        keep = np.maximum(fx[None, :] * (ys[:, None] < 60), fy[:, None] * (xs[None, :] < 60))
-        keep = np.where((xs[None, :] < 200) & (ys[:, None] < 200), 1, keep)
-        gild(img, ImageChops.multiply(smooth_mask(rule(26, 172, 3)), Image.fromarray((keep * 255).astype('uint8'))), glow=6)
-        o = 26 + 172 - 172 * np.cos(np.pi / 4)
-        def jewels(d, k):                                     # a small gold diamond set on each curve
-            for x, y in [(o, o), (W - o, o), (o, H - o), (W - o, H - o)]:
-                d.polygon([(x * k, (y - 12) * k), ((x + 12) * k, y * k), (x * k, (y + 12) * k), ((x - 12) * k, y * k)], fill=255)
-        gild(img, smooth_mask(jewels))
+def jali_edge(img, R=54):
+    """The four petal lattice of a carved mandir jali (overlapping circles), faint and only near the edges."""
+    k = 2
+    m = Image.new('L', (W * k, H * k), 0); d = ImageDraw.Draw(m)
+    for cy in range(-R, H + R, R):
+        for cx in range(-R, W + R, R):
+            d.ellipse(((cx - R) * k, (cy - R) * k, (cx + R) * k, (cy + R) * k), outline=255, width=3)
+    xs = np.minimum(np.arange(W), W - 1 - np.arange(W)); ys = np.minimum(np.arange(H), H - 1 - np.arange(H))
+    fade = np.clip(1 - np.minimum(xs[None, :], ys[:, None]) / 190, 0, 1) ** 1.3          # gone before the photos
+    mask = ImageChops.multiply(m.resize((W, H), Image.LANCZOS), Image.fromarray((fade * 255 * JALI).astype('uint8')))
+    img.paste(Image.new('RGB', (W, H), (160, 84, 74)), (0, 0), mask)
+    return img
 
 
 class Card:
@@ -391,12 +336,7 @@ def compose(photos, day, seed):
     for r, row in enumerate(rows):
         y_top = first + r * pitch
         sag = lambda xp: y_top - 4 + 12 * 4 * (xp / W) * (1 - xp / W)
-        inset = {'line': 28, 'double': 37, 'corners': 28, 'whisper': 27, 'hairline': 27, 'mount': 46, 'shadow': 24}.get(BORDER, 0)
-        ends = (inset, W - inset)
-        dr.line([(xp, sag(xp)) for xp in range(ends[0], ends[1] + 1, 6)] + [(ends[1], sag(ends[1]))], fill=(170, 132, 78), width=2)
-        if BORDER in ('line', 'double', 'corners'):              # tied to the border with a small gold ring
-            for xe in ends:
-                dr.ellipse((xe - 7, sag(xe) - 7, xe + 7, sag(xe) + 7), outline=GOLD_SOFT, width=3)
+        dr.line([(xp, sag(xp)) for xp in range(0, W + 1, 6)], fill=(170, 132, 78), width=2)
         x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
         for c, x in enumerate(row):
             cx = x0 + c * (card.CW + gap) + card.CW / 2
@@ -409,8 +349,6 @@ def compose(photos, day, seed):
             peg(dr, cx, sag(cx) + 4, s)
 
     footer(img)
-    if BORDER:
-        border(img, BORDER)
     return img
 
 
