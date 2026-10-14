@@ -19,7 +19,7 @@ W, H = 2796, 1290
 MAROON_OUT = (18, 4, 8)
 GOLD, GOLD_SOFT = (255, 207, 107), (217, 164, 65)
 FOOTER = 'Darpan’s Smruti Project'
-BORDER = 'line'      # 'line', 'double', 'corners' or None
+BORDER = 'whisper'   # light: 'whisper', 'hairline', 'gilded'; bolder: 'line', 'double', 'corners'; or None
 LIFE = True          # warm lamp glow and faint gold dust behind the polaroids
 
 
@@ -284,9 +284,10 @@ def smooth_mask(draw, k=2):
     return m.resize((W, H), Image.LANCZOS)
 
 
-def gild(img, mask, alpha=1.0, glow=0):
+def gild(img, mask, alpha=1.0, glow=0, glow_alpha=None):
     if glow:
-        img.paste(Image.new('RGB', (W, H), (230, 170, 80)), (0, 0), mask.filter(ImageFilter.GaussianBlur(glow)).point(lambda v: min(255, int(v * 1.6 * alpha))))
+        ga = alpha * 1.6 if glow_alpha is None else glow_alpha
+        img.paste(Image.new('RGB', (W, H), (230, 170, 80)), (0, 0), mask.filter(ImageFilter.GaussianBlur(glow)).point(lambda v: min(255, int(v * ga))))
     t = np.linspace(0, 1, H)[:, None, None]
     fill = Image.fromarray(((np.array([255, 222, 150]) * (1 - t) + np.array([200, 148, 66]) * t) * np.ones((1, W, 1))).astype('uint8'))
     img.paste(fill, (0, 0), mask.point(lambda v: int(v * alpha)))
@@ -297,7 +298,15 @@ def border(img, style):
     def rule(inset, radius, width):
         return lambda d, k: d.rounded_rectangle((inset * k, inset * k, (W - inset) * k - 1, (H - inset) * k - 1),
                                                 radius=radius * k, outline=255, width=max(1, round(width * k)))
-    if style == 'line':
+    if style == 'whisper':                                   # a faint gold hairline, barely there
+        gild(img, smooth_mask(rule(26, 172, 1.6)), alpha=.38)
+    elif style == 'hairline':                                # a fine line with a faint warm haze around it
+        gild(img, smooth_mask(rule(26, 172, 1.1)), alpha=.5, glow=12, glow_alpha=2.2)
+    elif style == 'gilded':                                  # no line: a soft gold light just at the very edge
+        edge = Image.new('L', (W, H), 255)
+        ImageDraw.Draw(edge).rounded_rectangle((14, 14, W - 15, H - 15), radius=186, fill=0)
+        gild(img, edge.filter(ImageFilter.GaussianBlur(26)), alpha=.32)
+    elif style == 'line':
         gild(img, smooth_mask(rule(26, 172, 3)), alpha=.95, glow=6)
     elif style == 'double':
         gild(img, smooth_mask(rule(22, 176, 3.5)), glow=5)
@@ -382,10 +391,10 @@ def compose(photos, day, seed):
     for r, row in enumerate(rows):
         y_top = first + r * pitch
         sag = lambda xp: y_top - 4 + 12 * 4 * (xp / W) * (1 - xp / W)
-        inset = {'line': 28, 'double': 37, 'corners': 28}.get(BORDER, 0)
+        inset = {'line': 28, 'double': 37, 'corners': 28, 'whisper': 27, 'hairline': 27}.get(BORDER, 0)
         ends = (inset, W - inset)
         dr.line([(xp, sag(xp)) for xp in range(ends[0], ends[1] + 1, 6)] + [(ends[1], sag(ends[1]))], fill=(170, 132, 78), width=2)
-        if inset:                                               # tied to the border with a small gold ring
+        if BORDER in ('line', 'double', 'corners'):              # tied to the border with a small gold ring
             for xe in ends:
                 dr.ellipse((xe - 7, sag(xe) - 7, xe + 7, sag(xe) + 7), outline=GOLD_SOFT, width=3)
         x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
