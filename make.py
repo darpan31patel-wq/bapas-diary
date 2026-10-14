@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 
 import cv2
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_URL = 'https://darshan-screensaver.pages.dev/memories/{mmdd}.json'
@@ -19,6 +19,8 @@ W, H = 2796, 1290
 MAROON_OUT = (18, 4, 8)
 GOLD, GOLD_SOFT = (255, 207, 107), (217, 164, 65)
 FOOTER = 'Darpan’s Smruti Project'
+GLOW = .5           # soft lamp light behind the title (0 = none)
+JALI = .13          # faint carved lattice at the edges (0 = none)
 
 
 def font(name, size):
@@ -95,12 +97,19 @@ def bapa_face(im, when):
     return (best, best_sim) if best_sim >= SAME_PERSON else (None, best_sim)
 
 
+DOING = re.compile(r'arti|puja|pujan|bless|greet|shower|lights?\b|sanctif|plays?|walk|pradakshina|parikrama|reads?|offer|appl|'
+                   r'address|discourse|mala|meets?|inaugurat|pratishtha|ritual|perform|bows|thal|sprinkl|writ|garland|honou?r|'
+                   r'welcom|darshan|meditat|pray|arriv|visit|abhishek|lamp|tilak', re.I)
+JUST_A_FACE = re.compile(r'divine|jovial|\bmood\b|^\s*(HH|Param Pujya)?\s*(Pramukh|Mahant) Swami( Maharaj)?\s*$', re.I)
+
+
 def pick_one_per_year(items, seed):
-    """Per year, a photo where Bapa is recognised, favouring a close darshan, with a touch of variety.
+    """Per year, a photo where Bapa is recognised. Most years show what he is doing (arti, puja, blessing,
+    greeting) with him at a medium size; about one year in three is a close darshan of his face, spread out.
     Years where he can't be recognised in any photo are left out, unless that would leave fewer than five;
     then they're kept and shown whole so he isn't cropped out."""
     rnd = random.Random(seed)
-    best = {}
+    close, doing = {}, {}
     for x in items:
         if 'path' not in x:
             continue
@@ -109,13 +118,22 @@ def pick_one_per_year(items, seed):
         except Exception:
             continue
         face, sim = bapa_face(im, x.get('d', str(x['y'])))
-        score = (1 + min(face[3] / im.height, .35) + sim if face else 0) + rnd.uniform(0, .04)
-        if x['y'] not in best or score > best[x['y']][0]:
-            best[x['y']] = (score, dict(x, im=im, face=face, sim=sim))
-    years = sorted(best)
-    if sum(1 for y in years if best[y][1]['face']) >= 5:
-        years = [y for y in years if best[y][1]['face']]
-    return [best[y][1] for y in years]
+        x = dict(x, im=im, face=face, sim=sim)
+        r = face[3] / im.height if face else 0
+        c = x.get('c') or ''
+        jitter = rnd.uniform(0, .04)
+        s_close = (1 + min(r, .35) + sim if face else 0) + jitter
+        s_doing = (1 + sim + .6 * max(0, 1 - abs(r - .15) / .15) + (.4 if DOING.search(c) and not JUST_A_FACE.search(c) else 0)
+                   if face else 0) + jitter
+        y = x['y']
+        if y not in close or s_close > close[y][0]:
+            close[y] = (s_close, x)
+        if y not in doing or s_doing > doing[y][0]:
+            doing[y] = (s_doing, x)
+    years = sorted(close)
+    if sum(1 for y in years if close[y][1]['face']) >= 5:
+        years = [y for y in years if close[y][1]['face']]
+    return [(close if i % 3 == 1 else doing)[y][1] for i, y in enumerate(years)]
 
 
 def crop_to(im, face, w, h):
@@ -224,6 +242,30 @@ def background():
             dd = (((i - 38.5) / 39) ** 2 + ((j - 17.5) / 18) ** 2) ** .5
             p[i, j] = int(140 * max(0, dd - .7) / .6)
     img.paste(Image.new('RGB', (W, H), (0, 0, 0)), (0, 0), m.resize((W, H), Image.BICUBIC))
+    return jali_edge(warm_glow(img))
+
+
+def warm_glow(img):
+    """Soft lamp light from above the title, and a fainter warmth along the bottom."""
+    sw, sh = W // 8, H // 8
+    yy, xx = np.mgrid[0:sh, 0:sw]
+    top = np.clip(1 - np.hypot((xx - sw / 2) / (sw * .42), (yy - sh * .06) / (sh * .42)), 0, 1) ** 1.6
+    bottom = np.clip(1 - np.hypot((xx - sw / 2) / (sw * .55), (yy - sh * 1.02) / (sh * .30)), 0, 1) ** 1.6 * .45
+    light = np.array([132, 74, 34]) * np.clip(top + bottom, 0, 1)[..., None] * GLOW
+    return ImageChops.add(img, Image.fromarray(light.astype('uint8')).resize((W, H), Image.BICUBIC))
+
+
+def jali_edge(img, R=54):
+    """The four petal lattice of a carved mandir jali (overlapping circles), faint and only near the edges."""
+    k = 2
+    m = Image.new('L', (W * k, H * k), 0); d = ImageDraw.Draw(m)
+    for cy in range(-R, H + R, R):
+        for cx in range(-R, W + R, R):
+            d.ellipse(((cx - R) * k, (cy - R) * k, (cx + R) * k, (cy + R) * k), outline=255, width=3)
+    xs = np.minimum(np.arange(W), W - 1 - np.arange(W)); ys = np.minimum(np.arange(H), H - 1 - np.arange(H))
+    fade = np.clip(1 - np.minimum(xs[None, :], ys[:, None]) / 190, 0, 1) ** 1.3          # gone before the photos
+    mask = ImageChops.multiply(m.resize((W, H), Image.LANCZOS), Image.fromarray((fade * 255 * JALI).astype('uint8')))
+    img.paste(Image.new('RGB', (W, H), (160, 84, 74)), (0, 0), mask)
     return img
 
 
