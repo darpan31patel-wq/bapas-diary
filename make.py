@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 
 import cv2
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_URL = 'https://darshan-screensaver.pages.dev/memories/{mmdd}.json'
@@ -19,6 +19,8 @@ W, H = 2796, 1290
 MAROON_OUT = (18, 4, 8)
 GOLD, GOLD_SOFT = (255, 207, 107), (217, 164, 65)
 FOOTER = 'Darpan’s Smruti Project'
+BORDER = 'line'      # 'line', 'double', 'corners' or None
+LIFE = True          # warm lamp glow and faint gold dust behind the polaroids
 
 
 def font(name, size):
@@ -95,12 +97,19 @@ def bapa_face(im, when):
     return (best, best_sim) if best_sim >= SAME_PERSON else (None, best_sim)
 
 
+DOING = re.compile(r'arti|puja|pujan|bless|greet|shower|lights?\b|sanctif|plays?|walk|pradakshina|parikrama|reads?|offer|appl|'
+                   r'address|discourse|mala|meets?|inaugurat|pratishtha|ritual|perform|bows|thal|sprinkl|writ|garland|honou?r|'
+                   r'welcom|darshan|meditat|pray|arriv|visit|abhishek|lamp|tilak', re.I)
+JUST_A_FACE = re.compile(r'divine|jovial|\bmood\b|^\s*(HH|Param Pujya)?\s*(Pramukh|Mahant) Swami( Maharaj)?\s*$', re.I)
+
+
 def pick_one_per_year(items, seed):
-    """Per year, a photo where Bapa is recognised, favouring a close darshan, with a touch of variety.
+    """Per year, a photo where Bapa is recognised. Most years show what he is doing (arti, puja, blessing,
+    greeting) with him at a medium size; about one year in three is a close darshan of his face, spread out.
     Years where he can't be recognised in any photo are left out, unless that would leave fewer than five;
     then they're kept and shown whole so he isn't cropped out."""
     rnd = random.Random(seed)
-    best = {}
+    close, doing = {}, {}
     for x in items:
         if 'path' not in x:
             continue
@@ -109,13 +118,22 @@ def pick_one_per_year(items, seed):
         except Exception:
             continue
         face, sim = bapa_face(im, x.get('d', str(x['y'])))
-        score = (1 + min(face[3] / im.height, .35) + sim if face else 0) + rnd.uniform(0, .04)
-        if x['y'] not in best or score > best[x['y']][0]:
-            best[x['y']] = (score, dict(x, im=im, face=face, sim=sim))
-    years = sorted(best)
-    if sum(1 for y in years if best[y][1]['face']) >= 5:
-        years = [y for y in years if best[y][1]['face']]
-    return [best[y][1] for y in years]
+        x = dict(x, im=im, face=face, sim=sim)
+        r = face[3] / im.height if face else 0
+        c = x.get('c') or ''
+        jitter = rnd.uniform(0, .04)
+        s_close = (1 + min(r, .35) + sim if face else 0) + jitter
+        s_doing = (1 + sim + .6 * max(0, 1 - abs(r - .15) / .15) + (.4 if DOING.search(c) and not JUST_A_FACE.search(c) else 0)
+                   if face else 0) + jitter
+        y = x['y']
+        if y not in close or s_close > close[y][0]:
+            close[y] = (s_close, x)
+        if y not in doing or s_doing > doing[y][0]:
+            doing[y] = (s_doing, x)
+    years = sorted(close)
+    if sum(1 for y in years if close[y][1]['face']) >= 5:
+        years = [y for y in years if close[y][1]['face']]
+    return [(close if i % 3 == 1 else doing)[y][1] for i, y in enumerate(years)]
 
 
 def crop_to(im, face, w, h):
@@ -224,7 +242,77 @@ def background():
             dd = (((i - 38.5) / 39) ** 2 + ((j - 17.5) / 18) ** 2) ** .5
             p[i, j] = int(140 * max(0, dd - .7) / .6)
     img.paste(Image.new('RGB', (W, H), (0, 0, 0)), (0, 0), m.resize((W, H), Image.BICUBIC))
-    return img
+    return gold_dust(warm_glow(img)) if LIFE else img
+
+
+def warm_glow(img):
+    """Soft lamp light from above the title, and a fainter warmth along the bottom."""
+    sw, sh = W // 8, H // 8
+    yy, xx = np.mgrid[0:sh, 0:sw]
+    top = np.clip(1 - np.hypot((xx - sw / 2) / (sw * .42), (yy - sh * .06) / (sh * .42)), 0, 1) ** 1.6
+    bottom = np.clip(1 - np.hypot((xx - sw / 2) / (sw * .55), (yy - sh * 1.02) / (sh * .30)), 0, 1) ** 1.6 * .45
+    light = np.array([132, 74, 34]) * np.clip(top + bottom, 0, 1)[..., None]
+    return ImageChops.add(img, Image.fromarray(light.astype('uint8')).resize((W, H), Image.BICUBIC))
+
+
+def gold_dust(img, seed='dust'):
+    """A few soft out of focus lights (kept clear of the words) and fine gold specks, some with a twinkle."""
+    rnd = random.Random(seed)
+    layer = Image.new('RGBA', (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(layer)
+    placed = 0
+    while placed < 10:
+        x, y = rnd.uniform(60, W - 60), rnd.choice([rnd.uniform(40, 220), rnd.uniform(H - 140, H - 40), rnd.uniform(0, H)])
+        if abs(x - W / 2) < 760 and (y < 215 or y > H - 130):
+            continue
+        placed += 1
+        r = rnd.uniform(16, 44)
+        d.ellipse((x - r, y - r, x + r, y + r), fill=(255, 200, 120, rnd.randint(10, 26)))
+    layer = layer.filter(ImageFilter.GaussianBlur(4)); d = ImageDraw.Draw(layer)
+    for _ in range(170):
+        x, y = rnd.uniform(0, W), rnd.uniform(0, H)
+        r, a = rnd.choice([1, 1, 1.5, 2, 2.5]), rnd.randint(70, 190)
+        d.ellipse((x - r, y - r, x + r, y + r), fill=(255, 220, 150, a))
+        if r >= 2.5 and rnd.random() < .5:
+            d.line((x - 5 * r, y, x + 5 * r, y), fill=(255, 225, 160, a // 2)); d.line((x, y - 5 * r, x, y + 5 * r), fill=(255, 225, 160, a // 2))
+    base = img.convert('RGBA'); base.alpha_composite(layer.filter(ImageFilter.GaussianBlur(.7)))
+    return base.convert('RGB')
+
+
+def smooth_mask(draw, k=2):
+    """Draw at twice the size and shrink, so thin curves come out smooth."""
+    m = Image.new('L', (W * k, H * k), 0); draw(ImageDraw.Draw(m), k)
+    return m.resize((W, H), Image.LANCZOS)
+
+
+def gild(img, mask, alpha=1.0, glow=0):
+    if glow:
+        img.paste(Image.new('RGB', (W, H), (230, 170, 80)), (0, 0), mask.filter(ImageFilter.GaussianBlur(glow)).point(lambda v: min(255, int(v * 1.6 * alpha))))
+    t = np.linspace(0, 1, H)[:, None, None]
+    fill = Image.fromarray(((np.array([255, 222, 150]) * (1 - t) + np.array([200, 148, 66]) * t) * np.ones((1, W, 1))).astype('uint8'))
+    img.paste(fill, (0, 0), mask.point(lambda v: int(v * alpha)))
+
+
+def border(img, style):
+    """A fine gold border whose corners follow the iPhone screen's own rounded corners."""
+    def rule(inset, radius, width):
+        return lambda d, k: d.rounded_rectangle((inset * k, inset * k, (W - inset) * k - 1, (H - inset) * k - 1),
+                                                radius=radius * k, outline=255, width=max(1, round(width * k)))
+    if style == 'line':
+        gild(img, smooth_mask(rule(26, 172, 3)), alpha=.95, glow=6)
+    elif style == 'double':
+        gild(img, smooth_mask(rule(22, 176, 3.5)), glow=5)
+        gild(img, smooth_mask(rule(36, 162, 1.4)), alpha=.75)
+    elif style == 'corners':                                  # gold only at the corners, fading along the edges
+        xs = np.minimum(np.arange(W), W - 1 - np.arange(W)); ys = np.minimum(np.arange(H), H - 1 - np.arange(H))
+        fx, fy = np.clip(1 - (xs - 200) / 430, 0, 1), np.clip(1 - (ys - 200) / 430, 0, 1)
+        keep = np.maximum(fx[None, :] * (ys[:, None] < 60), fy[:, None] * (xs[None, :] < 60))
+        keep = np.where((xs[None, :] < 200) & (ys[:, None] < 200), 1, keep)
+        gild(img, ImageChops.multiply(smooth_mask(rule(26, 172, 3)), Image.fromarray((keep * 255).astype('uint8'))), glow=6)
+        o = 26 + 172 - 172 * np.cos(np.pi / 4)
+        def jewels(d, k):                                     # a small gold diamond set on each curve
+            for x, y in [(o, o), (W - o, o), (o, H - o), (W - o, H - o)]:
+                d.polygon([(x * k, (y - 12) * k), ((x + 12) * k, y * k), (x * k, (y + 12) * k), ((x - 12) * k, y * k)], fill=255)
+        gild(img, smooth_mask(jewels))
 
 
 class Card:
@@ -294,7 +382,12 @@ def compose(photos, day, seed):
     for r, row in enumerate(rows):
         y_top = first + r * pitch
         sag = lambda xp: y_top - 4 + 12 * 4 * (xp / W) * (1 - xp / W)
-        dr.line([(xp, sag(xp)) for xp in range(0, W + 1, 6)], fill=(170, 132, 78), width=2)
+        inset = {'line': 28, 'double': 37, 'corners': 28}.get(BORDER, 0)
+        ends = (inset, W - inset)
+        dr.line([(xp, sag(xp)) for xp in range(ends[0], ends[1] + 1, 6)] + [(ends[1], sag(ends[1]))], fill=(170, 132, 78), width=2)
+        if inset:                                               # tied to the border with a small gold ring
+            for xe in ends:
+                dr.ellipse((xe - 7, sag(xe) - 7, xe + 7, sag(xe) + 7), outline=GOLD_SOFT, width=3)
         x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
         for c, x in enumerate(row):
             cx = x0 + c * (card.CW + gap) + card.CW / 2
@@ -307,6 +400,8 @@ def compose(photos, day, seed):
             peg(dr, cx, sag(cx) + 4, s)
 
     footer(img)
+    if BORDER:
+        border(img, BORDER)
     return img
 
 
