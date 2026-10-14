@@ -391,7 +391,7 @@ def compose(photos, day, seed):
     for r, row in enumerate(rows):
         y_top = first + r * pitch
         sag = lambda xp: y_top - 4 + 12 * 4 * (xp / W) * (1 - xp / W)
-        inset = {'line': 28, 'double': 37, 'corners': 28, 'whisper': 27, 'hairline': 27}.get(BORDER, 0)
+        inset = {'line': 28, 'double': 37, 'corners': 28, 'whisper': 27, 'hairline': 27, 'mount': 46, 'shadow': 24}.get(BORDER, 0)
         ends = (inset, W - inset)
         dr.line([(xp, sag(xp)) for xp in range(ends[0], ends[1] + 1, 6)] + [(ends[1], sag(ends[1]))], fill=(170, 132, 78), width=2)
         if BORDER in ('line', 'double', 'corners'):              # tied to the border with a small gold ring
