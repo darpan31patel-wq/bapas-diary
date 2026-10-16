@@ -269,14 +269,45 @@ def jali_edge(img, R=54):
     return img
 
 
-class Card:
-    """Ivory polaroid: thin border, nearly square photo, year and place in the bottom band."""
-    def __init__(self, pw, aspect=1.08):
-        self.PW, self.PH = round(pw), round(pw * aspect)
-        self.B, self.BB = max(6, round(pw * .045)), round(pw * .32)
-        self.CW, self.CH = self.PW + 2 * self.B, self.PH + self.B + self.BB
+def caption(x):
+    return re.sub(r'\s+', ' ', x.get('c') or '').strip()
 
-    def make(self, x):
+
+def place(x):
+    return re.sub(r'\s*\(.*?\)', '', (x.get('p') or '').split(',')[0]).strip()
+
+
+def wrap(d, text, f, maxw, lines):
+    """Up to `lines` lines no wider than maxw; whatever doesn't fit ends in an ellipsis."""
+    words, out = text.split(), []
+    while words and len(out) < lines:
+        line = words.pop(0)
+        while words and d.textlength(line + ' ' + words[0], font=f) <= maxw:
+            line += ' ' + words.pop(0)
+        out.append(line)
+    cut = bool(words) or any(d.textlength(l, font=f) > maxw for l in out)
+    if cut and out:
+        last = out[-1]
+        while last and d.textlength(last + '…', font=f) > maxw:
+            last = last[:-1]
+        out[-1] = last.rstrip(' ,;:') + '…'
+    return out
+
+
+CAPTION_IVORY, CAPTION_GOLD = (250, 241, 222), (240, 214, 160)
+
+
+class Card:
+    """Ivory polaroid: thin border, nearly square photo, year and place in the bottom band.
+    style: None (live look), 'B' caption on a soft band over the photo, 'C' year and caption in the band,
+    'D' a small number on the photo for the caption list underneath ('A' draws its caption outside the card)."""
+    def __init__(self, pw, aspect=1.08, band=.32, style=None):
+        self.PW, self.PH = round(pw), round(pw * aspect)
+        self.B, self.BB = max(6, round(pw * .045)), round(pw * band)
+        self.CW, self.CH = self.PW + 2 * self.B, self.PH + self.B + self.BB
+        self.style = style
+
+    def make(self, x, num=None):
         PW, PH, B, BB, CW, CH = self.PW, self.PH, self.B, self.BB, self.CW, self.CH
         card = Image.new('RGBA', (CW, CH)); d = ImageDraw.Draw(card)
         for j in range(CH):
@@ -284,9 +315,18 @@ class Card:
             d.line((0, j, CW, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(IVORY_TOP, IVORY_BOTTOM)) + (255,))
         d.rectangle((0, 0, CW - 1, CH - 1), outline=IVORY_EDGE, width=1)
         card.paste(crop_to(x['im'], x['face'], PW, PH), (B, B))
+        if self.style == 'B' and caption(x):
+            self.soft_band(card, caption(x))
+        if self.style == 'D' and num is not None:
+            r = PW * .085; cx, cy = B + r + PW * .035, B + r + PW * .035
+            d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(96, 20, 32), outline=(226, 184, 104), width=max(1, round(PW * .008)))
+            nf = garamond(r * 1.25, 700)
+            d.text((cx, cy + r * .06), str(num), font=nf, fill=GOLD, anchor='mm')
         d.rectangle((B - 1, B - 1, B + PW, B + PH), outline=(150, 130, 100), width=1)
+        if self.style == 'C':
+            return self.year_and_caption(card, d, x)
         yf, yt = garamond(PW * .16, 600), str(x['y'])
-        pl = re.sub(r'\s*\(.*?\)', '', (x.get('p') or '').split(',')[0]).strip().upper()
+        pl = place(x).upper()
         size, track = PW * .08, PW * .014
         while size > PW * .04 and spaced(d, pl, arimo_bold(size), track) > CW - 2 * B - 4:
             size -= 1
@@ -296,6 +336,36 @@ class Card:
         top = B + PH + (BB - (yh + gap + ph)) / 2 - B * .2
         d.text(((CW - d.textlength(yt, font=yf)) / 2, top + yh), yt, font=yf, fill=YEAR_C2, anchor='ls')
         draw_spaced(d, (CW - spaced(d, pl, pf, track)) / 2, top + yh + gap + ph - pf.getmetrics()[0], pl, pf, track, PLACE_C2)
+        return card
+
+    def soft_band(self, card, text):
+        """Caption in ivory over a soft dark fade across the bottom of the photo."""
+        PW, PH, B = self.PW, self.PH, self.B
+        d = ImageDraw.Draw(card); f = garamond(PW * .085, 500)
+        lines = wrap(d, text, f, PW * .92, 2)
+        lh = PW * .098
+        h = round(len(lines) * lh + PW * .16)
+        fade = Image.new('RGBA', (PW, h)); fd = ImageDraw.Draw(fade)
+        for j in range(h):
+            t = j / h
+            fd.line((0, j, PW, j), fill=(30, 8, 12, round(205 * min(1, t / .55) ** 1.4)))
+        card.alpha_composite(fade, (B, B + PH - h))
+        y = B + PH - PW * .045 - (len(lines) - 1) * lh
+        for i, line in enumerate(lines):
+            d.text((B + PW / 2, y + i * lh), line, font=f, fill=CAPTION_IVORY, anchor='ms')
+
+    def year_and_caption(self, card, d, x):
+        """Year, then the caption in the polaroid band (the place when there's no caption)."""
+        PW, PH, B, BB, CW = self.PW, self.PH, self.B, self.BB, self.CW
+        yf, yt = garamond(PW * .14, 600), str(x['y'])
+        cf = garamond(PW * .08, 500); lh = PW * .093
+        lines = wrap(d, caption(x) or place(x), cf, CW - 2 * B - PW * .04, 3)
+        yh = -d.textbbox((0, 0), yt, font=yf, anchor='ls')[1]
+        block = yh + PW * .05 + len(lines) * lh
+        top = B + PH + (BB - block) / 2
+        d.text((CW / 2, top + yh), yt, font=yf, fill=YEAR_C2, anchor='ms')
+        for i, line in enumerate(lines):
+            d.text((CW / 2, top + yh + PW * .05 + (i + .8) * lh), line, font=cf, fill=PLACE_C2, anchor='ms')
         return card
 
     def hang(self, card):
@@ -312,7 +382,26 @@ def peg(dr, cx, cy, s):
     dr.line((cx, cy - h * .4, cx, cy + h * .5), fill=(84, 52, 30), width=1)
 
 
-def compose(photos, day, seed):
+def caption_list(img, photos, y0, y1):
+    """Style D: the numbered captions in three columns between the photos and the footer."""
+    dr = ImageDraw.Draw(img)
+    cols = 3; per = -(-len(photos) // cols)
+    nf, cf = garamond(25, 700), garamond(25, 500)
+    lh = min(36, (y1 - y0) / per)
+    colw = (W - 2 * 120) / cols
+    for i, x in enumerate(photos):
+        c, r = divmod(i, per)
+        xl, yb = 120 + c * colw, y0 + (r + .8) * lh
+        lead = f'{i + 1}.'
+        dr.text((xl + 30, yb), lead, font=nf, fill=GOLD, anchor='rs')
+        yt = f'{x["y"]}'
+        dr.text((xl + 42, yb), yt, font=nf, fill=(226, 184, 104), anchor='ls')
+        tx = xl + 42 + dr.textlength(yt, font=nf) + 16
+        text = wrap(dr, caption(x) or place(x), cf, xl + colw - 30 - tx, 1)
+        dr.text((tx, yb), text[0] if text else '', font=cf, fill=CAPTION_GOLD, anchor='ls')
+
+
+def compose(photos, day, seed, style=None):
     rnd = random.Random(seed)
     img = background(); dr = ImageDraw.Draw(img)
     header(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
@@ -320,19 +409,24 @@ def compose(photos, day, seed):
     n = len(photos)
     rows = [photos] if n <= 5 else [photos[:(n + 1) // 2], photos[(n + 1) // 2:]]
     cols, M, min_gap = len(rows[0]), 100, 30
-    top_space, bottom_space = 222, H - 128
+    list_h = (-(-n // 3) * 36 + 30) if style == 'D' else 0     # room for the numbered caption list
+    top_space, bottom_space = 222, H - 128 - list_h
     row_gap = 58
+    band = .52 if style == 'C' else .32
+    cf_a = garamond(24, 500); lh_a = 29
+    below = 3 * lh_a + 16 if style == 'A' else 0               # room for the caption under each card
     pw_w = ((W - 2 * M - min_gap * (cols - 1)) / cols) / 1.09
-    row_h = (bottom_space - top_space - row_gap * (len(rows) - 1)) / len(rows)
-    pw = min(300, pw_w, row_h / (1.08 + .045 + .32))
+    row_h = (bottom_space - top_space - row_gap * (len(rows) - 1)) / len(rows) - below
+    pw = min(300, pw_w, row_h / (1.08 + .045 + band))
     # on busy days the cards are narrower, so let the photos grow taller to fill the height instead
-    card = Card(pw, max(1.08, min(1.45, row_h / pw - .045 - .32)))
+    card = Card(pw, max(1.08, min(1.45, row_h / pw - .045 - band)), band, style)
     gap = min(70, (W - 2 * M - cols * card.CW) / max(1, cols - 1))
-    pitch = card.CH + row_gap
-    block = (len(rows) - 1) * pitch + card.CH
+    pitch = card.CH + below + row_gap
+    block = (len(rows) - 1) * pitch + card.CH + below
     first = top_space + max(0, (bottom_space - top_space - block) / 2)
     s = card.PW / 220
 
+    num = 0
     for r, row in enumerate(rows):
         y_top = first + r * pitch
         sag = lambda xp: y_top - 4 + 12 * 4 * (xp / W) * (1 - xp / W)
@@ -342,12 +436,20 @@ def compose(photos, day, seed):
             cx = x0 + c * (card.CW + gap) + card.CW / 2
             # each polaroid swings a little on its peg, like a real one would
             a = rnd.uniform(-2.2, 2.2); t = np.radians(a)
-            hung = card.hang(card.make(x)).rotate(a, resample=Image.BICUBIC, expand=True)
+            num += 1
+            hung = card.hang(card.make(x, num)).rotate(a, resample=Image.BICUBIC, expand=True)
             px, py = cx, y_top                                  # the peg holds the middle of the top edge
             mx, my = px + card.CH / 2 * np.sin(t), py + card.CH / 2 * np.cos(t)
             img.paste(hung, (int(mx - hung.width / 2), int(my - hung.height / 2)), hung)
             peg(dr, cx, sag(cx) + 4, s)
+            if style == 'A' and caption(x):
+                lines = wrap(dr, caption(x), cf_a, card.CW + gap - 14, 3)
+                ty = y_top + card.CH + 18
+                for i, line in enumerate(lines):
+                    dr.text((cx, ty + (i + .8) * lh_a), line, font=cf_a, fill=CAPTION_GOLD, anchor='ms')
 
+    if style == 'D':
+        caption_list(img, photos, bottom_space + 18, H - 112)
     footer(img)
     return img
 
@@ -358,6 +460,7 @@ def main():
     ap.add_argument('--data', help='use this JSON file instead of downloading the day list')
     ap.add_argument('--cache', default=os.path.join(HERE, '.cache'))
     ap.add_argument('--out', default=os.path.join(HERE, 'out'))
+    ap.add_argument('--styles', default='', help='also make caption mockups, e.g. A,B,C,D (out/caption-A.jpg ...)')
     a = ap.parse_args()
 
     day = datetime.date.fromisoformat(a.date) if a.date else datetime.datetime.now(ZoneInfo('Europe/London')).date()
@@ -374,10 +477,12 @@ def main():
     if not photos:
         raise SystemExit('No photos could be downloaded for ' + mmdd)
     for x in photos:
-        print(f'  {x["y"]}  {x.get("p", "")[:28]:28}  Bapa {"%.2f" % x["sim"] if x["face"] else "not found, shown whole"}  {x.get("c", "")[:60]}')
+        print(f'  {x["y"]}  {x.get("p", "")[:28]:28}  Bapa {"%.2f" % x["sim"] if x["face"] else "not found, shown whole"}  {caption(x)}')
 
     os.makedirs(a.out, exist_ok=True)
     compose(photos, day, seed=mmdd).save(os.path.join(a.out, 'bapas-diary.jpg'), quality=92, optimize=True)
+    for st in filter(None, a.styles.split(',')):
+        compose(photos, day, seed=mmdd, style=st).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=92, optimize=True)
     open(os.path.join(a.out, 'date.txt'), 'w').write(f'{day}\n')
     open(os.path.join(a.out, 'summary.txt'), 'w').write(f'{len(photos)} years: ' + ', '.join(str(x['y']) for x in photos) + '\n')
     print('saved', os.path.join(a.out, 'bapas-diary.jpg'))
