@@ -121,13 +121,29 @@ def unique_caption(c):
     return len(rest) >= 2
 
 
+STOP = {'the', 'a', 'an', 'of', 'to', 'and', 'in', 'on', 'at', 'with', 'by', 'for', 'his', 'all', 'bapa', 'during'}
+
+
+def caption_key(c):
+    """Rough word stems of a caption, so 'Greets all with folded hands' and 'Greeting all with folded hands' match."""
+    words = re.findall(r"[a-z]+", c.lower())
+    return {w[:5] for w in words if w not in STOP}
+
+
+def same_caption(a, b):
+    return bool(a and b) and len(a & b) / len(a | b) >= .7
+
+
 def pick_one_per_year(items, seed, unique=False):
     """Per year, a photo where Bapa is recognised. Most years show what he is doing (arti, puja, blessing,
     greeting) with him at a medium size; about one year in three is a close darshan of his face, spread out.
+    No two years share the same caption: when a year's best photo repeats an earlier year's caption
+    (three years of 'reads the Shikshapatri'), its next best photo with a different caption is used, and if
+    it has none the year is left out.
     Years where he can't be recognised in any photo are left out, unless that would leave fewer than five;
     then they're kept and shown whole so he isn't cropped out."""
     rnd = random.Random(seed)
-    close, doing = {}, {}
+    cands = {}
     for x in items:
         if 'path' not in x:
             continue
@@ -143,15 +159,28 @@ def pick_one_per_year(items, seed, unique=False):
         s_close = (1 + min(r, .35) + sim if face else 0) + jitter
         s_doing = (1 + sim + .6 * max(0, 1 - abs(r - .15) / .15) + (.4 if DOING.search(c) and not JUST_A_FACE.search(c) else 0)
                    if face else 0) + jitter
-        y = x['y']
-        if y not in close or s_close > close[y][0]:
-            close[y] = (s_close, x)
-        if y not in doing or s_doing > doing[y][0]:
-            doing[y] = (s_doing, x)
-    years = sorted(close)
-    if sum(1 for y in years if close[y][1]['face']) >= 5:
-        years = [y for y in years if close[y][1]['face']]
-    return [(close if i % 3 == 1 else doing)[y][1] for i, y in enumerate(years)]
+        lst = cands.setdefault(x['y'], [])
+        lst.append((s_close, s_doing, x))
+        if len(lst) > 16:   # keep memory down: only the best few of each kind stay
+            keep = {id(v) for v in sorted(lst, key=lambda v: -v[0])[:8] + sorted(lst, key=lambda v: -v[1])[:8]}
+            lst[:] = [v for v in lst if id(v) in keep]
+    years = sorted(cands)
+    if sum(1 for y in years if any(v[2]['face'] for v in cands[y])) >= 5:
+        years = [y for y in years if any(v[2]['face'] for v in cands[y])]
+    picked, used = [], []
+    for i, y in enumerate(years):
+        k = 0 if i % 3 == 1 else 1
+        ranked = sorted(cands[y], key=lambda v: -v[k])
+        if ranked[0][2]['face']:
+            ranked = [v for v in ranked if v[2]['face']]
+        for v in ranked:
+            key = caption_key(caption(v[2]))
+            if not any(same_caption(key, u) for u in used):
+                picked.append(v[2]); used.append(key)
+                break
+    if len(picked) < 5:   # too few left once repeats are skipped: fall back to the plain best per year
+        picked = [sorted(cands[y], key=lambda v: -v[0 if i % 3 == 1 else 1])[0][2] for i, y in enumerate(years)]
+    return picked
 
 
 def crop_to(im, face, w, h):
@@ -473,7 +502,7 @@ def caption_list(img, photos, y0, y1):
 
 
 # style H with bigger frames: H2 narrower margins and two line captions, H3 one line captions and polaroids may overlap a little
-LAYOUT = {'H2': dict(M=70, min_gap=14, row_gap=40, lines=2, cap=360, top=212),
+LAYOUT = {'H2': dict(M=70, min_gap=14, row_gap=40, lines=2, cap=360, top=212, bottom=H - 100),
           'H3': dict(M=60, min_gap=-14, row_gap=34, lines=1, cap=360, top=210)}
 
 
@@ -516,7 +545,7 @@ def compose(photos, day, seed, style=None):
     lay = LAYOUT.get(style, {})
     cols, M, min_gap = len(rows[0]), lay.get('M', 100), lay.get('min_gap', 30)
     list_h = (-(-n // 3) * 36 + 30) if style == 'D' else 0     # room for the numbered caption list
-    top_space, bottom_space = lay.get('top', 222), H - 128 - list_h
+    top_space, bottom_space = lay.get('top', 222), lay.get('bottom', H - 128) - list_h
     row_gap = lay.get('row_gap', 58)
     band = {'C': .52, 'E': .6, 'G': .56}.get(style, .32)
     cf_a = garamond(24, 500); lh_a = 29
