@@ -130,6 +130,10 @@ def caption_key(c):
     return {w[:5] for w in words if w not in STOP}
 
 
+COMMON_VERBS = {'bless', 'perfo', 'readi', 'reads', 'greet', 'engag', 'engro', 'has', 'visit', 'arriv', 'disco',
+                'medit', 'turns', 'plays', 'appli', 'offer', 'durin', 'start', 'daily', 'morni', 'eveni'}
+
+
 def same_caption(a, b):
     """Near repeats count too: 'Reads the Shikshapatri' inside 'Reads the Shikshapatri and Satsang Diksha',
     'In a divine mood' inside 'In a divine, jovial mood', 'Blesses all' beside 'Blesses the assembly'."""
@@ -137,9 +141,12 @@ def same_caption(a, b):
         return False
     j = len(a & b) / len(a | b)
     small, big = sorted((a, b), key=len)
-    return j >= .7 or (small <= big and (len(small) >= 2 or j >= .5))
+    shared_things = (a & b) - COMMON_VERBS     # 'tilak' in 'applies a tilak at start of daily puja' and '... on his forehead'
+    return (j >= .7 or (small <= big and (len(small) >= 2 or j >= .5))
+            or (len(a & b) >= 2 and shared_things and j >= .3))
 
 
+PICKS = json.load(open(os.path.join(HERE, 'archive', 'picks.json'))) if os.path.exists(os.path.join(HERE, 'archive', 'picks.json')) else {}
 ALL = []        # every photo the last pick looked at: (year, face match, recognised, caption, url)
 WORKINGS = []   # what the last pick looked at: per year its best few photos, scores and the one chosen
 
@@ -230,6 +237,10 @@ def pick_one_per_year(items, seed, unique=False):
             others = sum(1 for oy in cands if oy != y and any(same_caption(k, ok) for ok in keys[oy]))
             if others:
                 cands[y][j] = (v[0] - .25 * others, v[1] - .25 * others, v[2])
+    for y, want in PICKS.get(seed, {}).items():   # Darpan's own choice for a year wins outright
+        for j, v in enumerate(cands.get(int(y), [])):
+            if want.lower() in (v[2].get('c') or '').lower():
+                cands[int(y)][j] = (v[0] + 100, v[1] + 100, v[2])
     picked, used = [], []
     WORKINGS.clear()
     for i, y in enumerate(years):
