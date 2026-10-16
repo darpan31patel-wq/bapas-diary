@@ -103,7 +103,25 @@ DOING = re.compile(r'arti|puja|pujan|bless|greet|shower|lights?\b|sanctif|plays?
 JUST_A_FACE = re.compile(r'divine|jovial|\bmood\b|^\s*(HH|Param Pujya)?\s*(Pramukh|Mahant) Swami( Maharaj)?\s*$', re.I)
 
 
-def pick_one_per_year(items, seed):
+BAPA_WORDS = re.compile(r"\b(HH|H\.H\.|Param Pujya|P\.P\.|Pramukh|Mahant|Swami|Swamishri|Maharaj|Bapa|his|the|a|an|of|to|and|in|on|at|with|by|for|all)\b", re.I)
+STANDARD = re.compile(r"divine|jovial|\bmood\b|morning puja|\bpuja\b|bless\w* (all|the assembly|everyone|devotees)\s*$|"
+                      r"^\W*bless\w*\W*$|greet\w* (all|everyone|devotees)|folded hands|shikshapatri|satsang diksha|"
+                      r"darshan of (the )?(shrine|murtis?|thakorji)|tapni mala|\bmala\b|\bdarshan\s*$|engaged in|"
+                      r"listens|seated|in thought|smil|^\W*\w+ (performs|performing|does) (the )?(arti|aarti)\W*$", re.I)
+
+
+def unique_caption(c):
+    """True when the caption tells of something that happened that day (a visitor, a ceremony, balaks
+    dressed as sadhus, playing the drum) rather than an everyday line (divine mood, morning puja,
+    blesses all, greets all with folded hands, reads the Shikshapatri)."""
+    c = re.sub(r"\s+", " ", c or "").strip()
+    if not c or STANDARD.search(c):
+        return False
+    rest = re.findall(r"[A-Za-z][A-Za-z.]+", BAPA_WORDS.sub(" ", c))
+    return len(rest) >= 2
+
+
+def pick_one_per_year(items, seed, unique=False):
     """Per year, a photo where Bapa is recognised. Most years show what he is doing (arti, puja, blessing,
     greeting) with him at a medium size; about one year in three is a close darshan of his face, spread out.
     Years where he can't be recognised in any photo are left out, unless that would leave fewer than five;
@@ -121,7 +139,7 @@ def pick_one_per_year(items, seed):
         x = dict(x, im=im, face=face, sim=sim)
         r = face[3] / im.height if face else 0
         c = x.get('c') or ''
-        jitter = rnd.uniform(0, .04)
+        jitter = rnd.uniform(0, .04) + (1.2 if unique and face and unique_caption(c) else 0)
         s_close = (1 + min(r, .35) + sim if face else 0) + jitter
         s_doing = (1 + sim + .6 * max(0, 1 - abs(r - .15) / .15) + (.4 if DOING.search(c) and not JUST_A_FACE.search(c) else 0)
                    if face else 0) + jitter
@@ -460,6 +478,7 @@ def main():
     ap.add_argument('--data', help='use this JSON file instead of downloading the day list')
     ap.add_argument('--cache', default=os.path.join(HERE, '.cache'))
     ap.add_argument('--out', default=os.path.join(HERE, 'out'))
+    ap.add_argument('--compare', action='store_true', help='also make original.jpg and unique.jpg (captions shown) and captions.txt')
     ap.add_argument('--styles', default='', help='also make caption mockups, e.g. A,B,C,D (out/caption-A.jpg ...)')
     a = ap.parse_args()
 
@@ -483,6 +502,15 @@ def main():
     compose(photos, day, seed=mmdd).save(os.path.join(a.out, 'bapas-diary.jpg'), quality=92, optimize=True)
     for st in filter(None, a.styles.split(',')):
         compose(photos, day, seed=mmdd, style=st).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=92, optimize=True)
+    if a.compare:
+        photos_u = pick_one_per_year(items, seed=mmdd, unique=True)
+        compose(photos, day, seed=mmdd, style='A').save(os.path.join(a.out, 'original.jpg'), quality=92, optimize=True)
+        compose(photos_u, day, seed=mmdd, style='A').save(os.path.join(a.out, 'unique.jpg'), quality=92, optimize=True)
+        with open(os.path.join(a.out, 'captions.txt'), 'w') as f:
+            for name, ps in (('original', photos), ('unique', photos_u)):
+                f.write(f'{name}:\n')
+                for x in ps:
+                    f.write(f'  {x["y"]}  {"UNIQUE  " if unique_caption(caption(x)) else "standard"}  {caption(x)}\n')
     open(os.path.join(a.out, 'date.txt'), 'w').write(f'{day}\n')
     open(os.path.join(a.out, 'summary.txt'), 'w').write(f'{len(photos)} years: ' + ', '.join(str(x['y']) for x in photos) + '\n')
     print('saved', os.path.join(a.out, 'bapas-diary.jpg'))
