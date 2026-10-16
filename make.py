@@ -221,6 +221,15 @@ def pick_one_per_year(items, seed, unique=False):
     years = sorted(cands)
     if sum(1 for y in years if any(v[2]['face'] for v in cands[y])) >= 5:
         years = [y for y in years if any(v[2]['face'] for v in cands[y])]
+    # a caption that turns up in other years too ('reads the Shikshapatri' most mornings) loses a little,
+    # so a year's one-off moment ('reads the Sahajanand Sudha') wins when the photos are otherwise close
+    keys = {y: [caption_key(caption(v[2])) for v in cands[y]] for y in cands}
+    for y in cands:
+        for j, v in enumerate(cands[y]):
+            k = keys[y][j]
+            others = sum(1 for oy in cands if oy != y and any(same_caption(k, ok) for ok in keys[oy]))
+            if others:
+                cands[y][j] = (v[0] - .25 * others, v[1] - .25 * others, v[2])
     picked, used = [], []
     WORKINGS.clear()
     for i, y in enumerate(years):
