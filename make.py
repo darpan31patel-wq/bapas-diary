@@ -140,6 +140,52 @@ def same_caption(a, b):
     return j >= .7 or (small <= big and (len(small) >= 2 or j >= .5))
 
 
+WORKINGS = []   # what the last pick looked at: per year its best few photos, scores and the one chosen
+
+
+def second_choices():
+    """Each year's next best photo after the chosen one, still never repeating a caption."""
+    out, used = [], []
+    for w in WORKINGS:
+        if w['pick'] is None:
+            continue
+        pk = caption_key(caption(w['pick']))
+        rest = [x for _, x, st in w['rows'] if x is not w['pick'] and st != 'repeats an earlier caption']
+        good = [x for x in rest if not same_caption(caption_key(caption(x)), pk)
+                and not any(same_caption(caption_key(caption(x)), u) for u in used)]
+        x = (good or rest or [w['pick']])[0]
+        out.append(x); used.append(caption_key(caption(x)))
+        w['second'] = x
+    return out
+
+
+def workings_sheet(day):
+    """A tall sheet: one row per year, its top photos left to right with their scores and captions."""
+    tw, th, pad, lab = 330, 250, 24, 260
+    rows = [w for w in WORKINGS if w['rows']]
+    cols = max(len(w['rows']) for w in rows)
+    Wd, Hd = lab + cols * (tw + pad) + pad, 150 + len(rows) * (th + 120)
+    img = Image.new('RGB', (Wd, Hd), (40, 10, 18)); d = ImageDraw.Draw(img)
+    d.text((Wd / 2, 70), f'{day.day} {day:%B}: how each year was chosen', font=garamond(64), fill=GOLD, anchor='mm')
+    cf, sf, yf = garamond(22, 500), arimo_bold(18), garamond(54, 600)
+    for r, w in enumerate(rows):
+        y0 = 150 + r * (th + 120)
+        d.text((pad, y0 + 20), str(w['year']), font=yf, fill=GOLD, anchor='la')
+        d.text((pad, y0 + 92), w['mode'].upper(), font=sf, fill=(226, 184, 104), anchor='la')
+        for c, (score, x, status) in enumerate(w['rows']):
+            x0 = lab + c * (tw + pad)
+            img.paste(crop_to(x['im'], x['face'], tw, th), (x0, y0))
+            tag = 'CHOSEN' if status == 'chosen' else ('2ND CHOICE' if x is w.get('second') else status.upper())
+            colour = GOLD if status == 'chosen' else (CAPTION_IVORY if tag == '2ND CHOICE' else (190, 150, 140))
+            if status == 'chosen' or tag == '2ND CHOICE':
+                d.rectangle((x0 - 4, y0 - 4, x0 + tw + 3, y0 + th + 3), outline=colour, width=4)
+            face = f'Bapa {x["sim"]:.2f}' if x['face'] else 'Bapa not found'
+            d.text((x0, y0 + th + 10), f'{tag}  score {score:.2f}  {face}'.strip(), font=sf, fill=colour, anchor='la')
+            for i, line in enumerate(wrap(d, caption(x) or '(no caption)', cf, tw, 2)):
+                d.text((x0, y0 + th + 36 + i * 26), line, font=cf, fill=CAPTION_GOLD, anchor='la')
+    return img
+
+
 def pick_one_per_year(items, seed, unique=False):
     """Per year, a photo where Bapa is recognised. Most years show what he is doing (arti, puja, blessing,
     greeting) with him at a medium size; about one year in three is a close darshan of his face, spread out.
@@ -174,16 +220,21 @@ def pick_one_per_year(items, seed, unique=False):
     if sum(1 for y in years if any(v[2]['face'] for v in cands[y])) >= 5:
         years = [y for y in years if any(v[2]['face'] for v in cands[y])]
     picked, used = [], []
+    WORKINGS.clear()
     for i, y in enumerate(years):
         k = 0 if i % 3 == 1 else 1
         ranked = sorted(cands[y], key=lambda v: -v[k])
         if ranked[0][2]['face']:
             ranked = [v for v in ranked if v[2]['face']]
+        w = dict(year=y, mode='close darshan' if k == 0 else 'doing something', rows=[], pick=None)
         for v in ranked:
             key = caption_key(caption(v[2]))
-            if not any(same_caption(key, u) for u in used):
-                picked.append(v[2]); used.append(key)
-                break
+            if w['pick'] is None and not any(same_caption(key, u) for u in used):
+                picked.append(v[2]); used.append(key); w['pick'] = v[2]
+                w['rows'].append((v[k], v[2], 'chosen'))
+            elif len(w['rows']) < 5:
+                w['rows'].append((v[k], v[2], 'repeats an earlier caption' if w['pick'] is None else ''))
+        WORKINGS.append(w)
     if len(picked) < 5:   # too few left once repeats are skipped: fall back to the plain best per year
         picked = [sorted(cands[y], key=lambda v: -v[0 if i % 3 == 1 else 1])[0][2] for i, y in enumerate(years)]
     return picked
@@ -607,6 +658,7 @@ def main():
     ap.add_argument('--data', help='use this JSON file instead of downloading the day list')
     ap.add_argument('--cache', default=os.path.join(HERE, '.cache'))
     ap.add_argument('--out', default=os.path.join(HERE, 'out'))
+    ap.add_argument('--workings', action='store_true', help='also make second-choice.jpg (H2) and workings.jpg')
     ap.add_argument('--compare', action='store_true', help='also make original.jpg and unique.jpg (captions shown) and captions.txt')
     ap.add_argument('--styles', default='', help='also make caption mockups, e.g. A,B,C,D (out/caption-A.jpg ...)')
     a = ap.parse_args()
@@ -631,6 +683,10 @@ def main():
     compose(photos, day, seed=mmdd).save(os.path.join(a.out, 'bapas-diary.jpg'), quality=92, optimize=True)
     for st in filter(None, a.styles.split(',')):
         compose(photos, day, seed=mmdd, style=st).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=92, optimize=True)
+    if a.workings:
+        seconds = second_choices()
+        compose(seconds, day, seed=mmdd, style='H2').save(os.path.join(a.out, 'caption-second-choice.jpg'), quality=92, optimize=True)
+        workings_sheet(day).save(os.path.join(a.out, 'caption-workings.jpg'), quality=88, optimize=True)
     if a.compare:
         photos_u = pick_one_per_year(items, seed=mmdd, unique=True)
         compose(photos, day, seed=mmdd, style='A').save(os.path.join(a.out, 'original.jpg'), quality=92, optimize=True)

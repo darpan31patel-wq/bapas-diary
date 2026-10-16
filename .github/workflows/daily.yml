@@ -77,7 +77,7 @@ jobs:
             done
             rm -rf out && mkdir out && mv compare out/compare; echo "compare" > out/date.txt; exit 0
           fi
-          python make.py ${DATE:+--date "$DATE"} ${STYLES:+--styles "$STYLES"}
+          python make.py ${DATE:+--date "$DATE"} ${STYLES:+--styles "$STYLES"} ${STYLES:+--workings}
 
       - name: Keep a copy on this run's page
         if: steps.done.outputs.skip != '1'
