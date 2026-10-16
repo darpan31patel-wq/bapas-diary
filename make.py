@@ -131,7 +131,13 @@ def caption_key(c):
 
 
 def same_caption(a, b):
-    return bool(a and b) and len(a & b) / len(a | b) >= .7
+    """Near repeats count too: 'Reads the Shikshapatri' inside 'Reads the Shikshapatri and Satsang Diksha',
+    'In a divine mood' inside 'In a divine, jovial mood', 'Blesses all' beside 'Blesses the assembly'."""
+    if not (a and b):
+        return False
+    j = len(a & b) / len(a | b)
+    small, big = sorted((a, b), key=len)
+    return j >= .7 or (small <= big and (len(small) >= 2 or j >= .5))
 
 
 def pick_one_per_year(items, seed, unique=False):
