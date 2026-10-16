@@ -343,6 +343,10 @@ class Card:
         d.rectangle((B - 1, B - 1, B + PW, B + PH), outline=(150, 130, 100), width=1)
         if self.style == 'C':
             return self.year_and_caption(card, d, x)
+        if self.style == 'E':
+            return self.year_caption_place(card, d, x)
+        if self.style == 'G':
+            return self.quote_then_year(card, d, x)
         yf, yt = garamond(PW * .16, 600), str(x['y'])
         pl = place(x).upper()
         size, track = PW * .08, PW * .014
@@ -386,6 +390,44 @@ class Card:
             d.text((CW / 2, top + yh + PW * .05 + (i + .8) * lh), line, font=cf, fill=PLACE_C2, anchor='ms')
         return card
 
+    def year_caption_place(self, card, d, x):
+        """Style E: year, caption, then the place in small spaced capitals, all in the polaroid band."""
+        PW, PH, B, BB, CW = self.PW, self.PH, self.B, self.BB, self.CW
+        yf, yt = garamond(PW * .13, 600), str(x['y'])
+        cf = garamond(PW * .078, 500); lh = PW * .09
+        pf, track = arimo_bold(PW * .05), PW * .012
+        pl = place(x).upper()
+        lines = wrap(d, caption(x), cf, CW - 2 * B - PW * .04, 2)
+        yh = -d.textbbox((0, 0), yt, font=yf, anchor='ls')[1]
+        ph = -d.textbbox((0, 0), 'A', font=pf, anchor='ls')[1] if pl else 0
+        block = yh + PW * .04 + len(lines) * lh + (PW * .04 + ph if pl else 0)
+        top = B + PH + (BB - block) / 2
+        d.text((CW / 2, top + yh), yt, font=yf, fill=YEAR_C2, anchor='ms')
+        y = top + yh + PW * .04
+        for i, line in enumerate(lines):
+            d.text((CW / 2, y + (i + .8) * lh), line, font=cf, fill=PLACE_C2, anchor='ms')
+        y += len(lines) * lh + PW * .04 + ph
+        if pl:
+            draw_spaced(d, (CW - spaced(d, pl, pf, track)) / 2, y - pf.getmetrics()[0], pl, pf, track, (150, 96, 80))
+        return card
+
+    def quote_then_year(self, card, d, x):
+        """Style G: the caption leads, in quotes, with the year and place underneath in small capitals."""
+        PW, PH, B, BB, CW = self.PW, self.PH, self.B, self.BB, self.CW
+        cf = garamond(PW * .084, 500); lh = PW * .097
+        pf, track = arimo_bold(PW * .056), PW * .012
+        c = caption(x)
+        lines = wrap(d, f'“{c}”' if c else '', cf, CW - 2 * B - PW * .04, 3)
+        tag = f'{x["y"]}  ·  {place(x).upper()}' if place(x) else str(x['y'])
+        ph = -d.textbbox((0, 0), 'A', font=pf, anchor='ls')[1]
+        block = len(lines) * lh + (PW * .05 if lines else 0) + ph
+        top = B + PH + (BB - block) / 2
+        for i, line in enumerate(lines):
+            d.text((CW / 2, top + (i + .8) * lh), line, font=cf, fill=YEAR_C2, anchor='ms')
+        y = top + len(lines) * lh + (PW * .05 if lines else 0) + ph
+        draw_spaced(d, (CW - spaced(d, tag, pf, track)) / 2, y - pf.getmetrics()[0], tag, pf, track, PLACE_C2)
+        return card
+
     def hang(self, card):
         sh = Image.new('RGBA', (self.CW + 80, self.CH + 80), (0, 0, 0, 0))
         ImageDraw.Draw(sh).rectangle((40, 48, self.CW + 40, self.CH + 46), fill=(0, 0, 0, 150))
@@ -419,6 +461,35 @@ def caption_list(img, photos, y0, y1):
         dr.text((tx, yb), text[0] if text else '', font=cf, fill=CAPTION_GOLD, anchor='ls')
 
 
+def under_card(x, card, gap, f, lh, style, rnd):
+    """Style F: a small ivory paper tag on a short thread under the polaroid.
+    Style H: ivory caption on a soft dark plate under the polaroid."""
+    probe = ImageDraw.Draw(Image.new('L', (1, 1)))
+    if style == 'F':
+        lines = wrap(probe, caption(x), f, card.CW * .86 - 20, 3)
+        tw = max(probe.textlength(l, font=f) for l in lines) + 30
+        th = len(lines) * lh + 18
+        im = Image.new('RGBA', (int(tw) + 40, int(th) + 60), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+        cx = im.width / 2
+        d.line((cx, 0, cx, 26), fill=(170, 132, 78), width=2)                          # the thread
+        sh = Image.new('RGBA', im.size, (0, 0, 0, 0))
+        ImageDraw.Draw(sh).rounded_rectangle((20, 30, 20 + tw, 30 + th), radius=6, fill=(0, 0, 0, 120))
+        im.alpha_composite(sh.filter(ImageFilter.GaussianBlur(6)))
+        d.rounded_rectangle((20, 24, 20 + tw, 24 + th), radius=6, fill=IVORY_TOP + (255,), outline=IVORY_EDGE)
+        d.ellipse((cx - 4, 30, cx + 4, 38), fill=(150, 120, 90))                         # the hole
+        for i, line in enumerate(lines):
+            d.text((cx, 24 + 14 + (i + .8) * lh), line, font=f, fill=YEAR_C2, anchor='ms')
+        return im.rotate(rnd.uniform(-2.5, 2.5), resample=Image.BICUBIC, expand=True), 2
+    lines = wrap(probe, caption(x), f, card.CW + gap - 40, 3)
+    tw = max(probe.textlength(l, font=f) for l in lines) + 34
+    th = len(lines) * lh + 16
+    im = Image.new('RGBA', (int(tw), int(th)), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    d.rounded_rectangle((0, 0, tw - 1, th - 1), radius=int(th / 2) if len(lines) == 1 else 14, fill=(30, 8, 12, 150))
+    for i, line in enumerate(lines):
+        d.text((tw / 2, 8 + (i + .8) * lh), line, font=f, fill=CAPTION_IVORY, anchor='ms')
+    return im, 16
+
+
 def compose(photos, day, seed, style=None):
     rnd = random.Random(seed)
     img = background(); dr = ImageDraw.Draw(img)
@@ -430,9 +501,9 @@ def compose(photos, day, seed, style=None):
     list_h = (-(-n // 3) * 36 + 30) if style == 'D' else 0     # room for the numbered caption list
     top_space, bottom_space = 222, H - 128 - list_h
     row_gap = 58
-    band = .52 if style == 'C' else .32
+    band = {'C': .52, 'E': .6, 'G': .56}.get(style, .32)
     cf_a = garamond(24, 500); lh_a = 29
-    below = 3 * lh_a + 16 if style == 'A' else 0               # room for the caption under each card
+    below = {'A': 3 * lh_a + 16, 'F': 3 * lh_a + 52, 'H': 3 * lh_a + 34}.get(style, 0)   # room under each card
     pw_w = ((W - 2 * M - min_gap * (cols - 1)) / cols) / 1.09
     row_h = (bottom_space - top_space - row_gap * (len(rows) - 1)) / len(rows) - below
     pw = min(300, pw_w, row_h / (1.08 + .045 + band))
@@ -465,6 +536,9 @@ def compose(photos, day, seed, style=None):
                 ty = y_top + card.CH + 18
                 for i, line in enumerate(lines):
                     dr.text((cx, ty + (i + .8) * lh_a), line, font=cf_a, fill=CAPTION_GOLD, anchor='ms')
+            if style in ('F', 'H') and caption(x):
+                tag, pos = under_card(x, card, gap, cf_a, lh_a, style, rnd)
+                img.paste(tag, (int(cx - tag.width / 2), int(y_top + card.CH + pos)), tag)
 
     if style == 'D':
         caption_list(img, photos, bottom_space + 18, H - 112)
