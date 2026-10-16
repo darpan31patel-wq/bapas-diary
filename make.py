@@ -287,8 +287,19 @@ def jali_edge(img, R=54):
     return img
 
 
+NAME = r"(?:(?:H\.?\s?H\.?|Param Pujya|P\.?\s?P\.?)\s+)?(?:Pramukh Swami(?: Maharaj)?|Mahant Swami(?: Maharaj)?|Swamishri|Bapa)"
+
+
 def caption(x):
-    return re.sub(r'\s+', ' ', x.get('c') or '').strip()
+    """The caption without the name repeated on every card: 'Swamishri blesses all' becomes 'Blesses all'.
+    Where dropping the name wouldn't read well ('Swamishri's divine gestures', 'Sadhus honour Swamishri'),
+    the name becomes 'Bapa'."""
+    c = re.sub(r'\s+', ' ', x.get('c') or '').strip()
+    m = re.match(rf'^{NAME}[\s,]+(.+)$', c)
+    if m and not re.match(r"(and|with|along|together|'s|’s)\b", m.group(1), re.I):
+        c = m.group(1)[0].upper() + m.group(1)[1:]
+    c = re.sub(NAME, 'Bapa', c)
+    return c
 
 
 def place(x):
@@ -461,6 +472,11 @@ def caption_list(img, photos, y0, y1):
         dr.text((tx, yb), text[0] if text else '', font=cf, fill=CAPTION_GOLD, anchor='ls')
 
 
+# style H with bigger frames: H2 narrower margins and two line captions, H3 one line captions and polaroids may overlap a little
+LAYOUT = {'H2': dict(M=70, min_gap=14, row_gap=40, lines=2, cap=360, top=212),
+          'H3': dict(M=60, min_gap=-14, row_gap=34, lines=1, cap=360, top=210)}
+
+
 def under_card(x, card, gap, f, lh, style, rnd):
     """Style F: a small ivory paper tag on a short thread under the polaroid.
     Style H: ivory caption on a soft dark plate under the polaroid."""
@@ -480,14 +496,14 @@ def under_card(x, card, gap, f, lh, style, rnd):
         for i, line in enumerate(lines):
             d.text((cx, 24 + 14 + (i + .8) * lh), line, font=f, fill=YEAR_C2, anchor='ms')
         return im.rotate(rnd.uniform(-2.5, 2.5), resample=Image.BICUBIC, expand=True), 2
-    lines = wrap(probe, caption(x), f, card.CW + gap - 40, 3)
+    lines = wrap(probe, caption(x), f, card.CW + min(gap, 30) - 50, LAYOUT.get(style, {}).get('lines', 3))
     tw = max(probe.textlength(l, font=f) for l in lines) + 34
     th = len(lines) * lh + 16
     im = Image.new('RGBA', (int(tw), int(th)), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
     d.rounded_rectangle((0, 0, tw - 1, th - 1), radius=int(th / 2) if len(lines) == 1 else 14, fill=(30, 8, 12, 150))
     for i, line in enumerate(lines):
-        d.text((tw / 2, 8 + (i + .8) * lh), line, font=f, fill=CAPTION_IVORY, anchor='ms')
-    return im, 16
+        d.text((tw / 2, 8 + (i + .5) * lh), line, font=f, fill=CAPTION_IVORY, anchor='mm')
+    return im, 14
 
 
 def compose(photos, day, seed, style=None):
@@ -497,16 +513,19 @@ def compose(photos, day, seed, style=None):
 
     n = len(photos)
     rows = [photos] if n <= 5 else [photos[:(n + 1) // 2], photos[(n + 1) // 2:]]
-    cols, M, min_gap = len(rows[0]), 100, 30
+    lay = LAYOUT.get(style, {})
+    cols, M, min_gap = len(rows[0]), lay.get('M', 100), lay.get('min_gap', 30)
     list_h = (-(-n // 3) * 36 + 30) if style == 'D' else 0     # room for the numbered caption list
-    top_space, bottom_space = 222, H - 128 - list_h
-    row_gap = 58
+    top_space, bottom_space = lay.get('top', 222), H - 128 - list_h
+    row_gap = lay.get('row_gap', 58)
     band = {'C': .52, 'E': .6, 'G': .56}.get(style, .32)
     cf_a = garamond(24, 500); lh_a = 29
     below = {'A': 3 * lh_a + 16, 'F': 3 * lh_a + 52, 'H': 3 * lh_a + 34}.get(style, 0)   # room under each card
+    if style in LAYOUT:
+        below = lay['lines'] * lh_a + 30
     pw_w = ((W - 2 * M - min_gap * (cols - 1)) / cols) / 1.09
     row_h = (bottom_space - top_space - row_gap * (len(rows) - 1)) / len(rows) - below
-    pw = min(300, pw_w, row_h / (1.08 + .045 + band))
+    pw = min(lay.get('cap', 300), pw_w, row_h / (1.08 + .045 + band))
     # on busy days the cards are narrower, so let the photos grow taller to fill the height instead
     card = Card(pw, max(1.08, min(1.45, row_h / pw - .045 - band)), band, style)
     gap = min(70, (W - 2 * M - cols * card.CW) / max(1, cols - 1))
@@ -536,9 +555,10 @@ def compose(photos, day, seed, style=None):
                 ty = y_top + card.CH + 18
                 for i, line in enumerate(lines):
                     dr.text((cx, ty + (i + .8) * lh_a), line, font=cf_a, fill=CAPTION_GOLD, anchor='ms')
-            if style in ('F', 'H') and caption(x):
+            if style and style[0] in 'FH' and caption(x):
                 tag, pos = under_card(x, card, gap, cf_a, lh_a, style, rnd)
-                img.paste(tag, (int(cx - tag.width / 2), int(y_top + card.CH + pos)), tag)
+                bx, by = px + card.CH * np.sin(t), py + card.CH * np.cos(t)   # middle of the tilted card's bottom edge
+                img.paste(tag, (int(bx - tag.width / 2), int(by + pos)), tag)
 
     if style == 'D':
         caption_list(img, photos, bottom_space + 18, H - 112)
