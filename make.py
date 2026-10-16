@@ -6,7 +6,7 @@
 
 Writes out/bapas-diary.jpg (2796 x 1290, iPhone landscape), out/date.txt and out/summary.txt.
 """
-import argparse, concurrent.futures, datetime, hashlib, json, os, random, re, threading, time, urllib.request
+import argparse, collections, concurrent.futures, datetime, hashlib, json, os, random, re, threading, time, urllib.request
 from zoneinfo import ZoneInfo
 
 import cv2
@@ -140,6 +140,7 @@ def same_caption(a, b):
     return j >= .7 or (small <= big and (len(small) >= 2 or j >= .5))
 
 
+ALL = []        # every photo the last pick looked at: (year, face match, recognised, caption, url)
 WORKINGS = []   # what the last pick looked at: per year its best few photos, scores and the one chosen
 
 
@@ -211,6 +212,7 @@ def pick_one_per_year(items, seed, unique=False):
         s_close = (1 + min(r, .35) + sim if face else 0) + jitter
         s_doing = (1 + sim + .6 * max(0, 1 - abs(r - .15) / .15) + (.4 if DOING.search(c) and not JUST_A_FACE.search(c) else 0)
                    if face else 0) + jitter
+        ALL.append((x['y'], round(sim, 2), bool(face), caption(x), x['i']))
         lst = cands.setdefault(x['y'], [])
         lst.append((s_close, s_doing, x))
         if len(lst) > 16:   # keep memory down: only the best few of each kind stay
@@ -687,6 +689,15 @@ def main():
         seconds = second_choices()
         compose(seconds, day, seed=mmdd, style='H2').save(os.path.join(a.out, 'caption-second-choice.jpg'), quality=92, optimize=True)
         workings_sheet(day).save(os.path.join(a.out, 'caption-workings.jpg'), quality=88, optimize=True)
+        chosen = {id(w['pick']) for w in WORKINGS}
+        with open(os.path.join(a.out, 'all-photos.txt'), 'w') as f:
+            listed = collections.Counter(x['y'] for x in items)
+            got = collections.Counter(x['y'] for x in items if 'path' in x)
+            for y in sorted(listed):
+                rows = sorted((r for r in ALL if r[0] == y), key=lambda r: -r[1])
+                f.write(f'\n{y}: {listed[y]} photos listed, {got[y]} downloaded, {sum(r[2] for r in rows)} with Bapa recognised\n')
+                for r in rows:
+                    f.write(f'  {"Bapa %.2f" % r[1] if r[2] else "not recognised"}  {r[3] or "(no caption)"}  {r[4]}\n')
     if a.compare:
         photos_u = pick_one_per_year(items, seed=mmdd, unique=True)
         compose(photos, day, seed=mmdd, style='A').save(os.path.join(a.out, 'original.jpg'), quality=92, optimize=True)
