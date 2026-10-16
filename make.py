@@ -239,8 +239,10 @@ def pick_one_per_year(items, seed, unique=False):
         c = x.get('c') or ''
         jitter = rnd.uniform(0, .04) + (1.2 if unique and face and unique_caption(c) else 0)
         s_close = (1 + min(r, .35) + sim if face else 0) + jitter
-        s_doing = (1 + sim + .6 * max(0, 1 - abs(r - .15) / .15) + (.4 if DOING.search(c) and not JUST_A_FACE.search(c) else 0)
+        s_doing = (1 + sim + .6 * max(0, 1 - abs(r - .18) / .15) + (.4 if DOING.search(c) and not JUST_A_FACE.search(c) else 0)
+                   - (.5 if r < .1 else 0) - (.6 if not bapa_is_subject(c) else 0)   # Bapa small in the frame, or not the subject
                    if face else 0) + jitter
+        s_close -= .6 if face and not bapa_is_subject(c) else 0
         ALL.append((x['y'], round(sim, 2), bool(face), caption(x), x['i']))
         lst = cands.setdefault(x['y'], [])
         lst.append((s_close, s_doing, x))
@@ -420,11 +422,64 @@ def jali_edge(img, R=54):
 NAME = r"(?:(?:H\.?\s?H\.?|Param Pujya|P\.?\s?P\.?)\s+)?(?:Pramukh Swami(?: Maharaj)?|Mahant Swami(?: Maharaj)?|Swamishri|Bapa)"
 
 
+OTHERS = r"(?:(?:Pujya|Sadguru|Shri|Param Pujya)\s+)*[A-Z][\w\-]*(?:\s+[A-Z][\w\-]*)*(?:\s+Swami)?|(?i:(?:Senior\s+)?(?:swamis|sadhus|devotees|children|youths|kishores|students|volunteers|karyakars|sadhaks)(?:,? (?:and|parshads|sadhaks|swamis|devotees)+)*)(?:\s+from\s+[\w ,]+?)?|An?\s+\w+(?:\s+from\s+[\w ,]+?)?"
+ABOUT_BAPA = [   # captions about someone else and Bapa, turned round so they say what Bapa does
+    (rf"^({OTHERS}) (?:honou?rs?|garlands?) Swamishri(?: with (?:a|an) ([\w ,\-]+))?$", lambda m: f"Receives {('a ' + m.group(2)) if m.group(2) else 'a garland'} from {m.group(1)}"),
+    (rf"^({OTHERS}) (?:greets?|welcomes?) Swamishri.*$", lambda m: f"Greets {m.group(1)}"),
+    (rf"^({OTHERS}) (?:offers?|presents?) (?:a |an )?prayers? (?:to|before) Swamishri$", lambda m: f"Listens to a prayer from {lower_group(m.group(1))}"),
+    (rf"^({OTHERS}) (?:prays?) before Swamishri$", lambda m: f"Listens to a prayer from {m.group(1)}"),
+    (rf"^({OTHERS}) (?:doing|engrossed in|in) (?:the )?(?:unique )?(?:darshan of Swamishri|Swamishri's (?:puja )?darshan|Swamishri's puja)$", lambda m: f"Gives darshan to {lower_group(m.group(1))}"),
+    (rf"^({OTHERS}) recites? (.+?) (?:before|in) Swamishri(?:'s [\w ]+)?$", lambda m: f"Listens to {lower_group(m.group(1))} recite {m.group(2)}"),
+    (rf"^({OTHERS}) sings? (.+?) (?:before|in) Swamishri(?:'s [\w ]+)?$", lambda m: f"Listens to {lower_group(m.group(1))} sing {m.group(2)}"),
+    (rf"^({OTHERS}) (plays?|sings?|swings?) (.+?) with Swamishri$", lambda m: f"{re.sub('s$', '', m.group(2)).capitalize()}s {m.group(3)} with {m.group(1)}"),
+    (rf"^({OTHERS}) (?:performs?|presents?|recites?|sings?) (.+?) (?:before|in) Swamishri(?:'s [\w ]+)?$", lambda m: f"Watches {lower_group(m.group(1))} perform {m.group(2)}"),
+]
+
+
+def lower_group(g):
+    """'Swamis' or 'A devotee' read in lower case mid sentence; names ('Pujya Kothari Swami') stay as they are."""
+    return g[0].lower() + g[1:] if re.match(r'(?i)(senior |an? )?(swamis|sadhus|devotees|children|youths|kishores|students|volunteers|karyakars|sadhaks|devotee|youth|child|swami|sadhak)\b', g) else g
+
+
+def about_bapa(c):
+    """'Pujya Kothari Swami plays dandiya with Swamishri' becomes 'Plays dandiya with Pujya Kothari Swami'."""
+    for pat, fix in ABOUT_BAPA:
+        m = re.match(pat, c)
+        if m:
+            return fix(m)
+    return c
+
+
+def bapa_is_subject(c):
+    """False when the caption is about someone else ('Swamis sing kirtans in Swamishri's puja')."""
+    c = about_bapa(re.sub(r'\s+', ' ', c or '').strip())
+    return not re.search(r"\bSwamishri\b|Bapa\b", c) or bool(re.match(rf'^{NAME}', c)) or c[:1].islower()
+
+
+def shorter_versions(text):
+    """Ever shorter readings of a caption, cut at a natural break: 'Inaugurates DVD of Mystic India movie including ...'
+    gives 'Inaugurates DVD of Mystic India movie', then 'Inaugurates DVD'."""
+    t = re.sub(r'\s*\([^)]*\)', '', text)
+    cuts = sorted({m.start() for m in re.finditer(
+        r",| - | in the | in | at | during | for | including | titled | about | to be | after | on his | as | while | from | by | of the | with | on the | to the | and | that | '", t)}, reverse=True)
+    out = [t] if t != text else []
+    for i in cuts:
+        cand = t[:i].rstrip(" ,;:-")
+        quotes = len(re.findall(r"(?<![A-Za-z])'|'(?![A-Za-z])", cand))
+        if len(cand.split()) >= 2 and quotes % 2 == 0 and cand.split()[-1].lower() not in SHORT_END and cand not in out:
+            out.append(cand)
+    return out
+
+
+SHORT_END = {'the', 'a', 'an', 'of', 'and', 'to', 'with', 'his', 'her', 'their', 'on', 'in', 'at', 'for', 'by', 'from', 'that', 'two', 'new'}
+
+
 def caption(x):
     """The caption without the name repeated on every card: 'Swamishri blesses all' becomes 'Blesses all'.
     Where dropping the name wouldn't read well ('Swamishri's divine gestures', 'Sadhus honour Swamishri'),
     the name becomes 'Bapa'."""
     c = re.sub(r'\s+', ' ', x.get('c') or '').strip()
+    c = about_bapa(c)
     m = re.match(rf'^{NAME}[\s,]+(.+)$', c)
     if m and not re.match(r"(and|with|along|together|'s|’s)\b", m.group(1), re.I):
         c = m.group(1)[0].upper() + m.group(1)[1:]
@@ -436,7 +491,7 @@ def place(x):
     return re.sub(r'\s*\(.*?\)', '', (x.get('p') or '').split(',')[0]).strip()
 
 
-def wrap(d, text, f, maxw, lines):
+def wrap(d, text, f, maxw, lines, shorten=True):
     """Up to `lines` lines no wider than maxw; whatever doesn't fit ends in an ellipsis."""
     words, out = text.split(), []
     while words and len(out) < lines:
@@ -445,6 +500,11 @@ def wrap(d, text, f, maxw, lines):
             line += ' ' + words.pop(0)
         out.append(line)
     cut = bool(words) or any(d.textlength(l, font=f) > maxw for l in out)
+    if cut and shorten:   # say less rather than trail off: cut the caption at a natural break so it fits
+        for t in shorter_versions(text):
+            fits = wrap(d, t, f, maxw, lines, shorten=False)
+            if not fits[-1].endswith('…'):
+                return fits
     if cut and out:
         last = out[-1]
         while last and d.textlength(last + '…', font=f) > maxw:
