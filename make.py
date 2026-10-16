@@ -696,6 +696,9 @@ def under_card(x, card, gap, f, lh, style, rnd):
     return im, 14
 
 
+LIVE_STYLE = 'H2'   # the daily picture: caption centred under each card (Darpan's choice, 16 Oct 2026)
+
+
 def compose(photos, day, seed, style=None):
     rnd = random.Random(seed)
     img = background(); dr = ImageDraw.Draw(img)
@@ -791,7 +794,7 @@ def main():
         print(f'  {x["y"]}  {x.get("p", "")[:28]:28}  Bapa {"%.2f" % x["sim"] if x["face"] else "not found, shown whole"}  {caption(x)}')
 
     os.makedirs(a.out, exist_ok=True)
-    compose(photos, day, seed=mmdd).save(os.path.join(a.out, 'bapas-diary.jpg'), quality=92, optimize=True)
+    compose(photos, day, seed=mmdd, style=LIVE_STYLE).save(os.path.join(a.out, 'bapas-diary.jpg'), quality=92, optimize=True)
     for st in filter(None, a.styles.split(',')):
         compose(photos, day, seed=mmdd, style=st).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=92, optimize=True)
     if a.workings:
