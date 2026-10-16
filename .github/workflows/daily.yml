@@ -18,7 +18,7 @@ permissions:
   issues: write
 
 concurrency:
-  group: diary
+  group: diary-${{ github.ref }}
 
 jobs:
   make:
@@ -44,13 +44,13 @@ jobs:
         run: pip install -q -r requirements.txt
 
       - name: Collect new vicharan photos of Bapa (they join this date's picture from next year)
-        if: steps.done.outputs.skip != '1'
+        if: steps.done.outputs.skip != '1' && github.ref == 'refs/heads/main'
         continue-on-error: true
         timeout-minutes: 15
         run: python collect.py
 
       - name: Open an issue (GitHub emails you) if no new photos have turned up for two weeks
-        if: steps.done.outputs.skip != '1'
+        if: steps.done.outputs.skip != '1' && github.ref == 'refs/heads/main'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
@@ -77,18 +77,32 @@ jobs:
           retention-days: 14
 
       - name: Publish today's picture for Google Drive to collect
-        if: steps.done.outputs.skip != '1'
+        if: steps.done.outputs.skip != '1' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          if [ "$(cat out/date.txt)" != "$(TZ=Europe/London date +%F)" ]; then
+            echo "Not today's date, so it stays on this run's page and today's picture is left alone"; exit 0
+          fi
           gh release view today >/dev/null 2>&1 || gh release create today --title "Today's picture" \
             --notes "Rebuilt every morning. Your Google script collects bapas-diary.jpg from here at 8:30am."
           gh release edit today --title "Today's picture" \
             --notes "Rebuilt every morning. Your Google script collects bapas-diary.jpg from here at 8:30am."
           gh release upload today out/bapas-diary.jpg out/date.txt --clobber
 
+      - name: Test branches keep their picture in preview/ (nothing reaches Google Drive)
+        if: github.ref != 'refs/heads/main'
+        run: |
+          mkdir -p preview && cp out/bapas-diary.jpg "preview/$(cat out/date.txt).jpg"
+          cp out/summary.txt "preview/$(cat out/date.txt).txt"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add preview
+          git commit -q -m "Preview for $(cat out/date.txt)"
+          git push -q
+
       - name: Log it (this also keeps GitHub's daily timer switched on)
-        if: steps.done.outputs.skip != '1'
+        if: steps.done.outputs.skip != '1' && github.ref == 'refs/heads/main'
         run: |
           echo "$(cat out/date.txt) $(cat out/summary.txt)" >> log.md
           git config user.name "github-actions[bot]"

@@ -32,7 +32,14 @@ an issue on this repo, which GitHub emails to you; the pictures keep working wit
 ## Make one by hand
 
 Actions tab, **Bapa's Diary**, **Run workflow**. Leave the date blank for today, or type any date (YYYY-MM-DD) to
-see that day's picture under the run's *Artifacts*. Only today's date is sent to Google Drive.
+see that day's picture under the run's *Artifacts*. Only today's date, made from `main`, is sent to Google Drive.
+
+## Trying a change safely
+
+Push the change to the branch **preview** (never straight to `main`), then run the workflow on that branch
+(Run workflow, *Use workflow from*: preview, any date). A run on any branch other than `main` never touches
+today's picture or Google Drive and skips the photo collector: it saves its picture to `preview/<date>.jpg`
+on that branch. When it looks right, merge `preview` into `main`; the next morning's picture uses it.
 
 On a computer: `pip install -r requirements.txt` then `python make.py --date 2026-10-12` (picture in `out/`).
 
