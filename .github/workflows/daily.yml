@@ -66,7 +66,19 @@ jobs:
         if: steps.done.outputs.skip != '1'
         env:
           DATE: ${{ inputs.date }}
-        run: python make.py ${DATE:+--date "$DATE"}
+          STYLES: ${{ github.ref != 'refs/heads/main' && 'H2' || '' }}
+        run: |
+          if [ "${GITHUB_REF}" != "refs/heads/main" ] && [ "${DATE#*,}" != "$DATE" ]; then
+            # test branches only: several dates at once, original and unique caption picks side by side
+            for d in ${DATE//,/ }; do
+              python make.py --date "$d" --compare --out "out/$d"
+              mkdir -p compare && cp "out/$d/original.jpg" "compare/$d-original.jpg"
+              cp "out/$d/unique.jpg" "compare/$d-unique.jpg"; cp "out/$d/captions.txt" "compare/$d-captions.txt"
+            done
+            rm -rf out && mkdir out && mv compare out/compare; echo "compare" > out/date.txt; exit 0
+          fi
+          python make.py ${DATE:+--date "$DATE"} ${STYLES:+--styles "$STYLES"} ${STYLES:+--workings}
+          if [ -n "$STYLES" ]; then python probe.py --date "$(cat out/date.txt)" --out out || true; fi
 
       - name: Keep a copy on this run's page
         if: steps.done.outputs.skip != '1'
@@ -93,8 +105,12 @@ jobs:
       - name: Test branches keep their picture in preview/ (nothing reaches Google Drive)
         if: github.ref != 'refs/heads/main'
         run: |
-          mkdir -p preview && cp out/bapas-diary.jpg "preview/$(cat out/date.txt).jpg"
-          cp out/summary.txt "preview/$(cat out/date.txt).txt"
+          mkdir -p preview
+          if [ -d out/compare ]; then cp out/compare/* preview/; else
+          cp out/bapas-diary.jpg "preview/$(cat out/date.txt).jpg"
+          cp out/summary.txt "preview/$(cat out/date.txt).txt"; fi
+          for f in out/all-photos.txt out/album-check.txt; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-$(basename "$f")"; done
+          for f in out/caption-*.jpg; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-$(basename "$f")"; done
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add preview
