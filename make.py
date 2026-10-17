@@ -664,7 +664,8 @@ def caption_list(img, photos, y0, y1):
 
 # style H with bigger frames: H2 narrower margins and two line captions, H3 one line captions and polaroids may overlap a little
 LAYOUT = {'H2': dict(M=70, min_gap=14, row_gap=40, lines=2, cap=360, top=212, bottom=H - 100),
-          'H3': dict(M=60, min_gap=-14, row_gap=34, lines=1, cap=360, top=210)}
+          'H3': dict(M=60, min_gap=-14, row_gap=34, lines=1, cap=360, top=210),
+          'P': dict(M=40, min_gap=6, row_gap=26, lines=0, cap=400, top=212, bottom=H - 100)}   # photos only, no captions, biggest frames
 
 
 def under_card(x, card, gap, f, lh, style, rnd):
@@ -800,6 +801,8 @@ def main():
     if a.workings:
         seconds = second_choices()
         compose(seconds, day, seed=mmdd, style='H2').save(os.path.join(a.out, 'caption-second-choice.jpg'), quality=92, optimize=True)
+        for st in filter(lambda st: st and st != 'H2', a.styles.split(',')):
+            compose(seconds, day, seed=mmdd, style=st).save(os.path.join(a.out, f'caption-second-choice-{st}.jpg'), quality=92, optimize=True)
         workings_sheet(day).save(os.path.join(a.out, 'caption-workings.jpg'), quality=88, optimize=True)
         chosen = {id(w['pick']) for w in WORKINGS}
         with open(os.path.join(a.out, 'all-photos.txt'), 'w') as f:
