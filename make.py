@@ -636,11 +636,61 @@ class Card:
         return sh
 
 
-def peg(dr, cx, cy, s):
-    w, h = 9 * s, 30 * s
-    dr.rounded_rectangle((cx - w, cy - h * .45, cx + w, cy + h * .55), radius=3 * s, fill=(138, 94, 58), outline=(84, 52, 30), width=max(1, round(2 * s)))
-    dr.line((cx - w + 3 * s, cy - h * .45 + 3 * s, cx - w + 3 * s, cy + h * .55 - 3 * s), fill=(176, 128, 84), width=max(1, round(2 * s)))
-    dr.line((cx, cy - h * .4, cx, cy + h * .5), fill=(84, 52, 30), width=1)
+PEG = 'gloss'   # how the pegs on the cord are drawn: round varnished wood (Darpan's choice, 17 Oct 2026); 'flat' and 'bevel' are the others
+
+
+def peg(img, cx, cy, s, look=None):
+    look = look or PEG
+    if look == 'flat':
+        dr = ImageDraw.Draw(img)
+        w, h = 9 * s, 30 * s
+        dr.rounded_rectangle((cx - w, cy - h * .45, cx + w, cy + h * .55), radius=3 * s, fill=(138, 94, 58), outline=(84, 52, 30), width=max(1, round(2 * s)))
+        dr.line((cx - w + 3 * s, cy - h * .45 + 3 * s, cx - w + 3 * s, cy + h * .55 - 3 * s), fill=(176, 128, 84), width=max(1, round(2 * s)))
+        dr.line((cx, cy - h * .4, cx, cy + h * .5), fill=(84, 52, 30), width=1)
+        return
+    # a round wooden clothes peg: soft rounded top, lit from the top left like the cards, a small dark spring and a soft shadow
+    K = 4                                                   # drawn four times bigger, then shrunk, for smooth edges
+    w, h = 10 * s * K, 35 * s * K
+    pw_, ph_ = int(2 * w + 16 * s * K), int(h + 16 * s * K)
+    ox, oy = 6 * s * K, 4 * s * K                           # where the peg sits inside its little canvas
+    yy, xx = np.mgrid[0:ph_, 0:pw_].astype(np.float32)
+    v = (yy - oy) / h                                       # 0 at the top of the peg, 1 at the bottom
+    # half width down the peg: the handle, a little waist where the spring sits, then the jaws taper slightly
+    half = w * np.interp(v, (0, .38, .43, .5, .55, 1), (1, 1, .9, .9, .96, .86))
+    dx = np.abs(xx - ox - w)
+    rt, rb = w * .55, w * .25                               # softly rounded top corners, small ones at the jaws
+    ty, by_ = yy - oy, oy + h - yy
+    lim = np.where(ty < rt, half - rt + np.sqrt(np.clip(rt ** 2 - (rt - ty) ** 2, 0, None)), half)
+    lim = np.where(by_ < rb, half - rb + np.sqrt(np.clip(rb ** 2 - (rb - by_) ** 2, 0, None)), lim)
+    inside = (dx <= lim) & (v >= 0) & (v <= 1)
+    mask = Image.fromarray((inside * 255).astype(np.uint8))
+    # cylinder shading across the peg, a little lighter on the left
+    n = np.clip((xx - ox - w) / half, -1, 1)
+    light = np.sqrt(1 - n ** 2) * .5 + (-n) * .18 + .62
+    base = np.array((150, 104, 64) if look == 'bevel' else (140, 90, 52), np.float32)
+    grain = 1 + .035 * np.sin(xx / (K * s) * 1.7 + 3 * np.sin(yy / (K * s * 9)))
+    col = base[None, None] * (light * grain)[..., None]
+    if look == 'gloss':                                     # varnished: a soft bright streak and a little more colour
+        streak = np.exp(-((n + .45) / .13) ** 2) * (.45 + .55 * (1 - v))
+        col += (streak * 95)[..., None]
+    else:                                                   # carved: a bright bevel along the left and top, dark along the right
+        edge = np.clip(1 - (lim - dx) / (w * .16), 0, 1)
+        top = np.clip(1 - ty / (w * .3), 0, 1)
+        col += (np.maximum(edge * np.where(n < 0, 1, -.8), top) * 50)[..., None]
+    sp = inside & (v > .42) & (v < .51)                                # the spring
+    col[sp] = (col[sp] * .35 + np.array((60, 50, 44)) * .65) * (1 + .25 * np.sin((yy[sp] - oy) / (K * s) * 2.2))[..., None]
+    split = inside & (v > .56) & (np.abs(xx - ox - w) < K * s * .5)   # the gap between the two jaws
+    col[split] *= .55
+    rgb = Image.fromarray(np.clip(col, 0, 255).astype(np.uint8))
+    outline = mask.filter(ImageFilter.MaxFilter(3)); edge_ring = ImageChops.subtract(outline, mask)
+    piece = Image.new('RGBA', (pw_, ph_), (0, 0, 0, 0))
+    shadow = Image.new('RGBA', (pw_, ph_), (0, 0, 0, 0))
+    shadow.paste((0, 0, 0, 120), (int(3 * s * K), int(4 * s * K)), mask)
+    piece.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(4 * s * K)))
+    piece.paste((70, 42, 24, 255), (0, 0), outline)
+    piece.paste(rgb, (0, 0), mask)
+    piece = piece.resize((pw_ // K, ph_ // K), Image.LANCZOS)
+    img.paste(piece, (int(cx - (ox + w) / K), int(cy - h * .45 / K - oy / K)), piece)
 
 
 def caption_list(img, photos, y0, y1):
@@ -699,7 +749,7 @@ def under_card(x, card, gap, f, lh, style, rnd):
 LIVE_STYLE = 'H2'   # the daily picture: caption centred under each card (Darpan's choice, 16 Oct 2026)
 
 
-def compose(photos, day, seed, style=None):
+def compose(photos, day, seed, style=None, look=None):
     rnd = random.Random(seed)
     img = background(); dr = ImageDraw.Draw(img)
     header(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
@@ -742,7 +792,7 @@ def compose(photos, day, seed, style=None):
             px, py = cx, y_top                                  # the peg holds the middle of the top edge
             mx, my = px + card.CH / 2 * np.sin(t), py + card.CH / 2 * np.cos(t)
             img.paste(hung, (int(mx - hung.width / 2), int(my - hung.height / 2)), hung)
-            peg(dr, cx, sag(cx) + 4, s)
+            peg(img, cx, sag(cx) + 4, s, look)
             if style == 'A' and caption(x):
                 lines = wrap(dr, caption(x), cf_a, card.CW + gap - 14, 3)
                 ty = y_top + card.CH + 18
@@ -796,6 +846,9 @@ def main():
     os.makedirs(a.out, exist_ok=True)
     compose(photos, day, seed=mmdd, style=LIVE_STYLE).save(os.path.join(a.out, 'bapas-diary.jpg'), quality=92, optimize=True)
     for st in filter(None, a.styles.split(',')):
+        if st.startswith('peg-'):   # peg mockups on the live layout, e.g. peg-bevel
+            compose(photos, day, seed=mmdd, style=LIVE_STYLE, look=st[4:]).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=92, optimize=True)
+            continue
         compose(photos, day, seed=mmdd, style=st).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=92, optimize=True)
     if a.workings:
         seconds = second_choices()
