@@ -314,7 +314,11 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69):
                 cands[y][j] = (v[0] - min(.5, .25 * others), v[1] - min(.5, .25 * others), v[2])
     for y, want in PICKS.get(seed, {}).items():   # Darpan's own choice for a year wins outright
         for j, v in enumerate(cands.get(int(y), [])):
-            if want.lower() in (v[2].get('c') or '').lower():
+            if isinstance(want, dict):   # {"photo": "album/id", "caption": ..., "date": ...}: that exact photo
+                hit = v[2]['i'].endswith('/' + want['photo'].partition('/')[2] + '.jpg')
+            else:                        # a few words of its caption
+                hit = want.lower() in (v[2].get('c') or '').lower()
+            if hit:
                 cands[int(y)][j] = (v[0] + 100, v[1] + 100, v[2])
 
     def with_crop(v, k):
@@ -1101,6 +1105,13 @@ def main():
         extra = [x for x in vicharan_items(combed, f'{day:%m-%d}', place) if x['y'] < day.year]   # past years only
         items += [x for x in extra if x['i'] not in have]
         print(f'  + {len(items) - len(have)} more captioned photos from the vicharan pages')
+    for y, want in PICKS.get(mmdd, {}).items():   # a pin may name a photo from a nearby day of the same trip
+        if isinstance(want, dict) and 'photo' in want and int(y) < day.year:
+            album, _, pid = want['photo'].partition('/')
+            url = f'https://www.baps.org/Data/Sites/1/Media/GalleryImages/{album}/WebImages/{pid}.jpg'
+            if url not in {x['i'] for x in items}:
+                items.append({'y': int(y), 'd': want.get('date', f'{y}-{mmdd}'), 'c': want.get('caption', ''),
+                              'p': next((x.get('p', '') for x in items if x['y'] == int(y)), ''), 'i': url})
     print(f'{day}: {len(items)} photos across {len({x["y"] for x in items})} years')
 
     download_all(items, a.cache)

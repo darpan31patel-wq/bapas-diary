@@ -1,6 +1,13 @@
 {
- "_how": "Pin a photo for a date and year by a few words of its caption, e.g. \"10-16\": {\"2019\": \"Sahajanand Sudha\"}",
+ "_how": "Pin a photo for a date and year by a few words of its caption, e.g. \"10-16\": {\"2019\": \"Sahajanand Sudha\"}, or by its exact photo (also from a nearby day of the same trip): {\"photo\": \"album/id\", \"caption\": \"...\", \"date\": \"YYYY-MM-DD\"}",
  "10-16": {
   "2019": "Sahajanand Sudha"
+ },
+ "10-18": {
+  "2011": {
+   "photo": "4679/20111019-038f",
+   "caption": "Bids Jai Swaminarayan to devotees",
+   "date": "2011-10-19"
+  }
  }
 }
