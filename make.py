@@ -888,7 +888,7 @@ def compose_wide(photos, day, seed, style):
     pw_w = min(440, ((W - 2 * M - gap * (cols - 1)) / cols) / (probe.CW / 100))   # as wide as the row allows
     row_h = (bottom_space - top_space - (nrows - 1) * row_gap - nrows * below) / nrows
     ph = min(pw_w * lay['ratio'], row_h - (probe.CH - probe.PH) / 100 * pw_w)     # as tall as the rows allow
-    pw = min(pw_w, ph / lay.get('min_ratio', .58))            # a photo is never wider than 16:9 ish, so shrink the card if it would be
+    pw = min(pw_w, ph / lay.get('min_ratio', .6))            # a photo is never wider than 16:9 ish, so shrink the card if it would be
     card = WideCard(pw, ph / pw, lay['band'])
     gap = min(60, (W - 2 * M - cols * card.CW) / max(1, cols - 1))
     pitch = card.CH + below + row_gap
