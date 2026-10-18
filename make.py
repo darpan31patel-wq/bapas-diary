@@ -118,7 +118,20 @@ def bapa_face(im, when):
             sim = float(ref @ (e / np.linalg.norm(e)))
             if sim > best_sim:
                 best, best_sim = tuple(float(v) * k for v in f[:4]), sim
+                LAST_FRONT[0] = front_view(f)
     return (best, best_sim) if best_sim >= SAME_PERSON else (None, best_sim)
+
+
+LAST_FRONT = [1.0]   # how face-on the face bapa_face last recognised was (1 looking at the camera, 0 a profile)
+
+
+def front_view(f):
+    """0 to 1 from the detector's landmarks: the eyes are far apart on a face seen from the front and
+    close together on a profile, and the nose sits between them when he looks at the camera."""
+    x, y, w, h, rx, ry, lx, ly, nx, ny = [float(v) for v in f[:10]]
+    eyes = abs(lx - rx) / max(w, 1)                                 # about .45 face on, under .2 side on
+    centred = 1 - min(1, abs(nx - (lx + rx) / 2) / max(abs(lx - rx) / 2, 1))
+    return max(0, min(1, (eyes - .18) / .25)) * (.5 + .5 * centred)
 
 
 DOING = re.compile(r'arti|puja|pujan|bless|greet|shower|lights?\b|sanctif|plays?|walk|pradakshina|parikrama|reads?|offer|appl|'
@@ -133,6 +146,7 @@ SPECIAL = re.compile(r'pratishtha|inaugurat|annakut|diwali|new year|janm|jayanti
                      r'cricket|football|plant|tree|cow|children|balaks?\b|kids?\b', re.I)
 ACTION_KEEP = .72     # an action shot must keep at least this much of the photo inside the frame, or what Bapa does gets cut off
 NICE_MIN = 2.0        # the action score a photo needs before it beats a close darshan
+CLOSE_SHARE = .38     # about this share of the years are close darshans of Bapa's face (Darpan, 18 Oct 2026)
 CLOSE_MIN_FACE = 64   # pixels: a face smaller than this can't be blown up into a close darshan
 
 
@@ -220,7 +234,7 @@ def workings_sheet(day):
             colour = GOLD if status == 'chosen' else (CAPTION_IVORY if tag == '2ND CHOICE' else (190, 150, 140))
             if status == 'chosen' or tag == '2ND CHOICE':
                 d.rectangle((x0 - 4, y0 - 4, x0 + tw + 3, y0 + th + 3), outline=colour, width=4)
-            face = f'Bapa {x["sim"]:.2f}' if x['face'] else 'Bapa not found'
+            face = f'Bapa {x["sim"]:.2f} front {x.get("front", 0):.1f}' if x['face'] else 'Bapa not found'
             how = f'shown {x.get("crop", "")}, frame keeps {round(100 * x.get("keep", 1))}%' + ('  SPECIAL' if x.get('special') else '') + ('  nice action' if x.get('nice') else '')
             d.text((x0, y0 + th + 10), f'{tag}  score {score:.2f}  {face}'.strip(), font=sf, fill=colour, anchor='la')
             d.text((x0, y0 + th + 34), how, font=sf, fill=colour, anchor='la')
@@ -259,16 +273,18 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69):
         except Exception:
             continue
         face, sim = bapa_face(im, x.get('d', str(x['y'])))
-        x = dict(x, im=im, face=face, sim=sim)
+        front = LAST_FRONT[0] if face else 0
+        x = dict(x, im=im, face=face, sim=sim, front=round(front, 2))
         r = face[3] / im.height if face else 0
         c = x.get('c') or ''
         keep = frame_keep(im, face, aspect)
         special = bool(SPECIAL.search(c))
         subject = bapa_is_subject(c)
         doing = bool(DOING.search(c)) and not JUST_A_FACE.search(c)
-        close_ok = bool(face) and face[3] >= CLOSE_MIN_FACE
+        close_ok = bool(face) and face[3] >= CLOSE_MIN_FACE and front >= .35
         jitter = rnd.uniform(0, .04) + (1.2 if unique and face and unique_caption(c) else 0)
-        s_close = (1 + min(r, .35) + sim + (.2 if JUST_A_FACE.search(c) else 0) if face else -5) + jitter
+        # a close darshan wants his face turned to the camera: a profile or a bowed head loses most of a point
+        s_close = (1 + min(r, .35) + sim + (.2 if JUST_A_FACE.search(c) else 0) + .9 * (front - .6) if face else -5) + jitter
         s_close -= (.6 if face and not subject else 0) + (1.5 if face and not close_ok else 0)
         s_doing = (1 + sim + .6 * max(0, 1 - abs(r - .18) / .15) + (.4 if doing else 0) + (.3 if special else 0)
                    - (.5 if r < .1 else 0) - (.6 if not subject else 0)             # Bapa small in the frame, or not the subject
@@ -311,12 +327,25 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69):
             return dict(x, crop='close' if x['close_ok'] else 'frame')
         return dict(x, crop='frame' if x['keep'] >= ACTION_KEEP else 'whole')
 
+    # which years are close darshans: every third year when it has a good close up, then more until about a third
+    # of the years are close ups (Darpan, 18 Oct 2026: he wanted 4 or 5 more faces on a 27 year day), spread out
+    has_nice = {y: any(v[2]['nice'] for v in cands[y]) for y in years}
+    has_close = {y: any(v[2]['close_ok'] for v in cands[y]) for y in years}
+    modes = {y: 1 if has_nice[y] and not (i % 3 == 1 and has_close[y]) else (0 if has_close[y] else 1) for i, y in enumerate(years)}
+    target = round(len(years) * CLOSE_SHARE)
+    best_close = {y: max(v[0] for v in cands[y]) for y in years}
+    while sum(1 for y in years if modes[y] == 0) < target:
+        spare = [y for y in years if modes[y] == 1 and has_close[y]]
+        if not spare:
+            break
+        def lonely(y):   # prefer a year whose neighbours are action shots, so the faces are spread out
+            i = years.index(y)
+            return sum(1 for j in (i - 1, i + 1) if 0 <= j < len(years) and modes[years[j]] == 0)
+        modes[min(spare, key=lambda y: (lonely(y), -best_close[y]))] = 0
     picked, used = [], []
     WORKINGS.clear()
     for i, y in enumerate(years):
-        has_nice = any(v[2]['nice'] for v in cands[y])
-        has_close = any(v[2]['close_ok'] for v in cands[y])
-        k = 1 if has_nice and not (i % 3 == 1 and has_close) else (0 if has_close else 1)
+        k = modes[y]
         ranked = sorted(cands[y], key=lambda v: -v[k])
         if any(v[2]['face'] for v in ranked):   # photos where Bapa is recognised always come before ones where he isn't
             ranked = [v for v in ranked if v[2]['face']]
@@ -352,7 +381,7 @@ def crop_to(im, face, w, h, mode='frame', at=.38):
     fx, fy, fw, fh = face
     cw, ch = (ih * w / h, ih) if iw / ih > w / h else (iw, iw * h / w)
     if mode == 'close':   # the face about 30% of the window's height, never bigger than the photo allows
-        ch = min(ch, fh / .30); cw = min(cw, ch * w / h); ch = cw * h / w
+        ch = min(ch, fh / (.38 if w > h else .30)); cw = min(cw, ch * w / h); ch = cw * h / w   # a wide frame is cropped tighter
     head = (fx - .35 * fw, fy - .75 * fh, fx + 1.35 * fw, fy + 1.4 * fh)   # top of the head down to the chin and neck
     if head[3] - head[1] > ch * .98 or head[2] - head[0] > cw * .98:   # a wide window on a close portrait: show the whole photo
         return crop_to(im, None, w, h)
@@ -830,7 +859,7 @@ LAYOUT = {'H2': dict(M=70, min_gap=14, row_gap=40, lines=2, cap=360, top=212, bo
           'H3': dict(M=60, min_gap=-14, row_gap=34, lines=1, cap=360, top=210),
           'P': dict(M=40, min_gap=6, row_gap=26, lines=0, cap=400, top=212, bottom=H - 100),   # photos only, no captions, biggest frames
           'W': dict(M=60, min_gap=12, row_gap=30, lines=1, cap=400, top=205, bottom=H - 90, rows=3, aspect=.75, band=.26)}   # wide photos, three cords
-FRAME_ASPECT = {'W': 1 / .75, 'W1': 1 / .74, 'W2': 1 / .74, 'W3': 1.5}   # photo width / height per style; the tall live cards work out at about .69 on a full day
+FRAME_ASPECT = {'W': 1 / .75, 'W1': 1 / .74, 'W2': 1 / .8, 'W3': 1.5}   # photo width / height per style; the tall live cards work out at about .69 on a full day
 
 
 def under_card(x, card, gap, f, lh, style, rnd):
