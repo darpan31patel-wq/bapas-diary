@@ -385,7 +385,7 @@ def crop_to(im, face, w, h, mode='frame', at=.38):
     cw, ch = (ih * w / h, ih) if iw / ih > w / h else (iw, iw * h / w)
     if mode == 'close':   # the face about 30% of the window's height, never bigger than the photo allows
         ch = min(ch, fh / (.38 if w > h else .30)); cw = min(cw, ch * w / h); ch = cw * h / w   # a wide frame is cropped tighter
-    head = (fx - .35 * fw, fy - .75 * fh, fx + 1.35 * fw, fy + 1.4 * fh)   # top of the head down to the chin and neck
+    head = (fx - .35 * fw, fy - .5 * fh, fx + 1.35 * fw, fy + 1.4 * fh)    # top of the head (the detector's box starts at the brow) down to the chin and neck
     if head[3] - head[1] > ch * .98 or head[2] - head[0] > cw * .98:   # a wide window on a close portrait: show the whole photo
         return crop_to(im, None, w, h)
     x0, y0 = fx + fw / 2 - cw / 2, fy + fh / 2 - ch * ((.42 if h >= w else .36) if mode == 'close' else at)   # less dead space above his head in a wide frame
