@@ -1065,7 +1065,7 @@ def compose_wide(photos, day, seed, style):
 
 
 CAPTION_SIZE = 21   # caption text under each frame (was 24; smaller since 18 Oct 2026 so whole captions fit, people zoom in)
-SAG = 20            # how far the cords dip in the middle, in pixels (a slight natural curve, Darpan 18 Oct 2026)
+SAG = 34            # how far the cords dip in the middle, in pixels (a slight natural curve, Darpan 18 Oct 2026; 20 looked too straight)
 LIVE_STYLE = 'H2'   # the daily picture: caption centred under each card (Darpan's choice, 16 Oct 2026)
 
 
