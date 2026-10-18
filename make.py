@@ -149,7 +149,7 @@ SPECIAL = re.compile(r'pratishtha|inaugurat|annakut|diwali|new year|janm|jayanti
                      r'cricket|football|plant|tree|cow|children|balaks?\b|kids?\b', re.I)
 ACTION_KEEP = .72     # an action shot must keep at least this much of the photo inside the frame, or what Bapa does gets cut off
 NICE_MIN = 2.0        # the action score a photo needs before it beats a close darshan
-CLOSE_SHARE = .38     # about this share of the years are close darshans of Bapa's face (Darpan, 18 Oct 2026)
+CLOSE_SHARE = .45     # about this share of the years are close darshans of Bapa's face (Darpan, 18 Oct 2026: 9 then 3 more of 27)
 CLOSE_MIN_FACE = 64   # pixels: a face smaller than this can't be blown up into a close darshan
 
 
@@ -390,6 +390,7 @@ def crop_to(im, face, w, h, mode='frame', at=.38):
         return crop_to(im, None, w, h)
     x0, y0 = fx + fw / 2 - cw / 2, fy + fh / 2 - ch * ((.42 if h >= w else .36) if mode == 'close' else at)   # less dead space above his head in a wide frame
     y0 = max(y0, head[3] - ch); y0 = min(y0, head[1])                        # never slice through the head
+    y0 = max(y0, head[1] - ch * (.07 if mode == 'close' else .14))            # and not much dead space above it (Darpan, 18 Oct 2026)
     x0 = min(max(0, x0), iw - cw); y0 = min(max(0, y0), ih - ch)
     return im.crop((x0, y0, x0 + cw, y0 + ch)).resize((w, h), Image.LANCZOS)
 
@@ -880,7 +881,7 @@ LAYOUT = {'H2': dict(M=70, min_gap=14, row_gap=40, lines=2, cap=360, top=212, bo
           'H3': dict(M=60, min_gap=-14, row_gap=34, lines=1, cap=360, top=210),
           'P': dict(M=40, min_gap=6, row_gap=26, lines=0, cap=400, top=212, bottom=H - 100),   # photos only, no captions, biggest frames
           'W': dict(M=60, min_gap=12, row_gap=30, lines=1, cap=400, top=205, bottom=H - 90, rows=3, aspect=.75, band=.26)}   # wide photos, three cords
-FRAME_ASPECT = {'W': 1 / .75, 'W1': 1 / .74, 'W2': 1 / .8, 'W3': 1.5}   # photo width / height per style; the tall live cards work out at about .69 on a full day
+FRAME_ASPECT = {'W': 1 / .75, 'W1': 1 / .74, 'W2': 1 / .9, 'W3': 1.5}   # photo width / height per style; the tall live cards work out at about .69 on a full day
 
 
 def under_card(x, card, gap, f, lh, style, rnd):
