@@ -34,7 +34,7 @@ function deliverLate() {
 function deliver_(isLastTry) {
   const now = new Date();
   const today = Utilities.formatDate(now, TZ, 'yyyy-MM-dd');
-  const name = Utilities.formatDate(now, TZ, 'd MMMM yyyy') + '.jpg';
+  const name = Utilities.formatDate(now, TZ, 'd MMMM yyyy') + '.png';
   const folder = folder_();
   const same = folder.getFilesByName(name);
   while (same.hasNext()) if (!same.next().isTrashed()) return true;   // already delivered (a deleted copy doesn't count)
@@ -44,12 +44,12 @@ function deliver_(isLastTry) {
     console.log("Today's picture isn't ready yet");
     if (isLastTry) {
       MailApp.sendEmail(Session.getEffectiveUser().getEmail(), "Bapa's Diary didn't arrive today",
-        'The picture for ' + name.replace('.jpg', '') + " wasn't ready by 10:30am. " +
+        'The picture for ' + name.replace('.png', '') + " wasn't ready by 10:30am. " +
         'You can see what happened at https://github.com/darpan31patel-wq/bapas-diary/actions');
     }
     return false;
   }
-  const picture = UrlFetchApp.fetch(SOURCE + 'bapas-diary.jpg').getBlob().setName(name);
+  const picture = UrlFetchApp.fetch(SOURCE + 'bapas-diary.png').getBlob().setName(name);
   folder.createFile(picture);
   return true;
 }

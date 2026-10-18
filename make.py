@@ -4,7 +4,7 @@
     python make.py                     today's date in London
     python make.py --date 2026-10-12   any date (only the day and month matter)
 
-Writes out/bapas-diary.jpg (2796 x 1290, iPhone landscape), out/date.txt and out/summary.txt.
+Writes out/bapas-diary.png and .jpg (2796 x 1290, iPhone landscape), out/date.txt and out/summary.txt.
 """
 import argparse, collections, concurrent.futures, datetime, hashlib, json, os, random, re, threading, time, urllib.request
 from zoneinfo import ZoneInfo
@@ -451,6 +451,21 @@ def header(img, title, subtitle, compact=False):
     thin_rule(dr, mid, (W + sw) / 2 + 50, (W + sw) / 2 + 50 + 330, False)
 
 
+def header_one(img, title, subtitle):
+    """'18 October in Bapa\u2019s Diary' as one gold title, a thin gold rule either side running through the middle of the letters."""
+    dr = ImageDraw.Draw(img)
+    tf = garamond(84)
+    text = f'{title} {subtitle}'
+    tw = dr.textlength(text, font=tf)
+    top = 30
+    gold_text(img, ((W - tw) / 2, top), text, tf)
+    box = dr.textbbox(((W - tw) / 2, top), 'OB', font=tf)                   # capitals: the rule sits at their middle
+    mid = (box[1] + box[3]) / 2
+    pad, rule = 44, 300
+    thin_rule(dr, mid, (W - tw) / 2 - pad - rule, (W - tw) / 2 - pad, True)
+    thin_rule(dr, mid, (W + tw) / 2 + pad, (W + tw) / 2 + pad + rule, False)
+
+
 def header_line(img, title, subtitle):
     """One line across the top: the title in the middle, 'IN BAPA'S DIARY' to its left and the footer line to its
     right, each between the title and a short gold rule, so the photos get the height instead of a footer."""
@@ -478,7 +493,8 @@ def footer(img, small=False):
     w = dr.textlength(FOOTER, font=f)
     y = H - 42 if small else H - 88
     dr.text(((W - w) / 2, y), FOOTER, font=f, fill=(226, 184, 104))
-    mid = y + 27
+    box = dr.textbbox(((W - w) / 2, y), 'Dp', font=f)                      # the rules run through the middle of the letters
+    mid = (box[1] + box[3]) / 2 - f.size * .06
     thin_rule(dr, mid, (W - w) / 2 - 40 - 220, (W - w) / 2 - 40, True)
     thin_rule(dr, mid, (W + w) / 2 + 40, (W + w) / 2 + 40 + 220, False)
     diamond(dr, (W - w) / 2 - 28, mid + 1, 5, GOLD); diamond(dr, (W + w) / 2 + 28, mid + 1, 5, GOLD)
@@ -902,7 +918,7 @@ def under_card(x, card, gap, f, lh, style, rnd):
 
 # wide polaroids (photos wider than tall) on three or four cords, so the width of the picture is used and little hangs below the cards
 WIDE = {'W1': dict(rows=3, M=60, gap=16, ratio=.74, band='caption', row_gap=28, tilt=1.6),   # year, place and caption all in the ivory band
-        'W2': dict(rows=3, M=44, gap=10, ratio=.9, band='yearline', pill=2, lines=2, row_gap=8, tilt=2.2, compact=True),   # year and place in the band, caption on a pill below
+        'W2': dict(rows=3, M=44, gap=10, ratio=.9, band='yearline', pill=2, lines=2, row_gap=8, tilt=2.2, compact=True, one_title=True),   # year and place in the band, caption on a pill below
         'W3': dict(rows=4, M=60, gap=18, ratio=2 / 3, band='none', row_gap=22, tilt=1.2)}    # thin ivory frames, year and caption over the photo
 
 
@@ -991,6 +1007,8 @@ def compose_wide(photos, day, seed, style):
     img = background(); dr = ImageDraw.Draw(img)
     if lay.get('oneline'):
         header_line(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
+    elif lay.get('one_title'):
+        header_one(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
     else:
         header(img, f'{day.day} {day:%B}', 'in Bapa’s Diary', compact=lay.get('compact', False))
     n = len(photos)
@@ -1140,7 +1158,9 @@ def main():
         print(f'  {x["y"]}  {x.get("p", "")[:28]:28}  Bapa {"%.2f" % x["sim"] if x["face"] else "not found, shown whole"}  {x["crop"]:5}  {caption(x)}')
 
     os.makedirs(a.out, exist_ok=True)
-    compose(photos, day, seed=mmdd, style=LIVE_STYLE).save(os.path.join(a.out, 'bapas-diary.jpg'), quality=95, optimize=True)
+    live = compose(photos, day, seed=mmdd, style=LIVE_STYLE)
+    live.save(os.path.join(a.out, 'bapas-diary.jpg'), quality=95, optimize=True)
+    live.save(os.path.join(a.out, 'bapas-diary.png'), optimize=True)   # the PNG is the final file (Darpan, 18 Oct 2026): crisp text
     workings_live = list(WORKINGS)
     for st in filter(None, a.styles.split(',')):
         if st.startswith('peg-'):   # peg mockups on the live layout, e.g. peg-bevel
