@@ -642,8 +642,9 @@ def place(x):
     return re.sub(r'\s*\(.*?\)', '', (x.get('p') or '').split(',')[0]).strip()
 
 
-def wrap(d, text, f, maxw, lines, shorten=True):
-    """Up to `lines` lines no wider than maxw; whatever doesn't fit ends in an ellipsis."""
+def wrap(d, text, f, maxw, lines, shorten=True, min_words=0):
+    """Up to `lines` lines no wider than maxw; whatever doesn't fit ends in an ellipsis.
+    min_words: a natural cut that leaves fewer words than this is not used (so 'Sanctifies water' never stands for a sentence)."""
     words, out = text.split(), []
     while words and len(out) < lines:
         line = words.pop(0)
@@ -659,6 +660,8 @@ def wrap(d, text, f, maxw, lines, shorten=True):
     if cut and shorten:   # say less rather than trail off: say it shorter, or cut the caption at a natural break so it fits
         short = summarise(text)
         for t in ([short] if short != text else []) + shorter_versions(short):
+            if len(t.split()) < min_words:
+                continue
             fits = wrap(d, t, f, maxw, lines, shorten=False)
             if not fits[-1].endswith('…'):
                 return fits
@@ -898,14 +901,17 @@ def under_card(x, card, gap, f, lh, style, rnd):
             d.text((cx, 24 + 14 + (i + .8) * lh), line, font=f, fill=YEAR_C2, anchor='ms')
         return im.rotate(rnd.uniform(-2.5, 2.5), resample=Image.BICUBIC, expand=True), 2
     n = WIDE.get(style, LAYOUT.get(style, {})).get('lines', 3)
-    for shrink, extra in ((1, 0), (.9, 0), (.82, 0), (.82, 1)):   # a caption that won't fit whole is set a touch smaller, then given one more line, before it is ever cut
+    text, maxw = caption(x), card.CW + min(gap, 30) - 40
+    half = max(3, len(text.split()) * 2 // 3)
+    # the whole caption first, a touch smaller, then with one more line; only then a natural cut, keeping at least two thirds of it; a shorter cut last
+    for shrink, extra, cut, keep in ((1, 0, False, 0), (.9, 0, False, 0), (.82, 0, False, 0), (.82, 1, False, 0), (.82, 1, True, half), (.82, 1, True, 0)):
         f2 = garamond(f.size * shrink, 500) if shrink < 1 else f
-        lines = wrap(probe, caption(x), f2, card.CW + min(gap, 30) - 40, n + extra)
+        lines = wrap(probe, text, f2, maxw, n + extra, shorten=cut, min_words=keep)
         if not lines[-1].endswith('…'):
             f = f2
             break
     else:
-        lines = wrap(probe, caption(x), f, card.CW + min(gap, 30) - 40, n)
+        lines = wrap(probe, text, f, maxw, n)
     lh = lh * f.size / cf_size
     tw = max(probe.textlength(l, font=f) for l in lines) + 34
     th = len(lines) * lh + 16
@@ -945,7 +951,7 @@ class WideCard(Card):
         if self.band == 'none':
             self.foot_band(card, x)
             return card
-        yf, yt = garamond(PW * .12 if self.band == 'caption' else PW * .13, 600), str(x['y'])
+        yf, yt = garamond(PW * .12 if self.band == 'caption' else PW * .15, 700 if self.band == 'yearline' else 600), str(x['y'])
         pl = place(x).upper()
         pf, track = arimo_bold(PW * .048 if self.band == 'caption' else PW * .06), PW * .012
         room = CW - 2 * B - 4 - (d.textlength(yt, font=yf) + PW * .035 if self.band == 'yearline' else 0)
@@ -1018,7 +1024,7 @@ def compose_wide(photos, day, seed, style):
     for c in per:
         rows.append(photos[k:k + c]); k += c
     cols, M, gap, row_gap = per[0], lay['M'], lay['gap'], lay['row_gap']
-    top_space, bottom_space = (156, H - 44) if lay.get('oneline') or lay.get('compact') else (200, H - 96)
+    top_space, bottom_space = (156, H - 44 - SAG) if lay.get('oneline') or lay.get('compact') else (200, H - 96)
     cf_a, lh_a = garamond(CAPTION_SIZE, 500), round(CAPTION_SIZE * 1.2)
     below = (lay.get('pill', 0) * lh_a + 22) if lay.get('pill') else 0
     probe = WideCard(100, lay['ratio'], lay['band'])
@@ -1034,7 +1040,7 @@ def compose_wide(photos, day, seed, style):
     s = card.PW / 220
     for r, row in enumerate(rows):
         y_top = first + r * pitch
-        sag = lambda xp: y_top - 4 + 12 * 4 * (xp / W) * (1 - xp / W)
+        sag = lambda xp: y_top - 4 + SAG * 4 * (xp / W) * (1 - xp / W)                        # the cord dips a little in the middle
         dr.line([(xp, sag(xp)) for xp in range(0, W + 1, 6)], fill=(170, 132, 78), width=2)
         x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
         for c, x in enumerate(row):
@@ -1042,7 +1048,7 @@ def compose_wide(photos, day, seed, style):
             a = rnd.uniform(-lay['tilt'], lay['tilt']) * rnd.choice((.4, 1, 1)); t = np.radians(a)   # some hang nearly straight, some swing more
             cx += rnd.uniform(-6, 6)                                                              # pegged a little left or right
             hung = card.hang(card.make(x)).rotate(a, resample=Image.BICUBIC, expand=True)
-            px, py = cx, y_top + rnd.uniform(-3, 5)                                               # and a touch higher or lower on the cord
+            px, py = cx, sag(cx) + 4 + rnd.uniform(-3, 4)                                         # hangs where the cord is, a touch higher or lower
             mx, my = px + card.CH / 2 * np.sin(t), py + card.CH / 2 * np.cos(t)
             img.paste(hung, (int(mx - hung.width / 2), int(my - hung.height / 2)), hung)
             peg(img, cx, sag(cx) + 4, s)
@@ -1056,6 +1062,7 @@ def compose_wide(photos, day, seed, style):
 
 
 CAPTION_SIZE = 21   # caption text under each frame (was 24; smaller since 18 Oct 2026 so whole captions fit, people zoom in)
+SAG = 20            # how far the cords dip in the middle, in pixels (a slight natural curve, Darpan 18 Oct 2026)
 LIVE_STYLE = 'H2'   # the daily picture: caption centred under each card (Darpan's choice, 16 Oct 2026)
 
 
