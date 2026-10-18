@@ -928,7 +928,7 @@ def under_card(x, card, gap, f, lh, style, rnd):
 
 # wide polaroids (photos wider than tall) on three or four cords, so the width of the picture is used and little hangs below the cards
 WIDE = {'W1': dict(rows=3, M=60, gap=16, ratio=.74, band='caption', row_gap=28, tilt=1.6),   # year, place and caption all in the ivory band
-        'W2': dict(rows=3, M=44, gap=10, ratio=.9, band='yearline', pill=2, lines=2, row_gap=8, tilt=2.2, compact=True, one_title=True),   # year and place in the band, caption on a pill below
+        'W2': dict(rows=3, M=44, gap=10, ratio=.9, band='yearline', pill=2, lines=2, row_gap=8, tilt=2.2, compact=True, one_title=True, lift=162, fill=True, playful=True),   # year and place in the band, caption on a pill below
         'W3': dict(rows=4, M=60, gap=18, ratio=2 / 3, band='none', row_gap=22, tilt=1.2)}    # thin ivory frames, year and caption over the photo
 
 
@@ -1029,6 +1029,8 @@ def compose_wide(photos, day, seed, style):
         rows.append(photos[k:k + c]); k += c
     cols, M, gap, row_gap = per[0], lay['M'], lay['gap'], lay['row_gap']
     top_space, bottom_space = (156, H - 44 - SAG) if lay.get('oneline') or lay.get('compact') else (200, H - 96)
+    if lay.get('lift'):   # the cord's lowest point (the middle) sits at the top line and its ends rise into the free corners beside the title
+        top_space, bottom_space = lay['lift'], H - 46
     cf_a, lh_a = garamond(CAPTION_SIZE, 500), round(CAPTION_SIZE * 1.2)
     below = (lay.get('pill', 0) * lh_a + 22) if lay.get('pill') else 0
     probe = WideCard(100, lay['ratio'], lay['band'])
@@ -1040,33 +1042,46 @@ def compose_wide(photos, day, seed, style):
     gap = min(60, (W - 2 * M - cols * card.CW) / max(1, cols - 1))
     pitch = card.CH + below + row_gap
     block = (nrows - 1) * pitch + card.CH + below
+    if lay.get('fill') and nrows > 1:   # spare height goes between the rows rather than above and below them
+        pitch += max(0, bottom_space - top_space - block) / (nrows - 1); block = (nrows - 1) * pitch + card.CH + below
     first = top_space + max(0, (bottom_space - top_space - block) / 2)
     s = card.PW / 220
     for r, row in enumerate(rows):
         y_top = first + r * pitch
-        sag = lambda xp: y_top - 4 + SAG * 4 * (xp / W) * (1 - xp / W)                        # the cord dips a little in the middle
+        if lay.get('lift'):
+            sag = lambda xp: y_top - 4 - SAG * (1 - 4 * (xp / W) * (1 - xp / W))              # lowest in the middle, ends higher
+        else:
+            sag = lambda xp: y_top - 4 + SAG * 4 * (xp / W) * (1 - xp / W)                    # the cord dips a little in the middle
         dr.line([(xp, sag(xp)) for xp in range(0, W + 1, 6)], fill=(170, 132, 78), width=2)
+        later = []   # pegs and captions go on after the whole row, so a card swinging over its neighbour never hides them
         x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
         for c, x in enumerate(row):
             cx = x0 + c * (card.CW + gap) + card.CW / 2
-            a = rnd.uniform(-lay['tilt'], lay['tilt']) * rnd.choice((.4, 1, 1)); t = np.radians(a)   # some hang nearly straight, some swing more
-            cx += rnd.uniform(-6, 6)                                                              # pegged a little left or right
+            if lay.get('playful'):   # a real line of photos: a few nearly straight, most swung a little, a couple swung well, some touching
+                a = rnd.choice((-1, 1)) * lay['tilt'] * rnd.choice((.25, .7, 1, 1.3, 1.8)) * rnd.uniform(.8, 1.1)
+                cx += rnd.uniform(-16, 16); drop = rnd.uniform(-4, 12)
+            else:
+                a = rnd.uniform(-lay['tilt'], lay['tilt']) * rnd.choice((.4, 1, 1))              # some hang nearly straight, some swing more
+                cx += rnd.uniform(-6, 6); drop = rnd.uniform(-3, 4)                               # pegged a little left or right, higher or lower
+            t = np.radians(a)
             hung = card.hang(card.make(x)).rotate(a, resample=Image.BICUBIC, expand=True)
-            px, py = cx, sag(cx) + 4 + rnd.uniform(-3, 4)                                         # hangs where the cord is, a touch higher or lower
+            px, py = cx, sag(cx) + 4 + drop
             mx, my = px + card.CH / 2 * np.sin(t), py + card.CH / 2 * np.cos(t)
             img.paste(hung, (int(mx - hung.width / 2), int(my - hung.height / 2)), hung)
-            peg(img, cx, sag(cx) + 4, s, short=.72)
+            later.append(lambda cx=cx: peg(img, cx, sag(cx) + 4, s, short=.72))
             if lay.get('pill') and caption(x):
                 tag, pos = under_card(x, card, gap, cf_a, lh_a, 'W2', rnd)
                 bx, by = px + card.CH * np.sin(t), py + card.CH * np.cos(t)
-                img.paste(tag, (int(bx - tag.width / 2), int(by + 6)), tag)
+                later.append(lambda tag=tag, bx=bx, by=by: img.paste(tag, (int(bx - tag.width / 2), int(by + 6)), tag))
+        for f in later:
+            f()
     if not lay.get('oneline'):
         footer(img, small=lay.get('compact', False))
     return img
 
 
 CAPTION_SIZE = 21   # caption text under each frame (was 24; smaller since 18 Oct 2026 so whole captions fit, people zoom in)
-SAG = 34            # how far the cords dip in the middle, in pixels (a slight natural curve, Darpan 18 Oct 2026; 20 looked too straight)
+SAG = 60            # how far the cords dip in the middle, in pixels (Darpan 18 Oct 2026: 20 then 34 looked too straight, he wanted more)
 LIVE_STYLE = 'H2'   # the daily picture: caption centred under each card (Darpan's choice, 16 Oct 2026)
 
 
