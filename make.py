@@ -1087,6 +1087,17 @@ SAG = 60            # how far the cords dip in the middle, in pixels (Darpan 18 
 LIVE_STYLE = 'H2'   # the daily picture: caption centred under each card (Darpan's choice, 16 Oct 2026)
 
 
+def dump_photos(photos, folder):
+    """Save the chosen photos and what make.py knows about them, so a layout can be redrawn offline (relayout.py)."""
+    os.makedirs(folder, exist_ok=True)
+    meta = []
+    for i, x in enumerate(photos):
+        x['im'].convert('RGB').save(os.path.join(folder, f'{i:02d}.jpg'), quality=95)
+        meta.append({k: (v.tolist() if hasattr(v, 'tolist') else v) for k, v in x.items()
+                     if k != 'im' and isinstance(v, (str, int, float, bool, list, tuple, dict, type(None), np.ndarray, np.generic))})
+    json.dump(meta, open(os.path.join(folder, 'photos.json'), 'w'), default=float)
+
+
 def compose(photos, day, seed, style=None, look=None):
     if style in WIDE:
         return compose_wide(photos, day, seed, style)
@@ -1207,6 +1218,7 @@ def main():
         im.save(os.path.join(a.out, f'caption-{st}.jpg'), quality=95, optimize=True)
         if st in WIDE:
             im.save(os.path.join(a.out, f'caption-{st}.png'), optimize=True)   # lossless copy, text stays crisp
+            dump_photos(ps, os.path.join(a.out, f'photos-{st}'))
     WORKINGS[:] = workings_live
     if a.workings:
         seconds = second_choices()
