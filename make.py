@@ -58,8 +58,8 @@ def vicharan_items(path, mmdd, place, per_caption=2):
             place.setdefault(y, where)
             continue
         ids, c = line.split('|', 1)
-        if c[:1].islower() or c[:1] in "',":
-            c = 'Swamishri' + ('' if c[:1] in "'," else ' ') + c
+        if c[:1].islower():
+            c = 'Swamishri ' + c
         for i in ids.split(',')[:per_caption]:
             out.append({'y': y, 'd': when or f'{y}-{mmdd}', 'p': place.get(y, ''), 'c': c,
                         'i': f'https://www.baps.org/Data/Sites/1/Media/GalleryImages/{album}/WebImages/{prefix}{i}.jpg'})

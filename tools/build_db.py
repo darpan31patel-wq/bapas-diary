@@ -5,7 +5,7 @@ one file per day of the year, listing every captioned photo of Bapa on that day 
 
 A photo's date comes from its file name when it carries one (2014_10_16_..., y091016-..., 20111016-...),
 otherwise from its page title or address (16 October 2014, 15 to 23 January 1999, ...).
-If a year has no photo of Bapa on the exact day, the nearest day of the same trip stands in
+Every dated photo is kept (make.py picks). If a year has nothing on the exact day, the nearest day of the same trip stands in
 (a range page covering the day, else the closest dated photo within NEAR days), so most years still get a photo.
 """
 import argparse, collections, datetime, glob, json, os, re, sys
@@ -90,6 +90,24 @@ def about_bapa(c, day):
     return bool(SWAMISHRI.search(c) or MSM.search(c))
 
 
+def continued(rows, when):
+    """A caption starting '...' carries on from the photo before it ('... and performs arti of Thakorji'):
+    when that one is of Bapa, this one is too, and reads 'Swamishri performs arti of Thakorji'. HTML in a caption is dropped."""
+    out, prev = [], ''
+    for album, file, cap in rows:
+        cap = re.sub(r'<[^>]+>', '', cap or '').replace('\ufffd', "'").strip()
+        m = re.match(r'^(?:\.\.\.|…|\.\.)\s*(?:(?:and|then|And|Then)\s+)*(.*)$', cap)
+        if m:
+            rest = m.group(1).strip()
+            if (rest[:1].islower() or about_bapa(prev, when)) and rest[:1].isalpha() and not re.match(r'(Shri|Bhagwan|Thakorji|Pujya|Param)\b', rest) and not NOT_BAPA.search(rest):
+                cap = 'Swamishri ' + rest[0].lower() + rest[1:]
+            else:
+                cap = rest
+        out.append((album, file, cap))
+        prev = cap
+    return out
+
+
 def short(c):
     """'Swamishri blesses devotees' -> 'blesses devotees' (a lower case caption means 'Swamishri ...' to make.py)."""
     c = re.sub(r'\s+', ' ', c).strip().replace('|', '/')
@@ -110,10 +128,12 @@ def load(folder):
         seen = {}
         for p in data['pages']:
             span = page_dates(p['p'], p.get('t', ''), y)
+            rows = continued(p['rows'], span[0] if span else datetime.date(y, 7, 1))
             if y <= 2016 and re.search(r"Mahant Swami Maharaj'?s Vicharan", p.get('t', ''), re.I) and (y < 2016 or (span and span[1] < PSM_TO_MSM)):
-                continue          # before 13 Aug 2016 'Swamishri' on Mahant Swami's own vicharan pages is not Bapa
+                # before 13 Aug 2016 'Swamishri' on Mahant Swami's own vicharan pages is him, not Bapa: the caption says so
+                rows = [(a, f, re.sub(r'^Swamishri\b', 'Mahant Swami Maharaj', c)) for a, f, c in rows]
             place = place_of(p.get('t', ''))
-            for album, file, cap in p['rows']:
+            for album, file, cap in rows:
                 key = (album, file)
                 day = file_date(file, y) or (span[0] if span and span[0] == span[1] else None)
                 old = seen.get(key)
@@ -129,12 +149,8 @@ def build(years):
     days = collections.defaultdict(dict)
     stats = collections.Counter()
     for y, photos in years.items():
-        bapa = []
-        for day, span, album, file, cap, place in photos:
-            ref = day or (span[0] if span else None)
-            if ref and about_bapa(cap, ref):
-                bapa.append((day, span, album, file, cap, place))
-        stats['bapa'] += len(bapa)
+        bapa = [x for x in photos if x[0] or x[1]]     # every dated photo stays in (Darpan: don't cut anything out); make.py picks
+        stats['bapa'] += sum(1 for day, span, album, file, cap, place in bapa if about_bapa(cap, day or span[0]))
         exact, ranged = collections.defaultdict(list), []
         for x in bapa:
             if x[0]:
@@ -178,7 +194,7 @@ def write(days, out):
         when = datetime.date(2024, int(mmdd[:2]), int(mmdd[3:]))
         lines = [f"# Every captioned photo of Bapa on baps.org's {when.day} {when:%B} vicharan pages, from the full crawl of every year (tools/build_db.py).",
                  '# "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.',
-                 '# A caption starting lower case means "Swamishri ...". Photos of murtis, and of devotees doing darshan, are left out.']
+                 '# A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.']
         for y in sorted(per_year):
             actual, photos = per_year[y]
             groups = collections.OrderedDict()
@@ -202,7 +218,7 @@ def main():
     undated = sum(1 for v in years.values() for x in v if not x[0] and not x[1])
     days, stats = build(years)
     write(days, a.out)
-    print(f'{len(years)} years, {total} photos ({undated} with no date), {stats["bapa"]} of Bapa')
+    print(f'{len(years)} years, {total} photos ({undated} with no date), {stats["bapa"]} captioned as Bapa')
     print(f'day/year slots filled: {stats["exact"]} exact day, {stats["range"]} from a trip page, {stats["near"]} from a nearby day')
     per = collections.Counter(len(v) for v in days.values())
     print('years per day:', dict(sorted(per.items())))
