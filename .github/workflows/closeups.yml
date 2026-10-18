@@ -4,6 +4,9 @@ name: Close up faces
 # Run it by hand on a test branch; the sheets are committed to preview/close-ups/<date>/ on that branch.
 
 on:
+  push:
+    branches-ignore: [main]
+    paths: ['tools/closeups-date.txt']   # a test branch runs it by changing the date in that file
   workflow_dispatch:
     inputs:
       date:
@@ -30,7 +33,9 @@ jobs:
       - name: Make the sheets
         env:
           DATE: ${{ inputs.date }}
-        run: python tools/closeups.py ${DATE:+--date "$DATE"}
+        run: |
+          DATE=${DATE:-$(tr -d '[:space:]' < tools/closeups-date.txt)}
+          python tools/closeups.py ${DATE:+--date "$DATE"}
       - uses: actions/upload-artifact@v4
         with:
           name: close-ups
