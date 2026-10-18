@@ -821,7 +821,7 @@ LAYOUT = {'H2': dict(M=70, min_gap=14, row_gap=40, lines=2, cap=360, top=212, bo
           'H3': dict(M=60, min_gap=-14, row_gap=34, lines=1, cap=360, top=210),
           'P': dict(M=40, min_gap=6, row_gap=26, lines=0, cap=400, top=212, bottom=H - 100),   # photos only, no captions, biggest frames
           'W': dict(M=60, min_gap=12, row_gap=30, lines=1, cap=400, top=205, bottom=H - 90, rows=3, aspect=.75, band=.26)}   # wide photos, three cords
-FRAME_ASPECT = {'W': 1 / .75, 'W1': 1 / .74, 'W2': 1 / .74, 'W3': 1.5}   # photo width / height per style; the tall live cards work out at about .69 on a full day
+FRAME_ASPECT = {'W': 1 / .75, 'W1': 1 / .74, 'W2': 1 / .8, 'W3': 1.5}   # photo width / height per style; the tall live cards work out at about .69 on a full day
 
 
 def under_card(x, card, gap, f, lh, style, rnd):
