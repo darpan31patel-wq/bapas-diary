@@ -133,6 +133,7 @@ SPECIAL = re.compile(r'pratishtha|inaugurat|annakut|diwali|new year|janm|jayanti
                      r'cricket|football|plant|tree|cow|children|balaks?\b|kids?\b', re.I)
 ACTION_KEEP = .72     # an action shot must keep at least this much of the photo inside the frame, or what Bapa does gets cut off
 NICE_MIN = 2.0        # the action score a photo needs before it beats a close darshan
+CLOSE_SHARE = 1 / 3   # about this share of the years are close darshans of Bapa's face (Darpan, 18 Oct 2026)
 CLOSE_MIN_FACE = 64   # pixels: a face smaller than this can't be blown up into a close darshan
 
 
@@ -311,12 +312,25 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69):
             return dict(x, crop='close' if x['close_ok'] else 'frame')
         return dict(x, crop='frame' if x['keep'] >= ACTION_KEEP else 'whole')
 
+    # which years are close darshans: every third year when it has a good close up, then more until about a third
+    # of the years are close ups (Darpan, 18 Oct 2026: he wanted 4 or 5 more faces on a 27 year day), spread out
+    has_nice = {y: any(v[2]['nice'] for v in cands[y]) for y in years}
+    has_close = {y: any(v[2]['close_ok'] for v in cands[y]) for y in years}
+    mode = {y: 1 if has_nice[y] and not (i % 3 == 1 and has_close[y]) else (0 if has_close[y] else 1) for i, y in enumerate(years)}
+    target = round(len(years) * CLOSE_SHARE)
+    best_close = {y: max(v[0] for v in cands[y]) for y in years}
+    while sum(1 for y in years if mode[y] == 0) < target:
+        spare = [y for y in years if mode[y] == 1 and has_close[y]]
+        if not spare:
+            break
+        def lonely(y):   # prefer a year whose neighbours are action shots, so the faces are spread out
+            i = years.index(y)
+            return sum(1 for j in (i - 1, i + 1) if 0 <= j < len(years) and mode[years[j]] == 0)
+        mode[min(spare, key=lambda y: (lonely(y), -best_close[y]))] = 0
     picked, used = [], []
     WORKINGS.clear()
     for i, y in enumerate(years):
-        has_nice = any(v[2]['nice'] for v in cands[y])
-        has_close = any(v[2]['close_ok'] for v in cands[y])
-        k = 1 if has_nice and not (i % 3 == 1 and has_close) else (0 if has_close else 1)
+        k = mode[y]
         ranked = sorted(cands[y], key=lambda v: -v[k])
         if any(v[2]['face'] for v in ranked):   # photos where Bapa is recognised always come before ones where he isn't
             ranked = [v for v in ranked if v[2]['face']]
