@@ -288,7 +288,7 @@ def pick_one_per_year(items, seed, unique=False):
     return picked
 
 
-def crop_to(im, face, w, h):
+def crop_to(im, face, w, h, at=.38):
     """A w:h window keeping Bapa's whole head in view (face about a third of the way down).
     Without a recognised face the whole photo is shown, softened into its own colours at the edges."""
     iw, ih = im.size
@@ -303,7 +303,7 @@ def crop_to(im, face, w, h):
     head = (fx - .35 * fw, fy - .75 * fh, fx + 1.35 * fw, fy + 1.4 * fh)   # top of the head down to the chin and neck
     if head[3] - head[1] > ch * .98 or head[2] - head[0] > cw * .98:   # a wide window on a close portrait: show the whole photo
         return crop_to(im, None, w, h)
-    x0, y0 = fx + fw / 2 - cw / 2, fy + fh / 2 - ch * .38
+    x0, y0 = fx + fw / 2 - cw / 2, fy + fh / 2 - ch * at
     y0 = max(y0, head[3] - ch); y0 = min(y0, head[1])                        # never slice through the head
     x0 = min(max(0, x0), iw - cw); y0 = min(max(0, y0), ih - ch)
     return im.crop((x0, y0, x0 + cw, y0 + ch)).resize((w, h), Image.LANCZOS)
@@ -774,7 +774,7 @@ class WideCard(Card):
             t = j / CH
             d.line((0, j, CW, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(IVORY_TOP, IVORY_BOTTOM)) + (255,))
         d.rectangle((0, 0, CW - 1, CH - 1), outline=IVORY_EDGE, width=1)
-        card.paste(crop_to(x['im'], x['face'], PW, PH), (B, B))
+        card.paste(crop_to(x['im'], x['face'], PW, PH, at=.3 if self.band == 'none' else .38), (B, B))
         d.rectangle((B - 1, B - 1, B + PW, B + PH), outline=(150, 130, 100), width=1)
         if self.band == 'none':
             self.foot_band(card, x)
@@ -806,28 +806,23 @@ class WideCard(Card):
         return card
 
     def foot_band(self, card, x):
-        """W3: the year in gold and the caption in ivory over a soft dark fade across the foot of the photo."""
+        """W3: one line over a soft dark fade at the foot of the photo: the year in gold, then the caption in ivory."""
         PW, PH, B = self.PW, self.PH, self.B
         d = ImageDraw.Draw(card)
-        yf, cf = garamond(PW * .08, 700), garamond(PW * .062, 500)
-        lh = PW * .07
-        lines = wrap(d, caption(x), cf, PW * .9, 2)
-        yh = -d.textbbox((0, 0), '2000', font=yf, anchor='ls')[1]
-        block = yh + (PW * .022 + len(lines) * lh if lines else 0)
-        h = round(block + PW * .14)
+        yf, cf = garamond(PW * .075, 700), garamond(PW * .062, 500)
+        yt = str(x['y']); yw = d.textlength(yt, font=yf); sp = PW * .03
+        lines = wrap(d, caption(x), cf, PW * .92 - yw - sp, 1)
+        text = lines[0] if lines else ''
+        h = round(PW * .17)
         fade = Image.new('RGBA', (PW, h)); fd = ImageDraw.Draw(fade)
         for j in range(h):
-            fd.line((0, j, PW, j), fill=(30, 8, 12, round(215 * min(1, (j / h) / .5) ** 1.3)))
+            fd.line((0, j, PW, j), fill=(30, 8, 12, round(205 * min(1, (j / h) / .55) ** 1.3)))
         card.alpha_composite(fade, (B, B + PH - h))
-        y = B + PH - PW * .04 - block
-        tag = f'{x["y"]}' + (f'  ·  {place(x).upper()}' if place(x) else '')
-        pf = arimo_bold(PW * .034)
-        d.text((B + PW / 2, y + yh), str(x['y']), font=yf, fill=GOLD, anchor='ms')
-        if place(x):
-            yw = d.textlength(str(x['y']), font=yf)
-            d.text((B + PW / 2 + yw / 2 + PW * .03, y + yh - PW * .012), place(x).upper(), font=pf, fill=(240, 214, 160), anchor='ls')
-        for i, line in enumerate(lines):
-            d.text((B + PW / 2, y + yh + PW * .022 + (i + .8) * lh), line, font=cf, fill=CAPTION_IVORY, anchor='ms')
+        tw = yw + (sp + d.textlength(text, font=cf) if text else 0)
+        x0, y = B + (PW - tw) / 2, B + PH - PW * .04
+        d.text((x0, y), yt, font=yf, fill=GOLD, anchor='ls')
+        if text:
+            d.text((x0 + yw + sp, y), text, font=cf, fill=CAPTION_IVORY, anchor='ls')
 
 
 def compose_wide(photos, day, seed, style):
