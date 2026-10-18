@@ -753,7 +753,7 @@ def under_card(x, card, gap, f, lh, style, rnd):
 
 # wide polaroids (photos wider than tall) on three or four cords, so the width of the picture is used and little hangs below the cards
 WIDE = {'W1': dict(rows=3, M=60, gap=16, ratio=.74, band='caption', row_gap=28, tilt=1.6),   # year, place and caption all in the ivory band
-        'W2': dict(rows=3, M=60, gap=16, ratio=.74, band='year', pill=2, lines=2, row_gap=22, tilt=1.6),   # year and place in the band, caption on a pill below
+        'W2': dict(rows=3, M=50, gap=14, ratio=.74, band='year', pill=2, lines=2, row_gap=18, tilt=1.4),   # year and place in the band, caption on a pill below
         'W3': dict(rows=4, M=60, gap=18, ratio=2 / 3, band='none', row_gap=22, tilt=1.2)}    # thin ivory frames, year and caption over the photo
 
 
@@ -762,7 +762,7 @@ class WideCard(Card):
     'year' (year and place, as the live card) or 'none' (a thin frame, year and caption over the photo's foot)."""
     def __init__(self, pw, ratio, band):
         self.PW, self.PH, self.band = round(pw), round(pw * ratio), band
-        self.B = max(6, round(pw * .04)) if band != 'none' else max(6, round(pw * .028))
+        self.B = max(6, round(pw * .035)) if band != 'none' else max(6, round(pw * .028))
         self.BB = {'caption': round(pw * .46), 'year': round(pw * .3), 'none': 0}[band]
         self.CW, self.CH = self.PW + 2 * self.B, self.PH + self.B + self.BB
         self.style = None
@@ -842,11 +842,11 @@ def compose_wide(photos, day, seed, style):
     cf_a, lh_a = garamond(22, 500), 26
     below = (lay.get('pill', 0) * lh_a + 30) if lay.get('pill') else 0
     probe = WideCard(100, lay['ratio'], lay['band'])
-    k_h = probe.CH / 100                                       # card height per unit of photo width
-    pw_h = (bottom_space - top_space - (nrows - 1) * row_gap - nrows * below) / (nrows * k_h)
-    pw_w = ((W - 2 * M - gap * (cols - 1)) / cols) / (probe.CW / 100)
-    pw = min(pw_h, pw_w, 420)
-    card = WideCard(pw, lay['ratio'], lay['band'])
+    pw_w = min(440, ((W - 2 * M - gap * (cols - 1)) / cols) / (probe.CW / 100))   # as wide as the row allows
+    row_h = (bottom_space - top_space - (nrows - 1) * row_gap - nrows * below) / nrows
+    ph = min(pw_w * lay['ratio'], row_h - (probe.CH - probe.PH) / 100 * pw_w)     # as tall as the rows allow
+    pw = min(pw_w, ph / lay.get('min_ratio', .58))            # a photo is never wider than 16:9 ish, so shrink the card if it would be
+    card = WideCard(pw, ph / pw, lay['band'])
     gap = min(60, (W - 2 * M - cols * card.CW) / max(1, cols - 1))
     pitch = card.CH + below + row_gap
     block = (nrows - 1) * pitch + card.CH + below
