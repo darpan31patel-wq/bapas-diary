@@ -428,6 +428,9 @@ OTHERS = r"(?:(?:Pujya|Sadguru|Shri|Param Pujya)\s+)*[A-Z][\w\-]*(?:\s+[A-Z][\w\
 ABOUT_BAPA = [   # captions about someone else and Bapa, turned round so they say what Bapa does
     (rf"^({OTHERS}) (?:honou?rs?|garlands?) Swamishri(?: with (?:a|an) ([\w ,\-]+))?$", lambda m: f"Receives {('a ' + m.group(2)) if m.group(2) else 'a garland'} from {m.group(1)}"),
     (rf"^({OTHERS}) (?:greets?|welcomes?) Swamishri.*$", lambda m: f"Greets {m.group(1)}"),
+    (rf"^({OTHERS}) (?:presents?|offers?) (?:a |an )?[\w ,\-]*?(?:and|to) hono?u?rs? Swamishri.*$", lambda m: f"Honoured by {m.group(1)}"),
+    (rf"^({OTHERS}) hono?u?rs? Swamishri.*$", lambda m: f"Honoured by {m.group(1)}"),
+    (rf"^({OTHERS}) sings? (thal|kirtans?|dhun|bhajans?)$", lambda m: f"Listens to {lower_group(m.group(1))} sing {m.group(2)}"),
     (rf"^({OTHERS}) (?:offers?|presents?) (?:a |an )?prayers? (?:to|before) Swamishri$", lambda m: f"Listens to a prayer from {lower_group(m.group(1))}"),
     (rf"^({OTHERS}) (?:prays?) before Swamishri$", lambda m: f"Listens to a prayer from {m.group(1)}"),
     (rf"^({OTHERS}) (?:doing|engrossed in|in) (?:the )?(?:unique )?(?:darshan of Swamishri|Swamishri's (?:puja )?darshan|Swamishri's puja)$", lambda m: f"Gives darshan to {lower_group(m.group(1))}"),
@@ -463,7 +466,8 @@ def shorter_versions(text):
     gives 'Inaugurates DVD of Mystic India movie', then 'Inaugurates DVD'."""
     t = re.sub(r'\s*\([^)]*\)', '', text)
     cuts = sorted({m.start() for m in re.finditer(
-        r",| - | in the | in | at | during | for | including | titled | about | to be | after | on his | as | while | from | by | of the | with | on the | to the | and | that | '", t)}, reverse=True)
+        r",| - | in the | in | at | during | for | including | titled | about | to be | after | before | on his | as | while | from | by | of the | of | "
+        r"with | on the | on | to the | to | and | that | who | which | where | via | through | along | near | under | inside | outside | towards | into | '", t)}, reverse=True)
     out = [t] if t != text else []
     for i in cuts:
         cand = t[:i].rstrip(" ,;:-")
@@ -473,14 +477,36 @@ def shorter_versions(text):
     return out
 
 
-SHORT_END = {'the', 'a', 'an', 'of', 'and', 'to', 'with', 'his', 'her', 'their', 'on', 'in', 'at', 'for', 'by', 'from', 'that', 'two', 'new'}
+SHORT_END = {'the', 'a', 'an', 'of', 'and', 'to', 'with', 'his', 'her', 'their', 'on', 'in', 'at', 'for', 'by', 'from', 'that', 'two', 'new',
+             'who', 'which', 'where', 'via', 'as', 'while', 'during', 'before', 'after', 'is', 'are', 'was', 'other', 'various', 'some'}
+MONTH = r'(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?'
+SHORT_WORDS = [   # a few long phrases said shorter in the website's own words, so a caption fits without trailing off
+    (r'\bvideo conference\b', 'video'), (r'\bBAPS Shri Swaminarayan Mandir(s?)\b', r'mandir\1'), (r'\bShri Swaminarayan Mandir\b', 'mandir'),
+    (r'\bmurti-pratishtha (?:ceremony|rituals?)\b', 'murti-pratishtha'),
+]
+
+
+def tidy(c):
+    """Small clean ups of the website's caption: the date (it is always this day), 'the the', Mr and Mrs."""
+    c = re.sub(rf'[\s,]*(?:on |dated )?\b\d{{1,2}}(?:st|nd|rd|th)? {MONTH}(?: \d{{4}})?\s*$', '', c)   # 'Doing mala, 18 Oct 2016'
+    c = re.sub(rf'[\s,]*(?:on |dated )?\b{MONTH} \d{{1,2}}(?:st|nd|rd|th)?(?:,? \d{{4}})?\s*$', '', c)   # 'on October 18, 2016'
+    c = re.sub(r'\b(the|a|an|of|to|in|on|and) \1\b', r'\1', c, flags=re.I)
+    c = re.sub(r'\b(?:Mr|Mrs|Ms|Dr)\.? (?=[A-Z])', '', c)
+    return re.sub(r'\s+', ' ', c).strip(' ,;:')
+
+
+def summarise(c):
+    """The same caption in fewer words: 'Discourses with sadhus via video conference' becomes 'Discourses with sadhus via video'."""
+    for pat, rep in SHORT_WORDS:
+        c = re.sub(pat, rep, c)
+    return c
 
 
 def caption(x):
     """The caption without the name repeated on every card: 'Swamishri blesses all' becomes 'Blesses all'.
     Where dropping the name wouldn't read well ('Swamishri's divine gestures', 'Sadhus honour Swamishri'),
     the name becomes 'Bapa'."""
-    c = re.sub(r'\s+', ' ', x.get('c') or '').strip()
+    c = tidy(re.sub(r'\s+', ' ', x.get('c') or '').strip())
     c = about_bapa(c)
     m = re.match(rf'^{NAME}[\s,]+(.+)$', c)
     if m and not re.match(r"(and|with|along|together|'s|’s)\b", m.group(1), re.I):
@@ -498,12 +524,18 @@ def wrap(d, text, f, maxw, lines, shorten=True):
     words, out = text.split(), []
     while words and len(out) < lines:
         line = words.pop(0)
+        if '-' in line[1:-1] and d.textlength(line, font=f) > maxw:   # 'mantra-pushpanjali' breaks after its hyphen
+            head, _, tail = line.rpartition('-')
+            while '-' in head[1:] and d.textlength(head + '-', font=f) > maxw:
+                head, _, more = head.rpartition('-'); tail = more + '-' + tail
+            line = head + '-'; words.insert(0, tail)
         while words and d.textlength(line + ' ' + words[0], font=f) <= maxw:
             line += ' ' + words.pop(0)
         out.append(line)
     cut = bool(words) or any(d.textlength(l, font=f) > maxw for l in out)
-    if cut and shorten:   # say less rather than trail off: cut the caption at a natural break so it fits
-        for t in shorter_versions(text):
+    if cut and shorten:   # say less rather than trail off: say it shorter, or cut the caption at a natural break so it fits
+        short = summarise(text)
+        for t in ([short] if short != text else []) + shorter_versions(short):
             fits = wrap(d, t, f, maxw, lines, shorten=False)
             if not fits[-1].endswith('…'):
                 return fits
@@ -721,6 +753,7 @@ LAYOUT = {'H2': dict(M=70, min_gap=14, row_gap=40, lines=2, cap=360, top=212, bo
 
 
 def under_card(x, card, gap, f, lh, style, rnd):
+    cf_size = f.size
     """Style F: a small ivory paper tag on a short thread under the polaroid.
     Style H: ivory caption on a soft dark plate under the polaroid."""
     probe = ImageDraw.Draw(Image.new('L', (1, 1)))
@@ -739,7 +772,16 @@ def under_card(x, card, gap, f, lh, style, rnd):
         for i, line in enumerate(lines):
             d.text((cx, 24 + 14 + (i + .8) * lh), line, font=f, fill=YEAR_C2, anchor='ms')
         return im.rotate(rnd.uniform(-2.5, 2.5), resample=Image.BICUBIC, expand=True), 2
-    lines = wrap(probe, caption(x), f, card.CW + min(gap, 30) - 50, LAYOUT.get(style, {}).get('lines', 3))
+    n = LAYOUT.get(style, {}).get('lines', 3)
+    for shrink, extra in ((1, 0), (.9, 0), (.82, 0), (.82, 1)):   # a caption that won't fit whole is set a touch smaller, then given one more line, before it is ever cut
+        f2 = garamond(f.size * shrink, 500) if shrink < 1 else f
+        lines = wrap(probe, caption(x), f2, card.CW + min(gap, 30) - 40, n + extra)
+        if not lines[-1].endswith('…'):
+            f = f2
+            break
+    else:
+        lines = wrap(probe, caption(x), f, card.CW + min(gap, 30) - 40, n)
+    lh = lh * f.size / cf_size
     tw = max(probe.textlength(l, font=f) for l in lines) + 34
     th = len(lines) * lh + 16
     im = Image.new('RGBA', (int(tw), int(th)), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
@@ -749,6 +791,7 @@ def under_card(x, card, gap, f, lh, style, rnd):
     return im, 14
 
 
+CAPTION_SIZE = 21   # caption text under each frame (was 24; smaller since 18 Oct 2026 so whole captions fit, people zoom in)
 LIVE_STYLE = 'H2'   # the daily picture: caption centred under each card (Darpan's choice, 16 Oct 2026)
 
 
@@ -765,7 +808,7 @@ def compose(photos, day, seed, style=None, look=None):
     top_space, bottom_space = lay.get('top', 222), lay.get('bottom', H - 128) - list_h
     row_gap = lay.get('row_gap', 58)
     band = {'C': .52, 'E': .6, 'G': .56}.get(style, .32)
-    cf_a = garamond(24, 500); lh_a = 29
+    cf_a = garamond(CAPTION_SIZE, 500); lh_a = round(CAPTION_SIZE * 1.2)
     below = {'A': 3 * lh_a + 16, 'F': 3 * lh_a + 52, 'H': 3 * lh_a + 34}.get(style, 0)   # room under each card
     if style in LAYOUT:
         below = lay['lines'] * lh_a + 30
