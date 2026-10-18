@@ -43,14 +43,16 @@ def fetch(url, tries=3, timeout=25):
 
 
 def vicharan_items(path, mmdd, place, per_caption=2):
-    """archive/vicharan/MM-DD.txt: '#year album prefix|place' lines, then 'ids|caption' lines (lower case caption = 'Swamishri ...')."""
-    out, y = [], None
+    """archive/vicharan/MM-DD.txt: '#year album prefix|place|date' lines (date only for a nearby day of the same trip),
+    then 'ids|caption' lines (lower case caption = 'Swamishri ...')."""
+    out, y, when = [], None, None
     for line in open(path, encoding='utf-8'):
         line = line.rstrip('\n')
         if line.startswith('# ') or not line.strip():
             continue
         if line.startswith('#'):
-            head, _, where = line[1:].partition('|')
+            head, _, rest = line[1:].partition('|')
+            where, _, when = rest.partition('|')
             parts = head.split(' ')
             y, album, prefix = int(parts[0]), parts[1], (parts[2] if len(parts) > 2 else '')
             place.setdefault(y, where)
@@ -59,7 +61,7 @@ def vicharan_items(path, mmdd, place, per_caption=2):
         if c[:1].islower() or c[:1] in "',":
             c = 'Swamishri' + ('' if c[:1] in "'," else ' ') + c
         for i in ids.split(',')[:per_caption]:
-            out.append({'y': y, 'd': f'{y}-{mmdd}', 'p': place.get(y, ''), 'c': c,
+            out.append({'y': y, 'd': when or f'{y}-{mmdd}', 'p': place.get(y, ''), 'c': c,
                         'i': f'https://www.baps.org/Data/Sites/1/Media/GalleryImages/{album}/WebImages/{prefix}{i}.jpg'})
     return out
 
@@ -782,7 +784,7 @@ def main():
     if os.path.exists(combed):
         have = {x['i'] for x in items}
         place = {x['y']: x.get('p', '') for x in items}
-        extra = vicharan_items(combed, f'{day:%m-%d}', place)
+        extra = [x for x in vicharan_items(combed, f'{day:%m-%d}', place) if x['y'] < day.year]   # past years only
         items += [x for x in extra if x['i'] not in have]
         print(f'  + {len(items) - len(have)} more captioned photos from the vicharan pages')
     print(f'{day}: {len(items)} photos across {len({x["y"] for x in items})} years')
