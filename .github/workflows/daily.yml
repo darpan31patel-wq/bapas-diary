@@ -97,10 +97,10 @@ jobs:
             echo "Not today's date, so it stays on this run's page and today's picture is left alone"; exit 0
           fi
           gh release view today >/dev/null 2>&1 || gh release create today --title "Today's picture" \
-            --notes "Rebuilt every morning. Your Google script collects bapas-diary.jpg from here at 8:30am."
+            --notes "Rebuilt every morning. Your Google script collects bapas-diary.png from here at 8:30am."
           gh release edit today --title "Today's picture" \
-            --notes "Rebuilt every morning. Your Google script collects bapas-diary.jpg from here at 8:30am."
-          gh release upload today out/bapas-diary.jpg out/date.txt --clobber
+            --notes "Rebuilt every morning. Your Google script collects bapas-diary.png from here at 8:30am."
+          gh release upload today out/bapas-diary.png out/bapas-diary.jpg out/date.txt --clobber
 
       - name: Test branches keep their picture in preview/ (nothing reaches Google Drive)
         if: github.ref != 'refs/heads/main'
@@ -108,9 +108,11 @@ jobs:
           mkdir -p preview
           if [ -d out/compare ]; then cp out/compare/* preview/; else
           cp out/bapas-diary.jpg "preview/$(cat out/date.txt).jpg"
+          cp out/bapas-diary.png "preview/$(cat out/date.txt).png"
           cp out/summary.txt "preview/$(cat out/date.txt).txt"; fi
           for f in out/all-photos.txt out/album-check.txt; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-$(basename "$f")"; done
-          for f in out/caption-*.jpg; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-$(basename "$f")"; done
+          for f in out/caption-*.jpg out/caption-*.png; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-$(basename "$f")"; done
+          for d in out/photos-*; do [ -d "$d" ] && rm -rf "preview/$(cat out/date.txt)-$(basename "$d")" && cp -r "$d" "preview/$(cat out/date.txt)-$(basename "$d")"; done
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add preview

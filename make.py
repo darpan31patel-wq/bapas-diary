@@ -4,14 +4,14 @@
     python make.py                     today's date in London
     python make.py --date 2026-10-12   any date (only the day and month matter)
 
-Writes out/bapas-diary.jpg (2796 x 1290, iPhone landscape), out/date.txt and out/summary.txt.
+Writes out/bapas-diary.png and .jpg (2796 x 1290, iPhone landscape), out/date.txt and out/summary.txt.
 """
 import argparse, collections, concurrent.futures, datetime, hashlib, json, os, random, re, threading, time, urllib.request
 from zoneinfo import ZoneInfo
 
 import cv2
 import numpy as np
-from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_URL = 'https://darshan-screensaver.pages.dev/memories/{mmdd}.json'
@@ -43,23 +43,28 @@ def fetch(url, tries=3, timeout=25):
 
 
 def vicharan_items(path, mmdd, place, per_caption=2):
-    """archive/vicharan/MM-DD.txt: '#year album prefix|place' lines, then 'ids|caption' lines (lower case caption = 'Swamishri ...')."""
-    out, y = [], None
-    for line in open(path, encoding='utf-8'):
-        line = line.rstrip('\n')
+    """archive/vicharan/MM-DD.txt: '#year album prefix|place|date' lines (date only for a nearby day of the same trip),
+    then 'ids|caption' lines (lower case caption = 'Swamishri ...')."""
+    out, y, when = [], None, None
+    lines = [l.rstrip('\n') for l in open(path, encoding='utf-8')]
+    for k, line in enumerate(lines):
         if line.startswith('# ') or not line.strip():
             continue
         if line.startswith('#'):
-            head, _, where = line[1:].partition('|')
+            head, _, rest = line[1:].partition('|')
+            where, _, when = rest.partition('|')
             parts = head.split(' ')
             y, album, prefix = int(parts[0]), parts[1], (parts[2] if len(parts) > 2 else '')
             place.setdefault(y, where)
             continue
         ids, c = line.split('|', 1)
-        if c[:1].islower() or c[:1] in "',":
-            c = 'Swamishri' + ('' if c[:1] in "'," else ' ') + c
+        if c.endswith('...') and k + 1 < len(lines) and '|' in lines[k + 1] and not lines[k + 1].startswith('#'):
+            nxt = lines[k + 1].split('|', 1)[1]                           # 'sanctifies water...' + 'Swamishri with the holy relics' carry on as one sentence
+            c = c[:-3].rstrip() + ' ' + re.sub(rf'^{NAME}\s+', '', nxt)
+        if c[:1].islower():
+            c = 'Swamishri ' + c
         for i in ids.split(',')[:per_caption]:
-            out.append({'y': y, 'd': f'{y}-{mmdd}', 'p': place.get(y, ''), 'c': c,
+            out.append({'y': y, 'd': when or f'{y}-{mmdd}', 'p': where or place.get(y, ''), 'c': c,   # the album's own place (2017 has Paris and London albums)
                         'i': f'https://www.baps.org/Data/Sites/1/Media/GalleryImages/{album}/WebImages/{prefix}{i}.jpg'})
     return out
 
@@ -116,13 +121,36 @@ def bapa_face(im, when):
             sim = float(ref @ (e / np.linalg.norm(e)))
             if sim > best_sim:
                 best, best_sim = tuple(float(v) * k for v in f[:4]), sim
+                LAST_FRONT[0] = front_view(f)
     return (best, best_sim) if best_sim >= SAME_PERSON else (None, best_sim)
+
+
+LAST_FRONT = [1.0]   # how face-on the face bapa_face last recognised was (1 looking at the camera, 0 a profile)
+
+
+def front_view(f):
+    """0 to 1 from the detector's landmarks: the eyes are far apart on a face seen from the front and
+    close together on a profile, and the nose sits between them when he looks at the camera."""
+    x, y, w, h, rx, ry, lx, ly, nx, ny = [float(v) for v in f[:10]]
+    eyes = abs(lx - rx) / max(w, 1)                                 # about .45 face on, under .2 side on
+    centred = 1 - min(1, abs(nx - (lx + rx) / 2) / max(abs(lx - rx) / 2, 1))
+    return max(0, min(1, (eyes - .18) / .25)) * (.5 + .5 * centred)
 
 
 DOING = re.compile(r'arti|puja|pujan|bless|greet|shower|lights?\b|sanctif|plays?|walk|pradakshina|parikrama|reads?|offer|appl|'
                    r'address|discourse|mala|meets?|inaugurat|pratishtha|ritual|perform|bows|thal|sprinkl|writ|garland|honou?r|'
                    r'welcom|darshan|meditat|pray|arriv|visit|abhishek|lamp|tilak', re.I)
 JUST_A_FACE = re.compile(r'divine|jovial|\bmood\b|^\s*(HH|Param Pujya)?\s*(Pramukh|Mahant) Swami( Maharaj)?\s*$', re.I)
+# a one-off moment worth keeping as a wide shot even if Bapa comes out small in it (Darpan, 18 Oct 2026: "if it's special keep it")
+SPECIAL = re.compile(r'pratishtha|inaugurat|annakut|diwali|new year|janm|jayanti|diksha|abhishek|bhumi|foundation|shilanyas|'
+                     r'mahotsav|celebrat|festival|procession|rath|yagna|mahapuja|chopda|rangoli|dandiya|\braas\b|\bras\b|'
+                     r'instrument|surando|drum|president|prime minister|governor|congress|minister|mayor|ambassador|'
+                     r'pilgrim|on foot|airport|farewell|departs|flag|cake|balloon|boat|horse|elephant|tractor|'
+                     r'cricket|football|plant|tree|cow|children|balaks?\b|kids?\b', re.I)
+ACTION_KEEP = .72     # an action shot must keep at least this much of the photo inside the frame, or what Bapa does gets cut off
+NICE_MIN = 2.0        # the action score a photo needs before it beats a close darshan
+CLOSE_SHARE = .45     # about this share of the years are close darshans of Bapa's face (Darpan, 18 Oct 2026: 9 then 3 more of 27)
+CLOSE_MIN_FACE = 64   # pixels: a face smaller than this can't be blown up into a close darshan
 
 
 BAPA_WORDS = re.compile(r"\b(HH|H\.H\.|Param Pujya|P\.P\.|Pramukh|Mahant|Swami|Swamishri|Maharaj|Bapa|his|the|a|an|of|to|and|in|on|at|with|by|for|all)\b", re.I)
@@ -194,36 +222,50 @@ def workings_sheet(day):
     tw, th, pad, lab = 330, 250, 24, 260
     rows = [w for w in WORKINGS if w['rows']]
     cols = max(len(w['rows']) for w in rows)
-    Wd, Hd = lab + cols * (tw + pad) + pad, 150 + len(rows) * (th + 120)
+    Wd, Hd = lab + cols * (tw + pad) + pad, 150 + len(rows) * (th + 144)
     img = Image.new('RGB', (Wd, Hd), (40, 10, 18)); d = ImageDraw.Draw(img)
     d.text((Wd / 2, 70), f'{day.day} {day:%B}: how each year was chosen', font=garamond(64), fill=GOLD, anchor='mm')
     cf, sf, yf = garamond(22, 500), arimo_bold(18), garamond(54, 600)
     for r, w in enumerate(rows):
-        y0 = 150 + r * (th + 120)
+        y0 = 150 + r * (th + 144)
         d.text((pad, y0 + 20), str(w['year']), font=yf, fill=GOLD, anchor='la')
         d.text((pad, y0 + 92), w['mode'].upper(), font=sf, fill=(226, 184, 104), anchor='la')
         for c, (score, x, status) in enumerate(w['rows']):
             x0 = lab + c * (tw + pad)
-            img.paste(crop_to(x['im'], x['face'], tw, th), (x0, y0))
+            img.paste(crop_to(x['im'], x['face'], tw, th, x.get('crop', 'frame')), (x0, y0))
             tag = 'CHOSEN' if status == 'chosen' else ('2ND CHOICE' if x is w.get('second') else status.upper())
             colour = GOLD if status == 'chosen' else (CAPTION_IVORY if tag == '2ND CHOICE' else (190, 150, 140))
             if status == 'chosen' or tag == '2ND CHOICE':
                 d.rectangle((x0 - 4, y0 - 4, x0 + tw + 3, y0 + th + 3), outline=colour, width=4)
-            face = f'Bapa {x["sim"]:.2f}' if x['face'] else 'Bapa not found'
+            face = f'Bapa {x["sim"]:.2f} front {x.get("front", 0):.1f}' if x['face'] else 'Bapa not found'
+            how = f'shown {x.get("crop", "")}, frame keeps {round(100 * x.get("keep", 1))}%' + ('  SPECIAL' if x.get('special') else '') + ('  nice action' if x.get('nice') else '')
             d.text((x0, y0 + th + 10), f'{tag}  score {score:.2f}  {face}'.strip(), font=sf, fill=colour, anchor='la')
+            d.text((x0, y0 + th + 34), how, font=sf, fill=colour, anchor='la')
             for i, line in enumerate(wrap(d, caption(x) or '(no caption)', cf, tw, 2)):
-                d.text((x0, y0 + th + 36 + i * 26), line, font=cf, fill=CAPTION_GOLD, anchor='la')
+                d.text((x0, y0 + th + 60 + i * 26), line, font=cf, fill=CAPTION_GOLD, anchor='la')
     return img
 
 
-def pick_one_per_year(items, seed, unique=False):
-    """Per year, a photo where Bapa is recognised. Most years show what he is doing (arti, puja, blessing,
-    greeting) with him at a medium size; about one year in three is a close darshan of his face, spread out.
-    No two years share the same caption: when a year's best photo repeats an earlier year's caption
-    (three years of 'reads the Shikshapatri'), its next best photo with a different caption is used, and if
-    it has none the year is left out.
-    Years where he can't be recognised in any photo are left out, unless that would leave fewer than five;
-    then they're kept and shown whole so he isn't cropped out."""
+def frame_keep(im, face, fa):
+    """How much of the photo (0 to 1) a frame of aspect fa (width / height) keeps when it fills the frame
+    around Bapa: a 3:2 photo in a tall 0.69 frame keeps 0.46, so whatever Bapa is doing beside him gets cut off."""
+    iw, ih = im.size
+    return min(1, (ih * fa) / iw) if iw / ih > fa else min(1, (iw / fa) / ih)
+
+
+def pick_one_per_year(items, seed, unique=False, aspect=.69):
+    """Per year, a photo where Bapa is recognised, chosen by Darpan's rule (18 Oct 2026): a photo is either a
+    really nice action shot or a close up of Bapa. An action shot only counts when what he is doing stays in
+    the frame (the frame keeps >= ACTION_KEEP of the photo), he is not tiny, and the caption says he is doing
+    something; a special one-off moment (pratishtha, festival, visitor) is kept even if the frame would cut
+    it, and is then shown whole. Otherwise the year is a close darshan: a tight crop on his head and
+    shoulders, which needs the face to be big enough to enlarge. His head is never cut. Years with a really
+    nice action shot take it (close ups still get a turn every third year when the year has a good one),
+    the rest are close ups, so a plain day gives darshan rather than a half-cut action.
+    No two years share the same caption: when a year's best photo repeats an earlier year's caption its next
+    best photo with a different caption is used. Years where he can't be recognised in any photo are left out,
+    unless that would leave fewer than five; then they're kept and shown whole so he isn't cropped out.
+    aspect is the frame's width / height (0.69 for the tall live cards, 1.33 for wide ones)."""
     rnd = random.Random(seed)
     cands = {}
     for x in items:
@@ -234,21 +276,33 @@ def pick_one_per_year(items, seed, unique=False):
         except Exception:
             continue
         face, sim = bapa_face(im, x.get('d', str(x['y'])))
-        x = dict(x, im=im, face=face, sim=sim)
+        front = LAST_FRONT[0] if face else 0
+        x = dict(x, im=im, face=face, sim=sim, front=round(front, 2))
         r = face[3] / im.height if face else 0
         c = x.get('c') or ''
+        keep = frame_keep(im, face, aspect)
+        special = bool(SPECIAL.search(c))
+        subject = bapa_is_subject(c)
+        doing = bool(DOING.search(c)) and not JUST_A_FACE.search(c)
+        close_ok = bool(face) and face[3] >= CLOSE_MIN_FACE and front >= .35
         jitter = rnd.uniform(0, .04) + (1.2 if unique and face and unique_caption(c) else 0)
-        s_close = (1 + min(r, .35) + sim if face else 0) + jitter
-        s_doing = (1 + sim + .6 * max(0, 1 - abs(r - .18) / .15) + (.4 if DOING.search(c) and not JUST_A_FACE.search(c) else 0)
-                   - (.5 if r < .1 else 0) - (.6 if not bapa_is_subject(c) else 0)   # Bapa small in the frame, or not the subject
-                   if face else 0) + jitter
-        s_close -= .6 if face and not bapa_is_subject(c) else 0
+        # a close darshan wants his face turned to the camera: a profile or a bowed head loses most of a point
+        s_close = (1 + min(r, .35) + sim + (.2 if JUST_A_FACE.search(c) else 0) + .9 * (front - .6) if face else -5) + jitter
+        s_close -= (.6 if face and not subject else 0) + (1.5 if face and not close_ok else 0)
+        s_doing = (1 + sim + .6 * max(0, 1 - abs(r - .18) / .15) + (.4 if doing else 0) + (.3 if special else 0)
+                   - (.5 if r < .1 else 0) - (.6 if not subject else 0)             # Bapa small in the frame, or not the subject
+                   - (0 if keep >= ACTION_KEEP else (.3 if special else 1.5))       # what he is doing would be cut off
+                   if face else -5) + jitter
+        # a really nice action shot: he is doing something, he is the subject, not small, nothing cut off (or a special
+        # moment), and it scores well; anything less and the year is better served by a close darshan
+        nice = bool(face) and doing and subject and r >= .13 and (keep >= ACTION_KEEP or special) and s_doing - jitter >= NICE_MIN
+        x.update(keep=round(keep, 2), special=special, nice=nice, close_ok=close_ok)
         ALL.append((x['y'], round(sim, 2), bool(face), caption(x), x['i']))
         lst = cands.setdefault(x['y'], [])
         lst.append((s_close, s_doing, x))
         if len(lst) > 16:   # keep memory down: only the best few of each kind stay
-            keep = {id(v) for v in sorted(lst, key=lambda v: -v[0])[:8] + sorted(lst, key=lambda v: -v[1])[:8]}
-            lst[:] = [v for v in lst if id(v) in keep]
+            keep_ids = {id(v) for v in sorted(lst, key=lambda v: -v[0])[:8] + sorted(lst, key=lambda v: -v[1])[:8]}
+            lst[:] = [v for v in lst if id(v) in keep_ids]
     years = sorted(cands)
     if sum(1 for y in years if any(v[2]['face'] for v in cands[y])) >= 5:
         years = [y for y in years if any(v[2]['face'] for v in cands[y])]
@@ -259,48 +313,84 @@ def pick_one_per_year(items, seed, unique=False):
         for j, v in enumerate(cands[y]):
             k = keys[y][j]
             others = sum(1 for oy in cands if oy != y and any(same_caption(k, ok) for ok in keys[oy]))
-            if others:
-                cands[y][j] = (v[0] - .25 * others, v[1] - .25 * others, v[2])
+            if others:   # capped: with 25 years on a day 'blesses the assembly' would otherwise lose several points
+                cands[y][j] = (v[0] - min(.5, .25 * others), v[1] - min(.5, .25 * others), v[2])
     for y, want in PICKS.get(seed, {}).items():   # Darpan's own choice for a year wins outright
         for j, v in enumerate(cands.get(int(y), [])):
             if want.lower() in (v[2].get('c') or '').lower():
                 cands[int(y)][j] = (v[0] + 100, v[1] + 100, v[2])
+
+    def with_crop(v, k):
+        """The photo as it would be shown in that mode: 'close' tight on the head, 'frame' filling the frame,
+        'whole' the entire photo (a special wide moment, or no face found)."""
+        x = v[2]
+        if not x['face']:
+            return dict(x, crop='whole')
+        if k == 0:
+            return dict(x, crop='close' if x['close_ok'] else 'frame')
+        return dict(x, crop='frame' if x['keep'] >= ACTION_KEEP else 'whole')
+
+    # which years are close darshans: every third year when it has a good close up, then more until about a third
+    # of the years are close ups (Darpan, 18 Oct 2026: he wanted 4 or 5 more faces on a 27 year day), spread out
+    has_nice = {y: any(v[2]['nice'] for v in cands[y]) for y in years}
+    has_close = {y: any(v[2]['close_ok'] for v in cands[y]) for y in years}
+    modes = {y: 1 if has_nice[y] and not (i % 3 == 1 and has_close[y]) else (0 if has_close[y] else 1) for i, y in enumerate(years)}
+    target = round(len(years) * CLOSE_SHARE)
+    best_close = {y: max(v[0] for v in cands[y]) for y in years}
+    while sum(1 for y in years if modes[y] == 0) < target:
+        spare = [y for y in years if modes[y] == 1 and has_close[y]]
+        if not spare:
+            break
+        def lonely(y):   # prefer a year whose neighbours are action shots, so the faces are spread out
+            i = years.index(y)
+            return sum(1 for j in (i - 1, i + 1) if 0 <= j < len(years) and modes[years[j]] == 0)
+        modes[min(spare, key=lambda y: (lonely(y), -best_close[y]))] = 0
     picked, used = [], []
     WORKINGS.clear()
     for i, y in enumerate(years):
-        k = 0 if i % 3 == 1 else 1
+        k = modes[y]
         ranked = sorted(cands[y], key=lambda v: -v[k])
-        if ranked[0][2]['face']:
+        if any(v[2]['face'] for v in ranked):   # photos where Bapa is recognised always come before ones where he isn't
             ranked = [v for v in ranked if v[2]['face']]
+            if k == 1:   # only really nice action shots count as action; the rest of the year's photos follow as close ups
+                ranked = [v for v in ranked if v[2]['nice']] + [v for v in sorted(ranked, key=lambda v: -v[0]) if not v[2]['nice']]
         w = dict(year=y, mode='close darshan' if k == 0 else 'doing something', rows=[], pick=None)
         for v in ranked:
-            key = caption_key(caption(v[2]))
+            mode = 0 if (k == 0 or not v[2]['nice']) else 1
+            x = with_crop(v, mode)
+            key = caption_key(caption(x))
             if w['pick'] is None and not any(same_caption(key, u) for u in used):
-                picked.append(v[2]); used.append(key); w['pick'] = v[2]
-                w['rows'].append((v[k], v[2], 'chosen'))
+                picked.append(x); used.append(key); w['pick'] = x
+                w['rows'].append((v[mode], x, 'chosen'))
             elif len(w['rows']) < 5:
-                w['rows'].append((v[k], v[2], 'repeats an earlier caption' if w['pick'] is None else ''))
+                w['rows'].append((v[mode], x, 'repeats an earlier caption' if w['pick'] is None else ''))
         WORKINGS.append(w)
     if len(picked) < 5:   # too few left once repeats are skipped: fall back to the plain best per year
-        picked = [sorted(cands[y], key=lambda v: -v[0 if i % 3 == 1 else 1])[0][2] for i, y in enumerate(years)]
+        picked = [with_crop(sorted(cands[y], key=lambda v: -v[1])[0], 1) for y in years]
     return picked
 
 
-def crop_to(im, face, w, h):
-    """A w:h window keeping Bapa's whole head in view (face about a third of the way down).
-    Without a recognised face the whole photo is shown, softened into its own colours at the edges."""
+def crop_to(im, face, w, h, mode='frame', at=.38):
+    """A w:h window on the photo. 'frame': fills the frame around Bapa (face `at` of the way down).
+    'close': a tight darshan, his head and shoulders filling the frame. 'whole', or no recognised face:
+    the entire photo, softened into its own colours at the edges. His whole head stays in view in every mode."""
     iw, ih = im.size
-    if not face:
+    if not face or mode == 'whole':
         fill = im.resize((w, h), Image.LANCZOS).filter(ImageFilter.GaussianBlur(14))
         fill = Image.blend(fill, Image.new('RGB', (w, h), MAROON_OUT), .3)
         whole = im.copy(); whole.thumbnail((w, h), Image.LANCZOS)
         fill.paste(whole, ((w - whole.width) // 2, (h - whole.height) // 2))
         return fill
-    cw, ch = (ih * w / h, ih) if iw / ih > w / h else (iw, iw * h / w)
     fx, fy, fw, fh = face
-    head = (fx - .35 * fw, fy - .75 * fh, fx + 1.35 * fw, fy + 1.4 * fh)   # top of the head down to the chin and neck
-    x0, y0 = fx + fw / 2 - cw / 2, fy + fh / 2 - ch * .38
+    cw, ch = (ih * w / h, ih) if iw / ih > w / h else (iw, iw * h / w)
+    if mode == 'close':   # the face about 30% of the window's height, never bigger than the photo allows
+        ch = min(ch, fh / (.38 if w > h else .30)); cw = min(cw, ch * w / h); ch = cw * h / w   # a wide frame is cropped tighter
+    head = (fx - .35 * fw, fy - .5 * fh, fx + 1.35 * fw, fy + 1.4 * fh)    # top of the head (the detector's box starts at the brow) down to the chin and neck
+    if head[3] - head[1] > ch * .98 or head[2] - head[0] > cw * .98:   # a wide window on a close portrait: show the whole photo
+        return crop_to(im, None, w, h)
+    x0, y0 = fx + fw / 2 - cw / 2, fy + fh / 2 - ch * ((.42 if h >= w else .36) if mode == 'close' else at)   # less dead space above his head in a wide frame
     y0 = max(y0, head[3] - ch); y0 = min(y0, head[1])                        # never slice through the head
+    y0 = max(y0, head[1] - ch * (.07 if mode == 'close' else .14))            # and not much dead space above it (Darpan, 18 Oct 2026)
     x0 = min(max(0, x0), iw - cw); y0 = min(max(0, y0), ih - ch)
     return im.crop((x0, y0, x0 + cw, y0 + ch)).resize((w, h), Image.LANCZOS)
 
@@ -348,29 +438,67 @@ def thin_rule(dr, y, x0, x1, fade_to_left):
         dr.line((xp, y, xp, y + 1), fill=tuple(round(m + (g - m) * a) for m, g in zip(MAROON_OUT, GOLD_SOFT)))
 
 
-def header(img, title, subtitle):
-    """Big bold gold title, then a smaller spaced capital line between two thin gold rules."""
+def header(img, title, subtitle, compact=False):
+    """Big bold gold title, then a smaller spaced capital line between two thin gold rules.
+    compact: the same, a little smaller, fitting above cards that start at y=156."""
     dr = ImageDraw.Draw(img)
-    tf = garamond(118)
+    tf = garamond(98 if compact else 118)
     tw = dr.textlength(title, font=tf)
-    gold_text(img, ((W - tw) / 2, 4), title, tf)
-    sf, track = garamond(40, 600), 9
+    gold_text(img, ((W - tw) / 2, -2 if compact else 4), title, tf)
+    sf, track = garamond(32 if compact else 40, 600), 9
     sub = subtitle.upper()
     sw = spaced(dr, sub, sf, track)
-    sy = 142
+    sy = 114 if compact else 142
     draw_spaced(dr, (W - sw) / 2, sy, sub, sf, track, (240, 214, 160))
     mid = sy + 24
     thin_rule(dr, mid, (W - sw) / 2 - 50 - 330, (W - sw) / 2 - 50, True)
     thin_rule(dr, mid, (W + sw) / 2 + 50, (W + sw) / 2 + 50 + 330, False)
 
 
-def footer(img):
+def header_one(img, title, subtitle):
+    """'18 October in Bapa\u2019s Diary' as one gold title, a thin gold rule either side running through the middle of the letters."""
     dr = ImageDraw.Draw(img)
-    f = garamond(40, 500)
+    tf = garamond(84)
+    text = f'{title} {subtitle}'
+    tw = dr.textlength(text, font=tf)
+    top = 30
+    gold_text(img, ((W - tw) / 2, top), text, tf)
+    box = dr.textbbox(((W - tw) / 2, top), 'OB', font=tf)                   # capitals: the rule sits at their middle
+    mid = (box[1] + box[3]) / 2
+    pad, rule = 44, 300
+    thin_rule(dr, mid, (W - tw) / 2 - pad - rule, (W - tw) / 2 - pad, True)
+    thin_rule(dr, mid, (W + tw) / 2 + pad, (W + tw) / 2 + pad + rule, False)
+
+
+def header_line(img, title, subtitle):
+    """One line across the top: the title in the middle, 'IN BAPA'S DIARY' to its left and the footer line to its
+    right, each between the title and a short gold rule, so the photos get the height instead of a footer."""
+    dr = ImageDraw.Draw(img)
+    tf, sf, ff = garamond(92), garamond(34, 600), garamond(34, 500)
+    track, rule, pad = 7, 120, 48
+    sub = subtitle.upper()
+    tw, sw, fw = dr.textlength(title, font=tf), spaced(dr, sub, sf, track), dr.textlength(FOOTER, font=ff)
+    base = 120
+    gold_text(img, ((W - tw) / 2, base - 92 * .95 + 8), title, tf)
+    mid = base - 12
+    sx = (W - tw) / 2 - pad - sw                                           # subtitle ends a pad before the title
+    draw_spaced(dr, sx, base - sf.getmetrics()[0] - 1, sub, sf, track, (240, 214, 160))
+    thin_rule(dr, mid, sx - pad - rule, sx - pad, True)
+    diamond(dr, sx - pad - rule - 14, mid + 1, 5, GOLD)
+    fx = (W + tw) / 2 + pad                                                # footer starts a pad after the title
+    dr.text((fx, base), FOOTER, font=ff, fill=(226, 184, 104), anchor='ls')
+    thin_rule(dr, mid, fx + fw + pad, fx + fw + pad + rule, False)
+    diamond(dr, fx + fw + pad + rule + 14, mid + 1, 5, GOLD)
+
+
+def footer(img, small=False):
+    dr = ImageDraw.Draw(img)
+    f = garamond(26 if small else 40, 500)
     w = dr.textlength(FOOTER, font=f)
-    y = H - 88
+    y = H - 42 if small else H - 88
     dr.text(((W - w) / 2, y), FOOTER, font=f, fill=(226, 184, 104))
-    mid = y + 27
+    box = dr.textbbox(((W - w) / 2, y), 'Dp', font=f)                      # the rules run through the middle of the letters
+    mid = (box[1] + box[3]) / 2 - f.size * .06
     thin_rule(dr, mid, (W - w) / 2 - 40 - 220, (W - w) / 2 - 40, True)
     thin_rule(dr, mid, (W + w) / 2 + 40, (W + w) / 2 + 40 + 220, False)
     diamond(dr, (W - w) / 2 - 28, mid + 1, 5, GOLD); diamond(dr, (W + w) / 2 + 28, mid + 1, 5, GOLD)
@@ -422,10 +550,13 @@ def jali_edge(img, R=54):
 NAME = r"(?:(?:H\.?\s?H\.?|Param Pujya|P\.?\s?P\.?)\s+)?(?:Pramukh Swami(?: Maharaj)?|Mahant Swami(?: Maharaj)?|Swamishri|Bapa)"
 
 
-OTHERS = r"(?:(?:Pujya|Sadguru|Shri|Param Pujya)\s+)*[A-Z][\w\-]*(?:\s+[A-Z][\w\-]*)*(?:\s+Swami)?|(?i:(?:Senior\s+)?(?:swamis|sadhus|devotees|children|youths|kishores|students|volunteers|karyakars|sadhaks)(?:,? (?:and|parshads|sadhaks|swamis|devotees)+)*)(?:\s+from\s+[\w ,]+?)?|An?\s+\w+(?:\s+from\s+[\w ,]+?)?"
+OTHERS = r"(?:(?:Pujya|Sadguru|Shri|Param Pujya)\s+)*[A-Z][\w\-]*(?:\s+[A-Z][\w\-]*)*(?:\s+Swami)?|(?i:(?:Senior\s+)?(?:swamis|sadhus|devotees|bhaktas|children|youths|kishores|students|volunteers|karyakars|sadhaks)(?:,? (?:and|parshads|sadhaks|swamis|devotees|bhaktas)+)*)(?:\s+from\s+[\w ,]+?)?|An?\s+\w+(?:\s+from\s+[\w ,]+?)?"
 ABOUT_BAPA = [   # captions about someone else and Bapa, turned round so they say what Bapa does
-    (rf"^({OTHERS}) (?:honou?rs?|garlands?) Swamishri(?: with (?:a|an) ([\w ,\-]+))?$", lambda m: f"Receives {('a ' + m.group(2)) if m.group(2) else 'a garland'} from {m.group(1)}"),
-    (rf"^({OTHERS}) (?:greets?|welcomes?) Swamishri.*$", lambda m: f"Greets {m.group(1)}"),
+    (rf"^({OTHERS}) (?:honou?rs?|garlands?) Swamishri(?: with (?:a|an) ([\w ,\-]+))?$", lambda m: f"Receives {('a ' + m.group(2)) if m.group(2) else 'a garland'} from {lower_group(m.group(1))}"),
+    (rf"^({OTHERS}) (?:greets?|welcomes?) Swamishri.*$", lambda m: f"Greets {lower_group(m.group(1))}"),
+    (rf"^({OTHERS}) (?:presents?|offers?) (?:a |an )?[\w ,\-]*?(?:and|to) hono?u?rs? Swamishri.*$", lambda m: f"Honoured by {lower_group(m.group(1))}"),
+    (rf"^({OTHERS}) hono?u?rs? Swamishri.*$", lambda m: f"Honoured by {lower_group(m.group(1))}"),
+    (rf"^({OTHERS}) sings? (thal|kirtans?|dhun|bhajans?)$", lambda m: f"Listens to {lower_group(m.group(1))} sing {m.group(2)}"),
     (rf"^({OTHERS}) (?:offers?|presents?) (?:a |an )?prayers? (?:to|before) Swamishri$", lambda m: f"Listens to a prayer from {lower_group(m.group(1))}"),
     (rf"^({OTHERS}) (?:prays?) before Swamishri$", lambda m: f"Listens to a prayer from {m.group(1)}"),
     (rf"^({OTHERS}) (?:doing|engrossed in|in) (?:the )?(?:unique )?(?:darshan of Swamishri|Swamishri's (?:puja )?darshan|Swamishri's puja)$", lambda m: f"Gives darshan to {lower_group(m.group(1))}"),
@@ -438,7 +569,7 @@ ABOUT_BAPA = [   # captions about someone else and Bapa, turned round so they sa
 
 def lower_group(g):
     """'Swamis' or 'A devotee' read in lower case mid sentence; names ('Pujya Kothari Swami') stay as they are."""
-    return g[0].lower() + g[1:] if re.match(r'(?i)(senior |an? )?(swamis|sadhus|devotees|children|youths|kishores|students|volunteers|karyakars|sadhaks|devotee|youth|child|swami|sadhak)\b', g) else g
+    return g[0].lower() + g[1:] if re.match(r'(?i)(senior |an? )?(swamis|sadhus|devotees|bhaktas|children|youths|kishores|students|volunteers|karyakars|sadhaks|devotee|bhakta|youth|child|swami|sadhak)\b', g) else g
 
 
 def about_bapa(c):
@@ -461,7 +592,8 @@ def shorter_versions(text):
     gives 'Inaugurates DVD of Mystic India movie', then 'Inaugurates DVD'."""
     t = re.sub(r'\s*\([^)]*\)', '', text)
     cuts = sorted({m.start() for m in re.finditer(
-        r",| - | in the | in | at | during | for | including | titled | about | to be | after | on his | as | while | from | by | of the | with | on the | to the | and | that | '", t)}, reverse=True)
+        r",| - | in the | in | at | during | for | including | titled | about | to be | after | before | on his | as | while | from | by | of the | of | "
+        r"with | on the | on | to the | to | and | that | who | which | where | via | through | along | near | under | inside | outside | towards | into | '", t)}, reverse=True)
     out = [t] if t != text else []
     for i in cuts:
         cand = t[:i].rstrip(" ,;:-")
@@ -471,14 +603,37 @@ def shorter_versions(text):
     return out
 
 
-SHORT_END = {'the', 'a', 'an', 'of', 'and', 'to', 'with', 'his', 'her', 'their', 'on', 'in', 'at', 'for', 'by', 'from', 'that', 'two', 'new'}
+SHORT_END = {'the', 'a', 'an', 'of', 'and', 'to', 'with', 'his', 'her', 'their', 'on', 'in', 'at', 'for', 'by', 'from', 'that', 'two', 'new',
+             'who', 'which', 'where', 'via', 'as', 'while', 'during', 'before', 'after', 'is', 'are', 'was', 'other', 'various', 'some'}
+MONTH = r'(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?'
+SHORT_WORDS = [   # a few long phrases said shorter in the website's own words, so a caption fits without trailing off
+    (r'\bvideo conference\b', 'video'), (r'\bBAPS Shri Swaminarayan Mandir(s?)\b', r'mandir\1'), (r'\bShri Swaminarayan Mandir\b', 'mandir'),
+    (r'\bmurti-pratishtha (?:ceremony|rituals?)\b', 'murti-pratishtha'),
+]
+
+
+def tidy(c):
+    """Small clean ups of the website's caption: the date (it is always this day), 'the the', Mr and Mrs."""
+    c = re.sub(rf'[\s,]*(?:on |dated )?\b\d{{1,2}}(?:st|nd|rd|th)? {MONTH}(?: \d{{4}})?\s*$', '', c)   # 'Doing mala, 18 Oct 2016'
+    c = re.sub(rf'[\s,]*(?:on |dated )?\b{MONTH} \d{{1,2}}(?:st|nd|rd|th)?(?:,? \d{{4}})?\s*$', '', c)   # 'on October 18, 2016'
+    c = re.sub(r'\b(the|a|an|of|to|in|on|and) \1\b', r'\1', c, flags=re.I)
+    c = re.sub(r'\b(?:Mr|Mrs|Ms|Dr)\.? (?=[A-Z])', '', c)
+    c = re.sub(r'\b([Dd])evotee(s?)\b', lambda m: ('B' if m.group(1) == 'D' else 'b') + 'hakta' + m.group(2), c)   # satsang word (Darpan, 18 Oct 2026)
+    return re.sub(r'\s+', ' ', c).strip(' ,;:')
+
+
+def summarise(c):
+    """The same caption in fewer words: 'Discourses with sadhus via video conference' becomes 'Discourses with sadhus via video'."""
+    for pat, rep in SHORT_WORDS:
+        c = re.sub(pat, rep, c)
+    return c
 
 
 def caption(x):
     """The caption without the name repeated on every card: 'Swamishri blesses all' becomes 'Blesses all'.
     Where dropping the name wouldn't read well ('Swamishri's divine gestures', 'Sadhus honour Swamishri'),
     the name becomes 'Bapa'."""
-    c = re.sub(r'\s+', ' ', x.get('c') or '').strip()
+    c = tidy(re.sub(r'\s+', ' ', x.get('c') or '').strip())
     c = about_bapa(c)
     m = re.match(rf'^{NAME}[\s,]+(.+)$', c)
     if m and not re.match(r"(and|with|along|together|'s|’s)\b", m.group(1), re.I):
@@ -491,17 +646,26 @@ def place(x):
     return re.sub(r'\s*\(.*?\)', '', (x.get('p') or '').split(',')[0]).strip()
 
 
-def wrap(d, text, f, maxw, lines, shorten=True):
-    """Up to `lines` lines no wider than maxw; whatever doesn't fit ends in an ellipsis."""
+def wrap(d, text, f, maxw, lines, shorten=True, min_words=0):
+    """Up to `lines` lines no wider than maxw; whatever doesn't fit ends in an ellipsis.
+    min_words: a natural cut that leaves fewer words than this is not used (so 'Sanctifies water' never stands for a sentence)."""
     words, out = text.split(), []
     while words and len(out) < lines:
         line = words.pop(0)
+        if '-' in line[1:-1] and d.textlength(line, font=f) > maxw:   # 'mantra-pushpanjali' breaks after its hyphen
+            head, _, tail = line.rpartition('-')
+            while '-' in head[1:] and d.textlength(head + '-', font=f) > maxw:
+                head, _, more = head.rpartition('-'); tail = more + '-' + tail
+            line = head + '-'; words.insert(0, tail)
         while words and d.textlength(line + ' ' + words[0], font=f) <= maxw:
             line += ' ' + words.pop(0)
         out.append(line)
     cut = bool(words) or any(d.textlength(l, font=f) > maxw for l in out)
-    if cut and shorten:   # say less rather than trail off: cut the caption at a natural break so it fits
-        for t in shorter_versions(text):
+    if cut and shorten:   # say less rather than trail off: say it shorter, or cut the caption at a natural break so it fits
+        short = summarise(text)
+        for t in ([short] if short != text else []) + shorter_versions(short):
+            if len(t.split()) < min_words:
+                continue
             fits = wrap(d, t, f, maxw, lines, shorten=False)
             if not fits[-1].endswith('…'):
                 return fits
@@ -533,7 +697,7 @@ class Card:
             t = j / CH
             d.line((0, j, CW, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(IVORY_TOP, IVORY_BOTTOM)) + (255,))
         d.rectangle((0, 0, CW - 1, CH - 1), outline=IVORY_EDGE, width=1)
-        card.paste(crop_to(x['im'], x['face'], PW, PH), (B, B))
+        card.paste(crop_to(x['im'], x['face'], PW, PH, x.get('crop', 'frame')), (B, B))
         if self.style == 'B' and caption(x):
             self.soft_band(card, caption(x))
         if self.style == 'D' and num is not None:
@@ -639,8 +803,8 @@ class Card:
 PEG = 'gloss'   # how the pegs on the cord are drawn: round varnished wood (Darpan's choice, 17 Oct 2026); 'flat' and 'bevel' are the others
 
 
-def peg(img, cx, cy, s, look=None):
-    look = look or PEG
+def peg(img, cx, cy, s, look=None, short=1.0):
+    look = look or PEG                                      # short < 1 makes a stubbier peg (the wide cards, Darpan 18 Oct 2026)
     if look == 'flat':
         dr = ImageDraw.Draw(img)
         w, h = 9 * s, 30 * s
@@ -650,7 +814,7 @@ def peg(img, cx, cy, s, look=None):
         return
     # a round wooden clothes peg: soft rounded top, lit from the top left like the cards, a small dark spring and a soft shadow
     K = 4                                                   # drawn four times bigger, then shrunk, for smooth edges
-    w, h = 10 * s * K, 35 * s * K
+    w, h = 10 * s * K * (.6 + .4 * short), 35 * s * K * short
     pw_, ph_ = int(2 * w + 16 * s * K), int(h + 16 * s * K)
     ox, oy = 6 * s * K, 4 * s * K                           # where the peg sits inside its little canvas
     yy, xx = np.mgrid[0:ph_, 0:pw_].astype(np.float32)
@@ -714,10 +878,14 @@ def caption_list(img, photos, y0, y1):
 
 # style H with bigger frames: H2 narrower margins and two line captions, H3 one line captions and polaroids may overlap a little
 LAYOUT = {'H2': dict(M=70, min_gap=14, row_gap=40, lines=2, cap=360, top=212, bottom=H - 100),
-          'H3': dict(M=60, min_gap=-14, row_gap=34, lines=1, cap=360, top=210)}
+          'H3': dict(M=60, min_gap=-14, row_gap=34, lines=1, cap=360, top=210),
+          'P': dict(M=40, min_gap=6, row_gap=26, lines=0, cap=400, top=212, bottom=H - 100),   # photos only, no captions, biggest frames
+          'W': dict(M=60, min_gap=12, row_gap=30, lines=1, cap=400, top=205, bottom=H - 90, rows=3, aspect=.75, band=.26)}   # wide photos, three cords
+FRAME_ASPECT = {'W': 1 / .75, 'W1': 1 / .74, 'W2': 1 / .9, 'W3': 1.5}   # photo width / height per style; the tall live cards work out at about .69 on a full day
 
 
 def under_card(x, card, gap, f, lh, style, rnd):
+    cf_size = f.size
     """Style F: a small ivory paper tag on a short thread under the polaroid.
     Style H: ivory caption on a soft dark plate under the polaroid."""
     probe = ImageDraw.Draw(Image.new('L', (1, 1)))
@@ -736,41 +904,238 @@ def under_card(x, card, gap, f, lh, style, rnd):
         for i, line in enumerate(lines):
             d.text((cx, 24 + 14 + (i + .8) * lh), line, font=f, fill=YEAR_C2, anchor='ms')
         return im.rotate(rnd.uniform(-2.5, 2.5), resample=Image.BICUBIC, expand=True), 2
-    lines = wrap(probe, caption(x), f, card.CW + min(gap, 30) - 50, LAYOUT.get(style, {}).get('lines', 3))
-    tw = max(probe.textlength(l, font=f) for l in lines) + 34
+    n = WIDE.get(style, LAYOUT.get(style, {})).get('lines', 3)
+    text, maxw = caption(x), card.CW + min(gap, 30) - 40
+    half = max(3, len(text.split()) * 2 // 3)
+    # the whole caption first, then a touch smaller; only then a natural cut, keeping at least two thirds of it; a shorter cut last
+    for shrink, extra, cut, keep in ((1, 0, False, 0), (.9, 0, False, 0), (.82, 0, False, 0), (.82, 0, True, half), (.82, 0, True, 0)):
+        f2 = garamond(f.size * shrink, 500) if shrink < 1 else f
+        lines = wrap(probe, text, f2, maxw, n + extra, shorten=cut, min_words=keep)
+        if not lines[-1].endswith('…'):
+            f = f2
+            break
+    else:
+        lines = wrap(probe, text, f, maxw, n)
+    lh = lh * f.size / cf_size
+    # drawn four times bigger and shrunk: small text then keeps the font's true letter spacing (no 'Perform s') and smooth edges
+    K = 4; fk = garamond(f.size * K, 500)
+    tw = max(probe.textlength(l, font=fk) for l in lines) / K + 34
     th = len(lines) * lh + 16
-    im = Image.new('RGBA', (int(tw), int(th)), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
-    d.rounded_rectangle((0, 0, tw - 1, th - 1), radius=int(th / 2) if len(lines) == 1 else 14, fill=(30, 8, 12, 150))
+    W4, H4 = round(tw) * K, round(th) * K
+    im = Image.new('RGBA', (W4, H4), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    d.rounded_rectangle((0, 0, W4 - 1, H4 - 1), radius=int(H4 / 2) if len(lines) == 1 else 14 * K, fill=(30, 8, 12, 150))
     for i, line in enumerate(lines):
-        d.text((tw / 2, 8 + (i + .5) * lh), line, font=f, fill=CAPTION_IVORY, anchor='mm')
-    return im, 14
+        d.text((W4 / 2, (8 + (i + .5) * lh) * K), line, font=fk, fill=CAPTION_IVORY, anchor='mm')
+    return im.resize((round(tw), round(th)), Image.LANCZOS), 14
 
 
-LIVE_STYLE = 'H2'   # the daily picture: caption centred under each card (Darpan's choice, 16 Oct 2026)
+# wide polaroids (photos wider than tall) on three or four cords, so the width of the picture is used and little hangs below the cards
+WIDE = {'W1': dict(rows=3, M=60, gap=16, ratio=.74, band='caption', row_gap=28, tilt=1.6),   # year, place and caption all in the ivory band
+        'W2': dict(rows=3, M=44, gap=10, ratio=.9, band='yearline', pill=2, lines=2, row_gap=8, tilt=2.2, compact=True, one_title=True, lift=162, fill=True, straight=True),   # year and place in the band, caption on a pill below
+        'W3': dict(rows=4, M=60, gap=18, ratio=2 / 3, band='none', row_gap=22, tilt=1.2)}    # thin ivory frames, year and caption over the photo
+
+
+class WideCard(Card):
+    """Ivory frame round a photo wider than it is tall. band: 'caption' (year, caption and place in the ivory band),
+    'year' (year and place, as the live card) or 'none' (a thin frame, year and caption over the photo's foot)."""
+    def __init__(self, pw, ratio, band):
+        self.PW, self.PH, self.band = round(pw), round(pw * ratio), band
+        self.B = max(6, round(pw * .035)) if band != 'none' else max(6, round(pw * .028))
+        self.BB = {'caption': round(pw * .46), 'year': round(pw * .3), 'yearline': round(pw * .17), 'none': 0}[band]
+        self.CW, self.CH = self.PW + 2 * self.B, self.PH + self.B + self.BB
+        self.style = None
+
+    def make(self, x, num=None):
+        PW, PH, B, BB, CW, CH = self.PW, self.PH, self.B, self.BB, self.CW, self.CH
+        card = Image.new('RGBA', (CW, CH)); d = ImageDraw.Draw(card)
+        for j in range(CH):
+            t = j / CH
+            d.line((0, j, CW, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(IVORY_TOP, IVORY_BOTTOM)) + (255,))
+        d.rectangle((0, 0, CW - 1, CH - 1), outline=IVORY_EDGE, width=1)
+        photo = crop_to(x['im'], x['face'], PW, PH, x.get('crop', 'frame'), at=.3)   # Bapa high in the frame, no dead space over his head
+        card.paste(polish(photo), (B, B))
+        d.rectangle((B - 1, B - 1, B + PW, B + PH), outline=(150, 130, 100), width=1)
+        if self.band == 'none':
+            self.foot_band(card, x)
+            return card
+        yf, yt = garamond(PW * .12 if self.band == 'caption' else PW * .15, 700 if self.band == 'yearline' else 600), str(x['y'])
+        pl = place(x).upper()
+        pf, track = arimo_bold(PW * .048 if self.band == 'caption' else PW * .06), PW * .012
+        room = CW - 2 * B - 4 - (d.textlength(yt, font=yf) + PW * .035 if self.band == 'yearline' else 0)
+        while pf.size > PW * .035 and spaced(d, pl, pf, track) > room:
+            pf = arimo_bold(pf.size - 1)
+        yh = -d.textbbox((0, 0), yt, font=yf, anchor='ls')[1]
+        ph = -d.textbbox((0, 0), 'A', font=pf, anchor='ls')[1] if pl else 0
+        if self.band == 'yearline':   # '2016  JUNAGADH' on one line, the year bigger, both sitting on the same baseline
+            yw, pw_ = d.textlength(yt, font=yf), spaced(d, pl, pf, track)
+            sp = PW * .035 if pl else 0
+            x0 = (CW - (yw + sp + pw_)) / 2
+            base = B + PH + BB / 2 + yh / 2                                   # the year's digits centred in the band
+            d.text((x0, base), yt, font=yf, fill=YEAR_C2, anchor='ls')
+            draw_spaced(d, x0 + yw + sp, base - (yh - ph) / 2 - pf.getmetrics()[0], pl, pf, track, PLACE_C2)   # the place centred on the year
+            return card
+        if self.band == 'year':
+            gap = PW * .05 if pl else 0
+            top = B + PH + (BB - (yh + gap + ph)) / 2 - B * .2
+            d.text((CW / 2, top + yh), yt, font=yf, fill=YEAR_C2, anchor='ms')
+            draw_spaced(d, (CW - spaced(d, pl, pf, track)) / 2, top + yh + gap + ph - pf.getmetrics()[0], pl, pf, track, PLACE_C2)
+            return card
+        cf = garamond(PW * .082, 500); lh = PW * .092
+        lines = wrap(d, caption(x), cf, CW - 2 * B - PW * .03, 2)
+        block = yh + PW * .035 + len(lines) * lh + (PW * .035 + ph if pl else 0)
+        top = B + PH + (BB - block) / 2
+        d.text((CW / 2, top + yh), yt, font=yf, fill=YEAR_C2, anchor='ms')
+        y = top + yh + PW * .035
+        for i, line in enumerate(lines):
+            d.text((CW / 2, y + (i + .8) * lh), line, font=cf, fill=(70, 40, 40), anchor='ms')
+        y += len(lines) * lh + PW * .035 + ph
+        if pl:
+            draw_spaced(d, (CW - spaced(d, pl, pf, track)) / 2, y - pf.getmetrics()[0], pl, pf, track, (150, 96, 80))
+        return card
+
+    def foot_band(self, card, x):
+        """W3: one line over a soft dark fade at the foot of the photo: the year in gold, then the caption in ivory."""
+        PW, PH, B = self.PW, self.PH, self.B
+        d = ImageDraw.Draw(card)
+        yf, cf = garamond(PW * .075, 700), garamond(PW * .062, 500)
+        yt = str(x['y']); yw = d.textlength(yt, font=yf); sp = PW * .03
+        lines = wrap(d, caption(x), cf, PW * .92 - yw - sp, 1)
+        text = lines[0] if lines else ''
+        h = round(PW * .17)
+        fade = Image.new('RGBA', (PW, h)); fd = ImageDraw.Draw(fade)
+        for j in range(h):
+            fd.line((0, j, PW, j), fill=(30, 8, 12, round(205 * min(1, (j / h) / .55) ** 1.3)))
+        card.alpha_composite(fade, (B, B + PH - h))
+        tw = yw + (sp + d.textlength(text, font=cf) if text else 0)
+        x0, y = B + (PW - tw) / 2, B + PH - PW * .04
+        d.text((x0, y), yt, font=yf, fill=GOLD, anchor='ls')
+        if text:
+            d.text((x0 + yw + sp, y), text, font=cf, fill=CAPTION_IVORY, anchor='ls')
+
+
+def compose_wide(photos, day, seed, style):
+    """Three (W1, W2) or four (W3) cords of wide cards, every year on the day, sized to fill the picture."""
+    lay = WIDE[style]
+    rnd = random.Random(seed)
+    img = background(); dr = ImageDraw.Draw(img)
+    if lay.get('oneline'):
+        header_line(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
+    elif lay.get('one_title'):
+        header_one(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
+    else:
+        header(img, f'{day.day} {day:%B}', 'in Bapa’s Diary', compact=lay.get('compact', False))
+    n = len(photos)
+    nrows = max(1, min(lay['rows'], -(-n // (5 if lay['rows'] == 3 else 6))))
+    per = [n // nrows + (1 if i < n % nrows else 0) for i in range(nrows)]
+    rows, k = [], 0
+    for c in per:
+        rows.append(photos[k:k + c]); k += c
+    cols, M, gap, row_gap = per[0], lay['M'], lay['gap'], lay['row_gap']
+    top_space, bottom_space = (156, H - 44 - SAG) if lay.get('oneline') or lay.get('compact') else (200, H - 96)
+    if lay.get('lift'):   # the cord's lowest point (the middle) sits at the top line and its ends rise into the free corners beside the title
+        top_space, bottom_space = lay['lift'], H - 46
+    cf_a, lh_a = garamond(CAPTION_SIZE, 500), round(CAPTION_SIZE * 1.2)
+    below = (lay.get('pill', 0) * lh_a + 22) if lay.get('pill') else 0
+    probe = WideCard(100, lay['ratio'], lay['band'])
+    pw_w = min(440, ((W - 2 * M - gap * (cols - 1)) / cols) / (probe.CW / 100))   # as wide as the row allows
+    row_h = (bottom_space - top_space - (nrows - 1) * row_gap - nrows * below) / nrows
+    ph = min(pw_w * lay['ratio'], row_h - (probe.CH - probe.PH) / 100 * pw_w)     # as tall as the rows allow
+    pw = min(pw_w, ph / lay.get('min_ratio', .6))            # a photo is never wider than 16:9 ish, so shrink the card if it would be
+    card = WideCard(pw, ph / pw, lay['band'])
+    gap = min(60, (W - 2 * M - cols * card.CW) / max(1, cols - 1))
+    pitch = card.CH + below + row_gap
+    block = (nrows - 1) * pitch + card.CH + below
+    if lay.get('fill') and nrows > 1:   # spare height goes between the rows rather than above and below them
+        pitch += max(0, bottom_space - top_space - block) / (nrows - 1); block = (nrows - 1) * pitch + card.CH + below
+    first = top_space + max(0, (bottom_space - top_space - block) / 2)
+    s = card.PW / 220
+    for r, row in enumerate(rows):
+        y_top = first + r * pitch
+        if lay.get('lift'):
+            sag = lambda xp: y_top - 4 - SAG * (1 - 4 * (xp / W) * (1 - xp / W))              # lowest in the middle, ends higher
+        else:
+            sag = lambda xp: y_top - 4 + SAG * 4 * (xp / W) * (1 - xp / W)                    # the cord dips a little in the middle
+        dr.line([(xp, sag(xp)) for xp in range(0, W + 1, 6)], fill=(170, 132, 78), width=2)
+        later = []   # pegs and captions go on after the whole row, so a card swinging over its neighbour never hides them
+        x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
+        for c, x in enumerate(row):
+            cx = x0 + c * (card.CW + gap) + card.CW / 2
+            if lay.get('straight'):   # every card hangs straight down from its peg on the curved cord (Darpan 18 Oct 2026: any swing looked messy)
+                a, drop = 0, 0
+            elif lay.get('playful'):   # a real line of photos: a few nearly straight, most swung a little, a couple swung well, some touching
+                a = rnd.choice((-1, 1)) * lay['tilt'] * rnd.choice((.3, .7, 1, 1, 1.4)) * rnd.uniform(.85, 1.05)   # halfway between v9 and v10 (Darpan: v10 a bit too messy)
+                cx += rnd.uniform(-11, 11); drop = rnd.uniform(-3.5, 8)
+            else:
+                a = rnd.uniform(-lay['tilt'], lay['tilt']) * rnd.choice((.4, 1, 1))              # some hang nearly straight, some swing more
+                cx += rnd.uniform(-6, 6); drop = rnd.uniform(-3, 4)                               # pegged a little left or right, higher or lower
+            t = np.radians(a)
+            hung = card.hang(card.make(x)).rotate(a, resample=Image.BICUBIC, expand=True)
+            px, py = cx, sag(cx) + 4 + drop
+            mx, my = px + card.CH / 2 * np.sin(t), py + card.CH / 2 * np.cos(t)
+            img.paste(hung, (int(mx - hung.width / 2), int(my - hung.height / 2)), hung)
+            later.append(lambda cx=cx: peg(img, cx, sag(cx) + 4, s, short=.72))
+            if lay.get('pill') and caption(x):
+                tag, pos = under_card(x, card, gap, cf_a, lh_a, 'W2', rnd)
+                bx, by = px + card.CH * np.sin(t), py + card.CH * np.cos(t)
+                later.append(lambda tag=tag, bx=bx, by=by: img.paste(tag, (int(bx - tag.width / 2), int(by + 6)), tag))
+        for f in later:
+            f()
+    if not lay.get('oneline'):
+        footer(img, small=lay.get('compact', False))
+    return img
+
+
+CAPTION_SIZE = 21   # caption text under each frame (was 24; smaller since 18 Oct 2026 so whole captions fit, people zoom in)
+SAG = 60            # how far the cords dip in the middle, in pixels (Darpan 18 Oct 2026: 20 then 34 looked too straight, he wanted more)
+LIVE_STYLE = 'W2'   # the daily picture: design B, wide cards hanging straight on three curved cords, PNG (Darpan locked it in, 18 Oct 2026)
+
+
+def polish(photo):
+    """Final touch on each resized photo (Darpan 18 Oct 2026: as clear and high quality as possible): a gentle levels
+    stretch so dull web images get their blacks and whites back, a little more colour, then two passes of sharpening,
+    a wide soft one for local contrast and a fine one for detail. Thresholds keep skin and smooth walls clean."""
+    photo = ImageOps.autocontrast(photo, cutoff=(.4, .2), preserve_tone=True)
+    photo = ImageEnhance.Color(photo).enhance(1.07)
+    photo = photo.filter(ImageFilter.UnsharpMask(radius=6, percent=18, threshold=0))    # local contrast, a clearer look
+    return photo.filter(ImageFilter.UnsharpMask(radius=1.1, percent=75, threshold=3))   # fine detail after the resize
+
+
+def dump_photos(photos, folder):
+    """Save the chosen photos and what make.py knows about them, so a layout can be redrawn offline (relayout.py)."""
+    os.makedirs(folder, exist_ok=True)
+    meta = []
+    for i, x in enumerate(photos):
+        x['im'].convert('RGB').save(os.path.join(folder, f'{i:02d}.jpg'), quality=95)
+        meta.append({k: (v.tolist() if hasattr(v, 'tolist') else v) for k, v in x.items()
+                     if k != 'im' and isinstance(v, (str, int, float, bool, list, tuple, dict, type(None), np.ndarray, np.generic))})
+    json.dump(meta, open(os.path.join(folder, 'photos.json'), 'w'), default=float)
 
 
 def compose(photos, day, seed, style=None, look=None):
+    if style in WIDE:
+        return compose_wide(photos, day, seed, style)
     rnd = random.Random(seed)
     img = background(); dr = ImageDraw.Draw(img)
     header(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
 
     n = len(photos)
-    rows = [photos] if n <= 5 else [photos[:(n + 1) // 2], photos[(n + 1) // 2:]]
     lay = LAYOUT.get(style, {})
-    cols, M, min_gap = len(rows[0]), lay.get('M', 100), lay.get('min_gap', 30)
+    nr = lay.get('rows', 1 if n <= 5 else 2)
+    rows = [photos[round(i * n / nr):round((i + 1) * n / nr)] for i in range(nr)]
+    cols, M, min_gap = max(len(r) for r in rows), lay.get('M', 100), lay.get('min_gap', 30)
     list_h = (-(-n // 3) * 36 + 30) if style == 'D' else 0     # room for the numbered caption list
     top_space, bottom_space = lay.get('top', 222), lay.get('bottom', H - 128) - list_h
     row_gap = lay.get('row_gap', 58)
-    band = {'C': .52, 'E': .6, 'G': .56}.get(style, .32)
-    cf_a = garamond(24, 500); lh_a = 29
+    band = lay.get('band') or {'C': .52, 'E': .6, 'G': .56}.get(style, .32)
+    cf_a = garamond(CAPTION_SIZE, 500); lh_a = round(CAPTION_SIZE * 1.2)
     below = {'A': 3 * lh_a + 16, 'F': 3 * lh_a + 52, 'H': 3 * lh_a + 34}.get(style, 0)   # room under each card
     if style in LAYOUT:
         below = lay['lines'] * lh_a + 30
     pw_w = ((W - 2 * M - min_gap * (cols - 1)) / cols) / 1.09
     row_h = (bottom_space - top_space - row_gap * (len(rows) - 1)) / len(rows) - below
-    pw = min(lay.get('cap', 300), pw_w, row_h / (1.08 + .045 + band))
+    pw = min(lay.get('cap', 300), pw_w, row_h / (lay.get('aspect', 1.08) + .045 + band))
     # on busy days the cards are narrower, so let the photos grow taller to fill the height instead
-    card = Card(pw, max(1.08, min(1.45, row_h / pw - .045 - band)), band, style)
+    card = Card(pw, lay.get('aspect') or max(1.08, min(1.45, row_h / pw - .045 - band)), band, style)
     gap = min(70, (W - 2 * M - cols * card.CW) / max(1, cols - 1))
     pitch = card.CH + below + row_gap
     block = (len(rows) - 1) * pitch + card.CH + below
@@ -798,7 +1163,7 @@ def compose(photos, day, seed, style=None, look=None):
                 ty = y_top + card.CH + 18
                 for i, line in enumerate(lines):
                     dr.text((cx, ty + (i + .8) * lh_a), line, font=cf_a, fill=CAPTION_GOLD, anchor='ms')
-            if style and style[0] in 'FH' and caption(x):
+            if style and (style[0] in 'FH' or lay.get('lines')) and caption(x):
                 tag, pos = under_card(x, card, gap, cf_a, lh_a, style, rnd)
                 bx, by = px + card.CH * np.sin(t), py + card.CH * np.cos(t)   # middle of the tilted card's bottom edge
                 img.paste(tag, (int(bx - tag.width / 2), int(by + pos)), tag)
@@ -831,28 +1196,48 @@ def main():
     if os.path.exists(combed):
         have = {x['i'] for x in items}
         place = {x['y']: x.get('p', '') for x in items}
-        extra = vicharan_items(combed, f'{day:%m-%d}', place)
+        extra = [x for x in vicharan_items(combed, f'{day:%m-%d}', place) if x['y'] < day.year]   # past years only
+        full = {x['i']: x['c'] for x in extra}
+        for x in items:                                                   # the day list's 'sanctifies water...' gets the carried on caption
+            if (x.get('c') or '').endswith('...') and x['i'] in full:
+                x['c'] = full[x['i']]
         items += [x for x in extra if x['i'] not in have]
         print(f'  + {len(items) - len(have)} more captioned photos from the vicharan pages')
     print(f'{day}: {len(items)} photos across {len({x["y"] for x in items})} years')
 
     download_all(items, a.cache)
-    photos = pick_one_per_year(items, seed=mmdd)
+    tall = 1 / 1.45 if len({x['y'] for x in items}) > 10 else 1 / 1.08
+    photos = pick_one_per_year(items, seed=mmdd, aspect=FRAME_ASPECT.get(LIVE_STYLE, tall))
     if not photos:
         raise SystemExit('No photos could be downloaded for ' + mmdd)
     for x in photos:
-        print(f'  {x["y"]}  {x.get("p", "")[:28]:28}  Bapa {"%.2f" % x["sim"] if x["face"] else "not found, shown whole"}  {caption(x)}')
+        print(f'  {x["y"]}  {x.get("p", "")[:28]:28}  Bapa {"%.2f" % x["sim"] if x["face"] else "not found, shown whole"}  {x["crop"]:5}  {caption(x)}')
 
     os.makedirs(a.out, exist_ok=True)
-    compose(photos, day, seed=mmdd, style=LIVE_STYLE).save(os.path.join(a.out, 'bapas-diary.jpg'), quality=92, optimize=True)
+    live = compose(photos, day, seed=mmdd, style=LIVE_STYLE)
+    live.save(os.path.join(a.out, 'bapas-diary.jpg'), quality=95, optimize=True)
+    live.save(os.path.join(a.out, 'bapas-diary.png'), optimize=True)   # the PNG is the final file (Darpan, 18 Oct 2026): crisp text
+    workings_live = list(WORKINGS)
     for st in filter(None, a.styles.split(',')):
         if st.startswith('peg-'):   # peg mockups on the live layout, e.g. peg-bevel
-            compose(photos, day, seed=mmdd, style=LIVE_STYLE, look=st[4:]).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=92, optimize=True)
+            compose(photos, day, seed=mmdd, style=LIVE_STYLE, look=st[4:]).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=95, optimize=True)
             continue
-        compose(photos, day, seed=mmdd, style=st).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=92, optimize=True)
+        ps = photos
+        if st in FRAME_ASPECT:   # a wide frame keeps more of each photo, so more action shots qualify: pick again for it
+            ps = pick_one_per_year(items, seed=mmdd, aspect=FRAME_ASPECT[st])
+            print(f'  {st}: ' + ', '.join(f'{x["y"]} {x["crop"]}' for x in ps))
+            workings_sheet(day).save(os.path.join(a.out, f'caption-workings-{st}.jpg'), quality=88, optimize=True)
+        im = compose(ps, day, seed=mmdd, style=st)
+        im.save(os.path.join(a.out, f'caption-{st}.jpg'), quality=95, optimize=True)
+        if st in WIDE:
+            im.save(os.path.join(a.out, f'caption-{st}.png'), optimize=True)   # lossless copy, text stays crisp
+            dump_photos(ps, os.path.join(a.out, f'photos-{st}'))
+    WORKINGS[:] = workings_live
     if a.workings:
         seconds = second_choices()
-        compose(seconds, day, seed=mmdd, style='H2').save(os.path.join(a.out, 'caption-second-choice.jpg'), quality=92, optimize=True)
+        compose(seconds, day, seed=mmdd, style='H2').save(os.path.join(a.out, 'caption-second-choice.jpg'), quality=95, optimize=True)
+        for st in filter(lambda st: st and st != 'H2', a.styles.split(',')):
+            compose(seconds, day, seed=mmdd, style=st).save(os.path.join(a.out, f'caption-second-choice-{st}.jpg'), quality=95, optimize=True)
         workings_sheet(day).save(os.path.join(a.out, 'caption-workings.jpg'), quality=88, optimize=True)
         chosen = {id(w['pick']) for w in WORKINGS}
         with open(os.path.join(a.out, 'all-photos.txt'), 'w') as f:
@@ -865,8 +1250,8 @@ def main():
                     f.write(f'  {"Bapa %.2f" % r[1] if r[2] else "not recognised"}  {r[3] or "(no caption)"}  {r[4]}\n')
     if a.compare:
         photos_u = pick_one_per_year(items, seed=mmdd, unique=True)
-        compose(photos, day, seed=mmdd, style='A').save(os.path.join(a.out, 'original.jpg'), quality=92, optimize=True)
-        compose(photos_u, day, seed=mmdd, style='A').save(os.path.join(a.out, 'unique.jpg'), quality=92, optimize=True)
+        compose(photos, day, seed=mmdd, style='A').save(os.path.join(a.out, 'original.jpg'), quality=95, optimize=True)
+        compose(photos_u, day, seed=mmdd, style='A').save(os.path.join(a.out, 'unique.jpg'), quality=95, optimize=True)
         with open(os.path.join(a.out, 'captions.txt'), 'w') as f:
             for name, ps in (('original', photos), ('unique', photos_u)):
                 f.write(f'{name}:\n')
