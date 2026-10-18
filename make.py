@@ -16,6 +16,12 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_URL = 'https://darshan-screensaver.pages.dev/memories/{mmdd}.json'
 W, H = 2796, 1290
+PORTRAIT = (1290, 2796)   # a phone screen held upright (style V)
+
+
+def set_canvas(w, h):
+    global W, H
+    W, H = w, h
 MAROON_OUT = (18, 4, 8)
 GOLD, GOLD_SOFT = (255, 207, 107), (217, 164, 65)
 FOOTER = 'Darpan’s Smruti Project'
@@ -362,8 +368,9 @@ def header(img, title, subtitle):
     sy = 142
     draw_spaced(dr, (W - sw) / 2, sy, sub, sf, track, (240, 214, 160))
     mid = sy + 24
-    thin_rule(dr, mid, (W - sw) / 2 - 50 - 330, (W - sw) / 2 - 50, True)
-    thin_rule(dr, mid, (W + sw) / 2 + 50, (W + sw) / 2 + 50 + 330, False)
+    rule = min(330, (W - sw) / 2 - 50 - 70)
+    thin_rule(dr, mid, (W - sw) / 2 - 50 - rule, (W - sw) / 2 - 50, True)
+    thin_rule(dr, mid, (W + sw) / 2 + 50, (W + sw) / 2 + 50 + rule, False)
 
 
 def footer(img):
@@ -667,7 +674,9 @@ def caption_list(img, photos, y0, y1):
 # style H with bigger frames: H2 narrower margins and two line captions, H3 one line captions and polaroids may overlap a little
 LAYOUT = {'H2': dict(M=70, min_gap=14, row_gap=40, lines=2, cap=360, top=212, bottom=H - 100),
           'H3': dict(M=60, min_gap=-14, row_gap=34, lines=1, cap=360, top=210),
-          'P': dict(M=40, min_gap=6, row_gap=26, lines=0, cap=400, top=212, bottom=H - 100)}   # photos only, no captions, biggest frames
+          'P': dict(M=40, min_gap=6, row_gap=26, lines=0, cap=400, top=212, bottom=H - 100),   # photos only, no captions, biggest frames
+          # V: portrait, the shape of a phone screen; five cords with five polaroids each, caption under each card
+          'V': dict(M=40, min_gap=10, row_gap=36, lines=2, cap=400, top=212, bottom=-100, cols=5, aspect_max=1.22, portrait=True)}
 
 
 def under_card(x, card, gap, f, lh, style, rnd):
@@ -703,16 +712,30 @@ LIVE_STYLE = 'H2'   # the daily picture: caption centred under each card (Darpan
 
 
 def compose(photos, day, seed, style=None):
+    lay = LAYOUT.get(style, {})
+    if lay.get('portrait'):
+        set_canvas(*PORTRAIT)
+    try:
+        return compose_on_canvas(photos, day, seed, style, lay)
+    finally:
+        set_canvas(2796, 1290)
+
+
+def compose_on_canvas(photos, day, seed, style, lay):
     rnd = random.Random(seed)
     img = background(); dr = ImageDraw.Draw(img)
     header(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
 
     n = len(photos)
-    rows = [photos] if n <= 5 else [photos[:(n + 1) // 2], photos[(n + 1) // 2:]]
-    lay = LAYOUT.get(style, {})
+    if lay.get('cols'):   # a fixed number across, as many cords as it takes
+        per = min(lay['cols'], n)
+        rows = [photos[i:i + per] for i in range(0, n, per)]
+    else:
+        rows = [photos] if n <= 5 else [photos[:(n + 1) // 2], photos[(n + 1) // 2:]]
     cols, M, min_gap = len(rows[0]), lay.get('M', 100), lay.get('min_gap', 30)
     list_h = (-(-n // 3) * 36 + 30) if style == 'D' else 0     # room for the numbered caption list
-    top_space, bottom_space = lay.get('top', 222), lay.get('bottom', H - 128) - list_h
+    bottom = lay.get('bottom', H - 128)
+    top_space, bottom_space = lay.get('top', 222), (H + bottom if bottom < 0 else bottom) - list_h
     row_gap = lay.get('row_gap', 58)
     band = {'C': .52, 'E': .6, 'G': .56}.get(style, .32)
     cf_a = garamond(24, 500); lh_a = 29
@@ -723,7 +746,7 @@ def compose(photos, day, seed, style=None):
     row_h = (bottom_space - top_space - row_gap * (len(rows) - 1)) / len(rows) - below
     pw = min(lay.get('cap', 300), pw_w, row_h / (1.08 + .045 + band))
     # on busy days the cards are narrower, so let the photos grow taller to fill the height instead
-    card = Card(pw, max(1.08, min(1.45, row_h / pw - .045 - band)), band, style)
+    card = Card(pw, max(1.08, min(lay.get('aspect_max', 1.45), row_h / pw - .045 - band)), band, style)
     gap = min(70, (W - 2 * M - cols * card.CW) / max(1, cols - 1))
     pitch = card.CH + below + row_gap
     block = (len(rows) - 1) * pitch + card.CH + below
@@ -751,7 +774,7 @@ def compose(photos, day, seed, style=None):
                 ty = y_top + card.CH + 18
                 for i, line in enumerate(lines):
                     dr.text((cx, ty + (i + .8) * lh_a), line, font=cf_a, fill=CAPTION_GOLD, anchor='ms')
-            if style and style[0] in 'FH' and caption(x):
+            if style and (style[0] in 'FH' or lay.get('lines')) and caption(x):
                 tag, pos = under_card(x, card, gap, cf_a, lh_a, style, rnd)
                 bx, by = px + card.CH * np.sin(t), py + card.CH * np.cos(t)   # middle of the tilted card's bottom edge
                 img.paste(tag, (int(bx - tag.width / 2), int(by + pos)), tag)
