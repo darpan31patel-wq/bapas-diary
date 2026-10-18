@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 
 import cv2
 import numpy as np
-from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_URL = 'https://darshan-screensaver.pages.dev/memories/{mmdd}.json'
@@ -917,13 +917,16 @@ def under_card(x, card, gap, f, lh, style, rnd):
     else:
         lines = wrap(probe, text, f, maxw, n)
     lh = lh * f.size / cf_size
-    tw = max(probe.textlength(l, font=f) for l in lines) + 34
+    # drawn four times bigger and shrunk: small text then keeps the font's true letter spacing (no 'Perform s') and smooth edges
+    K = 4; fk = garamond(f.size * K, 500)
+    tw = max(probe.textlength(l, font=fk) for l in lines) / K + 34
     th = len(lines) * lh + 16
-    im = Image.new('RGBA', (int(tw), int(th)), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
-    d.rounded_rectangle((0, 0, tw - 1, th - 1), radius=int(th / 2) if len(lines) == 1 else 14, fill=(30, 8, 12, 150))
+    W4, H4 = round(tw) * K, round(th) * K
+    im = Image.new('RGBA', (W4, H4), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    d.rounded_rectangle((0, 0, W4 - 1, H4 - 1), radius=int(H4 / 2) if len(lines) == 1 else 14 * K, fill=(30, 8, 12, 150))
     for i, line in enumerate(lines):
-        d.text((tw / 2, 8 + (i + .5) * lh), line, font=f, fill=CAPTION_IVORY, anchor='mm')
-    return im, 14
+        d.text((W4 / 2, (8 + (i + .5) * lh) * K), line, font=fk, fill=CAPTION_IVORY, anchor='mm')
+    return im.resize((round(tw), round(th)), Image.LANCZOS), 14
 
 
 # wide polaroids (photos wider than tall) on three or four cords, so the width of the picture is used and little hangs below the cards
@@ -950,7 +953,7 @@ class WideCard(Card):
             d.line((0, j, CW, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(IVORY_TOP, IVORY_BOTTOM)) + (255,))
         d.rectangle((0, 0, CW - 1, CH - 1), outline=IVORY_EDGE, width=1)
         photo = crop_to(x['im'], x['face'], PW, PH, x.get('crop', 'frame'), at=.3)   # Bapa high in the frame, no dead space over his head
-        card.paste(photo.filter(ImageFilter.UnsharpMask(radius=1.2, percent=55, threshold=2)), (B, B))   # a touch crisper after the resize
+        card.paste(polish(photo), (B, B))
         d.rectangle((B - 1, B - 1, B + PW, B + PH), outline=(150, 130, 100), width=1)
         if self.band == 'none':
             self.foot_band(card, x)
@@ -1085,6 +1088,16 @@ def compose_wide(photos, day, seed, style):
 CAPTION_SIZE = 21   # caption text under each frame (was 24; smaller since 18 Oct 2026 so whole captions fit, people zoom in)
 SAG = 60            # how far the cords dip in the middle, in pixels (Darpan 18 Oct 2026: 20 then 34 looked too straight, he wanted more)
 LIVE_STYLE = 'H2'   # the daily picture: caption centred under each card (Darpan's choice, 16 Oct 2026)
+
+
+def polish(photo):
+    """Final touch on each resized photo (Darpan 18 Oct 2026: as clear and high quality as possible): a gentle levels
+    stretch so dull web images get their blacks and whites back, a little more colour, then two passes of sharpening,
+    a wide soft one for local contrast and a fine one for detail. Thresholds keep skin and smooth walls clean."""
+    photo = ImageOps.autocontrast(photo, cutoff=(.4, .2), preserve_tone=True)
+    photo = ImageEnhance.Color(photo).enhance(1.07)
+    photo = photo.filter(ImageFilter.UnsharpMask(radius=6, percent=18, threshold=0))    # local contrast, a clearer look
+    return photo.filter(ImageFilter.UnsharpMask(radius=1.1, percent=75, threshold=3))   # fine detail after the resize
 
 
 def dump_photos(photos, folder):
