@@ -132,6 +132,7 @@ SPECIAL = re.compile(r'pratishtha|inaugurat|annakut|diwali|new year|janm|jayanti
                      r'pilgrim|on foot|airport|farewell|departs|flag|cake|balloon|boat|horse|elephant|tractor|'
                      r'cricket|football|plant|tree|cow|children|balaks?\b|kids?\b', re.I)
 ACTION_KEEP = .72     # an action shot must keep at least this much of the photo inside the frame, or what Bapa does gets cut off
+NICE_MIN = 2.0        # the action score a photo needs before it beats a close darshan
 CLOSE_MIN_FACE = 64   # pixels: a face smaller than this can't be blown up into a close darshan
 
 
@@ -204,12 +205,12 @@ def workings_sheet(day):
     tw, th, pad, lab = 330, 250, 24, 260
     rows = [w for w in WORKINGS if w['rows']]
     cols = max(len(w['rows']) for w in rows)
-    Wd, Hd = lab + cols * (tw + pad) + pad, 150 + len(rows) * (th + 120)
+    Wd, Hd = lab + cols * (tw + pad) + pad, 150 + len(rows) * (th + 144)
     img = Image.new('RGB', (Wd, Hd), (40, 10, 18)); d = ImageDraw.Draw(img)
     d.text((Wd / 2, 70), f'{day.day} {day:%B}: how each year was chosen', font=garamond(64), fill=GOLD, anchor='mm')
     cf, sf, yf = garamond(22, 500), arimo_bold(18), garamond(54, 600)
     for r, w in enumerate(rows):
-        y0 = 150 + r * (th + 120)
+        y0 = 150 + r * (th + 144)
         d.text((pad, y0 + 20), str(w['year']), font=yf, fill=GOLD, anchor='la')
         d.text((pad, y0 + 92), w['mode'].upper(), font=sf, fill=(226, 184, 104), anchor='la')
         for c, (score, x, status) in enumerate(w['rows']):
@@ -220,10 +221,11 @@ def workings_sheet(day):
             if status == 'chosen' or tag == '2ND CHOICE':
                 d.rectangle((x0 - 4, y0 - 4, x0 + tw + 3, y0 + th + 3), outline=colour, width=4)
             face = f'Bapa {x["sim"]:.2f}' if x['face'] else 'Bapa not found'
-            how = f'{x.get("crop", "")}  keeps {round(100 * x.get("keep", 1))}%' + ('  SPECIAL' if x.get('special') else '')
-            d.text((x0, y0 + th + 10), f'{tag}  score {score:.2f}  {face}  {how}'.strip(), font=sf, fill=colour, anchor='la')
+            how = f'shown {x.get("crop", "")}, frame keeps {round(100 * x.get("keep", 1))}%' + ('  SPECIAL' if x.get('special') else '') + ('  nice action' if x.get('nice') else '')
+            d.text((x0, y0 + th + 10), f'{tag}  score {score:.2f}  {face}'.strip(), font=sf, fill=colour, anchor='la')
+            d.text((x0, y0 + th + 34), how, font=sf, fill=colour, anchor='la')
             for i, line in enumerate(wrap(d, caption(x) or '(no caption)', cf, tw, 2)):
-                d.text((x0, y0 + th + 36 + i * 26), line, font=cf, fill=CAPTION_GOLD, anchor='la')
+                d.text((x0, y0 + th + 60 + i * 26), line, font=cf, fill=CAPTION_GOLD, anchor='la')
     return img
 
 
@@ -265,15 +267,17 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69):
         subject = bapa_is_subject(c)
         doing = bool(DOING.search(c)) and not JUST_A_FACE.search(c)
         close_ok = bool(face) and face[3] >= CLOSE_MIN_FACE
-        nice = bool(face) and doing and subject and r >= .12 and (keep >= ACTION_KEEP or special)
-        x.update(keep=round(keep, 2), special=special, nice=nice, close_ok=close_ok)
         jitter = rnd.uniform(0, .04) + (1.2 if unique and face and unique_caption(c) else 0)
-        s_close = (1 + min(r, .35) + sim + (.2 if JUST_A_FACE.search(c) else 0) if face else 0) + jitter
+        s_close = (1 + min(r, .35) + sim + (.2 if JUST_A_FACE.search(c) else 0) if face else -5) + jitter
         s_close -= (.6 if face and not subject else 0) + (1.5 if face and not close_ok else 0)
         s_doing = (1 + sim + .6 * max(0, 1 - abs(r - .18) / .15) + (.4 if doing else 0) + (.3 if special else 0)
                    - (.5 if r < .1 else 0) - (.6 if not subject else 0)             # Bapa small in the frame, or not the subject
                    - (0 if keep >= ACTION_KEEP else (.3 if special else 1.5))       # what he is doing would be cut off
-                   if face else 0) + jitter
+                   if face else -5) + jitter
+        # a really nice action shot: he is doing something, he is the subject, not small, nothing cut off (or a special
+        # moment), and it scores well; anything less and the year is better served by a close darshan
+        nice = bool(face) and doing and subject and r >= .13 and (keep >= ACTION_KEEP or special) and s_doing - jitter >= NICE_MIN
+        x.update(keep=round(keep, 2), special=special, nice=nice, close_ok=close_ok)
         ALL.append((x['y'], round(sim, 2), bool(face), caption(x), x['i']))
         lst = cands.setdefault(x['y'], [])
         lst.append((s_close, s_doing, x))
@@ -290,8 +294,8 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69):
         for j, v in enumerate(cands[y]):
             k = keys[y][j]
             others = sum(1 for oy in cands if oy != y and any(same_caption(k, ok) for ok in keys[oy]))
-            if others:
-                cands[y][j] = (v[0] - .25 * others, v[1] - .25 * others, v[2])
+            if others:   # capped: with 25 years on a day 'blesses the assembly' would otherwise lose several points
+                cands[y][j] = (v[0] - min(.5, .25 * others), v[1] - min(.5, .25 * others), v[2])
     for y, want in PICKS.get(seed, {}).items():   # Darpan's own choice for a year wins outright
         for j, v in enumerate(cands.get(int(y), [])):
             if want.lower() in (v[2].get('c') or '').lower():
@@ -314,7 +318,7 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69):
         has_close = any(v[2]['close_ok'] for v in cands[y])
         k = 1 if has_nice and not (i % 3 == 1 and has_close) else (0 if has_close else 1)
         ranked = sorted(cands[y], key=lambda v: -v[k])
-        if ranked[0][2]['face']:
+        if any(v[2]['face'] for v in ranked):   # photos where Bapa is recognised always come before ones where he isn't
             ranked = [v for v in ranked if v[2]['face']]
             if k == 1:   # only really nice action shots count as action; the rest of the year's photos follow as close ups
                 ranked = [v for v in ranked if v[2]['nice']] + [v for v in sorted(ranked, key=lambda v: -v[0]) if not v[2]['nice']]
@@ -762,7 +766,7 @@ def compose(photos, day, seed, style=None):
     lay = LAYOUT.get(style, {})
     nr = lay.get('rows', 1 if n <= 5 else 2)
     rows = [photos[round(i * n / nr):round((i + 1) * n / nr)] for i in range(nr)]
-    cols, M, min_gap = len(rows[0]), lay.get('M', 100), lay.get('min_gap', 30)
+    cols, M, min_gap = max(len(r) for r in rows), lay.get('M', 100), lay.get('min_gap', 30)
     list_h = (-(-n // 3) * 36 + 30) if style == 'D' else 0     # room for the numbered caption list
     top_space, bottom_space = lay.get('top', 222), lay.get('bottom', H - 128) - list_h
     row_gap = lay.get('row_gap', 58)
