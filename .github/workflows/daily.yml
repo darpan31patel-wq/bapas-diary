@@ -66,7 +66,7 @@ jobs:
         if: steps.done.outputs.skip != '1'
         env:
           DATE: ${{ inputs.date }}
-          STYLES: ${{ github.ref != 'refs/heads/main' && 'H2,P' || '' }}
+          STYLES: ${{ github.ref != 'refs/heads/main' && 'H2,W' || '' }}
         run: |
           if [ "${GITHUB_REF}" != "refs/heads/main" ] && [ "${DATE#*,}" != "$DATE" ]; then
             # test branches only: several dates at once, original and unique caption picks side by side
