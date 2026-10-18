@@ -1,0 +1,48 @@
+name: Photo candidates sheet
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'File name for the sheet (preview/<name>.jpg)'
+        required: true
+      title:
+        description: 'Title on the sheet'
+        required: false
+      photos:
+        description: 'Photos, one per line: album:id:label'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  sheet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -q pillow
+      - name: Make the sheet
+        env:
+          PHOTOS: ${{ inputs.photos }}
+          NAME: ${{ inputs.name }}
+          TITLE: ${{ inputs.title }}
+        run: |
+          mapfile -t LIST < <(printf '%s\n' "$PHOTOS" | sed '/^\s*$/d')
+          python tools/candidates.py --out "out/$NAME/$NAME.jpg" --title "$TITLE" "${LIST[@]}"
+      - name: Keep it on this branch under preview/
+        run: |
+          mkdir -p preview
+          cp "out/$NAME/$NAME.jpg" preview/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add preview
+          git commit -q -m "Candidates sheet $NAME"
+          git push -q
+        env:
+          NAME: ${{ inputs.name }}
