@@ -149,7 +149,7 @@ SPECIAL = re.compile(r'pratishtha|inaugurat|annakut|diwali|new year|janm|jayanti
                      r'cricket|football|plant|tree|cow|children|balaks?\b|kids?\b', re.I)
 ACTION_KEEP = .72     # an action shot must keep at least this much of the photo inside the frame, or what Bapa does gets cut off
 NICE_MIN = 2.0        # the action score a photo needs before it beats a close darshan
-CLOSE_SHARE = .45     # about this share of the years are close darshans of Bapa's face (Darpan, 18 Oct 2026: 9 then 3 more of 27)
+CLOSE_SHARE = .6      # about this share of the years are close darshans of Bapa's face (Darpan, 18 Oct 2026: 16 of 27)
 CLOSE_MIN_FACE = 64   # pixels: a face smaller than this can't be blown up into a close darshan
 
 
