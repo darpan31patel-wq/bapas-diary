@@ -365,6 +365,10 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69):
                 w['rows'].append((v[mode], x, 'chosen'))
             elif len(w['rows']) < 5:
                 w['rows'].append((v[mode], x, 'repeats an earlier caption' if w['pick'] is None else ''))
+        if w['pick'] is None and w['rows']:   # every caption this year repeats another year's: a repeat beats losing
+            s, x, _ = w['rows'][0]            # the year (Darpan, 18 Oct 2026: as many years as possible, always)
+            picked.append(x); w['pick'] = x
+            w['rows'][0] = (s, x, 'chosen, caption repeats')
         WORKINGS.append(w)
     if len(picked) < 5:   # too few left once repeats are skipped: fall back to the plain best per year
         picked = [with_crop(sorted(cands[y], key=lambda v: -v[1])[0], 1) for y in years]
