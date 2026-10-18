@@ -66,9 +66,10 @@ def sharpness(im, face):
 
 
 def head_cut(im, face):
-    """True when the top of his head or the side of his face runs off the photo's edge."""
+    """True when the top of his head or the side of his face runs off the photo's edge (a tight portrait whose
+    crown is just in is fine: the detector's box starts about a quarter of a face below the top of the head)."""
     fx, fy, fw, fh = face
-    return fy - .55 * fh < 0 or fx - .2 * fw < 0 or fx + 1.2 * fw > im.width or fy + 1.15 * fh > im.height
+    return fy - .2 * fh < 0 or fx - .05 * fw < 0 or fx + 1.05 * fw > im.width or fy + .9 * fh > im.height
 
 
 def look(items):
@@ -100,9 +101,9 @@ def look(items):
 
 def sheets(day, byyear, picks, out, per_year=6, per_sheet=7):
     aspect = FRAME_ASPECT['W2']
-    tw, th, pad, lab = 300, round(300 / aspect), 22, 230
+    tw, th, pad, lab = 340, round(340 / aspect), 22, 230
     years = sorted(byyear)
-    cf, sf, nf, yf, tf = garamond(21, 500), arimo_bold(17), arimo_bold(22), garamond(50, 600), garamond(56)
+    cf, sf, nf, yf, tf = garamond(21, 500), arimo_bold(15), arimo_bold(20), garamond(50, 600), garamond(56)
     for s in range(0, len(years), per_sheet):
         page = years[s:s + per_sheet]
         Wd, Hd = lab + per_year * (tw + pad) + pad, 130 + len(page) * (th + 150)
@@ -124,12 +125,12 @@ def sheets(day, byyear, picks, out, per_year=6, per_sheet=7):
                 colour = GOLD if on_picture else (IVORY if v['ok'] else DIM)
                 if on_picture:
                     d.rectangle((x0 - 4, y0 - 4, x0 + tw + 3, y0 + th + 3), outline=GOLD, width=4)
-                d.rectangle((x0, y0, x0 + 44, y0 + 34), fill=DARK)
-                d.text((x0 + 22, y0 + 17), f'{y}.{c + 1}'.split('.')[1], font=nf, fill=GOLD, anchor='mm')
+                d.rectangle((x0 + tw - 36, y0 + th - 30, x0 + tw, y0 + th), fill=DARK)
+                d.text((x0 + tw - 18, y0 + th - 15), str(c + 1), font=nf, fill=GOLD, anchor='mm')
                 why = ('on the picture now' if on_picture else '') if v['ok'] else ' '.join(
                     w for w, bad in (('face too small', v['fh'] < CLOSE_MIN_FACE), ('side on', v['front'] < FRONT_MIN), ('head cut', v['cut'])) if bad)
                 d.text((x0, y0 + th + 8), f'#{c + 1}  score {v["score"]:.2f}  {why}'.rstrip(), font=sf, fill=colour, anchor='la')
-                d.text((x0, y0 + th + 30), f'face {v["fh"]}px  front {v["front"]:.2f}  sharp {v["sharp"]}  match {v["sim"]:.2f}', font=sf, fill=colour, anchor='la')
+                d.text((x0, y0 + th + 30), f'{v["fh"]}px  front {v["front"]:.2f}  sharp {v["sharp"]}  match {v["sim"]:.2f}', font=sf, fill=colour, anchor='la')
                 for i, line in enumerate(wrap(d, caption(v) or '(no caption)', cf, tw, 2)):
                     d.text((x0, y0 + th + 58 + i * 25), line, font=cf, fill=colour, anchor='la')
         img.save(os.path.join(out, f'sheet-{s // per_sheet + 1}.jpg'), quality=88, optimize=True)
