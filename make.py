@@ -434,16 +434,17 @@ def thin_rule(dr, y, x0, x1, fade_to_left):
         dr.line((xp, y, xp, y + 1), fill=tuple(round(m + (g - m) * a) for m, g in zip(MAROON_OUT, GOLD_SOFT)))
 
 
-def header(img, title, subtitle):
-    """Big bold gold title, then a smaller spaced capital line between two thin gold rules."""
+def header(img, title, subtitle, compact=False):
+    """Big bold gold title, then a smaller spaced capital line between two thin gold rules.
+    compact: the same, a little smaller, fitting above cards that start at y=156."""
     dr = ImageDraw.Draw(img)
-    tf = garamond(118)
+    tf = garamond(98 if compact else 118)
     tw = dr.textlength(title, font=tf)
-    gold_text(img, ((W - tw) / 2, 4), title, tf)
-    sf, track = garamond(40, 600), 9
+    gold_text(img, ((W - tw) / 2, -2 if compact else 4), title, tf)
+    sf, track = garamond(32 if compact else 40, 600), 9
     sub = subtitle.upper()
     sw = spaced(dr, sub, sf, track)
-    sy = 142
+    sy = 114 if compact else 142
     draw_spaced(dr, (W - sw) / 2, sy, sub, sf, track, (240, 214, 160))
     mid = sy + 24
     thin_rule(dr, mid, (W - sw) / 2 - 50 - 330, (W - sw) / 2 - 50, True)
@@ -471,11 +472,11 @@ def header_line(img, title, subtitle):
     diamond(dr, fx + fw + pad + rule + 14, mid + 1, 5, GOLD)
 
 
-def footer(img):
+def footer(img, small=False):
     dr = ImageDraw.Draw(img)
-    f = garamond(40, 500)
+    f = garamond(26 if small else 40, 500)
     w = dr.textlength(FOOTER, font=f)
-    y = H - 88
+    y = H - 42 if small else H - 88
     dr.text(((W - w) / 2, y), FOOTER, font=f, fill=(226, 184, 104))
     mid = y + 27
     thin_rule(dr, mid, (W - w) / 2 - 40 - 220, (W - w) / 2 - 40, True)
@@ -901,7 +902,7 @@ def under_card(x, card, gap, f, lh, style, rnd):
 
 # wide polaroids (photos wider than tall) on three or four cords, so the width of the picture is used and little hangs below the cards
 WIDE = {'W1': dict(rows=3, M=60, gap=16, ratio=.74, band='caption', row_gap=28, tilt=1.6),   # year, place and caption all in the ivory band
-        'W2': dict(rows=3, M=44, gap=10, ratio=.9, band='yearline', pill=2, lines=2, row_gap=8, tilt=1.2, oneline=True),   # year and place in the band, caption on a pill below
+        'W2': dict(rows=3, M=44, gap=10, ratio=.9, band='yearline', pill=2, lines=2, row_gap=8, tilt=2.2, compact=True),   # year and place in the band, caption on a pill below
         'W3': dict(rows=4, M=60, gap=18, ratio=2 / 3, band='none', row_gap=22, tilt=1.2)}    # thin ivory frames, year and caption over the photo
 
 
@@ -991,7 +992,7 @@ def compose_wide(photos, day, seed, style):
     if lay.get('oneline'):
         header_line(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
     else:
-        header(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
+        header(img, f'{day.day} {day:%B}', 'in Bapa’s Diary', compact=lay.get('compact', False))
     n = len(photos)
     nrows = max(1, min(lay['rows'], -(-n // (5 if lay['rows'] == 3 else 6))))
     per = [n // nrows + (1 if i < n % nrows else 0) for i in range(nrows)]
@@ -999,7 +1000,7 @@ def compose_wide(photos, day, seed, style):
     for c in per:
         rows.append(photos[k:k + c]); k += c
     cols, M, gap, row_gap = per[0], lay['M'], lay['gap'], lay['row_gap']
-    top_space, bottom_space = (156, H - 44) if lay.get('oneline') else (200, H - 96)
+    top_space, bottom_space = (156, H - 44) if lay.get('oneline') or lay.get('compact') else (200, H - 96)
     cf_a, lh_a = garamond(CAPTION_SIZE, 500), round(CAPTION_SIZE * 1.2)
     below = (lay.get('pill', 0) * lh_a + 22) if lay.get('pill') else 0
     probe = WideCard(100, lay['ratio'], lay['band'])
@@ -1020,9 +1021,10 @@ def compose_wide(photos, day, seed, style):
         x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
         for c, x in enumerate(row):
             cx = x0 + c * (card.CW + gap) + card.CW / 2
-            a = rnd.uniform(-lay['tilt'], lay['tilt']); t = np.radians(a)
+            a = rnd.uniform(-lay['tilt'], lay['tilt']) * rnd.choice((.4, 1, 1)); t = np.radians(a)   # some hang nearly straight, some swing more
+            cx += rnd.uniform(-6, 6)                                                              # pegged a little left or right
             hung = card.hang(card.make(x)).rotate(a, resample=Image.BICUBIC, expand=True)
-            px, py = cx, y_top
+            px, py = cx, y_top + rnd.uniform(-3, 5)                                               # and a touch higher or lower on the cord
             mx, my = px + card.CH / 2 * np.sin(t), py + card.CH / 2 * np.cos(t)
             img.paste(hung, (int(mx - hung.width / 2), int(my - hung.height / 2)), hung)
             peg(img, cx, sag(cx) + 4, s)
@@ -1031,7 +1033,7 @@ def compose_wide(photos, day, seed, style):
                 bx, by = px + card.CH * np.sin(t), py + card.CH * np.cos(t)
                 img.paste(tag, (int(bx - tag.width / 2), int(by + 6)), tag)
     if not lay.get('oneline'):
-        footer(img)
+        footer(img, small=lay.get('compact', False))
     return img
 
 
@@ -1149,7 +1151,10 @@ def main():
             ps = pick_one_per_year(items, seed=mmdd, aspect=FRAME_ASPECT[st])
             print(f'  {st}: ' + ', '.join(f'{x["y"]} {x["crop"]}' for x in ps))
             workings_sheet(day).save(os.path.join(a.out, f'caption-workings-{st}.jpg'), quality=88, optimize=True)
-        compose(ps, day, seed=mmdd, style=st).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=95, optimize=True)
+        im = compose(ps, day, seed=mmdd, style=st)
+        im.save(os.path.join(a.out, f'caption-{st}.jpg'), quality=95, optimize=True)
+        if st in WIDE:
+            im.save(os.path.join(a.out, f'caption-{st}.png'), optimize=True)   # lossless copy, text stays crisp
     WORKINGS[:] = workings_live
     if a.workings:
         seconds = second_choices()
