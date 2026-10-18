@@ -1058,8 +1058,8 @@ def compose_wide(photos, day, seed, style):
         for c, x in enumerate(row):
             cx = x0 + c * (card.CW + gap) + card.CW / 2
             if lay.get('playful'):   # a real line of photos: a few nearly straight, most swung a little, a couple swung well, some touching
-                a = rnd.choice((-1, 1)) * lay['tilt'] * rnd.choice((.25, .7, 1, 1.3, 1.8)) * rnd.uniform(.8, 1.1)
-                cx += rnd.uniform(-16, 16); drop = rnd.uniform(-4, 12)
+                a = rnd.choice((-1, 1)) * lay['tilt'] * rnd.choice((.3, .7, 1, 1, 1.4)) * rnd.uniform(.85, 1.05)   # halfway between v9 and v10 (Darpan: v10 a bit too messy)
+                cx += rnd.uniform(-11, 11); drop = rnd.uniform(-3.5, 8)
             else:
                 a = rnd.uniform(-lay['tilt'], lay['tilt']) * rnd.choice((.4, 1, 1))              # some hang nearly straight, some swing more
                 cx += rnd.uniform(-6, 6); drop = rnd.uniform(-3, 4)                               # pegged a little left or right, higher or lower
