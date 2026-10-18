@@ -301,6 +301,8 @@ def crop_to(im, face, w, h):
     cw, ch = (ih * w / h, ih) if iw / ih > w / h else (iw, iw * h / w)
     fx, fy, fw, fh = face
     head = (fx - .35 * fw, fy - .75 * fh, fx + 1.35 * fw, fy + 1.4 * fh)   # top of the head down to the chin and neck
+    if head[3] - head[1] > ch * .98 or head[2] - head[0] > cw * .98:   # a wide window on a close portrait: show the whole photo
+        return crop_to(im, None, w, h)
     x0, y0 = fx + fw / 2 - cw / 2, fy + fh / 2 - ch * .38
     y0 = max(y0, head[3] - ch); y0 = min(y0, head[1])                        # never slice through the head
     x0 = min(max(0, x0), iw - cw); y0 = min(max(0, y0), ih - ch)
@@ -739,7 +741,7 @@ def under_card(x, card, gap, f, lh, style, rnd):
         for i, line in enumerate(lines):
             d.text((cx, 24 + 14 + (i + .8) * lh), line, font=f, fill=YEAR_C2, anchor='ms')
         return im.rotate(rnd.uniform(-2.5, 2.5), resample=Image.BICUBIC, expand=True), 2
-    lines = wrap(probe, caption(x), f, card.CW + min(gap, 30) - 50, LAYOUT.get(style, {}).get('lines', 3))
+    lines = wrap(probe, caption(x), f, card.CW + min(gap, 30) - 50, WIDE.get(style, LAYOUT.get(style, {})).get('lines', 1 if style in WIDE else 3))
     tw = max(probe.textlength(l, font=f) for l in lines) + 34
     th = len(lines) * lh + 16
     im = Image.new('RGBA', (int(tw), int(th)), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
@@ -749,10 +751,139 @@ def under_card(x, card, gap, f, lh, style, rnd):
     return im, 14
 
 
+# wide polaroids (photos wider than tall) on three or four cords, so the width of the picture is used and little hangs below the cards
+WIDE = {'W1': dict(rows=3, M=60, gap=16, ratio=.74, band='caption', row_gap=28, tilt=1.6),   # year, place and caption all in the ivory band
+        'W2': dict(rows=3, M=60, gap=16, ratio=.74, band='year', pill=2, lines=2, row_gap=22, tilt=1.6),   # year and place in the band, caption on a pill below
+        'W3': dict(rows=4, M=60, gap=18, ratio=2 / 3, band='none', row_gap=22, tilt=1.2)}    # thin ivory frames, year and caption over the photo
+
+
+class WideCard(Card):
+    """Ivory frame round a photo wider than it is tall. band: 'caption' (year, caption and place in the ivory band),
+    'year' (year and place, as the live card) or 'none' (a thin frame, year and caption over the photo's foot)."""
+    def __init__(self, pw, ratio, band):
+        self.PW, self.PH, self.band = round(pw), round(pw * ratio), band
+        self.B = max(6, round(pw * .04)) if band != 'none' else max(6, round(pw * .028))
+        self.BB = {'caption': round(pw * .46), 'year': round(pw * .3), 'none': 0}[band]
+        self.CW, self.CH = self.PW + 2 * self.B, self.PH + self.B + self.BB
+        self.style = None
+
+    def make(self, x, num=None):
+        PW, PH, B, BB, CW, CH = self.PW, self.PH, self.B, self.BB, self.CW, self.CH
+        card = Image.new('RGBA', (CW, CH)); d = ImageDraw.Draw(card)
+        for j in range(CH):
+            t = j / CH
+            d.line((0, j, CW, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(IVORY_TOP, IVORY_BOTTOM)) + (255,))
+        d.rectangle((0, 0, CW - 1, CH - 1), outline=IVORY_EDGE, width=1)
+        card.paste(crop_to(x['im'], x['face'], PW, PH), (B, B))
+        d.rectangle((B - 1, B - 1, B + PW, B + PH), outline=(150, 130, 100), width=1)
+        if self.band == 'none':
+            self.foot_band(card, x)
+            return card
+        yf, yt = garamond(PW * .12 if self.band == 'caption' else PW * .13, 600), str(x['y'])
+        pl = place(x).upper()
+        pf, track = arimo_bold(PW * .048 if self.band == 'caption' else PW * .06), PW * .012
+        while pf.size > PW * .035 and spaced(d, pl, pf, track) > CW - 2 * B - 4:
+            pf = arimo_bold(pf.size - 1)
+        yh = -d.textbbox((0, 0), yt, font=yf, anchor='ls')[1]
+        ph = -d.textbbox((0, 0), 'A', font=pf, anchor='ls')[1] if pl else 0
+        if self.band == 'year':
+            gap = PW * .05 if pl else 0
+            top = B + PH + (BB - (yh + gap + ph)) / 2 - B * .2
+            d.text((CW / 2, top + yh), yt, font=yf, fill=YEAR_C2, anchor='ms')
+            draw_spaced(d, (CW - spaced(d, pl, pf, track)) / 2, top + yh + gap + ph - pf.getmetrics()[0], pl, pf, track, PLACE_C2)
+            return card
+        cf = garamond(PW * .082, 500); lh = PW * .092
+        lines = wrap(d, caption(x), cf, CW - 2 * B - PW * .03, 2)
+        block = yh + PW * .035 + len(lines) * lh + (PW * .035 + ph if pl else 0)
+        top = B + PH + (BB - block) / 2
+        d.text((CW / 2, top + yh), yt, font=yf, fill=YEAR_C2, anchor='ms')
+        y = top + yh + PW * .035
+        for i, line in enumerate(lines):
+            d.text((CW / 2, y + (i + .8) * lh), line, font=cf, fill=(70, 40, 40), anchor='ms')
+        y += len(lines) * lh + PW * .035 + ph
+        if pl:
+            draw_spaced(d, (CW - spaced(d, pl, pf, track)) / 2, y - pf.getmetrics()[0], pl, pf, track, (150, 96, 80))
+        return card
+
+    def foot_band(self, card, x):
+        """W3: the year in gold and the caption in ivory over a soft dark fade across the foot of the photo."""
+        PW, PH, B = self.PW, self.PH, self.B
+        d = ImageDraw.Draw(card)
+        yf, cf = garamond(PW * .08, 700), garamond(PW * .062, 500)
+        lh = PW * .07
+        lines = wrap(d, caption(x), cf, PW * .9, 2)
+        yh = -d.textbbox((0, 0), '2000', font=yf, anchor='ls')[1]
+        block = yh + (PW * .022 + len(lines) * lh if lines else 0)
+        h = round(block + PW * .14)
+        fade = Image.new('RGBA', (PW, h)); fd = ImageDraw.Draw(fade)
+        for j in range(h):
+            fd.line((0, j, PW, j), fill=(30, 8, 12, round(215 * min(1, (j / h) / .5) ** 1.3)))
+        card.alpha_composite(fade, (B, B + PH - h))
+        y = B + PH - PW * .04 - block
+        tag = f'{x["y"]}' + (f'  ·  {place(x).upper()}' if place(x) else '')
+        pf = arimo_bold(PW * .034)
+        d.text((B + PW / 2, y + yh), str(x['y']), font=yf, fill=GOLD, anchor='ms')
+        if place(x):
+            yw = d.textlength(str(x['y']), font=yf)
+            d.text((B + PW / 2 + yw / 2 + PW * .03, y + yh - PW * .012), place(x).upper(), font=pf, fill=(240, 214, 160), anchor='ls')
+        for i, line in enumerate(lines):
+            d.text((B + PW / 2, y + yh + PW * .022 + (i + .8) * lh), line, font=cf, fill=CAPTION_IVORY, anchor='ms')
+
+
+def compose_wide(photos, day, seed, style):
+    """Three (W1, W2) or four (W3) cords of wide cards, every year on the day, sized to fill the picture."""
+    lay = WIDE[style]
+    rnd = random.Random(seed)
+    img = background(); dr = ImageDraw.Draw(img)
+    header(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
+    n = len(photos)
+    nrows = max(1, min(lay['rows'], -(-n // (5 if lay['rows'] == 3 else 6))))
+    per = [n // nrows + (1 if i < n % nrows else 0) for i in range(nrows)]
+    rows, k = [], 0
+    for c in per:
+        rows.append(photos[k:k + c]); k += c
+    cols, M, gap, row_gap = per[0], lay['M'], lay['gap'], lay['row_gap']
+    top_space, bottom_space = 206, H - 100
+    cf_a, lh_a = garamond(22, 500), 26
+    below = (lay.get('pill', 0) * lh_a + 30) if lay.get('pill') else 0
+    probe = WideCard(100, lay['ratio'], lay['band'])
+    k_h = probe.CH / 100                                       # card height per unit of photo width
+    pw_h = (bottom_space - top_space - (nrows - 1) * row_gap - nrows * below) / (nrows * k_h)
+    pw_w = ((W - 2 * M - gap * (cols - 1)) / cols) / (probe.CW / 100)
+    pw = min(pw_h, pw_w, 420)
+    card = WideCard(pw, lay['ratio'], lay['band'])
+    gap = min(60, (W - 2 * M - cols * card.CW) / max(1, cols - 1))
+    pitch = card.CH + below + row_gap
+    block = (nrows - 1) * pitch + card.CH + below
+    first = top_space + max(0, (bottom_space - top_space - block) / 2)
+    s = card.PW / 220
+    for r, row in enumerate(rows):
+        y_top = first + r * pitch
+        sag = lambda xp: y_top - 4 + 12 * 4 * (xp / W) * (1 - xp / W)
+        dr.line([(xp, sag(xp)) for xp in range(0, W + 1, 6)], fill=(170, 132, 78), width=2)
+        x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
+        for c, x in enumerate(row):
+            cx = x0 + c * (card.CW + gap) + card.CW / 2
+            a = rnd.uniform(-lay['tilt'], lay['tilt']); t = np.radians(a)
+            hung = card.hang(card.make(x)).rotate(a, resample=Image.BICUBIC, expand=True)
+            px, py = cx, y_top
+            mx, my = px + card.CH / 2 * np.sin(t), py + card.CH / 2 * np.cos(t)
+            img.paste(hung, (int(mx - hung.width / 2), int(my - hung.height / 2)), hung)
+            peg(img, cx, sag(cx) + 4, s)
+            if lay.get('pill') and caption(x):
+                tag, pos = under_card(x, card, gap, cf_a, lh_a, 'W2', rnd)
+                bx, by = px + card.CH * np.sin(t), py + card.CH * np.cos(t)
+                img.paste(tag, (int(bx - tag.width / 2), int(by + pos)), tag)
+    footer(img)
+    return img
+
+
 LIVE_STYLE = 'H2'   # the daily picture: caption centred under each card (Darpan's choice, 16 Oct 2026)
 
 
 def compose(photos, day, seed, style=None, look=None):
+    if style in WIDE:
+        return compose_wide(photos, day, seed, style)
     rnd = random.Random(seed)
     img = background(); dr = ImageDraw.Draw(img)
     header(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
