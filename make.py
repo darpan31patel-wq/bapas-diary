@@ -58,8 +58,8 @@ def vicharan_items(path, mmdd, place, per_caption=2):
             place.setdefault(y, where)
             continue
         ids, c = line.split('|', 1)
-        if c[:1].islower() or c[:1] in "',":
-            c = 'Swamishri' + ('' if c[:1] in "'," else ' ') + c
+        if c[:1].islower():
+            c = 'Swamishri ' + c
         for i in ids.split(',')[:per_caption]:
             out.append({'y': y, 'd': when or f'{y}-{mmdd}', 'p': place.get(y, ''), 'c': c,
                         'i': f'https://www.baps.org/Data/Sites/1/Media/GalleryImages/{album}/WebImages/{prefix}{i}.jpg'})
@@ -125,6 +125,15 @@ DOING = re.compile(r'arti|puja|pujan|bless|greet|shower|lights?\b|sanctif|plays?
                    r'address|discourse|mala|meets?|inaugurat|pratishtha|ritual|perform|bows|thal|sprinkl|writ|garland|honou?r|'
                    r'welcom|darshan|meditat|pray|arriv|visit|abhishek|lamp|tilak', re.I)
 JUST_A_FACE = re.compile(r'divine|jovial|\bmood\b|^\s*(HH|Param Pujya)?\s*(Pramukh|Mahant) Swami( Maharaj)?\s*$', re.I)
+# a one-off moment worth keeping as a wide shot even if Bapa comes out small in it (Darpan, 18 Oct 2026: "if it's special keep it")
+SPECIAL = re.compile(r'pratishtha|inaugurat|annakut|diwali|new year|janm|jayanti|diksha|abhishek|bhumi|foundation|shilanyas|'
+                     r'mahotsav|celebrat|festival|procession|rath|yagna|mahapuja|chopda|rangoli|dandiya|\braas\b|\bras\b|'
+                     r'instrument|surando|drum|president|prime minister|governor|congress|minister|mayor|ambassador|'
+                     r'pilgrim|on foot|airport|farewell|departs|flag|cake|balloon|boat|horse|elephant|tractor|'
+                     r'cricket|football|plant|tree|cow|children|balaks?\b|kids?\b', re.I)
+ACTION_KEEP = .72     # an action shot must keep at least this much of the photo inside the frame, or what Bapa does gets cut off
+NICE_MIN = 2.0        # the action score a photo needs before it beats a close darshan
+CLOSE_MIN_FACE = 64   # pixels: a face smaller than this can't be blown up into a close darshan
 
 
 BAPA_WORDS = re.compile(r"\b(HH|H\.H\.|Param Pujya|P\.P\.|Pramukh|Mahant|Swami|Swamishri|Maharaj|Bapa|his|the|a|an|of|to|and|in|on|at|with|by|for|all)\b", re.I)
@@ -196,36 +205,50 @@ def workings_sheet(day):
     tw, th, pad, lab = 330, 250, 24, 260
     rows = [w for w in WORKINGS if w['rows']]
     cols = max(len(w['rows']) for w in rows)
-    Wd, Hd = lab + cols * (tw + pad) + pad, 150 + len(rows) * (th + 120)
+    Wd, Hd = lab + cols * (tw + pad) + pad, 150 + len(rows) * (th + 144)
     img = Image.new('RGB', (Wd, Hd), (40, 10, 18)); d = ImageDraw.Draw(img)
     d.text((Wd / 2, 70), f'{day.day} {day:%B}: how each year was chosen', font=garamond(64), fill=GOLD, anchor='mm')
     cf, sf, yf = garamond(22, 500), arimo_bold(18), garamond(54, 600)
     for r, w in enumerate(rows):
-        y0 = 150 + r * (th + 120)
+        y0 = 150 + r * (th + 144)
         d.text((pad, y0 + 20), str(w['year']), font=yf, fill=GOLD, anchor='la')
         d.text((pad, y0 + 92), w['mode'].upper(), font=sf, fill=(226, 184, 104), anchor='la')
         for c, (score, x, status) in enumerate(w['rows']):
             x0 = lab + c * (tw + pad)
-            img.paste(crop_to(x['im'], x['face'], tw, th), (x0, y0))
+            img.paste(crop_to(x['im'], x['face'], tw, th, x.get('crop', 'frame')), (x0, y0))
             tag = 'CHOSEN' if status == 'chosen' else ('2ND CHOICE' if x is w.get('second') else status.upper())
             colour = GOLD if status == 'chosen' else (CAPTION_IVORY if tag == '2ND CHOICE' else (190, 150, 140))
             if status == 'chosen' or tag == '2ND CHOICE':
                 d.rectangle((x0 - 4, y0 - 4, x0 + tw + 3, y0 + th + 3), outline=colour, width=4)
             face = f'Bapa {x["sim"]:.2f}' if x['face'] else 'Bapa not found'
+            how = f'shown {x.get("crop", "")}, frame keeps {round(100 * x.get("keep", 1))}%' + ('  SPECIAL' if x.get('special') else '') + ('  nice action' if x.get('nice') else '')
             d.text((x0, y0 + th + 10), f'{tag}  score {score:.2f}  {face}'.strip(), font=sf, fill=colour, anchor='la')
+            d.text((x0, y0 + th + 34), how, font=sf, fill=colour, anchor='la')
             for i, line in enumerate(wrap(d, caption(x) or '(no caption)', cf, tw, 2)):
-                d.text((x0, y0 + th + 36 + i * 26), line, font=cf, fill=CAPTION_GOLD, anchor='la')
+                d.text((x0, y0 + th + 60 + i * 26), line, font=cf, fill=CAPTION_GOLD, anchor='la')
     return img
 
 
-def pick_one_per_year(items, seed, unique=False):
-    """Per year, a photo where Bapa is recognised. Most years show what he is doing (arti, puja, blessing,
-    greeting) with him at a medium size; about one year in three is a close darshan of his face, spread out.
-    No two years share the same caption: when a year's best photo repeats an earlier year's caption
-    (three years of 'reads the Shikshapatri'), its next best photo with a different caption is used, and if
-    it has none the year is left out.
-    Years where he can't be recognised in any photo are left out, unless that would leave fewer than five;
-    then they're kept and shown whole so he isn't cropped out."""
+def frame_keep(im, face, fa):
+    """How much of the photo (0 to 1) a frame of aspect fa (width / height) keeps when it fills the frame
+    around Bapa: a 3:2 photo in a tall 0.69 frame keeps 0.46, so whatever Bapa is doing beside him gets cut off."""
+    iw, ih = im.size
+    return min(1, (ih * fa) / iw) if iw / ih > fa else min(1, (iw / fa) / ih)
+
+
+def pick_one_per_year(items, seed, unique=False, aspect=.69):
+    """Per year, a photo where Bapa is recognised, chosen by Darpan's rule (18 Oct 2026): a photo is either a
+    really nice action shot or a close up of Bapa. An action shot only counts when what he is doing stays in
+    the frame (the frame keeps >= ACTION_KEEP of the photo), he is not tiny, and the caption says he is doing
+    something; a special one-off moment (pratishtha, festival, visitor) is kept even if the frame would cut
+    it, and is then shown whole. Otherwise the year is a close darshan: a tight crop on his head and
+    shoulders, which needs the face to be big enough to enlarge. His head is never cut. Years with a really
+    nice action shot take it (close ups still get a turn every third year when the year has a good one),
+    the rest are close ups, so a plain day gives darshan rather than a half-cut action.
+    No two years share the same caption: when a year's best photo repeats an earlier year's caption its next
+    best photo with a different caption is used. Years where he can't be recognised in any photo are left out,
+    unless that would leave fewer than five; then they're kept and shown whole so he isn't cropped out.
+    aspect is the frame's width / height (0.69 for the tall live cards, 1.33 for wide ones)."""
     rnd = random.Random(seed)
     cands = {}
     for x in items:
@@ -239,18 +262,28 @@ def pick_one_per_year(items, seed, unique=False):
         x = dict(x, im=im, face=face, sim=sim)
         r = face[3] / im.height if face else 0
         c = x.get('c') or ''
+        keep = frame_keep(im, face, aspect)
+        special = bool(SPECIAL.search(c))
+        subject = bapa_is_subject(c)
+        doing = bool(DOING.search(c)) and not JUST_A_FACE.search(c)
+        close_ok = bool(face) and face[3] >= CLOSE_MIN_FACE
         jitter = rnd.uniform(0, .04) + (1.2 if unique and face and unique_caption(c) else 0)
-        s_close = (1 + min(r, .35) + sim if face else 0) + jitter
-        s_doing = (1 + sim + .6 * max(0, 1 - abs(r - .18) / .15) + (.4 if DOING.search(c) and not JUST_A_FACE.search(c) else 0)
-                   - (.5 if r < .1 else 0) - (.6 if not bapa_is_subject(c) else 0)   # Bapa small in the frame, or not the subject
-                   if face else 0) + jitter
-        s_close -= .6 if face and not bapa_is_subject(c) else 0
+        s_close = (1 + min(r, .35) + sim + (.2 if JUST_A_FACE.search(c) else 0) if face else -5) + jitter
+        s_close -= (.6 if face and not subject else 0) + (1.5 if face and not close_ok else 0)
+        s_doing = (1 + sim + .6 * max(0, 1 - abs(r - .18) / .15) + (.4 if doing else 0) + (.3 if special else 0)
+                   - (.5 if r < .1 else 0) - (.6 if not subject else 0)             # Bapa small in the frame, or not the subject
+                   - (0 if keep >= ACTION_KEEP else (.3 if special else 1.5))       # what he is doing would be cut off
+                   if face else -5) + jitter
+        # a really nice action shot: he is doing something, he is the subject, not small, nothing cut off (or a special
+        # moment), and it scores well; anything less and the year is better served by a close darshan
+        nice = bool(face) and doing and subject and r >= .13 and (keep >= ACTION_KEEP or special) and s_doing - jitter >= NICE_MIN
+        x.update(keep=round(keep, 2), special=special, nice=nice, close_ok=close_ok)
         ALL.append((x['y'], round(sim, 2), bool(face), caption(x), x['i']))
         lst = cands.setdefault(x['y'], [])
         lst.append((s_close, s_doing, x))
         if len(lst) > 16:   # keep memory down: only the best few of each kind stay
-            keep = {id(v) for v in sorted(lst, key=lambda v: -v[0])[:8] + sorted(lst, key=lambda v: -v[1])[:8]}
-            lst[:] = [v for v in lst if id(v) in keep]
+            keep_ids = {id(v) for v in sorted(lst, key=lambda v: -v[0])[:8] + sorted(lst, key=lambda v: -v[1])[:8]}
+            lst[:] = [v for v in lst if id(v) in keep_ids]
     years = sorted(cands)
     if sum(1 for y in years if any(v[2]['face'] for v in cands[y])) >= 5:
         years = [y for y in years if any(v[2]['face'] for v in cands[y])]
@@ -261,49 +294,69 @@ def pick_one_per_year(items, seed, unique=False):
         for j, v in enumerate(cands[y]):
             k = keys[y][j]
             others = sum(1 for oy in cands if oy != y and any(same_caption(k, ok) for ok in keys[oy]))
-            if others:
-                cands[y][j] = (v[0] - .25 * others, v[1] - .25 * others, v[2])
+            if others:   # capped: with 25 years on a day 'blesses the assembly' would otherwise lose several points
+                cands[y][j] = (v[0] - min(.5, .25 * others), v[1] - min(.5, .25 * others), v[2])
     for y, want in PICKS.get(seed, {}).items():   # Darpan's own choice for a year wins outright
         for j, v in enumerate(cands.get(int(y), [])):
             if want.lower() in (v[2].get('c') or '').lower():
                 cands[int(y)][j] = (v[0] + 100, v[1] + 100, v[2])
+
+    def with_crop(v, k):
+        """The photo as it would be shown in that mode: 'close' tight on the head, 'frame' filling the frame,
+        'whole' the entire photo (a special wide moment, or no face found)."""
+        x = v[2]
+        if not x['face']:
+            return dict(x, crop='whole')
+        if k == 0:
+            return dict(x, crop='close' if x['close_ok'] else 'frame')
+        return dict(x, crop='frame' if x['keep'] >= ACTION_KEEP else 'whole')
+
     picked, used = [], []
     WORKINGS.clear()
     for i, y in enumerate(years):
-        k = 0 if i % 3 == 1 else 1
+        has_nice = any(v[2]['nice'] for v in cands[y])
+        has_close = any(v[2]['close_ok'] for v in cands[y])
+        k = 1 if has_nice and not (i % 3 == 1 and has_close) else (0 if has_close else 1)
         ranked = sorted(cands[y], key=lambda v: -v[k])
-        if ranked[0][2]['face']:
+        if any(v[2]['face'] for v in ranked):   # photos where Bapa is recognised always come before ones where he isn't
             ranked = [v for v in ranked if v[2]['face']]
+            if k == 1:   # only really nice action shots count as action; the rest of the year's photos follow as close ups
+                ranked = [v for v in ranked if v[2]['nice']] + [v for v in sorted(ranked, key=lambda v: -v[0]) if not v[2]['nice']]
         w = dict(year=y, mode='close darshan' if k == 0 else 'doing something', rows=[], pick=None)
         for v in ranked:
-            key = caption_key(caption(v[2]))
+            mode = 0 if (k == 0 or not v[2]['nice']) else 1
+            x = with_crop(v, mode)
+            key = caption_key(caption(x))
             if w['pick'] is None and not any(same_caption(key, u) for u in used):
-                picked.append(v[2]); used.append(key); w['pick'] = v[2]
-                w['rows'].append((v[k], v[2], 'chosen'))
+                picked.append(x); used.append(key); w['pick'] = x
+                w['rows'].append((v[mode], x, 'chosen'))
             elif len(w['rows']) < 5:
-                w['rows'].append((v[k], v[2], 'repeats an earlier caption' if w['pick'] is None else ''))
+                w['rows'].append((v[mode], x, 'repeats an earlier caption' if w['pick'] is None else ''))
         WORKINGS.append(w)
     if len(picked) < 5:   # too few left once repeats are skipped: fall back to the plain best per year
-        picked = [sorted(cands[y], key=lambda v: -v[0 if i % 3 == 1 else 1])[0][2] for i, y in enumerate(years)]
+        picked = [with_crop(sorted(cands[y], key=lambda v: -v[1])[0], 1) for y in years]
     return picked
 
 
-def crop_to(im, face, w, h, at=.38):
-    """A w:h window keeping Bapa's whole head in view (face about a third of the way down).
-    Without a recognised face the whole photo is shown, softened into its own colours at the edges."""
+def crop_to(im, face, w, h, mode='frame', at=.38):
+    """A w:h window on the photo. 'frame': fills the frame around Bapa (face `at` of the way down).
+    'close': a tight darshan, his head and shoulders filling the frame. 'whole', or no recognised face:
+    the entire photo, softened into its own colours at the edges. His whole head stays in view in every mode."""
     iw, ih = im.size
-    if not face:
+    if not face or mode == 'whole':
         fill = im.resize((w, h), Image.LANCZOS).filter(ImageFilter.GaussianBlur(14))
         fill = Image.blend(fill, Image.new('RGB', (w, h), MAROON_OUT), .3)
         whole = im.copy(); whole.thumbnail((w, h), Image.LANCZOS)
         fill.paste(whole, ((w - whole.width) // 2, (h - whole.height) // 2))
         return fill
-    cw, ch = (ih * w / h, ih) if iw / ih > w / h else (iw, iw * h / w)
     fx, fy, fw, fh = face
+    cw, ch = (ih * w / h, ih) if iw / ih > w / h else (iw, iw * h / w)
+    if mode == 'close':   # the face about 30% of the window's height, never bigger than the photo allows
+        ch = min(ch, fh / .30); cw = min(cw, ch * w / h); ch = cw * h / w
     head = (fx - .35 * fw, fy - .75 * fh, fx + 1.35 * fw, fy + 1.4 * fh)   # top of the head down to the chin and neck
     if head[3] - head[1] > ch * .98 or head[2] - head[0] > cw * .98:   # a wide window on a close portrait: show the whole photo
         return crop_to(im, None, w, h)
-    x0, y0 = fx + fw / 2 - cw / 2, fy + fh / 2 - ch * at
+    x0, y0 = fx + fw / 2 - cw / 2, fy + fh / 2 - ch * (.42 if mode == 'close' else at)
     y0 = max(y0, head[3] - ch); y0 = min(y0, head[1])                        # never slice through the head
     x0 = min(max(0, x0), iw - cw); y0 = min(max(0, y0), ih - ch)
     return im.crop((x0, y0, x0 + cw, y0 + ch)).resize((w, h), Image.LANCZOS)
@@ -570,7 +623,7 @@ class Card:
             t = j / CH
             d.line((0, j, CW, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(IVORY_TOP, IVORY_BOTTOM)) + (255,))
         d.rectangle((0, 0, CW - 1, CH - 1), outline=IVORY_EDGE, width=1)
-        card.paste(crop_to(x['im'], x['face'], PW, PH), (B, B))
+        card.paste(crop_to(x['im'], x['face'], PW, PH, x.get('crop', 'frame')), (B, B))
         if self.style == 'B' and caption(x):
             self.soft_band(card, caption(x))
         if self.style == 'D' and num is not None:
@@ -752,7 +805,9 @@ def caption_list(img, photos, y0, y1):
 # style H with bigger frames: H2 narrower margins and two line captions, H3 one line captions and polaroids may overlap a little
 LAYOUT = {'H2': dict(M=70, min_gap=14, row_gap=40, lines=2, cap=360, top=212, bottom=H - 100),
           'H3': dict(M=60, min_gap=-14, row_gap=34, lines=1, cap=360, top=210),
-          'P': dict(M=40, min_gap=6, row_gap=26, lines=0, cap=400, top=212, bottom=H - 100)}   # photos only, no captions, biggest frames
+          'P': dict(M=40, min_gap=6, row_gap=26, lines=0, cap=400, top=212, bottom=H - 100),   # photos only, no captions, biggest frames
+          'W': dict(M=60, min_gap=12, row_gap=30, lines=1, cap=400, top=205, bottom=H - 90, rows=3, aspect=.75, band=.26)}   # wide photos, three cords
+FRAME_ASPECT = {'W': 1 / .75, 'W1': 1 / .74, 'W2': 1 / .74, 'W3': 1.5}   # photo width / height per style; the tall live cards work out at about .69 on a full day
 
 
 def under_card(x, card, gap, f, lh, style, rnd):
@@ -817,7 +872,7 @@ class WideCard(Card):
             t = j / CH
             d.line((0, j, CW, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(IVORY_TOP, IVORY_BOTTOM)) + (255,))
         d.rectangle((0, 0, CW - 1, CH - 1), outline=IVORY_EDGE, width=1)
-        card.paste(crop_to(x['im'], x['face'], PW, PH, at=.3 if self.band == 'none' else .38), (B, B))
+        card.paste(crop_to(x['im'], x['face'], PW, PH, x.get('crop', 'frame'), at=.3 if self.band == 'none' else .38), (B, B))
         d.rectangle((B - 1, B - 1, B + PW, B + PH), outline=(150, 130, 100), width=1)
         if self.band == 'none':
             self.foot_band(card, x)
@@ -937,22 +992,23 @@ def compose(photos, day, seed, style=None, look=None):
     header(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
 
     n = len(photos)
-    rows = [photos] if n <= 5 else [photos[:(n + 1) // 2], photos[(n + 1) // 2:]]
     lay = LAYOUT.get(style, {})
-    cols, M, min_gap = len(rows[0]), lay.get('M', 100), lay.get('min_gap', 30)
+    nr = lay.get('rows', 1 if n <= 5 else 2)
+    rows = [photos[round(i * n / nr):round((i + 1) * n / nr)] for i in range(nr)]
+    cols, M, min_gap = max(len(r) for r in rows), lay.get('M', 100), lay.get('min_gap', 30)
     list_h = (-(-n // 3) * 36 + 30) if style == 'D' else 0     # room for the numbered caption list
     top_space, bottom_space = lay.get('top', 222), lay.get('bottom', H - 128) - list_h
     row_gap = lay.get('row_gap', 58)
-    band = {'C': .52, 'E': .6, 'G': .56}.get(style, .32)
+    band = lay.get('band') or {'C': .52, 'E': .6, 'G': .56}.get(style, .32)
     cf_a = garamond(CAPTION_SIZE, 500); lh_a = round(CAPTION_SIZE * 1.2)
     below = {'A': 3 * lh_a + 16, 'F': 3 * lh_a + 52, 'H': 3 * lh_a + 34}.get(style, 0)   # room under each card
     if style in LAYOUT:
         below = lay['lines'] * lh_a + 30
     pw_w = ((W - 2 * M - min_gap * (cols - 1)) / cols) / 1.09
     row_h = (bottom_space - top_space - row_gap * (len(rows) - 1)) / len(rows) - below
-    pw = min(lay.get('cap', 300), pw_w, row_h / (1.08 + .045 + band))
+    pw = min(lay.get('cap', 300), pw_w, row_h / (lay.get('aspect', 1.08) + .045 + band))
     # on busy days the cards are narrower, so let the photos grow taller to fill the height instead
-    card = Card(pw, max(1.08, min(1.45, row_h / pw - .045 - band)), band, style)
+    card = Card(pw, lay.get('aspect') or max(1.08, min(1.45, row_h / pw - .045 - band)), band, style)
     gap = min(70, (W - 2 * M - cols * card.CW) / max(1, cols - 1))
     pitch = card.CH + below + row_gap
     block = (len(rows) - 1) * pitch + card.CH + below
@@ -980,7 +1036,7 @@ def compose(photos, day, seed, style=None, look=None):
                 ty = y_top + card.CH + 18
                 for i, line in enumerate(lines):
                     dr.text((cx, ty + (i + .8) * lh_a), line, font=cf_a, fill=CAPTION_GOLD, anchor='ms')
-            if style and style[0] in 'FH' and caption(x):
+            if style and (style[0] in 'FH' or lay.get('lines')) and caption(x):
                 tag, pos = under_card(x, card, gap, cf_a, lh_a, style, rnd)
                 bx, by = px + card.CH * np.sin(t), py + card.CH * np.cos(t)   # middle of the tilted card's bottom edge
                 img.paste(tag, (int(bx - tag.width / 2), int(by + pos)), tag)
@@ -1019,19 +1075,27 @@ def main():
     print(f'{day}: {len(items)} photos across {len({x["y"] for x in items})} years')
 
     download_all(items, a.cache)
-    photos = pick_one_per_year(items, seed=mmdd)
+    tall = 1 / 1.45 if len({x['y'] for x in items}) > 10 else 1 / 1.08
+    photos = pick_one_per_year(items, seed=mmdd, aspect=FRAME_ASPECT.get(LIVE_STYLE, tall))
     if not photos:
         raise SystemExit('No photos could be downloaded for ' + mmdd)
     for x in photos:
-        print(f'  {x["y"]}  {x.get("p", "")[:28]:28}  Bapa {"%.2f" % x["sim"] if x["face"] else "not found, shown whole"}  {caption(x)}')
+        print(f'  {x["y"]}  {x.get("p", "")[:28]:28}  Bapa {"%.2f" % x["sim"] if x["face"] else "not found, shown whole"}  {x["crop"]:5}  {caption(x)}')
 
     os.makedirs(a.out, exist_ok=True)
     compose(photos, day, seed=mmdd, style=LIVE_STYLE).save(os.path.join(a.out, 'bapas-diary.jpg'), quality=92, optimize=True)
+    workings_live = list(WORKINGS)
     for st in filter(None, a.styles.split(',')):
         if st.startswith('peg-'):   # peg mockups on the live layout, e.g. peg-bevel
             compose(photos, day, seed=mmdd, style=LIVE_STYLE, look=st[4:]).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=92, optimize=True)
             continue
-        compose(photos, day, seed=mmdd, style=st).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=92, optimize=True)
+        ps = photos
+        if st in FRAME_ASPECT:   # a wide frame keeps more of each photo, so more action shots qualify: pick again for it
+            ps = pick_one_per_year(items, seed=mmdd, aspect=FRAME_ASPECT[st])
+            print(f'  {st}: ' + ', '.join(f'{x["y"]} {x["crop"]}' for x in ps))
+            workings_sheet(day).save(os.path.join(a.out, f'caption-workings-{st}.jpg'), quality=88, optimize=True)
+        compose(ps, day, seed=mmdd, style=st).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=92, optimize=True)
+    WORKINGS[:] = workings_live
     if a.workings:
         seconds = second_choices()
         compose(seconds, day, seed=mmdd, style='H2').save(os.path.join(a.out, 'caption-second-choice.jpg'), quality=92, optimize=True)

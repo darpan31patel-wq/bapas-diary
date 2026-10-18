@@ -1,9 +1,11 @@
 # Every captioned photo of Bapa on baps.org's 23 January vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
-# A caption starting lower case means "Swamishri ...". Photos of murtis, and of devotees doing darshan, are left out.
+# A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
 #1999 3156|Mahelav, India
+1-9af|Visiting the birthplace of Nirgundas Swami, Mahelav
 12_TP_1999_01_34|doing a mala
 13_TP_1999_01_35,26_TP_1999_02_36,39_TP_1999_04_0A,52_TP_1999_04_34,53_TP_1999_04_35,98_TP_1999_08_34|blesses the assembly
+27_TP_1999_02_34|Balmukund Swami during the assembly
 37_TP_1999_03_32|observes a photo
 38_TP_1999_03_35|Swamishri in the mandir campus
 57_TP_1999_05_33|inaugurates a underground water tank
@@ -13,9 +15,14 @@
 83_TP_1999_07_33,84_TP_1999_07_36,85_TP_1999_08_0A|performs the murti-pratishtha rituals
 97_TP_1999_08_32|during the assembly
 #2000 3309|Saiyadpura, India
+19-1f|Performing Murti pratishtha of Akshar Purushottam Maharaj
+19-2f|Performing arti after Murti pratishtha
+19-3f|The newly consecrated Shree Swaminarayan Mandir
+19-8f,19-6f|Sanctifying a home
 19-10f|heading towards a canopied assembly hall
 #2001 3519|Padra, India|2001-01-26
 Dsc00004f|performs murti-pratishtha at Shree Swaminaryan Mandir Padra
+Dsc00008f|Children and youths perform a folk-dance in the pratishtha assembly
 Dsc00014f|Swamishri at his childhood school in Padra
 #2002 3834|Singapore, Mumbai
 27-15f|On the flight from Singapore to Perth thal is offered to Shri Harikrishna Maharaj. Swamishri is in the seat behind
@@ -27,47 +34,81 @@ Dsc00014f|Swamishri at his childhood school in Padra
 27-31f|Deputy Chief Executive Officer of City of Sterling(Perth), Mr. R.A. Constantine, greets Swamishri with a bouquet during a public assembly
 27-35f|blesses the devotees with inspiring spiritual guidance
 28-1f|during morning puja
+28-9f,28-8f|Bal-Kishore assembly in the Swaminarayan Mandir
+28-3f,28-4f|Local youths display their musical talents in the Bal-Kishore assembly
 28-7f|blesses the kishores
 28-16f,28-18f,28-19f|happily responds to a story narrated during the Bal-Kishore assembly
 29-4f,29-2f,28-34f|responds happily as sadhus and devotees engage in a light conversation with him
 29-5f|Swamishri in a jovial mood as sadhus and devotees engage in a light conversation with him
+28-23f|Youths perform a traditional raas dance during the evening assembly at Penhrose College
 28-24f|The dance troupe receive blessings from Swamishri
 28-25f|blesses Shri Dr. K.C. Patel, Chairman of USA and Australia Satsang Mandal
 28-26f|bleses Mr. John Kobelke, Leader of the House in the Legislative Assembly
 28-27f|blesses Mr. John Quigley, MLA
 28-32f|on stage with invited dignitaries during the evening assembly at Penhrose College
 28-29f|blesses the evening assembly
-#2003 2966|Mumbai|2003-01-26
-13-12f|engaged in Thakorji's darshan
-13-18f|ceremoniously performs the janoi rituals for children
-13-27f|gives prasad of 'ladudi' to a child and pleases him
-13-19f,13-22f,13-24f|offers prayers and performs pujan on the occasion of Yogiji Maharaj's memorial day (antardhan tithi)
-13-29f,13-30f|On Children's Day celebration Swamishri hoists the flag on the occasion of the 50th jubilee celebration of BAPS Children's Activities
+#2003 2993|New Delhi
+15-13f|During Swamishri's morning puja, the pujan rituals for the kalashas and flagstaffs are being performed
+15-15f|The pujan rituals of the kalashas and flagstaffs
+15-22f|performs pujan of kalashas
+15-26f|ritually performs pujan of the flagstaffs
+15-31f|Performs arti of kalashas
+15-33f|Devotees also perform arti on the occasion of kalash pujan rituals
+15-32f|Swamishri and senior sadhus perform arti of kalashas and the murtis to be installed at the Hari mandir in Gujarat Vihar
+15-27f|performs pujan during the murti-pratishtha rituals of murtis to be installed at the Hari mandir in Gujarat Vihar
 #2004 2620|Mumbai, Atladara (Vadodara)
+7-20f|Story of Shravan's service to his parents
+7-25f|Dhruv's austerity to realise God
+7-29f|Nachiketa's quest for eternal knowledge
+7-30f|A colorful dance
 7-31f|Participants of the cultural program with Swamishri
 7-33f|A child talking to Swamishri
 8-2af,8-3af|blesses the function
 #2005 2105|Surat, Pune
+0500311af|Darshan of Shri Akraa (Agiyar) Hanuman sanctified by Shri Nilkanth Varni
+0500309af,0500314af,0500312af|The sanctified murti of Shri Akraa Hanuman is situated in the residential precincts of Shri Bapu Gokhale
 0500316af,0500317af|arrives at the residential complex of Shri Bapu Gokhale for the darshan of Shri Ram Lakshman and Jankiji sanctified by Shri Nilkanth Varni
 0500306af|views the site plan at the new land for a BAPS Swaminarayan Mandir in Pune
+0500319af|Satsang assembly
 0500321af,0500320af|blesses the assembly
 0500324af,0500331af,0500325af|A mahapuja was performed at the 'Shri Pricoating' factory and thereafter Swamishri addressed the employees
 #2006 2090|Mumbai
+0600624af,0600631af,0600625af|Daily satsang assembly in 'Yogi Sabhagruh'
 0600627af|blesses 10th grade students for success in their finals
+0600701f,0600707f|Murti-pratishtha yagna for the new murti of Ghanshyam Maharaj to be installed in the mandir sanctum
 0600711f,0600709f,0600708f|performs the murti-pratishtha rituals of Ghanshyam Maharaj
 0600718f,0600720f,0600721f,0600716f,0600722f,0600723f|performs the murti-pratishtha of Ghanshyam Maharaj
 0600730f,0600725f,0600731f|blesses the gathering of devoteees after the murti-pratishtha ceremony
+0600806f|Newly installed murti of Shri Ghanshyam Maharaj
 0600804f,0600805f,0600734f|Swamishri and devotees perform arti of Ghanshyam Maharaj
+0600632af|Bhagwan Swaminarayan, Aksharbrahma Gunatitanand Swami and Shri Gopalanand Swami
+0600633af|Bhagwan Swaminarayan
+0600634af|Shri Harikrishna Maharaj and Shri Radha Krishna Dev
+0600801f|Arti
 #2007 2372|Gondal, Rajkot
+07000226af|Bhagwan Swaminarayan, Aksharbrahma Gunatitanand Swami and Shri Gopalanand Swami
+07000227af|Bhagwan Swaminarayan and Aksharbrahma Gunatitanand Swami
+07000228af|Shri Ghanshyam Maharaj
 07000232af|performs pradakshina of Akshar Deri decorated on the occasion of its 140 patotsav
 07000231af|sanctifies book 'Yagnapurush Prakalp' - a research on life of Brahmaswarup Shastriji Maharaj
 07000302f|during his morning puja
+07000301f|Morning puja
+07000235af|Shri Harikrishna Maharaj
 07000303f|engaged in darshan at Yogi Smruti Mandir
+07000312f|Vasant Panchami celebration assembly in front of Akshar Dwar
+07000310f|Vasant Panchami celebration assembly
+07000317f|Assembly stage
+07000318f|Devotees during the assembly
+07000330f|Mass arti
 07000332f|performs arti
 #2008 2046|Mumbai
 Y080123-1f|bids Jai Swaminarayan to all
 Y080123-2f|offers his respects at the memorial shrine of Yogiji Maharaj
 #2009 2074|Atladara (Vadodara), Bharuch
+y090123-03f|Bhagwan Swaminarayan and Aksharbrahman Gunatitanand Swami
+y090123-02f|Shri Ghanshyam Maharaj
+y090123-04f|Shri Harikrishna Maharaj and Shri Radha-Krishna Dev
+y090123-05f|Shri Harikrishna Maharaj
 y090123-01f|engaged in darshan of Thakorji
 y090123-06f,y090123-07f,y090123-08f|Swamishri in the mandir pradakshina
 y090123-09f|Swamishri at the rear of the Mandir pradakshina
@@ -75,31 +116,52 @@ y090123-10f|departs from Bharuch Mandir
 #2009 2076|Atladara (Vadodara), Bharuch
 y090123-14f,y090123-15f|performs arti of Thakorji
 y090123-16f|engaged in darshan of Guru Parampara
+y090123-17f|Shri Nilkanth Varni
+y090123-18f|Brahmaswarup Shastriji Maharaj
+y090123-19f|Shri Harikrishna Maharaj
+y090123-21f|Thal offered to Shri Harikrishna Maharaj
 #2010 1671|Atladara (Vadodara), India
 y100123-1f,y100123-2f,y100123-3f|blesses tribal devotees
 #2011 4341|Mumbai, India
 dsc_0053f|engaged in darshan of Shri Nilkanth Varni abhishek murti ...
+dsc_0078f,img_0101f|Shri Guru Parampara
+dsc_0168f,dsc_0059f,dsc_0130f,dsc_0088af,dsc_0249bf,dsc_0218f|Shri Harikrishna Maharaj
 dsc_0163f,dsc_0190f|engaged in his morning puja
 dsc_0222f,dsc_0226f|Swamishri in a divine, jovial mood after his morning puja
 dsc_0260f|blesses kids
+dsc_0061f|In the evening Sunday satsang assembly a drama presentation on Jholi Parva
 dsc_0155f,dsc_0151f|attentively observes the drama presentation
 dsc_0165f,dsc_0097f,dsc_0119f,dsc_0175f,dsc_0139f,dsc_0088f,dsc_0237f,dsc_0244f,dsc_0049f,dsc_0044f,dsc_0249(2)f,dsc_0278f,Contd(45)f,Contd(46)f|Swamishri in a divine, jovial mood
+img_0219f,img_0148f,dsc_0126f,img_0190f|Drama presentation
 dsc_0084f,dsc_0072f|responds during the drama
 dsc_0080f,dsc_0087f,dsc_0052f|Swamishri in a divine, jovial mood during the drama presentation
 img_0261f,dsc_0339f,dsc_0344f|Sadhus honor Swamishri with garlands
 dsc_0323f,dsc_0311f,dsc_0243f,dsc_0252f,dsc_0259f,dsc_0249f,dsc_0283f|blesses the Jholi Parva assembly
+dsc_0423f,dsc_0396f|Darshan of Shri Harikrishna Maharaj
+img_7939f,dsc_0012f,dsc_0009f,1(37)f,dsc_0003af,img_0396f|Shri Ghanshyam Maharaj
+img_7945f|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami adorned for Poshi Punam celebration
+img_7948f,dsc_0007f,dsc_0003bf|Shri Harikrishna Maharaj and Shri Radha-Krishna Dev
 dsc_0003f|performs his morning puja in Yogi Sabhagruh
 dsc_0061af|Devotees in Swamishri's morning puja darshan
+dsc_0053af|Display of Gunatitanand Swami's diksha ceremony on stage
 dsc_0239f,dsc_0243af,dsc_0266f,Contd(41)f|A skit presentation by youths before Swamishri
 dsc_0040f|A skit presentation before Swamishri
 dsc_0152f|blesses devotees from Nagpur
+dsc_0011f|Shri Ghanshyam Maharaj beautifully adorned in flowers
+dsc_0010f,img_0393f|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami
 img_8531f|engaged in darshan of Shri Nilkanth Varni abhishek murti
 dsc_0132f,dsc_0179f,dsc_0230f,dsc_0264f,dsc_0165af,dsc_0166f,dsc_0188f,dsc_0193f|performs his morning puja
 dsc_0256f,dsc_0252af,dsc_0249af|showers his blessings and joy upon children playing tabla on stage
 dsc_0238f|bids Jai Swaminarayan to devotees
 img_8549f|engaged in darshan of Thakorji
+dsc_0095f,dsc_0039f,dsc_0066f|Shila Pujan ceremony of new BAPS Swaminarayan mandirs for Pune and Nasik at Yogi Sabhagruh
+dsc_0061bf|Shilas
+dsc_0122f|Devotees engaged in Shila Pujan ceremony
 dsc_0213f,dsc_0288f,dsc_0221f,dsc_0241f|performs Shila Pujan
 dsc_0428f,dsc_0509f,dsc_0533f|blesses Shila Pujan assembly
+dsc_0016f,dsc_0023f,dsc_0280f|Thakorji dressed in tricolors for Republic Day of India
+contd1(1)f,contd1(9)f|Stage decorated with tricolors
+contd1(13)f|Devotees
 contd1(61)f|bids Jai Swaminarayan to all
 contd1(45)f,contd1(50)f|waves the Indian flag
 dsc_0153f,dsc_0163af,dsc_0162f,dsc_0140f,dsc_0161f|perfoms his morning puja parallel with the murti of Yogiji Maharaj engaged in his morning puja
@@ -112,9 +174,18 @@ dsc_0221af|Devotees engaged in darshan of Swamishri
 dsc_0300f|Sadhus honor Swamishri with a shawl
 img_0468f,dsc_0036f|departs from Mumbai
 #2012 4871|Mumbai, India
+20120123-004f|Shri Ghanshyam Maharaj
+20120123-003f|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami
+20120123-002f|Shri Harikrishna Maharaj and Shri Radha-Krishna Dev
 20120123-001f|A skit presentation before Swamishri
 20120123-009f,20120123-007f,20120123-008f,20120123-010f|Swamishri in a divine, jovial mood
 #2013 6337|Ahmedabad, India
+13-01-23-006f|BAPS Shri Swaminarayan Mandir, Ahmedabad
+13-01-23-001f|Shri Ghanshyam Maharaj
+13-01-23-002f|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami
+13-01-23-003f|Shri Harikrishna Maharaj and Shri Radha-Krishna Dev
+13-01-23-004f|Bhagwan Swaminarayan
+13-01-23-005f|Shri Harikrishna Maharaj
 13-01-23-007f|arrives for Thakorji's darshan at 12:03 pm
 13-01-23-008f,13-01-23-009f|blesses devotees
 13-01-23-010f,13-01-23-011f,13-01-23-013f,13-01-23-017f,13-01-23-018f,13-01-23-020f,13-01-23-021f,13-01-23-022f,13-01-23-029f,13-01-23-031f,13-01-23-032f,13-01-23-044f,13-01-23-045f,13-01-23-046f,13-01-23-048f,13-01-23-058f|Swamishri in a divine, jovial mood
@@ -132,6 +203,11 @@ img_0468f,dsc_0036f|departs from Mumbai
 13-01-23-053f,13-01-23-054f,13-01-23-056f,13-01-23-057f|Swamishri in a divine mood
 13-01-23-055f|Devotees rejoice before Swamishri
 #2014 7681|Sarangpur, India
+2014_01_23_001_Sarangpur_f|Shri Varninath Dev and Shri Gopinath Dev
+2014_01_23_002_Sarangpur_f|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami
+2014_01_23_003_Sarangpur_f|Shri Ghanshyam Maharaj
+2014_01_23_004_Sarangpur_f|Shri Dharmakul
+2014_01_23_005_Sarangpur_f|Shri Harikrishna Maharaj
 2014_01_23_007_Sarangpur_f,2014_01_23_014_Sarangpur_f|HH Pramukh Swami Maharaj
 2014_01_23_009_Sarangpur_f|Devotees doing darshan of Swamishri
 2014_01_23_010_Sarangpur_f|blesses all
@@ -139,6 +215,12 @@ img_0468f,dsc_0036f|departs from Mumbai
 2014_01_23_013_Sarangpur_f|Swamishri in a divine, jovial mood
 2014_01_23_015_Sarangpur_f|sanctifies a flower ball
 #2015 9435|Sarangpur, India
+2015_01_23_001_Sarangpur_f|Shri Varninath Dev and Shri Gopinath Dev
+2015_01_23_002_Sarangpur_f|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami
+2015_01_23_003_Sarangpur_f|Shri Ghanshyam Maharaj
+2015_01_23_004_Sarangpur_f|Shri Dharmakul
+2015_01_23_005_Sarangpur_f,2015_01_23_007_Sarangpur_f|Shri Harikrishna Maharaj
+2015_01_23_006_Sarangpur_f|Brahmaswarup Shastriji Maharaj
 2015_01_23_008_Sarangpur_f|HH Pramukh Swami Maharaj
 2015_01_23_009_Sarangpur_f|arrives in the mandir grounds with Shri Harikrishna Maharaj
 2015_01_23_010_Sarangpur_f|Devotees doing darshan of Swamishri
@@ -148,6 +230,12 @@ img_0468f,dsc_0036f|departs from Mumbai
 2015_01_23_015_Sarangpur_f|Children perform a traditional dance before Swamishri
 2015_01_23_017_Sarangpur_f|Devotees rejoice before Swamishri
 #2016 11460|Sarangpur, India
+2016_01_23_001_Sarangpur_f|Shri Varninath Maharaj and Shri Gopinath Dev
+2016_01_23_002_Sarangpur_f|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami
+2016_01_23_003_Sarangpur_f|Shri Ghanshyam Maharaj
+2016_01_23_004_Sarangpur_f|Shri Dharmakul
+2016_01_23_005_Sarangpur_f,2016_01_23_006_Sarangpur_f|Shri Harikrishna Maharaj
+2016_01_23_007_Sarangpur_f|Brahmaswarup Shastriji Maharaj
 2016_01_23_008_Sarangpur_f,2016_01_23_009_Sarangpur_f,2016_01_23_010_Sarangpur_f|performs his morning puja
 2016_01_23_011_Sarangpur_f,2016_01_23_023_Sarangpur_f,2016_01_23_024_Sarangpur_f|Swamishri in a divine mood
 2016_01_23_012_Sarangpur_f|Swamishri with Shri Harikrishna Maharaj
@@ -162,6 +250,8 @@ img_0468f,dsc_0036f|departs from Mumbai
 2016_01_23_025_Sarangpur_f|arrives in the mandir grounds in the evening
 2016_01_23_026_Sarangpur_f,2016_01_23_027_Sarangpur_f|A skit presentation before Swamishri
 #2017 13475|Sarangpur, India
+2017_01_23_001_Sarangpur|Shri Ghanshyam Maharaj, 23 Jan 2017
+2017_01_23_002_Sarangpur|Shri Harikrishna Maharaj, 23 Jan 2017
 2017_01_23_003_Sarangpur,2017_01_23_004_Sarangpur|performs his morning puja, 23 Jan 2017
 2017_01_23_005_Sarangpur|Sadhus and devotees doing Param Pujya Mahant Swami Maharaj's puja darshan, 23 Jan 2017
 2017_01_23_006_Sarangpur,BAPS_Diksha_Ceremony_2017_Sarangpur_08|greets all with 'Jai Swaminarayan', 23 Jan 2017
@@ -170,15 +260,26 @@ img_0468f,dsc_0036f|departs from Mumbai
 2017_01_23_009_Sarangpur|Students of Swaminarayan Vidyamandir doing darshan of Param Pujya Mahant Swami Maharaj, 23 Jan 2017
 2017_01_23_010_Sarangpur|engrossed in darshan of Thakorji at Brahmaswarup Pramukh Swami Maharaj's samadhi, 23 Jan 2017
 2017_01_23_011_Sarangpur|Sadhus and children doing darshan of Param Pujya Mahant Swami Maharaj at the Smruti Mandir, 23 Jan 2017
+2017_01_23_012_Sarangpur|Opening of renovated Yagnapurush Bookstall, Sarangpur, 23 Jan 2017
 2017_01_23_013_Sarangpur|inaugurates the bookstall, 23 Jan 2017
 2017_01_23_014_Sarangpur|sanctifies the bookstall, 23 Jan 2017
+BAPS_Diksha_Ceremony_2017_Sarangpur_01|BAPS Shri Swaminarayan Mandir, Sarangpur, 23 Jan 2017
+BAPS_Diksha_Ceremony_2017_Sarangpur_02|Diksha ceremony in the evening, 23 Jan 2017
+BAPS_Diksha_Ceremony_2017_Sarangpur_03|Devotees during the diksha ceremony, 23 Jan 2017
+BAPS_Diksha_Ceremony_2017_Sarangpur_04|Pujya Tyagvallabh Swami performs diksha mahapuja rituals, 23 Jan 2017
+BAPS_Diksha_Ceremony_2017_Sarangpur_05,BAPS_Diksha_Ceremony_2017_Sarangpur_06,BAPS_Diksha_Ceremony_2017_Sarangpur_07|Sadhaks and their fathers engaged in mahapuja rituals, 23 Jan 2017
+BAPS_Diksha_Ceremony_2017_Sarangpur_43,BAPS_Diksha_Ceremony_2017_Sarangpur_42|Mothers of sadhaks engaged in mahapuja rituals, 23 Jan 2017
 BAPS_Diksha_Ceremony_2017_Sarangpur_11,BAPS_Diksha_Ceremony_2017_Sarangpur_13|performs mahapuja rituals, 23 Jan 2017
 BAPS_Diksha_Ceremony_2017_Sarangpur_12|Param Pujya Mahant Swami Maharaj, parshads and sadhaks perform diksha mahapuja rituals, 23 Jan 2017
+BAPS_Diksha_Ceremony_2017_Sarangpur_14|Parshads and sadhaks perform diksha rituals, 23 Jan 2017
 BAPS_Diksha_Ceremony_2017_Sarangpur_15,BAPS_Diksha_Ceremony_2017_Sarangpur_16|gives diksha mantra to newly initiated sadhus and blesses them, 23 Jan 2017
+BAPS_Diksha_Ceremony_2017_Sarangpur_17|Pujya Tyagvallabh Swami blesses newly initiated parshads, 23 Jan 2017
 BAPS_Diksha_Ceremony_2017_Sarangpur_19,BAPS_Diksha_Ceremony_2017_Sarangpur_20,BAPS_Diksha_Ceremony_2017_Sarangpur_21,BAPS_Diksha_Ceremony_2017_Sarangpur_22,BAPS_Diksha_Ceremony_2017_Sarangpur_23|gives diksha mantra to newly initiated parshads and blesses them, 23 Jan 2017
+BAPS_Diksha_Ceremony_2017_Sarangpur_18|Pujya Swayamprakash Swami (Doctor Swami) blesses newly initiated parshads, 23 Jan 2017
 BAPS_Diksha_Ceremony_2017_Sarangpur_24,BAPS_Diksha_Ceremony_2017_Sarangpur_25|Param Pujya Mahant Swami Maharaj with a newly initiated parshad and his father, 23 Jan 2017
 BAPS_Diksha_Ceremony_2017_Sarangpur_27|blesses fathers of newly initiated parshads, 23 Jan 2017
 BAPS_Diksha_Ceremony_2017_Sarangpur_28,BAPS_Diksha_Ceremony_2017_Sarangpur_30,BAPS_Diksha_Ceremony_2017_Sarangpur_31|blesses the assembly, 23 Jan 2017
+BAPS_Diksha_Ceremony_2017_Sarangpur_32|Pujya Bhaktipriya Swami (Kothari Swami), Pujya Tyagvallabh Swami, Pujya Ishwarcharan Swami and Ghanshyamcharan Swami during the diksha ceremony, 23 Jan 2017
 BAPS_Diksha_Ceremony_2017_Sarangpur_33|Newly initiated sadhus with Param Pujya Mahant Swami Maharaj, 23 Jan 2017
 BAPS_Diksha_Ceremony_2017_Sarangpur_34,BAPS_Diksha_Ceremony_2017_Sarangpur_35|Newly initiated parshads with Param Pujya Mahant Swami Maharaj, 23 Jan 2017
 BAPS_Diksha_Ceremony_2017_Sarangpur_36,BAPS_Diksha_Ceremony_2017_Sarangpur_40,BAPS_Diksha_Ceremony_2017_Sarangpur_41|Newly initiated parshads doing darshan of Param Pujya Mahant Swami Maharaj, 23 Jan 2017
@@ -187,6 +288,9 @@ BAPS_Diksha_Ceremony_2017_Sarangpur_39|Param Pujya Mahant Swami Maharaj and seni
 BAPS_Diksha_Ceremony_2017_Sarangpur_09|Pujya Kothari Swami honors Param Pujya Mahant Swami Maharaj, 23 Jan 2017
 BAPS_Diksha_Ceremony_2017_Sarangpur_10|Pujya Tyagvallabh Swami honors Param Pujya Mahant Swami Maharaj with a garland, 23 Jan 2017
 #2018 15473|Gondal, India
+2018_01_23_001_Gondal|Shri Ghanshyam Maharaj
+2018_01_23_002_Gondal|Bhagwan Swaminarayan and Aksharbrahman Gunatitanand Swami
+2018_01_23_003_Gondal|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami
 2018_01_23_004_Gondal|engrossed in darshan of Thakorji
 2018_01_23_005_Gondal,2018_01_23_006_Gondal|performs the arti in Akshar Deri
 2018_01_23_008_Gondal|performs pradakshina of Akshar Deri
@@ -199,6 +303,7 @@ BAPS_Diksha_Ceremony_2017_Sarangpur_10|Pujya Tyagvallabh Swami honors Param Pujy
 2018_01_23_020_Gondal|Pujya Ghanshyamcharan Swami and Pujya Ishwarcharan Swami honor Swamishri with a garland
 2018_01_23_021_Gondal|Swamis honor Swamishri with a garland
 2018_01_23_022_Gondal,2018_01_23_023_Gondal|joins hands with swamis and devotees in a gesture of unity
+2018_01_23_024_Gondal|Swamis and devotees join hands in a gesture of unity
 2018_01_23_025_Gondal,2018_01_23_026_Gondal|engrossed in darshan at Yogi Smruti Mandir
 2018_01_23_027_Gondal,2018_01_23_028_Gondal|observes Smruti Mandir dome
 2018_01_23_029_Gondal|engrossed in darshan of holy charanarvind of Bhagwan Swaminarayan in Smruti Mandir
@@ -216,10 +321,15 @@ BAPS_Diksha_Ceremony_2017_Sarangpur_10|Pujya Tyagvallabh Swami honors Param Pujy
 2018_01_23_042_Gondal|Swamishri in a divine, jovial mood
 2018_01_23_043_Gondal|greets Shri Bharti Bapu, Junagadh
 #2019 17948|Surat, India
+2019_01_23_001_Surat|Shri Ghanshyam Maharaj, BAPS Shri Swaminarayan Mandir, Surat
+2019_01_23_002_Surat|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami
+2019_01_23_003_Surat|Shri Harikrishna Maharaj and Shri Radha-Krishna Dev
+2019_01_23_004_Surat|Shri Harikrishna Maharaj
 2019_01_23_005_Surat|Devotees doing darshan of Param Pujya Mahant Swami Maharaj
 2019_01_23_006_Surat|engrossed in darshan of Shri Nilkanth Varni
 2019_01_23_007_Surat|performs abhishek of Shri Nilkanth Varni
 2019_01_23_008_Surat,2019_01_23_009_Surat,2019_01_23_011_Surat|performs the morning arti
+2019_01_23_010_Surat|Sadhus doing darshan of the arti
 2019_01_23_012_Surat|engrossed in darshan of Shri Ghanshyam Maharaj
 2019_01_23_013_Surat|greets sadhus with 'Jai Swaminarayan'
 2019_01_23_014_Surat|engrossed in darshan of Brahmaswarup Pramukh Swami Maharaj
@@ -243,12 +353,20 @@ BAPS_Diksha_Ceremony_2017_Sarangpur_10|Pujya Tyagvallabh Swami honors Param Pujy
 2019_01_23_041_Surat,2019_01_23_042_Surat|Devotees doing samip darshan of Swamishri
 2019_01_23_046_Surat|blesses devotees
 #2020 21654|Surat, India
+2020_01_23_001_Surat|Shri Ghanshyam Maharaj, BAPS Shri Swaminarayan Mandir, Surat
+2020_01_23_002_Surat|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami
+2020_01_23_003_Surat|Shri Harikrishna Maharaj and Shri Radha-Krishna Dev
+2020_01_23_004_Surat|Brahmaswarup Bhagatji Maharaj and Brahmaswarup Shastriji Maharaj
+2020_01_23_005_Surat|Brahmaswarup Yogiji Maharaj and Brahmaswarup Pramukh Swami Maharaj
+2020_01_23_006_Surat|Shri Harikrishna Maharaj
 2020_01_23_007_Surat,2020_01_23_036_Surat|blesses a child
 2020_01_23_008_Surat|performs abhishek of Shri Nilkanth Varni
+2020_01_23_009_Surat|Sadhus and devotees doing darshan in the abhishek mandap
 2020_01_23_010_Surat|engrossed in darshan of Shri Nilkanth Varni
 2020_01_23_011_Surat,2020_01_23_018_Surat|engrossed in darshan of Shri Ghanshyam Maharaj
 2020_01_23_012_Surat|engrossed in darshan of Brahmaswarup Bhagatji Maharaj and Brahmaswarup Shastriji Maharaj
 2020_01_23_013_Surat|performs the morning arti
+2020_01_23_014_Surat|Sadhus and devotees doing darshan of the arti
 2020_01_23_015_Surat|engrossed in darshan of Shri Harikrishna Maharaj and Shri Radha-Krishna Dev
 2020_01_23_016_Surat,2020_01_23_017_Surat|engrossed in darshan
 2020_01_23_019_Surat,2020_01_23_028_Surat|Children recite scriptural passages in Swamishri's puja
@@ -272,11 +390,13 @@ BAPS_Diksha_Ceremony_2017_Sarangpur_10|Pujya Tyagvallabh Swami honors Param Pujy
 2020_01_23_045_Surat|sanctifies murtis for ghar mandirs
 2020_01_23_048_Surat|performs the evening arti
 #2021 22898|Nenpur, India
+2021_01_23_001_Nenpur|Shri Harikrishna Maharaj and Shri Gunatitanand Swami
 2021_01_23_002_Nenpur|performs the morning arti
 2021_01_23_003_Nenpur,2021_01_23_022_Nenpur|performs the arti
 2021_01_23_004_Nenpur|applies a tilak on his forehead
 2021_01_23_006_Nenpur,2021_01_23_005_Nenpur|meditates in his daily puja
 2021_01_23_007_Nenpur,2021_01_23_011_Nenpur|performs his daily puja
+2021_01_23_008_Nenpur|Sadhus sing kirtans via video conference from Sarangpur Mandir
 2021_01_23_009_Nenpur|offers thal to Shri Akshar-Purushottam Maharaj
 2021_01_23_010_Nenpur|offers thal to Thakorji
 2021_01_23_012_Nenpur|engrossed in darshan of Brahmaswarup Pramukh Swami Maharaj
@@ -289,6 +409,10 @@ BAPS_Diksha_Ceremony_2017_Sarangpur_10|Pujya Tyagvallabh Swami honors Param Pujy
 2021_01_23_020_Nenpur|observes the plants in Shantivan
 2021_01_23_021_Nenpur|performs the evening arti
 #2022 24184|Atladara (Vadodara), India
+2022_01_23_001_Atladara|Shri Ghanshyam Maharaj, BAPS Shri Swaminarayan Mandir, Atladara (Vadodara)
+2022_01_23_002_Atladara|Bhagwan Swaminarayan, Aksharbrahma Gunatitanand Swami and Shri Gopalanand Swami
+2022_01_23_003_Atladara|Shri Harikrishna Maharaj and Shri Lakshmi-Narayan Dev
+2022_01_23_004_Atladara|Shri Harikrishna Maharaj and Shri Gunatitanand Swami
 2022_01_23_005_Atladara|performs the morning arti
 2022_01_23_007_Atladara|applies a tilak on his forehead
 2022_01_23_008_Atladara|meditates in his daily puja
@@ -296,18 +420,25 @@ BAPS_Diksha_Ceremony_2017_Sarangpur_10|Pujya Tyagvallabh Swami honors Param Pujy
 2022_01_23_012_Atladara|reads the Shikshapatri and Satsang Diksha
 2022_01_23_013_Atladara|greets all with folded hands
 #2023 26599|Ahmedabad, India
+001_2023_01_23_0373|Shri Harikrishna Maharaj and Shri Gunatitanand Swami
 002_2023_01_23_0003,014_2023_01_23_0054|engrossed in darshan of Shri Harikrishna Maharaj and Shri Gunatitanand Swami
 003_2023_01_23_0006|performs the morning arti
 004_2023_01_23_0015|applies a chandlo on his forehead
 005_2023_01_23_0018|meditates in his daily puja
 006_2023_01_23_0024,007_2023_01_23_0026,010_2023_01_23_0039,012_2023_01_23_0048|performs his daily puja
 008_2023_01_23_0028|A sadhu sings a kirtan in Swamishri's daily puja
+009_2023_01_23_0030|Thal is offered to Shri Akshar-Purushottam Maharaj
+011_2023_01_23_0042|Flowers are offered to Shri Harikrishna Maharaj and Shri Gunatitanand Swami
 013_2023_01_23_0051|engrossed in darshan of Shri Akshar-Purushottam Maharaj
 015_2023_01_23_0056|reads the Shikshapatri and Satsang Diksha
 016_2023_01_23_0059,030_2023_01_23_0384,078_2023_01_23_0854,092_2023_01_23_0998,097_6W0A7478|greets all with folded hands
 017_2023_01_23_0135|during a question-answer session with sadhus
 018_2023_01_23_0138|A sadhu in conversation with Swamishri
 019_2023_01_23_0145,020_2023_01_23_0152,021_2023_01_23_0159,022_2023_01_23_0199,023_2023_01_23_0207,041_2023_01_23_0438,045_2023_01_23_0481,047_2023_01_23_0487|Swamishri in conversation
+024_2023_01_23_0373|BAPS Shri Swaminarayan Mandir, Ahmedabad
+025_2023_01_23_0495|Shri Ghanshyam Maharaj
+026_2023_01_23_0489|Bhagwan Swaminarayan, Aksharbrahma Gunatitanand Swami and Shri Gopalanand Swami
+027_2023_01_23_0484|Shri Harikrishna Maharaj and Shri Radha-Krishna Dev
 028_2023_01_23_0379|arrives at BAPS Shri Swaminarayan Mandir, Ahmedabad, for darshan
 029_2023_01_23_0449,087_2023_01_23_0921,088_2023_01_23_0949,090_2023_01_23_1045,091_2023_01_23_0983,094_2023_01_23_1003,095_2023_01_23_1004,096_2023_01_23_1015,100_MMC_8121|Devotees doing darshan of Swamishri
 031_2023_01_23_0391|engrossed in darshan of Brahmaswarup Yogiji Maharaj
@@ -328,21 +459,37 @@ BAPS_Diksha_Ceremony_2017_Sarangpur_10|Pujya Tyagvallabh Swami honors Param Pujy
 055_2023_01_23_0603,056_2023_01_23_0743,057_2023_01_23_0631,060_2023_01_23_0770,061_2023_01_23_0781|performs the murti-pratishtha rituals
 058_2023_01_23_0625|performs pujan of Bhagwan Swaminarayan
 059_2023_01_23_0660|performs the murti-pratishtha rituals of the mobile (chal) murtis of Shri Akshar-Purushottam Maharaj to be placed in BAPS Shri Swaminarayan Mandir, Delhi
+063_2023_01_23_0681|Thal is offered to Bhagwan Swaminarayan
 064_2023_01_23_0693|offers thal to Bhagwan Swaminarayan
+065_2023_01_23_0690|Thal is offered to Brahmaswarup Pramukh Swami Maharaj
 066_2023_01_23_0878|Swamishri and Pujya Ishwarcharan Swami perform the pratishtha arti
 067_2023_01_23_0705,068_2023_01_23_0722|performs the pratishtha arti
+069_2023_01_23_0905|Pujya Ishwarcharan Swami performs the pratishtha arti
 070_2023_01_23_0766,071_2023_01_23_0763|offers mantra-pushpanjali
+072_2023_01_23_1085|Bhagwan Swaminarayan
 073_2023_01_23_0776,074_2023_01_23_0807|performs abhishek of Bhagwan Swaminarayan
 075_2023_01_23_0942|performs pradakshina of Bhagwan Swaminarayan
 076_2023_01_23_0839,077_2023_01_23_0966|Swamishri and Pujya Ishwarcharan Swami with Bhagwan Swaminarayan
+079_2023_01_23_1088|Annakut offered to Bhagwan Swaminarayan
 080_2023_01_23_0858|performs pujan of Brahmaswarup Pramukh Swami Maharaj
 081_2023_01_23_0861|engrossed in darshan of Brahmaswarup Pramukh Swami Maharaj
+082_2023_01_23_1073|Annakut offered to Brahmaswarup Pramukh Swami Maharaj
+084_2023_01_23_1077|Shri Nilkanth Varni
 085_2023_01_23_0906|Pujya Ishwarcharan Swami in conversation with Swamishri
 086_2023_01_23_1074|Pragat Brahmaswarup Mahant Swami Maharaj
 089_2023_01_23_1055|blesses devotees
 098_MMC_8116|engrossed in darshan of Shri Akshar-Purushottam Maharaj and Brahmaswarup Yogiji Maharaj at BAPS Yogiji Maharaj Hospital, Ahmedabad
 101_6W0A7487|departs from Ahmedabad
 #2023 26600|Sarangpur, India
+097_2023_01_23_5037,098_2023_01_23_5002|BAPS Shri Swaminarayan Mandir, Sarangpur
+099_2023_01_23_5012|Youths with BAPS flags in the mandir grounds
+100_2023_01_23_5044|Shri Yagnapurush Smruti Mandir, Sarangpur
+101_2023_01_23_5010|Shri Varninath Maharaj and Shri Gopinath Dev
+102_2023_01_23_5030|Shri Sukhshaiya
+103_2023_01_23_5025|Bhagwan Swaminarayan, Aksharbrahma Gunatitanand Swami and Shri Gopalanand Swami
+104_2023_01_23_5006|Shri Ghanshyam Maharaj
+105_2023_01_23_5003|Shri Dharmakul
+106_2023_01_23_5047|Brahmaswarup Shastriji Maharaj
 107_2023_01_23_5025|Children welcome Swamishri
 108_2023_01_23_5023|arrives at BAPS Shri Swaminarayan Mandir, Sarangpur
 109_2023_01_23_5033,122_2023_01_23_5343,125_2023_01_23_5429,132_2023_01_23_5567,135_2023_01_23_5660|greets all with folded hands
@@ -359,15 +506,19 @@ BAPS_Diksha_Ceremony_2017_Sarangpur_10|Pujya Tyagvallabh Swami honors Param Pujy
 116_2023_01_23_5158|after Thakorji's darshan
 121_2023_01_23_5312|Swamishri in conversation with Pujya Bhaktipriya Swami (Kothari Swami)
 123_2023_01_23_5384|Sadhaks doing darshan of Swamishri
+124_2023_01_23_5405|Sadhus and devotees during the welcome assembly
 126_2023_01_23_5458|during the assembly
 127_2023_01_23_5525|Sadhus, sadhaks and devotees doing darshan of Swamishri
+128_2023_01_23_5887|Devotees wave BAPS flags
 129_2023_01_23_5473|Pujya Kothari Swami and Pujya Tyagvallabh Swami honor Swamishri with a garland
 130_2023_01_23_5547|honored with a garland
 131_2023_01_23_5556|Swamishri in conversation with Narayanmuni Swami and Gnaneshwar Swami
 133_2023_01_23_5587|Students of Swaminarayan Sanskrit Mahavidyalaya, Sarangpur, doing darshan of Swamishri
+134_2023_01_23_5640|Students of Swaminarayan Vidyamandir, Sarangpur, perform the arti
 137_2023_01_23_5743|Youths perform before Swamishri
 138_2023_01_23_5780|blesses the assembly
 #2024 29330|Kanad, Surat
+2024_01_23_001_Kanad|Shri Harikrishna Maharaj and Shri Gunatitanand Swami Maharaj
 2024_01_23_002_Kanad|applies a tilak on his forehead
 2024_01_23_003_Kanad|applies a chandlo
 2024_01_23_004_Kanad,2024_01_23_005_Kanad|meditates in his daily puja
@@ -377,10 +528,19 @@ BAPS_Diksha_Ceremony_2017_Sarangpur_10|Pujya Tyagvallabh Swami honors Param Pujy
 2024_01_23_009_Kanad,2024_01_23_010_Kanad|performs his daily puja
 2024_01_23_011_Kanad|offers thal to Thakorji
 2024_01_23_012_Kanad|sanctifies water with the holy relics of Bhagwan Swaminarayan and the Guru Parampara
+2024_01_23_013_Kanad|Flowers are offered to Shri Harikrishna Maharaj and Shri Gunatitanand Swami Maharaj
 2024_01_23_014_Kanad|places flowers in the water sanctified with the holy relics of Bhagwan Swaminarayan and the Guru Parampara
 2024_01_23_015_Kanad|reverently touches the holy feet of Shri Akshar-Purushottam Maharaj
 2024_01_23_016_Kanad|touches his eyes after touching the feet of Shri Akshar-Purushottam Maharaj
 2024_01_23_017_Kanad,2024_01_23_048_Kanad|greets all with folded hands
+2024_01_23_018_Kanad|Murtis to be consecrated at BAPS Shri Swaminarayan Mandirs in Kelkui, Amalsadi, Sarbhon, Behda-Raipur, Kadod, Valvada, India
+2024_01_23_019_Kanad|Pujya Ghanshyamcharan Swami performs pujan of the murtis
+2024_01_23_020_Kanad|Murtis to be consecrated at BAPS Shri Swaminarayan Mandir, Kelkui (Sankari), India
+2024_01_23_021_Kanad|Murtis to be consecrated at BAPS Shri Swaminarayan Mandir, Amalsadi (Sankari), India
+2024_01_23_022_Kanad|Murtis to be consecrated at BAPS Shri Swaminarayan Mandir, Sarbhon (Sankari), India
+2024_01_23_023_Kanad|Murtis to be consecrated at BAPS Shri Swaminarayan Mandir, Behda-Raipur (Sankari), India
+2024_01_23_024_Kanad|Murtis to be consecrated at BAPS Shri Swaminarayan Mandir, Kadod (Sankari), India
+2024_01_23_025_Kanad|Murtis to be consecrated at BAPS Shri Swaminarayan Mandir, Valvada (Sankari), India
 2024_01_23_026_Kanad,2024_01_23_027_Kanad|Swamis honor Swamishri with a garland
 2024_01_23_028_Kanad,2024_01_23_047_Kanad,2024_01_23_050_Kanad,2024_01_23_052_Kanad,2024_01_23_053_Kanad,2024_01_23_055_Kanad|Devotees doing darshan of Swamishri
 2024_01_23_029_Kanad|sanctifies bricks to start construction of the BAPS Shri Swaminarayan Mandir at Amalsadi (Sankari), India
@@ -389,13 +549,21 @@ BAPS_Diksha_Ceremony_2017_Sarangpur_10|Pujya Tyagvallabh Swami honors Param Pujy
 2024_01_23_032_Kanad,2024_01_23_033_Kanad,2024_01_23_034_Kanad,2024_01_23_037_Kanad,2024_01_23_038_Kanad|performs the murti-pratishtha rituals
 2024_01_23_035_Kanad,2024_01_23_036_Kanad|performs the pratishtha arti
 2024_01_23_039_Kanad|blesses the afternoon assembly
+2024_01_23_040_Kanad|Swamis during the assembly
+2024_01_23_041_Kanad|Swamis take notes during the assembly
 2024_01_23_042_Kanad|during the conversation
+2024_01_23_043_Kanad|Youths sing kirtans in the evening assembly
 2024_01_23_044_Kanad|performs the evening arti
+2024_01_23_045_Kanad|Swamis perform the arti
 2024_01_23_046_Kanad|blesses the evening assembly
 2024_01_23_049_Kanad|Swamis doing darshan of Swamishri
 2024_01_23_051_Kanad|Children doing darshan of Swamishri
 2024_01_23_054_Kanad,2024_01_23_056_Kanad|Swamis and devotees doing darshan of Swamishri
 #2025 32583|Nairobi, Kenya
+2025_01_23_001_Nairobi|Thakorji at BAPS Shri Swaminarayan Mandir, Nairobi
+2025_01_23_002_Nairobi|Bhagwan Swaminarayan and Aksharbrahma Gunatitanand Swami
+2025_01_23_003_Nairobi|Shri Ghanshyam Maharaj
+2025_01_23_004_Nairobi|Shri Harikrishna Maharaj and Shri Gunatitanand Swami Maharaj
 2025_01_23_006_Nairobi,2025_01_23_005_Nairobi|performs the morning arti
 2025_01_23_007_Nairobi|applies chandan on a tilakiyu
 2025_01_23_008_Nairobi|applies a tilak on his upper arm
@@ -419,7 +587,9 @@ BAPS_Diksha_Ceremony_2017_Sarangpur_10|Pujya Tyagvallabh Swami honors Param Pujy
 2025_01_23_031_Nairobi,2025_01_23_030_Nairobi,2025_01_23_039_Nairobi,2025_01_23_040_Nairobi,2025_01_23_068_Nairobi,2025_01_23_069_Nairobi,2025_01_23_084_Nairobi,2025_01_23_088_Nairobi,2025_01_23_090_Nairobi,2025_01_23_108_Nairobi|greets all with folded hands
 2025_01_23_034_Nairobi|During an interactive session, Adarshijivan Swami poses questions to Swamishri
 2025_01_23_035_Nairobi,2025_01_23_036_Nairobi|responds to questions during the interactive session
+2025_01_23_037_Nairobi,2025_01_23_038_Nairobi,2025_01_23_081_Nairobi,2025_01_23_082_Nairobi,2025_01_23_086_Nairobi,2025_01_23_089_Nairobi|Devotees during the assembly
 2025_01_23_041_Nairobi|during the afternoon assembly
+2025_01_23_042_Nairobi,2025_01_23_055_Nairobi|Swamis during the assembly
 2025_01_23_043_Nairobi|blesses Yogipurush Swami
 2025_01_23_044_Nairobi|blesses Priyavrat Swami
 2025_01_23_045_Nairobi,2025_01_23_048_Nairobi|observes old photos with Yogiji Maharaj
@@ -427,12 +597,21 @@ BAPS_Diksha_Ceremony_2017_Sarangpur_10|Pujya Tyagvallabh Swami honors Param Pujy
 2025_01_23_053_Nairobi|observes old photos
 2025_01_23_056_Nairobi,2025_01_23_057_Nairobi,2025_01_23_058_Nairobi|observes a book
 2025_01_23_059_Nairobi|Swamishri in conversation
+2025_01_23_060_Nairobi|Swamis climb the mandir steps
 2025_01_23_061_Nairobi|greets all with folded hands while on his way to Thakorji's darshan
 2025_01_23_063_Nairobi,2025_01_23_064_Nairobi|engrossed in darshan of Shri Nilkanth Varni
 2025_01_23_065_Nairobi|arrives for Thakorji's darshan
 2025_01_23_066_Nairobi,2025_01_23_067_Nairobi|engrossed in darshan of Thakorji
+2025_01_23_070_Nairobi|A devotee sings a kirtan at the beginning of the evening assembly
+2025_01_23_071_Nairobi|Adarshjivan Swami addresses the assembly
+2025_01_23_072_Nairobi|During an interactive session, a devotee asks a question to Anandswarup Swami
+2025_01_23_073_Nairobi|Anandswarup Swami addresses the assembly
+2025_01_23_074_Nairobi|During an interactive session, a devotee asks a question to Pujya Tyagvallabh Swami
+2025_01_23_075_Nairobi|Pujya Tyagvallabh Swami addresses the assembly
+2025_01_23_076_Nairobi|Volunteers and devotees during the assembly
 2025_01_23_077_Nairobi,2025_01_23_079_Nairobi,2025_01_23_080_Nairobi|listens to a swami
 2025_01_23_078_Nairobi|A swami presents before Swamishri
+2025_01_23_085_Nairobi|Invited guests and devotees during the assembly
 2025_01_23_087_Nairobi|Volunteers doing darshan of Swamishri
 2025_01_23_091_Nairobi|observes a board of BAPS Charities work in Nairobi, Kenya
 2025_01_23_092_Nairobi|sanctifies the board
@@ -445,10 +624,20 @@ BAPS_Diksha_Ceremony_2017_Sarangpur_10|Pujya Tyagvallabh Swami honors Param Pujy
 2025_01_23_100_Nairobi|blesses the assembly
 2025_01_23_101_Nairobi|performs the evening arti
 2025_01_23_102_Nairobi|performs the arti
+2025_01_23_103_Nairobi|Pujya Tyagvallabh Swami and Anandswarup Swami perform the arti
+2025_01_23_104_Nairobi|Swamis and devotees doing darshan of the arti
+2025_01_23_105_Nairobi,2025_01_23_106_Nairobi|Devotees doing darshan of the arti
 2025_01_23_107_Nairobi|Swamis and devotees doing darshan of Swamishri
 2025_01_23_109_Nairobi|Children and devotees doing darshan of Swamishri
 2025_01_23_110_Nairobi|blesses all
 #2026 35857|Atladara (Vadodara), India
+2026_01_23_001_Atladara|Shri Ghanshyam Maharaj, BAPS Shri Swaminarayan Mandir, Atladara (Vadodara)
+2026_01_23_002_Atladara|Shri Ghanshyam Maharaj
+2026_01_23_003_Atladara|Bhagwan Swaminarayan, Aksharbrahma Gunatitanand Swami and Shri Gopalanand Swami
+2026_01_23_004_Atladara|Shri Harikrishna Maharaj and Shri Lakshmi-Narayan Bhagwan
+2026_01_23_005_Atladara,2026_01_23_008_Atladara|Brahmaswarup Shastriji Maharaj
+2026_01_23_006_Atladara|Decoration in the room of Brahmaswarup Shastriji Maharaj on Vasant Panchami
+2026_01_23_007_Atladara|Shri Harikrishna Maharaj and Shri Gunatitanand Swami Maharaj
 2026_01_23_009_Atladara|Shikshapatri and Satsang Diksha in Swamishri's daily puja
 2026_01_23_010_Atladara|on his way to perform his daily puja
 2026_01_23_011_Atladara|Shri Harikrishna Maharaj and Shri Gunatitanand Swami Maharaj in Swamishri's daily puja
@@ -474,6 +663,7 @@ BAPS_Diksha_Ceremony_2017_Sarangpur_10|Pujya Tyagvallabh Swami honors Param Pujy
 2026_01_23_047_Atladara,2026_01_23_049_Atladara,2026_01_23_062_Atladara,2026_01_23_070_Atladara,2026_01_23_109_Atladara|greets all with folded hands
 2026_01_23_048_Atladara|Pujya Tyagvallabh Swami doing darshan of Swamishri
 2026_01_23_050_Atladara|Yuvaks doing darshan of Swamishri
+2026_01_23_051_Atladara|A swami addresses the assembly
 2026_01_23_052_Atladara|blesses the morning assembly
 2026_01_23_053_Atladara,2026_01_23_054_Atladara,2026_01_23_055_Atladara,2026_01_23_056_Atladara,2026_01_23_057_Atladara,2026_01_23_101_Atladara|blesses the assembly
 2026_01_23_058_Atladara|performs the morning arti
@@ -487,6 +677,9 @@ BAPS_Diksha_Ceremony_2017_Sarangpur_10|Pujya Tyagvallabh Swami honors Param Pujy
 2026_01_23_068_Atladara|holds a kalash
 2026_01_23_069_Atladara|Students from Akshar-Purushottam Chhatralaya, Vallabh Vidyanagar, doing darshan of Swamishri
 2026_01_23_071_Atladara|Swamis and devotees doing darshan of Swamishri
+2026_01_23_082_Atladara|Anirdesh Swami addresses the evening 'Bhakti Tula' assembly
+2026_01_23_083_Atladara,2026_01_23_084_Atladara,2026_01_23_085_Atladara,2026_01_23_089_Atladara,2026_01_23_093_Atladara|Devotees during the assembly
+2026_01_23_086_Atladara|Pujya Ishwarcharan Swami addresses the assembly
 2026_01_23_072_Atladara|on his way to Thakorji's darshan in the evening
 2026_01_23_073_Atladara,2026_01_23_075_Atladara|Swamis and parshads doing darshan of Swamishri
 2026_01_23_074_Atladara|engrossed in darshan of Shri Ghanshyam Maharaj
@@ -497,12 +690,22 @@ BAPS_Diksha_Ceremony_2017_Sarangpur_10|Pujya Tyagvallabh Swami honors Param Pujy
 2026_01_23_080_Atladara|on his way to the evening assembly
 2026_01_23_087_Atladara|arrives in the assembly
 2026_01_23_088_Atladara,2026_01_23_113_Atladara,2026_01_23_115_Atladara,2026_01_23_119_Atladara|during the assembly
+2026_01_23_090_Atladara|Pujya Tyagvallabh Swami performs pujan of Shri Harikrishna Maharaj and Shri Gunatitanand Swami Maharaj
 2026_01_23_091_Atladara|Pujya Tyagvallabh Swami applies chandan archa to Swamishri
 2026_01_23_092_Atladara|Yagnapriya Swami ties a nadachhadi to Swamishri
+2026_01_23_094_Atladara|Swamis and devotees during the assembly
 2026_01_23_095_Atladara|performs the evening arti
+2026_01_23_096_Atladara|Pujya Ishwarcharan Swami performs the arti
 2026_01_23_097_Atladara|Swamishri and swamis perform the arti
+2026_01_23_098_Atladara|Swamis perform the arti
+2026_01_23_099_Atladara,2026_01_23_106_Atladara|Aerial view of the assembly
 2026_01_23_100_Atladara|blesses the evening assembly
 2026_01_23_102_Atladara|Pujya Ishwarcharan Swami honors Swamishri with a garland
 2026_01_23_103_Atladara|Swamishri with Shri Harikrishna Maharaj and Shri Gunatitanand Swami Maharaj during the sakar tula assembly
+2026_01_23_104_Atladara|Pujya Ishwarcharan Swami places sakar in the tula
+2026_01_23_105_Atladara,2026_01_23_118_Atladara|Pujya Tyagvallabh Swami places sakar in the tula
+2026_01_23_108_Atladara|A swami applies a chandlo to a devotee
+2026_01_23_110_Atladara,2026_01_23_111_Atladara,2026_01_23_112_Atladara,2026_01_23_124_Atladara,2026_01_23_125_Atladara|Devotees place sakar in the tula
+2026_01_23_114_Atladara|Yuvaks sing kirtans in the assembly
 2026_01_23_120_Atladara,2026_01_23_122_Atladara|blesses all
 2026_01_23_123_Atladara|returns to BAPS Shri Swaminarayan Mandir, Atladara (Vadodara), after the assembly
