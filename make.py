@@ -928,7 +928,7 @@ def under_card(x, card, gap, f, lh, style, rnd):
 
 # wide polaroids (photos wider than tall) on three or four cords, so the width of the picture is used and little hangs below the cards
 WIDE = {'W1': dict(rows=3, M=60, gap=16, ratio=.74, band='caption', row_gap=28, tilt=1.6),   # year, place and caption all in the ivory band
-        'W2': dict(rows=3, M=44, gap=10, ratio=.9, band='yearline', pill=2, lines=2, row_gap=8, tilt=2.2, compact=True, one_title=True, lift=162, fill=True, playful=True),   # year and place in the band, caption on a pill below
+        'W2': dict(rows=3, M=44, gap=10, ratio=.9, band='yearline', pill=2, lines=2, row_gap=8, tilt=2.2, compact=True, one_title=True, lift=162, fill=True, straight=True),   # year and place in the band, caption on a pill below
         'W3': dict(rows=4, M=60, gap=18, ratio=2 / 3, band='none', row_gap=22, tilt=1.2)}    # thin ivory frames, year and caption over the photo
 
 
@@ -1057,7 +1057,9 @@ def compose_wide(photos, day, seed, style):
         x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
         for c, x in enumerate(row):
             cx = x0 + c * (card.CW + gap) + card.CW / 2
-            if lay.get('playful'):   # a real line of photos: a few nearly straight, most swung a little, a couple swung well, some touching
+            if lay.get('straight'):   # every card hangs straight down from its peg on the curved cord (Darpan 18 Oct 2026: any swing looked messy)
+                a, drop = 0, 0
+            elif lay.get('playful'):   # a real line of photos: a few nearly straight, most swung a little, a couple swung well, some touching
                 a = rnd.choice((-1, 1)) * lay['tilt'] * rnd.choice((.3, .7, 1, 1, 1.4)) * rnd.uniform(.85, 1.05)   # halfway between v9 and v10 (Darpan: v10 a bit too messy)
                 cx += rnd.uniform(-11, 11); drop = rnd.uniform(-3.5, 8)
             else:
