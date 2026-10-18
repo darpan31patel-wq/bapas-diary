@@ -37,7 +37,7 @@ def main():
         datas = list(pool.map(lambda x: fetch(x['url']), items))
     os.makedirs(os.path.dirname(a.out) or '.', exist_ok=True)
     W, pad, cap_h = 640, 24, 96
-    font = ImageFont.truetype(os.path.join(HERE, 'fonts', 'Arimo-Bold.woff2'), 22) if os.path.exists(os.path.join(HERE, 'fonts', 'Arimo-Bold.woff2')) else ImageFont.load_default()
+    font = ImageFont.truetype(os.path.join(HERE, 'fonts', 'arimo-latin-700-normal.woff2'), 22) if os.path.exists(os.path.join(HERE, 'fonts', 'arimo-latin-700-normal.woff2')) else ImageFont.load_default()
     tiles = []
     for x, data in zip(items, datas):
         if not data:
@@ -54,7 +54,7 @@ def main():
     sheet = Image.new('RGB', (a.cols * (W + pad) + pad, top + rows * (th + pad)), (250, 246, 238))
     dr = ImageDraw.Draw(sheet)
     if a.title:
-        dr.text((pad, 24), a.title, fill=(60, 20, 20), font=ImageFont.truetype(os.path.join(HERE, 'fonts', 'Arimo-Bold.woff2'), 34) if os.path.exists(os.path.join(HERE, 'fonts', 'Arimo-Bold.woff2')) else font)
+        dr.text((pad, 24), a.title, fill=(60, 20, 20), font=ImageFont.truetype(os.path.join(HERE, 'fonts', 'arimo-latin-700-normal.woff2'), 34) if os.path.exists(os.path.join(HERE, 'fonts', 'arimo-latin-700-normal.woff2')) else font)
     for n, (x, im) in enumerate(tiles):
         cx = pad + (n % a.cols) * (W + pad)
         cy = top + (n // a.cols) * (th + pad)
