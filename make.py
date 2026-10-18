@@ -46,8 +46,8 @@ def vicharan_items(path, mmdd, place, per_caption=2):
     """archive/vicharan/MM-DD.txt: '#year album prefix|place|date' lines (date only for a nearby day of the same trip),
     then 'ids|caption' lines (lower case caption = 'Swamishri ...')."""
     out, y, when = [], None, None
-    for line in open(path, encoding='utf-8'):
-        line = line.rstrip('\n')
+    lines = [l.rstrip('\n') for l in open(path, encoding='utf-8')]
+    for k, line in enumerate(lines):
         if line.startswith('# ') or not line.strip():
             continue
         if line.startswith('#'):
@@ -58,6 +58,9 @@ def vicharan_items(path, mmdd, place, per_caption=2):
             place.setdefault(y, where)
             continue
         ids, c = line.split('|', 1)
+        if c.endswith('...') and k + 1 < len(lines) and '|' in lines[k + 1] and not lines[k + 1].startswith('#'):
+            nxt = lines[k + 1].split('|', 1)[1]                           # 'sanctifies water...' + 'Swamishri with the holy relics' carry on as one sentence
+            c = c[:-3].rstrip() + ' ' + re.sub(rf'^{NAME}\s+', '', nxt)
         if c[:1].islower():
             c = 'Swamishri ' + c
         for i in ids.split(',')[:per_caption]:
@@ -903,8 +906,8 @@ def under_card(x, card, gap, f, lh, style, rnd):
     n = WIDE.get(style, LAYOUT.get(style, {})).get('lines', 3)
     text, maxw = caption(x), card.CW + min(gap, 30) - 40
     half = max(3, len(text.split()) * 2 // 3)
-    # the whole caption first, a touch smaller, then with one more line; only then a natural cut, keeping at least two thirds of it; a shorter cut last
-    for shrink, extra, cut, keep in ((1, 0, False, 0), (.9, 0, False, 0), (.82, 0, False, 0), (.82, 1, False, 0), (.82, 1, True, half), (.82, 1, True, 0)):
+    # the whole caption first, then a touch smaller; only then a natural cut, keeping at least two thirds of it; a shorter cut last
+    for shrink, extra, cut, keep in ((1, 0, False, 0), (.9, 0, False, 0), (.82, 0, False, 0), (.82, 0, True, half), (.82, 0, True, 0)):
         f2 = garamond(f.size * shrink, 500) if shrink < 1 else f
         lines = wrap(probe, text, f2, maxw, n + extra, shorten=cut, min_words=keep)
         if not lines[-1].endswith('…'):
