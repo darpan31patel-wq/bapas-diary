@@ -316,21 +316,21 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69):
     # of the years are close ups (Darpan, 18 Oct 2026: he wanted 4 or 5 more faces on a 27 year day), spread out
     has_nice = {y: any(v[2]['nice'] for v in cands[y]) for y in years}
     has_close = {y: any(v[2]['close_ok'] for v in cands[y]) for y in years}
-    mode = {y: 1 if has_nice[y] and not (i % 3 == 1 and has_close[y]) else (0 if has_close[y] else 1) for i, y in enumerate(years)}
+    modes = {y: 1 if has_nice[y] and not (i % 3 == 1 and has_close[y]) else (0 if has_close[y] else 1) for i, y in enumerate(years)}
     target = round(len(years) * CLOSE_SHARE)
     best_close = {y: max(v[0] for v in cands[y]) for y in years}
-    while sum(1 for y in years if mode[y] == 0) < target:
-        spare = [y for y in years if mode[y] == 1 and has_close[y]]
+    while sum(1 for y in years if modes[y] == 0) < target:
+        spare = [y for y in years if modes[y] == 1 and has_close[y]]
         if not spare:
             break
         def lonely(y):   # prefer a year whose neighbours are action shots, so the faces are spread out
             i = years.index(y)
-            return sum(1 for j in (i - 1, i + 1) if 0 <= j < len(years) and mode[years[j]] == 0)
-        mode[min(spare, key=lambda y: (lonely(y), -best_close[y]))] = 0
+            return sum(1 for j in (i - 1, i + 1) if 0 <= j < len(years) and modes[years[j]] == 0)
+        modes[min(spare, key=lambda y: (lonely(y), -best_close[y]))] = 0
     picked, used = [], []
     WORKINGS.clear()
     for i, y in enumerate(years):
-        k = mode[y]
+        k = modes[y]
         ranked = sorted(cands[y], key=lambda v: -v[k])
         if any(v[2]['face'] for v in ranked):   # photos where Bapa is recognised always come before ones where he isn't
             ranked = [v for v in ranked if v[2]['face']]
