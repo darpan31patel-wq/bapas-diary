@@ -421,6 +421,29 @@ def header(img, title, subtitle):
     thin_rule(dr, mid, (W + sw) / 2 + 50, (W + sw) / 2 + 50 + 330, False)
 
 
+def header_line(img, title, subtitle):
+    """Title, subtitle and the footer line all on one line across the top, so the photos get the height instead."""
+    dr = ImageDraw.Draw(img)
+    tf, sf, ff = garamond(92), garamond(34, 600), garamond(34, 500)
+    track, rule, pad = 7, 110, 44
+    sub = subtitle.upper()
+    tw, sw, fw = dr.textlength(title, font=tf), spaced(dr, sub, sf, track), dr.textlength(FOOTER, font=ff)
+    total = tw + pad + rule + pad + sw + pad + rule + pad + fw
+    x = (W - total) / 2
+    base = 118
+    gold_text(img, (x, base - 92 * .95 + 8), title, tf)
+    x += tw + pad
+    mid = base - 12
+    thin_rule(dr, mid, x, x + rule / 2, True); thin_rule(dr, mid, x + rule / 2, x + rule, False)
+    x += rule + pad
+    draw_spaced(dr, x, base - sf.getmetrics()[0] - 1, sub, sf, track, (240, 214, 160))
+    x += sw + pad
+    thin_rule(dr, mid, x, x + rule / 2, True); thin_rule(dr, mid, x + rule / 2, x + rule, False)
+    diamond(dr, x + rule / 2, mid + 1, 5, GOLD)
+    x += rule + pad
+    dr.text((x, base), FOOTER, font=ff, fill=(226, 184, 104), anchor='ls')
+
+
 def footer(img):
     dr = ImageDraw.Draw(img)
     f = garamond(40, 500)
@@ -851,7 +874,7 @@ def under_card(x, card, gap, f, lh, style, rnd):
 
 # wide polaroids (photos wider than tall) on three or four cords, so the width of the picture is used and little hangs below the cards
 WIDE = {'W1': dict(rows=3, M=60, gap=16, ratio=.74, band='caption', row_gap=28, tilt=1.6),   # year, place and caption all in the ivory band
-        'W2': dict(rows=3, M=44, gap=10, ratio=.8, band='yearline', pill=2, lines=2, row_gap=8, tilt=1.2),   # year and place in the band, caption on a pill below
+        'W2': dict(rows=3, M=44, gap=10, ratio=.8, band='yearline', pill=2, lines=2, row_gap=8, tilt=1.2, oneline=True),   # year and place in the band, caption on a pill below
         'W3': dict(rows=4, M=60, gap=18, ratio=2 / 3, band='none', row_gap=22, tilt=1.2)}    # thin ivory frames, year and caption over the photo
 
 
@@ -937,7 +960,10 @@ def compose_wide(photos, day, seed, style):
     lay = WIDE[style]
     rnd = random.Random(seed)
     img = background(); dr = ImageDraw.Draw(img)
-    header(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
+    if lay.get('oneline'):
+        header_line(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
+    else:
+        header(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
     n = len(photos)
     nrows = max(1, min(lay['rows'], -(-n // (5 if lay['rows'] == 3 else 6))))
     per = [n // nrows + (1 if i < n % nrows else 0) for i in range(nrows)]
@@ -945,7 +971,7 @@ def compose_wide(photos, day, seed, style):
     for c in per:
         rows.append(photos[k:k + c]); k += c
     cols, M, gap, row_gap = per[0], lay['M'], lay['gap'], lay['row_gap']
-    top_space, bottom_space = 200, H - 96
+    top_space, bottom_space = (156, H - 44) if lay.get('oneline') else (200, H - 96)
     cf_a, lh_a = garamond(CAPTION_SIZE, 500), round(CAPTION_SIZE * 1.2)
     below = (lay.get('pill', 0) * lh_a + 22) if lay.get('pill') else 0
     probe = WideCard(100, lay['ratio'], lay['band'])
@@ -976,7 +1002,8 @@ def compose_wide(photos, day, seed, style):
                 tag, pos = under_card(x, card, gap, cf_a, lh_a, 'W2', rnd)
                 bx, by = px + card.CH * np.sin(t), py + card.CH * np.cos(t)
                 img.paste(tag, (int(bx - tag.width / 2), int(by + 6)), tag)
-    footer(img)
+    if not lay.get('oneline'):
+        footer(img)
     return img
 
 
