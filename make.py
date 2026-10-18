@@ -61,7 +61,7 @@ def vicharan_items(path, mmdd, place, per_caption=2):
         if c[:1].islower():
             c = 'Swamishri ' + c
         for i in ids.split(',')[:per_caption]:
-            out.append({'y': y, 'd': when or f'{y}-{mmdd}', 'p': place.get(y, ''), 'c': c,
+            out.append({'y': y, 'd': when or f'{y}-{mmdd}', 'p': where or place.get(y, ''), 'c': c,   # the album's own place (2017 has Paris and London albums)
                         'i': f'https://www.baps.org/Data/Sites/1/Media/GalleryImages/{album}/WebImages/{prefix}{i}.jpg'})
     return out
 
@@ -385,7 +385,7 @@ def crop_to(im, face, w, h, mode='frame', at=.38):
     head = (fx - .35 * fw, fy - .75 * fh, fx + 1.35 * fw, fy + 1.4 * fh)   # top of the head down to the chin and neck
     if head[3] - head[1] > ch * .98 or head[2] - head[0] > cw * .98:   # a wide window on a close portrait: show the whole photo
         return crop_to(im, None, w, h)
-    x0, y0 = fx + fw / 2 - cw / 2, fy + fh / 2 - ch * (.42 if mode == 'close' else at)
+    x0, y0 = fx + fw / 2 - cw / 2, fy + fh / 2 - ch * ((.42 if h >= w else .36) if mode == 'close' else at)   # less dead space above his head in a wide frame
     y0 = max(y0, head[3] - ch); y0 = min(y0, head[1])                        # never slice through the head
     x0 = min(max(0, x0), iw - cw); y0 = min(max(0, y0), ih - ch)
     return im.crop((x0, y0, x0 + cw, y0 + ch)).resize((w, h), Image.LANCZOS)
@@ -451,26 +451,24 @@ def header(img, title, subtitle):
 
 
 def header_line(img, title, subtitle):
-    """Title, subtitle and the footer line all on one line across the top, so the photos get the height instead."""
+    """One line across the top: the title in the middle, 'IN BAPA'S DIARY' to its left and the footer line to its
+    right, each between the title and a short gold rule, so the photos get the height instead of a footer."""
     dr = ImageDraw.Draw(img)
     tf, sf, ff = garamond(92), garamond(34, 600), garamond(34, 500)
-    track, rule, pad = 7, 110, 44
+    track, rule, pad = 7, 120, 48
     sub = subtitle.upper()
     tw, sw, fw = dr.textlength(title, font=tf), spaced(dr, sub, sf, track), dr.textlength(FOOTER, font=ff)
-    total = tw + pad + rule + pad + sw + pad + rule + pad + fw
-    x = (W - total) / 2
-    base = 118
-    gold_text(img, (x, base - 92 * .95 + 8), title, tf)
-    x += tw + pad
+    base = 120
+    gold_text(img, ((W - tw) / 2, base - 92 * .95 + 8), title, tf)
     mid = base - 12
-    thin_rule(dr, mid, x, x + rule / 2, True); thin_rule(dr, mid, x + rule / 2, x + rule, False)
-    x += rule + pad
-    draw_spaced(dr, x, base - sf.getmetrics()[0] - 1, sub, sf, track, (240, 214, 160))
-    x += sw + pad
-    thin_rule(dr, mid, x, x + rule / 2, True); thin_rule(dr, mid, x + rule / 2, x + rule, False)
-    diamond(dr, x + rule / 2, mid + 1, 5, GOLD)
-    x += rule + pad
-    dr.text((x, base), FOOTER, font=ff, fill=(226, 184, 104), anchor='ls')
+    sx = (W - tw) / 2 - pad - sw                                           # subtitle ends a pad before the title
+    draw_spaced(dr, sx, base - sf.getmetrics()[0] - 1, sub, sf, track, (240, 214, 160))
+    thin_rule(dr, mid, sx - pad - rule, sx - pad, True)
+    diamond(dr, sx - pad - rule - 14, mid + 1, 5, GOLD)
+    fx = (W + tw) / 2 + pad                                                # footer starts a pad after the title
+    dr.text((fx, base), FOOTER, font=ff, fill=(226, 184, 104), anchor='ls')
+    thin_rule(dr, mid, fx + fw + pad, fx + fw + pad + rule, False)
+    diamond(dr, fx + fw + pad + rule + 14, mid + 1, 5, GOLD)
 
 
 def footer(img):
@@ -903,7 +901,7 @@ def under_card(x, card, gap, f, lh, style, rnd):
 
 # wide polaroids (photos wider than tall) on three or four cords, so the width of the picture is used and little hangs below the cards
 WIDE = {'W1': dict(rows=3, M=60, gap=16, ratio=.74, band='caption', row_gap=28, tilt=1.6),   # year, place and caption all in the ivory band
-        'W2': dict(rows=3, M=44, gap=10, ratio=.8, band='yearline', pill=2, lines=2, row_gap=8, tilt=1.2, oneline=True),   # year and place in the band, caption on a pill below
+        'W2': dict(rows=3, M=44, gap=10, ratio=.9, band='yearline', pill=2, lines=2, row_gap=8, tilt=1.2, oneline=True),   # year and place in the band, caption on a pill below
         'W3': dict(rows=4, M=60, gap=18, ratio=2 / 3, band='none', row_gap=22, tilt=1.2)}    # thin ivory frames, year and caption over the photo
 
 
@@ -924,7 +922,8 @@ class WideCard(Card):
             t = j / CH
             d.line((0, j, CW, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(IVORY_TOP, IVORY_BOTTOM)) + (255,))
         d.rectangle((0, 0, CW - 1, CH - 1), outline=IVORY_EDGE, width=1)
-        card.paste(crop_to(x['im'], x['face'], PW, PH, x.get('crop', 'frame'), at=.3 if self.band == 'none' else .38), (B, B))
+        photo = crop_to(x['im'], x['face'], PW, PH, x.get('crop', 'frame'), at=.3)   # Bapa high in the frame, no dead space over his head
+        card.paste(photo.filter(ImageFilter.UnsharpMask(radius=1.2, percent=55, threshold=2)), (B, B))   # a touch crisper after the resize
         d.rectangle((B - 1, B - 1, B + PW, B + PH), outline=(150, 130, 100), width=1)
         if self.band == 'none':
             self.foot_band(card, x)
@@ -941,9 +940,9 @@ class WideCard(Card):
             yw, pw_ = d.textlength(yt, font=yf), spaced(d, pl, pf, track)
             sp = PW * .035 if pl else 0
             x0 = (CW - (yw + sp + pw_)) / 2
-            base = B + PH + BB / 2 + yh / 2 - B * .15
+            base = B + PH + BB / 2 + yh / 2                                   # the year's digits centred in the band
             d.text((x0, base), yt, font=yf, fill=YEAR_C2, anchor='ls')
-            draw_spaced(d, x0 + yw + sp, base - pf.getmetrics()[0] - PW * .004, pl, pf, track, PLACE_C2)
+            draw_spaced(d, x0 + yw + sp, base - (yh - ph) / 2 - pf.getmetrics()[0], pl, pf, track, PLACE_C2)   # the place centred on the year
             return card
         if self.band == 'year':
             gap = PW * .05 if pl else 0
@@ -1139,24 +1138,24 @@ def main():
         print(f'  {x["y"]}  {x.get("p", "")[:28]:28}  Bapa {"%.2f" % x["sim"] if x["face"] else "not found, shown whole"}  {x["crop"]:5}  {caption(x)}')
 
     os.makedirs(a.out, exist_ok=True)
-    compose(photos, day, seed=mmdd, style=LIVE_STYLE).save(os.path.join(a.out, 'bapas-diary.jpg'), quality=92, optimize=True)
+    compose(photos, day, seed=mmdd, style=LIVE_STYLE).save(os.path.join(a.out, 'bapas-diary.jpg'), quality=95, optimize=True)
     workings_live = list(WORKINGS)
     for st in filter(None, a.styles.split(',')):
         if st.startswith('peg-'):   # peg mockups on the live layout, e.g. peg-bevel
-            compose(photos, day, seed=mmdd, style=LIVE_STYLE, look=st[4:]).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=92, optimize=True)
+            compose(photos, day, seed=mmdd, style=LIVE_STYLE, look=st[4:]).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=95, optimize=True)
             continue
         ps = photos
         if st in FRAME_ASPECT:   # a wide frame keeps more of each photo, so more action shots qualify: pick again for it
             ps = pick_one_per_year(items, seed=mmdd, aspect=FRAME_ASPECT[st])
             print(f'  {st}: ' + ', '.join(f'{x["y"]} {x["crop"]}' for x in ps))
             workings_sheet(day).save(os.path.join(a.out, f'caption-workings-{st}.jpg'), quality=88, optimize=True)
-        compose(ps, day, seed=mmdd, style=st).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=92, optimize=True)
+        compose(ps, day, seed=mmdd, style=st).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=95, optimize=True)
     WORKINGS[:] = workings_live
     if a.workings:
         seconds = second_choices()
-        compose(seconds, day, seed=mmdd, style='H2').save(os.path.join(a.out, 'caption-second-choice.jpg'), quality=92, optimize=True)
+        compose(seconds, day, seed=mmdd, style='H2').save(os.path.join(a.out, 'caption-second-choice.jpg'), quality=95, optimize=True)
         for st in filter(lambda st: st and st != 'H2', a.styles.split(',')):
-            compose(seconds, day, seed=mmdd, style=st).save(os.path.join(a.out, f'caption-second-choice-{st}.jpg'), quality=92, optimize=True)
+            compose(seconds, day, seed=mmdd, style=st).save(os.path.join(a.out, f'caption-second-choice-{st}.jpg'), quality=95, optimize=True)
         workings_sheet(day).save(os.path.join(a.out, 'caption-workings.jpg'), quality=88, optimize=True)
         chosen = {id(w['pick']) for w in WORKINGS}
         with open(os.path.join(a.out, 'all-photos.txt'), 'w') as f:
@@ -1169,8 +1168,8 @@ def main():
                     f.write(f'  {"Bapa %.2f" % r[1] if r[2] else "not recognised"}  {r[3] or "(no caption)"}  {r[4]}\n')
     if a.compare:
         photos_u = pick_one_per_year(items, seed=mmdd, unique=True)
-        compose(photos, day, seed=mmdd, style='A').save(os.path.join(a.out, 'original.jpg'), quality=92, optimize=True)
-        compose(photos_u, day, seed=mmdd, style='A').save(os.path.join(a.out, 'unique.jpg'), quality=92, optimize=True)
+        compose(photos, day, seed=mmdd, style='A').save(os.path.join(a.out, 'original.jpg'), quality=95, optimize=True)
+        compose(photos_u, day, seed=mmdd, style='A').save(os.path.join(a.out, 'unique.jpg'), quality=95, optimize=True)
         with open(os.path.join(a.out, 'captions.txt'), 'w') as f:
             for name, ps in (('original', photos), ('unique', photos_u)):
                 f.write(f'{name}:\n')
