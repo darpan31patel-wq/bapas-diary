@@ -10,7 +10,8 @@ Every dated photo is kept (make.py picks). If a year has nothing on the exact da
 """
 import argparse, collections, datetime, glob, json, os, re, sys
 
-NEAR = 3
+NEAR = 3          # a nearby day of the same trip stands in for a missing one
+NEAR_FAR = 7      # and when a year would otherwise be missing from the day, up to a week
 MONTHS = 'january february march april may june july august september october november december'.split()
 MON = '(' + '|'.join(MONTHS) + ')'
 ORD = r'(?:st|nd|rd|th)?'
@@ -119,15 +120,54 @@ def short(c):
     return c
 
 
-def load(folder):
-    """{year: [(date or None, (first, last) or None, album, file, caption, place)]}, one entry per photo."""
+MON_SHORT = {m[:3]: i + 1 for i, m in enumerate(MONTHS)}
+
+
+def text_dates(found, year):
+    """Dates in the body text of a page ('6 Sep 1999', '10 Sept.', 'Sept 12, 2004'), as (first, last) in that year."""
+    out = []
+    for t in found:
+        t = t.strip().rstrip('.,')
+        m = re.match(rf'(\d{{1,2}})\w*(?:\s*(?:to|-|–|&|and)\s*(\d{{1,2}})\w*)?\s+([A-Za-z]+)\.?,?\s*(\d{{4}})?$', t)
+        if m:
+            days, mon, yr = [m.group(1)] + ([m.group(2)] if m.group(2) else []), m.group(3), m.group(4)
+        else:
+            m = re.match(rf'([A-Za-z]+)\.?\s+(\d{{1,2}})\w*(?:\s*(?:to|-|–|&|and)\s*(\d{{1,2}}))?,\s*(\d{{4}})$', t)   # 'July 11, 2004' only with a comma and year
+            if not m:
+                m = re.match(r'(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$', t)
+                if m and int(m.group(3)) == year and d(year, int(m.group(2)), int(m.group(1))):
+                    out.append(d(year, int(m.group(2)), int(m.group(1))))
+                continue
+            days, mon, yr = [m.group(2)] + ([m.group(3)] if m.group(3) else []), m.group(1), m.group(4)
+        if yr and int(yr) != year:
+            continue
+        mo = MON_SHORT.get(mon[:3].lower())
+        if not mo:
+            continue
+        for day in days:
+            x = d(year, mo, int(day))
+            if x:
+                out.append(x)
+    if not out or (max(out) - min(out)).days > 45:    # a page about many events: no single trip to pin it to
+        return None
+    return min(out), max(out)
+
+
+def load(folder, fixes=None):
+    """{year: [(date or None, (first, last) or None, album, file, caption, place)]}, one entry per photo.
+    fixes: bapas-diary-fixes.json from a second look in Chrome: body text dates of undated pages, rows of pages that failed."""
     out = {}
+    fx = json.load(open(fixes, encoding='utf-8')) if fixes and os.path.exists(fixes) else {'dates': {}, 'rows': {}}
     for f in sorted(glob.glob(os.path.join(folder, 'bapas-diary-[12][0-9][0-9][0-9].json'))):
         data = json.load(open(f, encoding='utf-8'))
         y = data['year']
         seen = {}
         for p in data['pages']:
+            if p.get('failed') and fx['rows'].get(p['p']):
+                p = dict(p, t=fx['rows'][p['p']]['t'], rows=fx['rows'][p['p']]['rows'], failed=False)
             span = page_dates(p['p'], p.get('t', ''), y)
+            if not span and fx['dates'].get(p['p']):
+                span = text_dates(fx['dates'][p['p']]['f'], y)
             rows = continued(p['rows'], span[0] if span else datetime.date(y, 7, 1))
             if y <= 2016 and re.search(r"Mahant Swami Maharaj'?s Vicharan", p.get('t', ''), re.I) and (y < 2016 or (span and span[1] < PSM_TO_MSM)):
                 # before 13 Aug 2016 'Swamishri' on Mahant Swami's own vicharan pages is him, not Bapa: the caption says so
@@ -171,9 +211,13 @@ def build(years):
             if cover:
                 days[mmdd][y] = (day, cover); stats['range'] += 1
                 continue
-            near = [t for t in dated if abs((t - day).days) <= NEAR]
             gap = lambda x: min(abs((x[1][0] - day).days), abs((x[1][1] - day).days))
-            near_r = [x for x in ranged if gap(x) <= NEAR]
+            near = near_r = []
+            for reach in (NEAR, NEAR_FAR):
+                near = [t for t in dated if abs((t - day).days) <= reach]
+                near_r = [x for x in ranged if gap(x) <= reach]
+                if near or near_r:
+                    break
             if near or near_r:
                 tg = min((abs((t - day).days) for t in near), default=99)
                 rg = min((gap(x) for x in near_r), default=99)
@@ -212,8 +256,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('folder')
     ap.add_argument('--out', default=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'archive', 'vicharan'))
+    ap.add_argument('--fixes', help='bapas-diary-fixes.json (dates for undated pages, rows for failed ones)')
     a = ap.parse_args()
-    years = load(a.folder)
+    years = load(a.folder, a.fixes or os.path.join(a.folder, 'bapas-diary-fixes.json'))
     total = sum(len(v) for v in years.values())
     undated = sum(1 for v in years.values() for x in v if not x[0] and not x[1])
     days, stats = build(years)
