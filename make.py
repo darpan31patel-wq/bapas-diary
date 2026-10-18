@@ -1155,6 +1155,10 @@ def main():
         have = {x['i'] for x in items}
         place = {x['y']: x.get('p', '') for x in items}
         extra = [x for x in vicharan_items(combed, f'{day:%m-%d}', place) if x['y'] < day.year]   # past years only
+        full = {x['i']: x['c'] for x in extra}
+        for x in items:                                                   # the day list's 'sanctifies water...' gets the carried on caption
+            if (x.get('c') or '').endswith('...') and x['i'] in full:
+                x['c'] = full[x['i']]
         items += [x for x in extra if x['i'] not in have]
         print(f'  + {len(items) - len(have)} more captioned photos from the vicharan pages')
     print(f'{day}: {len(items)} photos across {len({x["y"] for x in items})} years')
