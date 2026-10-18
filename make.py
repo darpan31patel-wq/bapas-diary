@@ -802,8 +802,8 @@ class Card:
 PEG = 'gloss'   # how the pegs on the cord are drawn: round varnished wood (Darpan's choice, 17 Oct 2026); 'flat' and 'bevel' are the others
 
 
-def peg(img, cx, cy, s, look=None):
-    look = look or PEG
+def peg(img, cx, cy, s, look=None, short=1.0):
+    look = look or PEG                                      # short < 1 makes a stubbier peg (the wide cards, Darpan 18 Oct 2026)
     if look == 'flat':
         dr = ImageDraw.Draw(img)
         w, h = 9 * s, 30 * s
@@ -813,7 +813,7 @@ def peg(img, cx, cy, s, look=None):
         return
     # a round wooden clothes peg: soft rounded top, lit from the top left like the cards, a small dark spring and a soft shadow
     K = 4                                                   # drawn four times bigger, then shrunk, for smooth edges
-    w, h = 10 * s * K, 35 * s * K
+    w, h = 10 * s * K * (.6 + .4 * short), 35 * s * K * short
     pw_, ph_ = int(2 * w + 16 * s * K), int(h + 16 * s * K)
     ox, oy = 6 * s * K, 4 * s * K                           # where the peg sits inside its little canvas
     yy, xx = np.mgrid[0:ph_, 0:pw_].astype(np.float32)
@@ -1054,7 +1054,7 @@ def compose_wide(photos, day, seed, style):
             px, py = cx, sag(cx) + 4 + rnd.uniform(-3, 4)                                         # hangs where the cord is, a touch higher or lower
             mx, my = px + card.CH / 2 * np.sin(t), py + card.CH / 2 * np.cos(t)
             img.paste(hung, (int(mx - hung.width / 2), int(my - hung.height / 2)), hung)
-            peg(img, cx, sag(cx) + 4, s)
+            peg(img, cx, sag(cx) + 4, s, short=.72)
             if lay.get('pill') and caption(x):
                 tag, pos = under_card(x, card, gap, cf_a, lh_a, 'W2', rnd)
                 bx, by = px + card.CH * np.sin(t), py + card.CH * np.cos(t)
