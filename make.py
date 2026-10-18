@@ -865,7 +865,7 @@ def under_card(x, card, gap, f, lh, style, rnd):
 
 # wide polaroids (photos wider than tall) on three or four cords, so the width of the picture is used and little hangs below the cards
 WIDE = {'W1': dict(rows=3, M=60, gap=16, ratio=.74, band='caption', row_gap=28, tilt=1.6),   # year, place and caption all in the ivory band
-        'W2': dict(rows=3, M=50, gap=14, ratio=.74, band='year', pill=2, lines=2, row_gap=18, tilt=1.4),   # year and place in the band, caption on a pill below
+        'W2': dict(rows=3, M=44, gap=10, ratio=.8, band='yearline', pill=2, lines=2, row_gap=8, tilt=1.2),   # year and place in the band, caption on a pill below
         'W3': dict(rows=4, M=60, gap=18, ratio=2 / 3, band='none', row_gap=22, tilt=1.2)}    # thin ivory frames, year and caption over the photo
 
 
@@ -875,7 +875,7 @@ class WideCard(Card):
     def __init__(self, pw, ratio, band):
         self.PW, self.PH, self.band = round(pw), round(pw * ratio), band
         self.B = max(6, round(pw * .035)) if band != 'none' else max(6, round(pw * .028))
-        self.BB = {'caption': round(pw * .46), 'year': round(pw * .3), 'none': 0}[band]
+        self.BB = {'caption': round(pw * .46), 'year': round(pw * .3), 'yearline': round(pw * .17), 'none': 0}[band]
         self.CW, self.CH = self.PW + 2 * self.B, self.PH + self.B + self.BB
         self.style = None
 
@@ -894,10 +894,19 @@ class WideCard(Card):
         yf, yt = garamond(PW * .12 if self.band == 'caption' else PW * .13, 600), str(x['y'])
         pl = place(x).upper()
         pf, track = arimo_bold(PW * .048 if self.band == 'caption' else PW * .06), PW * .012
-        while pf.size > PW * .035 and spaced(d, pl, pf, track) > CW - 2 * B - 4:
+        room = CW - 2 * B - 4 - (d.textlength(yt, font=yf) + PW * .035 if self.band == 'yearline' else 0)
+        while pf.size > PW * .035 and spaced(d, pl, pf, track) > room:
             pf = arimo_bold(pf.size - 1)
         yh = -d.textbbox((0, 0), yt, font=yf, anchor='ls')[1]
         ph = -d.textbbox((0, 0), 'A', font=pf, anchor='ls')[1] if pl else 0
+        if self.band == 'yearline':   # '2016  JUNAGADH' on one line, the year bigger, both sitting on the same baseline
+            yw, pw_ = d.textlength(yt, font=yf), spaced(d, pl, pf, track)
+            sp = PW * .035 if pl else 0
+            x0 = (CW - (yw + sp + pw_)) / 2
+            base = B + PH + BB / 2 + yh / 2 - B * .15
+            d.text((x0, base), yt, font=yf, fill=YEAR_C2, anchor='ls')
+            draw_spaced(d, x0 + yw + sp, base - pf.getmetrics()[0] - PW * .004, pl, pf, track, PLACE_C2)
+            return card
         if self.band == 'year':
             gap = PW * .05 if pl else 0
             top = B + PH + (BB - (yh + gap + ph)) / 2 - B * .2
@@ -950,9 +959,9 @@ def compose_wide(photos, day, seed, style):
     for c in per:
         rows.append(photos[k:k + c]); k += c
     cols, M, gap, row_gap = per[0], lay['M'], lay['gap'], lay['row_gap']
-    top_space, bottom_space = 206, H - 100
+    top_space, bottom_space = 200, H - 96
     cf_a, lh_a = garamond(CAPTION_SIZE, 500), round(CAPTION_SIZE * 1.2)
-    below = (lay.get('pill', 0) * lh_a + 30) if lay.get('pill') else 0
+    below = (lay.get('pill', 0) * lh_a + 22) if lay.get('pill') else 0
     probe = WideCard(100, lay['ratio'], lay['band'])
     pw_w = min(440, ((W - 2 * M - gap * (cols - 1)) / cols) / (probe.CW / 100))   # as wide as the row allows
     row_h = (bottom_space - top_space - (nrows - 1) * row_gap - nrows * below) / nrows
@@ -980,7 +989,7 @@ def compose_wide(photos, day, seed, style):
             if lay.get('pill') and caption(x):
                 tag, pos = under_card(x, card, gap, cf_a, lh_a, 'W2', rnd)
                 bx, by = px + card.CH * np.sin(t), py + card.CH * np.cos(t)
-                img.paste(tag, (int(bx - tag.width / 2), int(by + pos)), tag)
+                img.paste(tag, (int(bx - tag.width / 2), int(by + 6)), tag)
     footer(img)
     return img
 
