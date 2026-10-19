@@ -1290,7 +1290,7 @@ def tg_day(day, items):
     extra = []
     for e in evs:
         y = int(e['date'][:4])
-        if not e.get('card') or y < 1950 or y in exact:
+        if not e.get('card') or not e.get('posts') or y < 1950 or y in exact:
             continue
         gap = y in have
         town = lambda p: re.split(r'[,(]', p or '')[0].strip().lower()
@@ -1482,7 +1482,7 @@ def main():
     if unsure:   # a channel card where Bapa's face isn't surely recognised: say so, and keep the picture without it too
         with open(os.path.join(a.out, 'flags.txt'), 'w', encoding='utf-8') as f:
             for x in unsure:
-                f.write(f"{x['y']} {place(x)}: {caption(x)}. Bapa {'not recognised' if not x['face'] else 'only a weak match (%.2f)' % x['sim']} "
+                f.write(f"{x['y']} {x.get('p', '')}: {caption(x)}. Bapa {'not recognised' if not x['face'] else 'only a weak match (%.2f)' % x['sim']} "
                         f"in the channel's photo ({x.get('post')})\n")
         rest = [x for x in photos if x not in unsure]
         if rest:

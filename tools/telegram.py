@@ -76,7 +76,7 @@ def main():
             events.append(dict(date=d, reposts=len(g), posts=[p for p in pick['posts'] if photos.get(p)],
                                photos=pick['photos'], place=w.get('place'), line=w['line'], card=w.get('card'),
                                whatsapp=w.get('whatsapp'), special=bool(w.get('special')), headline=w.get('headline'),
-                               story=body(longest['text']), video=video.split('?')[0] if video else None,
+                               story=body(longest['text']), video=re.sub(r'[?&](?!v=)[^&]*', '', video).replace('&', '?') if video else None,
                                url=f'https://t.me/TodayinBAPShistory/{pick["posts"][0]}'))
     json.dump(events, open(os.path.join(HERE, 'events.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
     print(len(events), 'stories on', len({e['date'][5:] for e in events}), 'days;',
