@@ -125,6 +125,21 @@ def bapa_face(im, when, need=SAME_PERSON):
     return (best, best_sim) if best_sim >= need else (None, best_sim)
 
 
+def guru_face(im):
+    """The biggest face in the photo, standing in as recognised (SAME_PERSON), for a darshan of an earlier guru."""
+    small = im.copy(); small.thumbnail((1280, 1280))
+    k = im.width / small.width
+    bgr = cv2.cvtColor(np.array(small), cv2.COLOR_RGB2BGR)
+    with FACE_LOCK:
+        DETECT.setInputSize((bgr.shape[1], bgr.shape[0]))
+        faces = DETECT.detect(bgr)[1]
+    if faces is None or not len(faces):
+        return None, 0
+    f = max(faces, key=lambda f: f[2] * f[3])
+    LAST_FRONT[0] = front_view(f)
+    return tuple(float(v) * k for v in f[:4]), SAME_PERSON
+
+
 LAST_FRONT = [1.0]   # how face-on the face bapa_face last recognised was (1 looking at the camera, 0 a profile)
 
 
@@ -295,7 +310,10 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
             im = Image.open(x['path']).convert('RGB')
         except Exception:
             continue
-        face, sim = bapa_face(im, x.get('d', str(x['y'])), TG_SAME_PERSON if x.get('tg') else SAME_PERSON)
+        if x.get('guru'):   # an earlier guru: the face check only knows Bapa, so the biggest face is the one shown
+            face, sim = guru_face(im)
+        else:
+            face, sim = bapa_face(im, x.get('d', str(x['y'])), TG_SAME_PERSON if x.get('tg') else SAME_PERSON)
         front = LAST_FRONT[0] if face else 0
         x = dict(x, im=im, face=face, sim=sim, front=round(front, 2))
         r = face[3] / im.height if face else 0
@@ -1282,6 +1300,8 @@ def compose(photos, day, seed, style=None, look=None, history=None):
 TG_FILE = os.path.join(HERE, 'telegram', 'events.json')   # every dated story on t.me/TodayinBAPShistory, with our short lines (tools/telegram.py)
 TG_PAGE = 'https://t.me/s/TodayinBAPShistory?before={n}'
 TG_SAME_PERSON = .38   # the channel's photos are often old video stills of a younger Bapa, and its story already says he is there
+TG_GURU_FROM = 1900   # darshans of earlier gurus (Shastriji Maharaj, Yogiji Maharaj) from the channel, from this year
+TG_NEAR, TG_NEAR_BEFORE = 3, 1999   # an old story from up to 3 days away may give a year before 1999 its card
 TG_GAP_BOOST = 1.0   # a channel photo from the very day beats a baps.org photo borrowed from a nearby day of the trip
 
 
@@ -1289,6 +1309,16 @@ def tg_events(mmdd):
     if not os.path.exists(TG_FILE):
         return []
     return [e for e in json.load(open(TG_FILE, encoding='utf-8')) if e['date'][5:] == mmdd]
+
+
+def tg_near(day):
+    """Darpan, 19 Oct 2026 ('Both'): an old story from up to TG_NEAR days either side may give a year its card, as
+    baps.org's photos already do for a trip spread over a few days. Only years before baps.org's photos start."""
+    days = {f'{day + datetime.timedelta(k):%m-%d}' for k in range(-TG_NEAR, TG_NEAR + 1) if k}
+    if not os.path.exists(TG_FILE):
+        return []
+    return [e for e in json.load(open(TG_FILE, encoding='utf-8'))
+            if e['date'][5:] in days and int(e['date'][:4]) < min(TG_NEAR_BEFORE, day.year)]
 
 
 def tg_photos(posts):
@@ -1302,7 +1332,7 @@ def tg_photos(posts):
             continue
         for part in html.split('class="tgme_widget_message_wrap')[1:]:
             if f'data-post="TodayinBAPShistory/{n}"' in part:
-                urls += re.findall(r"tgme_widget_message_photo_wrap[^>]*background-image:url\('([^']+)'\)", part)
+                urls += re.findall(r"tgme_widget_message_(?:photo_wrap|video_thumb)[^>]*background-image:url\('([^']+)'\)", part)   # photos and video stills
     return list(dict.fromkeys(urls))
 
 
@@ -1316,10 +1346,11 @@ def tg_day(day, items):
         return [], None, None
     exact = {x['y'] for x in items if x.get('d', '')[:10] == f'{x["y"]}-{mmdd}'}
     have = {x['y'] for x in items}
+    near = [e for e in tg_near(day) if int(e['date'][:4]) not in have | {int(v['date'][:4]) for v in evs}]
     extra = []
-    for e in evs:
+    for e in evs + near:
         y = int(e['date'][:4])
-        if not e.get('card') or not e.get('posts') or y < 1950 or y in exact:
+        if not e.get('card') or not e.get('posts') or y < (TG_GURU_FROM if e.get('guru') else 1950) or y in exact:
             continue
         gap = y in have
         town = lambda p: re.split(r'[,(]', p or '')[0].strip().lower()
@@ -1328,8 +1359,11 @@ def tg_day(day, items):
             continue   # Darpan, 19 Oct 2026: only fill a gap when both say the same place (not Mahelav on one, Nairobi on the other)
         urls = tg_photos(e['posts'])
         print(f'  + {len(urls)} photos from the channel for {e["date"]} ({"stands in for a nearby day" if gap else "a year before baps.org"})')
+        away = abs((datetime.date(2000, *map(int, e['date'][5:].split('-'))) - datetime.date(2000, day.month, day.day)).days)
+        away = min(away, 366 - away)
         extra += [{'y': y, 'd': e['date'], 'p': e.get('place') or '', 'c': e['card'], 'i': u, 'tg': True, 'post': e.get('url'),
-                   'boost': (TG_GAP_BOOST if gap else 0) - .01 * k} for k, u in enumerate(urls)]   # the channel's lead photo first
+                   'guru': e.get('guru', False), 'boost': (TG_GAP_BOOST if gap else 0) - .2 * away - .01 * k}
+                  for k, u in enumerate(urls)]   # the channel's lead photo first, the very day before a nearby one
     special = max((e for e in evs if e.get('special')), key=tg_rank, default=None)
     return extra, evs, special
 
@@ -1462,7 +1496,7 @@ def main():
         raise SystemExit('No photos could be downloaded for ' + mmdd)
     remember(day, photos)
     story = tg_story(tg_evs, photos)
-    unsure = [x for x in photos if x.get('tg') and (not x['face'] or x['sim'] < SAME_PERSON)]   # Darpan: carry on, but flag it and keep a backup
+    unsure = [x for x in photos if x.get('tg') and not x.get('guru') and (not x['face'] or x['sim'] < SAME_PERSON)]   # Darpan: carry on, but flag it and keep a backup
     for x in photos:
         print(f'  {x["y"]}  {x.get("p", "")[:28]:28}  Bapa {"%.2f" % x["sim"] if x["face"] else "not found, shown whole"}  {x["crop"]:5}  {caption(x)}')
 
