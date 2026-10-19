@@ -511,6 +511,7 @@ def header_one(img, title, subtitle):
         pad, rule = 44, 300
         thin_rule(dr, mid, (W - tw) / 2 - pad - rule, (W - tw) / 2 - pad, True)
         thin_rule(dr, mid, (W + tw) / 2 + pad, (W + tw) / 2 + pad + rule, False)
+    diamond(dr, (W - tw) / 2 - 40, mid, 7, GOLD); diamond(dr, (W + tw) / 2 + 40, mid, 7, GOLD)   # Darpan, 19 Oct 2026
 
 
 def header_line(img, title, subtitle):
