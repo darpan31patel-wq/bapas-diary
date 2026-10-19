@@ -1113,7 +1113,7 @@ def compose_wide(photos, day, seed, style, history=None):
             sag = lambda xp: y_top - 4 - SAG * (1 - 4 * (xp / W) * (1 - xp / W))              # lowest in the middle, ends higher
         else:
             sag = lambda xp: y_top - 4 + SAG * 4 * (xp / W) * (1 - xp / W)                    # the cord dips a little in the middle
-        dr.line([(xp, sag(xp)) for xp in range(0, W + 1, 6)], fill=(170, 132, 78), width=2)
+        rope(img, [(xp, sag(xp)) for xp in range(0, W + 1, 4)])   # drawn before the cards, so it always runs behind them
         later = []   # pegs and captions go on after the whole row, so a card swinging over its neighbour never hides them
         x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
         for c, x in enumerate(row):
@@ -1141,6 +1141,28 @@ def compose_wide(photos, day, seed, style, history=None):
     if not lay.get('oneline'):
         footer(img, small=lay.get('compact', False), history=history)
     return img
+
+
+ROPE = 7   # how thick the cord is, in pixels (Darpan, 19 Oct 2026: thicker, and always behind the photos; was a 2px line)
+
+
+def rope(img, pts, w=ROPE):
+    """A twisted jute cord along pts: a soft shadow below, a dark edge, the rope colour, and a light twist every few pixels."""
+    shade = Image.new('RGBA', img.size, (0, 0, 0, 0)); sd = ImageDraw.Draw(shade)
+    sd.line([(x, y + w * .7) for x, y in pts], fill=(0, 0, 0, 110), width=w + 2)
+    img.paste(shade.filter(ImageFilter.GaussianBlur(w * .6)), (0, 0), shade.filter(ImageFilter.GaussianBlur(w * .6)))
+    d = ImageDraw.Draw(img)
+    d.line(pts, fill=(92, 62, 30), width=w + 2)
+    d.line(pts, fill=(168, 126, 72), width=w)
+    d.line([(x, y - w * .18) for x, y in pts], fill=(196, 156, 98), width=max(1, w // 3))
+    step, k = w * 1.1, 0
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+        seg = ((x1 - x0) ** 2 + (y1 - y0) ** 2) ** .5
+        while k <= seg:
+            t = k / seg; x, y = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t
+            d.line((x - w * .35, y + w * .45, x + w * .35, y - w * .45), fill=(110, 76, 38), width=max(1, w // 4))
+            k += step
+        k -= seg
 
 
 CAPTION_SIZE = 21   # caption text under each frame (was 24; smaller since 18 Oct 2026 so whole captions fit, people zoom in)
