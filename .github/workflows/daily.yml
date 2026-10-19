@@ -101,6 +101,11 @@ jobs:
           gh release edit today --title "Today's picture" \
             --notes "Rebuilt every morning. Your Google script collects bapas-diary.png from here at 8:30am."
           gh release upload today out/bapas-diary.png out/bapas-diary.jpg out/date.txt --clobber
+          # the channel's story for the 2pm caption, and on big days the special picture; yesterday's are taken down
+          for f in caption.txt bapas-diary-special.png bapas-diary-special.jpg; do
+            if [ -e "out/$f" ]; then gh release upload today "out/$f" --clobber
+            else gh release delete-asset today "$f" -y 2>/dev/null || true; fi
+          done
 
       - name: Test branches keep their picture in preview/ (nothing reaches Google Drive)
         if: github.ref != 'refs/heads/main'
@@ -109,7 +114,9 @@ jobs:
           if [ -d out/compare ]; then cp out/compare/* preview/; else
           cp out/bapas-diary.jpg "preview/$(cat out/date.txt).jpg"
           cp out/bapas-diary.png "preview/$(cat out/date.txt).png"
-          cp out/summary.txt "preview/$(cat out/date.txt).txt"; fi
+          cp out/summary.txt "preview/$(cat out/date.txt).txt"
+          [ -e out/caption.txt ] && cp out/caption.txt "preview/$(cat out/date.txt)-caption.txt"
+          [ -e out/bapas-diary-special.png ] && cp out/bapas-diary-special.png "preview/$(cat out/date.txt)-special.png"; fi
           for f in out/all-photos.txt out/album-check.txt; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-$(basename "$f")"; done
           for f in out/caption-*.jpg out/caption-*.png; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-$(basename "$f")"; done
           for d in out/photos-*; do [ -d "$d" ] && rm -rf "preview/$(cat out/date.txt)-$(basename "$d")" && cp -r "$d" "preview/$(cat out/date.txt)-$(basename "$d")"; done

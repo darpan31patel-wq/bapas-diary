@@ -106,7 +106,7 @@ SAME_PERSON = .5           # cosine similarity; strangers and murtis score below
 FACE_LOCK = threading.Lock()   # the face models can only look at one photo at a time
 
 
-def bapa_face(im, when):
+def bapa_face(im, when, need=SAME_PERSON):
     """Bapa's face in the photo as ((x, y, w, h), similarity), or (None, 0) when he can't be recognised."""
     small = im.copy(); small.thumbnail((1280, 1280))
     k = im.width / small.width
@@ -122,7 +122,7 @@ def bapa_face(im, when):
             if sim > best_sim:
                 best, best_sim = tuple(float(v) * k for v in f[:4]), sim
                 LAST_FRONT[0] = front_view(f)
-    return (best, best_sim) if best_sim >= SAME_PERSON else (None, best_sim)
+    return (best, best_sim) if best_sim >= need else (None, best_sim)
 
 
 LAST_FRONT = [1.0]   # how face-on the face bapa_face last recognised was (1 looking at the camera, 0 a profile)
@@ -295,7 +295,7 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
             im = Image.open(x['path']).convert('RGB')
         except Exception:
             continue
-        face, sim = bapa_face(im, x.get('d', str(x['y'])))
+        face, sim = bapa_face(im, x.get('d', str(x['y'])), TG_SAME_PERSON if x.get('tg') else SAME_PERSON)
         front = LAST_FRONT[0] if face else 0
         x = dict(x, im=im, face=face, sim=sim, front=round(front, 2))
         r = face[3] / im.height if face else 0
@@ -305,7 +305,7 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
         subject = bapa_is_subject(c)
         doing = bool(DOING.search(c)) and not JUST_A_FACE.search(c)
         close_ok = bool(face) and face[3] >= CLOSE_MIN_FACE and front >= .35
-        jitter = rnd.uniform(0, .04) + (1.2 if unique and face and unique_caption(c) else 0)
+        jitter = rnd.uniform(0, .04) + (1.2 if unique and face and unique_caption(c) else 0) + x.get('boost', 0)
         # a close darshan wants his face turned to the camera: a profile or a bowed head loses most of a point
         s_close = (1 + min(r, .35) + sim + (.2 if JUST_A_FACE.search(c) else 0) + .9 * (front - .6) if face else -5) + jitter
         s_close -= (.6 if face and not subject else 0) + (1.5 if face and not close_ok else 0)
@@ -529,7 +529,9 @@ def header_line(img, title, subtitle):
     diamond(dr, fx + fw + pad + rule + 14, mid + 1, 5, GOLD)
 
 
-def footer(img, small=False):
+def footer(img, small=False, history=None):
+    if history:   # 'On this day in 1959  Yogiji Maharaj sets off ...' along the bottom, the project's name small at the right
+        return history_footer(img, history)
     dr = ImageDraw.Draw(img)
     f = garamond(26 if small else 40, 500)
     w = dr.textlength(FOOTER, font=f)
@@ -540,6 +542,24 @@ def footer(img, small=False):
     thin_rule(dr, mid, (W - w) / 2 - 40 - 220, (W - w) / 2 - 40, True)
     thin_rule(dr, mid, (W + w) / 2 + 40, (W + w) / 2 + 40 + 220, False)
     diamond(dr, (W - w) / 2 - 28, mid + 1, 5, GOLD); diamond(dr, (W + w) / 2 + 28, mid + 1, 5, GOLD)
+
+
+def history_footer(img, ev):
+    """One gold line along the bottom from the Today in BAPS History channel (Darpan, 19 Oct 2026, idea 1)."""
+    dr = ImageDraw.Draw(img)
+    lead, text = f'On this day in {ev["date"][:4]}', ev['line']
+    lf, tf, ff = garamond(30, 700), garamond(30, 500), garamond(24, 500)
+    fw = dr.textlength(FOOTER, font=ff)
+    room = W - 2 * (fw + 90)                                               # the line stays clear of the name at the right
+    while dr.textlength(lead + '   ' + text, font=tf) > room and tf.size > 22:
+        lf, tf = garamond(lf.size - 1, 700), garamond(tf.size - 1, 500)
+    lw, tw = dr.textlength(lead + '   ', font=lf), dr.textlength(text, font=tf)
+    x, y = (W - lw - tw) / 2, H - 15
+    dr.text((x, y), lead, font=lf, fill=GOLD, anchor='ls')
+    dr.text((x + lw, y), text, font=tf, fill=CAPTION_GOLD, anchor='ls')
+    mid = y - tf.size * .33
+    diamond(dr, x - 26, mid, 5, GOLD); diamond(dr, x + lw + tw + 26, mid, 5, GOLD)
+    dr.text((W - 30, y), FOOTER, font=ff, fill=(226, 184, 104), anchor='rs')
 
 
 def background():
@@ -1051,7 +1071,7 @@ class WideCard(Card):
             d.text((x0 + yw + sp, y), text, font=cf, fill=CAPTION_IVORY, anchor='ls')
 
 
-def compose_wide(photos, day, seed, style):
+def compose_wide(photos, day, seed, style, history=None):
     """Three (W1, W2) or four (W3) cords of wide cards, every year on the day, sized to fill the picture."""
     lay = WIDE[style]
     rnd = random.Random(seed)
@@ -1119,7 +1139,7 @@ def compose_wide(photos, day, seed, style):
         for f in later:
             f()
     if not lay.get('oneline'):
-        footer(img, small=lay.get('compact', False))
+        footer(img, small=lay.get('compact', False), history=history)
     return img
 
 
@@ -1165,9 +1185,9 @@ def dump_photos(photos, folder):
     json.dump(meta, open(os.path.join(folder, 'photos.json'), 'w'), default=float)
 
 
-def compose(photos, day, seed, style=None, look=None):
+def compose(photos, day, seed, style=None, look=None, history=None):
     if style in WIDE:
-        return compose_wide(photos, day, seed, style)
+        return compose_wide(photos, day, seed, style, history)
     rnd = random.Random(seed)
     img = background(); dr = ImageDraw.Draw(img)
     header(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
@@ -1228,6 +1248,128 @@ def compose(photos, day, seed, style=None, look=None):
     return img
 
 
+# ---------------------------------------------------------------- the Today in BAPS History channel
+
+TG_FILE = os.path.join(HERE, 'telegram', 'events.json')   # every dated story on t.me/TodayinBAPShistory, with our short lines (tools/telegram.py)
+TG_PAGE = 'https://t.me/s/TodayinBAPShistory?before={n}'
+TG_SAME_PERSON = .38   # the channel's photos are often old video stills of a younger Bapa, and its story already says he is there
+TG_GAP_BOOST = 1.0   # a channel photo from the very day beats a baps.org photo borrowed from a nearby day of the trip
+
+
+def tg_events(mmdd):
+    if not os.path.exists(TG_FILE):
+        return []
+    return [e for e in json.load(open(TG_FILE, encoding='utf-8')) if e['date'][5:] == mmdd]
+
+
+def tg_photos(posts):
+    """The channel's photo addresses for these posts, read fresh from its public web page (the addresses expire)."""
+    urls = []
+    for n in posts:
+        try:
+            html = fetch(TG_PAGE.format(n=n + 1), tries=2).decode('utf-8', 'replace')
+        except Exception as e:
+            print('  could not read the channel page for post', n, e)
+            continue
+        for part in html.split('class="tgme_widget_message_wrap')[1:]:
+            if f'data-post="TodayinBAPShistory/{n}"' in part:
+                urls += re.findall(r"tgme_widget_message_photo_wrap[^>]*background-image:url\('([^']+)'\)", part)
+    return list(dict.fromkeys(urls))
+
+
+def tg_day(day, items):
+    """Idea 2 and 5 (Darpan, 19 Oct 2026): the channel's photos of Bapa join the day as extra cards for years before
+    baps.org's photos start, and stand in for a year whose baps.org photos come from a nearby day of the trip.
+    Returns (extra items, the story for the history line and caption, the special story or None)."""
+    mmdd = f'{day:%m-%d}'
+    evs = [e for e in tg_events(mmdd) if int(e['date'][:4]) < day.year]
+    if not evs:
+        return [], None, None
+    exact = {x['y'] for x in items if x.get('d', '')[:10] == f'{x["y"]}-{mmdd}'}
+    have = {x['y'] for x in items}
+    extra = []
+    for e in evs:
+        y = int(e['date'][:4])
+        if not e.get('card') or y < 1950 or y in exact:
+            continue
+        gap = y in have
+        urls = tg_photos(e['posts'])
+        print(f'  + {len(urls)} photos from the channel for {e["date"]} ({"stands in for a nearby day" if gap else "a year before baps.org"})')
+        extra += [{'y': y, 'd': e['date'], 'p': e.get('place') or '', 'c': e['card'], 'i': u, 'tg': True,
+                   'boost': TG_GAP_BOOST if gap else 0} for u in urls]
+    rank = lambda e: (bool(e.get('special')), e.get('reposts', 1), -int(e['date'][:4]))
+    story = max(evs, key=rank)
+    special = max((e for e in evs if e.get('special')), key=rank, default=None)
+    return extra, story, special
+
+
+def tg_caption(ev):
+    """Idea 4: the story for the 2pm WhatsApp message, added under Darpan's own caption by his script."""
+    text = ev.get('whatsapp') or f'On this day in {ev["date"][:4]}, {ev["line"]}.'
+    if ev.get('video'):
+        text += f'\n\U0001F3A5 {ev["video"]}'
+    return text + '\n'
+
+
+def compose_special(ev, day):
+    """Idea 3: on a big day in BAPS history, a second picture of that day's story: the channel's lead photo large,
+    four more beside it under the story, in the daily picture's colours."""
+    urls = tg_photos(ev['posts'])[:5]
+    cache = os.path.join(HERE, '.cache')
+    ims = []
+    for u in urls:
+        x = {'i': u, 'y': 0}
+        download_all([x], cache)
+        if 'path' in x:
+            ims.append(Image.open(x['path']).convert('RGB'))
+    if not ims:
+        return None
+    img = background(); dr = ImageDraw.Draw(img)
+    header(img, f'{day.day} {day:%B} in Bapa’s Diary', 'A special day in BAPS history', compact=True)
+    yr, pl = ev['date'][:4], (ev.get('place') or '').upper()
+
+    def card(im, w, h):
+        c = Image.new('RGBA', (w + 24, h + 24 + round(w * .1))); d = ImageDraw.Draw(c)
+        for j in range(c.height):
+            t = j / c.height
+            d.line((0, j, c.width, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(IVORY_TOP, IVORY_BOTTOM)) + (255,))
+        d.rectangle((0, 0, c.width - 1, c.height - 1), outline=IVORY_EDGE)
+        r = max(w / im.width, h / im.height)
+        p = im.resize((round(im.width * r), round(im.height * r)), Image.LANCZOS)
+        p = p.crop(((p.width - w) // 2, round((p.height - h) * .3), (p.width - w) // 2 + w, round((p.height - h) * .3) + h))
+        c.paste(polish(p), (12, 12))
+        yf, pf = garamond(w * .07, 700), arimo_bold(w * .03)
+        yw = d.textlength(yr, font=yf); sp = w * .03 if pl else 0
+        x0 = (c.width - yw - sp - spaced(d, pl, pf, w * .006)) / 2; base = h + 12 + (c.height - h - 12) * .72
+        d.text((x0, base), yr, font=yf, fill=YEAR_C2, anchor='ls')
+        draw_spaced(d, x0 + yw + sp, base - pf.getmetrics()[0] - w * .008, pl, pf, w * .006, PLACE_C2)
+        sh = Image.new('RGBA', (c.width + 60, c.height + 60))
+        ImageDraw.Draw(sh).rectangle((30, 36, c.width + 30, c.height + 36), fill=(0, 0, 0, 150))
+        sh = sh.filter(ImageFilter.GaussianBlur(12)); sh.alpha_composite(c, (30, 30))
+        return sh
+    hero = card(ims[0], 1180, 800)
+    img.paste(hero, (70, 200), hero)
+    peg(img, 70 + hero.width / 2, 228, 1.5)
+    x0, tw = 1360, W - 1360 - 90
+    hf, bf = garamond(60, 700), garamond(36, 500)
+    y = 300
+    for line in wrap(dr, ev.get('headline') or ev['line'], hf, tw, 2):
+        gold_text(img, (x0, y - 60), line, hf); y += 72
+    y += 20
+    for line in wrap(dr, ev.get('story') or ev.get('whatsapp') or ev['line'], bf, tw, 7):
+        dr.text((x0, y), line, font=bf, fill=CAPTION_IVORY, anchor='ls'); y += 50
+    small = ims[1:5]
+    top = max(620, y + 40)
+    if small:
+        sw = min(330, (tw - 30 * (len(small) - 1)) / len(small) - 24)
+        for k, im in enumerate(small):
+            c = card(im, round(sw), round(sw * .74))
+            cx = x0 - 30 + k * (sw + 54)
+            img.paste(c, (round(cx), top), c); peg(img, cx + c.width / 2, top + 28, 1)
+    footer(img, small=True)
+    return img
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--date', help='YYYY-MM-DD (default: today in London)')
@@ -1259,6 +1401,8 @@ def main():
         print(f'  + {len(items) - len(have)} more captioned photos from the vicharan pages')
     print(f'{day}: {len(items)} photos across {len({x["y"] for x in items})} years')
 
+    tg_extra, story, special = tg_day(day, items)
+    items += tg_extra
     download_all(items, a.cache)
     tall = 1 / 1.45 if len({x['y'] for x in items}) > 10 else 1 / 1.08
     photos = pick_one_per_year(items, seed=mmdd, aspect=FRAME_ASPECT.get(LIVE_STYLE, tall), day=day)
@@ -1269,7 +1413,7 @@ def main():
         print(f'  {x["y"]}  {x.get("p", "")[:28]:28}  Bapa {"%.2f" % x["sim"] if x["face"] else "not found, shown whole"}  {x["crop"]:5}  {caption(x)}')
 
     os.makedirs(a.out, exist_ok=True)
-    live = compose(photos, day, seed=mmdd, style=LIVE_STYLE)
+    live = compose(photos, day, seed=mmdd, style=LIVE_STYLE, history=story)
     live.save(os.path.join(a.out, 'bapas-diary.jpg'), quality=95, optimize=True)
     live.save(os.path.join(a.out, 'bapas-diary.png'), optimize=True)   # the PNG is the final file (Darpan, 18 Oct 2026): crisp text
     workings_live = list(WORKINGS)
@@ -1312,6 +1456,18 @@ def main():
                 f.write(f'{name}:\n')
                 for x in ps:
                     f.write(f'  {x["y"]}  {"UNIQUE  " if unique_caption(caption(x)) else "standard"}  {caption(x)}\n')
+    for f in ('caption.txt', 'bapas-diary-special.png', 'bapas-diary-special.jpg'):   # nothing left over from another day
+        if os.path.exists(os.path.join(a.out, f)):
+            os.remove(os.path.join(a.out, f))
+    if story:
+        open(os.path.join(a.out, 'caption.txt'), 'w', encoding='utf-8').write(tg_caption(story))
+        print('  story:', story['date'], story['line'])
+    if special:
+        sp = compose_special(special, day)
+        if sp:
+            sp.save(os.path.join(a.out, 'bapas-diary-special.png'), optimize=True)
+            sp.save(os.path.join(a.out, 'bapas-diary-special.jpg'), quality=95, optimize=True)
+            print('  special picture:', special['date'], special.get('headline'))
     open(os.path.join(a.out, 'date.txt'), 'w').write(f'{day}\n')
     open(os.path.join(a.out, 'summary.txt'), 'w').write(f'{len(photos)} years: ' + ', '.join(str(x['y']) for x in photos) + '\n')
     print('saved', os.path.join(a.out, 'bapas-diary.jpg'))
