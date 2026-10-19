@@ -1129,13 +1129,15 @@ LIVE_STYLE = 'W2'   # the daily picture: design B, wide cards hanging straight o
 
 
 def polish(photo):
-    """Final touch on each resized photo (Darpan 18 Oct 2026: as clear and high quality as possible): a gentle levels
-    stretch so dull web images get their blacks and whites back, a little more colour, then two passes of sharpening,
-    a wide soft one for local contrast and a fine one for detail. Thresholds keep skin and smooth walls clean."""
-    photo = ImageOps.autocontrast(photo, cutoff=(.4, .2), preserve_tone=True)
-    photo = ImageEnhance.Color(photo).enhance(1.07)
-    photo = photo.filter(ImageFilter.UnsharpMask(radius=6, percent=18, threshold=0))    # local contrast, a clearer look
-    return photo.filter(ImageFilter.UnsharpMask(radius=1.1, percent=75, threshold=3))   # fine detail after the resize
+    """Final touch on each resized photo (Darpan 19 Oct 2026 chose look 2 'Natural' with a touch of warmth): a light
+    levels stretch, one gentle sharpening pass whose threshold keeps skin and smooth walls clean, then a little more
+    red and a little less blue so the photos sit warmly with the maroon and gold."""
+    photo = ImageOps.autocontrast(photo, cutoff=(.2, .1), preserve_tone=True)
+    photo = photo.filter(ImageFilter.UnsharpMask(radius=1, percent=45, threshold=4))
+    a = np.asarray(photo).astype(np.float32)
+    a[..., 0] *= 1.025
+    a[..., 2] *= .965
+    return Image.fromarray(a.clip(0, 255).astype(np.uint8))
 
 
 def dump_photos(photos, folder):
