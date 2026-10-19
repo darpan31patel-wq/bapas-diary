@@ -325,7 +325,7 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
             lst[:] = [v for v in lst if id(v) in keep_ids]
     years = sorted(cands)
     if sum(1 for y in years if any(v[2]['face'] for v in cands[y])) >= 5:
-        years = [y for y in years if any(v[2]['face'] for v in cands[y])]
+        years = [y for y in years if any(v[2]['face'] or v[2].get('tg') for v in cands[y])]   # a channel year stays even unrecognised (flagged)
     # a caption that turns up in other years too ('reads the Shikshapatri' most mornings) loses a little,
     # so a year's one-off moment ('reads the Sahajanand Sudha') wins when the photos are otherwise close
     keys = {y: [caption_key(caption(v[2])) for v in cands[y]] for y in cands}
@@ -1290,13 +1290,13 @@ def tg_day(day, items):
     extra = []
     for e in evs:
         y = int(e['date'][:4])
-        if not e.get('card') or y < 1971 or y in exact:   # before 1971 the faces are too young and grainy to be sure it is Bapa
+        if not e.get('card') or y < 1950 or y in exact:
             continue
         gap = y in have
         urls = tg_photos(e['posts'])
         print(f'  + {len(urls)} photos from the channel for {e["date"]} ({"stands in for a nearby day" if gap else "a year before baps.org"})')
-        extra += [{'y': y, 'd': e['date'], 'p': e.get('place') or '', 'c': e['card'], 'i': u, 'tg': True,
-                   'boost': TG_GAP_BOOST if gap else 0} for u in urls]
+        extra += [{'y': y, 'd': e['date'], 'p': e.get('place') or '', 'c': e['card'], 'i': u, 'tg': True, 'post': e.get('url'),
+                   'boost': (TG_GAP_BOOST if gap else 0) - .01 * k} for k, u in enumerate(urls)]   # the channel's lead photo first
     special = max((e for e in evs if e.get('special')), key=tg_rank, default=None)
     return extra, evs, special
 
@@ -1420,6 +1420,7 @@ def main():
         raise SystemExit('No photos could be downloaded for ' + mmdd)
     remember(day, photos)
     story = tg_story(tg_evs, photos)
+    unsure = [x for x in photos if x.get('tg') and (not x['face'] or x['sim'] < SAME_PERSON)]   # Darpan: carry on, but flag it and keep a backup
     for x in photos:
         print(f'  {x["y"]}  {x.get("p", "")[:28]:28}  Bapa {"%.2f" % x["sim"] if x["face"] else "not found, shown whole"}  {x["crop"]:5}  {caption(x)}')
 
@@ -1467,13 +1468,23 @@ def main():
                 f.write(f'{name}:\n')
                 for x in ps:
                     f.write(f'  {x["y"]}  {"UNIQUE  " if unique_caption(caption(x)) else "standard"}  {caption(x)}\n')
-    for f in ('caption.txt', 'bapas-diary-special.png', 'bapas-diary-special.jpg'):   # nothing left over from another day
+    for f in ('caption.txt', 'bapas-diary-special.png', 'bapas-diary-special.jpg', 'flags.txt', 'bapas-diary-backup.png'):   # nothing left over from another day
         if os.path.exists(os.path.join(a.out, f)):
             os.remove(os.path.join(a.out, f))
     told = story or max(tg_evs, key=tg_rank, default=None)   # the 2pm message may tell the card's story when there is no other
     if told:
         open(os.path.join(a.out, 'caption.txt'), 'w', encoding='utf-8').write(tg_caption(told))
         print('  story:', told['date'], told['line'], '' if story else '(caption only, a card tells it)')
+    if unsure:   # a channel card where Bapa's face isn't surely recognised: say so, and keep the picture without it too
+        with open(os.path.join(a.out, 'flags.txt'), 'w', encoding='utf-8') as f:
+            for x in unsure:
+                f.write(f"{x['y']} {place(x)}: {caption(x)}. Bapa {'not recognised' if not x['face'] else 'only a weak match (%.2f)' % x['sim']} "
+                        f"in the channel's photo ({x.get('post')})\n")
+        rest = [x for x in photos if x not in unsure]
+        if rest:
+            compose(rest, day, seed=mmdd, style=LIVE_STYLE, history=tg_story(tg_evs, rest)).save(
+                os.path.join(a.out, 'bapas-diary-backup.png'), optimize=True)
+        print('  flagged:', ', '.join(str(x['y']) for x in unsure))
     if special:
         sp = compose_special(special, day)
         if sp:
