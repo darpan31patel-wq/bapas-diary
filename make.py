@@ -1290,7 +1290,7 @@ def tg_day(day, items):
     extra = []
     for e in evs:
         y = int(e['date'][:4])
-        if not e.get('card') or y < 1950 or y in exact:
+        if not e.get('card') or y < 1971 or y in exact:   # before 1971 the faces are too young and grainy to be sure it is Bapa
             continue
         gap = y in have
         urls = tg_photos(e['posts'])
