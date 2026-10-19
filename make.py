@@ -1293,6 +1293,10 @@ def tg_day(day, items):
         if not e.get('card') or y < 1950 or y in exact:
             continue
         gap = y in have
+        town = lambda p: re.split(r'[,(]', p or '')[0].strip().lower()
+        if gap and town(e.get('place')) not in {town(x.get('p')) for x in items if x['y'] == y}:
+            print(f'  channel story {e["date"]} is in {e.get("place")}, baps.org has that year elsewhere: left as it is')
+            continue   # Darpan, 19 Oct 2026: only fill a gap when both say the same place (not Mahelav on one, Nairobi on the other)
         urls = tg_photos(e['posts'])
         print(f'  + {len(urls)} photos from the channel for {e["date"]} ({"stands in for a nearby day" if gap else "a year before baps.org"})')
         extra += [{'y': y, 'd': e['date'], 'p': e.get('place') or '', 'c': e['card'], 'i': u, 'tg': True, 'post': e.get('url'),
