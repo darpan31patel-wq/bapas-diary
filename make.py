@@ -476,6 +476,9 @@ def thin_rule(dr, y, x0, x1, fade_to_left):
         dr.line((xp, y, xp, y + 1), fill=tuple(round(m + (g - m) * a) for m, g in zip(MAROON_OUT, GOLD_SOFT)))
 
 
+TITLE_RULES = False   # the thin gold lines either side of the title and the footer (Darpan, 19 Oct 2026: take them away)
+
+
 def header(img, title, subtitle, compact=False):
     """Big bold gold title, then a smaller spaced capital line between two thin gold rules.
     compact: the same, a little smaller, fitting above cards that start at y=156."""
@@ -489,8 +492,9 @@ def header(img, title, subtitle, compact=False):
     sy = 114 if compact else 142
     draw_spaced(dr, (W - sw) / 2, sy, sub, sf, track, (240, 214, 160))
     mid = sy + 24
-    thin_rule(dr, mid, (W - sw) / 2 - 50 - 330, (W - sw) / 2 - 50, True)
-    thin_rule(dr, mid, (W + sw) / 2 + 50, (W + sw) / 2 + 50 + 330, False)
+    if TITLE_RULES:
+        thin_rule(dr, mid, (W - sw) / 2 - 50 - 330, (W - sw) / 2 - 50, True)
+        thin_rule(dr, mid, (W + sw) / 2 + 50, (W + sw) / 2 + 50 + 330, False)
 
 
 def header_one(img, title, subtitle):
@@ -503,9 +507,10 @@ def header_one(img, title, subtitle):
     gold_text(img, ((W - tw) / 2, top), text, tf)
     box = dr.textbbox(((W - tw) / 2, top), 'OB', font=tf)                   # capitals: the rule sits at their middle
     mid = (box[1] + box[3]) / 2
-    pad, rule = 44, 300
-    thin_rule(dr, mid, (W - tw) / 2 - pad - rule, (W - tw) / 2 - pad, True)
-    thin_rule(dr, mid, (W + tw) / 2 + pad, (W + tw) / 2 + pad + rule, False)
+    if TITLE_RULES:
+        pad, rule = 44, 300
+        thin_rule(dr, mid, (W - tw) / 2 - pad - rule, (W - tw) / 2 - pad, True)
+        thin_rule(dr, mid, (W + tw) / 2 + pad, (W + tw) / 2 + pad + rule, False)
 
 
 def header_line(img, title, subtitle):
@@ -539,8 +544,9 @@ def footer(img, small=False, history=None):
     dr.text(((W - w) / 2, y), FOOTER, font=f, fill=(226, 184, 104))
     box = dr.textbbox(((W - w) / 2, y), 'Dp', font=f)                      # the rules run through the middle of the letters
     mid = (box[1] + box[3]) / 2 - f.size * .06
-    thin_rule(dr, mid, (W - w) / 2 - 40 - 220, (W - w) / 2 - 40, True)
-    thin_rule(dr, mid, (W + w) / 2 + 40, (W + w) / 2 + 40 + 220, False)
+    if TITLE_RULES:
+        thin_rule(dr, mid, (W - w) / 2 - 40 - 220, (W - w) / 2 - 40, True)
+        thin_rule(dr, mid, (W + w) / 2 + 40, (W + w) / 2 + 40 + 220, False)
     diamond(dr, (W - w) / 2 - 28, mid + 1, 5, GOLD); diamond(dr, (W + w) / 2 + 28, mid + 1, 5, GOLD)
 
 
