@@ -1280,7 +1280,7 @@ def tg_photos(posts):
 def tg_day(day, items):
     """Idea 2 and 5 (Darpan, 19 Oct 2026): the channel's photos of Bapa join the day as extra cards for years before
     baps.org's photos start, and stand in for a year whose baps.org photos come from a nearby day of the trip.
-    Returns (extra items, the story for the history line and caption, the special story or None)."""
+    Returns (extra items, the day's stories, the special story or None)."""
     mmdd = f'{day:%m-%d}'
     evs = [e for e in tg_events(mmdd) if int(e['date'][:4]) < day.year]
     if not evs:
@@ -1297,10 +1297,20 @@ def tg_day(day, items):
         print(f'  + {len(urls)} photos from the channel for {e["date"]} ({"stands in for a nearby day" if gap else "a year before baps.org"})')
         extra += [{'y': y, 'd': e['date'], 'p': e.get('place') or '', 'c': e['card'], 'i': u, 'tg': True,
                    'boost': TG_GAP_BOOST if gap else 0} for u in urls]
-    rank = lambda e: (bool(e.get('special')), e.get('reposts', 1), -int(e['date'][:4]))
-    story = max(evs, key=rank)
-    special = max((e for e in evs if e.get('special')), key=rank, default=None)
-    return extra, story, special
+    special = max((e for e in evs if e.get('special')), key=tg_rank, default=None)
+    return extra, evs, special
+
+
+tg_rank = lambda e: (bool(e.get('special')), e.get('reposts', 1), -int(e['date'][:4]))
+
+
+def tg_story(evs, photos):
+    """The story for the history line: never one a card already tells (Darpan, 19 Oct 2026: the older darshan card
+    comes first, the line must say something different), so not a story from the same day and town as a card."""
+    town = lambda p: re.split(r'[,(]', p or '')[0].strip().lower()
+    shown = {(x.get('d', '')[:10], town(x.get('p'))) for x in photos}
+    left = [e for e in evs if (e['date'], town(e.get('place'))) not in shown]
+    return max(left, key=tg_rank, default=None)
 
 
 def tg_caption(ev):
@@ -1401,7 +1411,7 @@ def main():
         print(f'  + {len(items) - len(have)} more captioned photos from the vicharan pages')
     print(f'{day}: {len(items)} photos across {len({x["y"] for x in items})} years')
 
-    tg_extra, story, special = tg_day(day, items)
+    tg_extra, tg_evs, special = tg_day(day, items)
     items += tg_extra
     download_all(items, a.cache)
     tall = 1 / 1.45 if len({x['y'] for x in items}) > 10 else 1 / 1.08
@@ -1409,6 +1419,7 @@ def main():
     if not photos:
         raise SystemExit('No photos could be downloaded for ' + mmdd)
     remember(day, photos)
+    story = tg_story(tg_evs, photos)
     for x in photos:
         print(f'  {x["y"]}  {x.get("p", "")[:28]:28}  Bapa {"%.2f" % x["sim"] if x["face"] else "not found, shown whole"}  {x["crop"]:5}  {caption(x)}')
 
@@ -1459,9 +1470,10 @@ def main():
     for f in ('caption.txt', 'bapas-diary-special.png', 'bapas-diary-special.jpg'):   # nothing left over from another day
         if os.path.exists(os.path.join(a.out, f)):
             os.remove(os.path.join(a.out, f))
-    if story:
-        open(os.path.join(a.out, 'caption.txt'), 'w', encoding='utf-8').write(tg_caption(story))
-        print('  story:', story['date'], story['line'])
+    told = story or max(tg_evs, key=tg_rank, default=None)   # the 2pm message may tell the card's story when there is no other
+    if told:
+        open(os.path.join(a.out, 'caption.txt'), 'w', encoding='utf-8').write(tg_caption(told))
+        print('  story:', told['date'], told['line'], '' if story else '(caption only, a card tells it)')
     if special:
         sp = compose_special(special, day)
         if sp:
