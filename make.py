@@ -511,6 +511,7 @@ def header_one(img, title, subtitle):
         pad, rule = 44, 300
         thin_rule(dr, mid, (W - tw) / 2 - pad - rule, (W - tw) / 2 - pad, True)
         thin_rule(dr, mid, (W + tw) / 2 + pad, (W + tw) / 2 + pad + rule, False)
+    diamond(dr, (W - tw) / 2 - 40, mid, 7, GOLD); diamond(dr, (W + tw) / 2 + 40, mid, 7, GOLD)   # Darpan, 19 Oct 2026
 
 
 def header_line(img, title, subtitle):
@@ -1114,7 +1115,7 @@ def compose_wide(photos, day, seed, style, history=None):
     first = top_space + max(0, (bottom_space - top_space - block) / 2)
     s = card.PW / 220
     for r, row in enumerate(rows):
-        y_top = first + r * pitch
+        y_top = first + r * pitch + (LAST_ROW_DROP if lay.get('lift') and nrows > 1 and r == nrows - 1 else 0)
         if lay.get('lift'):
             sag = lambda xp: y_top - 4 - SAG * (1 - 4 * (xp / W) * (1 - xp / W))              # lowest in the middle, ends higher
         else:
@@ -1172,7 +1173,8 @@ def rope(img, pts, w=ROPE):
 
 
 CAPTION_SIZE = 21   # caption text under each frame (was 24; smaller since 18 Oct 2026 so whole captions fit, people zoom in)
-SAG = 60            # how far the cords dip in the middle, in pixels (Darpan 18 Oct 2026: 20 then 34 looked too straight, he wanted more)
+SAG = 85            # how far the cords dip in the middle, in pixels (Darpan 18 Oct 2026: 20 then 34 looked too straight, he wanted more; 19 Oct: 60 to 85, more curve, middle kept)
+LAST_ROW_DROP = 14  # the bottom cord hangs a little lower than the even spacing (Darpan, 19 Oct 2026)
 LIVE_STYLE = 'W2'   # the daily picture: design B, wide cards hanging straight on three curved cords, PNG (Darpan locked it in, 18 Oct 2026)
 
 
