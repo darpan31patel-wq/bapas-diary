@@ -1346,11 +1346,20 @@ def tg_story(evs, photos):
     return max(left, key=tg_rank, default=None)
 
 
-def tg_caption(ev):
+def tg_caption(ev, evs=None):
     """Idea 4: the story for the 2pm WhatsApp message, added under Darpan's own caption by his script."""
     text = ev.get('whatsapp') or f'On this day in {ev["date"][:4]}, {ev["line"]}.'
     if ev.get('video'):
         text += f'\n\U0001F3A5 {ev["video"]}'
+    town = lambda e: (e['date'], re.split(r'[,(]', e.get('place') or '')[0].strip().lower())
+    seen = {town(ev)}
+    more = []
+    for e in sorted(evs or [], key=lambda e: (e['date'], not e.get('video'))):   # Darpan, 19 Oct 2026: as much history as possible,
+        if town(e) not in seen:                                                  # so every other story of the day, once each
+            seen.add(town(e))
+            more.append(f'{e["date"][:4]} {e["line"]}' + (f' \U0001F3A5 {e["video"]}' if e.get('video') else ''))
+    if more:
+        text += '\n\n\U0001F4DC Also on this day\n' + '\n'.join(more)
     return text + '\n'
 
 
@@ -1506,7 +1515,7 @@ def main():
             os.remove(os.path.join(a.out, f))
     told = story or max(tg_evs, key=tg_rank, default=None)   # the 2pm message may tell the card's story when there is no other
     if told:
-        open(os.path.join(a.out, 'caption.txt'), 'w', encoding='utf-8').write(tg_caption(told))
+        open(os.path.join(a.out, 'caption.txt'), 'w', encoding='utf-8').write(tg_caption(told, tg_evs))
         print('  story:', told['date'], told['line'], '' if story else '(caption only, a card tells it)')
     if unsure:   # a channel card where Bapa's face isn't surely recognised: say so, and keep the picture without it too
         with open(os.path.join(a.out, 'flags.txt'), 'w', encoding='utf-8') as f:
