@@ -144,6 +144,15 @@ def guru_face(im):
     return tuple(float(v) * k for v in f[:4]), SAME_PERSON
 
 
+GURU_COLOUR = .5   # an earlier guru's photo is black and white or faded colour; more vivid than this is a modern one
+
+
+def colour(im):
+    """How colourful the photo is, 0 (black and white) to 1, the mean HSV saturation."""
+    small = im.copy(); small.thumbnail((200, 200))
+    return float(np.asarray(small.convert('HSV'))[..., 1].mean()) / 255
+
+
 LAST_FRONT = [1.0]   # how face-on the face bapa_face last recognised was (1 looking at the camera, 0 a profile)
 
 
@@ -326,7 +335,9 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
             continue
         if x.get('guru'):   # an earlier guru: the face check only knows Bapa, so the biggest face is the one shown
             face, sim = guru_face(im)
-            if sim < 0:
+            sat = colour(im)
+            print(f'  guru photo {x["y"]} colour {sat:.2f} {"Bapa" if sim < 0 else "face" if face else "no face"} {x["i"][-40:]}')
+            if sim < 0 or sat > GURU_COLOUR:   # Bapa himself, or a vivid modern photo (a later sadhu telling the story)
                 continue
         else:
             face, sim = bapa_face(im, x.get('d', str(x['y'])), TG_SAME_PERSON if x.get('tg') else SAME_PERSON)
