@@ -126,15 +126,20 @@ def bapa_face(im, when, need=SAME_PERSON):
 
 
 def guru_face(im):
-    """The biggest face in the photo, standing in as recognised (SAME_PERSON), for a darshan of an earlier guru."""
+    """The biggest face in the photo, standing in as recognised (SAME_PERSON), for a darshan of an earlier guru;
+    similarity -1 when Bapa himself is in it."""
     small = im.copy(); small.thumbnail((1280, 1280))
     k = im.width / small.width
     bgr = cv2.cvtColor(np.array(small), cv2.COLOR_RGB2BGR)
     with FACE_LOCK:
         DETECT.setInputSize((bgr.shape[1], bgr.shape[0]))
         faces = DETECT.detect(bgr)[1]
-    if faces is None or not len(faces):
-        return None, 0
+        if faces is None or not len(faces):
+            return None, 0
+        for f in faces:   # Bapa himself in it: a later photo in the post (an anniversary darshan), not that day's guru
+            e = RECOGNISE.feature(RECOGNISE.alignCrop(bgr, f))[0]
+            if max(float(r @ (e / np.linalg.norm(e))) for r in BAPA.values()) >= SAME_PERSON:
+                return None, -1
     f = max(faces, key=lambda f: f[2] * f[3])
     LAST_FRONT[0] = front_view(f)
     return tuple(float(v) * k for v in f[:4]), SAME_PERSON
@@ -198,6 +203,16 @@ def caption_key(c):
     return {w[:5] for w in words if w not in STOP}
 
 
+GURU_NAMES = {'yogij', 'shast', 'mahar', 'pramu', 'mahan', 'swami', 'jhina', 'jina', 'bhaga', 'shant', 'vinub', 'young'}
+
+
+def pick_key(x):
+    """caption_key, but on an earlier guru's card the names don't count: 'Yogiji Maharaj leaves the UK' does not
+    repeat 'Yogiji Maharaj joins Shastriji Maharaj'."""
+    k = caption_key(caption(x))
+    return k - GURU_NAMES if x.get('guru') else k
+
+
 COMMON_VERBS = {'bless', 'perfo', 'readi', 'reads', 'greet', 'engag', 'engro', 'has', 'visit', 'arriv', 'disco',
                 'medit', 'turns', 'plays', 'appli', 'offer', 'durin', 'start', 'daily', 'morni', 'eveni'}
 
@@ -225,12 +240,12 @@ def second_choices():
     for w in WORKINGS:
         if w['pick'] is None:
             continue
-        pk = caption_key(caption(w['pick']))
+        pk = pick_key(w['pick'])
         rest = [x for _, x, st in w['rows'] if x is not w['pick'] and st != 'repeats an earlier caption']
-        good = [x for x in rest if not same_caption(caption_key(caption(x)), pk)
-                and not any(same_caption(caption_key(caption(x)), u) for u in used)]
+        good = [x for x in rest if not same_caption(pick_key(x), pk)
+                and not any(same_caption(pick_key(x), u) for u in used)]
         x = (good or rest or [w['pick']])[0]
-        out.append(x); used.append(caption_key(caption(x)))
+        out.append(x); used.append(pick_key(x))
         w['second'] = x
     return out
 
@@ -312,6 +327,8 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
             continue
         if x.get('guru'):   # an earlier guru: the face check only knows Bapa, so the biggest face is the one shown
             face, sim = guru_face(im)
+            if sim < 0:
+                continue
         else:
             face, sim = bapa_face(im, x.get('d', str(x['y'])), TG_SAME_PERSON if x.get('tg') else SAME_PERSON)
         front = LAST_FRONT[0] if face else 0
@@ -346,7 +363,7 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
         years = [y for y in years if any(v[2]['face'] or v[2].get('tg') for v in cands[y])]   # a channel year stays even unrecognised (flagged)
     # a caption that turns up in other years too ('reads the Shikshapatri' most mornings) loses a little,
     # so a year's one-off moment ('reads the Sahajanand Sudha') wins when the photos are otherwise close
-    keys = {y: [caption_key(caption(v[2])) for v in cands[y]] for y in cands}
+    keys = {y: [pick_key(v[2]) for v in cands[y]] for y in cands}
     for y in cands:
         for j, v in enumerate(cands[y]):
             k = keys[y][j]
@@ -414,7 +431,7 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
         for v in ranked:
             mode = 0 if (k == 0 or not v[2]['nice']) else 1
             x = with_crop(v, mode)
-            key = caption_key(caption(x))
+            key = pick_key(x)
             if w['pick'] is None and not any(same_caption(key, u) for u in used):
                 picked.append(x); used.append(key); w['pick'] = x
                 w['rows'].append((v[mode], x, 'chosen'))
@@ -1362,8 +1379,8 @@ def tg_day(day, items):
         away = abs((datetime.date(2000, *map(int, e['date'][5:].split('-'))) - datetime.date(2000, day.month, day.day)).days)
         away = min(away, 366 - away)
         extra += [{'y': y, 'd': e['date'], 'p': e.get('place') or '', 'c': e['card'], 'i': u, 'tg': True, 'post': e.get('url'),
-                   'guru': e.get('guru', False), 'boost': (TG_GAP_BOOST if gap else 0) - .2 * away - .01 * k}
-                  for k, u in enumerate(urls)]   # the channel's lead photo first, the very day before a nearby one
+                   'guru': e.get('guru', False), 'boost': (TG_GAP_BOOST if gap else 0) - .2 * away - (1 if e.get('guru') else .01) * k}
+                  for k, u in enumerate(urls)]   # the channel's lead photo first (for an earlier guru, well first), the very day before a nearby one
     special = max((e for e in evs if e.get('special')), key=tg_rank, default=None)
     return extra, evs, special
 
