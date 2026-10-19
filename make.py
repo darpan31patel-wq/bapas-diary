@@ -127,7 +127,7 @@ def bapa_face(im, when, need=SAME_PERSON):
 
 def guru_face(im):
     """The biggest face in the photo, standing in as recognised (SAME_PERSON), for a darshan of an earlier guru;
-    similarity -1 when that face is Bapa himself."""
+    similarity -1 for a later photo: Mahant Swami Maharaj as he is now anywhere in it, or Bapa as its main face."""
     small = im.copy(); small.thumbnail((1280, 1280))
     k = im.width / small.width
     bgr = cv2.cvtColor(np.array(small), cv2.COLOR_RGB2BGR)
@@ -137,9 +137,11 @@ def guru_face(im):
         if faces is None or not len(faces):
             return None, 0
         f = max(faces, key=lambda f: f[2] * f[3])
-        e = RECOGNISE.feature(RECOGNISE.alignCrop(bgr, f))[0]
-        if max(float(r @ (e / np.linalg.norm(e))) for r in BAPA.values()) >= SAME_PERSON:
-            return None, -1   # the photo is of Bapa himself (often a later darshan in the post), not that day's guru
+        for g in faces:   # a later photo in the post (an anniversary darshan, a sadhu telling the story), not that day's:
+            e = RECOGNISE.feature(RECOGNISE.alignCrop(bgr, g))[0]
+            e = e / np.linalg.norm(e)   # Mahant Swami Maharaj as he is now anywhere in it, or Bapa as its main face
+            if float(BAPA['msm'] @ e) >= SAME_PERSON or (g is f and float(BAPA['psm'] @ e) >= SAME_PERSON):
+                return None, -1
     LAST_FRONT[0] = front_view(f)
     return tuple(float(v) * k for v in f[:4]), SAME_PERSON
 
