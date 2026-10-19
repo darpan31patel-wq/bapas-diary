@@ -150,6 +150,9 @@ SPECIAL = re.compile(r'pratishtha|inaugurat|annakut|diwali|new year|janm|jayanti
 ACTION_KEEP = .72     # an action shot must keep at least this much of the photo inside the frame, or what Bapa does gets cut off
 NICE_MIN = 2.0        # the action score a photo needs before it beats a close darshan
 CLOSE_SHARE = .6      # about this share of the years are close darshans of Bapa's face (Darpan, 18 Oct 2026: 16 of 27)
+RECENT_DAYS = 7       # a photo shown in the last week is not shown again: the old albums cover several days, so
+                      # neighbouring dates list the same photos (18 and 19 October share 2003, 2005, 2006 and 2007)
+SHOWN_FILE = os.path.join(HERE, 'archive', 'shown.json')   # which photo each year showed on each day (written after every run)
 CLOSE_MIN_FACE = 64   # pixels: a face smaller than this can't be blown up into a close darshan
 
 
@@ -253,7 +256,24 @@ def frame_keep(im, face, fa):
     return min(1, (ih * fa) / iw) if iw / ih > fa else min(1, (iw / fa) / ih)
 
 
-def pick_one_per_year(items, seed, unique=False, aspect=.69):
+def shown():
+    """archive/shown.json: {'YYYY-MM-DD': {'2003': photo url, ...}} for the pictures already made."""
+    try:
+        return {d: v for d, v in json.load(open(SHOWN_FILE)).items() if isinstance(v, dict)}
+    except (OSError, ValueError):
+        return {}
+
+
+def remember(day, photos):
+    """Record today's picks in archive/shown.json (the last two months), so the next days pick other photos."""
+    s = shown()
+    s[str(day)] = {str(x['y']): x['i'] for x in photos}
+    s = {d: v for d, v in sorted(s.items()) if abs((day - datetime.date.fromisoformat(d)).days) <= 60}
+    s['_how'] = 'The photo each year showed on each day. A photo shown in the last RECENT_DAYS days is not picked again (make.py).'
+    json.dump(s, open(SHOWN_FILE, 'w'), indent=1)
+
+
+def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
     """Per year, a photo where Bapa is recognised, chosen by Darpan's rule (18 Oct 2026): a photo is either a
     really nice action shot or a close up of Bapa. An action shot only counts when what he is doing stays in
     the frame (the frame keeps >= ACTION_KEEP of the photo), he is not tiny, and the caption says he is doing
@@ -315,6 +335,24 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69):
             others = sum(1 for oy in cands if oy != y and any(same_caption(k, ok) for ok in keys[oy]))
             if others:   # capped: with 25 years on a day 'blesses the assembly' would otherwise lose several points
                 cands[y][j] = (v[0] - min(.5, .25 * others), v[1] - min(.5, .25 * others), v[2])
+    if day:   # a photo shown in the last week loses heavily and stops counting as a nice action shot, its caption loses a
+        # little, so neighbouring dates that list the same album show different photos of Bapa
+        recent, recent_keys = {}, {}   # url -> how many days ago it was shown (yesterday's loses most, last week's least)
+        for d, ys in shown().items():
+            ago = (day - datetime.date.fromisoformat(d)).days
+            if 0 < ago <= RECENT_DAYS:
+                for y, u in ys.items():
+                    recent[u] = min(ago, recent.get(u, ago))
+                    recent_keys.setdefault(int(y), []).append(u)
+        for y in cands:
+            seen = [keys[y][j] for j, v in enumerate(cands[y]) if v[2]['i'] in recent_keys.get(y, [])]
+            for j, v in enumerate(cands[y]):
+                if v[2]['i'] in recent:
+                    v[2]['nice'] = False
+                    loss = 3 * (RECENT_DAYS + 1 - recent[v[2]['i']]) / RECENT_DAYS
+                    cands[y][j] = (v[0] - loss, v[1] - loss, v[2])
+                elif any(same_caption(keys[y][j], k) for k in seen):
+                    cands[y][j] = (v[0] - .5, v[1] - .5, v[2])
     for y, want in PICKS.get(seed, {}).items():   # Darpan's own choice for a year wins outright
         for j, v in enumerate(cands.get(int(y), [])):
             if want.lower() in (v[2].get('c') or '').lower():
@@ -1207,9 +1245,10 @@ def main():
 
     download_all(items, a.cache)
     tall = 1 / 1.45 if len({x['y'] for x in items}) > 10 else 1 / 1.08
-    photos = pick_one_per_year(items, seed=mmdd, aspect=FRAME_ASPECT.get(LIVE_STYLE, tall))
+    photos = pick_one_per_year(items, seed=mmdd, aspect=FRAME_ASPECT.get(LIVE_STYLE, tall), day=day)
     if not photos:
         raise SystemExit('No photos could be downloaded for ' + mmdd)
+    remember(day, photos)
     for x in photos:
         print(f'  {x["y"]}  {x.get("p", "")[:28]:28}  Bapa {"%.2f" % x["sim"] if x["face"] else "not found, shown whole"}  {x["crop"]:5}  {caption(x)}')
 
@@ -1224,7 +1263,7 @@ def main():
             continue
         ps = photos
         if st in FRAME_ASPECT:   # a wide frame keeps more of each photo, so more action shots qualify: pick again for it
-            ps = pick_one_per_year(items, seed=mmdd, aspect=FRAME_ASPECT[st])
+            ps = pick_one_per_year(items, seed=mmdd, aspect=FRAME_ASPECT[st], day=day)
             print(f'  {st}: ' + ', '.join(f'{x["y"]} {x["crop"]}' for x in ps))
             workings_sheet(day).save(os.path.join(a.out, f'caption-workings-{st}.jpg'), quality=88, optimize=True)
         im = compose(ps, day, seed=mmdd, style=st)
