@@ -144,7 +144,7 @@ def guru_face(im):
     return tuple(float(v) * k for v in f[:4]), SAME_PERSON
 
 
-GURU_COLOUR = .5   # an earlier guru's photo is black and white or faded colour; more vivid than this is a modern one
+GURU_COLOUR = .44   # an earlier guru's photo is black and white or faded colour; more vivid than this is a modern one
 
 
 def colour(im):
