@@ -1129,15 +1129,29 @@ LIVE_STYLE = 'W2'   # the daily picture: design B, wide cards hanging straight o
 
 
 def polish(photo):
-    """Final touch on each resized photo (Darpan 19 Oct 2026 chose look 2 'Natural' with a touch of warmth): a light
-    levels stretch, one gentle sharpening pass whose threshold keeps skin and smooth walls clean, then a little more
-    red and a little less blue so the photos sit warmly with the maroon and gold."""
+    """Final touch on each resized photo (Darpan 19 Oct 2026 chose look 2 'Natural' with a touch of warmth, then 'D
+    richer skin'): a light levels stretch, one gentle sharpening pass whose threshold keeps skin and smooth walls clean,
+    a little more red and a little less blue so the photos sit warmly with the maroon and gold, then robe and skin tones
+    drawn together (rich_skin)."""
     photo = ImageOps.autocontrast(photo, cutoff=(.2, .1), preserve_tone=True)
     photo = photo.filter(ImageFilter.UnsharpMask(radius=1, percent=45, threshold=4))
     a = np.asarray(photo).astype(np.float32)
     a[..., 0] *= 1.025
     a[..., 2] *= .965
-    return Image.fromarray(a.clip(0, 255).astype(np.uint8))
+    return rich_skin(Image.fromarray(a.clip(0, 255).astype(np.uint8)))
+
+
+def rich_skin(photo, hue_k=.3, sat_up=.22):
+    """Bring the orange robes and skin closer in colour without fading anything (Darpan disliked desaturated robes):
+    in orange and skin hues only, the hues drift toward each other and paler warm areas (skin) gain a little richness.
+    Reds, blues, gold, greys, white cloth and deep shadows are left alone."""
+    hsv = cv2.cvtColor(np.asarray(photo), cv2.COLOR_RGB2HSV_FULL).astype(np.float32)
+    h, s, v = hsv[..., 0], hsv[..., 1], hsv[..., 2]
+    w = np.clip((h - 6) / 6, 0, 1) * np.clip((44 - h) / 8, 0, 1)
+    w *= np.clip((v - 40) / 40, 0, 1) * np.clip((s - 60) / 50, 0, 1)
+    hsv[..., 0] = h + hue_k * w * (19 - h)
+    hsv[..., 1] = s + sat_up * w * np.clip(200 - s, 0, None)
+    return Image.fromarray(cv2.cvtColor(hsv.clip(0, 255).astype(np.uint8), cv2.COLOR_HSV2RGB_FULL))
 
 
 def dump_photos(photos, folder):
