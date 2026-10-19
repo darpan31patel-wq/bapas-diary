@@ -127,7 +127,7 @@ def bapa_face(im, when, need=SAME_PERSON):
 
 def guru_face(im):
     """The biggest face in the photo, standing in as recognised (SAME_PERSON), for a darshan of an earlier guru;
-    similarity -1 when Bapa himself is in it."""
+    similarity -1 when that face is Bapa himself."""
     small = im.copy(); small.thumbnail((1280, 1280))
     k = im.width / small.width
     bgr = cv2.cvtColor(np.array(small), cv2.COLOR_RGB2BGR)
@@ -136,11 +136,10 @@ def guru_face(im):
         faces = DETECT.detect(bgr)[1]
         if faces is None or not len(faces):
             return None, 0
-        for f in faces:   # Bapa himself in it: a later photo in the post (an anniversary darshan), not that day's guru
-            e = RECOGNISE.feature(RECOGNISE.alignCrop(bgr, f))[0]
-            if max(float(r @ (e / np.linalg.norm(e))) for r in BAPA.values()) >= SAME_PERSON:
-                return None, -1
-    f = max(faces, key=lambda f: f[2] * f[3])
+        f = max(faces, key=lambda f: f[2] * f[3])
+        e = RECOGNISE.feature(RECOGNISE.alignCrop(bgr, f))[0]
+        if max(float(r @ (e / np.linalg.norm(e))) for r in BAPA.values()) >= SAME_PERSON:
+            return None, -1   # the photo is of Bapa himself (often a later darshan in the post), not that day's guru
     LAST_FRONT[0] = front_view(f)
     return tuple(float(v) * k for v in f[:4]), SAME_PERSON
 
