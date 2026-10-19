@@ -1343,7 +1343,7 @@ def tg_day(day, items):
     mmdd = f'{day:%m-%d}'
     evs = [e for e in tg_events(mmdd) if int(e['date'][:4]) < day.year]
     if not evs:
-        return [], None, None
+        return [], [], None   # a day the channel has no story for
     exact = {x['y'] for x in items if x.get('d', '')[:10] == f'{x["y"]}-{mmdd}'}
     have = {x['y'] for x in items}
     near = [e for e in tg_near(day) if int(e['date'][:4]) not in have | {int(v['date'][:4]) for v in evs}]
