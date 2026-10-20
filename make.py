@@ -384,6 +384,8 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
             if sim < 0 or sat > GURU_COLOUR:   # Bapa himself, or a vivid modern photo (a later sadhu telling the story)
                 continue
         else:
+            if JUNK.search(x.get('c') or ''):   # 'To view the complete blessings, please click here': a link, not a photo of the day
+                continue
             face, sim = bapa_face(im, x.get('d', str(x['y'])), TG_SAME_PERSON if x.get('tg') else SAME_PERSON)
         front = LAST_FRONT[0] if face else 0
         x = dict(x, im=im, face=face, sim=sim, front=round(front, 2))
@@ -820,7 +822,8 @@ EVERYDAY = re.compile(   # the everyday lines that say nothing about that partic
     r"^during (the |his )?(morning |evening |daily )?(assembly|arti|puja|sabha|satsang sabha)$|^performs (the |his )?(morning |evening |daily )?(arti|puja)$|"
     r"^(meditates|engrossed|seated) in (his )?(daily |morning )?puja|sadhana mantra|daily prayer|^(does|doing|turns the) mala|^bids jai swaminarayan|"
     r"^greets (all|everyone|bhaktas|sadhus)$|folded hands|^observes prasad$|^engaged in (letter-writing|darshan|thought)|^(reads|reading) the shikshapatri|"
-    r"^in thought|^seated$|^(has|having) (lunch|dinner|breakfast|his meal)$|^arrives|^departs|^listens attentively$", re.I)
+    r"^in thought|^seated$|^(has|having) (lunch|dinner|breakfast|his meal)$|^arrives|^departs|^listens attentively$|"
+    r"^(honou?rs|honou?red|garlands|welcomes|meets|greets|receives|is honou?red|accepts)\b|with a (shawl|garland)|^honou?red", re.I)   # honouring or meeting guests is not special (Darpan, 20 Oct 2026)
 
 
 def summarise(c):
