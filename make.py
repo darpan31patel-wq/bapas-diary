@@ -6,7 +6,7 @@
 
 Writes out/bapas-diary.png and .jpg (2796 x 1290, iPhone landscape), out/date.txt and out/summary.txt.
 """
-import argparse, collections, concurrent.futures, datetime, hashlib, json, os, random, re, threading, time, urllib.request
+import argparse, collections, concurrent.futures, datetime, glob, hashlib, json, os, random, re, threading, time, urllib.request
 from zoneinfo import ZoneInfo
 
 import cv2
@@ -177,6 +177,45 @@ SPECIAL = re.compile(r'pratishtha|inaugurat|annakut|diwali|new year|janm|jayanti
                      r'instrument|surando|drum|president|prime minister|governor|congress|minister|mayor|ambassador|'
                      r'pilgrim|on foot|airport|farewell|departs|flag|cake|balloon|boat|horse|elephant|tractor|'
                      r'cricket|football|plant|tree|cow|children|balaks?\b|kids?\b', re.I)
+RARE_DAYS = 120       # a caption word seen on fewer days of the year than this marks a special moment (Darpan, 20 Oct 2026: something you don't see normally)
+WORD_DAYS = {}        # word -> number of days of the year (archive/vicharan) whose captions use it, built on first use
+CAPTION_STOP = {'the', 'a', 'an', 'of', 'to', 'and', 'in', 'on', 'at', 'with', 'by', 'for', 'his', 'her', 'their', 'all', 'during', 'from', 'as',
+                'is', 'are', 'was', 'were', 'this', 'that', 'into', 'onto', 'over', 'under', 'after', 'before', 'while', 'he', 'him', 'its', 'it',
+                'hh', 'param', 'pujya', 'pramukh', 'mahant', 'swami', 'swamishri', 'maharaj', 'bapa', 'shri', 'be', 'upon', 'new', 'day'}
+
+
+def caption_words(c):
+    return [w.strip("'-") for w in re.findall(r"[a-z][a-z\-']+", (c or '').lower()) if w.strip("'-") and w.strip("'-") not in CAPTION_STOP]
+
+
+def word_days():
+    if not WORD_DAYS:
+        days = {}
+        for f in sorted(glob.glob(os.path.join(HERE, 'archive', 'vicharan', '*.txt'))):
+            d = os.path.basename(f)[:5]
+            for line in open(f, encoding='utf-8'):
+                if line.startswith('#') or '|' not in line:
+                    continue
+                for w in set(caption_words(line.rstrip('\n').split('|', 1)[1])):
+                    days.setdefault(w, set()).add(d)
+        WORD_DAYS.update({w: len(v) for w, v in days.items()} or {'': 0})
+    return WORD_DAYS
+
+
+def rare_caption(c):
+    """True when the caption has a word that turns up on few days of the year ('expounds', 'dandiya', 'Jitatmanand'),
+    so it tells of something not seen most days; 'Meditates in his daily puja' is all everyday words."""
+    ws = caption_words(c)
+    return bool(ws) and min(word_days().get(w, 0) for w in ws) < RARE_DAYS
+
+
+def is_special(c):
+    """A special moment: a festival, pratishtha, visitor (SPECIAL) or rare words, and never an everyday line."""
+    c = re.sub(r'\s+', ' ', c or '').strip()
+    return bool(c) and not EVERYDAY.search(c) and not JUST_A_FACE.search(c) and bool(SPECIAL.search(c) or rare_caption(c))
+
+
+PICK = 'special'      # 'special': every year a close darshan unless it has a special action shot (Darpan, 20 Oct 2026: 'this is perfect'); 'share': CLOSE_SHARE of the years are close ups
 ACTION_KEEP = .72     # an action shot must keep at least this much of the photo inside the frame, or what Bapa does gets cut off
 NICE_MIN = 2.0        # the action score a photo needs before it beats a close darshan
 CLOSE_SHARE = .6      # about this share of the years are close darshans of Bapa's face (Darpan, 18 Oct 2026: 16 of 27)
@@ -345,24 +384,28 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
             if sim < 0 or sat > GURU_COLOUR:   # Bapa himself, or a vivid modern photo (a later sadhu telling the story)
                 continue
         else:
+            if JUNK.search(x.get('c') or ''):   # 'To view the complete blessings, please click here': a link, not a photo of the day
+                continue
             face, sim = bapa_face(im, x.get('d', str(x['y'])), TG_SAME_PERSON if x.get('tg') else SAME_PERSON)
         front = LAST_FRONT[0] if face else 0
         x = dict(x, im=im, face=face, sim=sim, front=round(front, 2))
         r = face[3] / im.height if face else 0
         c = x.get('c') or ''
         keep = frame_keep(im, face, aspect)
-        special = bool(SPECIAL.search(c))
+        special = is_special(c)
         subject = bapa_is_subject(c)
         doing = bool(DOING.search(c)) and not JUST_A_FACE.search(c)
         close_ok = bool(face) and face[3] >= CLOSE_MIN_FACE and front >= .35
         jitter = rnd.uniform(0, .04) + (1.2 if unique and face and unique_caption(c) else 0) + x.get('boost', 0)
         # a close darshan wants his face turned to the camera: a profile or a bowed head loses most of a point
         s_close = (1 + min(r, .35) + sim + (.2 if JUST_A_FACE.search(c) else 0) + .9 * (front - .6) if face else -5) + jitter
-        s_close -= (.6 if face and not subject else 0) + (1.5 if face and not close_ok else 0)
+        s_close -= (.6 if face and not subject else 0) + (1.5 if face and not close_ok else 0) + (.4 if caption(x) == DARSHAN else 0)   # a photo with a real caption wins a close call
         s_doing = (1 + sim + .6 * max(0, 1 - abs(r - .18) / .15) + (.4 if doing else 0) + (.3 if special else 0)
                    - (.5 if r < .1 else 0) - (.6 if not subject else 0)             # Bapa small in the frame, or not the subject
                    - (0 if keep >= ACTION_KEEP else (.3 if special else 1.5))       # what he is doing would be cut off
                    if face else -5) + jitter
+        if PICK == 'special' and GUEST.search(caption(x)):   # Darpan (20 Oct 2026): not the honouring and meeting guests ones
+            s_close -= 2.5; s_doing -= 2.5
         # a really nice action shot: he is doing something, he is the subject, not small, nothing cut off (or a special
         # moment), and it scores well; anything less and the year is better served by a close darshan
         nice = bool(face) and doing and subject and r >= .13 and (keep >= ACTION_KEEP or special) and s_doing - jitter >= NICE_MIN
@@ -427,7 +470,10 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
     has_nice = {y: any(v[2]['nice'] for v in cands[y]) for y in years}
     has_close = {y: any(v[2]['close_ok'] for v in cands[y]) for y in years}
     modes = {y: 1 if has_nice[y] and not (i % 3 == 1 and has_close[y]) else (0 if has_close[y] else 1) for i, y in enumerate(years)}
-    target = round(len(years) * CLOSE_SHARE)
+    if PICK == 'special':   # a close darshan every year, except a year with a really nice action shot of a special moment
+        has_special = {y: any(v[2]['nice'] and v[2]['special'] for v in cands[y]) for y in years}
+        modes = {y: 1 if has_special[y] else (0 if has_close[y] else 1) for y in years}
+    target = len(years) - sum(1 for y in years if modes[y] == 1) if PICK == 'special' else round(len(years) * CLOSE_SHARE)
     best_close = {y: max(v[0] for v in cands[y]) for y in years}
     while sum(1 for y in years if modes[y] == 0) < target:
         spare = [y for y in years if modes[y] == 1 and has_close[y]]
@@ -446,9 +492,11 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
             ranked = [v for v in ranked if v[2]['face']]
             if k == 1:   # only really nice action shots count as action; the rest of the year's photos follow as close ups
                 ranked = [v for v in ranked if v[2]['nice']] + [v for v in sorted(ranked, key=lambda v: -v[0]) if not v[2]['nice']]
+                if PICK == 'special':   # the special moment first, then everything else as close ups
+                    ranked = [v for v in ranked if v[2]['nice'] and v[2]['special']] + [v for v in sorted(ranked, key=lambda v: -v[0]) if not (v[2]['nice'] and v[2]['special'])]
         w = dict(year=y, mode='close darshan' if k == 0 else 'doing something', rows=[], pick=None)
         for v in ranked:
-            mode = 0 if (k == 0 or not v[2]['nice']) else 1
+            mode = 0 if (k == 0 or not v[2]['nice'] or (PICK == 'special' and not v[2]['special'])) else 1
             x = with_crop(v, mode)
             key = pick_key(x)
             if w['pick'] is None and not any(same_caption(key, u) for u in used):
@@ -458,7 +506,7 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
                 w['rows'].append((v[mode], x, 'repeats an earlier caption' if w['pick'] is None else ''))
         if w['pick'] is None and ranked:   # every caption of the year repeats another year's: the year still shows, with its
             v = ranked[0]                  # best photo (Darpan: as many years as possible, always)
-            mode = 0 if (k == 0 or not v[2]['nice']) else 1
+            mode = 0 if (k == 0 or not v[2]['nice'] or (PICK == 'special' and not v[2]['special'])) else 1
             x = with_crop(v, mode)
             picked.append(x); used.append(pick_key(x)); w['pick'] = x
             w['rows'][0] = (v[mode], x, 'chosen (all its captions repeat)')
@@ -731,6 +779,7 @@ def shorter_versions(text):
 SHORT_END = {'the', 'a', 'an', 'of', 'and', 'to', 'with', 'his', 'her', 'their', 'on', 'in', 'at', 'for', 'by', 'from', 'that', 'two', 'new',
              'who', 'which', 'where', 'via', 'as', 'while', 'during', 'before', 'after', 'is', 'are', 'was', 'other', 'various', 'some'}
 MONTH = r'(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?'
+JUNK = re.compile(r'click here|to view|please|https?:|read more|watch (the )?video|\bvideo\b.*\bhere\b', re.I)
 SHORT_WORDS = [   # a few long phrases said shorter in the website's own words, so a caption fits without trailing off
     (r'\bvideo conference\b', 'video'), (r'\bBAPS Shri Swaminarayan Mandir(s?)\b', r'mandir\1'), (r'\bShri Swaminarayan Mandir\b', 'mandir'),
     (r'\bmurti-pratishtha (?:ceremony|rituals?)\b', 'murti-pratishtha'),
@@ -744,7 +793,41 @@ def tidy(c):
     c = re.sub(r'\b(the|a|an|of|to|in|on|and) \1\b', r'\1', c, flags=re.I)
     c = re.sub(r'\b(?:Mr|Mrs|Ms|Dr)\.? (?=[A-Z])', '', c)
     c = re.sub(r'\b([Dd])evotee(s?)\b', lambda m: ('B' if m.group(1) == 'D' else 'b') + 'hakta' + m.group(2), c)   # satsang word (Darpan, 18 Oct 2026)
+    c = re.sub(r', (?:Shri|Smt\.?|Dr\.?|Mr\.?|Mrs\.?) [^,]+(?:, [^,]+)*,', '', c)   # 'Bapa and sponsors, Shri Mayurbhai and Shri Nimeshbhai, cut the ribbon'
+    if JUNK.search(c):   # website link text that was crawled as a caption
+        return ''
+    c = re.sub(r'\b(a) (?=[aeiouAEIOU])', r'\1n ', c)                                           # 'in a illustrious mood'
+    c = re.sub(r'\b(an) (?=[^aeiouAEIOU\W])', 'a ', c)
+    c = re.sub(r"^(['\u2018\u201c].+?['\u2019\u201d])\s*[-\u2013\u2014:]\s*(?:Param Pujya |Pujya |HH )?(?:Pramukh|Mahant) Swami(?: Maharaj)?\s*$", r'\1', c)   # a quote of his: the card is already his
     return re.sub(r'\s+', ' ', c).strip(' ,;:')
+
+
+ING = {'performing': 'Performs', 'blessing': 'Blesses', 'greeting': 'Greets', 'reading': 'Reads', 'writing': 'Writes', 'playing': 'Plays',
+       'singing': 'Sings', 'offering': 'Offers', 'listening': 'Listens', 'watching': 'Watches', 'meeting': 'Meets', 'inaugurating': 'Inaugurates',
+       'sanctifying': 'Sanctifies', 'meditating': 'Meditates', 'walking': 'Walks', 'arriving': 'Arrives', 'departing': 'Departs', 'giving': 'Gives',
+       'receiving': 'Receives', 'showering': 'Showers', 'applying': 'Applies', 'lighting': 'Lights', 'explaining': 'Explains', 'discoursing': 'Discourses',
+       'talking': 'Talks', 'speaking': 'Speaks', 'addressing': 'Addresses', 'enjoying': 'Enjoys', 'observing': 'Observes', 'engaged': 'Engaged'}
+DARSHAN = 'Darshan'   # the caption when the website gives only his name ('Param Pujya Mahant Swami Maharaj')
+CAPTIONS = 'all'      # 'all': every card captioned; 'special': only one-off moments, no 'In a divine mood'; 'none': no captions (mockups, 20 Oct 2026)
+
+
+def shown_caption(x):
+    """The caption that goes under the card, or '' when the mode leaves this card uncaptioned."""
+    c = caption(x)
+    if CAPTIONS == 'none' or (CAPTIONS == 'special' and (c == DARSHAN or x.get('crop') == 'close' or not is_special(c))):
+        return ''
+    return c
+
+
+EVERYDAY = re.compile(   # the everyday lines that say nothing about that particular day, left off in 'special' mode
+    r"mood|divine|jovial|^darshan$|^bless\w*( (all|everyone|bhaktas|sadhus|the assembly|after the \w+))?$|"
+    r"^during (the |his )?(morning |evening |daily )?(assembly|arti|puja|sabha|satsang sabha)$|^performs (the |his )?(morning |evening |daily )?(arti|puja)$|"
+    r"^(meditates|engrossed|seated) in (his )?(daily |morning )?puja|sadhana mantra|daily prayer|^(does|doing|turns the) mala|^bids jai swaminarayan|"
+    r"^greets (all|everyone|bhaktas|sadhus)$|folded hands|^observes prasad$|^engaged in (letter-writing|darshan|thought)|^(reads|reading) the shikshapatri|"
+    r"^in thought|^seated$|^(has|having) (lunch|dinner|breakfast|his meal)$|^arrives|^departs|^listens attentively$|"
+    r"^(honou?rs|honou?red|garlands|welcomes|meets|greets|receives|is honou?red|accepts|bless\w*)\b|with a (shawl|garland)|^honou?red", re.I)   # honouring, meeting or blessing someone is not special (Darpan, 20 Oct 2026)
+GUEST = re.compile(r"(?i:^(honou?rs|honou?red|garlands|welcomes|meets|receives|is honou?red|accepts)\b|with a (shawl|garland))|"
+                   r"^Blesses (?:Shri |Smt\.? |Dr\.? |Mr\.? |Mrs\.? |H\.?E\.? )?[A-Z][a-z]+(?:bhai|ben|ji| [A-Z][a-z]+)")   # 'Blesses Shri Yashwantbhai Shah': a named guest   # guest photos lose when every year is a close up
 
 
 def summarise(c):
@@ -759,11 +842,16 @@ def caption(x):
     Where dropping the name wouldn't read well ('Swamishri's divine gestures', 'Sadhus honour Swamishri'),
     the name becomes 'Bapa'."""
     c = tidy(re.sub(r'\s+', ' ', x.get('c') or '').strip())
+    if not c or re.fullmatch(rf'(?:Pujya |Shri )?{NAME}(?: Maharaj)?', c):
+        return DARSHAN if x.get('c') else ''
     c = about_bapa(c)
     m = re.match(rf'^{NAME}[\s,]+(.+)$', c)
     if m and not re.match(r"(and|with|along|together|'s|’s)\b", m.group(1), re.I):
         c = m.group(1)[0].upper() + m.group(1)[1:]
     c = re.sub(NAME, 'Bapa', c)
+    w = c.split(' ', 1)
+    if w[0].lower() in ING and len(w) > 1:   # 'Performing sanctifying rituals' reads like the other cards: 'Performs sanctifying rituals'
+        c = ING[w[0].lower()] + ' ' + w[1]
     return c
 
 
@@ -1030,7 +1118,7 @@ def under_card(x, card, gap, f, lh, style, rnd):
             d.text((cx, 24 + 14 + (i + .8) * lh), line, font=f, fill=YEAR_C2, anchor='ms')
         return im.rotate(rnd.uniform(-2.5, 2.5), resample=Image.BICUBIC, expand=True), 2
     n = WIDE.get(style, LAYOUT.get(style, {})).get('lines', 3)
-    text, maxw = caption(x), card.CW + min(gap, 30) - 40
+    text, maxw = shown_caption(x), card.CW + min(gap, 30) - 40
     half = max(3, len(text.split()) * 2 // 3)
     # the whole caption first, then a touch smaller; only then a natural cut, keeping at least two thirds of it; a shorter cut last
     for shrink, extra, cut, keep in ((1, 0, False, 0), (.9, 0, False, 0), (.82, 0, False, 0), (.82, 0, True, half), (.82, 0, True, 0)):
@@ -1160,7 +1248,7 @@ def compose_wide(photos, day, seed, style, history=None):
     if lay.get('lift'):   # the cord's lowest point (the middle) sits at the top line and its ends rise into the free corners beside the title
         top_space, bottom_space = lay['lift'], H - 46
     cf_a, lh_a = garamond(CAPTION_SIZE, 500), round(CAPTION_SIZE * 1.2)
-    below = (lay.get('pill', 0) * lh_a + 22) if lay.get('pill') else 0
+    below = (lay.get('pill', 0) * lh_a + 22) if lay.get('pill') and CAPTIONS != 'none' else 0   # no captions: the cards take that room
     probe = WideCard(100, lay['ratio'], lay['band'])
     pw_w = min(440, ((W - 2 * M - gap * (cols - 1)) / cols) / (probe.CW / 100))   # as wide as the row allows
     row_h = (bottom_space - top_space - (nrows - 1) * row_gap - nrows * below) / nrows
@@ -1199,7 +1287,7 @@ def compose_wide(photos, day, seed, style, history=None):
             mx, my = px + card.CH / 2 * np.sin(t), py + card.CH / 2 * np.cos(t)
             img.paste(hung, (int(mx - hung.width / 2), int(my - hung.height / 2)), hung)
             later.append(lambda cx=cx: peg(img, cx, sag(cx) + 4, s, short=.72))
-            if lay.get('pill') and caption(x):
+            if lay.get('pill') and shown_caption(x):
                 tag, pos = under_card(x, card, gap, cf_a, lh_a, 'W2', rnd)
                 bx, by = px + card.CH * np.sin(t), py + card.CH * np.cos(t)
                 later.append(lambda tag=tag, bx=bx, by=by: img.paste(tag, (int(bx - tag.width / 2), int(by + 6)), tag))
@@ -1499,6 +1587,7 @@ def compose_special(ev, day):
 
 
 def main():
+    global CAPTIONS, CLOSE_SHARE, PICK
     ap = argparse.ArgumentParser()
     ap.add_argument('--date', help='YYYY-MM-DD (default: today in London)')
     ap.add_argument('--data', help='use this JSON file instead of downloading the day list')
@@ -1548,6 +1637,27 @@ def main():
     live.save(os.path.join(a.out, 'bapas-diary.png'), optimize=True)   # the PNG is the final file (Darpan, 18 Oct 2026): crisp text
     workings_live = list(WORKINGS)
     for st in filter(None, a.styles.split(',')):
+        if st in ('closeups-special', 'closeups-special-captions'):   # every year a close up unless it has a special action shot (Darpan, 20 Oct 2026); captions only on those, or on all
+            PICK, CAPTIONS, was = 'special', ('all' if st.endswith('captions') else 'special'), (PICK, CAPTIONS)
+            ps = pick_one_per_year(items, seed=mmdd, aspect=FRAME_ASPECT[LIVE_STYLE], day=day)
+            compose(ps, day, seed=mmdd, style=LIVE_STYLE, history=story).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=95, optimize=True)
+            with open(os.path.join(a.out, f'caption-{st}.txt'), 'w', encoding='utf-8') as f:
+                for x in ps:
+                    f.write(f"{x['y']}  {'SPECIAL  ' if x.get('crop') != 'close' and is_special(caption(x)) else 'close up '} {caption(x)}\n")
+            PICK, CAPTIONS = was
+            continue
+        if st.startswith('v-'):   # v-<close share>-<captions>, e.g. v-1.0-none: the live layout picked again with that share of close ups
+            _, share, mode = st.split('-', 2)
+            CLOSE_SHARE, CAPTIONS, was = float(share), mode, (CLOSE_SHARE, CAPTIONS)
+            ps = pick_one_per_year(items, seed=mmdd, aspect=FRAME_ASPECT[LIVE_STYLE], day=day)
+            compose(ps, day, seed=mmdd, style=LIVE_STYLE, history=story).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=95, optimize=True)
+            CLOSE_SHARE, CAPTIONS = was
+            continue
+        if st.startswith('captions-'):   # the live layout with fewer captions: captions-none, captions-special
+            CAPTIONS, was = st[9:], CAPTIONS
+            compose(photos, day, seed=mmdd, style=LIVE_STYLE, history=story).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=95, optimize=True)
+            CAPTIONS = was
+            continue
         if st.startswith('peg-'):   # peg mockups on the live layout, e.g. peg-bevel
             compose(photos, day, seed=mmdd, style=LIVE_STYLE, look=st[4:]).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=95, optimize=True)
             continue
