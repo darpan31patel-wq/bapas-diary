@@ -1201,7 +1201,7 @@ class WideCard(Card):
         pl = place(x).upper()
         pf, track = arimo_bold(PW * .048 if self.band == 'caption' else PW * .06), PW * .012
         room = CW - 2 * B - 4 - (d.textlength(yt, font=yf) + PW * .035 if self.band == 'yearline' else 0)
-        while pf.size > PW * .035 and spaced(d, pl, pf, track) > room:
+        while pf.size > max(8, PW * .035) and spaced(d, pl, pf, track) > room:   # fonts stop at 8px: with 30+ small cards the old test never ended
             pf = arimo_bold(pf.size - 1)
         yh = -d.textbbox((0, 0), yt, font=yf, anchor='ls')[1]
         ph = -d.textbbox((0, 0), 'A', font=pf, anchor='ls')[1] if pl else 0
@@ -1455,42 +1455,48 @@ def compose(photos, day, seed, style=None, look=None, history=None):
 # ---------------------------------------------------------------- the Today in BAPS History channel
 
 TG_FILE = os.path.join(HERE, 'telegram', 'events.json')   # every dated story on t.me/TodayinBAPShistory, with our short lines (tools/telegram.py)
-TG_PAGE = 'https://t.me/s/TodayinBAPShistory?before={n}'
+TG_PAGE = 'https://t.me/s/{channel}?before={n}'
+SAT_FILE = os.path.join(HERE, 'telegram', 'satpurush', 'events.json')   # Bapa's day by day diary in the UK and Europe, t.me/SatpurushInUKEurope (tools/satpurush.py)
 TG_SAME_PERSON = .38   # the channel's photos are often old video stills of a younger Bapa, and its story already says he is there
 TG_GURU_FROM = 1900   # darshans of earlier gurus (Shastriji Maharaj, Yogiji Maharaj) from the channel, from this year
 TG_NEAR, TG_NEAR_BEFORE = 3, 1999   # an old story from up to 3 days away may give a year before 1999 its card
 TG_GAP_BOOST = 1.0   # a channel photo from the very day beats a baps.org photo borrowed from a nearby day of the trip
 
 
+def tg_all():
+    """Both channels' stories: Today in BAPS History, then the Satpurush in UK & Europe diary."""
+    return [e for f in (TG_FILE, SAT_FILE) if os.path.exists(f) for e in json.load(open(f, encoding='utf-8'))]
+
+
 def tg_events(mmdd):
-    if not os.path.exists(TG_FILE):
-        return []
-    return [e for e in json.load(open(TG_FILE, encoding='utf-8')) if e['date'][5:] == mmdd]
+    return [e for e in tg_all() if e['date'][5:] == mmdd]
 
 
 def tg_near(day):
     """Darpan, 19 Oct 2026 ('Both'): an old story from up to TG_NEAR days either side may give a year its card, as
     baps.org's photos already do for a trip spread over a few days. Only years before baps.org's photos start."""
     days = {f'{day + datetime.timedelta(k):%m-%d}' for k in range(-TG_NEAR, TG_NEAR + 1) if k}
-    if not os.path.exists(TG_FILE):
-        return []
-    return [e for e in json.load(open(TG_FILE, encoding='utf-8'))
-            if e['date'][5:] in days and int(e['date'][:4]) < min(TG_NEAR_BEFORE, day.year)]
+    return [e for e in tg_all() if e['date'][5:] in days and int(e['date'][:4]) < min(TG_NEAR_BEFORE, day.year)]
 
 
-def tg_photos(posts):
-    """The channel's photo addresses for these posts, read fresh from its public web page (the addresses expire)."""
-    urls = []
+def tg_photos(posts, channel='TodayinBAPShistory', pairs=False):
+    """The channel's photo addresses for these posts, read fresh from its public web page (the addresses expire).
+    pairs: (post, address) for each, photos only (the Satpurush channel's video stills are tiny)."""
+    urls, pages = [], {}
     for n in posts:
-        try:
-            html = fetch(TG_PAGE.format(n=n + 1), tries=2).decode('utf-8', 'replace')
-        except Exception as e:
-            print('  could not read the channel page for post', n, e)
-            continue
-        for part in html.split('class="tgme_widget_message_wrap')[1:]:
-            if f'data-post="TodayinBAPShistory/{n}"' in part:
-                urls += re.findall(r"tgme_widget_message_(?:photo_wrap|video_thumb)[^>]*background-image:url\('([^']+)'\)", part)   # photos and video stills
-    return list(dict.fromkeys(urls))
+        page = next((h for h in pages.values() if f'data-post="{channel}/{n}"' in h), None)   # one page shows about 20 posts
+        if page is None:
+            try:
+                page = pages[n] = fetch(TG_PAGE.format(channel=channel, n=n + 1), tries=2).decode('utf-8', 'replace')
+            except Exception as e:
+                print('  could not read the channel page for post', n, e)
+                continue
+        kinds = 'photo_wrap' if pairs else '(?:photo_wrap|video_thumb)'   # photos and video stills
+        for part in page.split('class="tgme_widget_message_wrap')[1:]:
+            if f'data-post="{channel}/{n}"' in part:
+                urls += [(n, u) for u in re.findall(rf"tgme_widget_message_{kinds}[^>]*background-image:url\('([^']+)'\)", part)]
+    urls = list(dict.fromkeys(urls))
+    return urls if pairs else list(dict.fromkeys(u for _, u in urls))
 
 
 def tg_day(day, items):
@@ -1514,18 +1520,44 @@ def tg_day(day, items):
         if gap and town(e.get('place')) not in {town(x.get('p')) for x in items if x['y'] == y}:
             print(f'  channel story {e["date"]} is in {e.get("place")}, baps.org has that year elsewhere: left as it is')
             continue   # Darpan, 19 Oct 2026: only fill a gap when both say the same place (not Mahelav on one, Nairobi on the other)
-        urls = tg_photos(e['posts'])
-        print(f'  + {len(urls)} photos from the channel for {e["date"]} ({"stands in for a nearby day" if gap else "a year before baps.org"})')
+        sat = e.get('channel') == 'SatpurushInUKEurope'
+        urls = tg_photos(e['posts'], e['channel'], pairs=True) if sat else [(None, u) for u in tg_photos(e['posts'])]
+        print(f'  + {len(urls)} photos from {"the UK diary" if sat else "the channel"} for {e["date"]} ({"stands in for a nearby day" if gap else "a year before baps.org"})')
         away = abs((datetime.date(2000, *map(int, e['date'][5:].split('-'))) - datetime.date(2000, day.month, day.day)).days)
         away = min(away, 366 - away)
-        extra += [{'y': y, 'd': e['date'], 'p': e.get('place') or '', 'c': e['card'], 'i': u, 'tg': True, 'post': e.get('url'),
-                   'guru': e.get('guru', False), 'boost': (TG_GAP_BOOST if gap else 0) - .2 * away - (1 if e.get('guru') else .01) * k}
-                  for k, u in enumerate(urls)]   # the channel's lead photo first (for an earlier guru, well first), the very day before a nearby one
+        own = lambda n: (e.get('cards') or {}).get(str(n)) or {}   # the UK diary's photos carry their own caption ('Evening sabha – London')
+        extra += [{'y': y, 'd': e['date'], 'p': own(n).get('place') or e.get('place') or '', 'c': own(n).get('card') or e['card'], 'i': u,
+                   'tg': True, 'post': e.get('url'), 'guru': e.get('guru', False), 'unframe': sat,
+                   'boost': (TG_GAP_BOOST if gap else 0) - .2 * away - (1 if e.get('guru') else .01) * k}
+                  for k, (n, u) in enumerate(urls)]   # the channel's lead photo first (for an earlier guru, well first), the very day before a nearby one
     special = max((e for e in evs if e.get('special')), key=tg_rank, default=None)
     return extra, evs, special
 
 
-tg_rank = lambda e: (bool(e.get('special')), e.get('reposts', 1), -int(e['date'][:4]))
+def unframe(items):
+    """The Satpurush in UK & Europe photos come in the channel's frame (its title above, the date below, a caption
+    written along the bottom of the darshan): keep only the darshan, above its written caption."""
+    for x in items:
+        if not x.get('unframe') or 'path' not in x or x['path'].endswith('-darshan.jpg'):
+            continue
+        out = x['path'][:-4] + '-darshan.jpg'
+        if not os.path.exists(out):
+            im = Image.open(x['path']).convert('RGB')
+            g = np.asarray(im.convert('L'), dtype=float)
+            h = g.shape[0]
+            if im.width / h > .8 or h < 600:
+                x.pop('path'); continue   # not the channel's frame
+            d = np.abs(np.diff(g, axis=0)).mean(axis=1)   # the darshan's top and bottom are the sharpest lines across the frame
+            top = int(np.argmax(d[int(.15 * h):int(.32 * h)])) + int(.15 * h) + 1
+            bottom = int(np.argmax(d[int(.6 * h):int(.85 * h)])) + int(.6 * h) + 1
+            if d[top - 1] < 20 or d[bottom - 1] < 20 or bottom - top < .4 * h:
+                x.pop('path'); continue
+            im = im.crop((0, top, im.width, bottom - 88))
+            im.resize((im.width * 2, im.height * 2), Image.LANCZOS).save(out, quality=95)   # the channel's photos are small: twice the size finds his face more often
+        x['path'] = out
+
+
+tg_rank = lambda e: (bool(e.get('special')), not e.get('channel'), e.get('reposts', 1), -int(e['date'][:4]))   # Today in BAPS History leads, the UK diary follows
 
 
 def tg_story(evs, photos):
@@ -1533,7 +1565,7 @@ def tg_story(evs, photos):
     comes first, the line must say something different), so not a story from the same day and town as a card."""
     town = lambda p: re.split(r'[,(]', p or '')[0].strip().lower()
     shown = {(x.get('d', '')[:10], town(x.get('p'))) for x in photos}
-    left = [e for e in evs if (e['date'], town(e.get('place'))) not in shown]
+    left = [e for e in evs if (e['date'], town(e.get('place'))) not in shown and not e.get('channel')]   # the footer stays Today in BAPS History
     return max(left, key=tg_rank, default=None)
 
 
@@ -1650,6 +1682,7 @@ def main():
     tg_extra, tg_evs, special = tg_day(day, items)
     items += tg_extra
     download_all(items, a.cache)
+    unframe(items)
     tall = 1 / 1.45 if len({x['y'] for x in items}) > 10 else 1 / 1.08
     photos = pick_one_per_year(items, seed=mmdd, aspect=FRAME_ASPECT.get(LIVE_STYLE, tall), day=day)
     if not photos:
@@ -1735,7 +1768,10 @@ def main():
     # his 2pm caption; the caption only carries the day's other stories, and nothing when there are none
     town = lambda e: (e['date'][:10], re.split(r'[,(]', e.get('place') or '')[0].strip().lower())
     pictured = {town({'date': x.get('d', ''), 'place': x.get('p')}) for x in photos} | ({town(story)} if story else set())
-    left = [e for e in tg_evs if town(e) not in pictured]
+    pictured |= {(f'{x["y"]}', town({'date': '', 'place': x.get('p')})[1]) for x in photos}   # a year's card in that town already shows the UK diary's day
+    cards = {x.get('post') for x in photos if x.get('post')}   # a UK diary day whose photo is a card (its town may read differently)
+    left = [e for e in tg_evs if town(e) not in pictured and e.get('url') not in cards
+            and not (e.get('channel') and (e['date'][:4], town(e)[1]) in pictured)]
     told = max(left, key=tg_rank, default=None)
     if told:
         open(os.path.join(a.out, 'caption.txt'), 'w', encoding='utf-8').write(tg_caption(told, left))
