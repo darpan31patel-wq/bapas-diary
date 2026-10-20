@@ -299,7 +299,8 @@ def frame_keep(im, face, fa):
 
 
 def shown():
-    """archive/shown.json: {'YYYY-MM-DD': {'2003': photo url, ...}} for the pictures already made."""
+    """archive/shown.json: {'YYYY-MM-DD': {'2003': {'i': photo url, 'c': caption}, ...}} for the pictures already made
+    (the first days stored the url alone)."""
     try:
         return {d: v for d, v in json.load(open(SHOWN_FILE)).items() if isinstance(v, dict)}
     except (OSError, ValueError):
@@ -309,7 +310,7 @@ def shown():
 def remember(day, photos):
     """Record today's picks in archive/shown.json (the last two months), so the next days pick other photos."""
     s = shown()
-    s[str(day)] = {str(x['y']): x['i'] for x in photos}
+    s[str(day)] = {str(x['y']): {'i': x['i'], 'c': caption(x)} for x in photos}
     s = {d: v for d, v in sorted(s.items()) if abs((day - datetime.date.fromisoformat(d)).days) <= 60}
     s['_how'] = 'The photo each year showed on each day. A photo shown in the last RECENT_DAYS days is not picked again (make.py).'
     json.dump(s, open(SHOWN_FILE, 'w'), indent=1)
@@ -391,10 +392,12 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
             ago = (day - datetime.date.fromisoformat(d)).days
             if 0 < ago <= RECENT_DAYS:
                 for y, u in ys.items():
+                    u, c = (u['i'], u.get('c', '')) if isinstance(u, dict) else (u, '')
                     recent[u] = min(ago, recent.get(u, ago))
-                    recent_keys.setdefault(int(y), []).append(u)
-        for y in cands:
-            seen = [keys[y][j] for j, v in enumerate(cands[y]) if v[2]['i'] in recent_keys.get(y, [])]
+                    recent_keys.setdefault(int(y), []).append(caption_key(c) if c else None)
+        for y in cands:   # the captions that year showed in the last week (from the record, or from today's own listing of that photo)
+            seen = [k for k in recent_keys.get(y, []) if k]
+            seen += [keys[y][j] for j, v in enumerate(cands[y]) if v[2]['i'] in recent]
             for j, v in enumerate(cands[y]):
                 if v[2]['i'] in recent:
                     v[2]['nice'] = False
