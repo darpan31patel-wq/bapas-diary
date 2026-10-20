@@ -397,7 +397,7 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
         jitter = rnd.uniform(0, .04) + (1.2 if unique and face and unique_caption(c) else 0) + x.get('boost', 0)
         # a close darshan wants his face turned to the camera: a profile or a bowed head loses most of a point
         s_close = (1 + min(r, .35) + sim + (.2 if JUST_A_FACE.search(c) else 0) + .9 * (front - .6) if face else -5) + jitter
-        s_close -= (.6 if face and not subject else 0) + (1.5 if face and not close_ok else 0)
+        s_close -= (.6 if face and not subject else 0) + (1.5 if face and not close_ok else 0) + (.4 if caption(x) == DARSHAN else 0)   # a photo with a real caption wins a close call
         s_doing = (1 + sim + .6 * max(0, 1 - abs(r - .18) / .15) + (.4 if doing else 0) + (.3 if special else 0)
                    - (.5 if r < .1 else 0) - (.6 if not subject else 0)             # Bapa small in the frame, or not the subject
                    - (0 if keep >= ACTION_KEEP else (.3 if special else 1.5))       # what he is doing would be cut off
@@ -835,8 +835,8 @@ def caption(x):
     Where dropping the name wouldn't read well ('Swamishri's divine gestures', 'Sadhus honour Swamishri'),
     the name becomes 'Bapa'."""
     c = tidy(re.sub(r'\s+', ' ', x.get('c') or '').strip())
-    if re.fullmatch(rf'(?:Pujya |Shri )?{NAME}(?: Maharaj)?', c):
-        return DARSHAN
+    if not c or re.fullmatch(rf'(?:Pujya |Shri )?{NAME}(?: Maharaj)?', c):
+        return DARSHAN if x.get('c') else ''
     c = about_bapa(c)
     m = re.match(rf'^{NAME}[\s,]+(.+)$', c)
     if m and not re.match(r"(and|with|along|together|'s|’s)\b", m.group(1), re.I):
