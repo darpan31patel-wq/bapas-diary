@@ -731,7 +731,18 @@ def tidy(c):
     c = re.sub(r'\b(the|a|an|of|to|in|on|and) \1\b', r'\1', c, flags=re.I)
     c = re.sub(r'\b(?:Mr|Mrs|Ms|Dr)\.? (?=[A-Z])', '', c)
     c = re.sub(r'\b([Dd])evotee(s?)\b', lambda m: ('B' if m.group(1) == 'D' else 'b') + 'hakta' + m.group(2), c)   # satsang word (Darpan, 18 Oct 2026)
+    c = re.sub(r'\b(a) (?=[aeiouAEIOU])', r'\1n ', c)                                           # 'in a illustrious mood'
+    c = re.sub(r'\b(an) (?=[^aeiouAEIOU\W])', 'a ', c)
+    c = re.sub(r"^(['\u2018\u201c].+?['\u2019\u201d])\s*[-\u2013\u2014:]\s*(?:Param Pujya |Pujya |HH )?(?:Pramukh|Mahant) Swami(?: Maharaj)?\s*$", r'\1', c)   # a quote of his: the card is already his
     return re.sub(r'\s+', ' ', c).strip(' ,;:')
+
+
+ING = {'performing': 'Performs', 'blessing': 'Blesses', 'greeting': 'Greets', 'reading': 'Reads', 'writing': 'Writes', 'playing': 'Plays',
+       'singing': 'Sings', 'offering': 'Offers', 'listening': 'Listens', 'watching': 'Watches', 'meeting': 'Meets', 'inaugurating': 'Inaugurates',
+       'sanctifying': 'Sanctifies', 'meditating': 'Meditates', 'walking': 'Walks', 'arriving': 'Arrives', 'departing': 'Departs', 'giving': 'Gives',
+       'receiving': 'Receives', 'showering': 'Showers', 'applying': 'Applies', 'lighting': 'Lights', 'explaining': 'Explains', 'discoursing': 'Discourses',
+       'talking': 'Talks', 'speaking': 'Speaks', 'addressing': 'Addresses', 'enjoying': 'Enjoys', 'observing': 'Observes', 'engaged': 'Engaged'}
+DARSHAN = 'Darshan'   # the caption when the website gives only his name ('Param Pujya Mahant Swami Maharaj')
 
 
 def summarise(c):
@@ -746,11 +757,16 @@ def caption(x):
     Where dropping the name wouldn't read well ('Swamishri's divine gestures', 'Sadhus honour Swamishri'),
     the name becomes 'Bapa'."""
     c = tidy(re.sub(r'\s+', ' ', x.get('c') or '').strip())
+    if re.fullmatch(rf'(?:Pujya |Shri )?{NAME}(?: Maharaj)?', c):
+        return DARSHAN
     c = about_bapa(c)
     m = re.match(rf'^{NAME}[\s,]+(.+)$', c)
     if m and not re.match(r"(and|with|along|together|'s|’s)\b", m.group(1), re.I):
         c = m.group(1)[0].upper() + m.group(1)[1:]
     c = re.sub(NAME, 'Bapa', c)
+    w = c.split(' ', 1)
+    if w[0].lower() in ING and len(w) > 1:   # 'Performing sanctifying rituals' reads like the other cards: 'Performs sanctifying rituals'
+        c = ING[w[0].lower()] + ' ' + w[1]
     return c
 
 
