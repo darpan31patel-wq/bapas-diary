@@ -271,6 +271,8 @@ def same_caption(a, b):
     'In a divine mood' inside 'In a divine, jovial mood', 'Blesses all' beside 'Blesses the assembly'."""
     if not (a and b):
         return False
+    if 'mood' in a and 'mood' in b:   # 'In a divine mood', 'In a happy mood', 'In a jovial mood' are one caption (Darpan, 20 Oct 2026)
+        return True
     j = len(a & b) / len(a | b)
     small, big = sorted((a, b), key=len)
     shared_things = (a & b) - COMMON_VERBS     # 'tilak' in 'applies a tilak at start of daily puja' and '... on his forehead'
@@ -336,7 +338,8 @@ def frame_keep(im, face, fa):
 
 
 def shown():
-    """archive/shown.json: {'YYYY-MM-DD': {'2003': photo url, ...}} for the pictures already made."""
+    """archive/shown.json: {'YYYY-MM-DD': {'2003': {'i': photo url, 'c': caption}, ...}} for the pictures already made
+    (the first days stored the url alone)."""
     try:
         return {d: v for d, v in json.load(open(SHOWN_FILE)).items() if isinstance(v, dict)}
     except (OSError, ValueError):
@@ -346,7 +349,7 @@ def shown():
 def remember(day, photos):
     """Record today's picks in archive/shown.json (the last two months), so the next days pick other photos."""
     s = shown()
-    s[str(day)] = {str(x['y']): x['i'] for x in photos}
+    s[str(day)] = {str(x['y']): {'i': x['i'], 'c': caption(x)} for x in photos}
     s = {d: v for d, v in sorted(s.items()) if abs((day - datetime.date.fromisoformat(d)).days) <= 60}
     s['_how'] = 'The photo each year showed on each day. A photo shown in the last RECENT_DAYS days is not picked again (make.py).'
     json.dump(s, open(SHOWN_FILE, 'w'), indent=1)
@@ -421,24 +424,28 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
             others = sum(1 for oy in cands if oy != y and any(same_caption(k, ok) for ok in keys[oy]))
             if others:   # capped: with 25 years on a day 'blesses the assembly' would otherwise lose several points
                 cands[y][j] = (v[0] - min(.5, .25 * others), v[1] - min(.5, .25 * others), v[2])
-    if day:   # a photo shown in the last week loses heavily and stops counting as a nice action shot, its caption loses a
-        # little, so neighbouring dates that list the same album show different photos of Bapa
+    if day:   # a photo shown in the last week loses heavily and stops counting as a nice action shot, its caption loses 1.5
+        # (another moment of that year wins when there is one), so neighbouring dates that list the same album show different photos of Bapa
         recent, recent_keys = {}, {}   # url -> how many days ago it was shown (yesterday's loses most, last week's least)
         for d, ys in shown().items():
             ago = (day - datetime.date.fromisoformat(d)).days
             if 0 < ago <= RECENT_DAYS:
                 for y, u in ys.items():
+                    u, c = (u['i'], u.get('c', '')) if isinstance(u, dict) else (u, '')
                     recent[u] = min(ago, recent.get(u, ago))
-                    recent_keys.setdefault(int(y), []).append(u)
-        for y in cands:
-            seen = [keys[y][j] for j, v in enumerate(cands[y]) if v[2]['i'] in recent_keys.get(y, [])]
+                    recent_keys.setdefault(int(y), []).append(caption_key(c) if c else None)
+        for y in cands:   # the captions that year showed in the last week (from the record, or from today's own listing of that photo)
+            seen = [k for k in recent_keys.get(y, []) if k]
+            seen += [keys[y][j] for j, v in enumerate(cands[y]) if v[2]['i'] in recent]
             for j, v in enumerate(cands[y]):
                 if v[2]['i'] in recent:
                     v[2]['nice'] = False
                     loss = 3 * (RECENT_DAYS + 1 - recent[v[2]['i']]) / RECENT_DAYS
                     cands[y][j] = (v[0] - loss, v[1] - loss, v[2])
-                elif any(same_caption(keys[y][j], k) for k in seen):
-                    cands[y][j] = (v[0] - .5, v[1] - .5, v[2])
+                elif any(same_caption(keys[y][j], k) for k in seen):   # the same moment again ('plays dandiya' two days running,
+                    cands[y][j] = (v[0] - 1.5, v[1] - 1.5, v[2])        # Darpan 20 Oct 2026): another moment wins when the year has one
+                    if v[1] - 1.5 < NICE_MIN:                           # and it no longer jumps the queue as a nice action shot
+                        v[2]['nice'] = False
     for y, want in PICKS.get(seed, {}).items():   # Darpan's own choice for a year wins outright
         for j, v in enumerate(cands.get(int(y), [])):
             if want.lower() in (v[2].get('c') or '').lower():
@@ -493,6 +500,12 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
                 w['rows'].append((v[mode], x, 'chosen'))
             elif len(w['rows']) < 5:
                 w['rows'].append((v[mode], x, 'repeats an earlier caption' if w['pick'] is None else ''))
+        if w['pick'] is None and ranked:   # every caption of the year repeats another year's: the year still shows, with its
+            v = ranked[0]                  # best photo (Darpan: as many years as possible, always)
+            mode = 0 if (k == 0 or not v[2]['nice']) else 1
+            x = with_crop(v, mode)
+            picked.append(x); used.append(pick_key(x)); w['pick'] = x
+            w['rows'][0] = (v[mode], x, 'chosen (all its captions repeat)')
         WORKINGS.append(w)
     if len(picked) < 5:   # too few left once repeats are skipped: fall back to the plain best per year
         picked = [with_crop(sorted(cands[y], key=lambda v: -v[1])[0], 1) for y in years]
