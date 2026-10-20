@@ -215,7 +215,7 @@ def is_special(c):
     return bool(c) and not EVERYDAY.search(c) and not JUST_A_FACE.search(c) and bool(SPECIAL.search(c) or rare_caption(c))
 
 
-PICK = 'share'        # 'share': CLOSE_SHARE of the years are close ups; 'special': every year a close up unless it has a special action shot
+PICK = 'special'      # 'special': every year a close darshan unless it has a special action shot (Darpan, 20 Oct 2026: 'this is perfect'); 'share': CLOSE_SHARE of the years are close ups
 ACTION_KEEP = .72     # an action shot must keep at least this much of the photo inside the frame, or what Bapa does gets cut off
 NICE_MIN = 2.0        # the action score a photo needs before it beats a close darshan
 CLOSE_SHARE = .6      # about this share of the years are close darshans of Bapa's face (Darpan, 18 Oct 2026: 16 of 27)
