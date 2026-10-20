@@ -1613,13 +1613,13 @@ def main():
     live.save(os.path.join(a.out, 'bapas-diary.png'), optimize=True)   # the PNG is the final file (Darpan, 18 Oct 2026): crisp text
     workings_live = list(WORKINGS)
     for st in filter(None, a.styles.split(',')):
-        if st == 'closeups-special':   # every year a close up unless it has a special action shot; captions only on those (Darpan, 20 Oct 2026)
-            PICK, CAPTIONS, was = 'special', 'special', (PICK, CAPTIONS)
+        if st in ('closeups-special', 'closeups-special-captions'):   # every year a close up unless it has a special action shot (Darpan, 20 Oct 2026); captions only on those, or on all
+            PICK, CAPTIONS, was = 'special', ('all' if st.endswith('captions') else 'special'), (PICK, CAPTIONS)
             ps = pick_one_per_year(items, seed=mmdd, aspect=FRAME_ASPECT[LIVE_STYLE], day=day)
             compose(ps, day, seed=mmdd, style=LIVE_STYLE, history=story).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=95, optimize=True)
             with open(os.path.join(a.out, f'caption-{st}.txt'), 'w', encoding='utf-8') as f:
                 for x in ps:
-                    f.write(f"{x['y']}  {'SPECIAL  ' if shown_caption(x) else 'close up '} {caption(x)}\n")
+                    f.write(f"{x['y']}  {'SPECIAL  ' if x.get('crop') != 'close' and is_special(caption(x)) else 'close up '} {caption(x)}\n")
             PICK, CAPTIONS = was
             continue
         if st.startswith('v-'):   # v-<close share>-<captions>, e.g. v-1.0-none: the live layout picked again with that share of close ups
