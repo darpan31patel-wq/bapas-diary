@@ -223,6 +223,21 @@ RECENT_DAYS = 7       # a photo shown in the last week is not shown again: the o
                       # neighbouring dates list the same photos (18 and 19 October share 2003, 2005, 2006 and 2007)
 SHOWN_FILE = os.path.join(HERE, 'archive', 'shown.json')   # which photo each year showed on each day (written after every run)
 CLOSE_MIN_FACE = 64   # pixels: a face smaller than this can't be blown up into a close darshan
+SHARP_MIN, BRIGHT_MIN = 40, 70   # a face blurrier (Laplacian variance at 160px) or darker (mean luminance) than this can't be a close darshan (Darpan, 20 Oct 2026: 2009 was a dark blurry video still)
+
+
+def face_quality(im, face):
+    """(sharpness, brightness) of the face: how crisp it is at a fixed 160px size, and how light."""
+    if not face:
+        return 0, 0
+    fx, fy, fw, fh = [int(v) for v in face]
+    crop = im.crop((max(0, fx), max(0, fy), min(im.width, fx + fw), min(im.height, fy + fh))).convert('L')
+    if crop.width < 8 or crop.height < 8:
+        return 0, 0
+    crop = crop.resize((160, round(160 * crop.height / crop.width)), Image.LANCZOS)
+    g = np.asarray(crop, np.float32)
+    lap = cv2.Laplacian(g, cv2.CV_32F)
+    return float(lap.var()), float(g.mean())
 
 
 BAPA_WORDS = re.compile(r"\b(HH|H\.H\.|Param Pujya|P\.P\.|Pramukh|Mahant|Swami|Swamishri|Maharaj|Bapa|his|the|a|an|of|to|and|in|on|at|with|by|for|all)\b", re.I)
@@ -395,7 +410,9 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
         special = is_special(c)
         subject = bapa_is_subject(c)
         doing = bool(DOING.search(c)) and not JUST_A_FACE.search(c)
-        close_ok = bool(face) and face[3] >= CLOSE_MIN_FACE and front >= .35
+        sharp, bright = face_quality(im, face)
+        close_ok = bool(face) and face[3] >= CLOSE_MIN_FACE and front >= .35 and sharp >= SHARP_MIN and bright >= BRIGHT_MIN
+        x['sharp'], x['bright'] = round(sharp), round(bright)
         jitter = rnd.uniform(0, .04) + (1.2 if unique and face and unique_caption(c) else 0) + x.get('boost', 0)
         # a close darshan wants his face turned to the camera: a profile or a bowed head loses most of a point
         s_close = (1 + min(r, .35) + sim + (.2 if JUST_A_FACE.search(c) else 0) + .9 * (front - .6) if face else -5) + jitter
@@ -404,6 +421,9 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
                    - (.5 if r < .1 else 0) - (.6 if not subject else 0)             # Bapa small in the frame, or not the subject
                    - (0 if keep >= ACTION_KEEP else (.3 if special else 1.5))       # what he is doing would be cut off
                    if face else -5) + jitter
+        if face:   # a soft or dark face loses a little even as an action shot, so a crisp bright photo of the same moment wins
+            s_close -= .5 * max(0, 1 - sharp / (2 * SHARP_MIN)) + .5 * max(0, 1 - bright / (1.5 * BRIGHT_MIN))
+            s_doing -= .5 * max(0, 1 - sharp / (2 * SHARP_MIN)) + .5 * max(0, 1 - bright / (1.5 * BRIGHT_MIN))
         if PICK == 'special' and GUEST.search(caption(x)):   # Darpan (20 Oct 2026): not the honouring and meeting guests ones
             s_close -= 2.5; s_doing -= 2.5
         # a really nice action shot: he is doing something, he is the subject, not small, nothing cut off (or a special
