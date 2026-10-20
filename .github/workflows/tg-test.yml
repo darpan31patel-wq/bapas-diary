@@ -1,0 +1,38 @@
+# Temporary, this branch only: mockups with the Satpurush in UK & Europe diary, and a day without it. Never ship to main.
+name: Satpurush mockups
+on:
+  push:
+    branches: [claude/project-thread-ixooz3]
+    paths: ['.github/workflows/tg-test.yml']
+permissions:
+  contents: write
+jobs:
+  make:
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    strategy:
+      fail-fast: false
+      matrix:
+        run: ['2026-07-04 with', '2026-10-20 with']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12', cache: pip}
+      - run: pip install -q -r requirements.txt
+      - run: |
+          set -- ${{ matrix.run }}; d=$1; name=$d; [ "$2" = before ] && name=$d-before && rm telegram/satpurush/events.json
+          mkdir -p preview/satpurush
+          PYTHONFAULTHANDLER=1 timeout -s ABRT 20m python -u make.py --date "$d" --out "out" 2>&1 | tee "preview/satpurush/$name-log.txt"
+          cp out/bapas-diary.png "preview/satpurush/$name.png" || true
+          cp out/caption.txt "preview/satpurush/$name-caption.txt" || true
+          cp out/flags.txt "preview/satpurush/$name-flags.txt" || true
+          git checkout -- telegram || true
+      - if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -- archive || true
+          git add preview/satpurush
+          git commit -q -m "Satpurush mockups"
+          for i in 1 2 3 4 5; do git pull -q --rebase && git push -q && break; sleep $((i * 5)); done
+# run 6
