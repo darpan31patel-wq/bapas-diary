@@ -232,6 +232,8 @@ def same_caption(a, b):
     'In a divine mood' inside 'In a divine, jovial mood', 'Blesses all' beside 'Blesses the assembly'."""
     if not (a and b):
         return False
+    if 'mood' in a and 'mood' in b:   # 'In a divine mood', 'In a happy mood', 'In a jovial mood' are one caption (Darpan, 20 Oct 2026)
+        return True
     j = len(a & b) / len(a | b)
     small, big = sorted((a, b), key=len)
     shared_things = (a & b) - COMMON_VERBS     # 'tilak' in 'applies a tilak at start of daily puja' and '... on his forehead'
@@ -449,6 +451,12 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
                 w['rows'].append((v[mode], x, 'chosen'))
             elif len(w['rows']) < 5:
                 w['rows'].append((v[mode], x, 'repeats an earlier caption' if w['pick'] is None else ''))
+        if w['pick'] is None and ranked:   # every caption of the year repeats another year's: the year still shows, with its
+            v = ranked[0]                  # best photo (Darpan: as many years as possible, always)
+            mode = 0 if (k == 0 or not v[2]['nice']) else 1
+            x = with_crop(v, mode)
+            picked.append(x); used.append(pick_key(x)); w['pick'] = x
+            w['rows'][0] = (v[mode], x, 'chosen (all its captions repeat)')
         WORKINGS.append(w)
     if len(picked) < 5:   # too few left once repeats are skipped: fall back to the plain best per year
         picked = [with_crop(sorted(cands[y], key=lambda v: -v[1])[0], 1) for y in years]
