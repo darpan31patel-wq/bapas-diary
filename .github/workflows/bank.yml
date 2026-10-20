@@ -1,0 +1,95 @@
+name: Backup bank
+
+# Insurance for the daily picture (Darpan, 20 Oct 2026): keeps the next 90 days of pictures ready in the
+# release `bank`, so his Google script can send one if the morning run ever fails. The daily run still
+# makes every picture fresh; this only fills in days that aren't in the bank yet, oldest first, and takes
+# past days out. The first fill takes a few nights; after that each night adds one new day.
+
+on:
+  schedule:
+    - cron: '30 21 * * *'    # 9:30 or 10:30pm UK, well clear of the morning run
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'How many days ahead to keep (default 90)'
+        required: false
+      remake:
+        description: 'Type yes to remake every day in the bank (after a design change)'
+        required: false
+  push:
+    branches: [claude/project-thread-r4wwpr]   # test branch only: a push runs a short test fill
+    paths: [.github/workflows/bank.yml]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bank-${{ github.ref }}
+
+jobs:
+  bank:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    env:
+      GH_TOKEN: ${{ github.token }}
+      # main fills the real bank; a test branch fills `bank-test` with a few days so nothing real is touched
+      RELEASE: ${{ github.ref == 'refs/heads/main' && 'bank' || 'bank-test' }}
+      AHEAD: ${{ inputs.days || (github.ref == 'refs/heads/main' && '90' || '4') }}
+      REMAKE: ${{ inputs.remake }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install
+        run: pip install -q -r requirements.txt
+
+      - name: Open the bank and see which days are missing
+        run: |
+          gh release view "$RELEASE" >/dev/null 2>&1 || gh release create "$RELEASE" --title "Backup bank" \
+            --notes "The next $AHEAD days of Bapa's Diary, made ahead. Only used if the morning picture is missing."
+          gh release view "$RELEASE" --json assets -q '.assets[].name' > have.txt || true
+          mkdir -p bank
+          # the bank's own record of which photo each year showed, so neighbouring bank days don't repeat photos
+          gh release download "$RELEASE" -p bank-shown.json -D bank 2>/dev/null && cp bank/bank-shown.json archive/shown.json || true
+          today=$(TZ=Europe/London date +%F)
+          : > todo.txt
+          for i in $(seq 1 "$AHEAD"); do
+            d=$(date -d "$today + $i day" +%F)
+            if [ "$REMAKE" = "yes" ] || ! grep -qx "$d.png" have.txt; then echo "$d" >> todo.txt; fi
+          done
+          echo "$(wc -l < todo.txt) days to make: $(head -1 todo.txt) to $(tail -1 todo.txt)"
+
+      - name: Make the missing days, oldest first (stops after 4.5 hours, the next night carries on)
+        run: |
+          start=$(date +%s)
+          while read -r d; do
+            [ $(( $(date +%s) - start )) -gt 16200 ] && { echo "Out of time, the rest come tomorrow night"; break; }
+            rm -rf out
+            if ! python make.py --date "$d" --out out; then echo "::warning::$d could not be made, tried again tomorrow night"; continue; fi
+            cp out/bapas-diary.png "bank/$d.png"
+            cp out/bapas-diary.jpg "bank/$d.jpg"
+            for f in caption.txt bapas-diary-special.png; do
+              [ -e "out/$f" ] && cp "out/$f" "bank/$d-${f#bapas-diary-}"
+            done
+            cp archive/shown.json bank/bank-shown.json
+            # upload as each day is done, so a run that stops early still keeps what it made
+            gh release upload "$RELEASE" bank/"$d"* bank/bank-shown.json --clobber
+            rm -f bank/"$d"*
+            echo "$d done: $(cat out/summary.txt)"
+          done < todo.txt
+
+      - name: Take out days that have passed, and list what's in the bank
+        run: |
+          today=$(TZ=Europe/London date +%F)
+          gh release view "$RELEASE" --json assets -q '.assets[].name' | while read -r f; do
+            d=${f:0:10}
+            if [[ "$d" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] && [[ "$d" < "$today" ]]; then gh release delete-asset "$RELEASE" "$f" -y; fi
+          done
+          gh release view "$RELEASE" --json assets -q '.assets[].name' | grep -E '^[0-9-]{10}\.png$' | sort > days.txt || true
+          last=$(tail -1 days.txt | cut -c1-10)
+          gh release edit "$RELEASE" --title "Backup bank" --notes "$(wc -l < days.txt) days ready, up to ${last:-none}. Made ahead every night; only used if the morning picture is missing."
+          echo "$(wc -l < days.txt) days in the bank, up to $last"
