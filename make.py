@@ -1180,7 +1180,7 @@ def compose_wide(photos, day, seed, style, history=None):
     if lay.get('lift'):   # the cord's lowest point (the middle) sits at the top line and its ends rise into the free corners beside the title
         top_space, bottom_space = lay['lift'], H - 46
     cf_a, lh_a = garamond(CAPTION_SIZE, 500), round(CAPTION_SIZE * 1.2)
-    below = (lay.get('pill', 0) * lh_a + 22) if lay.get('pill') else 0
+    below = (lay.get('pill', 0) * lh_a + 22) if lay.get('pill') and CAPTIONS != 'none' else 0   # no captions: the cards take that room
     probe = WideCard(100, lay['ratio'], lay['band'])
     pw_w = min(440, ((W - 2 * M - gap * (cols - 1)) / cols) / (probe.CW / 100))   # as wide as the row allows
     row_h = (bottom_space - top_space - (nrows - 1) * row_gap - nrows * below) / nrows
@@ -1519,6 +1519,7 @@ def compose_special(ev, day):
 
 
 def main():
+    global CAPTIONS, CLOSE_SHARE
     ap = argparse.ArgumentParser()
     ap.add_argument('--date', help='YYYY-MM-DD (default: today in London)')
     ap.add_argument('--data', help='use this JSON file instead of downloading the day list')
@@ -1568,8 +1569,14 @@ def main():
     live.save(os.path.join(a.out, 'bapas-diary.png'), optimize=True)   # the PNG is the final file (Darpan, 18 Oct 2026): crisp text
     workings_live = list(WORKINGS)
     for st in filter(None, a.styles.split(',')):
+        if st.startswith('v-'):   # v-<close share>-<captions>, e.g. v-1.0-none: the live layout picked again with that share of close ups
+            _, share, mode = st.split('-', 2)
+            CLOSE_SHARE, CAPTIONS, was = float(share), mode, (CLOSE_SHARE, CAPTIONS)
+            ps = pick_one_per_year(items, seed=mmdd, aspect=FRAME_ASPECT[LIVE_STYLE], day=day)
+            compose(ps, day, seed=mmdd, style=LIVE_STYLE, history=story).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=95, optimize=True)
+            CLOSE_SHARE, CAPTIONS = was
+            continue
         if st.startswith('captions-'):   # the live layout with fewer captions: captions-none, captions-special
-            global CAPTIONS
             CAPTIONS, was = st[9:], CAPTIONS
             compose(photos, day, seed=mmdd, style=LIVE_STYLE, history=story).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=95, optimize=True)
             CAPTIONS = was
