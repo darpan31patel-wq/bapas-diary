@@ -1720,10 +1720,17 @@ def main():
     for f in ('caption.txt', 'bapas-diary-special.png', 'bapas-diary-special.jpg', 'flags.txt', 'bapas-diary-backup.png'):   # nothing left over from another day
         if os.path.exists(os.path.join(a.out, f)):
             os.remove(os.path.join(a.out, f))
-    told = story or max(tg_evs, key=tg_rank, default=None)   # the 2pm message may tell the card's story when there is no other
+    if story:
+        print('  story:', story['date'], story['line'], '(in the picture)')
+    # Darpan, 20 Oct 2026: a story the picture already tells (its history line, or a card) is not told again under
+    # his 2pm caption; the caption only carries the day's other stories, and nothing when there are none
+    town = lambda e: (e['date'][:10], re.split(r'[,(]', e.get('place') or '')[0].strip().lower())
+    pictured = {town({'date': x.get('d', ''), 'place': x.get('p')}) for x in photos} | ({town(story)} if story else set())
+    left = [e for e in tg_evs if town(e) not in pictured]
+    told = max(left, key=tg_rank, default=None)
     if told:
-        open(os.path.join(a.out, 'caption.txt'), 'w', encoding='utf-8').write(tg_caption(told, tg_evs))
-        print('  story:', told['date'], told['line'], '' if story else '(caption only, a card tells it)')
+        open(os.path.join(a.out, 'caption.txt'), 'w', encoding='utf-8').write(tg_caption(told, left))
+        print('  caption story:', told['date'], told['line'], f'and {len({town(e) for e in left}) - 1} more' if len(left) > 1 else '')
     if unsure:   # a channel card where Bapa's face isn't surely recognised: say so, and keep the picture without it too
         with open(os.path.join(a.out, 'flags.txt'), 'w', encoding='utf-8') as f:
             for x in unsure:
