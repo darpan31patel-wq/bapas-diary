@@ -1662,7 +1662,8 @@ def main():
 
     os.makedirs(a.out, exist_ok=True)
     live = compose(photos, day, seed=mmdd, style=LIVE_STYLE, history=story)
-    live.save(os.path.join(a.out, 'bapas-diary.jpg'), quality=95, optimize=True)
+    whatsapp = live.resize((4096, round(4096 * live.height / live.width)), Image.LANCZOS) if live.width > 4096 else live
+    whatsapp.save(os.path.join(a.out, 'bapas-diary.jpg'), quality=93, optimize=True)   # WhatsApp photos go no wider than 4096; the 2pm photos use this copy
     live.save(os.path.join(a.out, 'bapas-diary.png'), optimize=True)   # the PNG is the final file (Darpan, 18 Oct 2026): crisp text
     workings_live = list(WORKINGS)
     for st in filter(None, a.styles.split(',')):
