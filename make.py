@@ -401,7 +401,7 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
         s_close = (1 + min(r, .35) + sim + (.2 if JUST_A_FACE.search(c) else 0) + .9 * (front - .6) if face else -5) + jitter
         s_close -= (.6 if face and not subject else 0) + (1.5 if face and not close_ok else 0) + (.4 if caption(x) == DARSHAN else 0)   # a photo with a real caption wins a close call
         if PICK == 'special' and GUEST.search(caption(x)):   # Darpan (20 Oct 2026): not the honouring and meeting guests ones
-            s_close -= .8; s_doing -= .8
+            s_close -= 2.5; s_doing -= 2.5
         s_doing = (1 + sim + .6 * max(0, 1 - abs(r - .18) / .15) + (.4 if doing else 0) + (.3 if special else 0)
                    - (.5 if r < .1 else 0) - (.6 if not subject else 0)             # Bapa small in the frame, or not the subject
                    - (0 if keep >= ACTION_KEEP else (.3 if special else 1.5))       # what he is doing would be cut off
