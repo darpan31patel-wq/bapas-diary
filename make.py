@@ -819,6 +819,7 @@ def tidy(c):
     c = re.sub(r'\b(a) (?=[aeiouAEIOU])', r'\1n ', c)                                           # 'in a illustrious mood'
     c = re.sub(r'\b(an) (?=[^aeiouAEIOU\W])', 'a ', c)
     c = re.sub(r"^(['\u2018\u201c].+?['\u2019\u201d])\s*[-\u2013\u2014:]\s*(?:Param Pujya |Pujya |HH )?(?:Pramukh|Mahant) Swami(?: Maharaj)?\s*$", r'\1', c)   # a quote of his: the card is already his
+    c = re.sub(r'\s+([,;:])\s*', r'\1 ', c)   # 'Sharad Purnima ,Chants dhun'
     return re.sub(r'\s+', ' ', c).strip(' ,;:')
 
 
