@@ -382,8 +382,8 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
             others = sum(1 for oy in cands if oy != y and any(same_caption(k, ok) for ok in keys[oy]))
             if others:   # capped: with 25 years on a day 'blesses the assembly' would otherwise lose several points
                 cands[y][j] = (v[0] - min(.5, .25 * others), v[1] - min(.5, .25 * others), v[2])
-    if day:   # a photo shown in the last week loses heavily and stops counting as a nice action shot, its caption loses a
-        # little, so neighbouring dates that list the same album show different photos of Bapa
+    if day:   # a photo shown in the last week loses heavily and stops counting as a nice action shot, its caption loses 1.5
+        # (another moment of that year wins when there is one), so neighbouring dates that list the same album show different photos of Bapa
         recent, recent_keys = {}, {}   # url -> how many days ago it was shown (yesterday's loses most, last week's least)
         for d, ys in shown().items():
             ago = (day - datetime.date.fromisoformat(d)).days
@@ -398,8 +398,8 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
                     v[2]['nice'] = False
                     loss = 3 * (RECENT_DAYS + 1 - recent[v[2]['i']]) / RECENT_DAYS
                     cands[y][j] = (v[0] - loss, v[1] - loss, v[2])
-                elif any(same_caption(keys[y][j], k) for k in seen):
-                    cands[y][j] = (v[0] - .5, v[1] - .5, v[2])
+                elif any(same_caption(keys[y][j], k) for k in seen):   # the same moment again ('plays dandiya' two days running,
+                    cands[y][j] = (v[0] - 1.5, v[1] - 1.5, v[2])        # Darpan 20 Oct 2026): another moment wins when the year has one
     for y, want in PICKS.get(seed, {}).items():   # Darpan's own choice for a year wins outright
         for j, v in enumerate(cands.get(int(y), [])):
             if want.lower() in (v[2].get('c') or '').lower():
