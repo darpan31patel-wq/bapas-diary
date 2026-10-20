@@ -402,6 +402,8 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
                     cands[y][j] = (v[0] - loss, v[1] - loss, v[2])
                 elif any(same_caption(keys[y][j], k) for k in seen):   # the same moment again ('plays dandiya' two days running,
                     cands[y][j] = (v[0] - 1.5, v[1] - 1.5, v[2])        # Darpan 20 Oct 2026): another moment wins when the year has one
+                    if v[1] - 1.5 < NICE_MIN:                           # and it no longer jumps the queue as a nice action shot
+                        v[2]['nice'] = False
     for y, want in PICKS.get(seed, {}).items():   # Darpan's own choice for a year wins outright
         for j, v in enumerate(cands.get(int(y), [])):
             if want.lower() in (v[2].get('c') or '').lower():
