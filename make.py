@@ -743,6 +743,23 @@ ING = {'performing': 'Performs', 'blessing': 'Blesses', 'greeting': 'Greets', 'r
        'receiving': 'Receives', 'showering': 'Showers', 'applying': 'Applies', 'lighting': 'Lights', 'explaining': 'Explains', 'discoursing': 'Discourses',
        'talking': 'Talks', 'speaking': 'Speaks', 'addressing': 'Addresses', 'enjoying': 'Enjoys', 'observing': 'Observes', 'engaged': 'Engaged'}
 DARSHAN = 'Darshan'   # the caption when the website gives only his name ('Param Pujya Mahant Swami Maharaj')
+CAPTIONS = 'all'      # 'all': every card captioned; 'special': only one-off moments, no 'In a divine mood'; 'none': no captions (mockups, 20 Oct 2026)
+
+
+def shown_caption(x):
+    """The caption that goes under the card, or '' when the mode leaves this card uncaptioned."""
+    c = caption(x)
+    if CAPTIONS == 'none' or (CAPTIONS == 'special' and (c == DARSHAN or EVERYDAY.search(c))):
+        return ''
+    return c
+
+
+EVERYDAY = re.compile(   # the everyday lines that say nothing about that particular day, left off in 'special' mode
+    r"mood|divine|jovial|^darshan$|^bless\w*( (all|everyone|bhaktas|sadhus|the assembly|after the \w+))?$|"
+    r"^during (the |his )?(morning |evening |daily )?(assembly|arti|puja|sabha|satsang sabha)$|^performs (the |his )?(morning |evening |daily )?(arti|puja)$|"
+    r"^(meditates|engrossed|seated) in (his )?(daily |morning )?puja|sadhana mantra|daily prayer|^(does|doing|turns the) mala|^bids jai swaminarayan|"
+    r"^greets (all|everyone|bhaktas|sadhus)$|folded hands|^observes prasad$|^engaged in (letter-writing|darshan|thought)|^(reads|reading) the shikshapatri|"
+    r"^in thought|^seated$|^(has|having) (lunch|dinner|breakfast|his meal)$|^arrives|^departs|^listens attentively$", re.I)
 
 
 def summarise(c):
@@ -1033,7 +1050,7 @@ def under_card(x, card, gap, f, lh, style, rnd):
             d.text((cx, 24 + 14 + (i + .8) * lh), line, font=f, fill=YEAR_C2, anchor='ms')
         return im.rotate(rnd.uniform(-2.5, 2.5), resample=Image.BICUBIC, expand=True), 2
     n = WIDE.get(style, LAYOUT.get(style, {})).get('lines', 3)
-    text, maxw = caption(x), card.CW + min(gap, 30) - 40
+    text, maxw = shown_caption(x), card.CW + min(gap, 30) - 40
     half = max(3, len(text.split()) * 2 // 3)
     # the whole caption first, then a touch smaller; only then a natural cut, keeping at least two thirds of it; a shorter cut last
     for shrink, extra, cut, keep in ((1, 0, False, 0), (.9, 0, False, 0), (.82, 0, False, 0), (.82, 0, True, half), (.82, 0, True, 0)):
@@ -1202,7 +1219,7 @@ def compose_wide(photos, day, seed, style, history=None):
             mx, my = px + card.CH / 2 * np.sin(t), py + card.CH / 2 * np.cos(t)
             img.paste(hung, (int(mx - hung.width / 2), int(my - hung.height / 2)), hung)
             later.append(lambda cx=cx: peg(img, cx, sag(cx) + 4, s, short=.72))
-            if lay.get('pill') and caption(x):
+            if lay.get('pill') and shown_caption(x):
                 tag, pos = under_card(x, card, gap, cf_a, lh_a, 'W2', rnd)
                 bx, by = px + card.CH * np.sin(t), py + card.CH * np.cos(t)
                 later.append(lambda tag=tag, bx=bx, by=by: img.paste(tag, (int(bx - tag.width / 2), int(by + 6)), tag))
@@ -1551,6 +1568,12 @@ def main():
     live.save(os.path.join(a.out, 'bapas-diary.png'), optimize=True)   # the PNG is the final file (Darpan, 18 Oct 2026): crisp text
     workings_live = list(WORKINGS)
     for st in filter(None, a.styles.split(',')):
+        if st.startswith('captions-'):   # the live layout with fewer captions: captions-none, captions-special
+            global CAPTIONS
+            CAPTIONS, was = st[9:], CAPTIONS
+            compose(photos, day, seed=mmdd, style=LIVE_STYLE, history=story).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=95, optimize=True)
+            CAPTIONS = was
+            continue
         if st.startswith('peg-'):   # peg mockups on the live layout, e.g. peg-bevel
             compose(photos, day, seed=mmdd, style=LIVE_STYLE, look=st[4:]).save(os.path.join(a.out, f'caption-{st}.jpg'), quality=95, optimize=True)
             continue
