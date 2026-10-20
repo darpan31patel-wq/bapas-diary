@@ -826,8 +826,8 @@ EVERYDAY = re.compile(   # the everyday lines that say nothing about that partic
     r"^greets (all|everyone|bhaktas|sadhus)$|folded hands|^observes prasad$|^engaged in (letter-writing|darshan|thought)|^(reads|reading) the shikshapatri|"
     r"^in thought|^seated$|^(has|having) (lunch|dinner|breakfast|his meal)$|^arrives|^departs|^listens attentively$|"
     r"^(honou?rs|honou?red|garlands|welcomes|meets|greets|receives|is honou?red|accepts|bless\w*)\b|with a (shawl|garland)|^honou?red", re.I)   # honouring, meeting or blessing someone is not special (Darpan, 20 Oct 2026)
-GUEST = re.compile(r"^(honou?rs|honou?red|garlands|welcomes|meets|receives|is honou?red|accepts)\b|with a (shawl|garland)|"
-                   r"^blesses (?:Shri |Smt\.? |Dr\.? |Mr\.? |Mrs\.? |H\.?E\.? )?[A-Z][a-z]+(?:bhai|ben|ji| [A-Z][a-z]+)")   # 'Blesses Shri Yashwantbhai Shah': a named guest   # guest photos lose when every year is a close up
+GUEST = re.compile(r"(?i:^(honou?rs|honou?red|garlands|welcomes|meets|receives|is honou?red|accepts)\b|with a (shawl|garland))|"
+                   r"^Blesses (?:Shri |Smt\.? |Dr\.? |Mr\.? |Mrs\.? |H\.?E\.? )?[A-Z][a-z]+(?:bhai|ben|ji| [A-Z][a-z]+)")   # 'Blesses Shri Yashwantbhai Shah': a named guest   # guest photos lose when every year is a close up
 
 
 def summarise(c):
