@@ -66,7 +66,7 @@ jobs:
         if: steps.done.outputs.skip != '1'
         env:
           DATE: ${{ inputs.date }}
-          STYLES: ${{ github.ref != 'refs/heads/main' && 'v-1.0-all,v-1.0-none,v-.8-all,v-.6-none' || '' }}
+          STYLES: ${{ github.ref != 'refs/heads/main' && 'closeups-special' || '' }}
         run: |
           if [ "${GITHUB_REF}" != "refs/heads/main" ] && [ "${DATE#*,}" != "$DATE" ]; then
             # test branches only: several dates at once, original and unique caption picks side by side
@@ -132,7 +132,7 @@ jobs:
           [ -e out/bapas-diary-special.png ] && cp out/bapas-diary-special.png "preview/$(cat out/date.txt)-special.png"
           [ -e out/flags.txt ] && cp out/flags.txt "preview/$(cat out/date.txt)-flags.txt"; fi
           for f in out/all-photos.txt out/album-check.txt; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-$(basename "$f")"; done
-          for f in out/caption-*.jpg out/caption-*.png; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-$(basename "$f")"; done
+          for f in out/caption-*.jpg out/caption-*.png out/caption-*.txt; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-$(basename "$f")"; done
           for d in out/photos-*; do [ -d "$d" ] && rm -rf "preview/$(cat out/date.txt)-$(basename "$d")" && cp -r "$d" "preview/$(cat out/date.txt)-$(basename "$d")"; done
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
