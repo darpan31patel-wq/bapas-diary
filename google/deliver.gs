@@ -18,22 +18,12 @@ const BACKUP_NAME = "Bapa's Diary backup";
 const SOURCE = 'https://github.com/darpan31patel-wq/bapas-diary/releases/download/today/';
 const BANK = 'https://api.github.com/repos/darpan31patel-wq/bapas-diary/releases/tags/bank';
 const TZ = 'Europe/London';
-// Safety and backups (Darpan, 21 Oct 2026). Every delivery and every change to Bapa's Diary on GitHub gets a row in
-// this Google Sheet (made for you), and every night at 3am a dated copy of your Google scripts, the log and the
-// picture maker goes into the backups folder, keeping the last KEEP_NIGHTS nights.
-const LOG_SHEET_NAME = "Bapa's Diary log";
-const BACKUPS_NAME = "Bapa's Diary backups";
-const KEEP_NIGHTS = 30;
-const PACKED_FROM = 'https://github.com/darpan31patel-wq/bapas-diary/releases/download/backup/';
-const CHANGES_FROM = 'https://api.github.com/repos/darpan31patel-wq/bapas-diary/commits?sha=main&per_page=100&since=';
 
 function setup() {
   ScriptApp.getProjectTriggers().forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('deliver').timeBased().atHour(8).nearMinute(30).everyDays(1).inTimezone(TZ).create();
   ScriptApp.newTrigger('deliverLate').timeBased().atHour(10).nearMinute(30).everyDays(1).inTimezone(TZ).create();
   ScriptApp.newTrigger('syncBank').timeBased().everyHours(2).create();
-  ScriptApp.newTrigger('nightlyBackup').timeBased().atHour(3).everyDays(1).inTimezone(TZ).create();
-  logSheet_('Deliveries');   // makes the log sheet now, so you can find it in Drive
   folder_();
   backupFolder_();
   deliver();   // if today's picture is already made, it arrives straight away
@@ -63,7 +53,6 @@ function deliver_(isLastTry) {
     console.log("Today's picture isn't ready yet");
     if (isLastTry) {
       const used = useBackup_(day);
-      logRow_('Deliveries', [today, used ? 'Backup' : 'Missing', used ? "Fresh picture didn't come, backup used" : 'No fresh picture and no backup']);
       MailApp.sendEmail(Session.getEffectiveUser().getEmail(),
         used ? "Bapa's Diary used the backup today" : "Bapa's Diary didn't arrive today",
         'The fresh picture for ' + day + " wasn't ready by 10:30am. " +
@@ -78,7 +67,6 @@ function deliver_(isLastTry) {
   // the same picture 4096 pixels wide (the most a WhatsApp photo keeps), for the 2pm photos; the PNG goes as the document
   const photo = UrlFetchApp.fetch(SOURCE + 'bapas-diary.jpg', { muteHttpExceptions: true });
   if (photo.getResponseCode() === 200) folder.createFile(photo.getBlob().setName(name.replace('.png', ' photo.jpg')));
-  logRow_('Deliveries', [today, 'Fresh', isLastTry ? 'Arrived at the 10:30 try' : 'Arrived at 8:30']);
   return true;
 }
 
@@ -138,100 +126,6 @@ function syncBank() {
 function byDate_(a, b) {
   const t = n => new Date(n.replace(/ (photo\.jpg|caption\.txt|special\.png)$|\.png$/, '')).getTime() || 0;
   return t(a) - t(b) || (a < b ? -1 : 1);
-}
-
-// ---- The log sheet ----
-function logSheet_(tab) {
-  const props = PropertiesService.getScriptProperties();
-  let ss = null;
-  try { ss = SpreadsheetApp.openById(props.getProperty('logSheetId')); } catch (e) {}
-  if (!ss) {
-    ss = SpreadsheetApp.create(LOG_SHEET_NAME);
-    props.setProperty('logSheetId', ss.getId());
-    const heads = { Deliveries: ['When', 'For the day', 'Fresh or backup', 'Details'], Changes: ['When', 'What changed', 'Link'] };
-    Object.keys(heads).forEach((name, i) => {
-      const sh = i ? ss.insertSheet(name) : ss.getSheets()[0].setName(name);
-      sh.getRange(1, 1, 1, heads[name].length).setValues([heads[name]]).setFontWeight('bold').setBackground('#f3e8d6');
-      sh.setFrozenRows(1);
-      sh.setColumnWidth(1, 150);
-    });
-  }
-  return ss.getSheetByName(tab);
-}
-
-// Newest rows go at the top, under the headings. Never stops a delivery if the sheet can't be reached.
-function logRow_(tab, cells, when) {
-  try {
-    const sh = logSheet_(tab);
-    sh.insertRowAfter(1);
-    sh.getRange(2, 1, 1, cells.length + 1).setValues([[when || new Date()].concat(cells)]).setFontWeight('normal').setBackground(null);
-  } catch (e) { console.log('Log sheet: ' + e); }
-}
-
-// Each change made to Bapa's Diary on GitHub since last time (not the daily picture commits).
-function logChanges_() {
-  const props = PropertiesService.getScriptProperties();
-  const since = props.getProperty('changesSince') || new Date(Date.now() - 86400000).toISOString();
-  const res = UrlFetchApp.fetch(CHANGES_FROM + encodeURIComponent(since), { muteHttpExceptions: true });
-  if (res.getResponseCode() !== 200) { console.log('GitHub changes: ' + res.getResponseCode()); return; }
-  let newest = since;
-  JSON.parse(res.getContentText()).reverse().forEach(c => {
-    const when = c.commit.committer.date, line = c.commit.message.split('\n')[0];
-    if (new Date(when) <= new Date(since)) return;
-    if (new Date(when) > new Date(newest)) newest = when;
-    if (/^(Bapa's Diary for|Preview for)/.test(line)) return;
-    logRow_('Changes', [line, c.html_url], new Date(when));
-  });
-  props.setProperty('changesSince', newest);
-}
-
-// ---- Nightly backups into Drive ----
-// 3am: a folder named with the date inside "Bapa's Diary backups", with a copy of every Google script you own
-// (this one and any others), the log sheet and the packed picture maker. "Run without GitHub" inside it always
-// has the newest picture maker and the guide to running it on your Mac (RUN-ON-MAC.txt).
-function nightlyBackup() {
-  const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
-  try { logChanges_(); } catch (e) { console.log('Changes: ' + e); }
-  const root = child_(DriveApp.getRootFolder(), BACKUPS_NAME);
-  const night = child_(root, today);
-  const saved = [], problems = [];
-  const scripts = DriveApp.getFilesByType(MimeType.GOOGLE_APPS_SCRIPT);
-  while (scripts.hasNext()) {
-    const f = scripts.next();
-    if (f.isTrashed() || / \(backup \d{4}-\d{2}-\d{2}\)$/.test(f.getName())) continue;   // never a backup of a backup
-    const name = f.getName() + ' (backup ' + today + ')';
-    try { f.makeCopy(name, night); saved.push(name); } catch (e) { problems.push(name + ': ' + e); }
-  }
-  const logId = PropertiesService.getScriptProperties().getProperty('logSheetId');
-  if (logId) {
-    try { DriveApp.getFileById(logId).makeCopy(LOG_SHEET_NAME + ' (backup ' + today + ')', night); saved.push(LOG_SHEET_NAME); }
-    catch (e) { problems.push(LOG_SHEET_NAME + ': ' + e); }
-  }
-  const offline = child_(root, 'Run without GitHub');
-  [['bapas-diary-code.zip', night], ['bapas-diary-code.zip', offline], ['models.zip', offline], ['RUN-ON-MAC.txt', offline]].forEach(([name, into]) => {
-    try {
-      if (name === 'models.zip' && alive_(into, name)) return;   // the face models never change
-      const r = UrlFetchApp.fetch(PACKED_FROM + name, { muteHttpExceptions: true });
-      if (r.getResponseCode() !== 200) { problems.push(name + ': GitHub said ' + r.getResponseCode()); return; }
-      const old = into.getFilesByName(name);
-      while (old.hasNext()) old.next().setTrashed(true);
-      into.createFile(r.getBlob().setName(name));
-      if (into === night) saved.push(name);
-    } catch (e) { problems.push(name + ': ' + e); }
-  });
-  const nights = [];
-  const it = root.getFolders();
-  while (it.hasNext()) { const f = it.next(); if (!f.isTrashed() && /^\d{4}-\d{2}-\d{2}$/.test(f.getName())) nights.push(f); }
-  nights.sort((a, b) => a.getName() < b.getName() ? 1 : -1).slice(KEEP_NIGHTS).forEach(f => f.setTrashed(true));
-  console.log('Backup ' + today + ': ' + saved.length + ' saved' + (problems.length ? ', problems: ' + problems.join('; ') : ''));
-  if (problems.length) MailApp.sendEmail(Session.getEffectiveUser().getEmail(), "Bapa's Diary: last night's backup was not complete",
-    'Saved: ' + (saved.join(', ') || 'nothing') + '\n\nProblems:\n' + problems.join('\n'));
-}
-
-function child_(parent, name) {
-  const it = parent.getFoldersByName(name);
-  while (it.hasNext()) { const f = it.next(); if (!f.isTrashed()) return f; }
-  return parent.createFolder(name);
 }
 
 function alive_(folder, name) {
