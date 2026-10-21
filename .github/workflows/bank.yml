@@ -16,9 +16,6 @@ on:
       remake:
         description: 'Type yes to remake every day in the bank (after a design change)'
         required: false
-  push:
-    branches: [claude/project-thread-r4wwpr]   # test branch only: a push runs a short test fill
-    paths: [.github/workflows/bank.yml]
 
 permissions:
   contents: write
