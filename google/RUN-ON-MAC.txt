@@ -1,0 +1,25 @@
+Bapa's Diary without GitHub: making the picture on your Mac
+============================================================
+
+Only needed if GitHub ever stops working for a long time. The backup bank covers the first 90 days
+by itself, so you would only do this after that, or to make a fresh picture.
+
+Once:
+  1. In Google Drive, open "Bapa's Diary backups", then "Run without GitHub".
+     Download bapas-diary-code.zip and models.zip.
+  2. Double click both zips. Move the "models" folder from the second one inside the
+     "bapas-diary" folder from the first one.
+  3. Open Terminal (Cmd + Space, type Terminal, Enter) and type, pressing Enter after each line:
+        cd ~/Downloads/bapas-diary
+        python3 -m pip install -r requirements.txt
+
+Each day:
+  4. In Terminal:
+        cd ~/Downloads/bapas-diary
+        python3 make.py
+     (for another day: python3 make.py --date 2027-02-14)
+  5. The picture is out/bapas-diary.png, and the WhatsApp copy is out/bapas-diary.jpg.
+     Drag them into the "Bapa's Diary" folder in Google Drive, named like
+     "14 February 2027.png" and "14 February 2027 photo.jpg". The 2pm send does the rest.
+
+The story for under the 2pm caption, when there is one, is out/caption.txt.

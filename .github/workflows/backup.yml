@@ -1,0 +1,33 @@
+name: Copy for Drive
+
+# Darpan, 21 Oct 2026: a copy of the picture maker that doesn't need GitHub. Every night this packs the
+# code (with the photo lists, history and channel copies) and the face models into the release `backup`;
+# his Smruti script copies them into Google Drive, "Bapa's Diary backups", keeping the last 30 nights.
+
+on:
+  schedule:
+    - cron: '0 1 * * *'    # 1 or 2am UK
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pack the code and the face models
+        run: |
+          git archive --format=zip --prefix=bapas-diary/ -o bapas-diary-code.zip HEAD -- . ':!models' ':!preview'
+          git archive --format=zip -o models.zip HEAD models
+          cp google/RUN-ON-MAC.txt RUN-ON-MAC.txt
+          ls -la bapas-diary-code.zip models.zip
+      - name: Put them in the release for Drive to collect
+        run: |
+          gh release view backup >/dev/null 2>&1 || gh release create backup --title "Copy for Drive" \
+            --notes "The picture maker, packed every night. Your Smruti script copies it into Google Drive."
+          gh release upload backup bapas-diary-code.zip models.zip RUN-ON-MAC.txt --clobber
