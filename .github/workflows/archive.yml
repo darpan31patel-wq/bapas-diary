@@ -15,7 +15,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -27,6 +27,21 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Add the newest posts of both Telegram channels (only into the database, the daily picture keeps its own copy)
+        continue-on-error: true
+        timeout-minutes: 30
+        run: |
+          python tools/tg_fetch.py TodayinBAPShistory new-history.json
+          python tools/tg_fetch.py SatpurushInUKEurope new-satpurush.json
+          python - <<'PY'
+          import json
+          for new, old in (('new-history.json', 'telegram/posts.json'), ('new-satpurush.json', 'telegram/satpurush/posts.json')):
+              have = json.load(open(old))
+              ids = {p['id'] for p in have}
+              add = [p for p in json.load(open(new)) if p['id'] not in ids]
+              json.dump(sorted(have + add, key=lambda p: p['id']), open(old, 'w'), ensure_ascii=False)
+              print(old, '+', len(add), 'new posts')
+          PY
       - name: Build bapas.db
         run: |
           python tools/build_archive.py --crawl crawl --out bapas.db
