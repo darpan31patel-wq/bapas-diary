@@ -1531,7 +1531,7 @@ TG_PAGE = 'https://t.me/s/{channel}?before={n}'
 SAT_FILE = os.path.join(HERE, 'telegram', 'satpurush', 'events.json')   # Bapa's day by day diary in the UK and Europe, t.me/SatpurushInUKEurope (tools/satpurush.py)
 TG_SAME_PERSON = .38   # the channel's photos are often old video stills of a younger Bapa, and its story already says he is there
 TG_GURU_FROM = 1900   # darshans of earlier gurus (Shastriji Maharaj, Yogiji Maharaj) from the channel, from this year
-TG_NEAR, TG_NEAR_BEFORE = 3, 1999   # an old story from up to 3 days away may give a year before 1999 its card
+TG_NEAR, TG_NEAR_BEFORE = 0, 1999   # Darpan, 22 Oct 2026: a channel's story only on its exact day (was 3 days either side, so 24 Oct 1959 showed on 21, 22 and 23 Oct)
 TG_GAP_BOOST = 1.0   # a channel photo from the very day beats a baps.org photo borrowed from a nearby day of the trip
 
 

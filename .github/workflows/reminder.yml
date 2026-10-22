@@ -1,0 +1,28 @@
+name: Monthly reminder
+
+# On the 1st of every month GitHub opens an issue, which emails Darpan: time to refresh the saved copies of the
+# two Telegram channels (Today in BAPS History, Satpurush in UK & Europe) that the picture's older cards and the
+# 2pm caption stories come from. Nothing refreshes them automatically (Darpan, 22 Oct 2026).
+
+on:
+  schedule:
+    - cron: '0 8 1 * *'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open the reminder (GitHub emails you)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh issue create --title "Monthly reminder: refresh the Telegram channels ($(date +'%B %Y'))" --body "Time to refresh Bapa's Diary's saved copies of the two Telegram channels, Today in BAPS History and Satpurush in UK & Europe, so any new stories are used.
+
+          Open your On this Day collage builder project in Claude and say: refresh the Telegram channels.
+
+          Close this issue once it's done."
