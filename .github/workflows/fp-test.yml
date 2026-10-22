@@ -25,4 +25,4 @@ jobs:
           json.dump({d: s[d] for d in ('2026-10-21','2026-10-22')}, open('preview/fp-21-22.json','w'), indent=1)
           PY
           git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add preview/fp-21-22.json && git commit -q -m "fingerprints 21 22" && git pull -q --rebase && git push -q
+          cat preview/fp-21-22.json; git checkout -- archive; git add preview/fp-21-22.json && git commit -q -m "fingerprints 21 22" && git pull -q --rebase && git push -q
