@@ -1,0 +1,28 @@
+name: Fingerprint 1959 (test branch only, never ship)
+on:
+  push:
+    branches: [claude/project-thread-outcr7]
+    paths: [.github/workflows/fp-test.yml]
+permissions:
+  contents: write
+jobs:
+  fp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12', cache: pip}
+      - run: pip install -q -r requirements.txt
+      - run: |
+          git show origin/main:archive/shown.json > archive/shown.json 2>/dev/null || { git fetch -q origin main; git show origin/main:archive/shown.json > archive/shown.json; }
+          python - <<'PY'
+          import json; s=json.load(open('archive/shown.json')); [s.pop(d) for d in ('2026-10-21','2026-10-22')]; json.dump(s,open('archive/shown.json','w'))
+          PY
+          python make.py --date 2026-10-21 --out out21
+          python make.py --date 2026-10-22 --out out22
+          mkdir -p preview && python - <<'PY'
+          import json; s=json.load(open('archive/shown.json'))
+          json.dump({d: s[d] for d in ('2026-10-21','2026-10-22')}, open('preview/fp-21-22.json','w'), indent=1)
+          PY
+          git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add preview/fp-21-22.json && git commit -q -m "fingerprints 21 22" && git pull -q --rebase && git push -q
