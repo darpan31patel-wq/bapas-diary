@@ -224,6 +224,7 @@ NICE_MIN = 2.0        # the action score a photo needs before it beats a close d
 CLOSE_SHARE = .6      # about this share of the years are close darshans of Bapa's face (Darpan, 18 Oct 2026: 16 of 27)
 RECENT_DAYS = 7       # a photo shown in the last week is not shown again: the old albums cover several days, so
                       # neighbouring dates list the same photos (18 and 19 October share 2003, 2005, 2006 and 2007)
+REPEAT_LOSS = 6       # what a photo shown in the last week (or another frame of that moment) loses: it only comes back when the year has nothing else
 SHOWN_FILE = os.path.join(HERE, 'archive', 'shown.json')   # which photo each year showed on each day (written after every run)
 CLOSE_MIN_FACE = 64   # pixels: a face smaller than this can't be blown up into a close darshan
 SHARP_MIN, BRIGHT_MIN = 40, 70   # a face blurrier (Laplacian variance at 160px) or darker (mean luminance) than this can't be a close darshan (Darpan, 20 Oct 2026: 2009 was a dark blurry video still)
@@ -262,6 +263,12 @@ def unique_caption(c):
 
 
 STOP = {'the', 'a', 'an', 'of', 'to', 'and', 'in', 'on', 'at', 'with', 'by', 'for', 'his', 'all', 'bapa', 'during'}
+
+
+def album(u):
+    """The baps.org album a photo comes from ('.../GalleryImages/2776/WebImages/P1010081f.jpg' -> '2776'), None for others."""
+    m = re.search(r'/GalleryImages/(\d+)/', u or '')
+    return m and m.group(1)
 
 
 def caption_key(c):
@@ -453,7 +460,7 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
                 cands[y][j] = (v[0] - min(.5, .25 * others), v[1] - min(.5, .25 * others), v[2])
     if day:   # a photo shown in the last week loses heavily and stops counting as a nice action shot, its caption loses 1.5
         # (another moment of that year wins when there is one), so neighbouring dates that list the same album show different photos of Bapa
-        recent, recent_keys = {}, {}   # url -> how many days ago it was shown (yesterday's loses most, last week's least)
+        recent, recent_keys, recent_albums = {}, {}, {}   # url -> how many days ago it was shown; album -> captions shown from it
         for d, ys in shown().items():
             ago = (day - datetime.date.fromisoformat(d)).days
             if 0 < ago <= RECENT_DAYS:
@@ -461,17 +468,23 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
                     u, c = (u['i'], u.get('c', '')) if isinstance(u, dict) else (u, '')
                     recent[u] = min(ago, recent.get(u, ago))
                     recent_keys.setdefault(int(y), []).append(caption_key(c) if c else None)
+                    if album(u):
+                        recent_albums.setdefault(album(u), []).append(caption_key(c) if c else None)
         for y in cands:   # the captions that year showed in the last week (from the record, or from today's own listing of that photo)
             seen = [k for k in recent_keys.get(y, []) if k]
             seen += [keys[y][j] for j, v in enumerate(cands[y]) if v[2]['i'] in recent]
             for j, v in enumerate(cands[y]):
-                if v[2]['i'] in recent:
-                    v[2]['nice'] = False
-                    loss = 3 * (RECENT_DAYS + 1 - recent[v[2]['i']]) / RECENT_DAYS
+                al = album(v[2]['i'])
+                # Darpan, 22 Oct 2026: 2004 showed the same question-answer session a second apart on 21 and 22 October,
+                # and 2003 the very photo from 18 October (the old fading penalty had worn off). So a photo shown in the
+                # last week, or another frame of the same moment (same album, same caption), is out for the week
+                # whenever the year has anything else; another photo from an album shown this week loses a little.
+                same_moment = v[2]['i'] in recent or any(k and same_caption(keys[y][j], k) for k in recent_albums.get(al, []))
+                loss = REPEAT_LOSS if same_moment else (1.5 if any(same_caption(keys[y][j], k) for k in seen) else 0)
+                loss += .5 if al in recent_albums and not same_moment else 0
+                if loss:   # (the same caption again, 'plays dandiya' two days running, Darpan 20 Oct 2026: another moment wins)
                     cands[y][j] = (v[0] - loss, v[1] - loss, v[2])
-                elif any(same_caption(keys[y][j], k) for k in seen):   # the same moment again ('plays dandiya' two days running,
-                    cands[y][j] = (v[0] - 1.5, v[1] - 1.5, v[2])        # Darpan 20 Oct 2026): another moment wins when the year has one
-                    if v[1] - 1.5 < NICE_MIN:                           # and it no longer jumps the queue as a nice action shot
+                    if same_moment or v[1] - loss < NICE_MIN:   # and it no longer jumps the queue as a nice action shot
                         v[2]['nice'] = False
     for y, want in PICKS.get(seed, {}).items():   # Darpan's own choice for a year wins outright
         for j, v in enumerate(cands.get(int(y), [])):
