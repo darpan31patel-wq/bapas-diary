@@ -1,0 +1,55 @@
+name: Month card mockups
+
+# Mockups of month cards for Darpan to choose from (22 Oct 2026). Writes preview/month/<month>/*.jpg on the
+# branch it runs on; never touches main, the daily picture, its releases or Drive.
+
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['tools/month.py', '.github/workflows/month.yml']
+  workflow_dispatch:
+    inputs:
+      month:
+        description: 'Month to make (YYYY-MM)'
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: month-${{ github.ref }}
+
+jobs:
+  month:
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install
+        run: pip install -q -r requirements.txt
+
+      - uses: actions/cache@v4
+        with:
+          path: .cache/month
+          key: month-photos-${{ inputs.month || '2012-01' }}-${{ github.run_id }}
+          restore-keys: month-photos-${{ inputs.month || '2012-01' }}-
+
+      - name: Make the designs
+        env:
+          MONTH: ${{ inputs.month || '2012-01' }}
+        run: python tools/month.py --month "$MONTH"
+
+      - name: Save them on this branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add preview/month
+          git commit -m "Month card mockups for ${{ inputs.month || '2012-01' }}" || exit 0
+          for i in 1 2 3; do git pull --rebase -q && git push -q && break; sleep 5; done
