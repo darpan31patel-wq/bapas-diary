@@ -79,14 +79,16 @@ def album_towns(items):
     for x in items:
         if '/GalleryImages/' in x.get('i', ''):
             albums[x['i'].split('/WebImages/')[0]].append(x)
+    towns = collections.defaultdict(set)   # every town given for that year by either photo list
+    for x in items:
+        towns[x['y']] |= {t.strip() for t in (x.get('p') or '').split(',') if t.strip()}
     for xs in albums.values():
-        towns = [t.strip() for t in (xs[0].get('p') or '').split(',') if t.strip()]
-        if len(towns) > 1:
-            named = [t for t in towns if any(re.search(rf'\b{re.escape(t)}', x.get('c') or '', re.I) for x in xs)]
-            if len(named) == 1 and named[0] != towns[0]:
-                for x in xs:
-                    if x.get('p') == xs[0].get('p'):
-                        x['p'] = named[0]
+        said = ' '.join(x.get('c') or '' for x in xs)
+        named = [t for t in towns[xs[0]['y']] if len(towns[xs[0]['y']]) > 1 and re.search(rf'\b{re.escape(t)}\b', said, re.I)]
+        if len(named) == 1:
+            for x in xs:
+                if place(x).lower() != named[0].lower():
+                    x['p'] = named[0]
 
 
 def download_all(items, cache):
