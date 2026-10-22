@@ -895,10 +895,20 @@ def summarise(c):
     return c
 
 
+def range_title(c):
+    """An album's own heading that baps.org lists as a photo's caption ('Gondal 22 to 24 October 2007 -',
+    'Bochasan21 to 29 July 2009 -', '1 to 9 November 2004 -'): returns its place ('' when it has none), or None
+    for a real caption. Darpan, 22 Oct 2026: 'Gondal 22 to 24 October 2007 -' showed under a card saying MUMBAI."""
+    m = re.fullmatch(rf'\s*([A-Za-z][A-Za-z .]*?)?\s*\d{{1,2}}(?:st|nd|rd|th)?(?: {MONTH})? (?:to|-|–) \d{{1,2}}(?:st|nd|rd|th)? {MONTH},? \d{{4}}\s*[-–]?\s*', c or '')
+    return (m.group(1) or '').strip() if m else None
+
+
 def caption(x):
     """The caption without the name repeated on every card: 'Swamishri blesses all' becomes 'Blesses all'.
     Where dropping the name wouldn't read well ('Swamishri's divine gestures', 'Sadhus honour Swamishri'),
     the name becomes 'Bapa'."""
+    if range_title(x.get('c')) is not None:   # only the album's dates: the card is a darshan
+        return DARSHAN
     c = tidy(re.sub(r'\s+', ' ', x.get('c') or '').strip())
     if not c or re.fullmatch(rf'(?:Pujya |Shri )?{NAME}(?: Maharaj)?', c):
         return DARSHAN if x.get('c') else ''
@@ -914,6 +924,9 @@ def caption(x):
 
 
 def place(x):
+    where = range_title(x.get('c'))
+    if where:   # the album's heading says which of the day's places the photo is from ('Mumbai, Gondal' -> Gondal)
+        return where
     return re.sub(r'\s*\(.*?\)', '', (x.get('p') or '').split(',')[0]).strip()
 
 
