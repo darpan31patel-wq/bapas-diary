@@ -148,8 +148,9 @@ def main():
     try:
         schedule = json.loads(make.fetch(SCHEDULE_URL))
     except Exception as e:
-        print('No vicharan schedule this time:', e)
-        schedule = {}
+        saved = os.path.join(ARCHIVE, 'memories', 'schedule.json')   # our own copy (lists.yml)
+        print('Screensaver site not answering, using the saved schedule:', e)
+        schedule = json.load(open(saved)) if os.path.exists(saved) else {}
 
     found = find_albums(state, today, schedule)
     if errors >= GIVE_UP:

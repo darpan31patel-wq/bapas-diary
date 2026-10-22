@@ -15,6 +15,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageFo
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_URL = 'https://darshan-screensaver.pages.dev/memories/{mmdd}.json'
+LISTS = os.path.join(HERE, 'archive', 'memories')   # our own copy of those day lists (lists.yml)
 SCALE = 2600 / 1290   # the picture is drawn this many times bigger than its 2796 x 1290 layout, so it stays sharp when
                       # people hold the phone upright and zoom until the height fills the screen (Darpan, 20 Oct 2026)
 W, H = round(2796 * SCALE), round(1290 * SCALE)
@@ -32,6 +33,19 @@ def font(name, size):
 
 
 # ---------------------------------------------------------------- photos
+
+def day_list(mmdd):
+    """The screensaver's photo list for this calendar day: our own copy in archive/memories first, so the picture
+    no longer needs the screensaver site to be up (Darpan, 22 Oct 2026); the site only if the copy is missing."""
+    path = os.path.join(LISTS, mmdd + '.json')
+    if os.path.exists(path):
+        return json.load(open(path, encoding='utf-8'))
+    try:
+        return json.loads(fetch(DATA_URL.format(mmdd=mmdd)))
+    except Exception as e:
+        print('  no screensaver list for', mmdd, e, '(carrying on with the vicharan pages)')
+        return []
+
 
 def fetch(url, tries=3, timeout=25):
     for i in range(tries):
@@ -1736,7 +1750,7 @@ def main():
 
     day = datetime.date.fromisoformat(a.date) if a.date else datetime.datetime.now(ZoneInfo('Europe/London')).date()
     mmdd = f'{day:%m-%d}'
-    items = json.load(open(a.data)) if a.data else json.loads(fetch(DATA_URL.format(mmdd=mmdd)))
+    items = json.load(open(a.data)) if a.data else day_list(mmdd)
     collected = os.path.join(HERE, 'archive', mmdd + '.json')      # newer years found by collect.py
     if os.path.exists(collected):
         have = {x['i'] for x in items}
