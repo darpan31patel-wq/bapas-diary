@@ -143,9 +143,11 @@ class Month:
         self.close, self.act, self.mixed = {}, {}, {}
         used = set()
         for d, xs in sorted(by.items()):
-            cs = sorted([x for x in xs if x['close_ok']], key=lambda x: -x['s_close']) or sorted(xs, key=lambda x: -x['s_close'])
+            cs = sorted(xs, key=lambda x: -(x['s_close'] + (1.5 if x['close_ok'] else 0) + (.8 if fits(x, 1) else 0)))
             self.close[d] = cs[0]
-            acts = sorted([x for x in xs if x['doing'] or x['special']], key=lambda x: -x['s_act'])
+            told = [caption_key(caption(a)) for a in self.act.values()]   # an activity already shown on an earlier day loses
+            acts = sorted([x for x in xs if x['doing'] or x['special']],
+                          key=lambda x: -(x['s_act'] + (.8 if subject(x) else 0) - (1.5 if any(same_caption(caption_key(caption(x)), k) for k in told) else 0)))
             acts = [x for x in acts if x['i'] != cs[0]['i']] or acts
             if acts:
                 self.act[d] = acts[0]
@@ -155,13 +157,14 @@ class Month:
             used.add(cs[0]['i'])
         # highlights: the month's best activities, no two telling the same thing, at most two from one day
         hl, per = [], {}
-        for x in sorted((x for xs in by.values() for x in xs if x['doing'] or x['special']), key=lambda x: -(x['s_act'] + .6 * x['special'])):
+        for x in sorted((x for xs in by.values() for x in xs if (x['doing'] or x['special']) and subject(x)), key=lambda x: -(x['s_act'] + .6 * x['special'])):
             d = int(x['d'][8:10]); k = caption_key(caption(x))
             if per.get(d, 0) >= 2 or any(same_caption(k, caption_key(caption(h))) for h in hl):
                 continue
             hl.append(x); per[d] = per.get(d, 0) + 1
         self.highlights = hl
         self.best_close = sorted(self.close.values(), key=lambda x: -x['s_close'])
+
         places = {}
         for x in photos:
             p = make.place(x)
@@ -169,6 +172,11 @@ class Month:
                 places[p] = places.get(p, 0) + 1
         self.places = sorted(places, key=lambda p: -places[p])
         self.count = len(photos)
+
+    def hero(self, aspect):
+        """The month's best close darshan that fills a window of that shape (width / height)."""
+        ok = [x for xs in self.by.values() for x in xs if x['close_ok'] and fits(x, aspect)]
+        return max(ok, key=lambda x: x['s_close'] + x['size'][1] / 4000) if ok else self.best_close[0]
 
     def summary(self):
         out = [f'{self.name}: {self.count} photos of Bapa on {len(self.by)} days, places {", ".join(self.places)}']
@@ -214,12 +222,31 @@ def load(x):
     return im
 
 
+def fits(x, aspect, mode='close'):
+    """True when crop_to can cut this photo to that shape without falling back to the whole photo on a blurred fill
+    (a tight portrait in a wide window): his whole head has to fit inside the window."""
+    iw, ih = x['size']
+    fx, fy, fw, fh = x['face']
+    cw, ch = (ih * aspect, ih) if iw / ih > aspect else (iw, iw / aspect)
+    if mode == 'close':
+        ch = min(ch, fh / (.38 if aspect > 1 else .30)); cw = min(cw, ch * aspect); ch = cw / aspect
+    return 1.9 * fh <= ch * .98 and 1.7 * fw <= cw * .98
+
+
+def subject(x):
+    """Strictly about Bapa: the website's caption starts with his name or with what he does."""
+    c = make.about_bapa(re.sub(r'\s+', ' ', x.get('c') or '').strip())
+    return c[:1].islower() or bool(re.match(make.NAME, c))
+
+
 def shot(x, w, h, mode='frame'):
     """The photo cut to w x h: 'close' a tight darshan, 'frame' filling the frame around Bapa, 'whole' all of it."""
     w, h = round(w), round(h)
     im = load(x)
-    if mode == 'close' and not x['close_ok']:
+    if mode == 'close' and not (x['close_ok'] and fits(x, w / h)):
         mode = 'frame'
+    if mode == 'frame' and not fits(x, w / h, 'frame'):
+        mode = 'whole'
     if mode == 'frame' and frame_keep(im, x['face'], w / h) < .62:   # an activity would lose what Bapa is doing: show it all
         mode = 'whole'
     return polish(crop_to(im, x['face'], w, h, mode))
@@ -411,16 +438,17 @@ def c1_calendar(m):
         sw = spaced(d, wd, hf, 3 * u)
         draw_spaced(d, M + i * (cell + gap) + (cell - sw) / 2, top - 30 * u, wd, hf, 3 * u, CREAM)
     nf = garamond(30 * u, 700)
+    ch = min(cell * 1.4, (h - top - 110 * u) / rows - gap)
     for day in range(1, m.days + 1):
         k = start + day - 1; r, c = divmod(k, 7)
-        x0, y0 = M + c * (cell + gap), top + r * (cell + gap)
+        x0, y0 = M + c * (cell + gap), top + r * (ch + gap)
         if day in m.close:
-            ph = shot(m.close[day], cell, cell, 'close')
+            ph = shot(m.close[day], cell, ch, 'close')
             paste_round(img, ph, (x0, y0), 10 * u)
             scrim(img, (x0, y0, x0 + cell * .5, y0 + cell * .32), 150, up=False)
             ImageDraw.Draw(img).text((x0 + 12 * u, y0 + 6 * u), str(day), font=nf, fill=(255, 240, 210))
         else:
-            ImageDraw.Draw(img).rounded_rectangle((x0, y0, x0 + cell, y0 + cell), 10 * u, fill=(52, 13, 21))
+            ImageDraw.Draw(img).rounded_rectangle((x0, y0, x0 + cell, y0 + ch), 10 * u, fill=(52, 13, 21))
             ImageDraw.Draw(img).text((x0 + 12 * u, y0 + 6 * u), str(day), font=nf, fill=(150, 96, 84))
     foot(img)
     return img
@@ -457,8 +485,8 @@ def c2_medallions(m):
 def c3_hero_strip(m):
     """One large darshan of the month, then a strip of the other days' faces underneath."""
     img = canvas(PT); w, h = PT; u = w / 1080; d = ImageDraw.Draw(img)
-    hero = m.best_close[0]
     M = 56 * u
+    hero = m.hero((w - 2 * M) / (640 * u))
     y = title(img, m.name, 34 * u, 104 * u, "In Bapa's Diary", 28 * u)
     hw, hh = w - 2 * M, 640 * u
     ph = shot(hero, hw, hh, 'close')
@@ -581,16 +609,16 @@ def a1_magazine(m):
                 font=garamond(44 * u, 600), fill=(255, 244, 222), anchor='ls')
     top = y + bh + 40 * u
     gap = 26 * u
-    tw = (w - 2 * M - gap) / 2; th = tw / 1.6
+    tw = (w - 2 * M - gap) / 2; th = (h - top - 120 * u - 2 * 104 * u) / 2
     cf = garamond(25 * u, 600)
     for n, x in enumerate(hl[1:5]):
         r, c = divmod(n, 2)
-        x0, y0 = M + c * (tw + gap), top + r * (th + 110 * u)
+        x0, y0 = M + c * (tw + gap), top + r * (th + 104 * u)
         paste_round(img, shot(x, tw, th, 'frame'), (x0, y0), 12 * u)
         dd = ImageDraw.Draw(img); day = int(x['d'][8:10])
-        draw_spaced(dd, x0, y0 + th + 32 * u, date_label(m, day).upper(), arimo_bold(14 * u), 3 * u, GOLD)
+        draw_spaced(dd, x0, y0 + th + 22 * u, date_label(m, day).upper(), arimo_bold(14 * u), 3 * u, GOLD)
         for i, line in enumerate(short_caption(dd, x, cf, tw)):
-            dd.text((x0, y0 + th + 66 * u + i * 30 * u), line, font=cf, fill=CREAM, anchor='ls')
+            dd.text((x0, y0 + th + 64 * u + i * 30 * u), line, font=cf, fill=CREAM, anchor='ls')
     foot(img)
     return img
 
@@ -637,7 +665,7 @@ def a3_calendar(m):
         sw = spaced(d, wd, hf, 3 * u)
         draw_spaced(d, M + i * (cell + gap) + (cell - sw) / 2, top - 30 * u, wd, hf, 3 * u, CREAM)
     nf, cf = garamond(26 * u, 700), garamond(15 * u, 600)
-    ch = cell * 1.18
+    ch = min(cell * 1.5, (h - top - 110 * u) / rows - gap)
     for day in range(1, m.days + 1):
         k = start + day - 1; r, c = divmod(k, 7)
         x0, y0 = M + c * (cell + gap), top + r * (ch + gap)
@@ -645,12 +673,12 @@ def a3_calendar(m):
         if x:
             card = ivory(cell, ch); img.paste(card, (round(x0), round(y0)))
             pad = 5 * u
-            img.paste(shot(x, cell - 2 * pad, cell * .78, 'frame'), (round(x0 + pad), round(y0 + pad)))
+            img.paste(shot(x, cell - 2 * pad, ch - 52 * u, 'frame'), (round(x0 + pad), round(y0 + pad)))
             dd = ImageDraw.Draw(img)
             dd.text((x0 + 10 * u, y0 + 4 * u), str(day), font=nf, fill=(255, 244, 222), stroke_width=round(2 * u), stroke_fill=(40, 10, 14))
             lines = wrap(dd, caption(x), cf, cell - 12 * u, 2)
             for i, line in enumerate(lines):
-                dd.text((x0 + cell / 2, y0 + cell * .78 + pad + 22 * u + i * 18 * u), line, font=cf, fill=MAROON, anchor='ms')
+                dd.text((x0 + cell / 2, y0 + ch - 30 * u + i * 18 * u), line, font=cf, fill=MAROON, anchor='ms')
         else:
             ImageDraw.Draw(img).rectangle((x0, y0, x0 + cell, y0 + ch), fill=(52, 13, 21))
             ImageDraw.Draw(img).text((x0 + 10 * u, y0 + 4 * u), str(day), font=nf, fill=(150, 96, 84))
@@ -753,8 +781,8 @@ def a6_story(m):
 def m1_cover_calendar(m):
     """A cover: the month's best darshan across the top with the title over it, the calendar of mixed days below."""
     img = canvas(PT); w, h = PT; u = w / 1080
-    hero = m.best_close[0]
     hh = 840 * u
+    hero = m.hero(w / hh)
     img.paste(shot(hero, w, hh, 'close'), (0, 0))
     scrim(img, (0, hh * .45, w, hh), 255)
     g = Image.new('L', (1, round(160 * u)))
@@ -815,8 +843,8 @@ def m3_numbers(m):
     """The month in numbers beside a darshan, four moments along the bottom."""
     img = canvas(SQ); w, h = SQ; u = w / 1080
     M = 56 * u
-    hero = m.best_close[0]
     hw = w * .46
+    hero = m.hero(hw / (600 * u))
     hh = 600 * u
     paste_round(img, shot(hero, hw, hh, 'close'), (M, 56 * u), 14 * u)
     d = ImageDraw.Draw(img)
@@ -856,22 +884,22 @@ def m4_diary(m):
     rows = 3
     per = math.ceil(len(days) / rows)
     M = 70 * u
-    pw = (w - 2 * M) / per * .84
-    ph = pw * .9
+    row_h = (h - 190 * u - 60 * u) / rows
+    pw = min((w - 2 * M) / per * .84, (row_h - 30 * u) / (.82 + .05 + .36))
+    ph = pw * .82
     rnd = random.Random(11)
-    row_h = (h - 200 * u) / rows
     for r in range(rows):
         row = days[r * per:(r + 1) * per]
         if not row:
             continue
-        cy = 200 * u + r * row_h
+        cy = 190 * u + r * row_h
         rope(img, sag(M - 30 * u, w - M + 30 * u, cy, 60, 26 * u), round(5 * u))
         for n, day in enumerate(row):
             x = m.mixed[day]
             cx = M + (w - 2 * M) * (n + .5) / per
             dip = cy + 26 * u * math.sin(math.pi * (cx - M + 30 * u) / (w - 2 * M + 60 * u))
-            card = polaroid(shot(x, pw, ph, 'close' if x['kind'] == 'close' else 'frame'), round(pw * .05), round(pw * .26),
-                            rnd.uniform(-2, 2), f'{day_word(m, day)} {day}', caption(x) if x['kind'] == 'act' else None, label_size=pw * .12)
+            card = polaroid(shot(x, pw, ph, 'close' if x['kind'] == 'close' else 'frame'), round(pw * .05), round(pw * .36),
+                            rnd.uniform(-2, 2), f'{day_word(m, day)} {day}', caption(x) if x['kind'] == 'act' else None, label_size=pw * .11)
             drop_card(img, card, cx, dip + card.height / 2 - 10 * u)
             peg(img, cx, dip, .8)
     foot(img, 22 * u)
@@ -882,19 +910,23 @@ def m5_medallion_ring(m):
     """A large round darshan in the middle, the month's moments around it."""
     img = canvas(SQ); w, h = SQ; u = w / 1080
     y = title(img, m.name, 30 * u, 96 * u, "In Bapa's Diary", 26 * u)
-    cx, cy = w / 2, y + 40 * u + (h - y - 120 * u) / 2
+    tw, th = 236 * u, 168 * u
+    ch_ = th + 8 * u + 44 * u
+    top, bottom = y + 10 * u, h - 90 * u
+    cx, cy = w / 2, (top + bottom) / 2
     acts = sorted(m.highlights[:8], key=lambda x: x['d'])
-    R = min(w, h - y) * .33
-    tw, th = 250 * u, 180 * u
+    Ry = (bottom - top) / 2 - ch_ / 2 - 6 * u
+    Rx = w / 2 - 50 * u - (tw + 16 * u) / 2
+    R = Ry
     cf = garamond(18 * u, 600)
     for n, x in enumerate(acts):
         a = -math.pi / 2 + 2 * math.pi * n / len(acts)
-        px_, py_ = cx + R * 1.12 * math.cos(a), cy + R * .98 * math.sin(a)
+        px_, py_ = cx + Rx * math.cos(a), cy + Ry * math.sin(a)
         day = int(x['d'][8:10])
         card = polaroid(shot(x, tw, th, 'frame'), round(8 * u), round(44 * u), 0, f'{day} {calendar.month_abbr[m.month]}', label_size=24 * u)
         drop_card(img, card, px_, py_)
-    dia = R * 1.05
-    hero = m.best_close[0]
+    dia = R * .95
+    hero = m.hero(1)
     ring = dia * .04
     shadow(img, (cx - dia / 2 - ring, cy - dia / 2 - ring, cx + dia / 2 + ring, cy + dia / 2 + ring), 0, 18 * u, 200, (0, 10 * u), ellipse=True)
     ImageDraw.Draw(img).ellipse((cx - dia / 2 - ring, cy - dia / 2 - ring, cx + dia / 2 + ring, cy + dia / 2 + ring), fill=IVORY_TOP)
