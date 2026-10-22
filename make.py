@@ -1606,6 +1606,9 @@ def tg_day(day, items):
     return extra, evs, special
 
 
+UNFRAME_CAPTION = 124   # the channel's caption written along the bottom of the darshan (Darpan, 22 Oct 2026: '...uja ashirwad - London' still showed at 88)
+
+
 def unframe(items):
     """The Satpurush in UK & Europe photos come in the channel's frame (its title above, the date below, a caption
     written along the bottom of the darshan): keep only the darshan, above its written caption."""
@@ -1624,7 +1627,7 @@ def unframe(items):
             bottom = int(np.argmax(d[int(.6 * h):int(.85 * h)])) + int(.6 * h) + 1
             if d[top - 1] < 20 or d[bottom - 1] < 20 or bottom - top < .4 * h:
                 x.pop('path'); continue
-            im = im.crop((0, top, im.width, bottom - 88))
+            im = im.crop((0, top, im.width, bottom - UNFRAME_CAPTION))
             im.resize((im.width * 2, im.height * 2), Image.LANCZOS).save(out, quality=95)   # the channel's photos are small: twice the size finds his face more often
         x['path'] = out
 
