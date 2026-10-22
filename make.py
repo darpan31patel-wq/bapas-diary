@@ -555,6 +555,7 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
                 ranked = [v for v in ranked if v[2]['nice']] + [v for v in sorted(ranked, key=lambda v: -v[0]) if not v[2]['nice']]
                 if PICK == 'special':   # the special moment first, then everything else as close ups
                     ranked = [v for v in ranked if v[2]['nice'] and v[2]['special']] + [v for v in sorted(ranked, key=lambda v: -v[0]) if not (v[2]['nice'] and v[2]['special'])]
+        ranked = [v for v in cands[y] if v[k] > 50] + [v for v in ranked if v[k] <= 50]   # Darpan's pin first, even where his face isn't recognised
         w = dict(year=y, mode='close darshan' if k == 0 else 'doing something', rows=[], pick=None)
         for v in ranked:
             mode = 0 if (k == 0 or not v[2]['nice'] or (PICK == 'special' and not v[2]['special'])) else 1
