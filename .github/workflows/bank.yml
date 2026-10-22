@@ -14,7 +14,7 @@ on:
         description: 'How many days ahead to keep (default 90)'
         required: false
       remake:
-        description: 'Type yes to remake every day in the bank (after a design change)'
+        description: 'Type yes to remake every day in the bank (after a change to how pictures are made)'
         required: false
 
 permissions:
@@ -48,15 +48,25 @@ jobs:
         run: |
           gh release view "$RELEASE" >/dev/null 2>&1 || gh release create "$RELEASE" --title "Backup bank" \
             --notes "The next $AHEAD days of Bapa's Diary, made ahead. Only used if the morning picture is missing."
-          gh release view "$RELEASE" --json assets -q '.assets[].name' > have.txt || true
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE" -q '.assets[]|"\(.name) \(.updated_at)"' > have.txt || true
           mkdir -p bank
-          # the bank's own record of which photo each year showed, so neighbouring bank days don't repeat photos
-          gh release download "$RELEASE" -p bank-shown.json -D bank 2>/dev/null && cp bank/bank-shown.json archive/shown.json || true
+          if [ "$REMAKE" = "yes" ]; then
+            # a remake (after a change to how pictures are made): every day made before now is made again, oldest
+            # first, over as many nights as it takes; it starts from the live record of what was shown
+            date -u +%FT%TZ > bank/remake-after.txt
+            gh release upload "$RELEASE" bank/remake-after.txt --clobber
+          else
+            gh release download "$RELEASE" -p remake-after.txt -D bank 2>/dev/null || true
+            # the bank's own record of which photo each year showed, so neighbouring bank days don't repeat photos
+            gh release download "$RELEASE" -p bank-shown.json -D bank 2>/dev/null && cp bank/bank-shown.json archive/shown.json || true
+          fi
+          after=$(cat bank/remake-after.txt 2>/dev/null || echo 0)
           today=$(TZ=Europe/London date +%F)
           : > todo.txt
           for i in $(seq 1 "$AHEAD"); do
             d=$(date -d "$today + $i day" +%F)
-            if [ "$REMAKE" = "yes" ] || ! grep -qx "$d.png" have.txt; then echo "$d" >> todo.txt; fi
+            made=$(awk -v f="$d.png" '$1 == f { print $2 }' have.txt)
+            if [ -z "$made" ] || [[ "$made" < "$after" ]]; then echo "$d" >> todo.txt; fi
           done
           echo "$(wc -l < todo.txt) days to make: $(head -1 todo.txt) to $(tail -1 todo.txt)"
 
@@ -70,7 +80,8 @@ jobs:
             cp out/bapas-diary.png "bank/$d.png"
             cp out/bapas-diary.jpg "bank/$d.jpg"
             for f in caption.txt bapas-diary-special.png; do
-              [ -e "out/$f" ] && cp "out/$f" "bank/$d-${f#bapas-diary-}"
+              if [ -e "out/$f" ] && cp "out/$f" "bank/$d-${f#bapas-diary-}"; then :
+              else gh release delete-asset "$RELEASE" "$d-${f#bapas-diary-}" -y 2>/dev/null || true; fi   # a remade day may have lost one
             done
             cp archive/shown.json bank/bank-shown.json
             # upload as each day is done, so a run that stops early still keeps what it made
