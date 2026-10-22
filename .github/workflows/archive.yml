@@ -22,8 +22,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Get the raw crawl from the database branch
         run: |
-          git fetch -q --depth 1 origin database
-          git checkout FETCH_HEAD -- crawl
+          for i in 1 2 3; do git fetch -q --depth 1 origin +refs/heads/database:refs/remotes/origin/database && break; sleep 5; done
+          git checkout origin/database -- crawl
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

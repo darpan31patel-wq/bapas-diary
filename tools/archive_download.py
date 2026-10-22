@@ -6,8 +6,10 @@ Run on the Mac, overnight, with Google Drive for desktop set to "Stream files":
     python3 archive_download.py --until 07:00   # stop at 7am
     python3 archive_download.py --only telegram # just the two Telegram channels
 
-Everything goes into "My Drive/Bapa's Archive": bapas.db (the database), photos/baps/YEAR/ALBUM/FILE.jpg and
-telegram/CHANNEL/POST/1.jpg, 2.jpg, video-1.mp4 ... Files already there are skipped, so a stopped run carries on
+Everything goes into "My Drive/Bapa's Archive": bapas.db (the database), then
+  photos/baps.org/2019/2019-01-05 Mumbai/Swamishri performs the arti (2019_01_05_001_Mumbai).jpg  (+ captions.csv)
+  telegram/Today in BAPS History/2016-05-13 Sarangpur Mandir Shatabdi Mahotsav (post 20)/photo 1.jpg, video 1.mp4, post.txt
+Files already there are skipped, so a stopped run carries on
 where it left off. It is gentle on purpose: one file at a time with a pause between them, and if baps.org ever
 shows its "Just a moment" check it stops for the night instead of trying to get round it.
 Uses only what comes with Python 3, nothing to install.
@@ -76,21 +78,23 @@ class Progress:
 
 
 def write_captions(db, root):
-    """Beside the photos, in plain text: captions.csv in each baps.org album folder, post.txt in each Telegram post folder
-    (date, place, the post's words and its link). No internet needed, and only written when missing."""
+    """Beside the photos, in plain text: captions.csv in each baps.org day folder (every photo's file name, date, place,
+    full caption and baps.org address), post.txt in each Telegram post folder (its link, date, place and words).
+    No internet needed, and only written when missing."""
     import csv
-    albums = {}
-    for y, album, file, date, d0, d1, place, cap in db.execute(
-            'SELECT year, album, file, date, date_from, date_to, place, caption FROM photos'):
-        albums.setdefault((y, album), []).append((file, date or f'{d0} to {d1}', place, cap))
-    for (y, album), rows in albums.items():
-        path = os.path.join(root, 'photos', 'baps', str(y), album, 'captions.csv')
+    folders = {}
+    for rel, album, file, date, d0, d1, place, cap in db.execute(
+            'SELECT local_path, album, file, date, date_from, date_to, place, caption FROM photos'):
+        folders.setdefault(os.path.dirname(rel), []).append(
+            (os.path.basename(rel), date or f'{d0} to {d1}', place, cap, SITE.format(album=album, size='WebImages', file=file)))
+    for folder, rows in folders.items():
+        path = os.path.join(root, folder, 'captions.csv')
         if os.path.exists(path):
             continue
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w', newline='', encoding='utf-8') as f:
             w = csv.writer(f)
-            w.writerow(['file', 'date', 'place', 'caption'])
+            w.writerow(['file', 'date', 'place', 'caption', 'baps.org'])
             w.writerows(sorted(rows))
     for ch, pid, posted, date, place, text, url, rel in db.execute(
             'SELECT channel, id, posted, date, place, text, url, local_folder FROM tg_posts'):
@@ -160,7 +164,7 @@ def telegram(db, root, gap, stop_at):
         got = 0
         for kind, urls in (('', photos), ('video-', videos)):
             for n, url in enumerate(urls, 1):
-                name = os.path.join(folder, f'{kind}{n}.{"mp4" if kind else "jpg"}')
+                name = os.path.join(folder, f'{"video" if kind else "photo"} {n}.{"mp4" if kind else "jpg"}')
                 if not os.path.exists(name):
                     data, _ = get(url, timeout=300)
                     if data:
@@ -195,10 +199,14 @@ def main():
     print('Saving into', root)
 
     db_path = os.path.join(root, 'bapas.db')
-    if not os.path.exists(db_path):
-        print('Fetching the database (about 10 MB)...')
+    try:   # the newest database every run (it is rebuilt every Sunday with the new days)
+        print('Fetching the newest database (about 10 MB)...')
         body, _ = get(DB_URL, timeout=300)
         save(db_path, gzip.decompress(body))
+    except Exception as e:
+        if not os.path.exists(db_path):
+            sys.exit(f'Could not fetch the database: {e}')
+        print('  could not fetch it, using the copy from last time')
     local = os.path.join(os.path.expanduser('~'), '.bapas-archive.db')   # read a local copy, not the one Drive is syncing
     shutil.copyfile(db_path, local)
     db = sqlite3.connect(local)

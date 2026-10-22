@@ -13,13 +13,60 @@ Tables (every photo, nothing cut out):
 
 The photo and video files themselves are fetched by tools/archive_download.py, which saves them next to this file.
 """
-import argparse, datetime, json, os, sqlite3, sys
+import argparse, datetime, json, os, re, sqlite3, sys
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(HERE, 'tools'))
 import build_db   # noqa: E402  (the crawl reader and its date rules)
+import satpurush  # noqa: E402  (which day each Satpurush photo post belongs to)
 
-CHANNELS = {'history': ('TodayinBAPShistory', 'telegram'), 'satpurush': ('SatpurushInUKEurope', 'telegram/satpurush')}
+CHANNELS = {'history': ('TodayinBAPShistory', 'telegram', 'Today in BAPS History'),
+            'satpurush': ('SatpurushInUKEurope', 'telegram/satpurush', 'Satpurush in UK & Europe')}
+BAD = re.compile(r'[\\/:*?"<>|\n\r\t]+')
+
+
+def clean(text, most):
+    """Text that is safe in a file or folder name on a Mac, Windows or Google Drive, cut at a word near `most` letters."""
+    text = re.sub(r'\s+', ' ', BAD.sub(' ', text or '')).strip(' .,;-')
+    if len(text) > most:
+        text = text[:most].rsplit(' ', 1)[0]
+    return text.strip(' .,;-')
+
+
+def photo_path(y, when, d0, d1, place, file, cap):
+    """photos/baps.org/2019/2019-01-05 Mumbai/Swamishri performs the arti (2019_01_05_001_Mumbai).jpg"""
+    day = str(when) if when else f'{d0} to {d1}'
+    town = clean(re.sub(r',\s*India$', '', place or ''), 40)
+    stem, ext = os.path.splitext(file)
+    name = f'{clean(cap, 80)} ({stem}){ext}' if clean(cap, 80) else file
+    return f'photos/baps.org/{y}/{clean(day + " " + town, 70)}/{name}'
+
+
+def post_folder(title, p):
+    """telegram/Today in BAPS History/2016-05-13 Sarangpur Mandir Shatabdi Mahotsav (post 20)"""
+    first = next((l for l in (p.get('text') or '').split('\n') if l.strip() and not satpurush.DATE.match(l)), '')
+    words = p.get('place') or first
+    day = p.get('date') or ('posted ' + (p.get('posted') or '')[:10])
+    return f'telegram/{title}/{clean(day + " " + clean(words, 60), 80)} (post {p["id"]})'
+
+
+def date_posts(ch, folder, posts):
+    """Gives the untitled photo and video posts the day and place of the dated post before them, so every folder has a date."""
+    if ch == 'satpurush':
+        for st in satpurush.stories(sorted(posts, key=lambda p: p['id'])):
+            place = satpurush.parts(st['text'])[0]
+            for p in [q for q in posts if q['id'] == st['id']] + st['media']:
+                p.update(date=st['date'], place=place)
+        return posts
+    last = None
+    for p in sorted(posts, key=lambda p: p['id']):
+        if p.get('date'):
+            last = p
+        elif last and (p.get('photos') or p.get('videos')) and not (p.get('text') or '').strip() and p['id'] - last['id'] <= 30:
+            p.update(date=last['date'], place=last.get('place'))
+        else:
+            last = None
+    return posts
 
 SCHEMA = """
 CREATE TABLE about (key TEXT PRIMARY KEY, value TEXT);
@@ -68,15 +115,20 @@ def main():
             when = day or (span[0] if span and span[0] == span[1] else None)
             near = when or (span and span[0]) or datetime.date(y, 7, 1)
             rows.append((y, when and str(when), span and str(span[0]), span and str(span[1]), place, album, file, cap,
-                         int(build_db.about_bapa(cap, near)), f'photos/baps/{y}/{album}/{file}'))
+                         int(build_db.about_bapa(cap, near)), photo_path(y, when, span and span[0], span and span[1], place, file, cap)))
+    seen = {}
+    for r in rows:
+        seen[r[-1].lower()] = seen.get(r[-1].lower(), 0) + 1
+    rows = [r[:-1] + (re.sub(r' \((.*)\)(\.\w+)$', lambda m: f' ({r[5]} {m[1]}){m[2]}', r[-1]) if seen[r[-1].lower()] > 1 else r[-1],)
+            for r in rows]
     db.executemany('INSERT OR IGNORE INTO photos VALUES (?,?,?,?,?,?,?,?,?,?)', rows)
 
-    for ch, (name, folder) in CHANNELS.items():
-        posts = load_json(os.path.join(HERE, folder, 'posts.json'), [])
+    for ch, (name, folder, title) in CHANNELS.items():
+        posts = date_posts(ch, folder, load_json(os.path.join(HERE, folder, 'posts.json'), []))
         db.executemany('INSERT OR IGNORE INTO tg_posts VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', [
             (ch, p['id'], p.get('posted'), p.get('date'), p.get('place'), p.get('text'), p.get('photos', 0),
              p.get('videos', 0), p.get('files', 0), p.get('forwarded_from'), json.dumps(p.get('links') or []),
-             f'https://t.me/{name}/{p["id"]}', f'telegram/{ch}/{p["id"]}') for p in posts])
+             f'https://t.me/{name}/{p["id"]}', post_folder(title, p)) for p in posts])
         events = load_json(os.path.join(HERE, folder, 'events.json'), [])
         db.executemany('INSERT INTO tg_events VALUES (?,?,?,?,?,?,?,?,?,?)', [
             (ch, e.get('date'), e.get('place'), e.get('line'), e.get('story') or e.get('whatsapp'), int(bool(e.get('special'))),
