@@ -14,7 +14,7 @@ where it left off. It is gentle on purpose: one file at a time with a pause betw
 shows its "Just a moment" check it stops for the night instead of trying to get round it.
 Uses only what comes with Python 3, nothing to install.
 """
-import argparse, datetime, glob, gzip, html, os, re, shutil, sqlite3, sys, time, urllib.error, urllib.request
+import argparse, datetime, glob, gzip, html, os, re, shutil, sqlite3, sys, time, urllib.error, urllib.parse, urllib.request
 
 DB_URL = 'https://github.com/darpan31patel-wq/bapas-diary/releases/download/database/bapas.db.gz'
 SITE = 'https://www.baps.org/Data/Sites/1/Media/GalleryImages/{album}/{size}/{file}'
@@ -110,6 +110,7 @@ def baps_photos(db, root, gap, stop_at):
     rows = db.execute('SELECT album, file, local_path FROM photos ORDER BY year DESC, coalesce(date, date_from) DESC').fetchall()
     p = Progress('baps.org photos', len(rows))
     full_ok = [True, 0, 0]   # still trying originals, originals found, originals missing
+    misses = 0
     print(f'baps.org: {len(rows):,} photos, newest years first')
     for album, file, rel in rows:
         if stop_at and datetime.datetime.now() >= stop_at:
@@ -119,7 +120,9 @@ def baps_photos(db, root, gap, stop_at):
             p.tick(); continue
         body = None
         for size in ('FullSizeImages', 'WebImages') if full_ok[0] else ('WebImages',):   # the original upload, else the 800 px copy
-            body, kind = get(SITE.format(album=album, size=size, file=file), may_be_missing=size == 'FullSizeImages')
+            # baps.org serves '.jpg' but refuses '.JPG', and some names have spaces (screensaver project, 22 Oct 2026)
+            name = urllib.parse.quote(re.sub(r'\.JPE?G$', '.jpg', file, flags=re.I))
+            body, kind = get(SITE.format(album=album, size=size, file=name), may_be_missing=True)
             if body and kind.startswith('image'):
                 if size == 'FullSizeImages':
                     full_ok[1] += 1
@@ -132,9 +135,13 @@ def baps_photos(db, root, gap, stop_at):
                     print('  baps.org has no full size originals for these, saving the 800 px web size')
         if body:
             save(path, body)
+            misses = 0
         else:
             with open(os.path.join(root, 'photos', 'missing.txt'), 'a') as f:
                 f.write(f'{album}/{file}\n')
+            misses += 1
+            if misses >= 30:   # thirty in a row is not missing photos, it is baps.org saying no for now
+                raise SlowDown('30 photos in a row refused by baps.org')
         p.tick(len(body or b''))
         time.sleep(gap)
     return True
