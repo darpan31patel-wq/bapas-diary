@@ -465,7 +465,8 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
         lst = cands.setdefault(x['y'], [])
         lst.append((s_close, s_doing, x))
         if len(lst) > 16:   # keep memory down: only the best few of each kind stay
-            keep_ids = {id(v) for v in sorted(lst, key=lambda v: -v[0])[:8] + sorted(lst, key=lambda v: -v[1])[:8]}
+            pinned = [v for v in lst if (w := PICKS.get(seed, {}).get(str(x['y']))) and isinstance(w, str) and w.lower() in (v[2].get('c') or '').lower()]
+            keep_ids = {id(v) for v in sorted(lst, key=lambda v: -v[0])[:8] + sorted(lst, key=lambda v: -v[1])[:8] + pinned}   # Darpan's pin always stays
             lst[:] = [v for v in lst if id(v) in keep_ids]
     years = sorted(cands)
     if sum(1 for y in years if any(v[2]['face'] for v in cands[y])) >= 5:
