@@ -592,32 +592,33 @@ def c6_timeline(m):
 # ---------------------------------------------------------------- designs: activities
 
 def a1_magazine(m):
-    """A feature page: the month's most special moment large, four more beneath, each with its date and caption."""
+    """A feature page: the month's most special moment large, three more beneath, each with its date and caption."""
     img = canvas(PT); w, h = PT; u = w / 1080; d = ImageDraw.Draw(img)
     y = title(img, m.name, 36 * u, 108 * u, "Highlights from Bapa's Diary", 28 * u)
     hl = m.highlights
     M = 56 * u
     big = hl[0]
-    bw, bh = w - 2 * M, 540 * u
+    bw, bh = w - 2 * M, 500 * u
     paste_round(img, shot(big, bw, bh, 'frame'), (M, y + 6 * u), 14 * u)
     scrim(img, (M, y + 6 * u + bh * .55, M + bw, y + 6 * u + bh), 215)
     dd = ImageDraw.Draw(img)
     day = int(big['d'][8:10])
-    draw_spaced(dd, M + 34 * u, y + bh - 92 * u, date_label(m, day).upper(), arimo_bold(17 * u), 4 * u, GOLD)
-    for i, line in enumerate(short_caption(dd, big, garamond(44 * u, 600), bw - 68 * u)):
-        dd.text((M + 34 * u, y + bh - 40 * u + i * 48 * u - (len(short_caption(dd, big, garamond(44 * u, 600), bw - 68 * u)) - 1) * 48 * u), line,
-                font=garamond(44 * u, 600), fill=(255, 244, 222), anchor='ls')
+    bf = garamond(44 * u, 600)
+    lines = short_caption(dd, big, bf, bw - 68 * u)
+    base = y + 6 * u + bh - 36 * u - (len(lines) - 1) * 50 * u   # the first caption line; the date sits above it
+    draw_spaced(dd, M + 34 * u, base - 74 * u, date_label(m, day).upper(), arimo_bold(17 * u), 4 * u, GOLD)
+    for i, line in enumerate(lines):
+        dd.text((M + 34 * u, base + i * 50 * u), line, font=bf, fill=(255, 244, 222), anchor='ls')
     top = y + bh + 40 * u
     gap = 26 * u
-    tw = (w - 2 * M - gap) / 2; th = (h - top - 120 * u - 2 * 104 * u) / 2
+    tw = (w - 2 * M - 2 * gap) / 3; th = h - top - 110 * u - 130 * u
     cf = garamond(25 * u, 600)
-    for n, x in enumerate(hl[1:5]):
-        r, c = divmod(n, 2)
-        x0, y0 = M + c * (tw + gap), top + r * (th + 104 * u)
+    for n, x in enumerate(hl[1:4]):
+        x0, y0 = M + n * (tw + gap), top
         paste_round(img, shot(x, tw, th, 'frame'), (x0, y0), 12 * u)
         dd = ImageDraw.Draw(img); day = int(x['d'][8:10])
         draw_spaced(dd, x0, y0 + th + 22 * u, date_label(m, day).upper(), arimo_bold(14 * u), 3 * u, GOLD)
-        for i, line in enumerate(short_caption(dd, x, cf, tw)):
+        for i, line in enumerate(short_caption(dd, x, cf, tw, 3)):
             dd.text((x0, y0 + th + 64 * u + i * 30 * u), line, font=cf, fill=CREAM, anchor='ls')
     foot(img)
     return img
@@ -781,7 +782,7 @@ def a6_story(m):
 def m1_cover_calendar(m):
     """A cover: the month's best darshan across the top with the title over it, the calendar of mixed days below."""
     img = canvas(PT); w, h = PT; u = w / 1080
-    hh = 840 * u
+    hh = 700 * u
     hero = m.hero(w / hh)
     img.paste(shot(hero, w, hh, 'close'), (0, 0))
     scrim(img, (0, hh * .45, w, hh), 255)
@@ -789,7 +790,7 @@ def m1_cover_calendar(m):
     for j in range(g.height):
         g.putpixel((0, j), round(255 * (1 - j / g.height) ** 1.5 * .7))
     img.paste(Image.new('RGB', (w, g.height), (26, 6, 10)), (0, 0), g.resize((w, g.height)))
-    title(img, m.name, hh - 250 * u, 120 * u, "In Bapa's Diary", 30 * u)
+    title(img, m.name, hh - 230 * u, 120 * u, "In Bapa's Diary", 30 * u)
     first = calendar.weekday(m.year, m.month, 1); start = (first + 1) % 7
     M, gap = 60 * u, 8 * u
     cell = (w - 2 * M - 6 * gap) / 7
@@ -914,13 +915,13 @@ def m5_medallion_ring(m):
     ch_ = th + 8 * u + 44 * u
     top, bottom = y + 10 * u, h - 90 * u
     cx, cy = w / 2, (top + bottom) / 2
-    acts = sorted(m.highlights[:8], key=lambda x: x['d'])
+    acts = sorted(m.highlights[:6], key=lambda x: x['d'])
     Ry = (bottom - top) / 2 - ch_ / 2 - 6 * u
-    Rx = w / 2 - 50 * u - (tw + 16 * u) / 2
+    Rx = w / 2 - 60 * u - (tw + 16 * u) / 2
     R = Ry
     cf = garamond(18 * u, 600)
     for n, x in enumerate(acts):
-        a = -math.pi / 2 + 2 * math.pi * n / len(acts)
+        a = -math.pi / 2 + 2 * math.pi * (n + .5) / len(acts)
         px_, py_ = cx + Rx * math.cos(a), cy + Ry * math.sin(a)
         day = int(x['d'][8:10])
         card = polaroid(shot(x, tw, th, 'frame'), round(8 * u), round(44 * u), 0, f'{day} {calendar.month_abbr[m.month]}', label_size=24 * u)
