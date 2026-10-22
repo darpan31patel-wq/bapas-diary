@@ -75,6 +75,33 @@ class Progress:
                   + (f', roughly {left:,.0f} hours left' if rate and self.saved > 50 else ''), flush=True)
 
 
+def write_captions(db, root):
+    """Beside the photos, in plain text: captions.csv in each baps.org album folder, post.txt in each Telegram post folder
+    (date, place, the post's words and its link). No internet needed, and only written when missing."""
+    import csv
+    albums = {}
+    for y, album, file, date, d0, d1, place, cap in db.execute(
+            'SELECT year, album, file, date, date_from, date_to, place, caption FROM photos'):
+        albums.setdefault((y, album), []).append((file, date or f'{d0} to {d1}', place, cap))
+    for (y, album), rows in albums.items():
+        path = os.path.join(root, 'photos', 'baps', str(y), album, 'captions.csv')
+        if os.path.exists(path):
+            continue
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w', newline='', encoding='utf-8') as f:
+            w = csv.writer(f)
+            w.writerow(['file', 'date', 'place', 'caption'])
+            w.writerows(sorted(rows))
+    for ch, pid, posted, date, place, text, url, rel in db.execute(
+            'SELECT channel, id, posted, date, place, text, url, local_folder FROM tg_posts'):
+        path = os.path.join(root, rel, 'post.txt')
+        if os.path.exists(path):
+            continue
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(f'{url}\nPosted {posted}\n' + (f'About {date}' + (f', {place}' if place else '') + '\n' if date else '') + f'\n{text or ""}\n')
+
+
 def baps_photos(db, root, gap, stop_at):
     rows = db.execute('SELECT album, file, local_path FROM photos ORDER BY year DESC, coalesce(date, date_from) DESC').fetchall()
     p = Progress('baps.org photos', len(rows))
@@ -185,6 +212,8 @@ def main():
         print('Stopping at', stop_at.strftime('%H:%M on %d %b'))
 
     try:
+        print('Writing the captions beside the photos (captions.csv, post.txt)...')
+        write_captions(db, root)
         if a.only != 'baps':
             telegram(db, root, a.gap, stop_at)
         if a.only != 'telegram':
