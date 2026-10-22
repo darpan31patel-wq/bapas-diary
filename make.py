@@ -224,6 +224,7 @@ NICE_MIN = 2.0        # the action score a photo needs before it beats a close d
 CLOSE_SHARE = .6      # about this share of the years are close darshans of Bapa's face (Darpan, 18 Oct 2026: 16 of 27)
 RECENT_DAYS = 7       # a photo shown in the last week is not shown again: the old albums cover several days, so
                       # neighbouring dates list the same photos (18 and 19 October share 2003, 2005, 2006 and 2007)
+SIDE_FRONT, SIDE_LOSS = .3, 2.5   # a face less front on than this (front_view) is a side profile, and loses up to this much as an action shot
 REPEAT_LOSS = 6       # what a photo shown in the last week (or another frame of that moment) loses: it only comes back when the year has nothing else
 SHOWN_FILE = os.path.join(HERE, 'archive', 'shown.json')   # which photo each year showed on each day (written after every run)
 CLOSE_MIN_FACE = 64   # pixels: a face smaller than this can't be blown up into a close darshan
@@ -451,11 +452,14 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
         if face:   # a soft or dark face loses a little even as an action shot, so a crisp bright photo of the same moment wins
             s_close -= .5 * max(0, 1 - sharp / (2 * SHARP_MIN)) + .5 * max(0, 1 - bright / (1.5 * BRIGHT_MIN))
             s_doing -= .5 * max(0, 1 - sharp / (2 * SHARP_MIN)) + .5 * max(0, 1 - bright / (1.5 * BRIGHT_MIN))
+            # Darpan, 22 Oct 2026 (2010 showed Bapa side on at Sharad Purnima): a side profile always loses to a photo
+            # where he faces the camera, and is never a nice action shot
+            s_doing -= SIDE_LOSS * max(0, SIDE_FRONT - front) / SIDE_FRONT
         if PICK == 'special' and GUEST.search(caption(x)):   # Darpan (20 Oct 2026): not the honouring and meeting guests ones
             s_close -= 2.5; s_doing -= 2.5
         # a really nice action shot: he is doing something, he is the subject, not small, nothing cut off (or a special
         # moment), and it scores well; anything less and the year is better served by a close darshan
-        nice = bool(face) and doing and subject and r >= .13 and (keep >= ACTION_KEEP or special) and s_doing - jitter >= NICE_MIN
+        nice = bool(face) and front >= SIDE_FRONT and doing and subject and r >= .13 and (keep >= ACTION_KEEP or special) and s_doing - jitter >= NICE_MIN
         x.update(keep=round(keep, 2), special=special, nice=nice, close_ok=close_ok)
         ALL.append((x['y'], round(sim, 2), bool(face), caption(x), x['i']))
         lst = cands.setdefault(x['y'], [])
