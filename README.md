@@ -9,7 +9,7 @@ from every year on this date, hung like ivory polaroids on cords. It lands in Da
 
 1. **GitHub makes the picture** (`.github/workflows/daily.yml`, around 6:15am UK time, with a second try an hour later).
    `make.py` reads the day's On This Day list from the Darshan Screensaver
-   (`darshan-screensaver.pages.dev/memories/MM-DD.json`), downloads the photos from baps.org,
+   (our own saved copy in `archive/memories/MM-DD.json`, refreshed by `lists.yml` from `darshan-screensaver.pages.dev/memories`), downloads the photos from baps.org,
    picks one photo per year where it recognises Bapa's face (favouring a close darshan),
    crops around his whole head (a year where his face can't be seen is shown whole, never cropped),
    lays them out (two cords; on busy days the cards get narrower and the photos taller) and saves

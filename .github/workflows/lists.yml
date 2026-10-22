@@ -1,0 +1,54 @@
+name: Save the screensaver lists
+
+# Keeps our own copy of the screensaver site's photo lists (darshan-screensaver.pages.dev/memories, one per calendar
+# day, plus schedule.json) in archive/memories, so the morning picture never depends on that site being up
+# (Darpan, 22 Oct 2026). Run it by hand any time to refresh the copy; a day whose list can't be read keeps its old copy.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/project-thread-u16g0l]
+    paths: [.github/workflows/lists.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  save:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download every day's list
+        run: |
+          mkdir -p archive/memories
+          python3 - <<'PY'
+          import datetime, json, os, time, urllib.request
+          got, missed = 0, []
+          names = [f'{datetime.date(2000, 1, 1) + datetime.timedelta(k):%m-%d}' for k in range(366)] + ['schedule']
+          for n in names:
+              url = f'https://darshan-screensaver.pages.dev/memories/{n}.json'
+              for i in range(3):
+                  try:
+                      req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (bapas-diary)'})
+                      data = json.loads(urllib.request.urlopen(req, timeout=30).read())
+                      json.dump(data, open(f'archive/memories/{n}.json', 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+                      got += 1
+                      break
+                  except Exception as e:
+                      err = e; time.sleep(3 * (i + 1))
+              else:
+                  missed.append(f'{n} ({err})')
+              time.sleep(.3)
+          print(f'saved {got} of {len(names)} lists')
+          if missed: print('kept the old copy for:', ', '.join(missed))
+          if got < 300: raise SystemExit('too many lists missing, nothing saved this time')
+          PY
+      - name: Save the copy
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add archive/memories
+          git diff --cached --quiet && { echo "No change"; exit 0; }
+          git commit -q -m "Saved copy of the screensaver photo lists ($(date +%F))"
+          for i in 1 2 3; do git pull -q --rebase && git push -q && exit 0; sleep 5; done; exit 1
