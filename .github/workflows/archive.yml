@@ -1,0 +1,39 @@
+name: Offline database
+
+# Darpan, 22 Oct 2026: one database file of everything (every baps.org vicharan photo, both Telegram channels,
+# the Bapa's Diary record), rebuilt every Sunday and on demand, kept in the release `database` as bapas.db.gz.
+# tools/archive_download.py on his Mac reads it and saves every photo and video into Google Drive.
+
+on:
+  schedule:
+    - cron: '0 2 * * 0'    # Sunday 2 or 3am UK
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get the raw crawl from the database branch
+        run: |
+          git fetch -q --depth 1 origin database
+          git checkout FETCH_HEAD -- crawl
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build bapas.db
+        run: |
+          python tools/build_archive.py --crawl crawl --out bapas.db
+          gzip -9 -c bapas.db > bapas.db.gz
+          cp tools/archive_download.py archive_download.py
+      - name: Put it in the release for the Mac to collect
+        run: |
+          gh release view database >/dev/null 2>&1 || gh release create database --title "Offline database" \
+            --notes "bapas.db.gz: every baps.org vicharan photo (1999 to 2026), both Telegram channels and the Bapa's Diary record in one SQLite file. archive_download.py saves every photo and video into Google Drive."
+          gh release upload database bapas.db.gz archive_download.py --clobber
