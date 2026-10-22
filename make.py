@@ -69,6 +69,18 @@ def vicharan_items(path, mmdd, place, per_caption=2):
         for i in ids.split(',')[:per_caption]:
             out.append({'y': y, 'd': when or f'{y}-{mmdd}', 'p': where or place.get(y, ''), 'c': c,   # the album's own place (2017 has Paris and London albums)
                         'i': f'https://www.baps.org/Data/Sites/1/Media/GalleryImages/{album}/WebImages/{prefix}{i}.jpg'})
+    # a travel day lists both towns ('Mumbai, Gondal'); an album whose captions name just one of them is from that town
+    # (Darpan, 22 Oct 2026: 'On the way to darshan at Yogi Smruti Mandir' in Gondal showed MUMBAI)
+    albums = collections.defaultdict(list)
+    for x in out:
+        albums[x['i'].split('/WebImages/')[0]].append(x)
+    for xs in albums.values():
+        towns = [t.strip() for t in xs[0]['p'].split(',') if t.strip()]
+        if len(towns) > 1:
+            named = [t for t in towns if any(re.search(rf'\b{re.escape(t)}', x['c'], re.I) for x in xs)]
+            if len(named) == 1 and named[0] != towns[0]:
+                for x in xs:
+                    x['p'] = named[0]
     return out
 
 
@@ -561,7 +573,7 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
             mode = 0 if (k == 0 or not v[2]['nice'] or (PICK == 'special' and not v[2]['special'])) else 1
             x = with_crop(v, mode)
             key = pick_key(x)
-            if w['pick'] is None and not any(same_caption(key, u) for u in used):
+            if w['pick'] is None and (v[k] > 50 or not any(same_caption(key, u) for u in used)):   # a pin shows even if its caption repeats
                 picked.append(x); used.append(key); w['pick'] = x
                 w['rows'].append((v[mode], x, 'chosen'))
             elif len(w['rows']) < 5:
