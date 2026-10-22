@@ -1,6 +1,6 @@
 name: Offline database
 
-# Darpan, 22 Oct 2026: one database file of everything (every baps.org vicharan photo, both Telegram channels,
+# Darpan, 22 Oct 2026: one database file of everything (every baps.org vicharan photo, see scan.yml for the ones no page lists, both Telegram channels,
 # the Bapa's Diary record), rebuilt every Sunday and on demand, kept in the release `database` as bapas.db.gz.
 # tools/archive_download.py on his Mac reads it and saves every photo and video into Google Drive.
 
@@ -42,9 +42,10 @@ jobs:
               json.dump(sorted(have + add, key=lambda p: p['id']), open(old, 'w'), ensure_ascii=False)
               print(old, '+', len(add), 'new posts')
           PY
-      - name: Build bapas.db
+      - name: Build bapas.db (the day pages, the screensaver button's pages, and the album scan's finds)
         run: |
-          python tools/build_archive.py --crawl crawl --out bapas.db
+          gh release download database -p scan.json 2>/dev/null || echo '{}' > scan.json
+          python tools/build_archive.py --crawl crawl --scan scan.json --out bapas.db
           gzip -9 -c bapas.db > bapas.db.gz
           cp tools/archive_download.py archive_download.py
       - name: Put it in the release for the Mac to collect

@@ -5,10 +5,12 @@ Run on the Mac, overnight, with Google Drive for desktop set to "Stream files":
     python3 archive_download.py                 # until everything is saved (stop any time with Ctrl+C)
     python3 archive_download.py --until 07:00   # stop at 7am
     python3 archive_download.py --only telegram # just the two Telegram channels
+    python3 archive_download.py --check         # no downloading: count what is saved against the database
 
 Everything goes into "My Drive/Bapa's Archive": bapas.db (the database), then
   photos/baps.org/2019/2019-01-05 Mumbai/Swamishri performs the arti (2019_01_05_001_Mumbai).jpg  (+ captions.csv)
   telegram/Today in BAPS History/2016-05-13 Sarangpur Mandir Shatabdi Mahotsav (post 20)/photo 1.jpg, video 1.mp4, post.txt
+check.txt says, year by year, how many photos the database knows, how many are saved and which baps.org refused.
 Files already there are skipped, so a stopped run carries on
 where it left off. It is gentle on purpose: one file at a time with a pause between them, and if baps.org ever
 shows its "Just a moment" check it stops for the night instead of trying to get round it.
@@ -82,19 +84,23 @@ def write_captions(db, root):
     full caption and baps.org address), post.txt in each Telegram post folder (its link, date, place and words).
     No internet needed, and only written when missing."""
     import csv
-    folders = {}
-    for rel, album, file, date, d0, d1, place, cap in db.execute(
-            'SELECT local_path, album, file, date, date_from, date_to, place, caption FROM photos'):
+    folders, newer = {}, set()
+    how = {'page': 'day page', 'button': 'day page (screensaver button)', 'scan': 'album scan, not on any page'}
+    for rel, album, file, date, d0, d1, place, cap, src in db.execute(
+            'SELECT local_path, album, file, date, date_from, date_to, place, caption, source FROM photos'):
         folders.setdefault(os.path.dirname(rel), []).append(
-            (os.path.basename(rel), date or f'{d0} to {d1}', place, cap, SITE.format(album=album, size='WebImages', file=file)))
+            (os.path.basename(rel), date or f'{d0} to {d1}', place, cap, SITE.format(album=album, size='WebImages', file=file),
+             how.get(src, src)))
+        if src != 'page':
+            newer.add(os.path.dirname(rel))
     for folder, rows in folders.items():
         path = os.path.join(root, folder, 'captions.csv')
-        if os.path.exists(path):
+        if os.path.exists(path) and folder not in newer:   # a folder the scan or button added to is written again
             continue
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w', newline='', encoding='utf-8') as f:
             w = csv.writer(f)
-            w.writerow(['file', 'date', 'place', 'caption', 'baps.org'])
+            w.writerow(['file', 'date', 'place', 'caption', 'baps.org', 'found on'])
             w.writerows(sorted(rows))
     for ch, pid, posted, date, place, text, url, rel in db.execute(
             'SELECT channel, id, posted, date, place, text, url, local_folder FROM tg_posts'):
@@ -147,6 +153,43 @@ def baps_photos(db, root, gap, stop_at):
     return True
 
 
+def check(db, root):
+    """check.txt: every photo and Telegram post the database knows, against what is saved in the folder."""
+    missing = set()
+    if os.path.exists(os.path.join(root, 'photos', 'missing.txt')):
+        missing = set(open(os.path.join(root, 'photos', 'missing.txt')).read().split('\n'))
+    years, gone = {}, []
+    for y, album, file, rel, src in db.execute('SELECT year, album, file, local_path, source FROM photos ORDER BY year'):
+        c = years.setdefault(y, [0, 0, 0, 0])   # known, saved, refused by baps.org, still to fetch
+        c[0] += 1
+        if os.path.exists(os.path.join(root, rel)):
+            c[1] += 1
+        elif f'{album}/{file}' in missing:
+            c[2] += 1; gone.append(f'{album}/{file}')
+        else:
+            c[3] += 1
+    by_src = dict(db.execute('SELECT source, count(*) FROM photos GROUP BY source').fetchall())
+    tg = db.execute('SELECT channel, local_folder FROM tg_posts WHERE photos > 0 OR videos > 0').fetchall()
+    tg_done = sum(os.path.exists(os.path.join(root, rel, '.done')) for _, rel in tg)
+    total = [sum(c[k] for c in years.values()) for k in range(4)]
+    lines = [f'Bapa\'s Archive check, {datetime.datetime.now():%d %B %Y %H:%M}', '',
+             f'baps.org photos: {total[0]:,} known ({by_src.get("page", 0):,} from the day pages, {by_src.get("button", 0):,} from '
+             f'the screensaver button, {by_src.get("scan", 0):,} found by the album scan), {total[1]:,} saved, '
+             f'{total[2]:,} refused by baps.org, {total[3]:,} still to fetch', '',
+             'Year    known    saved  refused  to fetch'] + [
+             f'{y}  {c[0]:>7,}  {c[1]:>7,}  {c[2]:>7,}  {c[3]:>8,}' for y, c in sorted(years.items())] + [
+             '', f'Telegram: {len(tg):,} posts with photos or videos, {tg_done:,} saved']
+    scan = db.execute("SELECT value FROM about WHERE key = 'scan'").fetchone()
+    if scan:
+        lines.append(f'Album scan: {scan[0]}')
+    if gone:
+        lines += ['', 'Refused by baps.org (tried every run):'] + gone
+    with open(os.path.join(root, 'check.txt'), 'w') as f:
+        f.write('\n'.join(lines) + '\n')
+    print('\n'.join(lines[:3]))
+    print(f'Telegram: {tg_done:,} of {len(tg):,} posts saved. Every year is in check.txt.')
+
+
 def media_in(page):
     """Photo and video addresses in a post's embed page."""
     photos = re.findall(r"tgme_widget_message_photo_wrap[^>]*background-image:url\('([^']+)'\)", page)
@@ -193,6 +236,7 @@ def main():
     ap.add_argument('--until', help='stop at this time, e.g. 07:00')
     ap.add_argument('--only', choices=('baps', 'telegram'))
     ap.add_argument('--gap', type=float, default=2.0, help='seconds between files (default 2)')
+    ap.add_argument('--check', action='store_true', help='only count what is saved (check.txt), download nothing')
     a = ap.parse_args()
 
     root = a.to
@@ -226,6 +270,8 @@ def main():
             stop_at += datetime.timedelta(days=1)
         print('Stopping at', stop_at.strftime('%H:%M on %d %b'))
 
+    if a.check:
+        return check(db, root)
     try:
         print('Writing the captions beside the photos (captions.csv, post.txt)...')
         write_captions(db, root)
@@ -238,6 +284,8 @@ def main():
         print(f'\nStopped: {e}. That means "please slow down", so it is finished for tonight. Run it again tomorrow night.')
     except KeyboardInterrupt:
         print('\nStopped. Run it again any time and it carries on where it left off.')
+    print('Counting what is saved...')
+    check(db, root)
 
 
 if __name__ == '__main__':

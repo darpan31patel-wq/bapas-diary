@@ -1,10 +1,13 @@
 """Build bapas.db, one SQLite file holding everything Bapa's Diary knows (Darpan, 22 Oct 2026: the offline database).
 
-    python tools/build_archive.py --crawl /path/to/bapas-diary-crawl --out bapas.db
+    python tools/build_archive.py --crawl /path/to/bapas-diary-crawl --scan scan.json --out bapas.db
 
 Tables (every photo, nothing cut out):
   photos     every baps.org vicharan photo: year, date (or the page's date range), place, album, file, caption,
-             is_bapa (the photo_urls view gives its full size and 800 px web addresses)
+             is_bapa, source (the photo_urls view gives its full size and 800 px web addresses). Three ways in:
+               page    the day pages, crawled in Darpan's Chrome on 18 Oct 2026 (crawl/bapas-diary-YYYY.json)
+               button  the newer day pages his screensaver's button has read since (crawl/button/YYYY-MM.json)
+               scan    photos in an album that no page lists, found by tools/album_scan.py (scan.json, no caption)
   tg_posts   every post of both Telegram channels (history = Today in BAPS History, satpurush = Satpurush in UK & Europe)
   tg_events  the dated stories read out of those posts
   tg_cards   the older guru cards made from the channel
@@ -13,7 +16,7 @@ Tables (every photo, nothing cut out):
 
 The photo and video files themselves are fetched by tools/archive_download.py, which saves them next to this file.
 """
-import argparse, datetime, json, os, re, sqlite3, sys
+import argparse, datetime, glob, json, os, re, sqlite3, sys, urllib.parse
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(HERE, 'tools'))
@@ -72,7 +75,7 @@ SCHEMA = """
 CREATE TABLE about (key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE photos (
   year INTEGER, date TEXT, date_from TEXT, date_to TEXT, place TEXT, album TEXT, file TEXT, caption TEXT,
-  is_bapa INTEGER, local_path TEXT, PRIMARY KEY (album, file));
+  is_bapa INTEGER, source TEXT, local_path TEXT, PRIMARY KEY (album, file));
 CREATE VIEW photo_urls AS SELECT album, file,
   'https://www.baps.org/Data/Sites/1/Media/GalleryImages/' || album || '/FullSizeImages/' || file AS full_url,
   'https://www.baps.org/Data/Sites/1/Media/GalleryImages/' || album || '/WebImages/' || file AS web_url FROM photos;
@@ -90,6 +93,37 @@ CREATE TABLE diary (date TEXT, year INTEGER, photo_url TEXT, caption TEXT, PRIMA
 """
 
 
+def newer(rows, crawl, scan):
+    """Photos the 18 Oct crawl doesn't have: the screensaver button's day pages, then the album scan's finds."""
+    have = {(r[5], r[6].lower()) for r in rows}
+    album_day = {r[5]: r for r in rows}   # a found photo goes in its album's folder, with its date and place
+    out = []
+    for path in sorted(glob.glob(os.path.join(crawl, 'button', '*.json'))):
+        for x in load_json(path, []):
+            m = re.search(r'GalleryImages/(\d+)/\w+/(.+)$', x['i'])
+            album, file = m[1], urllib.parse.unquote(m[2])
+            if (album, file.lower()) in have:
+                continue
+            have.add((album, file.lower()))
+            when = datetime.date.fromisoformat(x['d'])
+            out.append((when.year, x['d'], None, None, x.get('p'), album, file, x.get('c'), int(build_db.about_bapa(x.get('c'), when)),
+                        'button', photo_path(when.year, x['d'], None, None, x.get('p'), file, x.get('c'))))
+            album_day.setdefault(album, out[-1])
+    for x in load_json(scan or '', {}).get('extra', []):
+        album, file = x['album'], x['file']
+        if (album, file.lower()) in have:
+            continue
+        have.add((album, file.lower()))
+        sib = album_day.get(album)
+        if sib:
+            y, when, d0, d1, place = sib[:5]
+        else:   # a new album no page has shown yet: its date and place are in the file name
+            m = re.match(r'(\d{4})_(\d{2})_(\d{2})_\d+_([A-Za-z_]+?)_*(?:f|Edit)?\.jpg$', file)
+            y, when, d0, d1, place = int(m[1]), f'{m[1]}-{m[2]}-{m[3]}', None, None, m[4].replace('_', ' ')
+        out.append((y, when, d0, d1, place, album, file, None, None, 'scan', photo_path(y, when, d0, d1, place, file, '')))
+    return out
+
+
 def load_json(path, default):
     try:
         return json.load(open(path, encoding='utf-8'))
@@ -100,6 +134,7 @@ def load_json(path, default):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--crawl', required=True, help='folder with bapas-diary-YYYY.json and bapas-diary-fixes.json')
+    ap.add_argument('--scan', help="album_scan.py's scan.json: photos no page lists")
     ap.add_argument('--out', default='bapas.db')
     a = ap.parse_args()
 
@@ -115,13 +150,14 @@ def main():
             when = day or (span[0] if span and span[0] == span[1] else None)
             near = when or (span and span[0]) or datetime.date(y, 7, 1)
             rows.append((y, when and str(when), span and str(span[0]), span and str(span[1]), place, album, file, cap,
-                         int(build_db.about_bapa(cap, near)), photo_path(y, when, span and span[0], span and span[1], place, file, cap)))
+                         int(build_db.about_bapa(cap, near)), 'page', photo_path(y, when, span and span[0], span and span[1], place, file, cap)))
+    rows += newer(rows, a.crawl, a.scan)
     seen = {}
     for r in rows:
         seen[r[-1].lower()] = seen.get(r[-1].lower(), 0) + 1
     rows = [r[:-1] + (re.sub(r' \((.*)\)(\.\w+)$', lambda m: f' ({r[5]} {m[1]}){m[2]}', r[-1]) if seen[r[-1].lower()] > 1 else r[-1],)
             for r in rows]
-    db.executemany('INSERT OR IGNORE INTO photos VALUES (?,?,?,?,?,?,?,?,?,?)', rows)
+    db.executemany('INSERT OR IGNORE INTO photos VALUES (?,?,?,?,?,?,?,?,?,?,?)', rows)
 
     for ch, (name, folder, title) in CHANNELS.items():
         posts = date_posts(ch, folder, load_json(os.path.join(HERE, folder, 'posts.json'), []))
@@ -144,11 +180,14 @@ def main():
         for d, ys in shown.items() if isinstance(ys, dict) for y, v in ys.items() if y.isdigit()])
 
     counts = {t: db.execute(f'SELECT count(*) FROM {t}').fetchone()[0] for t in ('photos', 'tg_posts', 'tg_events', 'tg_cards', 'diary')}
+    counts['photos_by_source'] = dict(db.execute('SELECT source, count(*) FROM photos GROUP BY source').fetchall())
     db.executemany('INSERT INTO about VALUES (?,?)', [
         ('built', datetime.date.today().isoformat()),
         ('from', 'baps.org vicharan crawl 1999 to 2026 (18 Oct 2026), Today in BAPS History and Satpurush in UK & Europe '
                  'Telegram channels, Bapa\'s Diary shown record'),
         ('full_url', 'FullSizeImages is the original upload; WebImages (about 800 px) is used when there is no original'),
+        ('scan', json.dumps({k: v for k, v in load_json(a.scan or '', {}).items() if k not in ('extra', 'done')}
+                            | {'albums_checked': len(load_json(a.scan or '', {}).get('done', {}))})),
         ('counts', json.dumps(counts))])
     db.commit()
     db.execute('VACUUM')
