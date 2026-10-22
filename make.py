@@ -371,10 +371,27 @@ def shown():
         return {}
 
 
+def fingerprint(x):
+    """A small sketch of the photo itself (64 hex digits), so the same photo is known again when its address changes
+    (the channel's photo links change every time they are read) or baps.org lists it twice."""
+    if 'fp' not in x:
+        try:
+            g = Image.open(x['path']).convert('L').resize((17, 16), Image.LANCZOS)
+            p = list(g.getdata())
+            x['fp'] = '%064x' % sum(1 << i for i in range(256) if p[i // 16 * 17 + i % 16] > p[i // 16 * 17 + i % 16 + 1])
+        except Exception:
+            x['fp'] = None
+    return x['fp']
+
+
+def same_photo(a, b):
+    return bool(a and b) and bin(int(a, 16) ^ int(b, 16)).count('1') <= 20   # of 256: the same photo again, not just a similar one
+
+
 def remember(day, photos):
     """Record today's picks in archive/shown.json (the last two months), so the next days pick other photos."""
     s = shown()
-    s[str(day)] = {str(x['y']): {'i': x['i'], 'c': caption(x)} for x in photos}
+    s[str(day)] = {str(x['y']): {'i': x['i'], 'c': caption(x), 'f': fingerprint(x)} for x in photos}
     s = {d: v for d, v in sorted(s.items()) if abs((day - datetime.date.fromisoformat(d)).days) <= 60}
     s['_how'] = 'The photo each year showed on each day. A photo shown in the last RECENT_DAYS days is not picked again (make.py).'
     json.dump(s, open(SHOWN_FILE, 'w'), indent=1)
@@ -460,13 +477,15 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
                 cands[y][j] = (v[0] - min(.5, .25 * others), v[1] - min(.5, .25 * others), v[2])
     if day:   # a photo shown in the last week loses heavily and stops counting as a nice action shot, its caption loses 1.5
         # (another moment of that year wins when there is one), so neighbouring dates that list the same album show different photos of Bapa
-        recent, recent_keys, recent_albums = {}, {}, {}   # url -> how many days ago it was shown; album -> captions shown from it
+        recent, recent_keys, recent_albums, recent_fps = {}, {}, {}, {}   # url -> how many days ago it was shown; album -> captions shown from it
         for d, ys in shown().items():
             ago = (day - datetime.date.fromisoformat(d)).days
             if 0 < ago <= RECENT_DAYS:
                 for y, u in ys.items():
-                    u, c = (u['i'], u.get('c', '')) if isinstance(u, dict) else (u, '')
+                    u, c, fp = (u['i'], u.get('c', ''), u.get('f')) if isinstance(u, dict) else (u, '', None)
                     recent[u] = min(ago, recent.get(u, ago))
+                    if fp:
+                        recent_fps.setdefault(int(y), []).append(fp)
                     recent_keys.setdefault(int(y), []).append(caption_key(c) if c else None)
                     if album(u):
                         recent_albums.setdefault(album(u), []).append(caption_key(c) if c else None)
@@ -479,8 +498,9 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
                 # and 2003 the very photo from 18 October (the old fading penalty had worn off). So a photo shown in the
                 # last week, or another frame of the same moment (same album, same caption), is out for the week
                 # whenever the year has anything else; another photo from an album shown this week loses a little.
-                same_moment = v[2]['i'] in recent or any(k and same_caption(keys[y][j], k) for k in recent_albums.get(al, []))
-                loss = REPEAT_LOSS if same_moment else (1.5 if any(same_caption(keys[y][j], k) for k in seen) else 0)
+                same_moment = (v[2]['i'] in recent or any(k and same_caption(keys[y][j], k) for k in recent_albums.get(al, []))
+                               or any(same_photo(fingerprint(v[2]), f) for f in recent_fps.get(y, [])))
+                loss = REPEAT_LOSS + (RECENT_DAYS + 1 - recent.get(v[2]['i'], RECENT_DAYS)) / RECENT_DAYS / 2 if same_moment else (1.5 if any(same_caption(keys[y][j], k) for k in seen) else 0)
                 loss += .5 if al in recent_albums and not same_moment else 0
                 if loss:   # (the same caption again, 'plays dandiya' two days running, Darpan 20 Oct 2026: another moment wins)
                     cands[y][j] = (v[0] - loss, v[1] - loss, v[2])
