@@ -1,4 +1,4 @@
-name: Photo candidates
+name: Candidates sheet (test branch only, never ship)
 
 # Makes preview/<name>.jpg: a labelled sheet of chosen baps.org photos (this is how a year's options get compared).
 # Runs when tools/candidates.txt changes on a test branch, or by hand. The file: line 1 the name, line 2 the title,
@@ -6,8 +6,8 @@ name: Photo candidates
 
 on:
   push:
-    branches-ignore: [main]
-    paths: ['tools/candidates.txt']
+    branches: [claude/project-thread-outcr7]
+    paths: ['tools/candidates.txt', '.github/workflows/sheet-test.yml']
   workflow_dispatch:
 
 permissions:
