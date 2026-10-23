@@ -1,0 +1,20 @@
+# Website only (bapas-diary.com): read-only check that the live pages and the R2 photo address answer.
+name: website-check
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['.github/workflows/website-check.yml']
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Pages and photos answer
+        run: |
+          curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/r2/buckets/bapas-diary-photos/domains/custom | jq -c '[.result.domains[]? | {domain, status}]'
+          for u in https://bapas-diary.com/ https://www.bapas-diary.com/ https://bapas-diary.com/search/ https://bapas-diary.com/search/data/about.json https://bapas-diary.com/travels/ \
+                   https://photos.bapas-diary.com/s/3148/01_TP_1998_80_17.jpg https://photos.bapas-diary.com/m/3148/01_TP_1998_80_17.jpg; do
+            echo "$u -> $(curl -s -o /dev/null -w '%{http_code} %{content_type} %{size_download}B %{redirect_url}' "$u")"
+          done
