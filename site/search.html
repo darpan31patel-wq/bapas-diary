@@ -38,6 +38,8 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 #q::placeholder { color: var(--muted); font-style: italic; }
 select, input[type=date], .clear { font: 700 12px var(--sans); letter-spacing: .04em; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper-hi); color: var(--maroon); }
 .clear { cursor: pointer; text-transform: uppercase; letter-spacing: .12em; font-size: 11px; }
+.reset { font: italic 600 16px var(--serif); color: var(--maroon); background: none; border: 0; border-bottom: 1px solid var(--gold-soft); border-radius: 0; padding: 4px 2px; cursor: pointer; }
+.reset:hover { color: var(--gold-deep); border-bottom-color: var(--maroon); }
 .clear:hover, select:hover, input[type=date]:hover { border-color: var(--maroon); }
 :focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 2px; }
 .filters { display: grid; gap: 10px; padding-block: 16px 4px; justify-items: center; }
@@ -143,6 +145,7 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
   <div class="wrap">
     <div class="controls">
       <input id="q" type="search" placeholder="Search anything, e.g. annakut London" autocomplete="off" aria-label="Search words">
+      <button class="reset" id="clear" type="button" title="Clear the search and every filter">&#x2715; Clear all</button>
       <select id="order" aria-label="Order"><option value="old">Oldest first</option><option value="new">Newest first</option></select>
     </div>
   </div>
@@ -158,13 +161,11 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
     <input type="date" id="from" min="1970-01-01" max="2027-12-31" aria-label="From date">
     <span class="and">and</span>
     <input type="date" id="to" min="1970-01-01" max="2027-12-31" aria-label="To date">
-    <button class="clear" id="today" type="button">Today through the years</button>
   </div>
   <div class="frow"><span class="flabel">Filter</span>
     <select id="place" aria-label="Place"><option value="">Every place</option></select>
     <select id="fest" aria-label="Festival"><option value="">Every festival</option></select>
     <select id="act" aria-label="What is happening"><option value="">Every action</option></select>
-    <button class="clear" id="clear" type="button">Clear all</button>
   </div>
 </div>
 
@@ -421,12 +422,6 @@ $('years').addEventListener('click', e => {
   $('year').value = $('year').value === b.dataset.y ? '' : b.dataset.y; search();
 });
 $('clear').addEventListener('click', () => { ['q', 'fest', 'place', 'act', 'year', 'month', 'day', 'from', 'to'].forEach(id => $(id).value = ''); search(); });
-$('today').addEventListener('click', () => {
-  const now = new Date();
-  ['q', 'fest', 'place', 'act', 'year', 'from', 'to'].forEach(id => $(id).value = '');
-  $('month').value = String(now.getMonth() + 1).padStart(2, '0'); $('day').value = String(now.getDate()).padStart(2, '0');
-  search();
-});
 
 function fillFestivals() {
   const when = {};   // festival -> the month-days it falls on, to order the list through the year
