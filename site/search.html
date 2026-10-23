@@ -51,7 +51,10 @@ select, input[type=date], .clear { font: 700 12px var(--sans); letter-spacing: .
 .hint { font-size: 13px; color: var(--muted); }
 .hint code { white-space: nowrap; font: 13px var(--sans); color: var(--maroon); background: var(--paper-hi); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
 .can { padding-block: 22px 4px; display: grid; gap: 10px; justify-items: center; text-align: center; }
-.can .lead { margin: 0; max-width: 70ch; font: 500 19px/1.45 var(--serif); color: var(--ink); }
+.can .lead { margin: 0; max-width: 62ch; font: 500 19px/1.45 var(--serif); color: var(--ink); }
+/* no single word left alone on the last line of any centred text */
+.can .lead, .sub, .hint, .count, .day-head .about, .day-head .fest, .card:not(.post) .cap { text-wrap: balance; }
+.card.post .cap { text-wrap: pretty; }
 .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .chips button { border: 1px solid var(--gold-soft); background: var(--paper-hi); color: var(--maroon); border-radius: 999px; padding: 5px 16px; font: 600 17px var(--serif); cursor: pointer; }
 .chips button:hover { background: var(--maroon); color: var(--gold-hi); border-color: var(--maroon); }
@@ -167,7 +170,7 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 
 <main class="wrap">
   <section class="can" aria-label="Things you can search">
-    <p class="lead">Anything is searchable: a word from a caption, a place, a festival, an Indian date, what is happening in a photo (smiling, laughing, a garland, blessing) or any date. Try one of these:</p>
+    <p class="lead">Search for anything: a word from a caption, a place, a festival, a date, or what is happening in a photo.</p>
     <div class="chips" id="c-try"></div>
     <div class="hint">Every word must appear. Use <code>"quotes"</code> for a phrase and <code>-word</code> to leave a word out. Pick a month and day with no year to see that date across every year.</div>
   </section>
