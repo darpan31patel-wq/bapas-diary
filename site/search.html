@@ -66,10 +66,9 @@ select option { background: #2a0a12; color: var(--cap); }
 /* a photo is an ivory polaroid: the picture in a thick frame, the caption written on the frame below it */
 .card { position: relative; min-width: 0; display: flex; flex-direction: column; cursor: pointer; color: var(--maroon-ink);
   background: linear-gradient(var(--ivory-top), var(--ivory-bot)); border: 1px solid var(--ivory-edge); padding: 7% 7% 0;
-  box-shadow: 0 10px 18px rgba(0, 0, 0, .42), 0 2px 4px rgba(0, 0, 0, .3); transform: rotate(var(--tilt, 0deg)); }
-.grid > .card:nth-of-type(3n+1) { --tilt: -1.1deg; } .grid > .card:nth-of-type(3n+2) { --tilt: .8deg; } .grid > .card:nth-of-type(5n) { --tilt: -.4deg; }
+  box-shadow: 0 10px 18px rgba(0, 0, 0, .42), 0 2px 4px rgba(0, 0, 0, .3); }
 @media (prefers-reduced-motion: no-preference) { .card { transition: transform .25s ease, box-shadow .25s ease; } }
-.card:hover, .card:focus-visible { transform: rotate(0deg) translateY(-3px); box-shadow: 0 16px 26px rgba(0, 0, 0, .5), 0 2px 4px rgba(0, 0, 0, .3); }
+.card:hover, .card:focus-visible { transform: translateY(-3px); box-shadow: 0 16px 26px rgba(0, 0, 0, .5), 0 2px 4px rgba(0, 0, 0, .3); }
 .pic { aspect-ratio: 4 / 3; background: #2a0d14; display: grid; place-items: center; overflow: hidden; max-width: 100%; }
 .pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .pic .none { font: italic 500 15px var(--serif); color: var(--gold-soft); padding: 12px; text-align: center; }
