@@ -15,7 +15,7 @@ from PIL import Image, ImageOps
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import make  # noqa: E402
 
-PER_YEAR = 8      # photos a card turns through in the mockup (the real site would show them all)
+PER_YEAR = 10     # photos a card turns through in the mockup (the real site would show them all)
 SIDE = 440        # longest side of a card photo, in pixels
 FACE_SIDE = 260   # a close up crop for the face through the years strip
 CLOSE = .16       # face height as a share of the photo's height from which a photo counts as a close up
