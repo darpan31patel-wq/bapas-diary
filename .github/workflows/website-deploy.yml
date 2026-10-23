@@ -1,0 +1,42 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain.
+# Puts the live/ folder on Cloudflare Pages (project bapas-diary, production) and makes sure bapas-diary.com
+# and www.bapas-diary.com point at it. Only pages Darpan has typed yes to go in live/ (see live/README.md).
+name: website-deploy
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['live/**', '.github/workflows/website-deploy.yml']
+concurrency: website-deploy
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PROJECT: bapas-diary
+      DOMAIN: bapas-diary.com
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy live/ to Pages
+        run: |
+          mkdir out && rsync -a --exclude README.md live/ out/
+          npx --yes wrangler@3.114.0 pages deploy out --project-name "$PROJECT" --branch main --commit-dirty=true
+      - name: bapas-diary.com and www point at the site
+        run: |
+          api() { curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' "$@"; }
+          A=https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJECT
+          ZONE=$(api "https://api.cloudflare.com/client/v4/zones?name=$DOMAIN" | jq -r '.result[0].id')
+          Z=https://api.cloudflare.com/client/v4/zones/$ZONE/dns_records
+          for name in $DOMAIN www.$DOMAIN; do
+            echo "== $name"
+            echo "records there now:"; api "$Z?name=$name" | jq -c '[.result[] | {type, content, proxied}]'
+            api -X POST "$A/domains" -d "{\"name\":\"$name\"}" | jq -c '{success, status: .result.status, errors}'
+            if [ "$(api "$Z?name=$name" | jq '.result | length')" = 0 ]; then
+              api -X POST "$Z" -d "{\"type\":\"CNAME\",\"name\":\"$name\",\"content\":\"$PROJECT.pages.dev\",\"proxied\":true}" | jq -c '{success, errors}'
+            fi
+          done
+          sleep 30
+          api "$A/domains" | jq -c '[.result[] | {name, status, verification: .verification_data.status, validation: .validation_data.status}]'
+          for u in https://$PROJECT.pages.dev/travels/ https://$DOMAIN/ https://$DOMAIN/travels/; do
+            echo "$u -> $(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "$u")"
+          done
