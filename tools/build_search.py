@@ -109,10 +109,13 @@ def main():
     cal = []
     if db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'calendar'").fetchone():
         cal = [list(r) for r in db.execute(
-            "SELECT date, weekday, vikram_samvat, indian_date, festivals, festival_about, notes, source FROM calendar ORDER BY date")]
+            "SELECT date, weekday, vikram_samvat, indian_date, festivals, festival_about, notes, source, ekadashi, punam, amas FROM calendar ORDER BY date")]
         cal = [[c if c is not None else '' for c in r] for r in cal]
         for r in cal:
-            r[4] = '; '.join(festivals(r[4]))   # festivals, one name each
+            # festivals, one name each; Ekadashi, Punam and Amas join them so the festival list can find every one
+            ek, pu, am = r[8:11]
+            r[4] = '; '.join(festivals(r[4]) + [n for n, on in (('Ekadashi', ek), ('Punam', pu), ('Amas', am)) if on])
+            del r[8:]
         write(os.path.join(a.out, 'data', 'calendar.json'), cal)
 
     built = dict(db.execute("SELECT key, value FROM about"))
