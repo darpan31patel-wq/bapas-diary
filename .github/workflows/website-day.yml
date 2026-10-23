@@ -1,0 +1,52 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain.
+# Small photos of a few days for the day page mockup (tools/web_day.py --photos), packed into the release
+# `website-day-mockup` so Claude can build a private mockup page. Runs when this file or the tool changes on a claude/** branch.
+name: website-day
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['.github/workflows/website-day.yml', 'tools/web_day.py']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  days:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        day: ['10-24', '10-25', '12-07']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -q -r requirements.txt
+      - name: Database
+        run: curl -sSL https://github.com/${{ github.repository }}/releases/download/database/bapas.db.gz | gunzip > bapas.db
+      - name: Photos for ${{ matrix.day }}
+        run: python3 tools/web_day.py --db bapas.db --out day --days ${{ matrix.day }} --photos --gap 0.8
+      - run: tar czf day-${{ matrix.day }}.tgz day
+      - uses: actions/upload-artifact@v4
+        with:
+          name: day-${{ matrix.day }}
+          path: day-${{ matrix.day }}.tgz
+  release:
+    needs: days
+    if: always()
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: packs
+          merge-multiple: true
+      - name: Into the release
+        run: |
+          ls -la packs
+          gh release view website-day-mockup -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create website-day-mockup -R "$GITHUB_REPOSITORY" --prerelease --title "Day page mockup photos" --notes "Small photos of a few days for the website day page mockup. Not used by the daily picture."
+          gh release upload website-day-mockup packs/*.tgz --clobber -R "$GITHUB_REPOSITORY"
