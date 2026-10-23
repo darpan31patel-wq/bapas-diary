@@ -612,6 +612,210 @@ def m4_mix(cal, photos, y, m, kind):
     return img
 
 
+SPELLING = {'asembly': 'assembly', 'Swamianrayan': 'Swaminarayan', 'Swaminaryan': 'Swaminarayan'}
+NOT_FESTIVAL = re.compile(r'^\(?fast\)?$|^smart$|vruddhi|kshay|shraddh', re.I)
+
+
+def head_fits(x, w, h, mode):
+    """The crop window make.crop_to would use for this photo in a w x h frame, or None when Bapa's whole head
+    would not fit in it (make.crop_to then shows the whole photo on a blurred fill, which the calendar never does)."""
+    iw, ih = x['size']
+    fx, fy, fw, fh = x['face']
+    cw, ch = (ih * w / h, ih) if iw / ih > w / h else (iw, iw * h / w)
+    if mode == 'close':
+        ch = min(ch, fh / (.38 if w > h else .30)); cw = min(cw, ch * w / h); ch = cw * h / w
+    # 'snug' (a tight portrait in a wide frame): the whole head and chin, the neck may go
+    head = (fx - .35 * fw, fy - .5 * fh, fx + 1.35 * fw, fy + (1.15 if mode == 'snug' else 1.4) * fh)
+    if head[3] - head[1] > ch * .98 or head[2] - head[0] > cw * .98:
+        return None
+    x0, y0 = fx + fw / 2 - cw / 2, fy + fh / 2 - ch * ((.42 if h >= w else .36) if mode == 'close' else .38)
+    y0 = max(y0, head[3] - ch); y0 = min(y0, head[1])
+    y0 = max(y0, head[1] - ch * (.07 if mode == 'close' else .14))
+    x0 = min(max(0, x0), iw - cw); y0 = min(max(0, y0), ih - ch)
+    return x0, y0, x0 + cw, y0 + ch
+
+
+def pick_month(photos, aspect):
+    """One photo a day by the design brief (23 Oct 2026): a close darshan, or an action shot only when the moment is
+    special and really nice; special days are picked first; no photo twice, and the same moment (album and caption)
+    or the same caption on another day loses; a photo whose crop would cut Bapa's head is passed over."""
+    import make
+    cands = {int(k): v for k, v in photos.get('cands', {}).items()}
+    nice = lambda x: x.get('special') and x['s_act'] >= 2 and x.get('subject') and not x.get('unsure')
+    order = sorted(cands, key=lambda d: (-max([x['s_act'] for x in cands[d] if nice(x)] or [-9]), d))
+    chosen, used = {}, set()
+    for d in order:
+        best = None
+        for x in cands[d]:
+            if x['url'] in used:
+                continue
+            act = nice(x)
+            modes = ['frame', 'snug'] if act or x.get('unsure') else ['close', 'frame', 'snug']
+            mode = next((m for m in modes if head_fits(x, aspect, 1, m)), None)
+            if not mode:
+                continue
+            score = (x['s_act'] if act else x['s_close'] - (0 if mode == 'close' else .5)) - (.3 if mode == 'snug' else 0)
+            k = make.caption_key(x['caption'])
+            for c in chosen.values():
+                if make.same_caption(k, make.caption_key(c['caption'])):
+                    score -= 3 if c.get('album') == x.get('album') else 1.5
+            if best is None or score > best[0]:
+                best = (score, x, act, mode)
+        if best:
+            chosen[d] = dict(best[1], kind='act' if best[2] else 'close', mode=best[3])
+            used.add(best[1]['url'])
+    return chosen
+
+
+def fitted(d, text, maxw, lines=2):
+    """The caption on at most `lines` lines: whole, then a little smaller (90%, then 82%), then said shorter at a
+    natural break. Never trails off."""
+    import make
+    for size in (22, 20, 18):
+        f = make.garamond(size, 500)
+        out = make.wrap(d, text, f, maxw, lines, shorten=False)
+        if not out[-1].endswith('…'):
+            return out, f
+    for least in (math.ceil(len(text.split()) * 2 / 3), 0):    # keep at least two thirds of it if that can fit
+        out = make.wrap(d, text, f, maxw, lines, min_words=least)
+        if not out[-1].endswith('…'):
+            return out, f
+    out[-1] = out[-1].rstrip('…').rstrip(' ,;:')
+    return out, f
+
+
+def m6_calendar(cal, photos, y, m):
+    """The month calendar by Darpan's design brief (23 Oct 2026): the M4 look (maroon, gold, ivory cards on a cord
+    per week), the month on the left and where Bapa was on the right, every photo window the same 4:3 size and filled
+    with a head aware crop, a caption on every card, the tithi and festival on every day, and the first week's empty
+    boxes used for where Bapa went that month. 16:9, 3840 x 2160."""
+    import month as mc, make
+    W2, H2 = 3840, 2160
+    img = mc.canvas((W2, H2), glow=.45, jali=.08)
+    d = ImageDraw.Draw(img)
+    nd = calendar.monthrange(y, m)[1]
+    first = cal[f'{y}-{m:02d}-01']
+    picks = pick_month(photos, 4 / 3)
+    # where he went, in order: runs of days in one place
+    runs = []
+    for dn in range(1, nd + 1):
+        pl = re.sub(r',\s*India$', '', (picks.get(dn) or {}).get('place', ''))
+        if not pl:
+            continue
+        if runs and runs[-1][0] == pl:
+            runs[-1][2] = dn
+        else:
+            runs.append([pl, dn, dn])
+    places = list(dict.fromkeys(r[0] for r in runs))
+    M = 110
+    tf = make.garamond(118, 700)
+    make.gold_text(img, (M, 22), f'{calendar.month_name[m]} {y}', tf)
+    sub = f"{first['lunar_months'].replace('-', ' · ')}  ·  Vikram Samvat {first['vikram_samvat']}".upper()
+    make.draw_spaced(d, M + 4, 168, sub, make.garamond(30, 600), 6, mc.CREAM)
+    if places:
+        where = 'Bapa was in ' + (places[0] if len(places) == 1 else ', '.join(places[:-1]) + ' and ' + places[-1])
+        size = 96
+        while size > 50 and d.textlength(where, font=make.garamond(size, 700)) > W2 / 2 - M - 40:
+            size -= 4
+        wf = make.garamond(size, 700)
+        make.gold_text(img, (W2 - M - d.textlength(where, font=wf), 22 + (118 - size) * .7), where, wf)
+    cw = (W2 - 2 * M) / 7
+    for i, wd in enumerate(['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']):
+        f = make.arimo_bold(24)
+        make.draw_spaced(d, M + (i + .5) * cw - make.spaced(d, wd, f, 7) / 2, 232, wd, f, 7, (255, 160, 130) if i == 0 else mc.CREAM)
+    start = (datetime.date(y, m, 1).weekday() + 1) % 7
+    rows = 5
+    gy0, gy1 = 272, H2 - 18
+    rh = (gy1 - gy0) / rows
+    border, band = 11, 122
+    card_h = rh - 22
+    ph = round(card_h - border - band)
+    pw = round(ph * 4 / 3)
+    card_w = pw + 2 * border
+    rnd = random.Random(7)
+    wrapped = [dn for dn in range(36 - start, nd + 1)] if start + nd > 35 else []
+    empty = [c for c in range(start) if c >= len(wrapped)]           # first week boxes with no day in them
+    prev_month = None
+    for r in range(rows):
+        cy = gy0 + r * rh + 8
+        mc.rope(img, mc.sag(M - 40, W2 - M + 40, cy, 80, 12), 6)
+        if r == 0 and len(empty) >= 2:   # where Bapa went that month, on a note hung across the empty boxes
+            x0n, x1n = M + empty[0] * cw + 24, M + (empty[-1] + 1) * cw - 24
+            note = mc.ivory(x1n - x0n, card_h).convert('RGBA')
+            nd_ = ImageDraw.Draw(note)
+            nd_.rectangle((0, 0, note.width - 1, note.height - 1), outline=mc.IVORY_EDGE, width=2)
+            hf = make.arimo_bold(24)
+            make.draw_spaced(nd_, (note.width - make.spaced(nd_, 'WHERE BAPA WAS', hf, 7)) / 2, 48, 'WHERE BAPA WAS', hf, 7, (150, 104, 60))
+            lf, df = make.garamond(44, 700), make.garamond(32, 600)
+            ly = 120
+            step = min(70, (note.height - 130) / max(1, len(runs)))
+            for pl, a, b in runs[:6]:
+                when = f'{a} {calendar.month_name[m]}' if a == b else f'{a} to {b} {calendar.month_name[m]}'
+                tw = nd_.textlength(pl, font=lf) + 24 + nd_.textlength(when, font=df)
+                xx = (note.width - tw) / 2
+                nd_.text((xx, ly), pl, font=lf, fill=MAROON, anchor='ls')
+                nd_.text((xx + nd_.textlength(pl, font=lf) + 24, ly), when, font=df, fill=(110, 70, 56), anchor='ls')
+                ly += step
+            mc.drop_card(img, note, (x0n + x1n) / 2, cy + 6 + note.height / 2 - 4)
+            for px in (x0n + 60, x1n - 60):
+                mc.peg(img, px, cy + 12 * math.sin(math.pi * (px - M + 40) / (W2 - 2 * M + 80)), 1.0)
+        for c in range(7):
+            dn = r * 7 + c - start + 1
+            extra = False
+            if r == 0 and dn < 1 and c < len(wrapped):
+                dn, extra = wrapped[c], True
+            if not 1 <= dn <= nd:
+                continue
+            info = cal[f'{y}-{m:02d}-{dn:02d}']
+            tithi = info['indian_date'] if info['month'] != prev_month or extra else info['indian_date'].split(' ', 1)[-1]
+            if not extra:
+                prev_month = info['month']
+            fest = [re.sub(r'\s*\(.*?\)', '', f['name']) for f in info['festivals']] + \
+                   [n for n in info['notes'] if not NOT_FESTIVAL.search(n)]
+            fest = [f.rsplit(',', 1)[1].strip() if len(f) > 26 and ',' in f else f for f in fest]
+            x = picks.get(dn)
+            card = mc.ivory(card_w, card_h).convert('RGBA')
+            cd = ImageDraw.Draw(card)
+            cd.rectangle((0, 0, card.width - 1, card.height - 1), outline=mc.IVORY_EDGE, width=2)
+            if x:
+                im = Image.open(os.path.join(photos['dir'], x['file'])).convert('RGB')
+                box = head_fits(x, 4 / 3, 1, x['mode'])
+                card.paste(make.polish(im.crop(box).resize((pw, ph), Image.LANCZOS)), (border, border))
+            else:
+                cd.rectangle((border, border, border + pw, border + ph), fill=(232, 220, 198))
+                make.diamond(cd, card.width / 2, border + ph / 2, 10, (200, 176, 136))
+            cd.rectangle((border - 1, border - 1, border + pw, border + ph), outline=(150, 130, 100), width=2)
+            by = border + ph
+            nf, tf2 = make.garamond(40, 700), make.garamond(28, 600)
+            num = f'{dn} {calendar.month_abbr[m]}' if extra else str(dn)
+            nw, tw = cd.textlength(num, font=nf), cd.textlength(tithi, font=tf2)
+            x0 = (card.width - nw - 12 - tw) / 2
+            cd.text((x0, by + 40), num, font=nf, fill=(170, 34, 34) if c == 0 else MAROON, anchor='ls')
+            cd.text((x0 + nw + 12, by + 39), tithi, font=tf2, fill=(110, 70, 56), anchor='ls')
+            ly = by + 66
+            if fest:
+                cd.text((card.width / 2, ly), wrap(cd, fest[0], make.garamond(24, 700), card.width - 2 * border, 1)[0],
+                        font=make.garamond(24, 700), fill=(176, 40, 30), anchor='ms')
+                ly += 25
+            if x and x.get('caption'):
+                cap = x['caption']
+                for a_, b_ in SPELLING.items():
+                    cap = re.sub(rf'\b{a_}\b', b_, cap)
+                lines, cf = fitted(cd, cap, card.width - 2 * border - 4, 2)
+                for t in lines:
+                    cd.text((card.width / 2, ly), t, font=cf, fill=(88, 34, 34), anchor='ms')
+                    ly += 24
+            if extra:   # the month's last days, carried into the first week's empty boxes, sit back a little
+                card.putalpha(card.split()[3].point(lambda v: v * 4 // 5))
+            card = card.rotate(rnd.uniform(-1, 1), Image.BICUBIC, expand=True)
+            cx = M + (c + .5) * cw
+            dip = cy + 12 * math.sin(math.pi * (cx - M + 40) / (W2 - 2 * M + 80))
+            mc.drop_card(img, card, cx, dip + card.height / 2 - 4)
+            mc.peg(img, cx, dip, 1.0)
+    img.info['picks'] = picks
+    return img
+
+
 def m3_special(cal, photos, y, m):
     """The second card: the month's special moments, each with its date and Indian date."""
     img = paper((W, H))
@@ -672,6 +876,11 @@ def main():
     m4_wide(cal, photos, y, m).save(os.path.join(out, 'm4-baps-wide.jpg'), quality=88)
     for k in ('close', 'act', 'mixed'):
         m4_mix(cal, photos, y, m, k).convert('RGB').save(os.path.join(out, f'm5-calendar-cords-{k}.jpg'), quality=88)
+    if photos.get('cands'):
+        cal_img = m6_calendar(cal, photos, y, m)
+        cal_img.convert('RGB').save(os.path.join(out, 'm6-calendar.jpg'), quality=88)
+        for dn, x in sorted(cal_img.info['picks'].items()):
+            print(f"{dn:2d} {x['kind']:5s} {x['mode']:5s} {'UNSURE ' if x.get('unsure') else ''}{x['caption']}")
     m3_special(cal, photos, y, m).save(os.path.join(out, 'm3-special-moments.jpg'), quality=88)
     print('made', sorted(os.listdir(out)))
 
