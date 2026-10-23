@@ -33,19 +33,19 @@ h1 { font: 700 clamp(40px, 7vw, 76px)/1 var(--serif); margin: 0; text-wrap: bala
 .bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: rgba(243, 234, 217, .94); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); box-shadow: 0 6px 14px rgba(59, 18, 25, .06); }
 @media (max-width: 760px), (max-height: 700px) { .bar { position: static; } }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--maroon-out); }
-.controls { display: flex; flex-wrap: wrap; gap: 10px; padding-block: 16px 10px; align-items: center; }
+.controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding-block: 16px 10px; align-items: center; max-width: 920px; margin-inline: auto; }
 #q { flex: 1 1 260px; min-width: 0; font: 500 20px var(--serif); padding: 9px 14px; border: 1.5px solid var(--maroon); border-radius: 8px; background: var(--paper-hi); color: var(--ink); }
 #q::placeholder { color: var(--muted); font-style: italic; }
 select, input[type=date], .clear { font: 700 12px var(--sans); letter-spacing: .04em; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper-hi); color: var(--maroon); }
 .clear { cursor: pointer; text-transform: uppercase; letter-spacing: .12em; font-size: 11px; }
 .clear:hover, select:hover, input[type=date]:hover { border-color: var(--maroon); }
 :focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 2px; }
-.filters { display: grid; gap: 10px; padding-block: 16px 4px; }
-.frow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.flabel { font: 700 11px var(--sans); letter-spacing: .2em; text-transform: uppercase; color: var(--gold-deep); min-width: 8ch; }
+.filters { display: grid; gap: 10px; padding-block: 16px 4px; justify-items: center; }
+.frow { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; align-items: center; }
+.flabel { font: 700 11px var(--sans); letter-spacing: .2em; text-transform: uppercase; color: var(--gold-deep); }
 .frow .and { font: italic 500 17px var(--serif); color: var(--muted); }
-.frow select { min-width: 0; flex: 0 1 auto; }
-@media (max-width: 520px) { .flabel { flex-basis: 100%; } .frow select, .frow input { flex: 1 1 40%; } }
+.frow select { min-width: 0; flex: 0 1 auto; max-width: 260px; }
+@media (max-width: 520px) { .flabel { flex-basis: 100%; text-align: center; } .frow select, .frow input { flex: 1 1 40%; max-width: none; } }
 .dates { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding-bottom: 14px; font: 700 11px var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--gold-deep); }
 .dates label { display: inline-flex; gap: 8px; align-items: center; }
 .hint { font-size: 13px; color: var(--muted); }
@@ -91,17 +91,17 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 .card.post .cap { white-space: pre-line; font-size: 16px; line-height: 1.45; color: var(--ink); }
 .card.post .meta { margin-top: 6px; }
 /* a date heading: the date in maroon, and what the BAPS calendar says about it */
-.day-head { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; justify-content: center; text-align: center; padding: 28px 2px 6px; }
-.day-head .when { font: 700 clamp(24px, 3vw, 32px)/1.1 var(--serif); color: var(--maroon); background: none; border: 0; padding: 0; cursor: pointer; flex-basis: 100%; }
+.day-head { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px; align-items: center; text-align: center; padding: 28px 2px 8px; }
+.day-head .when { font: 700 clamp(24px, 3vw, 32px)/1.1 var(--serif); color: var(--maroon); background: none; border: 0; padding: 0; cursor: pointer; }
 .day-head .when::before, .day-head .when::after { content: "\25C6"; font-size: .4em; color: var(--gold); vertical-align: middle; margin: 0 .9em; }
 .day-head .when:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; }
-.day-head .tithi { font: 700 11px var(--sans); letter-spacing: .24em; text-transform: uppercase; color: var(--gold-deep); }
-.day-head .fest { font: 600 19px var(--serif); color: var(--ink); }
-.day-head .about { flex-basis: 100%; color: var(--muted); font: italic 500 16px/1.4 var(--serif); max-width: 70ch; margin-inline: auto; }
-.day-head .only { flex-basis: 100%; color: var(--muted); font: italic 500 15px var(--serif); }
+.day-head .tithi { order: 2; font: 700 11px var(--sans); letter-spacing: .24em; text-transform: uppercase; color: var(--gold-deep); }
+.day-head .fest { order: 1; font: 600 19px var(--serif); color: var(--ink); }
+.day-head .about { order: 3; color: var(--muted); font: italic 500 16px/1.4 var(--serif); max-width: 70ch; margin-inline: auto; }
+.day-head .only { order: 4; color: var(--muted); font: italic 500 15px var(--serif); }
 .day-view { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; align-items: center; padding: 10px 14px; margin-top: 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--paper-hi); font: 500 18px var(--serif); color: var(--maroon); }
 .more { display: flex; justify-content: center; padding-block: 8px 50px; }
-.more button { font: 700 12px var(--sans); letter-spacing: .2em; text-transform: uppercase; padding: 12px 24px; border-radius: 999px; border: 1px solid var(--maroon); background: var(--maroon); color: var(--gold-hi); cursor: pointer; }
+.more button { font: italic 500 17px var(--serif); padding: 12px 24px; border: 0; background: none; color: var(--muted); cursor: pointer; }
 /* the wide view */
 .big-info .tags { font: italic 500 16px var(--serif); color: var(--gold-soft); }
 .big-pic .soon { color: var(--gold-soft); font: italic 500 20px var(--serif); }
@@ -339,7 +339,7 @@ function more(want = parse($('q').value).want) {
   box.insertAdjacentHTML('beforeend', html);
   shown += next.length;
   $('more').hidden = shown >= hits.length;
-  $('more').textContent = `Show ${Math.min(PAGE, hits.length - shown)} more`;
+  $('more').textContent = 'Loading more…';
 }
 
 let timer;
@@ -347,6 +347,11 @@ function soon() { clearTimeout(timer); timer = setTimeout(search, 180); }
 $('q').addEventListener('input', soon);
 ['fest', 'place', 'act', 'year', 'month', 'day', 'order', 'from', 'to'].forEach(id => $(id).addEventListener('change', search));
 $('more').addEventListener('click', () => more());
+// No button to press: more results load by themselves as you scroll near the end.
+const nearEnd = new IntersectionObserver(es => {
+  if (es.some(e => e.isIntersecting) && !$('more').hidden) { more(); nearEnd.unobserve($('more')); nearEnd.observe($('more')); }
+}, { rootMargin: '900px 0px' });
+nearEnd.observe($('more'));
 // The big view: the photo (or the story) large, with everything known about it and its day beside it.
 // Previous and Next (or the arrow keys) step through the results without closing it.
 let at = -1;
@@ -455,6 +460,7 @@ async function load() {
   $('sub').textContent = `Every vicharan photo on baps.org from ${about.years[0]} to ${about.years.at(-1)} (${nPhotos.toLocaleString()} photos), ${about.stories.toLocaleString()} On this day stories`
     + (about.calendar ? ` and the BAPS calendar for ${about.calendar.toLocaleString()} days` : '') + ', all mixed together by date. Search for words, or pick a year, month, day or range of dates.';
   $('q').value = 'annakut';
+  fromLink();
   if (about.calendar) {
     const list = await (await fetch('data/calendar.json')).json();
     const days = [];
@@ -474,6 +480,19 @@ async function load() {
     })))));
   await tg;
 }
+// Links into the search (used by the day page): #date=1999-10-24 is that whole day, #day=10-24 is that day in
+// every year, #q=annakut is a search.
+function fromLink() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (!['date', 'day', 'q'].some(k => h.has(k))) return false;
+  ['q', 'fest', 'place', 'act', 'year', 'month', 'day', 'from', 'to'].forEach(id => $(id).value = '');
+  const date = h.get('date') || '', day = h.get('day') || '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) $('from').value = $('to').value = date;
+  if (/^\d{2}-\d{2}$/.test(day)) { $('month').value = day.slice(0, 2); $('day').value = day.slice(3); }
+  $('q').value = h.get('q') || '';
+  return true;
+}
+window.addEventListener('hashchange', () => { if (fromLink()) search(); });
 fillCan();
 load().catch(e => { $('count').textContent = 'The lists did not load. Reload the page to try again.'; console.error(e); });
 </script>
