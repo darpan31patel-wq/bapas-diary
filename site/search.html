@@ -26,9 +26,6 @@ h1 { font-family: var(--display); font-weight: 400; font-size: clamp(28px, 4vw, 
 .bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
 .controls { display: flex; flex-wrap: wrap; gap: 10px; padding-block: 12px; align-items: center; }
-.tabs { display: flex; gap: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
-.tabs button { border: 0; background: none; color: var(--muted); font: 600 14px var(--body); padding: 6px 12px; border-radius: 6px; cursor: pointer; }
-.tabs button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
 #q { flex: 1 1 260px; min-width: 0; font: 17px var(--body); padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--fg); }
 select, .toggle { font: 15px var(--body); padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--fg); }
 .toggle { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
@@ -58,9 +55,9 @@ select, .toggle { font: 15px var(--body); padding: 8px 10px; border: 1px solid v
 .links a:hover { text-decoration: underline; }
 .badge { font: 600 11px var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
 mark { background: var(--mark); color: inherit; border-radius: 2px; }
-.list { display: flex; flex-direction: column; gap: 10px; padding-block: 8px 20px; }
-.post { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; }
-.post p { margin: 6px 0; white-space: pre-line; overflow-wrap: anywhere; max-width: 75ch; }
+.card.post .txt { padding-top: 14px; }
+.card.post { border-top: 4px solid var(--accent); }
+.card.post .cap { white-space: pre-line; font-size: 15px; }
 .more { display: flex; justify-content: center; padding-block: 8px 40px; }
 .more button { font: 600 15px var(--body); padding: 10px 22px; border-radius: 8px; border: 1px solid var(--accent); background: none; color: var(--accent); cursor: pointer; }
 .empty-state { padding: 40px 0; color: var(--muted); }
@@ -75,23 +72,20 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; }
 <div class="bar">
   <div class="wrap">
     <div class="controls">
-      <div class="tabs" role="group" aria-label="What to search">
-        <button id="tab-photos" aria-pressed="true">Photos</button>
-        <button id="tab-telegram" aria-pressed="false">Telegram</button>
-      </div>
-      <input id="q" type="search" placeholder="Words in the caption, e.g. annakut London" autocomplete="off" aria-label="Search words">
+      <input id="q" type="search" placeholder="Words to find, e.g. annakut London" autocomplete="off" aria-label="Search words">
+      <select id="from" aria-label="Where from"><option value="">baps.org and Telegram</option><option value="photo">baps.org photos only</option><option value="post">Telegram posts only</option></select>
       <select id="year" aria-label="Year"></select>
       <select id="month" aria-label="Month"></select>
       <label class="toggle" id="bapa-wrap"><input type="checkbox" id="bapa"> Bapa only</label>
       <select id="order" aria-label="Order"><option value="old">Oldest first</option><option value="new">Newest first</option></select>
     </div>
-    <div class="hint">Every word must appear. Use <code>"quotes"</code> for a phrase and <code>-word</code> to leave a word out. The place counts too, so <code>London</code> finds every London photo.</div>
+    <div class="hint">Every word must appear. Use <code>"quotes"</code> for a phrase and <code>-word</code> to leave a word out. The place counts too, so <code>London</code> finds every London photo and post.</div>
   </div>
 </div>
 
 <main class="wrap">
   <div class="years" id="years" aria-label="Matches per year"></div>
-  <div class="status"><div id="count">Loading the photo lists…</div><div class="chips" id="chips"></div></div>
+  <div class="status"><div id="count">Loading the lists…</div><div class="chips" id="chips"></div></div>
   <div id="results"></div>
   <div class="more"><button id="more" hidden>Show more</button></div>
 </main>
@@ -101,10 +95,11 @@ const IMG = 'https://www.baps.org/Data/Sites/1/Media/GalleryImages/';
 const CHANNEL = { history: ['TodayinBAPShistory', 'Today in BAPS History'], satpurush: ['SatpurushInUKEurope', 'Satpurush in UK & Europe'] };
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const EXAMPLES = ['annakut', 'pratishtha', 'London', 'Sarangpur', 'murti', 'Diwali', 'children', 'elephant'];
-const PAGE = 60;
+const PAGE = 60, FIRST = 1999;
 const $ = id => document.getElementById(id);
 
-let photos = [], posts = [], loaded = 0, total = 0, hits = [], shown = 0, tab = 'photos';
+// one list of everything, baps.org photos (kind 'photo') and Telegram posts (kind 'post'), kept in date order
+let items = [], loaded = 0, total = 0, hits = [], shown = 0;
 
 function esc(s) { return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 function niceDate(d) {
@@ -126,27 +121,30 @@ function highlight(text, want) {
   return text.split(re).map((part, i) => i % 2 ? `<mark>${esc(part)}</mark>` : esc(part)).join('');
 }
 
-function fillYears(list) {
-  const y = $('year'), keep = y.value;
-  y.innerHTML = '<option value="">Every year</option>' + list.map(v => `<option>${v}</option>`).join('');
-  y.value = list.includes(+keep) ? keep : '';
+function fillYears() {
+  const y = $('year'), keep = y.value, list = [...new Set(items.map(p => p.y))].sort((a, b) => a - b);
+  y.innerHTML = '<option value="">Every year</option><option value="old">Before 1999</option>' + list.map(v => `<option>${v}</option>`).join('');
+  y.value = keep === 'old' || list.includes(+keep) ? keep : '';
 }
 $('month').innerHTML = '<option value="">Every month</option>' + MONTHS.map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}">${m}</option>`).join('');
+const yearKey = y => y < FIRST ? 'old' : String(y);
 
 function search() {
   const { want, not } = parse($('q').value), year = $('year').value, month = $('month').value;
-  const source = tab === 'photos' ? photos : posts, bapa = tab === 'photos' && $('bapa').checked;
+  const from = $('from').value, bapa = $('bapa').checked;
   const byYear = {};
   hits = [];
-  if (!want.length && !not.length && !year && !month && !bapa) { render(byYear, want); return; }
-  for (const r of source) {
+  if (!want.length && !not.length && !year && !month && !bapa && !from) { render(byYear, want); return; }
+  for (const r of items) {
+    if (from && r.kind !== from) continue;
     if (month && r.d.slice(5, 7) !== month) continue;
-    if (bapa && !r.bapa) continue;
+    if (bapa && r.kind === 'photo' && !r.bapa) continue;
     if (want.length || not.length) {
       if (!want.every(w => r.hay.includes(w)) || not.some(w => r.hay.includes(w))) continue;
     }
-    byYear[r.y] = (byYear[r.y] || 0) + 1;
-    if (year && String(r.y) !== year) continue;
+    const k = yearKey(r.y);
+    byYear[k] = (byYear[k] || 0) + 1;
+    if (year && k !== year && String(r.y) !== year) continue;
     hits.push(r);
   }
   if ($('order').value === 'new') hits.reverse();
@@ -155,23 +153,25 @@ function search() {
 
 function render(byYear, want) {
   const year = $('year').value, max = Math.max(1, ...Object.values(byYear));
-  const ys = tab === 'photos' ? [...new Set(photos.map(p => p.y))] : [...new Set(posts.map(p => p.y))];
-  $('years').innerHTML = Object.keys(byYear).length ? ys.sort((a, b) => a - b).map(y => {
-    const n = byYear[y] || 0;
-    return `<button class="${String(y) === year ? 'on' : ''}" data-y="${y}" title="${y}: ${n.toLocaleString()} found"><div class="col" style="height:${n ? Math.max(4, 100 * n / max) : 0}%"></div><span>${tab === 'photos' ? String(y).slice(2) : y}</span></button>`;
+  const keys = ['old'];
+  for (let y = FIRST; y <= new Date().getFullYear(); y++) keys.push(String(y));
+  $('years').innerHTML = Object.keys(byYear).length ? keys.map(k => {
+    const n = byYear[k] || 0, label = k === 'old' ? 'before' : k.slice(2), name = k === 'old' ? 'Before 1999' : k;
+    return `<button class="${k === year ? 'on' : ''}" data-y="${k}" title="${name}: ${n.toLocaleString()} found"><div class="col" style="height:${n ? Math.max(4, 100 * n / max) : 0}%"></div><span>${label}</span></button>`;
   }).join('') : '';
-  const what = tab === 'photos' ? 'photos' : 'posts';
   if (!hits.length) {
     const nothing = Object.keys(byYear).length || $('q').value.trim() || year || $('month').value;
-    $('count').innerHTML = nothing ? `No ${what} found${loaded < total ? ' yet, still loading' : ''}.` : 'Type a word or pick a year to start.';
+    $('count').innerHTML = nothing ? `Nothing found${loaded < total ? ' yet, still loading' : ''}.` : 'Type a word or pick a year to start.';
     $('results').innerHTML = '';
     $('chips').innerHTML = EXAMPLES.map(e => `<button data-q="${e}">${e}</button>`).join('');
     $('more').hidden = true;
     return;
   }
+  const nPhotos = hits.filter(h => h.kind === 'photo').length, nPosts = hits.length - nPhotos;
   $('chips').innerHTML = '';
-  $('count').innerHTML = `<b>${hits.length.toLocaleString()}</b> ${what} found` + (loaded < total ? ` (still loading, ${loaded} of ${total} lists)` : '');
-  $('results').innerHTML = `<div class="${tab === 'photos' ? 'grid' : 'list'}" id="cards"></div>`;
+  $('count').innerHTML = `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'} and <b>${nPosts.toLocaleString()}</b> Telegram post${nPosts === 1 ? '' : 's'} found`
+    + (loaded < total ? ` (still loading, ${loaded} of ${total} lists)` : '');
+  $('results').innerHTML = '<div class="grid" id="cards"></div>';
   shown = 0;
   more(want);
 }
@@ -182,7 +182,7 @@ function photoCard(p, want) {
   return `<article class="card">
     <a class="pic" href="${web}" target="_blank" rel="noopener"><img loading="lazy" src="${web}" alt="${esc(p.cap)}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'none',textContent:'Picture opens on baps.org'}))"></a>
     <div class="txt">
-      ${p.bapa ? '<span class="badge">Bapa</span>' : ''}
+      <span class="badge">baps.org${p.bapa ? ' · Bapa' : ''}</span>
       <p class="cap${p.cap ? '' : ' empty'}">${p.cap ? highlight(p.cap, want) : 'No caption (found in the album, not on a page)'}</p>
       <div class="meta">${when} · ${highlight(g[2], want)}</div>
       <div class="links"><a href="${web}" target="_blank" rel="noopener">Open picture</a>${p.y === 1999 || p.y >= 2022 ? `<a href="${full}" target="_blank" rel="noopener">Full size</a>` : ''}</div>
@@ -190,16 +190,18 @@ function photoCard(p, want) {
 }
 function postCard(p, want) {
   const [handle, name] = CHANNEL[p.ch] || [p.ch, p.ch];
-  const text = p.text.length > 600 ? p.text.slice(0, 600) + '…' : p.text;
+  const text = p.text.length > 500 ? p.text.slice(0, 500) + '…' : p.text;
   const media = [p.ph && `${p.ph} photo${p.ph > 1 ? 's' : ''}`, p.vid && `${p.vid} video${p.vid > 1 ? 's' : ''}`].filter(Boolean).join(', ');
-  return `<article class="post"><span class="badge">${name}</span>
-    <p>${highlight(text, want)}</p>
+  return `<article class="card post"><div class="txt">
+    <span class="badge">Telegram · ${name}</span>
+    <p class="cap">${highlight(text, want)}</p>
     <div class="meta">${niceDate(p.d)}${p.place ? ' · ' + highlight(p.place, want) : ''}${media ? ' · ' + media : ''}</div>
-    <div class="links"><a href="https://t.me/${handle}/${p.id}" target="_blank" rel="noopener">Open on Telegram</a></div></article>`;
+    <div class="links"><a href="https://t.me/${handle}/${p.id}" target="_blank" rel="noopener">Open on Telegram</a></div>
+    </div></article>`;
 }
 function more(want = parse($('q').value).want) {
   const box = $('cards'), next = hits.slice(shown, shown + PAGE);
-  box.insertAdjacentHTML('beforeend', next.map(p => tab === 'photos' ? photoCard(p, want) : postCard(p, want)).join(''));
+  box.insertAdjacentHTML('beforeend', next.map(p => p.kind === 'photo' ? photoCard(p, want) : postCard(p, want)).join(''));
   shown += next.length;
   $('more').hidden = shown >= hits.length;
   $('more').textContent = `Show ${Math.min(PAGE, hits.length - shown)} more`;
@@ -208,48 +210,33 @@ function more(want = parse($('q').value).want) {
 let timer;
 function soon() { clearTimeout(timer); timer = setTimeout(search, 180); }
 $('q').addEventListener('input', soon);
-['year', 'month', 'bapa', 'order'].forEach(id => $(id).addEventListener('change', search));
+['year', 'month', 'bapa', 'order', 'from'].forEach(id => $(id).addEventListener('change', search));
 $('more').addEventListener('click', () => more());
 $('chips').addEventListener('click', e => { if (e.target.dataset.q) { $('q').value = e.target.dataset.q; search(); } });
 $('years').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   $('year').value = $('year').value === b.dataset.y ? '' : b.dataset.y; search();
 });
-function setTab(t) {
-  tab = t;
-  $('tab-photos').setAttribute('aria-pressed', t === 'photos');
-  $('tab-telegram').setAttribute('aria-pressed', t === 'telegram');
-  $('bapa-wrap').hidden = t !== 'photos';
-  fillYears([...new Set((t === 'photos' ? photos : posts).map(p => p.y))].sort((a, b) => a - b));
+
+function add(list) {
+  for (const r of list) items.push(r);
+  if (++loaded === total) items.sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : 0);   // date order once everything is in
+  fillYears();
   search();
 }
-$('tab-photos').addEventListener('click', () => setTab('photos'));
-$('tab-telegram').addEventListener('click', () => setTab('telegram'));
-
 async function load() {
   const about = await (await fetch('data/about.json')).json();
   total = about.years.length + 1;
-  $('sub').textContent = `Every baps.org vicharan photo from ${about.years[0]} to ${about.years.at(-1)} (${Object.values(about.photos).reduce((a, b) => a + b, 0).toLocaleString()} photos) and ${about.telegram.toLocaleString()} posts from both Telegram channels. Search the captions, then narrow by year and month. Database built ${niceDate(about.built)}.`;
-  fillYears(about.years);
+  $('sub').textContent = `Every baps.org vicharan photo from ${about.years[0]} to ${about.years.at(-1)} (${Object.values(about.photos).reduce((a, b) => a + b, 0).toLocaleString()} photos) and ${about.telegram.toLocaleString()} posts from both Telegram channels, searched together. Narrow by year and month. Database built ${niceDate(about.built)}.`;
   $('q').value = 'annakut';
-  const tg = fetch('data/telegram.json').then(r => r.json()).then(list => {
-    posts = list.map(([ch, id, d, place, text, ph, vid]) => ({ ch, id, d, y: +d.slice(0, 4), place, text, ph, vid, hay: (text + ' ' + place).toLowerCase() }));
-    loaded++;
-  });
-  const order = [...about.years];
-  const fetchYear = y => fetch(`data/${y}.json`).then(r => r.json());
-  const pending = order.map(y => fetchYear(y));
-  for (let i = 0; i < order.length; i++) {
-    const y = order[i], data = await pending[i];
-    for (const [gi, file, cap, bapa] of data.p) {
+  const tg = fetch('data/telegram.json').then(r => r.json()).then(list => add(list.map(([ch, id, d, place, text, ph, vid]) =>
+    ({ kind: 'post', ch, id, d, y: +d.slice(0, 4), place, text, ph, vid, hay: (text + ' ' + place).toLowerCase() }))));
+  await Promise.all(about.years.map(y => fetch(`data/${y}.json`).then(r => r.json()).then(data =>
+    add(data.p.map(([gi, file, cap, bapa]) => {
       const g = data.g[gi];
-      photos.push({ y, g, d: g[0], file, cap, bapa, hay: (cap + ' ' + g[2]).toLowerCase() });
-    }
-    loaded++;
-    if (tab === 'photos') search();
-  }
+      return { kind: 'photo', y, g, d: g[0], file, cap, bapa, hay: (cap + ' ' + g[2]).toLowerCase() };
+    })))));
   await tg;
-  if (tab === 'telegram') setTab('telegram'); else search();
 }
-load().catch(e => { $('count').textContent = 'The photo lists did not load. Reload the page to try again.'; console.error(e); });
+load().catch(e => { $('count').textContent = 'The lists did not load. Reload the page to try again.'; console.error(e); });
 </script>
