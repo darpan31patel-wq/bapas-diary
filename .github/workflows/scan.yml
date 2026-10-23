@@ -10,6 +10,10 @@ on:
   schedule:
     - cron: '0 23 * * *'    # 11pm or midnight UK
   workflow_dispatch:
+    inputs:
+      probe:
+        description: 'Type yes to only test which photos have full size originals (fullsize-probe.json)'
+        required: false
 
 permissions:
   contents: write
@@ -34,10 +38,16 @@ jobs:
           gh release download database -p bapas.db.gz -p scan.json || gh release download database -p bapas.db.gz
           gunzip -f bapas.db.gz
           python -c "import json; print(len(json.load(open('scan.json'))['extra']))" > before.txt 2>/dev/null || echo 0 > before.txt
+      - name: Test which photos have full size originals
+        if: inputs.probe == 'yes'
+        run: |
+          python tools/fullsize_probe.py --db bapas.db --out fullsize-probe.json
+          gh release upload database fullsize-probe.json --clobber
       - name: Scan the albums (stops after 5 hours, the next night carries on)
+        if: inputs.probe != 'yes'
         run: python tools/album_scan.py --db bapas.db --scan scan.json --hours 5
       - name: Keep the finds, and rebuild the database when there are new ones
-        if: always()
+        if: always() && inputs.probe != 'yes'
         run: |
           [ -s scan.json ] || exit 0
           gh release upload database scan.json --clobber
