@@ -24,6 +24,10 @@ jobs:
           echo "project:"; api -X POST "$A/pages/projects" -d "{\"name\":\"$PROJECT\",\"production_branch\":\"main\"}" | jq -c '{success, subdomain: .result.subdomain, errors}'
           echo "buckets now:";  api "$A/r2/buckets" | jq -c '[.result.buckets[]?.name]'
           echo "projects now:"; api "$A/pages/projects" | jq -c '[.result[]? | {name, subdomain, deployments: (.latest_deployment != null)}]'
+      - name: Photo address for mockups (r2.dev, photos only, no pages; Darpan typed yes 23 Oct)
+        run: |
+          A=https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/r2/buckets/$BUCKET/domains/managed
+          curl -s -X PUT -H "Authorization: Bearer $CF_TOKEN" -H 'Content-Type: application/json' "$A" -d '{"enabled":true}' | jq -c '{success, domain: .result.domain, enabled: .result.enabled, errors}'
       - name: R2 file access test (put, list, delete one tiny file)
         run: |
           id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
