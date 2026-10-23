@@ -36,19 +36,35 @@ def drive_folder():
     return None
 
 
+failures = [0]   # files in a row that wouldn't come, whatever the reason
+
+
 def get(url, timeout=60, may_be_missing=False):
+    """(body, content type), or (None, '') when the file isn't there or won't come after three tries. A server
+    hiccup (500, a timeout, a dropped line) skips that one file, it never stops the night (Darpan, 23 Oct 2026)."""
     req = urllib.request.Request(url, headers={'User-Agent': UA})
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            body, kind = r.read(), r.headers.get('Content-Type', '')
-    except urllib.error.HTTPError as e:
-        if may_be_missing and e.code in (403, 404):   # e.g. no original upload kept for this photo
-            return None, ''
-        if e.code in (403, 429, 503):
-            raise SlowDown(f'{e.code} from {url.split("/")[2]}')
-        if e.code == 404:
-            return None, ''
-        raise
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                body, kind = r.read(), r.headers.get('Content-Type', '')
+            break
+        except urllib.error.HTTPError as e:
+            if e.code in (403, 404) and may_be_missing:   # e.g. no original upload kept for this photo
+                return None, ''
+            if e.code == 404:
+                return None, ''
+            if e.code in (403, 429):
+                raise SlowDown(f'{e.code} from {url.split("/")[2]}')
+        except Exception:   # timeout, connection reset, half a file
+            pass
+        time.sleep(5 * (attempt + 1))
+    else:
+        failures[0] += 1
+        print(f'  skipped (would not download): {url[:120]}', flush=True)
+        if failures[0] >= 30:
+            raise SlowDown(f'30 files in a row would not download from {url.split("/")[2]}')
+        return None, ''
+    failures[0] = 0
     if b'Just a moment' in body[:3000] or b'cf-chl' in body[:3000]:
         raise SlowDown('the "Just a moment" check on ' + url.split('/')[2])
     return body, kind
@@ -199,19 +215,22 @@ def media_in(page):
 
 
 def telegram(db, root, gap, stop_at):
+    """Four posts at a time: Telegram's file servers are quick, the wait is mostly the download itself."""
+    import concurrent.futures
     rows = db.execute('SELECT channel, id, local_folder FROM tg_posts WHERE photos > 0 OR videos > 0 ORDER BY channel, id').fetchall()
     p = Progress('Telegram posts', len(rows))
     print(f'Telegram: {len(rows):,} posts with photos or videos')
-    for ch, pid, rel in rows:
-        if stop_at and datetime.datetime.now() >= stop_at:
-            print('  time to stop for tonight'); return False
+
+    def one(row):
+        ch, pid, rel = row
         folder = os.path.join(root, rel)
         if os.path.exists(os.path.join(folder, '.done')):
-            p.tick(); continue
+            return 0
         body, _ = get(f'https://t.me/{CHANNELS[ch]}/{pid}?embed=1&mode=tme')
-        page = (body or b'').decode('utf-8', 'replace')
-        photos, videos, too_big = media_in(page)
-        got = 0
+        if body is None:
+            return 0   # the post's page wouldn't come: tried again next run
+        photos, videos, too_big = media_in(body.decode('utf-8', 'replace'))
+        got, whole = 0, True
         for kind, urls in (('', photos), ('video-', videos)):
             for n, url in enumerate(urls, 1):
                 name = os.path.join(folder, f'{"video" if kind else "photo"} {n}.{"mp4" if kind else "jpg"}')
@@ -219,14 +238,23 @@ def telegram(db, root, gap, stop_at):
                     data, _ = get(url, timeout=300)
                     if data:
                         save(name, data); got += len(data)
-                    time.sleep(gap / 2)
+                    else:
+                        whole = False
         if too_big:
             with open(os.path.join(root, 'telegram', 'too-big-for-the-web.txt'), 'a') as f:
                 f.write(f'https://t.me/{CHANNELS[ch]}/{pid}\n')
-        os.makedirs(folder, exist_ok=True)
-        open(os.path.join(folder, '.done'), 'w').close()
-        p.tick(got)
-        time.sleep(gap)
+        if whole:   # a post with a file that wouldn't come is tried again next run
+            os.makedirs(folder, exist_ok=True)
+            open(os.path.join(folder, '.done'), 'w').close()
+        time.sleep(gap / 2)
+        return got
+
+    with concurrent.futures.ThreadPoolExecutor(4) as pool:
+        for k in range(0, len(rows), 40):
+            if stop_at and datetime.datetime.now() >= stop_at:
+                print('  time to stop for tonight'); return False
+            for got in pool.map(one, rows[k:k + 40]):
+                p.tick(got)
     return True
 
 
