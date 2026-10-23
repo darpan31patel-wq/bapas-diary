@@ -7,7 +7,7 @@ Writes a folder that works as it is on any web host (Cloudflare Pages, or opened
   data/YYYY.json      one file per year of baps.org photos:
                         {"g": [[date, date_to, place, album], ...],      a group = one album on one day (or date range)
                          "p": [[group, file, caption, is_bapa], ...]}    every photo, nothing cut out
-  data/telegram.json  every Telegram post with words: [[channel, id, date, place, text, photos, videos], ...]
+  data/stories.json   every On this day story (the Telegram channel posts, shown without any Telegram links): [[date, place, text], ...]
   data/calendar.json  every BAPS calendar day, when the database has the calendar table:
                         [[date, weekday, vikram_samvat, indian_date, festivals, festival_about, notes, source], ...]
   data/about.json     years, counts and when it was built
@@ -16,6 +16,59 @@ import argparse, json, os, sqlite3
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PAGE = os.path.join(HERE, 'site', 'search.html')
+
+
+# The BAPS calendar spells some festivals differently from year to year. Each spelling maps to one name, so the
+# festival list on the search page has every festival once (Darpan, 23 Oct 2026: "be smart with the festivals").
+SAME_FESTIVAL = {
+    'bhai bij': 'Bhai Beej',
+    'devpodhi ekadashi': 'Devshayani Ekadashi', 'devshayani ekadashi': 'Devshayani Ekadashi',
+    "mahant swami maharaj's jayanti": "Mahant Swami Maharaj's Jayanti",
+    'mahant swami maharaj janma jayanti': "Mahant Swami Maharaj's Jayanti",
+    'mahant swami maharaj janma jayanti celebration': "Mahant Swami Maharaj's Jayanti",
+    'vasant panchami': 'Vasant Panchmi',
+    'annakut and bestu varash': 'Annakut and Bestu Varash (New Year)', 'annakut': 'Annakut and Bestu Varash (New Year)',
+    'bestu varash': 'Annakut and Bestu Varash (New Year)',
+    'akha trij': 'Akhatrij',
+    'pramukh varani din': 'Pramukh Varni Din',
+    'pushpadolotsav': 'Pushpadolotsav (Dhuleti)', 'dhuleti/pushpadolotsav': 'Pushpadolotsav (Dhuleti)', 'dhuleti': 'Pushpadolotsav (Dhuleti)',
+    'sam-shravani': 'Sam Shravani', 'sam shravni': 'Sam Shravani',
+    "aksharbrahma gunatitanand swami's birthday": "Gunatitanand Swami's Birthday (Sharad Punam)",
+    'aksharbrahman gunatitanand swami janma jayanti': "Gunatitanand Swami's Birthday (Sharad Punam)",
+    'aksharbrahma gunatitanand swami pragatyotsav': "Gunatitanand Swami's Birthday (Sharad Punam)",
+    'sharad punam': "Gunatitanand Swami's Birthday (Sharad Punam)",
+    'aksharbrahma gunatitanand swami diksha day': 'Gunatitanand Swami Diksha Day (Poshi Punam)',
+    'aksharbrahma swami diksha day': 'Gunatitanand Swami Diksha Day (Poshi Punam)',
+    'poshi punam': 'Gunatitanand Swami Diksha Day (Poshi Punam)',
+    'vijaya dashami': 'Vijaya Dashmi',
+    'dhan teras/lakshmi pujan': 'Dhan Teras (Lakshmi Pujan)', 'dhan teras': 'Dhan Teras (Lakshmi Pujan)',
+    'lakshmi pujan': 'Dhan Teras (Lakshmi Pujan)', 'dhan trayodashi': 'Dhan Teras (Lakshmi Pujan)',
+    'dhan teras-lakshmi pujan': 'Dhan Teras (Lakshmi Pujan)',
+    'kali caudash': 'Kali Chaudash',
+    'ramnavami': 'Ramnavmi',
+    "hari-nom (bhagwan swaminarayan's birthday)": 'Swaminarayan Jayanti (Hari Navmi)',
+    'swaminarayan jayanti': 'Swaminarayan Jayanti (Hari Navmi)',
+    'jal jhilni ekadashi': 'Jal Jhilani Ekadashi',
+    "bhagatji maharaj's birthday q": "Bhagatji Maharaj's Birthday",
+    "swaminarayan jayanti (bhagwan swaminarayan's birthday)": 'Swaminarayan Jayanti (Hari Navmi)',
+    "hari-nom - bhagwan swaminarayan's birthday": 'Swaminarayan Jayanti (Hari Navmi)',
+    'makar sankranti - uttarayan': 'Makar Sankranti (Uttarayan)',
+    'buddha purnima': 'Buddha Jayanti',
+    'samshravani': 'Sam Shravani',
+}
+
+
+def festivals(text):
+    """'Holi, Bhagatji Maharaj's Birthday; Diwali' -> ['Holi', "Bhagatji Maharaj's Birthday", 'Diwali'], one name each."""
+    out = []
+    for part in (text or '').split('; '):
+        for f in part.split(', '):
+            f = f.strip()
+            if f:
+                f = SAME_FESTIVAL.get(f.lower(), f)
+                if f not in out:
+                    out.append(f)
+    return out
 
 
 def write(path, data):
@@ -46,11 +99,11 @@ def main():
         write(os.path.join(a.out, 'data', f'{y}.json'), {'g': yr['g'], 'p': yr['p']})
         counts[y] = len(yr['p'])
 
-    tg = [[ch, i, date or (posted or '')[:10], place or '', text.strip(), ph or 0, vid or 0]
-          for ch, i, posted, date, place, text, ph, vid in db.execute(
-              "SELECT channel, id, posted, date, place, text, photos, videos FROM tg_posts "
+    tg = [[date or (posted or '')[:10], place or '', text.strip()]
+          for posted, date, place, text in db.execute(
+              "SELECT posted, date, place, text FROM tg_posts "
               "WHERE trim(coalesce(text, '')) != '' ORDER BY coalesce(date, posted)")]
-    write(os.path.join(a.out, 'data', 'telegram.json'), tg)
+    write(os.path.join(a.out, 'data', 'stories.json'), tg)
 
     # BAPS calendar days (table `calendar`, when the database has it): one row per date, nothing cut out
     cal = []
@@ -58,11 +111,13 @@ def main():
         cal = [list(r) for r in db.execute(
             "SELECT date, weekday, vikram_samvat, indian_date, festivals, festival_about, notes, source FROM calendar ORDER BY date")]
         cal = [[c if c is not None else '' for c in r] for r in cal]
+        for r in cal:
+            r[4] = '; '.join(festivals(r[4]))   # festivals, one name each
         write(os.path.join(a.out, 'data', 'calendar.json'), cal)
 
     built = dict(db.execute("SELECT key, value FROM about"))
     write(os.path.join(a.out, 'data', 'about.json'),
-          {'built': built.get('built'), 'years': sorted(counts), 'photos': counts, 'telegram': len(tg), 'calendar': len(cal)})
+          {'built': built.get('built'), 'years': sorted(counts), 'photos': counts, 'stories': len(tg), 'calendar': len(cal)})
 
     body = open(PAGE, encoding='utf-8').read().replace('{{PHOTOS}}', a.photos)
     with open(os.path.join(a.out, 'index.html'), 'w', encoding='utf-8') as f:
