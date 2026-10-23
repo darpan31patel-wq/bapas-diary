@@ -8,7 +8,7 @@ name: faces-years
 on:
   push:
     branches: ['claude/**']
-    paths: ['site/faces-ranges.txt', '.github/workflows/faces-years.yml']
+    paths: ['site/faces-ranges.txt']
   workflow_dispatch:
 concurrency:
   group: faces-years
@@ -42,7 +42,7 @@ jobs:
             [ -n "$from" ] && python3 tools/faces_years.py --db bapas.db --photos photos --from "$from" --to "$to" --out faces
           done < site/faces-ranges.txt
       - name: Into the release
-        if: always()
+        if: success()
         run: |
           tar czf faces.tgz faces
           gh release view faces-mockup -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
