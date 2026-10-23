@@ -9,3 +9,5 @@ daily 2pm picture. A page goes in here only after Darpan's typed yes.
 - through-the-years/  Bapa through the years (face page; "okay go live once github is ready", 23 Oct 2026). Not kept
             here: the deploy unpacks faces-site.tgz from release faces-mockup (built by its own thread).
 - _redirects  / goes to /search/ until the home page (On this day) is live.
+
+Redeploy to pick up a new build from another thread: push any change here (e.g. this log). 24 Oct 00:00 UTC: faces-site.tgz with the About tab.
