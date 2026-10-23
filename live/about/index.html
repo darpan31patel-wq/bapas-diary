@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>About Bapa's Diary</title>
+<meta name="description" content="Bapa's Diary: daily darshan of Pramukh Swami Maharaj and Mahant Swami Maharaj through the years.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Arimo:wght@400;700&display=swap">
+<style>
+/* The same look as the search page: maroon band with the gold title, ivory paper below. */
+:root {
+  --maroon-in: #42101c; --maroon-out: #160509; --maroon: #6e1424; --ink: #3b1219; --muted: #7a5c4c;
+  --gold-hi: #ffe296; --gold-deep: #a8742a; --gold-soft: #d9a441; --paper: #f3ead9; --cap: #faf1de;
+  --serif: "EB Garamond", Garamond, "Times New Roman", serif;
+  --sans: Arimo, Arial, Helvetica, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 500 20px/1.6 var(--serif); }
+.wrap { max-width: 720px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.band { background:
+  radial-gradient(ellipse 60% 70% at 50% 0%, rgba(255, 196, 110, .18), transparent 70%),
+  radial-gradient(ellipse 90% 120% at 50% 30%, var(--maroon-in), var(--maroon-out)); color: var(--cap); text-align: center; }
+.tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 26px; padding-top: 16px; }
+.tabs a { font: 700 11px var(--sans); letter-spacing: .26em; text-transform: uppercase; color: var(--gold-soft); text-decoration: none; padding-bottom: 4px; border-bottom: 1px solid transparent; }
+.tabs a:hover, .tabs a.on { color: var(--gold-hi); border-bottom-color: var(--gold-soft); }
+h1 { font: 700 clamp(36px, 6vw, 60px)/1.05 var(--serif); margin: 0; padding: 22px 0 30px; text-wrap: balance;
+  background: linear-gradient(#ffe296, #ce9840); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .45)); }
+main { padding-block: 34px 60px; }
+h2 { font: 700 13px var(--sans); letter-spacing: .3em; text-transform: uppercase; color: var(--gold-deep); text-align: center; margin: 40px 0 14px; }
+h2:first-child { margin-top: 0; }
+p { margin: 0 0 16px; text-wrap: pretty; }
+a { color: var(--maroon); }
+.bye { text-align: center; font: italic 600 24px var(--serif); color: var(--maroon); margin-top: 40px; }
+</style>
+</head>
+<body>
+<div class="band">
+  <nav class="tabs wrap" aria-label="Website tabs"><a href="/search/">Search</a><a href="/travels/">Travels</a><a class="on" href="/about/" aria-current="page">About</a></nav>
+  <h1 class="wrap">About Bapa's Diary</h1>
+</div>
+<main class="wrap">
+<h2>What this is</h2>
+<p>Bapa's Diary is a small offering of love, so that we can stay close to Pramukh Swami Maharaj and Mahant Swami Maharaj every single day.</p>
+<p>Here you can relive Swamishri's divine darshan, day by day, through the years: his gentle smile, his blessings, the villages and cities he sanctified on his vicharan, and the utsavs of the BAPS calendar. Pick any date to have darshan from that very day. "On this day" brings together every memory of the same date across the years, so each day begins with fresh darshan and fresh inspiration.</p>
+<p>It is free for every devotee and well wisher, with no login needed. May this darshan fill our hearts with bhakti and keep Bapa's memories alive in every home.</p>
+<h2>With thanks</h2>
+<p>All darshan photos come from BAPS Swaminarayan Sanstha. We are deeply grateful to BAPS for kindly giving permission to share them here. Every photo remains the property of BAPS. To see more, please visit <a href="https://www.baps.org">baps.org</a>.</p>
+<h2>Get in touch</h2>
+<p>Spotted a mistake, or have a memory to share? Email <a href="mailto:hello@bapas-diary.com">hello@bapas-diary.com</a></p>
+<p class="bye">Jay Swaminarayan 🙏🏽</p>
+</main>
+</body>
+</html>
