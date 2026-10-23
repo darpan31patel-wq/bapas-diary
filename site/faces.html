@@ -38,6 +38,7 @@ h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 5vw, 
 .frame { grid-area: frame; position: relative; aspect-ratio: 4 / 3; width: 100%; max-width: 100%; overflow: hidden; background: radial-gradient(closest-side, var(--glow), transparent); }
 .frame img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; opacity: 0; transition: opacity var(--fade) linear; box-shadow: 0 12px 40px -10px rgba(0,0,0,.7); }
 .frame img.on { opacity: 1; }
+.frame img.rest { transition: opacity var(--fade) linear, transform 1.4s ease-in-out; }
 .eyes { position: absolute; inset: 0; pointer-events: none; }
 .eyes i { position: absolute; top: var(--eye-y); width: 24px; height: 24px; margin: -12px 0 0 -12px; border: 1.5px solid rgba(255,255,255,.8); border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,.4); }
 .eyes::after { content: ""; position: absolute; left: 0; right: 0; top: var(--eye-y); border-top: 1px dashed rgba(255,255,255,.35); }
@@ -70,7 +71,7 @@ canvas.drag { cursor: grabbing; }
   .stage { grid-template-columns: minmax(0, 1fr); grid-template-areas: "frame" "scrub" "left" "right"; }
   .info.l { text-align: left; align-items: flex-start; }
 }
-@media (prefers-reduced-motion: reduce) { :root { --fade: 0ms; } }
+@media (prefers-reduced-motion: reduce) { :root { --fade: 0ms; } .frame img.rest { transition: none; } }
 </style>
 
 <div class="wrap">
@@ -139,6 +140,7 @@ const $ = id => document.getElementById(id);
 const cv = $('tl'), cx = cv.getContext('2d');
 let era = 'psm', list = eras.psm, idx = 0, center = 0, ppd = 1, playing = null, front = $('imgA'), back = $('imgB'), token = 0;
 const thumbs = new Map();
+let settle = 0;
 
 function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 function longDate(d) { const x = dOf(tOf(d)); return `${WEEK[x.getUTCDay()]} ${x.getUTCDate()} ${MONTHS[x.getUTCMonth()]} ${x.getUTCFullYear()}`; }
@@ -150,9 +152,16 @@ function rangeDate(a, b) {
 }
 function ageOn(d) { const b = BORN[era]; let a = +d.slice(0, 4) - +b.slice(0, 4); if (d.slice(5) < b.slice(5)) a--; return a; }
 
-// the whole photo, turned and sized so his eyes sit at (EYE_X, EYE_Y), shrunk only if it would otherwise be cut
-function place(img, x) {
+// the whole photo, turned and sized so his eyes sit at (EYE_X, EYE_Y), shrunk only if it would otherwise be cut;
+// once the days stop moving it eases back to lying straight in the middle (Darpan, 23 Oct 2026)
+function place(img, x, rest) {
   const fr = $('frame'), W = fr.clientWidth, H = fr.clientHeight, ex = EYE_X * W, ey = EYE_Y * H, pad = 4;
+  img.style.width = x.w + 'px'; img.style.height = x.h + 'px';
+  if (rest) {
+    const k = Math.min((W - 2 * pad) / x.w, (H - 2 * pad) / x.h);
+    img.style.transform = `matrix(${k},0,0,${k},${(W - k * x.w) / 2},${(H - k * x.h) / 2})`;
+    return;
+  }
   const [rx, ry, lx, ly] = x.eyes, mx = (rx + lx) / 2, my = (ry + ly) / 2;
   const a = Math.atan2(ly - ry, lx - rx), c = Math.cos(a), s = Math.sin(a);
   let k = GAP * W / x.span;
@@ -162,7 +171,6 @@ function place(img, x) {
     if (vy > 0) k = Math.min(k, (H - pad - ey) / vy); else if (vy < 0) k = Math.min(k, (pad - ey) / vy);
   }
   const A = k * c, B = -k * s, C = k * s, D = k * c;
-  img.style.width = x.w + 'px'; img.style.height = x.h + 'px';
   img.style.transform = `matrix(${A},${B},${C},${D},${ex - (A * mx + C * my)},${ey - (B * mx + D * my)})`;
   fr.style.setProperty('--eye-y', EYE_Y * 100 + '%');
   const g = Math.hypot(lx - rx, ly - ry) * k / 2;
@@ -174,8 +182,10 @@ function show(i, fast) {
   idx = Math.max(0, Math.min(list.length - 1, i));
   const x = list[idx], my = ++token;
   document.documentElement.style.setProperty('--fade', matchMedia('(prefers-reduced-motion: reduce)').matches ? '0ms' : (fast ? '90ms' : '160ms'));
-  back.classList.remove('on');
+  back.classList.remove('on', 'rest');
   place(back, x);
+  clearTimeout(settle);
+  settle = setTimeout(() => { if (!playing && my === token) { front.classList.add('rest'); place(front, x, true); } }, 900);
   back.src = `p/${x.day}.jpg`;
   back.alt = `${era === 'psm' ? 'Pramukh Swami Maharaj' : 'Mahant Swami Maharaj'} on ${longDate(x.day)}`;
   (back.decode ? back.decode() : Promise.resolve()).catch(() => {}).then(() => {
@@ -345,7 +355,12 @@ function start() {
   $('play').setAttribute('aria-pressed', 'true');
   $('play').textContent = '❚❚ Pause';
 }
-function stop() { if (playing) clearInterval(playing); playing = null; $('play').textContent = '▶ Play'; }
+function stop() {
+  if (!playing) return;
+  clearInterval(playing); playing = null; $('play').textContent = '▶ Play';
+  clearTimeout(settle);
+  settle = setTimeout(() => { if (!playing && list[idx]) { front.classList.add('rest'); place(front, list[idx], true); } }, 900);
+}
 $('play').onclick = toggle;
 $('speed').oninput = () => { $('speedVal').textContent = `${$('speed').value} a second`; if (playing) { stop(); start(); } };
 $('days').oninput = () => { stop(); show(+$('days').value, true); follow(); draw(); };
@@ -363,6 +378,6 @@ $('zIn').onclick = () => zoomBy(1.8);
 $('zOut').onclick = () => zoomBy(1 / 1.8);
 $('eyeBtn').onclick = () => { const on = $('eyes').hidden; $('eyes').hidden = !on; $('eyeBtn').setAttribute('aria-pressed', on); };
 for (const b of document.querySelectorAll('.tab')) b.onclick = () => setEra(b.dataset.era);
-addEventListener('resize', () => { clampView(); draw(); if (list[idx]) place(front, list[idx]); });
+addEventListener('resize', () => { clampView(); draw(); if (list[idx]) place(front, list[idx], front.classList.contains('rest')); });
 setEra(location.hash === '#msm' ? 'msm' : 'psm');
 </script>
