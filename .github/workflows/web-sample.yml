@@ -1,0 +1,38 @@
+name: Website mockup photos
+
+# Small copies of one day's photos for the website mockup (tools/web_sample.py). Test branch only, never main.
+
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Date (YYYY-MM-DD)'
+        required: false
+  push:
+    branches: [claude/project-thread-4gjf8x]
+    paths: [tools/web_sample.py, .github/workflows/web-sample.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -q -r requirements.txt
+      - name: Make the sample
+        run: python tools/web_sample.py --date "${{ github.event.inputs.date || '2026-10-23' }}" --out web/sample
+      - name: Save it to the branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web/sample
+          git commit -m "Website mockup photos" || exit 0
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
