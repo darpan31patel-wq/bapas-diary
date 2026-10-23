@@ -36,6 +36,12 @@ def save(path, body):
         f.write(body)
 
 
+def quiet_now():
+    # The daily 2pm picture fetches from baps.org at 05:15 and 06:15 UTC; never compete with it.
+    t = time.gmtime()
+    return 4 * 60 + 30 <= t.tm_hour * 60 + t.tm_min < 7 * 60 + 30
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--db', default='bapas.db')
@@ -44,7 +50,7 @@ def main():
     ap.add_argument('--have', help='keys already in R2, one per line (s/ALBUM/FILE)')
     ap.add_argument('--send', help='command that sends --out to R2 and empties it')
     ap.add_argument('--every', type=int, default=500)
-    ap.add_argument('--gap', type=float, default=1.0, help='seconds between files')
+    ap.add_argument('--gap', type=float, default=2.0, help='seconds between files')
     ap.add_argument('--minutes', type=float, default=330, help='stop after this long')
     a = ap.parse_args()
     have = set(open(a.have).read().split()) if a.have and os.path.exists(a.have) else set()
@@ -63,6 +69,9 @@ def main():
         for i, (album, file) in enumerate(todo):
             if time.time() > end:
                 print('Out of time for this run; the next run carries on.')
+                break
+            if quiet_now():
+                print('Stopping: 04:30 to 07:30 UTC is kept free for the daily picture\'s baps.org fetches.')
                 break
             body, _ = get(SITE.format(album=album, size='WebImages', file=file))
             if body:
