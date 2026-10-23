@@ -39,7 +39,8 @@ def main():
     y, m = map(int, a.month.split('-'))
     out = os.path.join(month.HERE, 'preview', 'poster', a.month)
     os.makedirs(out, exist_ok=True)
-    photos = month.analyse(month.full_size(month.month_items(y, m), a.cache))
+    got = month.full_size(month.month_items(y, m), a.cache)
+    photos = month.analyse(got)
     mo = month.Month(photos, y, m)
     meta, done = dict(month=a.month, places=mo.places, count=mo.count, close={}, act={}, highlights=[], extra={}), {}
 
@@ -53,6 +54,20 @@ def main():
         meta['act'][d] = keep(x, f'{d:02d}-act')
     for i, x in enumerate(mo.highlights[:16]):
         meta['highlights'].append(keep(x, f'hl{i:02d}'))
+    # a day whose photos all failed the face check (far off, from behind) still gets one, so no day stays empty
+    # (Darpan, 23 Oct 2026: something for every day); posters show photos whole, so the face box is only a guess
+    for x in got:
+        d = int(x['d'][8:10])
+        if x['d'][:7] != a.month or d in meta['close'] or make.JUNK.search(x.get('c') or ''):
+            continue
+        try:
+            w, h = Image.open(x['path']).size
+        except Exception:
+            continue
+        k = min(1, 2400 / max(w, h))
+        meta['close'][d] = keep(dict(x, face=(w * k * .4, h * k * .2, w * k * .2, h * k * .25), size=(w * k, h * k), close_ok=False,
+                                     special=False, s_close=-9, s_act=-9), f'{d:02d}-any')
+        meta['extra'].setdefault(d, sorted({make.caption(x)} - {''}))
     for d, xs in mo.by.items():      # every caption of the day, for the 'what happened' lines
         meta['extra'][d] = sorted({make.caption(x) for x in xs if make.caption(x)})
     json.dump(meta, open(os.path.join(out, 'photos.json'), 'w'), indent=1, ensure_ascii=False)
