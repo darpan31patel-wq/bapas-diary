@@ -149,7 +149,7 @@ def month_entry(key, items, tg):
     for d in sorted(by):
         for x in by[d]:
             p = make.place(x)
-            if p and p not in places:
+            if p and p not in places and not re.search(r'\d', p):   # an album heading of only dates is not a place
                 places.append(p)
     return {'key': key, 'y': year, 'm': month, 'name': f'{calendar.month_name[month]} {year}', 'photos': len(items),
             'days': len(by), 'places': places[:8], 'tg': sorted(tg.get(key, []), key=lambda e: e['d'])[:6]}
@@ -158,7 +158,7 @@ def month_entry(key, items, tg):
 def day_facts(items, day):
     """The cover day's own captions, what the click shows."""
     caps, keys = [], []
-    for x in sorted(items, key=lambda x: not make.bapa_is_subject(x.get('c') or '')):   # what Bapa did first, murtis and others after
+    for x in sorted(items, key=lambda x: not re.match(make.NAME, x.get('c') or '')):   # what Bapa did first, murtis and others after
         if x['d'] != day:
             continue
         c = caption(x)
@@ -168,7 +168,7 @@ def day_facts(items, day):
         if any(same_caption(k, o) for o in keys):
             continue
         keys.append(k); caps.append(c)
-    return {'date': day, 'place': next((make.place(x) for x in items if x['d'] == day and make.place(x)), ''),
+    return {'date': day, 'place': next((make.place(x) for x in items if x['d'] == day and make.place(x) and not re.search(r'\d', make.place(x))), ''),
             'count': sum(x['d'] == day for x in items), 'captions': caps[:12]}
 
 
@@ -190,7 +190,8 @@ def pick(photos):
 
 
 def card(x):
-    return {'date': x['d'], 'cap': caption(x), 'place': make.place(x)}
+    p = make.place(x)
+    return {'date': x['d'], 'cap': caption(x), 'place': '' if re.search(r'\d', p) else p}
 
 
 def main():
