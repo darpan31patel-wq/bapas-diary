@@ -57,6 +57,8 @@ select, .toggle { font: 15px var(--body); padding: 8px 10px; border: 1px solid v
 mark { background: var(--mark); color: inherit; border-radius: 2px; }
 .card.post .txt { padding-top: 14px; }
 .card.post { border-top: 4px solid var(--accent); }
+.card.day { border-top: 4px solid var(--bar); }
+.card.day .cap { font-size: 15px; }
 .card.post .cap { white-space: pre-line; font-size: 15px; }
 .more { display: flex; justify-content: center; padding-block: 8px 40px; }
 .more button { font: 600 15px var(--body); padding: 10px 22px; border-radius: 8px; border: 1px solid var(--accent); background: none; color: var(--accent); cursor: pointer; }
@@ -78,7 +80,7 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; }
   <div class="wrap">
     <div class="controls">
       <input id="q" type="search" placeholder="Words to find, e.g. annakut London" autocomplete="off" aria-label="Search words">
-      <select id="from" aria-label="Where from"><option value="">baps.org and Telegram</option><option value="photo">baps.org photos only</option><option value="post">Telegram posts only</option></select>
+      <select id="from" aria-label="Where from"><option value="">Everything</option><option value="photo">baps.org photos only</option><option value="post">Telegram posts only</option><option value="day">BAPS calendar only</option></select>
       <select id="year" aria-label="Year"></select>
       <select id="month" aria-label="Month"></select>
       <label class="toggle" id="bapa-wrap"><input type="checkbox" id="bapa"> Bapa only</label>
@@ -111,7 +113,7 @@ const EXAMPLES = ['annakut', 'pratishtha', 'London', 'Sarangpur', 'murti', 'Diwa
 const PAGE = 60, FIRST = 1999;
 const $ = id => document.getElementById(id);
 
-// one list of everything, baps.org photos (kind 'photo') and Telegram posts (kind 'post'), kept in date order
+// one list of everything, baps.org photos (kind 'photo'), Telegram posts (kind 'post') and BAPS calendar days (kind 'day'), kept in date order
 let items = [], loaded = 0, total = 0, hits = [], shown = 0;
 
 function esc(s) { return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
@@ -167,7 +169,8 @@ function search() {
 function render(byYear, want) {
   const year = $('year').value, max = Math.max(1, ...Object.values(byYear));
   const keys = ['old'];
-  for (let y = FIRST; y <= new Date().getFullYear(); y++) keys.push(String(y));
+  const last = Math.max(new Date().getFullYear(), ...Object.keys(byYear).filter(k => k !== 'old').map(Number));
+  for (let y = FIRST; y <= last; y++) keys.push(String(y));
   $('years').innerHTML = Object.keys(byYear).length ? keys.map(k => {
     const n = byYear[k] || 0, label = k === 'old' ? 'before' : k.slice(2), name = k === 'old' ? 'Before 1999' : k;
     return `<button class="${k === year ? 'on' : ''}" data-y="${k}" title="${name}: ${n.toLocaleString()} found"><div class="col" style="height:${n ? Math.max(4, 100 * n / max) : 0}%"></div><span>${label}</span></button>`;
@@ -180,9 +183,9 @@ function render(byYear, want) {
     $('more').hidden = true;
     return;
   }
-  const nPhotos = hits.filter(h => h.kind === 'photo').length, nPosts = hits.length - nPhotos;
+  const nPhotos = hits.filter(h => h.kind === 'photo').length, nDays = hits.filter(h => h.kind === 'day').length, nPosts = hits.length - nPhotos - nDays;
   $('chips').innerHTML = '';
-  $('count').innerHTML = `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'} and <b>${nPosts.toLocaleString()}</b> Telegram post${nPosts === 1 ? '' : 's'} found`
+  $('count').innerHTML = `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'} and <b>${nPosts.toLocaleString()}</b> Telegram post${nPosts === 1 ? '' : 's'}${nDays ? `, <b>${nDays.toLocaleString()}</b> calendar day${nDays === 1 ? '' : 's'}` : ''} found`
     + (loaded < total ? ` (still loading, ${loaded} of ${total} lists)` : '');
   $('results').innerHTML = '<div class="grid" id="cards"></div>';
   shown = 0;
@@ -211,9 +214,19 @@ function postCard(p, want) {
     <div class="links"><a href="https://t.me/${handle}/${p.id}" target="_blank" rel="noopener">Open on Telegram</a></div>
     </div></article>`;
 }
+function dayCard(p, want) {
+  const lines = [p.fest && `<p class="cap"><b>${highlight(p.fest, want)}</b></p>`, p.about && `<p class="cap">${highlight(p.about, want)}</p>`,
+                 p.notes && `<p class="cap">${highlight(p.notes, want)}</p>`].filter(Boolean).join('');
+  return `<article class="card day"><div class="txt">
+    <span class="badge">BAPS calendar</span>
+    <p class="cap">${highlight(p.indian, want)}</p>${lines}
+    <div class="meta">${p.wd} ${niceDate(p.d)}${p.vs ? ' · V.S. ' + p.vs : ''}</div>
+    ${p.src ? `<div class="links"><a href="${esc(p.src)}" target="_blank" rel="noopener">Calendar month on baps.org</a></div>` : ''}
+    </div></article>`;
+}
 function more(want = parse($('q').value).want) {
   const box = $('cards'), next = hits.slice(shown, shown + PAGE);
-  box.insertAdjacentHTML('beforeend', next.map(p => p.kind === 'photo' ? photoCard(p, want) : postCard(p, want)).join(''));
+  box.insertAdjacentHTML('beforeend', next.map(p => p.kind === 'photo' ? photoCard(p, want) : p.kind === 'day' ? dayCard(p, want) : postCard(p, want)).join(''));
   shown += next.length;
   $('more').hidden = shown >= hits.length;
   $('more').textContent = `Show ${Math.min(PAGE, hits.length - shown)} more`;
@@ -248,8 +261,8 @@ function add(list) {
 }
 async function load() {
   const about = await (await fetch('data/about.json')).json();
-  total = about.years.length + 1;
-  $('sub').textContent = `Every baps.org vicharan photo from ${about.years[0]} to ${about.years.at(-1)} (${Object.values(about.photos).reduce((a, b) => a + b, 0).toLocaleString()} photos) and ${about.telegram.toLocaleString()} posts from both Telegram channels, searched together. Narrow by year and month. Database built ${niceDate(about.built)}.`;
+  total = about.years.length + 1 + (about.calendar ? 1 : 0);
+  $('sub').textContent = `Every baps.org vicharan photo from ${about.years[0]} to ${about.years.at(-1)} (${Object.values(about.photos).reduce((a, b) => a + b, 0).toLocaleString()} photos) and ${about.telegram.toLocaleString()} posts from both Telegram channels${about.calendar ? `, plus ${about.calendar.toLocaleString()} days of the BAPS calendar` : ''}, searched together. Narrow by year and month. Database built ${niceDate(about.built)}.`;
   $('q').value = 'annakut';
   const tg = fetch('data/telegram.json').then(r => r.json()).then(list => add(list.map(([ch, id, d, place, text, ph, vid]) =>
     ({ kind: 'post', ch, id, d, y: +d.slice(0, 4), place, text, ph, vid, hay: (text + ' ' + place).toLowerCase() }))));
@@ -258,7 +271,9 @@ async function load() {
       const g = data.g[gi];
       return { kind: 'photo', y, g, d: g[0], file, cap, bapa, hay: (cap + ' ' + g[2]).toLowerCase() };
     })))));
-  await tg;
+  const cal = about.calendar ? fetch('data/calendar.json').then(r => r.json()).then(list => add(list.map(([d, wd, vs, indian, fest, about, notes, src]) =>
+    ({ kind: 'day', d, y: +d.slice(0, 4), wd, vs, indian, fest, about, notes, src, hay: [indian, fest, about, notes].join(' ').toLowerCase() })))) : null;
+  await tg; await cal;
 }
 load().catch(e => { $('count').textContent = 'The lists did not load. Reload the page to try again.'; console.error(e); });
 </script>

@@ -8,6 +8,8 @@ Writes a folder that works as it is on any web host (Cloudflare Pages, or opened
                         {"g": [[date, date_to, place, album], ...],      a group = one album on one day (or date range)
                          "p": [[group, file, caption, is_bapa], ...]}    every photo, nothing cut out
   data/telegram.json  every Telegram post with words: [[channel, id, date, place, text, photos, videos], ...]
+  data/calendar.json  every BAPS calendar day, when the database has the calendar table:
+                        [[date, weekday, vikram_samvat, indian_date, festivals, festival_about, notes, source], ...]
   data/about.json     years, counts and when it was built
 """
 import argparse, json, os, sqlite3
@@ -50,9 +52,17 @@ def main():
               "WHERE trim(coalesce(text, '')) != '' ORDER BY coalesce(date, posted)")]
     write(os.path.join(a.out, 'data', 'telegram.json'), tg)
 
+    # BAPS calendar days (table `calendar`, when the database has it): one row per date, nothing cut out
+    cal = []
+    if db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'calendar'").fetchone():
+        cal = [list(r) for r in db.execute(
+            "SELECT date, weekday, vikram_samvat, indian_date, festivals, festival_about, notes, source FROM calendar ORDER BY date")]
+        cal = [[c if c is not None else '' for c in r] for r in cal]
+        write(os.path.join(a.out, 'data', 'calendar.json'), cal)
+
     built = dict(db.execute("SELECT key, value FROM about"))
     write(os.path.join(a.out, 'data', 'about.json'),
-          {'built': built.get('built'), 'years': sorted(counts), 'photos': counts, 'telegram': len(tg)})
+          {'built': built.get('built'), 'years': sorted(counts), 'photos': counts, 'telegram': len(tg), 'calendar': len(cal)})
 
     body = open(PAGE, encoding='utf-8').read().replace('{{PHOTOS}}', a.photos)
     with open(os.path.join(a.out, 'index.html'), 'w', encoding='utf-8') as f:
