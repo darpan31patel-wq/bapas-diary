@@ -277,6 +277,9 @@ def telegram(db, root, gap, stop_at):
         if too_big:
             with open(os.path.join(root, 'telegram', 'too-big-for-the-web.txt'), 'a') as f:
                 f.write(f'https://t.me/{CHANNELS[ch]}/{pid}\n')
+            os.makedirs(folder, exist_ok=True)   # in the post's own folder too, so the video is one click away
+            with open(os.path.join(folder, 'big video, watch on Telegram.url'), 'w') as f:
+                f.write(f'[InternetShortcut]\nURL=https://t.me/{CHANNELS[ch]}/{pid}\n')
         if whole:   # a post with a file that wouldn't come is tried again next run
             os.makedirs(folder, exist_ok=True)
             open(os.path.join(folder, '.done'), 'w').close()
