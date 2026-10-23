@@ -34,8 +34,10 @@ SAFFRON = (232, 128, 38)
 
 def font(name, size):
     files = {'serif': 'eb-garamond-latin-600-normal', 'serif-bold': 'eb-garamond-latin-700-normal',
-             'serif-med': 'eb-garamond-latin-500-normal', 'sans': 'arimo-latin-700-normal'}
-    return ImageFont.truetype(os.path.join(HERE, 'fonts', files[name] + '.woff2'), max(8, round(size)))
+             'serif-med': 'eb-garamond-latin-500-normal', 'sans': 'arimo-latin-700-normal',
+             'light': 'Inter-Light.otf', 'regular': 'Inter-Regular.otf', 'medium': 'Inter-Medium.otf'}
+    f = files[name]
+    return ImageFont.truetype(os.path.join(HERE, 'fonts', f if '.' in f else f + '.woff2'), max(8, round(size)))
 
 
 def spaced(d, xy, text, f, fill, gap, anchor='mm'):
@@ -412,6 +414,93 @@ def month_grid(cal, photos, y, m, style):
     return img
 
 
+def m4_wide(cal, photos, y, m, S=2):
+    """The month as baps.org draws it, 16:9 (Darpan, 23 Oct 2026: closer to the BAPS calendar): the tan band, the
+    weekday row, white boxes with a thin number and the Indian date under it. A day with a photo shows it the way
+    baps.org shows a festival picture, with the Indian date on a pale fade at the bottom. Sizes are in 1920 x 1080 units."""
+    img = Image.new('RGB', (1920 * S, 1080 * S), (247, 241, 230))
+    d = ImageDraw.Draw(img)
+    s = lambda *v: [round(x * S) for x in v]
+    first = cal[f'{y}-{m:02d}-01']
+    band = f"{calendar.month_name[m]} {y} {first['lunar_months']}, Vikram Samvat {first['vikram_samvat']}"
+    d.rectangle(s(30, 20, 1890, 80), fill=(214, 186, 144))
+    d.text(s(1866, 51), band, font=font('light', 40 * S), fill='white', anchor='rm')
+    d.text(s(56, 52), 'Bapa’s Diary', font=font('serif', 36 * S), fill='white', anchor='lm')
+    cw = 1860 / 7
+    for i, wd in enumerate(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']):
+        d.rectangle(s(30 + i * cw, 92, 30 + (i + 1) * cw, 130), fill=(140, 24, 20) if i == 0 else (166, 86, 40))
+        if i:
+            d.line(s(30 + i * cw, 92, 30 + i * cw, 130), fill=(196, 132, 92), width=S)
+        d.text(s(30 + (i + .5) * cw, 111), wd, font=font('regular', 22 * S), fill='white', anchor='mm')
+    start = (datetime.date(y, m, 1).weekday() + 1) % 7
+    nd = calendar.monthrange(y, m)[1]
+    rows = (start + nd + 6) // 7
+    gy0, gy1 = 140, 1036
+    ch = (gy1 - gy0) / rows
+    gap = 9
+    prev_month = None
+    for k in range(rows * 7):
+        r, c = divmod(k, 7)
+        x0, y0 = 30 + c * cw + gap / 2, gy0 + r * ch + gap / 2
+        x1, y1 = x0 + cw - gap, y0 + ch - gap
+        box = s(x0, y0, x1, y1)
+        dn = k - start + 1
+        if not 1 <= dn <= nd:
+            d.rounded_rectangle(box, 4 * S, fill='white', outline=(228, 220, 206), width=S)
+            continue
+        info = cal[f'{y}-{m:02d}-{dn:02d}']
+        bg = (252, 241, 206) if info['ekadashi'] else (190, 190, 190) if info['amas'] else (255, 255, 255)
+        shadow(img, box, r=4 * S, blur=3 * S, alpha=40, off=(0, S))
+        d.rounded_rectangle(box, 4 * S, fill=bg, outline=(228, 220, 206) if bg[0] == 255 else None, width=S)
+        tithi = info['indian_date'] if info['month'] != prev_month else info['indian_date'].split(' ', 1)[-1]
+        prev_month = info['month']
+        fests = [re.sub(r'\s*\(.*?\)', '', f['name']) for f in info['festivals']]
+        notes = [n for n in info['notes'] if not re.search(r'^smart$', n, re.I)]
+        red = c == 0
+        ph = photos['close'].get(str(dn))
+        if ph:
+            pick = photos['act'].get(str(dn)) if fests and photos['act'].get(str(dn)) else ph
+            w, h = box[2] - box[0], box[3] - box[1]
+            pic = crop(os.path.join(photos['dir'], pick['file']), pick['face'], w, h, tight=pick is ph)
+            # the pale fade at the bottom, as on baps.org's picture days
+            fade_h = round(h * (.42 if fests else .3))
+            g = Image.linear_gradient('L').resize((w, fade_h)).point(lambda v: min(255, v * 1.6))
+            mask = Image.new('L', (w, h), 0)
+            mask.paste(g, (0, h - fade_h))
+            pic = Image.composite(Image.new('RGB', (w, h), bg), pic, mask)
+            rounded(img, pic, (box[0], box[1]), 4 * S)
+            short = [f.rsplit(',', 1)[1].strip() if len(f) > 24 and ',' in f else f for f in fests[:1]]
+            lines = [(tithi, font('regular', 17 * S), (60, 60, 64))] + [(f, font('medium', 17 * S), (36, 64, 130)) for f in short]
+            ty = y1 - 12 - 22 * (len(lines) - 1)
+            for t, f, col in lines:
+                t = wrap(d, t, f, (x1 - x0 - 12) * S, 1)[0]
+                d.text(s((x0 + x1) / 2, ty), t, font=f, fill=col, anchor='mm')
+                ty += 22
+            # the date in a small white chip, top left
+            nf = font('regular', 26 * S)
+            tw = d.textlength(str(dn), font=nf) / S
+            chip = Image.new('RGBA', img.size, (0, 0, 0, 0))
+            ImageDraw.Draw(chip).rounded_rectangle(s(x0 + 6, y0 + 6, x0 + 18 + tw, y0 + 40), 6 * S, fill=(255, 255, 255, 225))
+            img.paste(chip, (0, 0), chip)
+            d.text(s(x0 + 12 + tw / 2, y0 + 23), str(dn), font=nf, fill=(214, 40, 30) if red else (50, 50, 54), anchor='mm')
+        else:
+            big = min(58, ch * .36)
+            d.text(s((x0 + x1) / 2, y0 + 10 + big * .62), str(dn), font=font('light', big * S),
+                   fill=(214, 40, 30) if red else (50, 50, 54), anchor='mm')
+            ty = y0 + 22 + big * 1.25
+            f = font('regular', 16 * S)
+            for t in ([tithi] + fests + notes):
+                for line in wrap(d, t, f, (x1 - x0 - 14) * S, 2):
+                    if ty > y1 - 10:
+                        break
+                    d.text(s((x0 + x1) / 2, ty), line, font=f, fill=(40, 40, 44), anchor='mm')
+                    ty += 21
+    places = photos.get('places') or []
+    where = ('Bapa was in ' + ', '.join(places[:4]) + '   ·   ') if places else ''
+    d.text(s(960, 1058), where + FOOTER, font=font('serif', 26 * S), fill=(150, 112, 76), anchor='mm')
+    return img
+
+
 def m3_special(cal, photos, y, m):
     """The second card: the month's special moments, each with its date and Indian date."""
     img = paper((W, H))
@@ -469,6 +558,7 @@ def main():
         fn(day).save(os.path.join(out, f'{name}-{a.day:02d}.jpg'), quality=88)
     month_grid(cal, photos, y, m, 'baps').save(os.path.join(out, 'm1-baps-grid.jpg'), quality=88)
     month_grid(cal, photos, y, m, 'diary').save(os.path.join(out, 'm2-diary-grid.jpg'), quality=88)
+    m4_wide(cal, photos, y, m).save(os.path.join(out, 'm4-baps-wide.jpg'), quality=88)
     m3_special(cal, photos, y, m).save(os.path.join(out, 'm3-special-moments.jpg'), quality=88)
     print('made', sorted(os.listdir(out)))
 
