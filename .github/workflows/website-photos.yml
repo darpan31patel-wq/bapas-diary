@@ -1,0 +1,37 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain.
+# Web sized photos into R2 (tools/web_photos.py). The years to do are in site/photo-years.txt; changing that
+# file on a claude/** branch starts a run. Photos already in R2 are skipped, so a run can simply be started again.
+name: website-photos
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['site/photo-years.txt', '.github/workflows/website-photos.yml']
+  workflow_dispatch:
+concurrency:
+  group: website-photos
+jobs:
+  photos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BUCKET: bapas-diary-photos
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Get ready
+        run: |
+          pip install -q pillow
+          curl -sL -o bapas.db.gz https://github.com/${{ github.repository }}/releases/download/database/bapas.db.gz && gunzip bapas.db.gz
+          id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
+          { echo "AWS_ACCESS_KEY_ID=$id"; echo "AWS_SECRET_ACCESS_KEY=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1)"
+            echo "AWS_DEFAULT_REGION=auto"; echo "R2=https://$CF_ACCOUNT.r2.cloudflarestorage.com"; } >> "$GITHUB_ENV"
+      - name: Photos into R2
+        run: |
+          aws s3 ls "s3://$BUCKET/s/" --recursive --endpoint-url "$R2" | awk '{print $4}' > have.txt || true
+          echo "$(wc -l < have.txt) small photos already in R2"
+          python3 tools/web_photos.py --db bapas.db --years $(cat site/photo-years.txt) --out web --have have.txt \
+            --send 'aws s3 sync web "s3://$BUCKET/" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000, immutable" --content-type image/jpeg && rm -rf web'
