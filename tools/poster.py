@@ -521,6 +521,8 @@ def m4_mix(cal, photos, y, m, kind):
     sub = f"{first['lunar_months'].replace('-', ' · ')}  ·  Vikram Samvat {first['vikram_samvat']}".upper()
     make.draw_spaced(d, M + 4, 168, sub, sf, 6, mc.CREAM)
     places = [re.sub(r',\s*India$', '', p) for p in (photos.get('places') or [])]
+    seen = [re.sub(r',\s*India$', '', v.get('place', '')) for _, v in sorted(photos['close'].items(), key=lambda kv: int(kv[0]))]
+    places.sort(key=lambda p: seen.index(p) if p in seen else 99)      # in the order he went
     if places:
         where = 'Bapa was in ' + (places[0] if len(places) == 1 else ', '.join(places[:-1]) + ' and ' + places[-1])
         size = 96
