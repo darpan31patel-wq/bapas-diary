@@ -1,0 +1,129 @@
+name: Download to Drive
+
+# Darpan, 23 Oct 2026: every baps.org photo with its caption and both Telegram channels, saved straight into his
+# Google Drive ("Bapa's Archive") by GitHub instead of his Mac. tools/archive_download.py does the downloading, the
+# same script as on the Mac; rclone hands each 1,500 files to Drive so the runner's disk never fills.
+# Four runs share the baps.org years and a fifth does Telegram. A round stops after about 5 hours; while anything
+# is left it starts the next round itself, and each round writes check.txt (known against saved) into the folder.
+# Needs the secret RCLONE_DRIVE_TOKEN (from "rclone authorize", scope drive.file: it only sees what it made).
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 12 * * *'    # a daily nudge in case a round's hand-on to the next ever fails
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: drive    # one round at a time, so two runs never save the same file twice
+
+env:
+  REMOTE: "gdrive:Bapa's Archive"
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Connect to Drive
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+        run: |
+          [ -n "$TOKEN" ] || { echo "::error::The RCLONE_DRIVE_TOKEN secret isn't set yet"; exit 1; }
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          mkdir -p ~/.config/rclone
+          printf '[gdrive]\ntype = drive\nscope = drive.file\ntoken = %s\n' "$TOKEN" > ~/.config/rclone/rclone.conf
+      - name: Make the folders first, so the five runs never make the same one twice
+        run: |
+          for d in "" photos photos/baps.org telegram; do rclone mkdir "$REMOTE/$d"; done
+          seq 1999 2026 | while read -r y; do rclone mkdir "$REMOTE/photos/baps.org/$y"; done
+          curl -sL -o bapas.db.gz https://github.com/${{ github.repository }}/releases/download/database/bapas.db.gz
+          gunzip bapas.db.gz && rclone copyto bapas.db "$REMOTE/bapas.db"
+
+  download:
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        include:   # about 65,000 photos each
+          - { name: photos-a, only: baps, years: '2005,2008,2010,2016,2017,2021,2025' }
+          - { name: photos-b, only: baps, years: '2000,2001,2007,2013,2014,2022,2024' }
+          - { name: photos-c, only: baps, years: '2002,2003,2004,2006,2011,2018,2020,2026' }
+          - { name: photos-d, only: baps, years: '1999,2009,2012,2015,2019,2023' }
+          - { name: telegram, only: telegram, years: '' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Connect to Drive
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+        run: |
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          mkdir -p ~/.config/rclone
+          printf '[gdrive]\ntype = drive\nscope = drive.file\ntoken = %s\n' "$TOKEN" > ~/.config/rclone/rclone.conf
+      - name: List what is already in Drive
+        run: |
+          : > have.txt
+          if [ "${{ matrix.only }}" = telegram ]; then dirs="telegram"; else dirs=$(echo "${{ matrix.years }}" | tr , '\n' | sed 's|^|photos/baps.org/|'); fi
+          for d in $dirs; do rclone lsf -R --files-only --fast-list "$REMOTE/$d" | sed "s|^|$d/|" >> have.txt || true; done
+          echo "$(wc -l < have.txt) files already in Drive"
+          mkdir -p work/photos work/telegram   # this run's notes carry on from the last round's
+          rclone copy "$REMOTE" work --include "photos/missing (${{ matrix.name }}).txt" --include "telegram/too-big-for-the-web.txt" || true
+      - name: Download, handing every 1,500 files to Drive (stops after 5 hours)
+        run: |
+          MOVE='rclone move work "$REMOTE" --exclude bapas.db --exclude "*.part" --exclude "photos/missing*" --exclude "telegram/too-big*" --transfers 8 --stats-one-line --stats 0'
+          set +e
+          python tools/archive_download.py --to work --only ${{ matrix.only }} ${{ matrix.years && format('--years {0}', matrix.years) || '' }} \
+            --have have.txt --hook "$MOVE" --notes "work/photos/missing (${{ matrix.name }}).txt" --gap 0.5 --hours 5
+          code=$?
+          rclone copy work "$REMOTE" --include "photos/missing*" --include "telegram/too-big*"
+          mkdir -p status && { [ $code = 0 ] && echo done || echo more; } > "status/${{ matrix.name }}"
+          echo "${{ matrix.name }}: $(cat status/${{ matrix.name }})"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: status-${{ matrix.name }}
+          path: status/
+
+  next:
+    needs: [setup, download]
+    if: always() && needs.setup.result != 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: status-*
+          merge-multiple: true
+          path: status
+      - name: Start the next round while anything is left
+        run: |
+          cat status/* 2>/dev/null || true
+          if [ "$(cat status/* 2>/dev/null | grep -c done)" -lt 5 ]; then
+            gh workflow run drive.yml --ref main && echo "Next round started"
+          else
+            echo "Everything is in Drive"
+          fi
+      - name: Write check.txt (every photo and post known, against what is in Drive)
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+        run: |
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          mkdir -p ~/.config/rclone
+          printf '[gdrive]\ntype = drive\nscope = drive.file\ntoken = %s\n' "$TOKEN" > ~/.config/rclone/rclone.conf
+          rclone lsf -R --files-only --fast-list "$REMOTE" > have.txt
+          mkdir -p work && rclone copy "$REMOTE" work --include "photos/missing*"
+          python tools/archive_download.py --to work --check --have have.txt
+          rclone copyto work/check.txt "$REMOTE/check.txt"
