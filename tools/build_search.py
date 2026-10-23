@@ -6,7 +6,7 @@ Writes a folder that works as it is on any web host (Cloudflare Pages, or opened
   index.html          the search page (site/search.html wrapped as a full page)
   data/YYYY.json      one file per year of baps.org photos:
                         {"g": [[date, date_to, place, album], ...],      a group = one album on one day (or date range)
-                         "p": [[group, file, caption, is_bapa], ...]}    every photo, nothing cut out
+                         "p": [[group, file, caption, tags], ...]}   tags: what is happening in it, e.g. "smiling, garland"    every photo, nothing cut out
   data/stories.json   every On this day story (the Telegram channel posts, shown without any Telegram links): [[date, place, text], ...]
   data/calendar.json  every BAPS calendar day, when the database has the calendar table:
                         [[date, weekday, vikram_samvat, indian_date, festivals, festival_about, notes, source], ...]
@@ -71,6 +71,16 @@ def festivals(text):
     return out
 
 
+# What is happening in a photo (tools/photo_tags.py): a tag is kept when its score clears its bar. Most tags
+# need 0.8; the ones the model is surer of need less, the ones it guesses at need more.
+TAG_BAR = {'glasses': .7, 'garland': .75, 'microphone': .75, 'elephant': .7, 'car': .75, 'plane': .75, 'umbrella': .75,
+           'smiling': .8, 'laughing': .85, 'eating': .85, 'sleeping': .9, 'pointing': .85}
+
+
+def kept_tags(scores):
+    return ', '.join(t for t, v in scores.items() if v >= TAG_BAR.get(t, .8))
+
+
 def write(path, data):
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
@@ -80,11 +90,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--db', default='bapas.db')
     ap.add_argument('--out', default='search')
+    ap.add_argument('--tags', help='tags.json from tools/photo_tags.py (what is happening in each photo)')
     ap.add_argument('--photos', default='https://photos.bapas-diary.com/', help='where the s/ and m/ photos are (R2)')
     a = ap.parse_args()
     os.makedirs(os.path.join(a.out, 'data'), exist_ok=True)
     db = sqlite3.connect(a.db)
 
+    tags = json.load(open(a.tags)) if a.tags and os.path.exists(a.tags) else {}
     years, counts = {}, {}
     rows = db.execute("SELECT year, date, date_from, date_to, place, album, file, caption, is_bapa FROM photos "
                       "ORDER BY coalesce(date, date_from), album, file")
@@ -94,7 +106,7 @@ def main():
         if key not in yr['at']:
             yr['at'][key] = len(yr['g'])
             yr['g'].append(list(key))
-        yr['p'].append([yr['at'][key], file, cap or '', 1 if bapa else 0])
+        yr['p'].append([yr['at'][key], file, cap or '', kept_tags(tags.get(f'{album}/{file}', {}))])
     for y, yr in years.items():
         write(os.path.join(a.out, 'data', f'{y}.json'), {'g': yr['g'], 'p': yr['p']})
         counts[y] = len(yr['p'])

@@ -93,6 +93,7 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 .more { display: flex; justify-content: center; padding-block: 8px 50px; }
 .more button { font: 700 12px var(--sans); letter-spacing: .2em; text-transform: uppercase; padding: 12px 24px; border-radius: 999px; border: 1px solid var(--maroon); background: var(--maroon); color: var(--gold-hi); cursor: pointer; }
 /* the wide view */
+.big-info .tags { font: italic 500 16px var(--serif); color: var(--gold-soft); }
 .big-pic .soon { color: var(--gold-soft); font: italic 500 20px var(--serif); }
 #big { --muted: rgba(250, 241, 222, .66); --line: rgba(217, 164, 65, .32); }
 #big { border: 1px solid var(--line); padding: 0; background: #1d070c; color: var(--cap); border-radius: 10px; width: min(96vw, 1240px); max-width: none; max-height: 94vh; overflow: auto; }
@@ -338,7 +339,7 @@ function showBig(i) {
   if (p.kind === 'photo') {
     const g = p.g, medium = `${PHOTOS}m/${g[3]}/${p.file}`;
     $('big-pic').innerHTML = `<img src="${medium}" alt="${esc(p.cap)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'soon',textContent:'Photo coming soon'}))">`;
-    $('big-info').innerHTML = `<div class="cap">${esc(p.cap || 'Darshan')}</div><div class="meta">${esc(g[1] ? niceDate(g[0]) + ' to ' + niceDate(g[1]) : niceDate(g[0]))} · ${esc(g[2])}</div><hr><div class="when">${esc(day)}</div>${calInfo(p.d)}`;
+    $('big-info').innerHTML = `<div class="cap">${esc(p.cap || 'Darshan')}</div><div class="meta">${esc(g[1] ? niceDate(g[0]) + ' to ' + niceDate(g[1]) : niceDate(g[0]))} · ${esc(g[2])}</div>${p.tags ? `<div class="tags">In this photo: ${esc(p.tags)}</div>` : ''}<hr><div class="when">${esc(day)}</div>${calInfo(p.d)}`;
   } else {
     $('big-pic').innerHTML = `<div class="story">${esc(p.text)}</div>`;
     $('big-info').innerHTML = `<span class="badge">On this day</span>${p.place ? `<div class="meta">${esc(p.place)}</div>` : ''}<hr><div class="when">${esc(day)}</div>${calInfo(p.d)}`;
@@ -430,9 +431,10 @@ async function load() {
   const tg = fetch('data/stories.json').then(r => r.json()).then(list => add(list.filter(p => p[0]).map(([d, place, text]) =>
     ({ kind: 'post', d, y: +d.slice(0, 4), place, text, hay: (text + ' ' + place).toLowerCase() }))));
   await Promise.all(about.years.map(y => fetch(`data/${y}.json`).then(r => r.json()).then(data =>
-    add(data.p.map(([gi, file, cap]) => {
+    add(data.p.map(([gi, file, cap, tags]) => {
       const g = data.g[gi];
-      return { kind: 'photo', y, g, d: g[0], file, cap, hay: (cap + ' ' + g[2]).toLowerCase() };
+      tags = typeof tags === 'string' ? tags : '';
+      return { kind: 'photo', y, g, d: g[0], file, cap, tags, hay: (cap + ' ' + g[2] + ' ' + tags).toLowerCase() };
     })))));
   await tg;
 }
