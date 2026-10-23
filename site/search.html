@@ -40,6 +40,12 @@ select, input[type=date], .clear { font: 700 12px var(--sans); letter-spacing: .
 .clear { cursor: pointer; text-transform: uppercase; letter-spacing: .12em; font-size: 11px; }
 .clear:hover, select:hover, input[type=date]:hover { border-color: var(--maroon); }
 :focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 2px; }
+.filters { display: grid; gap: 10px; padding-block: 16px 4px; }
+.frow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.flabel { font: 700 11px var(--sans); letter-spacing: .2em; text-transform: uppercase; color: var(--gold-deep); min-width: 8ch; }
+.frow .and { font: italic 500 17px var(--serif); color: var(--muted); }
+.frow select { min-width: 0; flex: 0 1 auto; }
+@media (max-width: 520px) { .flabel { flex-basis: 100%; } .frow select, .frow input { flex: 1 1 40%; } }
 .dates { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding-bottom: 14px; font: 700 11px var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--gold-deep); }
 .dates label { display: inline-flex; gap: 8px; align-items: center; }
 .hint { font-size: 13px; color: var(--muted); }
@@ -71,7 +77,11 @@ select, input[type=date], .clear { font: 700 12px var(--sans); letter-spacing: .
 .pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .pic .none { font: italic 500 15px var(--serif); color: var(--gold-soft); padding: 12px; text-align: center; }
 .card .txt { padding: 10px 2px 12px; display: flex; flex-direction: column; gap: 4px; flex: 1; text-align: center; }
-.cap { margin: 0; overflow-wrap: anywhere; font: 500 17px/1.3 var(--serif); }
+.cap { margin: 0; overflow-wrap: anywhere; font: 500 15px/1.3 var(--serif); }
+.card:not(.post) .cap { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; color: var(--ink); }
+.card .date { margin-top: 6px; padding-top: 7px; border-top: 1px solid rgba(110, 20, 36, .18); font: 700 17px/1.2 var(--serif); color: var(--maroon); }
+.card .place { font: 700 10px/1.4 var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--gold-deep); }
+.card.post .date, .card.post .place { text-align: left; }
 .cap.empty { font-style: italic; opacity: .7; }
 .meta { font: 700 9.5px/1.4 var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--maroon); opacity: .78; }
 .badge { font: 700 10px var(--sans); letter-spacing: .26em; text-transform: uppercase; color: var(--gold-deep); }
@@ -121,7 +131,7 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 <div class="band">
 <header class="top wrap">
   <h1>Bapa's Diary</h1>
-  <div class="kicker">Search every darshan</div>
+  <div class="kicker">Darshan through the years</div>
   <p class="sub" id="sub">Every vicharan photo on baps.org, the On this day stories and the BAPS calendar, all mixed together by date.</p>
 </header>
 </div>
@@ -129,25 +139,35 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 <div class="bar">
   <div class="wrap">
     <div class="controls">
-      <input id="q" type="search" placeholder="Words to find, e.g. annakut London" autocomplete="off" aria-label="Search words">
-      <select id="fest" aria-label="Festival"><option value="">Every festival</option></select>
-      <select id="year" aria-label="Year"></select>
-      <select id="month" aria-label="Month"></select>
-      <select id="day" aria-label="Day of the month"></select>
+      <input id="q" type="search" placeholder="Search anything, e.g. annakut London" autocomplete="off" aria-label="Search words">
       <select id="order" aria-label="Order"><option value="old">Oldest first</option><option value="new">Newest first</option></select>
     </div>
-    <div class="dates">
-      <label>From <input type="date" id="from" min="1970-01-01" max="2027-12-31"></label>
-      <label>to <input type="date" id="to" min="1970-01-01" max="2027-12-31"></label>
-      <button class="clear" id="today" type="button">Today through the years</button>
-      <button class="clear" id="clear" type="button">Clear all</button>
-    </div>
+  </div>
+</div>
+
+<div class="filters wrap" aria-label="More ways to narrow the search">
+  <div class="frow"><span class="flabel">Date</span>
+    <select id="year" aria-label="Year"></select>
+    <select id="month" aria-label="Month"></select>
+    <select id="day" aria-label="Day of the month"></select>
+  </div>
+  <div class="frow"><span class="flabel">Between</span>
+    <input type="date" id="from" min="1970-01-01" max="2027-12-31" aria-label="From date">
+    <span class="and">and</span>
+    <input type="date" id="to" min="1970-01-01" max="2027-12-31" aria-label="To date">
+    <button class="clear" id="today" type="button">Today through the years</button>
+  </div>
+  <div class="frow"><span class="flabel">Filter</span>
+    <select id="place" aria-label="Place"><option value="">Every place</option></select>
+    <select id="fest" aria-label="Festival"><option value="">Every festival</option></select>
+    <select id="act" aria-label="What is happening"><option value="">Every action</option></select>
+    <button class="clear" id="clear" type="button">Clear all</button>
   </div>
 </div>
 
 <main class="wrap">
   <section class="can" aria-label="Things you can search">
-    <p class="lead">Anything is searchable: a word from a caption, a place, a festival, an Indian date, what is happening in a photo (smiling, eating, wearing glasses) or any date. Try one of these:</p>
+    <p class="lead">Anything is searchable: a word from a caption, a place, a festival, an Indian date, what is happening in a photo (smiling, laughing, a garland, blessing) or any date. Try one of these:</p>
     <div class="chips" id="c-try"></div>
     <div class="hint">Every word must appear. Use <code>"quotes"</code> for a phrase and <code>-word</code> to leave a word out. Pick a month and day with no year to see that date across every year.</div>
   </section>
@@ -175,8 +195,9 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 // PHOTOS is filled in by tools/build_search.py (the photo address of the site it is built for).
 const PHOTOS = '{{PHOTOS}}';
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-// eight suggestions, one of each kind: a festival, a place, an Indian date, what is in a photo, a word, a year
-const TRY = [['Diwali', 'fest'], ['smiling', 'q'], ['Sarangpur', 'q'], ['Ekadashi', 'fest'], ['glasses', 'q'], ['London', 'q'], ['eating', 'q'], ['annakut', 'q']];
+// twelve suggestions, a mix of every kind: a festival, a place, an Indian date, what is in a photo, a word, a year
+const TRY = [['Diwali', 'fest'], ['smiling', 'q'], ['Sarangpur', 'q'], ['Ekadashi', 'fest'], ['laughing', 'q'], ['London', 'q'],
+             ['blessing', 'q'], ['annakut', 'q'], ['children', 'q'], ['Guru Purnima', 'fest'], ['garland', 'q'], ['Mumbai', 'q']];
 const PAGE = 60, FIRST = 1999;
 const $ = id => document.getElementById(id);
 
@@ -222,16 +243,18 @@ const yearKey = y => y < FIRST ? 'old' : String(y);
 function search() {
   $('day-view')?.remove();
   const { want, not } = parse($('q').value), year = $('year').value, month = $('month').value, day = $('day').value;
-  const from = $('from').value, to = $('to').value, fest = $('fest').value;
+  const from = $('from').value, to = $('to').value, fest = $('fest').value, place = $('place').value, act = $('act').value;
   const byYear = {};
   hits = [];
-  if (!want.length && !not.length && !year && !month && !day && !from && !to && !fest) { render(byYear, want); return; }
+  if (!want.length && !not.length && !year && !month && !day && !from && !to && !fest && !place && !act) { render(byYear, want); return; }
   for (const r of items) {
     if (month && r.d.slice(5, 7) !== month) continue;
     if (day && r.d.slice(8, 10) !== day) continue;
     if (from && r.d < from) continue;
     if (to && r.d > to) continue;
     if (fest && !(cal[r.d] && cal[r.d].list.includes(fest))) continue;
+    if (place && !(r.kind === 'photo' ? r.city === place : (r.place || '').includes(place))) continue;
+    if (act && !(r.tags && r.tags.split(', ').includes(act))) continue;
     if (want.length || not.length) {
       const hay = r.hay + ' ' + calWords(r.d);
       if (!want.every(w => hay.includes(w)) || not.some(w => hay.includes(w))) continue;
@@ -255,7 +278,7 @@ function render(byYear, want) {
     return `<button class="${k === year ? 'on' : ''}" data-y="${k}" title="${name}: ${n.toLocaleString()} found" aria-label="${name}: ${n.toLocaleString()} found"><span class="n">${n.toLocaleString()}</span><div class="col" style="height:${n ? Math.max(3, 62 * n / max) : 0}%"></div><span>${label}</span></button>`;
   }).join('') : '';
   if (!hits.length) {
-    const asked = Object.keys(byYear).length || $('q').value.trim() || year || $('fest').value || $('month').value || $('day').value || $('from').value || $('to').value;
+    const asked = Object.keys(byYear).length || $('q').value.trim() || year || $('fest').value || $('place').value || $('act').value || $('month').value || $('day').value || $('from').value || $('to').value;
     $('count').innerHTML = asked ? `Nothing found${loaded < total ? ' yet, still loading' : ''}.` : 'Type a word or pick a date to start.';
     $('results').innerHTML = '';
     $('more').hidden = true;
@@ -288,7 +311,8 @@ function photoCard(p, want, i) {
     <div class="pic"><img loading="lazy" src="${small}" alt="${esc(p.cap)}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'none',textContent:'Photo coming soon'}))"></div>
     <div class="txt">
       <p class="cap${p.cap ? '' : ' empty'}">${p.cap ? highlight(p.cap, want) : 'Darshan'}</p>
-      <div class="meta">${when} · ${highlight(g[2], want)}</div>
+      <div class="date">${when}</div>
+      <div class="place">${highlight(g[2], want)}</div>
     </div></article>`;
 }
 function postCard(p, want, i) {
@@ -296,7 +320,8 @@ function postCard(p, want, i) {
   return `<article class="card post" data-i="${i}" tabindex="0"><div class="txt">
     <span class="badge">On this day</span>
     <p class="cap">${highlight(text, want)}</p>
-    <div class="meta">${niceDate(p.d)}${p.place ? ' · ' + highlight(p.place, want) : ''}</div>
+    <div class="date">${niceDate(p.d)}</div>
+    ${p.place ? `<div class="place">${highlight(p.place, want)}</div>` : ''}
     </div></article>`;
 }
 function more(want = parse($('q').value).want) {
@@ -320,7 +345,7 @@ function more(want = parse($('q').value).want) {
 let timer;
 function soon() { clearTimeout(timer); timer = setTimeout(search, 180); }
 $('q').addEventListener('input', soon);
-['fest', 'year', 'month', 'day', 'order', 'from', 'to'].forEach(id => $(id).addEventListener('change', search));
+['fest', 'place', 'act', 'year', 'month', 'day', 'order', 'from', 'to'].forEach(id => $(id).addEventListener('change', search));
 $('more').addEventListener('click', () => more());
 // The big view: the photo (or the story) large, with everything known about it and its day beside it.
 // Previous and Next (or the arrow keys) step through the results without closing it.
@@ -375,7 +400,7 @@ let before = null;
 $('results').addEventListener('click', e => {
   const b = e.target.closest('[data-day]'); if (!b) return;
   e.stopPropagation();
-  const ids = ['q', 'fest', 'year', 'month', 'day', 'from', 'to'];
+  const ids = ['q', 'fest', 'place', 'act', 'year', 'month', 'day', 'from', 'to'];
   before = Object.fromEntries(ids.map(id => [id, $(id).value]));
   ids.forEach(id => $(id).value = ''); $('from').value = $('to').value = b.dataset.day;
   search();
@@ -387,10 +412,10 @@ $('years').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   $('year').value = $('year').value === b.dataset.y ? '' : b.dataset.y; search();
 });
-$('clear').addEventListener('click', () => { ['q', 'fest', 'year', 'month', 'day', 'from', 'to'].forEach(id => $(id).value = ''); search(); });
+$('clear').addEventListener('click', () => { ['q', 'fest', 'place', 'act', 'year', 'month', 'day', 'from', 'to'].forEach(id => $(id).value = ''); search(); });
 $('today').addEventListener('click', () => {
   const now = new Date();
-  ['q', 'fest', 'year', 'from', 'to'].forEach(id => $(id).value = '');
+  ['q', 'fest', 'place', 'act', 'year', 'from', 'to'].forEach(id => $(id).value = '');
   $('month').value = String(now.getMonth() + 1).padStart(2, '0'); $('day').value = String(now.getDate()).padStart(2, '0');
   search();
 });
@@ -403,12 +428,23 @@ function fillFestivals() {
   const fests = EVERY.filter(f => when[f]).concat(Object.keys(when).filter(f => !EVERY.includes(f)).sort((a, b) => mid(a) < mid(b) ? -1 : 1));
   $('fest').innerHTML = '<option value="">Every festival</option>' + fests.map(f => `<option value="${esc(f)}">${EVERY.includes(f) ? 'Every ' + esc(f) : esc(f)}</option>`).join('');
 }
+function fillPlacesActions() {
+  const places = {}, acts = {};
+  for (const r of items) if (r.kind === 'photo') {
+    if (r.city) places[r.city] = (places[r.city] || 0) + 1;
+    if (r.tags) for (const t of r.tags.split(', ')) acts[t] = (acts[t] || 0) + 1;
+  }
+  const opts = (o, first) => `<option value="">${first}</option>` + Object.keys(o).sort((a, b) => a.localeCompare(b))
+    .map(k => `<option value="${esc(k)}">${esc(k)} (${o[k].toLocaleString()})</option>`).join('');
+  $('place').innerHTML = opts(places, 'Every place');
+  $('act').innerHTML = opts(acts, 'Every action');
+}
 function fillCan() {
   $('c-try').innerHTML = TRY.map(([w, kind]) => `<button data-${kind}="${esc(w)}">${esc(w)}</button>`).join('');
 }
 function add(list) {
   for (const r of list) items.push(r);
-  if (++loaded === total) { items.sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : 0); fillFestivals(); }   // date order once everything is in
+  if (++loaded === total) { items.sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : 0); fillFestivals(); fillPlacesActions(); }   // date order once everything is in
   fillYears();
   search();
 }
@@ -434,7 +470,7 @@ async function load() {
     add(data.p.map(([gi, file, cap, tags]) => {
       const g = data.g[gi];
       tags = typeof tags === 'string' ? tags : '';
-      return { kind: 'photo', y, g, d: g[0], file, cap, tags, hay: (cap + ' ' + g[2] + ' ' + tags).toLowerCase() };
+      return { kind: 'photo', y, g, d: g[0], city: g[2].split(',')[0].trim(), file, cap, tags, hay: (cap + ' ' + g[2] + ' ' + tags).toLowerCase() };
     })))));
   await tg;
 }

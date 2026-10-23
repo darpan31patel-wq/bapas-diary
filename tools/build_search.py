@@ -71,14 +71,24 @@ def festivals(text):
     return out
 
 
-# What is happening in a photo (tools/photo_tags.py): a tag is kept when its score clears its bar. Most tags
-# need 0.8; the ones the model is surer of need less, the ones it guesses at need more.
-TAG_BAR = {'glasses': .7, 'garland': .75, 'microphone': .75, 'elephant': .7, 'car': .75, 'plane': .75, 'umbrella': .75,
-           'smiling': .8, 'laughing': .85, 'eating': .85, 'sleeping': .9, 'pointing': .85}
+# What is happening in a photo (tools/photo_tags.py gives each photo a similarity to each tag's sentence). A single
+# score says little, so a tag is kept only where the photo stands out from all the others: at least TAG_Z standard
+# deviations above that tag's average (TAG_Z). Only tags checked by eye on contact sheets of the 1999 photos are
+# used; the others (glasses, elephant, plane...) were wrong too often and wait for better sentences.
+TAG_Z = {'smiling': 2.0, 'laughing': 2.0, 'garland': 2.1, 'blessing': 2.1, 'close up': 2.2, 'children': 2.3}
 
 
-def kept_tags(scores):
-    return ', '.join(t for t, v in scores.items() if v >= TAG_BAR.get(t, .8))
+def tag_picker(data):
+    names, photos = data.get('tags', []), data.get('photos', {})
+    if not photos:
+        return lambda key: ''
+    bars = []
+    for i, t in enumerate(names):
+        v = [r[i] for r in photos.values()]
+        m = sum(v) / len(v)
+        sd = (sum((x - m) ** 2 for x in v) / len(v)) ** .5
+        bars.append(m + TAG_Z[t] * sd if t in TAG_Z else None)
+    return lambda key: ', '.join(t for t, b, x in zip(names, bars, photos.get(key, ())) if b is not None and x >= b)
 
 
 def write(path, data):
@@ -96,7 +106,7 @@ def main():
     os.makedirs(os.path.join(a.out, 'data'), exist_ok=True)
     db = sqlite3.connect(a.db)
 
-    tags = json.load(open(a.tags)) if a.tags and os.path.exists(a.tags) else {}
+    tags = tag_picker(json.load(open(a.tags)) if a.tags and os.path.exists(a.tags) else {})
     years, counts = {}, {}
     rows = db.execute("SELECT year, date, date_from, date_to, place, album, file, caption, is_bapa FROM photos "
                       "ORDER BY coalesce(date, date_from), album, file")
@@ -106,7 +116,7 @@ def main():
         if key not in yr['at']:
             yr['at'][key] = len(yr['g'])
             yr['g'].append(list(key))
-        yr['p'].append([yr['at'][key], file, cap or '', kept_tags(tags.get(f'{album}/{file}', {}))])
+        yr['p'].append([yr['at'][key], file, cap or '', tags(f'{album}/{file}')])
     for y, yr in years.items():
         write(os.path.join(a.out, 'data', f'{y}.json'), {'g': yr['g'], 'p': yr['p']})
         counts[y] = len(yr['p'])

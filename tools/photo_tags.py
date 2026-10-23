@@ -12,7 +12,7 @@ open CLIP model (no Claude, no paid service). Each tag is one sentence; every ph
 import argparse, json, os, sys
 
 # tag: what the photo shows. CLIP compares each photo with each sentence; the search build keeps a tag only where the
-# photo stands out from all the others for that sentence (see TAG_BAR in tools/build_search.py), because a single
+# photo stands out from all the others for that sentence (see TAG_Z in tools/build_search.py), because a single
 # score on its own says little.
 TAGS = {
     'smiling': 'a close photo of an old Indian monk with a big warm smile',
