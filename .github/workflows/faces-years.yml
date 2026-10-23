@@ -1,0 +1,49 @@
+# Website only (bapas-diary.com): "Bapa through the years", one close up a day with the eyes lined up
+# (tools/faces_years.py). Separate from the daily 2pm picture: touches nothing in that chain.
+# The date ranges to do are in site/faces-ranges.txt (one "FROM TO" per line); changing that file on a claude/**
+# branch starts a run. Photos come from R2 when they are there (1999), otherwise from baps.org, gently.
+# The frames and faces.json go into the release `faces-mockup` so Claude can build a private mockup page.
+name: faces-years
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['site/faces-ranges.txt', '.github/workflows/faces-years.yml']
+  workflow_dispatch:
+concurrency:
+  group: faces-years
+permissions:
+  contents: write
+jobs:
+  faces:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BUCKET: bapas-diary-photos
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Get ready
+        run: |
+          pip install -q opencv-python-headless numpy
+          curl -sL -o bapas.db.gz https://github.com/${{ github.repository }}/releases/download/database/bapas.db.gz && gunzip bapas.db.gz
+          id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
+          export AWS_ACCESS_KEY_ID=$id AWS_SECRET_ACCESS_KEY=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1) AWS_DEFAULT_REGION=auto
+          aws s3 sync "s3://$BUCKET/m" photos --endpoint-url "https://$CF_ACCOUNT.r2.cloudflarestorage.com" --only-show-errors || true
+          echo "$(find photos -type f 2>/dev/null | wc -l) web photos from R2"
+      - name: Close ups
+        run: |
+          while read -r from to; do
+            [ -n "$from" ] && python3 tools/faces_years.py --db bapas.db --photos photos --from "$from" --to "$to" --out faces --fetch
+          done < site/faces-ranges.txt
+      - name: Into the release
+        if: always()
+        run: |
+          tar czf faces.tgz faces
+          gh release view faces-mockup -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create faces-mockup -R "$GITHUB_REPOSITORY" --prerelease --title "Bapa through the years mockup" --notes "Lined up close ups for the website mockup. Not used by the daily picture."
+          gh release upload faces-mockup faces.tgz --clobber -R "$GITHUB_REPOSITORY"
