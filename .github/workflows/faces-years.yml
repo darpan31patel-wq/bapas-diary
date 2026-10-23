@@ -1,7 +1,8 @@
 # Website only (bapas-diary.com): "Bapa through the years", one close up a day with the eyes lined up
 # (tools/faces_years.py). Separate from the daily 2pm picture: touches nothing in that chain.
 # The date ranges to do are in site/faces-ranges.txt (one "FROM TO" per line); changing that file on a claude/**
-# branch starts a run. Photos come from R2 when they are there (1999), otherwise from baps.org, gently.
+# branch starts a run. Photos come only from R2 (m/ALBUM/FILE, filled by the website thread), never baps.org:
+# baps.org started rate limiting on 23 Oct 2026 and the daily picture must not be blocked.
 # The frames and faces.json go into the release `faces-mockup` so Claude can build a private mockup page.
 name: faces-years
 on:
@@ -38,7 +39,7 @@ jobs:
       - name: Close ups
         run: |
           while read -r from to; do
-            [ -n "$from" ] && python3 tools/faces_years.py --db bapas.db --photos photos --from "$from" --to "$to" --out faces --fetch
+            [ -n "$from" ] && python3 tools/faces_years.py --db bapas.db --photos photos --from "$from" --to "$to" --out faces
           done < site/faces-ranges.txt
       - name: Into the release
         if: always()
