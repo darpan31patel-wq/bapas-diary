@@ -17,6 +17,7 @@ def main():
     ap.add_argument('--faces', default='faces')
     ap.add_argument('--db', default='bapas.db')
     ap.add_argument('--out', default='site-faces')
+    ap.add_argument('--site', action='store_true', help='a whole page for bapas-diary.com (a mockup page gets its skeleton when published)')
     a = ap.parse_args()
     days = json.load(open(os.path.join(a.faces, 'faces.json'), encoding='utf-8'))
     db = sqlite3.connect(a.db)
@@ -34,6 +35,8 @@ def main():
             shutil.copy(os.path.join(a.faces, d, r[0] + '.jpg'), os.path.join(a.out, d, r[0] + '.jpg'))
     page = open(os.path.join(HERE, 'site', 'faces.html'), encoding='utf-8').read()
     page = page.replace('/*DAYS*/[]', json.dumps(rows, ensure_ascii=False, separators=(',', ':')))
+    if a.site:
+        page = '<!doctype html>\n<html lang="en">\n' + page + '\n</html>\n'
     open(os.path.join(a.out, 'index.html'), 'w', encoding='utf-8').write(page)
     print(f'{len(rows)} days into {a.out}')
 

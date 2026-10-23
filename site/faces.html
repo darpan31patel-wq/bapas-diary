@@ -1,6 +1,7 @@
 <meta charset="utf-8">
 <title>Bapa Through the Years</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Mukta:wght@300;400;600&display=swap">
 <style>
@@ -12,10 +13,16 @@
   --fade: 160ms;
   color-scheme: dark;
 }
-html, body { background: var(--bg); color: var(--ink); }
+html, body { background: var(--bg); color: var(--ink); margin: 0; }
+[hidden] { display: none !important; }
+*, *::before, *::after { box-sizing: border-box; }
 body { font-family: var(--body); font-size: 16px; line-height: 1.5; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 18px 28px; }
 .wrap { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
 header { display: flex; flex-direction: column; gap: 4px; }
+nav.site { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-bottom: 8px; font-size: 15px; }
+nav.site a { color: var(--muted); text-decoration: none; padding: 2px 0; border-bottom: 2px solid transparent; }
+nav.site a:hover { color: var(--ink); }
+nav.site a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--saffron); }
 h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 5vw, 44px); line-height: 1; margin: 0; letter-spacing: .01em; }
 .sub { color: var(--muted); margin: 6px 0 0; font-size: 15px; }
 .tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -43,7 +50,7 @@ h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 5vw, 
 .cap { font-size: 18px; font-weight: 300; margin: 0; max-width: 34em; }
 .cal { font-size: 14.5px; color: var(--muted); margin: 0; }
 .cal b { color: var(--ink); font-weight: 600; }
-.more { align-self: start; font: inherit; font-weight: 600; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 16px; cursor: pointer; }
+.more { align-self: start; text-decoration: none; font: inherit; font-weight: 600; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 16px; cursor: pointer; }
 .more:hover { border-color: var(--saffron); }
 .count { font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .scrub { grid-area: scrub; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
@@ -68,6 +75,7 @@ canvas.drag { cursor: grabbing; }
 
 <div class="wrap">
   <header>
+    <nav class="site" aria-label="Bapa's Diary"><a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/" aria-current="page">Through the years</a></nav>
     <h1>Bapa through the years</h1>
     <p class="sub">One close darshan for every day, his eyes always in the same place</p>
   </header>
@@ -75,7 +83,7 @@ canvas.drag { cursor: grabbing; }
     <button class="tab" role="tab" id="tab-psm" data-era="psm" aria-selected="true"><span class="who">Pramukh Swami Maharaj</span><span class="yrs">1999 to 13 August 2016</span></button>
     <button class="tab" role="tab" id="tab-msm" data-era="msm" aria-selected="false"><span class="who">Mahant Swami Maharaj</span><span class="yrs">13 August 2016 to today</span></button>
   </div>
-  <p class="note" id="mocknote">Mockup with a small slice: Pramukh Swami Maharaj for 1999, Mahant Swami Maharaj from 13 August to 31 December 2016. The finished page runs from 1999 to today.</p>
+  <p class="note" id="mocknote">For now this shows 1999 for Pramukh Swami Maharaj and 13 August to 31 December 2016 for Mahant Swami Maharaj. More years are being added.</p>
 
   <section class="stage">
     <div class="frame" id="frame" aria-live="polite">
@@ -91,8 +99,7 @@ canvas.drag { cursor: grabbing; }
     <div class="info r">
       <p class="cap" id="cap"></p>
       <p class="cal" id="cal"></p>
-      <button class="more" id="more" type="button"></button>
-      <p class="hint" id="morenote" hidden>On the live site this opens Search with every photo from this day.</p>
+      <a class="more" id="more" href="/search/"></a>
       <span class="count" id="count"></span>
     </div>
 
@@ -181,6 +188,7 @@ function show(i, fast) {
   $('cap').textContent = x.cap;
   $('cal').innerHTML = x.tithi ? `<b>${esc(x.tithi)}</b>${x.fest ? ' · ' + esc(x.fest) : ''}` : '';
   $('more').textContent = x.photos > 1 ? `See all ${x.photos} photos from this day` : 'See this day in Search';
+  $('more').href = `/search/#date=${x.day}`;
   $('count').textContent = `Day ${idx + 1} of ${list.length} with a close darshan`;
   $('days').value = idx;
   for (const k of [1, 2, 3, -1, -2]) { const y = list[idx + k]; if (y) new Image().src = `p/${y.day}.jpg`; }
@@ -354,7 +362,6 @@ $('zMonth').onclick = () => zoomTo(33, list[idx].t);
 $('zIn').onclick = () => zoomBy(1.8);
 $('zOut').onclick = () => zoomBy(1 / 1.8);
 $('eyeBtn').onclick = () => { const on = $('eyes').hidden; $('eyes').hidden = !on; $('eyeBtn').setAttribute('aria-pressed', on); };
-$('more').onclick = () => { $('morenote').hidden = false; };
 for (const b of document.querySelectorAll('.tab')) b.onclick = () => setEra(b.dataset.era);
 addEventListener('resize', () => { clampView(); draw(); if (list[idx]) place(front, list[idx]); });
 setEra(location.hash === '#msm' ? 'msm' : 'psm');
