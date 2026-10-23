@@ -3,7 +3,7 @@ name: Download to Drive
 # Darpan, 23 Oct 2026: every baps.org photo with its caption and both Telegram channels, saved straight into his
 # Google Drive ("Bapa's Archive") by GitHub instead of his Mac. tools/archive_download.py does the downloading, the
 # same script as on the Mac; rclone hands each 1,500 files to Drive so the runner's disk never fills.
-# Four runs share the baps.org years and a fifth does Telegram. A round stops after about 5 hours; while anything
+# Four runs share the baps.org years and a fifth does Telegram. A round stops after 4 to 4.5 hours (then hands its last files over); while anything
 # is left it starts the next round itself, and each round writes check.txt (known against saved) into the folder.
 # Needs the secret RCLONE_DRIVE_TOKEN (from "rclone authorize", scope drive.file: it only sees what it made).
 
@@ -13,7 +13,7 @@ on:
     - cron: '0 12 * * *'    # a daily nudge in case a round's hand-on to the next ever fails
 
 permissions:
-  contents: read
+  contents: write   # check.txt is also kept in the release `database`, so Claude can read the numbers
   actions: write
 
 concurrency:
@@ -46,7 +46,7 @@ jobs:
   download:
     needs: setup
     runs-on: ubuntu-latest
-    timeout-minutes: 350
+    timeout-minutes: 355
     strategy:
       fail-fast: false
       matrix:
@@ -81,7 +81,7 @@ jobs:
           MOVE='rclone move work "$REMOTE" --exclude bapas.db --exclude "*.part" --exclude "photos/missing*" --exclude "telegram/too-big*" --transfers 8 --stats-one-line --stats 0'
           set +e
           python tools/archive_download.py --to work --only ${{ matrix.only }} ${{ matrix.years && format('--years {0}', matrix.years) || '' }} \
-            --have have.txt --hook "$MOVE" --notes "work/photos/missing (${{ matrix.name }}).txt" --gap 0.5 --hours 5
+            --have have.txt --hook "$MOVE" --notes "work/photos/missing (${{ matrix.name }}).txt" --gap 0.5 --hours ${{ matrix.only == 'telegram' && '4' || '4.5' }}   # leaves time to hand the last files over
           code=$?
           rclone copy work "$REMOTE" --include "photos/missing*" --include "telegram/too-big*"
           mkdir -p status && { [ $code = 0 ] && echo done || echo more; } > "status/${{ matrix.name }}"
@@ -128,3 +128,4 @@ jobs:
           mkdir -p work && rclone copy "$REMOTE" work --include "photos/missing*"
           python tools/archive_download.py --to work --check --have have.txt
           rclone copyto work/check.txt "$REMOTE/check.txt"
+          gh release upload database work/check.txt --clobber
