@@ -7,7 +7,9 @@ Website only (bapas-diary.com). Nothing here touches the daily 2pm picture: it o
     python3 tools/travels_photos.py --stops site/travels-stops.json --out travels
 
 site/travels-stops.json is {year: [stop, ...]}, each stop with 'try': [[album, file], ...] photos of Bapa taken there.
-For each stop it fetches those web photos from baps.org one at a time (the Drive archive's polite fetch), finds Bapa
+For each stop it takes those web photos from R2 when they are there, otherwise from baps.org one at a time,
+2.5 seconds apart and never 04:30 to 07:30 UTC (the daily picture's morning run). A run carries on from the last one:
+travels/ already holds what was done. It (the Drive archive's polite fetch), finds Bapa
 with YuNet and SFace (as models/README.md) and keeps the closest, sharpest face looking at the camera, cut as a square
 close up: travels/YEAR-N.jpg (N counts the year's stops from 0) and travels/picks.json (which photo each one is).
 """
@@ -19,7 +21,7 @@ import numpy as np
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODELS = os.path.join(HERE, 'models')
 sys.path.insert(0, os.path.join(HERE, 'tools'))
-from archive_download import SITE, get   # one at a time, stops at a check page
+from archive_download import SITE, SlowDown, get   # one at a time, stops at a check page
 
 PSM_UNTIL = '2016-08-13'   # Pramukh Swami Maharaj before this date, Mahant Swami Maharaj after
 SAME_PERSON = .5
@@ -75,20 +77,46 @@ def close_up(bgr, f):
     return cv2.resize(crop, (SIDE, SIDE), interpolation=cv2.INTER_AREA)
 
 
+def quiet_hours():
+    """04:30 to 07:30 UTC: leave baps.org to the daily picture's morning run."""
+    t = time.gmtime()
+    return 270 <= t.tm_hour * 60 + t.tm_min < 450
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--stops', default='site/travels-stops.json')
     ap.add_argument('--out', default='travels')
+    ap.add_argument('--r2', default='', help='folder of R2 web photos laid out ALBUM/FILE, used before baps.org')
+    ap.add_argument('--tries', type=int, default=4, help='photos to try per stop at most')
+    ap.add_argument('--gap', type=float, default=2.5, help='seconds between baps.org fetches')
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
-    picks = {}
+    old = os.path.join(a.out, 'picks.json')
+    picks = json.load(open(old)) if os.path.exists(old) else {}
+    tried = set(json.load(open(os.path.join(a.out, 'tried.json')))) if os.path.exists(os.path.join(a.out, 'tried.json')) else set()
+    stop = False
     for year, stops in json.load(open(a.stops)).items():
         for n, s in enumerate(stops):
             guru = 'psm' if s['a'] < PSM_UNTIL else 'msm'
             best = None
-            for album, file in s['try']:
-                body, _ = get(SITE.format(album=album, size='WebImages', file=file), may_be_missing=True)
-                time.sleep(.6)
+            if f'{year}-{n}' in picks or f'{year}-{n}' in tried:   # done in an earlier run
+                continue
+            if quiet_hours():
+                print('the daily picture runs soon: stopping here, the next run carries on', flush=True)
+                break
+            for album, file in s['try'][:a.tries]:
+                local = os.path.join(a.r2, album, file) if a.r2 else ''
+                if local and os.path.exists(local):
+                    body = open(local, 'rb').read()
+                else:
+                    try:
+                        body, _ = get(SITE.format(album=album, size='WebImages', file=file), may_be_missing=True)
+                    except SlowDown:
+                        print('baps.org asked us to wait: stopping here, the next run carries on', flush=True)
+                        stop = True
+                        break
+                    time.sleep(a.gap)
                 if not body:
                     continue
                 bgr = cv2.imdecode(np.frombuffer(body, np.uint8), cv2.IMREAD_COLOR)
@@ -102,12 +130,19 @@ def main():
                     best = (sc, album, file, close_up(bgr, f))
                 if sc > 2.6:   # close, sharp and looking at the camera: good enough, spare baps.org the rest
                     break
+            if stop:
+                break
             key = f'{year}-{n}'
             if best:
                 cv2.imwrite(os.path.join(a.out, key + '.jpg'), best[3], [cv2.IMWRITE_JPEG_QUALITY, 82])
                 picks[key] = {'album': best[1], 'file': best[2], 'score': round(best[0], 2)}
+            tried.add(key)
             print(key, s['p'], picks.get(key, 'no face found'), flush=True)
-    json.dump(picks, open(os.path.join(a.out, 'picks.json'), 'w'), indent=1)
+            json.dump(picks, open(os.path.join(a.out, 'picks.json'), 'w'), indent=1)
+            json.dump(sorted(tried), open(os.path.join(a.out, 'tried.json'), 'w'))
+        else:
+            continue
+        break
     print(f'{len(picks)} close ups', flush=True)
 
 
