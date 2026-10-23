@@ -9,9 +9,9 @@ Website only: nothing here touches the daily 2pm picture.
 Writes day/MM-DD.json for each day:
   {"date": "10-24", "title": "24 October",
    "years": [{"y": 2014, "place": "Sarangpur",
-              "cal": [indian date, festivals, notes],            that year's BAPS calendar day, when there is one
               "p": [[album, file, caption, bapa], ...],          every photo dated that day, in the day's order
               "trip": [from, to], "t": [[album, file, caption, bapa], ...]}],   photos dated a few days around it
+   "cal": {"2014": [indian date, festivals, notes], ...},        the BAPS calendar for this date in every year it has
    "stories": [[year, place, line], ...]}                        On this day stories, older years included
 The page loads photos from R2 by album and file (s/ALBUM/FILE, made by tools/web_photos.py).
 
@@ -67,16 +67,15 @@ def day_data(db, mmdd):
                     Y['p'].insert(0, Y['p'].pop(k))
                     break
 
-    for y, Y in years.items():
-        c = db.execute("SELECT indian_date, festivals, notes FROM calendar WHERE date = ?", (f'{y}-{mmdd}',)).fetchone()
-        if c and any(c):
-            Y['cal'] = [v or '' for v in c]
+    cal = {d[:4]: [v or '' for v in row] for d, *row in db.execute(
+        "SELECT date, indian_date, festivals, notes FROM calendar WHERE substr(date, 6) = ? ORDER BY date", (mmdd,))}
 
     stories = [[int(d[:4]), (place or '').split(',')[0].strip(), line or headline or '']
                for d, place, line, headline in db.execute(
                    "SELECT date, place, line, headline FROM tg_events WHERE substr(date, 6) = ? ORDER BY date", (mmdd,))
                if line or headline]
-    return {'date': mmdd, 'title': f'{day.day} {day:%B}', 'years': [years[y] for y in sorted(years)], 'stories': stories}
+    return {'date': mmdd, 'title': f'{day.day} {day:%B}', 'years': [years[y] for y in sorted(years)], 'cal': cal,
+            'stories': stories}
 
 
 def save_photos(data, out, gap):
