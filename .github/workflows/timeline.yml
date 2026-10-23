@@ -1,0 +1,55 @@
+name: Timeline mockup
+
+# The year by year timeline website mockup for Darpan (23 Oct 2026): one picture for every month from 1999, saved as
+# preview/timeline/ on the branch it runs on. Never touches main, the daily picture, its releases or Drive.
+
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['tools/timeline.py', '.github/workflows/timeline.yml']
+  workflow_dispatch:
+    inputs:
+      years:
+        description: 'Years to make, space separated (empty = all)'
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: timeline-${{ github.ref }}
+
+jobs:
+  timeline:
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install
+        run: pip install -q -r requirements.txt
+
+      - uses: actions/cache@v4
+        with:
+          path: .cache/timeline
+          key: timeline-photos-${{ github.run_id }}
+          restore-keys: timeline-photos-
+
+      - name: Make the timeline
+        env:
+          YEARS: ${{ inputs.years }}
+        run: python tools/timeline.py ${YEARS:+--years $YEARS}
+
+      - name: Save it on this branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add preview/timeline
+          git commit -m "Timeline mockup pictures" || exit 0
+          for i in 1 2 3; do git pull --rebase -q && git push -q && break; sleep 5; done
