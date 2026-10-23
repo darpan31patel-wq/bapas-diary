@@ -1,0 +1,30 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain.
+# Packs the small R2 photos into the release `website-mockup` so Claude can build a private mockup page
+# (the mockup can't load photos from R2 directly). Runs when this file changes on a claude/** branch.
+name: website-mockup
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['.github/workflows/website-mockup.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BUCKET: bapas-diary-photos
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Small photos from R2 into the release
+        run: |
+          id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
+          export AWS_ACCESS_KEY_ID=$id AWS_SECRET_ACCESS_KEY=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1) AWS_DEFAULT_REGION=auto
+          aws s3 sync "s3://$BUCKET/s" small --endpoint-url "https://$CF_ACCOUNT.r2.cloudflarestorage.com" --only-show-errors
+          echo "$(find small -type f | wc -l) small photos"
+          tar czf small-photos.tgz small
+          gh release view website-mockup -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create website-mockup -R "$GITHUB_REPOSITORY" --prerelease --title "Website mockup photos" --notes "Small web photos for building website mockups. Not used by the daily picture."
+          gh release upload website-mockup small-photos.tgz --clobber -R "$GITHUB_REPOSITORY"
