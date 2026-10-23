@@ -7,12 +7,14 @@ Website only (bapas-diary.com). Nothing here touches the daily 2pm picture: it o
     python3 tools/faces_years.py --db bapas.db --photos m --from 1999-01-01 --to 1999-12-31 --out faces
 
 --photos is a folder of photos laid out ALBUM/FILE (the R2 web sizes) or, with --fetch, where to save them from
-baps.org first. For every day (an album with only a date range counts as one day, its first) it finds Bapa in each
-photo with YuNet and SFace (the same check as models/README.md), picks the closest good face (biggest, looking at
-the camera, sharp, light) and turns, scales and moves that photo so his two eyes land on the same two points in
-every frame. Where the turned photo doesn't reach the frame, a soft blurred copy of itself fills in.
+baps.org first. For every day (an album with only a date range counts as one day, its first, and only when no
+photo of a day inside that range has its own date) it finds Bapa in each photo with YuNet and SFace (the same check
+as models/README.md) and picks the closest good face (biggest, looking at the camera, sharp, light).
 
-Writes faces/f/DAY.jpg (W x H) and faces/faces.json (day, place, caption, album, file, how close, how many photos).
+The page shows that photo whole, never cut (Darpan, 23 Oct 2026: 'I want the picture to be center frame, don't want
+to cut the picture at all'), turned and sized in the browser so his eyes land on the same spot every day. So this
+writes faces/p/DAY.jpg (the photo itself, at most PHOTO px), faces/f/DAY.jpg (a small lined up close up for the
+timeline strip) and faces/faces.json (day, place, caption, album, file, his two eyes and the face size in p/DAY.jpg).
 """
 import argparse, collections, json, math, os, sqlite3, sys, time
 
@@ -23,7 +25,8 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODELS = os.path.join(HERE, 'models')
 PSM_UNTIL = '2016-08-13'   # Pramukh Swami Maharaj before this date, Mahant Swami Maharaj after
 SAME_PERSON = .5           # as make.py: strangers and murtis score below about .35
-W, H = 600, 750            # one frame, 4:5
+W, H = 240, 300            # a timeline thumbnail, 4:5
+PHOTO = 1200               # the shown photo's longest side
 EYE_Y = .42                # the eyes' height in the frame
 EYE_GAP = .17              # the distance between the eyes, as a share of the frame's width
 MIN_GAP = 9                # pixels between the eyes (span) in the photo: anything smaller is too far away to blow up
@@ -87,7 +90,7 @@ def score(bgr, f, sim):
     front = front_view(f)
     sharp, bright = quality(bgr, f)
     s = min(close, .6) * 3 + min(gap, 120) / 120 + sim
-    s -= 1.5 * max(0, .5 - front)                        # a side profile can't line its eyes up with the others
+    s -= 3 * max(0, .6 - front)                          # a side profile can't line its eyes up with the others
     s -= .8 * max(0, 1 - sharp / 40) + .8 * max(0, 1 - bright / 70)
     s -= 1.5 if gap < MIN_GAP * 2 else 0
     return float(s), dict(close=round(float(close), 3), gap=round(gap, 1), front=round(front, 2), sharp=round(sharp), bright=round(bright))
@@ -139,10 +142,14 @@ def main():
     rows = db.execute('SELECT coalesce(date, date_from) AS day, date_to, place, album, file, caption FROM photos '
                       'WHERE coalesce(date, date_from) BETWEEN ? AND ? ORDER BY day, album, file', (a.start, a.end)).fetchall()
     days = collections.defaultdict(list)
+    dated = {r[0] for r in rows if not r[1] or r[1] == r[0]}
     for r in rows:
+        if r[1] and r[1] != r[0] and any(d for d in dated if r[0] <= d <= r[1]):
+            continue   # a range album, and the range has days with their own dated photos: those come first
         days[r[0]].append(r)
     print(f'{len(rows)} photos over {len(days)} days', flush=True)
     os.makedirs(os.path.join(a.out, 'f'), exist_ok=True)
+    os.makedirs(os.path.join(a.out, 'p'), exist_ok=True)
     jp = os.path.join(a.out, 'faces.json')
     out = {x['day']: x for x in json.load(open(jp))} if os.path.exists(jp) else {}
     try:
@@ -166,8 +173,17 @@ def main():
                     best = (s, bgr, f, dict(day=day, to=to if to and to != day else None, place=place or '', caption=cap or '',
                                             album=album, file=file, guru=guru, sim=round(sim, 2), score=round(s, 2), **facts))
             if best:
-                cv2.imwrite(os.path.join(a.out, 'f', day + '.jpg'), align(best[1], best[2]), [cv2.IMWRITE_JPEG_QUALITY, 80])
-                out[day] = dict(best[3], photos=len(xs))
+                bgr, f = best[1], best[2]
+                cv2.imwrite(os.path.join(a.out, 'f', day + '.jpg'), align(bgr, f), [cv2.IMWRITE_JPEG_QUALITY, 78])
+                k = min(1, PHOTO / max(bgr.shape[:2]))
+                if k < 1:
+                    bgr = cv2.resize(bgr, None, fx=k, fy=k, interpolation=cv2.INTER_AREA)
+                cv2.imwrite(os.path.join(a.out, 'p', day + '.jpg'), bgr, [cv2.IMWRITE_JPEG_QUALITY, 84])
+                rx, ry, lx, ly = [float(v) * k for v in f[4:8]]
+                if rx > lx:
+                    rx, ry, lx, ly = lx, ly, rx, ry
+                out[day] = dict(best[3], photos=len(xs), w=bgr.shape[1], h=bgr.shape[0],
+                                eyes=[round(v, 1) for v in (rx, ry, lx, ly)], span=round(span(f) * k, 1))
             print(f'  {n + 1}/{len(days)} {day}: {len(xs)} photos, ' + (f'close {best[3]["close"]}' if best else 'no face'), flush=True)
     except Exception as e:   # baps.org asked us to wait: keep what is done
         print(f'Stopping early: {e}')
