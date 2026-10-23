@@ -27,6 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - uses: actions/checkout@v4
       - name: Connect to Drive
         env:
           TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
@@ -34,7 +35,7 @@ jobs:
           [ -n "$TOKEN" ] || { echo "::error::The RCLONE_DRIVE_TOKEN secret isn't set yet"; exit 1; }
           curl -s https://rclone.org/install.sh | sudo bash >/dev/null
           mkdir -p ~/.config/rclone
-          printf '[gdrive]\ntype = drive\nscope = drive.file\ntoken = %s\n' "$TOKEN" > ~/.config/rclone/rclone.conf
+          python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
       - name: Make the folders first, so the five runs never make the same one twice
         run: |
           for d in "" photos photos/baps.org telegram; do rclone mkdir "$REMOTE/$d"; done
@@ -66,7 +67,7 @@ jobs:
         run: |
           curl -s https://rclone.org/install.sh | sudo bash >/dev/null
           mkdir -p ~/.config/rclone
-          printf '[gdrive]\ntype = drive\nscope = drive.file\ntoken = %s\n' "$TOKEN" > ~/.config/rclone/rclone.conf
+          python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
       - name: List what is already in Drive
         run: |
           : > have.txt
@@ -122,7 +123,7 @@ jobs:
         run: |
           curl -s https://rclone.org/install.sh | sudo bash >/dev/null
           mkdir -p ~/.config/rclone
-          printf '[gdrive]\ntype = drive\nscope = drive.file\ntoken = %s\n' "$TOKEN" > ~/.config/rclone/rclone.conf
+          python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
           rclone lsf -R --files-only --fast-list "$REMOTE" > have.txt
           mkdir -p work && rclone copy "$REMOTE" work --include "photos/missing*"
           python tools/archive_download.py --to work --check --have have.txt
