@@ -81,11 +81,15 @@ jobs:
           MOVE='rclone move work "$REMOTE" --exclude bapas.db --exclude "*.part" --exclude "photos/missing*" --exclude "telegram/too-big*" --transfers 8 --stats-one-line --stats 0'
           set +e
           python tools/archive_download.py --to work --only ${{ matrix.only }} ${{ matrix.years && format('--years {0}', matrix.years) || '' }} \
-            --have have.txt --hook "$MOVE" --notes "work/photos/missing (${{ matrix.name }}).txt" --gap 0.5 --hours ${{ matrix.only == 'telegram' && '4' || '4.5' }}   # leaves time to hand the last files over
-          code=$?
+            --have have.txt --hook "$MOVE" --notes "work/photos/missing (${{ matrix.name }}).txt" --gap 0.5 --hours ${{ matrix.only == 'telegram' && '4' || '4.5' }} 2>&1 | tee run.log   # 4.5 h leaves time for the last hand-over
+          code=${PIPESTATUS[0]}
           rclone copy work "$REMOTE" --include "photos/missing*" --include "telegram/too-big*"
           mkdir -p status && { [ $code = 0 ] && echo done || echo more; } > "status/${{ matrix.name }}"
           echo "${{ matrix.name }}: $(cat status/${{ matrix.name }})"
+          # how far this run got, in the release so Claude can read it (job logs can't be read from Claude's side)
+          { echo "${{ matrix.name }} $(date -u '+%d %b %H:%M UTC'): $(cat status/${{ matrix.name }}), $(wc -l < have.txt) files were already in Drive"
+            grep -E 'checked|Stopped|All done|time to stop|already saved' run.log | tail -12; } > "progress-${{ matrix.name }}.txt"
+          GH_TOKEN=${{ github.token }} gh release upload database "progress-${{ matrix.name }}.txt" --clobber || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
