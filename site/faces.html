@@ -126,7 +126,7 @@ const dOf = t => new Date(t * DAYMS);
 
 const eras = { psm: [], msm: [] };
 for (const r of DAYS) eras[r[5]].push({ day: r[0], to: r[1], place: r[2], cap: r[3], photos: r[4], tithi: r[6], fest: r[7], eyes: r.slice(8, 12), span: r[12], w: r[13], h: r[14], t: tOf(r[0]) });
-const EYE_X = .5, EYE_Y = .4, GAP = .075;   // where his eyes sit in the frame, and how big his face is (eyes to mouth, share of the frame's width)
+const EYE_X = .5, EYE_Y = .4, GAP = .06;    // where his eyes sit in the frame, and how big his face is (eyes to mouth, share of the frame's width)
 
 const $ = id => document.getElementById(id);
 const cv = $('tl'), cx = cv.getContext('2d');
