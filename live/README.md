@@ -6,4 +6,6 @@ daily 2pm picture. A page goes in here only after Darpan's typed yes.
 - travels/  Bapa's travels globe ("PERFECT GO LIVE", 23 Oct 2026). Built in its own thread; source
             /mnt/project-files/travels-globe/travels-live.html, with the tab for On this day taken out until it is live.
 - about/    About page (text from the email thread, Darpan typed "yes, go live" 23 Oct 2026), word for word.
+- through-the-years/  Bapa through the years (face page; "okay go live once github is ready", 23 Oct 2026). Not kept
+            here: the deploy unpacks faces-site.tgz from release faces-mockup (built by its own thread).
 - _redirects  / goes to /search/ until the home page (On this day) is live.

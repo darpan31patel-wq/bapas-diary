@@ -25,10 +25,14 @@ jobs:
           mkdir out && rsync -a --exclude README.md live/ out/
           gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
           gh release download website-mockup -p tags.json
+          # Bapa through the years (its own thread builds it into release faces-mockup; Darpan: "okay go live")
+          gh release download faces-mockup -p faces-site.tgz && tar -xzf faces-site.tgz -C out
+          test -f out/through-the-years/index.html
           sqlite3 bapas.db 'SELECT count(*) FROM calendar'
           # opens on 1999 while only 1999 photos are copied to R2 (site/photo-years.txt)
           python3 tools/build_search.py --db bapas.db --out out/search --tags tags.json --start-year 1999
           du -sh out/*
+          if grep -rli 'telegram\|t\.me/' out --include='*.html'; then echo 'Telegram found: not deploying'; exit 1; fi   # never on the public site
       - name: Deploy to Pages
         run: |
           npx --yes wrangler@3.114.0 pages deploy out --project-name "$PROJECT" --branch main --commit-dirty=true
@@ -53,6 +57,6 @@ jobs:
           api -X POST "$B" -d "{\"domain\":\"photos.$DOMAIN\",\"zoneId\":\"$ZONE\",\"enabled\":true,\"minTLS\":\"1.2\"}" | jq -c '{success, errors}'
           api "$B" | jq -c '[.result.domains[]? | {domain, status}]'
           sleep 20
-          for u in https://photos.$DOMAIN/s/ https://$PROJECT.pages.dev/search/ https://$PROJECT.pages.dev/travels/ https://$DOMAIN/ https://$DOMAIN/travels/; do
+          for u in https://photos.$DOMAIN/s/ https://$PROJECT.pages.dev/search/ https://$PROJECT.pages.dev/travels/ https://$DOMAIN/ https://$DOMAIN/travels/ https://$DOMAIN/through-the-years/; do
             echo "$u -> $(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "$u")"
           done
