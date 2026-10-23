@@ -504,36 +504,51 @@ def m4_wide(cal, photos, y, m, S=2):
 
 
 def m4_mix(cal, photos, y, m, kind):
-    """The BAPS calendar grid in the M4 month card's look (Darpan, 23 Oct 2026): the diary's maroon, a gold title,
-    one ivory card per day hanging on a cord per week, every day shown with its Indian date. kind 'close' shows the
-    close darshans, 'act' the activities with their captions, 'mixed' the day's special moment or else its darshan.
-    16:9, 3840 x 2160."""
+    """The BAPS calendar grid in the M4 month card's look (Darpan, 23 Oct 2026): the diary's maroon, the month and
+    where Bapa was across the top, one ivory card per day hanging on a cord per week, every day with its Indian date.
+    Each photo is shown whole in a 4:3 frame (never cut). kind 'close' shows the close darshans, 'act' the activities
+    with their captions, 'mixed' the day's special moment or else its darshan (his pick). 16:9, 3840 x 2160."""
     import month as mc, make
     W2, H2 = 3840, 2160
     img = mc.canvas((W2, H2), glow=.45, jali=.08)
     d = ImageDraw.Draw(img)
     first = cal[f'{y}-{m:02d}-01']
-    mc.title(img, f'{calendar.month_name[m]} {y}', 14, 100,
-             f"{first['lunar_months'].replace('-', ' · ')}  ·  Vikram Samvat {first['vikram_samvat']}", 26)
     M = 110
+    # the top line: the month on the left, where Bapa was on the right, both large
+    tf = make.garamond(118, 700)
+    make.gold_text(img, (M, 22), f'{calendar.month_name[m]} {y}', tf)
+    sf = make.garamond(30, 600)
+    sub = f"{first['lunar_months'].replace('-', ' · ')}  ·  Vikram Samvat {first['vikram_samvat']}".upper()
+    make.draw_spaced(d, M + 4, 168, sub, sf, 6, mc.CREAM)
+    places = [re.sub(r',\s*India$', '', p) for p in (photos.get('places') or [])]
+    if places:
+        where = 'Bapa was in ' + (places[0] if len(places) == 1 else ', '.join(places[:-1]) + ' and ' + places[-1])
+        size = 96
+        while size > 50 and d.textlength(where, font=make.garamond(size, 700)) > W2 / 2 - M - 40:
+            size -= 4
+        wf = make.garamond(size, 700)
+        make.gold_text(img, (W2 - M - d.textlength(where, font=wf), 22 + (118 - size) * .7), where, wf)
     cw = (W2 - 2 * M) / 7
     for i, wd in enumerate(['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']):
         f = make.arimo_bold(24)
         sw = make.spaced(d, wd, f, 7)
-        make.draw_spaced(d, M + (i + .5) * cw - sw / 2, 200, wd, f, 7, (255, 160, 130) if i == 0 else mc.CREAM)
+        make.draw_spaced(d, M + (i + .5) * cw - sw / 2, 232, wd, f, 7, (255, 160, 130) if i == 0 else mc.CREAM)
     start = (datetime.date(y, m, 1).weekday() + 1) % 7
     nd = calendar.monthrange(y, m)[1]
     rows = 5            # a sixth week goes into the first week's empty boxes, as printed calendars do
-    gy0, gy1 = 232, H2 - 78
+    gy0, gy1 = 272, H2 - 18
     rh = (gy1 - gy0) / rows
-    card_w, card_h = cw * .92, rh - 34
-    band = 124 if kind != 'close' else 100
-    border = 12
+    border = 11
+    band = 104 if kind != 'close' else 74
+    card_h = rh - 22
+    ph = round(card_h - border - band)
+    card_w = round(cw * .92)
+    pw = card_w - 2 * border          # the photo sits whole and centred in this window, on the card's ivory
     rnd = random.Random(7)
     prev_month = None
     for r in range(rows):
-        cy = gy0 + r * rh + 14
-        mc.rope(img, mc.sag(M - 40, W2 - M + 40, cy, 80, 14), 6)
+        cy = gy0 + r * rh + 8
+        mc.rope(img, mc.sag(M - 40, W2 - M + 40, cy, 80, 12), 6)
         for c in range(7):
             dn = r * 7 + c - start + 1
             if r == 0 and dn < 1 and dn + 35 <= nd:
@@ -553,51 +568,45 @@ def m4_mix(cal, photos, y, m, kind):
             else:
                 x = act if act and act.get('special') and act.get('s_act', 0) >= 2 else close
             show_cap = x is not None and kind != 'close' and (x is act or kind == 'act')
-            pw, ph = round(card_w - 2 * border), round(card_h - border - band)
             card = mc.ivory(card_w, card_h).convert('RGBA')
             cd = ImageDraw.Draw(card)
             cd.rectangle((0, 0, card.width - 1, card.height - 1), outline=mc.IVORY_EDGE, width=2)
             if x:
-                if x is close:
-                    ph_img = make.polish(crop(os.path.join(photos['dir'], x['file']), x['face'], pw, ph, tight=True))
-                else:   # an activity fills its window around Bapa rather than shrinking onto a blurred fill
-                    ph_img = make.polish(crop(os.path.join(photos['dir'], x['file']), x['face'], pw, ph, tight=False))
-                card.paste(ph_img, (border, border))
-                cd.rectangle((border - 1, border - 1, border + pw, border + ph), outline=(150, 130, 100), width=2)
+                # the whole photo, fitted inside the window, never cut
+                im = Image.open(os.path.join(photos['dir'], x['file'])).convert('RGB')
+                im = make.polish(ImageOps.contain(im, (pw, ph), Image.LANCZOS))
+                fx, fy = border + (pw - im.width) // 2, border + (ph - im.height) // 2
+                card.paste(im, (fx, fy))
+                frame = (fx, fy, fx + im.width, fy + im.height)
             else:
-                cd.rectangle((border, border, border + pw, border + ph), fill=(236, 226, 206), outline=(214, 198, 170), width=2)
+                frame = (border + (pw - ph * 4 / 3) / 2, border, border + (pw + ph * 4 / 3) / 2, border + ph)
+                cd.rectangle(frame, fill=(232, 220, 198))
                 make.diamond(cd, card.width / 2, border + ph / 2, 10, (200, 176, 136))
-            # the band: the date and Indian date on one line, then the festival (saffron) or the caption
-            by = border + ph + 4
-            nf, tf = make.garamond(48, 700), make.garamond(31, 600)
+            cd.rectangle((frame[0] - 1, frame[1] - 1, frame[2], frame[3]), outline=(150, 130, 100), width=2)
+            # under the photo: the date and the Indian date, then the festival (saffron) and the caption, smaller
+            by = border + ph
+            nf, tf2 = make.garamond(40, 700), make.garamond(28, 600)
             num = str(dn)
-            nw = cd.textlength(num, font=nf)
-            tw = cd.textlength(tithi, font=tf)
-            x0 = (card.width - nw - 16 - tw) / 2
-            cd.text((x0, by + 48), num, font=nf, fill=(170, 34, 34) if c == 0 else MAROON, anchor='ls')
-            cd.text((x0 + nw + 16, by + 46), tithi, font=tf, fill=(110, 70, 56), anchor='ls')
+            nw, tw = cd.textlength(num, font=nf), cd.textlength(tithi, font=tf2)
+            x0 = (card.width - nw - 12 - tw) / 2
+            cd.text((x0, by + 40), num, font=nf, fill=(170, 34, 34) if c == 0 else MAROON, anchor='ls')
+            cd.text((x0 + nw + 12, by + 39), tithi, font=tf2, fill=(110, 70, 56), anchor='ls')
             lines = []
             if fest:
-                lines.append((fest[0], make.garamond(27, 700), (196, 96, 22)))
+                lines.append((fest[0], make.garamond(24, 700), (196, 96, 22)))
             if show_cap and x.get('caption'):
-                cf = make.garamond(25, 500)
-                for t in wrap(cd, x['caption'], cf, card.width - 2 * border - 6, 2 - len(lines) if kind != 'close' else 0):
+                cf = make.garamond(22, 500)
+                for t in wrap(cd, x['caption'], cf, card.width - 2 * border - 4, 2 - len(lines)):
                     lines.append((t, cf, (88, 34, 34)))
-            ly = by + 76
+            ly = by + 66
             for t, f, col in lines[:2 if kind != 'close' else 1]:
                 cd.text((card.width / 2, ly), t, font=f, fill=col, anchor='ms')
-                ly += 26
-            card = card.rotate(rnd.uniform(-1.2, 1.2), Image.BICUBIC, expand=True)
+                ly += 25
+            card = card.rotate(rnd.uniform(-1, 1), Image.BICUBIC, expand=True)
             cx = M + (c + .5) * cw
-            dip = cy + 14 * math.sin(math.pi * (cx - M + 40) / (W2 - 2 * M + 80))
-            mc.drop_card(img, card, cx, dip + card.height / 2 - 6)
-            mc.peg(img, cx, dip, 1.1)
-    places = photos.get('places') or []
-    if places:
-        f = make.garamond(40, 600)
-        t = 'Bapa was in ' + ', '.join(places[:4])
-        d.text((W2 / 2, H2 - 40), t, font=f, fill=mc.GOLD, anchor='ms')
-    mc.foot(img, 26, H2 - 34)
+            dip = cy + 12 * math.sin(math.pi * (cx - M + 40) / (W2 - 2 * M + 80))
+            mc.drop_card(img, card, cx, dip + card.height / 2 - 4)
+            mc.peg(img, cx, dip, 1.0)
     return img
 
 
