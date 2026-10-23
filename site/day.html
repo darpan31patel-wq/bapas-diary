@@ -312,10 +312,10 @@ function card(y, {Y, place, stories}) {
     (photos.length > 1 ? `<div class="of"></div>` : '');
   el.append(lab);
   const cap = document.createElement('div'); cap.className = 'cap';
-  cap.textContent = photos.length ? '' : (stories.length > 1 ? stories.slice(1).join(' · ') : 'On this day');
+  cap.textContent = photos.length ? '' : 'On this day';
   slot.append(el, cap); $('cards').append(slot);
   Object.assign(c, {cap, of: lab.querySelector('.of'), ph});
-  if (photos.length) show(c, 0, true);
+  if (photos.length) show(c, Math.max(0, photos.findIndex(p => p[3])), true);   // open on a darshan of Bapa
   group(y, Y, where, cal, stories);
   return c;
 }
