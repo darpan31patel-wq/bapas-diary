@@ -62,6 +62,11 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; }
 .more button { font: 600 15px var(--body); padding: 10px 22px; border-radius: 8px; border: 1px solid var(--accent); background: none; color: var(--accent); cursor: pointer; }
 .empty-state { padding: 40px 0; color: var(--muted); }
 @media (prefers-reduced-motion: no-preference) { .card { transition: border-color .15s; } .card:hover { border-color: var(--accent); } }
+#big { border: 0; padding: 0; background: var(--panel); color: var(--fg); border-radius: 10px; max-width: min(96vw, 1200px); max-height: 96vh; overflow: auto; }
+#big::backdrop { background: rgb(0 0 0 / .8); }
+#big img { display: block; max-width: 100%; max-height: 80vh; margin: 0 auto; }
+#big p { margin: 8px 14px; } #big .meta { margin-bottom: 14px; }
+#big .close { position: absolute; top: 6px; right: 8px; font: 28px/1 var(--body); background: rgb(0 0 0 / .5); color: #fff; border: 0; border-radius: 50%; width: 38px; height: 38px; cursor: pointer; }
 </style>
 
 <header class="top wrap">
@@ -90,8 +95,16 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; }
   <div class="more"><button id="more" hidden>Show more</button></div>
 </main>
 
+<dialog id="big" aria-label="Photo">
+  <button class="close" id="big-close" aria-label="Close">×</button>
+  <img id="big-img" alt="">
+  <p id="big-cap"></p><p class="meta" id="big-when"></p>
+</dialog>
+
 <script>
-const IMG = 'https://www.baps.org/Data/Sites/1/Media/GalleryImages/';
+// Photos come from the website's own storage (R2), never from baps.org: s/ small for the grid, m/ medium for the big view.
+// PHOTOS is filled in by tools/build_search.py (the photo address of the site it is built for).
+const PHOTOS = '{{PHOTOS}}';
 const CHANNEL = { history: ['TodayinBAPShistory', 'Today in BAPS History'], satpurush: ['SatpurushInUKEurope', 'Satpurush in UK & Europe'] };
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const EXAMPLES = ['annakut', 'pratishtha', 'London', 'Sarangpur', 'murti', 'Diwali', 'children', 'elephant'];
@@ -177,15 +190,14 @@ function render(byYear, want) {
 }
 
 function photoCard(p, want) {
-  const g = p.g, web = `${IMG}${g[3]}/WebImages/${p.file}`, full = `${IMG}${g[3]}/FullSizeImages/${p.file}`;
+  const g = p.g, small = `${PHOTOS}s/${g[3]}/${p.file}`, medium = `${PHOTOS}m/${g[3]}/${p.file}`;
   const when = g[1] ? `${niceDate(g[0])} to ${niceDate(g[1])}` : niceDate(g[0]);
   return `<article class="card">
-    <a class="pic" href="${web}" target="_blank" rel="noopener"><img loading="lazy" src="${web}" alt="${esc(p.cap)}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'none',textContent:'Picture opens on baps.org'}))"></a>
+    <a class="pic" href="${medium}" data-big="${medium}" data-cap="${esc(p.cap)}" data-when="${esc(when + ' · ' + g[2])}"><img loading="lazy" src="${small}" alt="${esc(p.cap)}" onerror="this.parentNode.removeAttribute('data-big');this.replaceWith(Object.assign(document.createElement('span'),{className:'none',textContent:'Photo coming soon'}))"></a>
     <div class="txt">
       <span class="badge">baps.org${p.bapa ? ' · Bapa' : ''}</span>
       <p class="cap${p.cap ? '' : ' empty'}">${p.cap ? highlight(p.cap, want) : 'No caption (found in the album, not on a page)'}</p>
       <div class="meta">${when} · ${highlight(g[2], want)}</div>
-      <div class="links"><a href="${web}" target="_blank" rel="noopener">Open picture</a>${p.y === 1999 || p.y >= 2022 ? `<a href="${full}" target="_blank" rel="noopener">Full size</a>` : ''}</div>
     </div></article>`;
 }
 function postCard(p, want) {
@@ -212,6 +224,16 @@ function soon() { clearTimeout(timer); timer = setTimeout(search, 180); }
 $('q').addEventListener('input', soon);
 ['year', 'month', 'bapa', 'order', 'from'].forEach(id => $(id).addEventListener('change', search));
 $('more').addEventListener('click', () => more());
+$('results').addEventListener('click', e => {
+  const a = e.target.closest('a[data-big]');
+  if (!a || !$('big').showModal) return;
+  e.preventDefault();
+  $('big-img').src = a.dataset.big; $('big-img').alt = a.dataset.cap;
+  $('big-cap').textContent = a.dataset.cap; $('big-when').textContent = a.dataset.when;
+  $('big').showModal();
+});
+$('big-close').addEventListener('click', () => $('big').close());
+$('big').addEventListener('click', e => { if (e.target === $('big')) $('big').close(); });
 $('chips').addEventListener('click', e => { if (e.target.dataset.q) { $('q').value = e.target.dataset.q; search(); } });
 $('years').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
