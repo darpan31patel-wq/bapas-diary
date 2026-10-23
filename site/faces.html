@@ -1,0 +1,316 @@
+<title>Mukh Darshan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Mukta:wght@300;400;600&display=swap">
+<style>
+/* Layout: one lit frame like a darshan in a dim mandir, the day's facts beside it, the years running underneath */
+:root {
+  --bg: #15100d; --panel: #201814; --line: #3b2d25; --ink: #f4e9dc; --muted: #b8a28c; --saffron: #ec8a2d; --glow: rgba(236,138,45,.18);
+  --display: 'Marcellus', 'Iowan Old Style', Georgia, serif;
+  --body: 'Mukta', 'Segoe UI', system-ui, sans-serif;
+  --fade: 160ms;
+  color-scheme: dark;
+}
+html, body { background: var(--bg); color: var(--ink); }
+body { font-family: var(--body); font-size: 16px; line-height: 1.5; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 18px 28px; }
+.wrap { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 5vw, 44px); line-height: 1; margin: 0; letter-spacing: .01em; }
+.sub { color: var(--muted); margin: 6px 0 0; font-size: 15px; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.tab { font: inherit; font-size: 15px; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 7px 16px; cursor: pointer; }
+.tab[aria-selected="true"] { color: var(--bg); background: var(--saffron); border-color: var(--saffron); font-weight: 600; }
+.tab:focus-visible, button:focus-visible, canvas:focus-visible, select:focus-visible { outline: 2px solid var(--saffron); outline-offset: 2px; }
+.note { font-size: 13.5px; color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; padding: 8px 12px; margin: 0; }
+.stage { display: grid; grid-template-columns: minmax(0, 460px) minmax(0, 1fr); grid-template-areas: "frame info" "scrub scrub"; gap: 18px 32px; align-items: start; }
+.frame { grid-area: frame; position: relative; aspect-ratio: 4 / 5; max-width: 100%; border-radius: 6px; overflow: hidden; background: var(--panel); box-shadow: 0 0 0 1px var(--line), 0 30px 80px -30px var(--glow); }
+.frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity var(--fade) linear; }
+.frame img.on { opacity: 1; }
+.eyes { position: absolute; inset: 0; pointer-events: none; }
+.eyes i { position: absolute; top: 42%; width: 26px; height: 26px; margin: -13px 0 0 -13px; border: 1.5px solid rgba(255,255,255,.75); border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
+.eyes i:first-child { left: 41.5%; } .eyes i:last-child { left: 58.5%; }
+.eyes::after { content: ""; position: absolute; left: 0; right: 0; top: 42%; border-top: 1px dashed rgba(255,255,255,.35); }
+.info { grid-area: info; display: flex; flex-direction: column; gap: 14px; min-width: 0; padding-top: 4px; }
+.age { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--saffron); }
+.date { font-family: var(--display); font-size: clamp(26px, 3.4vw, 38px); line-height: 1.1; margin: 0; text-wrap: balance; }
+.place { font-size: 18px; margin: 0; }
+.cap { font-size: 18px; font-weight: 300; margin: 0; max-width: 34em; }
+.cal { font-size: 14.5px; color: var(--muted); margin: 0; }
+.cal b { color: var(--ink); font-weight: 600; }
+.more { align-self: start; font: inherit; font-weight: 600; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 16px; cursor: pointer; }
+.more:hover { border-color: var(--saffron); }
+.count { font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.scrub { grid-area: scrub; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.bar .gap { flex: 1; }
+.btn { font: inherit; font-size: 14px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+.btn[aria-pressed="true"] { border-color: var(--saffron); color: var(--saffron); }
+.btn.play { min-width: 84px; font-weight: 600; }
+select.btn { padding-right: 8px; }
+canvas { display: block; width: 100%; height: 132px; border-radius: 8px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); touch-action: none; cursor: grab; }
+canvas.drag { cursor: grabbing; }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+@media (max-width: 760px) {
+  .stage { grid-template-columns: minmax(0, 1fr); grid-template-areas: "frame" "scrub" "info"; }
+  .frame { width: min(100%, 420px); justify-self: center; }
+}
+@media (prefers-reduced-motion: reduce) { :root { --fade: 0ms; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Mukh Darshan</h1>
+      <p class="sub">Bapa through the years, one close darshan for every day</p>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Guru">
+      <button class="tab" role="tab" id="tab-psm" data-era="psm" aria-selected="true">Pramukh Swami Maharaj</button>
+      <button class="tab" role="tab" id="tab-msm" data-era="msm" aria-selected="false">Mahant Swami Maharaj</button>
+    </div>
+  </header>
+  <p class="note" id="mocknote">Mockup with a small slice: Pramukh Swami Maharaj for 1999, Mahant Swami Maharaj from 13 August to 31 December 2016. The finished page runs from 1999 to today.</p>
+
+  <section class="stage">
+    <div class="frame" id="frame" aria-live="polite">
+      <img id="imgA" alt=""><img id="imgB" alt="">
+      <div class="eyes" id="eyes" hidden><i></i><i></i></div>
+    </div>
+
+    <div class="info">
+      <span class="age" id="age"></span>
+      <h2 class="date" id="date"></h2>
+      <p class="place" id="place"></p>
+      <p class="cap" id="cap"></p>
+      <p class="cal" id="cal"></p>
+      <button class="more" id="more" type="button"></button>
+      <p class="hint" id="morenote" hidden>On the live site this opens Search with every photo from this day.</p>
+      <span class="count" id="count"></span>
+    </div>
+
+    <div class="scrub">
+      <div class="bar">
+        <button class="btn play" id="play" type="button">▶ Play</button>
+        <select class="btn" id="speed" aria-label="Speed">
+          <option value="3">Slow</option>
+          <option value="8" selected>Fast</option>
+          <option value="16">Very fast</option>
+        </select>
+        <span class="gap"></span>
+        <button class="btn" id="zAll" type="button">All years</button>
+        <button class="btn" id="zYear" type="button">Year</button>
+        <button class="btn" id="zMonth" type="button">Month</button>
+        <button class="btn" id="zOut" type="button" aria-label="Zoom out">−</button>
+        <button class="btn" id="zIn" type="button" aria-label="Zoom in">+</button>
+        <button class="btn" id="eyeBtn" type="button" aria-pressed="false">Eye line</button>
+      </div>
+      <canvas id="tl" tabindex="0" aria-label="Timeline: drag left or right to move through the days"></canvas>
+      <p class="hint">Drag or scroll the strip to move through the days. Pinch or use + and − to zoom; tap a year or month to jump to it. Arrow keys step one day.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+const DAYS = /*DAYS*/[];
+const BORN = { psm: '1921-12-07', msm: '1933-09-13' };
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const WEEK = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const DAYMS = 864e5;
+const tOf = d => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) / DAYMS;
+const dOf = t => new Date(t * DAYMS);
+
+const eras = { psm: [], msm: [] };
+for (const r of DAYS) eras[r[5]].push({ day: r[0], to: r[1], place: r[2], cap: r[3], photos: r[4], tithi: r[6], fest: r[7], t: tOf(r[0]) });
+
+const $ = id => document.getElementById(id);
+const cv = $('tl'), cx = cv.getContext('2d');
+let era = 'psm', list = eras.psm, idx = 0, center = 0, ppd = 1, playing = null, front = $('imgA'), back = $('imgB'), token = 0;
+const thumbs = new Map();
+
+function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function longDate(d) { const x = dOf(tOf(d)); return `${WEEK[x.getUTCDay()]} ${x.getUTCDate()} ${MONTHS[x.getUTCMonth()]} ${x.getUTCFullYear()}`; }
+function ageOn(d) { const b = BORN[era]; let a = +d.slice(0, 4) - +b.slice(0, 4); if (d.slice(5) < b.slice(5)) a--; return a; }
+
+function show(i, fast) {
+  if (!list.length) return;
+  idx = Math.max(0, Math.min(list.length - 1, i));
+  const x = list[idx], my = ++token;
+  document.documentElement.style.setProperty('--fade', matchMedia('(prefers-reduced-motion: reduce)').matches ? '0ms' : (fast ? '90ms' : '160ms'));
+  back.src = `f/${x.day}.jpg`;
+  back.alt = `${era === 'psm' ? 'Pramukh Swami Maharaj' : 'Mahant Swami Maharaj'} on ${longDate(x.day)}`;
+  (back.decode ? back.decode() : Promise.resolve()).catch(() => {}).then(() => {
+    if (my !== token) return;
+    back.classList.add('on'); front.classList.remove('on'); [front, back] = [back, front];
+  });
+  $('age').textContent = `Bapa aged ${ageOn(x.day)}`;
+  $('date').textContent = x.to ? `${longDate(x.day)} to ${longDate(x.to).replace(/^\w+ /, '')}` : longDate(x.day);
+  $('place').textContent = x.place;
+  $('cap').textContent = x.cap;
+  $('cal').innerHTML = x.tithi ? `<b>${esc(x.tithi)}</b>${x.fest ? ' · ' + esc(x.fest) : ''}` : '';
+  $('more').textContent = x.photos > 1 ? `See all ${x.photos} photos from this day` : 'See this day in Search';
+  $('count').textContent = `Day ${idx + 1} of ${list.length} with a close darshan`;
+  for (const k of [1, 2, 3, -1, -2]) { const y = list[idx + k]; if (y) new Image().src = `f/${y.day}.jpg`; }
+  draw();
+}
+function esc(s) { return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
+
+function nearest(t) {
+  let lo = 0, hi = list.length - 1;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (list[m].t < t) lo = m + 1; else hi = m; }
+  return lo > 0 && t - list[lo - 1].t < list[lo].t - t ? lo - 1 : lo;
+}
+function span() { return [list[0].t - 3, list[list.length - 1].t + 3]; }
+function W() { return cv.clientWidth; }
+function minPpd() { const [a, b] = span(); return W() / (b - a); }
+function clampView() {
+  ppd = Math.max(minPpd(), Math.min(140, ppd));
+  const [a, b] = span(), half = W() / 2 / ppd;
+  center = b - a <= 2 * half ? (a + b) / 2 : Math.max(a + half, Math.min(b - half, center));
+}
+function follow() { // keep the chosen day in view without jumping the strip about
+  const t = list[idx].t, half = W() / 2 / ppd;
+  if (t < center - half * .8 || t > center + half * .8) center = t;
+  clampView();
+}
+
+function draw() {
+  const w = W(), h = cv.clientHeight, dpr = devicePixelRatio || 1;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  cx.clearRect(0, 0, w, h);
+  if (!list.length) return;
+  const ink = css('--ink'), muted = css('--muted'), line = css('--line'), saf = css('--saffron');
+  const X = t => w / 2 + (t - center) * ppd, t0 = center - w / 2 / ppd, t1 = center + w / 2 / ppd;
+  const y0 = dOf(t0).getUTCFullYear(), y1 = dOf(t1).getUTCFullYear();
+  cx.font = `600 13px ${css('--body')}`; cx.textBaseline = 'middle';
+  // years
+  for (let y = y0; y <= y1; y++) {
+    const a = X(Date.UTC(y, 0, 1) / DAYMS), b = X(Date.UTC(y + 1, 0, 1) / DAYMS);
+    cx.fillStyle = line; cx.fillRect(Math.round(a), 0, 1, h);
+    cx.fillStyle = ink; const lx = Math.max(a + 6, 6);
+    if (lx < b - 36) cx.fillText(String(y), lx, 13);
+  }
+  // months
+  const mw = 30 * ppd;
+  if (mw > 14) {
+    cx.font = `400 12px ${css('--body')}`;
+    for (let y = y0; y <= y1; y++) for (let m = 0; m < 12; m++) {
+      const a = X(Date.UTC(y, m, 1) / DAYMS), b = X(Date.UTC(y, m + 1, 1) / DAYMS);
+      if (b < 0 || a > w) continue;
+      if (m) { cx.fillStyle = line; cx.fillRect(Math.round(a), 26, 1, h - 26); }
+      const name = mw > 80 ? MONTHS[m] : mw > 32 ? MONTHS[m].slice(0, 3) : MONTHS[m][0];
+      cx.fillStyle = muted; const lx = Math.max(a + 5, 5);
+      if (lx + cx.measureText(name).width < b - 2) cx.fillText(name, lx, 37);
+    }
+  }
+  // days: thumbnails when there is room, otherwise a tick for each day with a close darshan
+  const top = 50, th = h - top - 8, tw = th * .8;
+  const i0 = Math.max(0, nearest(t0) - 1), i1 = Math.min(list.length - 1, nearest(t1) + 1);
+  const room = ppd >= tw * .55;
+  for (let i = i0; i <= i1; i++) {
+    const x = X(list[i].t);
+    if (room && i !== idx) {
+      const im = thumb(list[i].day), ww = Math.min(tw, ppd - 3);
+      if (im.complete && im.naturalWidth) { cx.globalAlpha = .7; cx.drawImage(im, 0, 0, im.naturalWidth, im.naturalHeight, x - tw / 2 + (tw - ww) / 2, top, ww, th); cx.globalAlpha = 1; }
+      else { cx.fillStyle = line; cx.fillRect(x - ww / 2, top, ww, th); }
+    } else if (!room) {
+      cx.fillStyle = muted; cx.globalAlpha = .75; cx.fillRect(x - .5, top + 10, Math.max(1, Math.min(2, ppd * .6)), th - 20); cx.globalAlpha = 1;
+    }
+  }
+  // the chosen day
+  const sx = X(list[idx].t);
+  if (room) { const im = thumb(list[idx].day); if (im.complete && im.naturalWidth) cx.drawImage(im, sx - tw / 2, top, tw, th); }
+  cx.fillStyle = saf; cx.fillRect(Math.round(sx) - 1, top - 6, 3, th + 12);
+  cx.beginPath(); cx.moveTo(sx - 6, top - 8); cx.lineTo(sx + 7, top - 8); cx.lineTo(sx + .5, top - 1); cx.fill();
+}
+function thumb(day) {
+  let im = thumbs.get(day);
+  if (!im) { im = new Image(); im.onload = () => requestAnimationFrame(draw); im.src = `f/${day}.jpg`; thumbs.set(day, im); }
+  return im;
+}
+
+function setEra(e) {
+  stop(); era = e; list = eras[e];
+  for (const b of document.querySelectorAll('.tab')) b.setAttribute('aria-selected', b.dataset.era === e);
+  ppd = 0; clampView(); center = list.length ? list[0].t : 0; clampView();
+  front.classList.remove('on'); back.classList.remove('on');
+  show(0);
+  try { history.replaceState(null, '', '#' + e); } catch (_) {}
+}
+
+function zoomTo(days, t) { ppd = W() / days; if (t !== undefined) center = t; clampView(); draw(); }
+function zoomBy(k, at) {
+  const t = at === undefined ? center : center + (at - W() / 2) / ppd;
+  ppd *= k; clampView();
+  if (at !== undefined) { center = t - (at - W() / 2) / ppd; clampView(); }
+  draw();
+}
+
+// dragging, scrolling and pinching the strip
+const ptrs = new Map(); let dragged = 0, pinch = 0, downX = 0;
+cv.addEventListener('pointerdown', e => {
+  cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, e.clientX); dragged = 0; downX = e.clientX;
+  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.abs(a - b); }
+  stop(); cv.classList.add('drag');
+});
+cv.addEventListener('pointermove', e => {
+  if (!ptrs.has(e.pointerId)) return;
+  const last = ptrs.get(e.pointerId); ptrs.set(e.pointerId, e.clientX);
+  if (ptrs.size === 2) {
+    const [a, b] = [...ptrs.values()], d = Math.abs(a - b);
+    if (pinch) zoomBy(d / pinch, (a + b) / 2 - cv.getBoundingClientRect().left);
+    pinch = d; dragged = 99; return;
+  }
+  const dx = e.clientX - last; dragged += Math.abs(dx);
+  center -= dx / ppd; clampView();
+  const i = nearest(center); if (i !== idx) show(i, true); else draw();
+});
+function up(e) {
+  ptrs.delete(e.pointerId); cv.classList.remove('drag'); if (ptrs.size < 2) pinch = 0;
+  if (dragged < 5 && Math.abs(e.clientX - downX) < 5 && e.type === 'pointerup') tap(e);
+}
+cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+cv.addEventListener('wheel', e => {
+  e.preventDefault(); stop();
+  const r = cv.getBoundingClientRect();
+  if (e.ctrlKey) { zoomBy(Math.exp(-e.deltaY * .01), e.clientX - r.left); return; }
+  center += (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) / ppd; clampView();
+  const i = nearest(center); if (i !== idx) show(i, true); else draw();
+}, { passive: false });
+function tap(e) {
+  const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  const t = center + (x - W() / 2) / ppd, d = dOf(t), Y = d.getUTCFullYear(), M = d.getUTCMonth();
+  if (y < 26) { const a = Date.UTC(Y, 0, 1) / DAYMS; zoomTo(368, a + 182); show(nearest(Math.max(a, list[0].t))); return; }
+  if (y < 46 && 30 * ppd > 14) { const a = Date.UTC(Y, M, 1) / DAYMS; zoomTo(33, a + 15); show(nearest(a + .5)); return; }
+  show(nearest(t)); follow(); draw();
+}
+cv.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); stop(); show(idx + (e.key === 'ArrowRight' ? 1 : -1)); follow(); draw(); }
+  if (e.key === ' ') { e.preventDefault(); toggle(); }
+});
+document.addEventListener('keydown', e => {
+  if (e.target === cv || e.target.closest('button,select')) return;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { stop(); show(idx + (e.key === 'ArrowRight' ? 1 : -1)); follow(); draw(); }
+});
+
+// playing through the days like a flip book
+function toggle() { playing ? stop() : start(); }
+function start() {
+  if (idx >= list.length - 1) show(0);
+  const tick = () => { if (idx >= list.length - 1) return stop(); show(idx + 1, true); follow(); draw(); };
+  playing = setInterval(tick, 1000 / +$('speed').value);
+  $('play').textContent = '❚❚ Pause';
+}
+function stop() { if (playing) clearInterval(playing); playing = null; $('play').textContent = '▶ Play'; }
+$('play').onclick = toggle;
+$('speed').onchange = () => { if (playing) { stop(); start(); } };
+$('zAll').onclick = () => { ppd = 0; clampView(); draw(); };
+$('zYear').onclick = () => zoomTo(368, list[idx].t);
+$('zMonth').onclick = () => zoomTo(33, list[idx].t);
+$('zIn').onclick = () => zoomBy(1.8);
+$('zOut').onclick = () => zoomBy(1 / 1.8);
+$('eyeBtn').onclick = () => { const on = $('eyes').hidden; $('eyes').hidden = !on; $('eyeBtn').setAttribute('aria-pressed', on); };
+$('more').onclick = () => { $('morenote').hidden = false; };
+for (const b of document.querySelectorAll('.tab')) b.onclick = () => setEra(b.dataset.era);
+addEventListener('resize', () => { clampView(); draw(); });
+setEra(location.hash === '#msm' ? 'msm' : 'psm');
+</script>

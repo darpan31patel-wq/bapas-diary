@@ -90,7 +90,7 @@ def score(bgr, f, sim):
     s -= 1.5 * max(0, .5 - front)                        # a side profile can't line its eyes up with the others
     s -= .8 * max(0, 1 - sharp / 40) + .8 * max(0, 1 - bright / 70)
     s -= 1.5 if gap < MIN_GAP * 2 else 0
-    return s, dict(close=round(float(close), 3), gap=round(gap, 1), front=round(front, 2), sharp=round(sharp), bright=round(bright))
+    return float(s), dict(close=round(float(close), 3), gap=round(gap, 1), front=round(front, 2), sharp=round(sharp), bright=round(bright))
 
 
 def align(bgr, f):
