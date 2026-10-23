@@ -102,6 +102,7 @@ def main():
     ap.add_argument('--out', default='search')
     ap.add_argument('--tags', help='tags.json from tools/photo_tags.py (what is happening in each photo)')
     ap.add_argument('--photos', default='https://photos.bapas-diary.com/', help='where the s/ and m/ photos are (R2)')
+    ap.add_argument('--start-year', default='', help='the year the page opens on, e.g. while only that year has photos')
     a = ap.parse_args()
     os.makedirs(os.path.join(a.out, 'data'), exist_ok=True)
     db = sqlite3.connect(a.db)
@@ -144,7 +145,7 @@ def main():
     write(os.path.join(a.out, 'data', 'about.json'),
           {'built': built.get('built'), 'years': sorted(counts), 'photos': counts, 'stories': len(tg), 'calendar': len(cal)})
 
-    body = open(PAGE, encoding='utf-8').read().replace('{{PHOTOS}}', a.photos)
+    body = open(PAGE, encoding='utf-8').read().replace('{{PHOTOS}}', a.photos).replace('{{START_YEAR}}', a.start_year)
     with open(os.path.join(a.out, 'index.html'), 'w', encoding='utf-8') as f:
         f.write('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
                 '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
