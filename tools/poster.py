@@ -1,0 +1,477 @@
+#!/usr/bin/env python3
+"""BAPS calendar style posters, mixed with Bapa's Diary's own look (Darpan, 23 Oct 2026). Mockups to choose from.
+
+    python tools/poster.py --month 2012-01 --day 9      every design into preview/poster/2012-01/
+
+Day posters: the calendar's day (date, the Indian date, festival, notes; never the muhurat timings), our darshan
+of Bapa that day with where he was, and underneath what happened: that day's photo captions and the Telegram
+history channels for the same date. Month posters: the BAPS calendar grid with a box for every day (left plain when
+there is no photo, so no day goes missing) where the photos come first; and a second card for the month's
+special moments.
+
+Photos come from preview/poster/<month>/photos.json (tools/poster_photos.py, run on GitHub), the calendar from
+calendar/baps-calendar.json (tools/baps_calendar.py). Nothing here touches the daily picture.
+"""
+import argparse, calendar, datetime, json, os, re
+
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
+
+HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FOOTER = 'Darpan’s Smruti Project'
+W, H = 2160, 2700
+
+# baps.org's calendar colours
+TAN, TAN_DARK = (201, 160, 118), (168, 124, 84)
+RUST, SUN_RED = (186, 98, 44), (166, 28, 32)
+CREAM, CELL, LINE = (246, 239, 226), (255, 253, 248), (222, 208, 186)
+EKADASHI, AMAS = (253, 241, 196), (214, 210, 204)
+INK, GREY, LINK = (52, 44, 40), (118, 104, 96), (40, 92, 170)
+# Bapa's Diary's colours
+MAROON, MAROON_DEEP = (96, 20, 32), (40, 8, 14)
+GOLD, GOLD_SOFT, IVORY = (233, 190, 110), (214, 176, 112), (248, 242, 228)
+SAFFRON = (232, 128, 38)
+
+
+def font(name, size):
+    files = {'serif': 'eb-garamond-latin-600-normal', 'serif-bold': 'eb-garamond-latin-700-normal',
+             'serif-med': 'eb-garamond-latin-500-normal', 'sans': 'arimo-latin-700-normal'}
+    return ImageFont.truetype(os.path.join(HERE, 'fonts', files[name] + '.woff2'), max(8, round(size)))
+
+
+def spaced(d, xy, text, f, fill, gap, anchor='mm'):
+    """Letter spaced capitals, centred on xy (anchor 'mm') or starting at xy (anchor 'lm')."""
+    widths = [d.textlength(c, font=f) for c in text]
+    total = sum(widths) + gap * (len(text) - 1)
+    x = xy[0] - total / 2 if anchor == 'mm' else xy[0]
+    for c, w in zip(text, widths):
+        d.text((x, xy[1]), c, font=f, fill=fill, anchor='lm')
+        x += w + gap
+    return total
+
+
+def wrap(d, text, f, maxw, lines=3):
+    words, out = text.split(), []
+    while words and len(out) < lines:
+        line = words.pop(0)
+        while words and d.textlength(line + ' ' + words[0], font=f) <= maxw:
+            line += ' ' + words.pop(0)
+        out.append(line)
+    if words:
+        last = out[-1]
+        while last and d.textlength(last + '…', font=f) > maxw:
+            last = last.rsplit(' ', 1)[0] if ' ' in last else last[:-1]
+        out[-1] = last.rstrip(',;:') + '…'
+    return out
+
+
+def crop(path, face, w, h, tight=True):
+    """The photo cut to w x h around Bapa: tight keeps his head and shoulders, otherwise as much of the scene as fits."""
+    im = Image.open(path).convert('RGB')
+    iw, ih = im.size
+    fx, fy, fw, fh = face
+    a = w / h
+    if tight:
+        ch = min(ih, fh / .30)
+        cw = ch * a
+        if cw > iw:
+            cw = iw; ch = cw / a
+    else:
+        cw, ch = (ih * a, ih) if iw / ih > a else (iw, iw / a)
+    cx = min(max(fx + fw / 2 - cw / 2, 0), iw - cw)
+    cy = min(max(fy - ch * (.16 if tight else .22), 0), ih - ch)
+    return im.crop((round(cx), round(cy), round(cx + cw), round(cy + ch))).resize((round(w), round(h)), Image.LANCZOS)
+
+
+def shadow(img, box, r=40, blur=30, alpha=110, off=(0, 18)):
+    sh = Image.new('L', img.size, 0)
+    ImageDraw.Draw(sh).rounded_rectangle([box[0] + off[0], box[1] + off[1], box[2] + off[0], box[3] + off[1]], r, fill=alpha)
+    img.paste(Image.new('RGB', img.size, (0, 0, 0)), (0, 0), sh.filter(ImageFilter.GaussianBlur(blur)))
+
+
+def rounded(img, photo, xy, r):
+    m = Image.new('L', photo.size, 0)
+    ImageDraw.Draw(m).rounded_rectangle([0, 0, photo.width - 1, photo.height - 1], r, fill=255)
+    img.paste(photo, xy, m)
+
+
+def paper(size, top=CREAM, bottom=(238, 226, 204)):
+    w, h = size
+    g = Image.linear_gradient('L').resize((w, h))
+    return Image.composite(Image.new('RGB', size, bottom), Image.new('RGB', size, top), g)
+
+
+def maroon_bg(size):
+    w, h = size
+    base = paper(size, (110, 26, 38), MAROON_DEEP)
+    glow = Image.new('L', size, 0)
+    ImageDraw.Draw(glow).ellipse([w * .1, -h * .25, w * .9, h * .45], fill=120)
+    return Image.composite(Image.new('RGB', size, (150, 52, 52)), base, glow.filter(ImageFilter.GaussianBlur(w * .12)))
+
+
+def foot(img, y, colour):
+    d = ImageDraw.Draw(img)
+    f = font('serif', 46)
+    d.text((img.width / 2, y), f'·  {FOOTER}  ·', font=f, fill=colour, anchor='mm')
+
+
+# ---------------------------------------------------------------- the day's facts
+
+class Day:
+    def __init__(self, cal, photos, date):
+        self.date = date
+        self.cal = cal.get(date.isoformat(), {})
+        d = date.day
+        self.close = photos['close'].get(str(d))
+        self.act = photos['act'].get(str(d))
+        self.captions = photos['extra'].get(str(d), [])
+        self.dir = photos['dir']
+        self.history = history(date)
+
+    @property
+    def tithi(self):
+        return self.cal.get('indian_date', '')
+
+    @property
+    def samvat(self):
+        return f"Vikram Samvat {self.cal['vikram_samvat']}" if self.cal.get('vikram_samvat') else ''
+
+    @property
+    def festivals(self):
+        return [f['name'] for f in self.cal.get('festivals', [])]
+
+    @property
+    def about(self):
+        return next((f['about'] for f in self.cal.get('festivals', []) if f['about']), '')
+
+    @property
+    def notes(self):
+        skip = re.compile(r'^\(?fast\)?$|^smart$|vruddhi|kshay', re.I)
+        return [n for n in self.cal.get('notes', []) if not skip.search(n)]
+
+    @property
+    def place(self):
+        return (self.close or self.act or {}).get('place', '')
+
+    def path(self, x):
+        return os.path.join(self.dir, x['file'])
+
+    def happened(self, n=4):
+        """What happened that day, from the photo captions: the ones that say what Bapa did, longest first."""
+        seen, out = set(), []
+        for c in sorted(self.captions, key=lambda c: -len(c)):
+            k = re.sub(r'[^a-z ]', '', c.lower())[:40]
+            if k in seen or len(c) < 18:
+                continue
+            seen.add(k)
+            out.append(c[0].upper() + c[1:])
+        return out[:n]
+
+
+def history(date):
+    """Other years on this date from the two Telegram history channels."""
+    out = []
+    for f in ('telegram/events.json', 'telegram/satpurush/events.json'):
+        p = os.path.join(HERE, f)
+        if not os.path.exists(p):
+            continue
+        for e in json.load(open(p, encoding='utf-8')):
+            if e.get('date', '')[5:] == date.strftime('%m-%d') and e.get('line') and e['date'][:4] != str(date.year):
+                out.append((int(e['date'][:4]), e['line'], e.get('place') or ''))
+    return sorted(set(out))
+
+
+# ---------------------------------------------------------------- day posters
+
+def d1_leaf(day):
+    """A tear off calendar leaf: the big date and the Indian date on the left, the darshan hung on the right."""
+    img = paper((W, H))
+    d = ImageDraw.Draw(img)
+    # the calendar's tan band and the maroon weekday strip
+    d.rectangle([0, 0, W, 190], fill=TAN)
+    d.text((W / 2, 98), f"{day.date:%B %Y}  ·  {day.cal.get('lunar_months', '').replace('-', ' · ')}  ·  {day.samvat}",
+           font=font('serif', 62), fill='white', anchor='mm')
+    d.rectangle([0, 190, W, 262], fill=SUN_RED if day.date.weekday() == 6 else RUST)
+    spaced(d, (W / 2, 226), day.date.strftime('%A').upper(), font('sans', 40), 'white', 14)
+    # left column: the date as the calendar prints it
+    lx = 120
+    d.text((lx + 330, 640), str(day.date.day), font=font('serif-bold', 560), fill=SUN_RED if day.date.weekday() == 6 else MAROON, anchor='ms')
+    d.line([lx, 730, lx + 660, 730], fill=GOLD_SOFT, width=4)
+    d.text((lx + 330, 820), day.tithi, font=font('serif-bold', 78), fill=MAROON, anchor='mm')
+    y = 900
+    for fest in day.festivals[:2]:
+        f = font('serif-bold', 62 if len(fest) < 26 else 50)
+        lines = wrap(d, fest, f, 600, 3)
+        bh = 40 + 70 * len(lines)
+        d.rounded_rectangle([lx, y, lx + 660, y + bh], 22, fill=SAFFRON)
+        for i, ln in enumerate(lines):
+            d.text((lx + 330, y + 55 + 70 * i), ln, font=f, fill='white', anchor='mm')
+        y += bh + 24
+    if day.about:
+        for ln in wrap(d, day.about, font('serif-med', 44), 640, 5):
+            d.text((lx + 10, y + 30), ln, font=font('serif-med', 44), fill=GREY, anchor='lm'); y += 56
+        y += 20
+    for n in day.notes[:3]:
+        d.text((lx + 10, y + 30), '•  ' + n, font=font('serif-med', 46), fill=INK, anchor='lm'); y += 62
+    # right column: the darshan as one of the diary's ivory polaroids, the place on its band
+    x = day.close or day.act
+    px, py, pw, ph = 860, 330, 1160, 1380
+    shadow(img, (px, py, px + pw, py + ph), r=10, blur=34, alpha=120, off=(0, 26))
+    d.rectangle([px, py, px + pw, py + ph], fill=IVORY, outline=(214, 198, 168), width=2)
+    if x:
+        img.paste(crop(day.path(x), x['face'], pw - 80, ph - 220), (px + 40, py + 40))
+    d.text((px + pw / 2, py + ph - 95), day.place or ' ', font=font('serif-bold', 70), fill=MAROON, anchor='mm')
+    spaced(d, (px + pw / 2, py + ph - 38), 'WHERE BAPA WAS', font('sans', 26), GREY, 8)
+    happenings(img, day, 1800)
+    foot(img, H - 60, TAN_DARK)
+    return img
+
+
+def happenings(img, day, y, dark=False, x0=120, x1=W - 120):
+    """The bottom: what happened that day (captions) and the same date in history (Telegram)."""
+    d = ImageDraw.Draw(img)
+    head, ink, sub = (GOLD, IVORY, GOLD_SOFT) if dark else (MAROON, INK, GREY)
+    mid = (x0 + x1) / 2
+    d.line([x0, y, x1, y], fill=GOLD_SOFT, width=3)
+    spaced(d, (x0, y + 60), 'WHAT HAPPENED THAT DAY', font('sans', 34), head, 8, anchor='lm')
+    spaced(d, (mid + 50, y + 60), 'ON THIS DATE IN HISTORY', font('sans', 34), head, 8, anchor='lm')
+    f, fy = font('serif-med', 46), font('serif-bold', 46)
+    yy = y + 130
+    for c in day.happened(4):
+        for i, ln in enumerate(wrap(d, c, f, mid - x0 - 80, 2)):
+            d.text((x0 + (0 if i == 0 else 34), yy), ('•  ' if i == 0 else '') + ln, font=f, fill=ink, anchor='lm'); yy += 58
+        yy += 14
+    if not day.happened():
+        d.text((x0, yy), 'No photos of Bapa saved for this day', font=f, fill=sub, anchor='lm')
+    yy = y + 130
+    for yr, line, place in day.history[:4]:
+        d.text((mid + 50, yy), str(yr), font=fy, fill=head, anchor='lm')
+        for i, ln in enumerate(wrap(d, line + (f' ({place})' if place and place not in line else ''), f, x1 - mid - 210, 2)):
+            d.text((mid + 190, yy), ln, font=f, fill=ink, anchor='lm'); yy += 58
+        yy += 14
+    if not day.history:
+        d.text((mid + 50, yy), 'Nothing in the Telegram channels for this date', font=f, fill=sub, anchor='lm')
+
+
+def d2_cell(day):
+    """One square of the baps.org calendar, blown up: the number and tithi in the corner, the darshan filling it."""
+    img = paper((W, H))
+    d = ImageDraw.Draw(img)
+    d.text((110, 120), f'{day.date:%B %Y}', font=font('serif-bold', 110), fill=(181, 54, 28), anchor='lm')
+    d.text((W - 110, 120), day.samvat, font=font('serif', 60), fill=GREY, anchor='rm')
+    d.rectangle([110, 210, W - 110, 300], fill=TAN)
+    d.text((W / 2, 255), f"{day.date:%B %Y}  {day.cal.get('lunar_months', '')}, {day.samvat}", font=font('serif', 56), fill='white', anchor='mm')
+    sun = day.date.weekday() == 6
+    d.rectangle([110, 300, W - 110, 380], fill=SUN_RED if sun else RUST)
+    spaced(d, (W / 2, 340), day.date.strftime('%A').upper(), font('sans', 38), 'white', 14)
+    cx0, cy0, cx1, cy1 = 110, 380, W - 110, 1820
+    fill = EKADASHI if day.cal.get('ekadashi') else CELL
+    d.rectangle([cx0, cy0, cx1, cy1], fill=fill, outline=LINE, width=3)
+    x = day.close or day.act
+    if x:
+        ph = crop(day.path(x), x['face'], cx1 - cx0 - 640, cy1 - cy0 - 80, tight=False)
+        img.paste(ph, (cx0 + 600, cy0 + 40))
+    d.text((cx0 + 290, cy0 + 330), str(day.date.day), font=font('serif-bold', 360), fill=SUN_RED if sun else INK, anchor='ms')
+    d.text((cx0 + 290, cy0 + 430), day.tithi.replace(' Sud ', '\nSud ').replace(' Vad ', '\nVad '), font=font('serif', 64),
+           fill=GREY, anchor='mm', align='center')
+    y = cy0 + 590
+    for fest in day.festivals[:2]:
+        for ln in wrap(d, fest, font('serif-bold', 56), 500, 4):
+            d.text((cx0 + 290, y), ln, font=font('serif-bold', 56), fill=LINK, anchor='mm'); y += 66
+        y += 20
+    for n in day.notes[:3]:
+        for ln in wrap(d, n, font('serif-med', 46), 500, 2):
+            d.text((cx0 + 290, y), ln, font=font('serif-med', 46), fill=INK, anchor='mm'); y += 56
+    if day.place:
+        d.rounded_rectangle([cx0 + 60, cy1 - 170, cx0 + 520, cy1 - 70], 50, fill=MAROON)
+        d.text((cx0 + 290, cy1 - 120), '📍 ' * 0 + day.place, font=font('serif-bold', 58), fill=GOLD, anchor='mm')
+    happenings(img, day, 1900)
+    foot(img, H - 60, TAN_DARK)
+    return img
+
+
+def d3_maroon(day):
+    """Bapa's Diary's maroon and gold, with the calendar's facts set like a temple calendar's header."""
+    img = maroon_bg((W, H))
+    d = ImageDraw.Draw(img)
+    x = day.close or day.act
+    ph_w, ph_h = 1500, 1500
+    px, py = (W - ph_w) // 2, 560
+    if x:
+        photo = crop(day.path(x), x['face'], ph_w, ph_h)
+        m = Image.new('L', (ph_w, ph_h), 0)
+        ImageDraw.Draw(m).ellipse([0, 0, ph_w, ph_h], fill=255)
+        ring = 26
+        d.ellipse([px - ring, py - ring, px + ph_w + ring, py + ph_h + ring], fill=GOLD)
+        d.ellipse([px - 8, py - 8, px + ph_w + 8, py + ph_h + 8], fill=MAROON_DEEP)
+        img.paste(photo, (px, py), m)
+    sun = day.date.weekday() == 6
+    spaced(d, (W / 2, 110), f'{day.date:%A}'.upper(), font('sans', 40), GOLD_SOFT, 16)
+    d.text((W / 2, 300), f'{day.date.day} {day.date:%B %Y}', font=font('serif-bold', 170), fill=GOLD, anchor='ms')
+    d.text((W / 2, 400), f'{day.tithi}  ·  {day.samvat}', font=font('serif', 70), fill=IVORY, anchor='mm')
+    if day.festivals:
+        f = font('serif-bold', 64)
+        t = '  ·  '.join(day.festivals[:2])
+        tw = min(d.textlength(t, font=f), 1800)
+        d.rounded_rectangle([W / 2 - tw / 2 - 50, 450, W / 2 + tw / 2 + 50, 540], 45, fill=SAFFRON)
+        d.text((W / 2, 495), wrap(d, t, f, 1800, 1)[0], font=f, fill='white', anchor='mm')
+    if day.place:
+        f = font('serif-bold', 66)
+        tw = d.textlength(day.place, font=f)
+        d.rounded_rectangle([W / 2 - tw / 2 - 60, py + ph_h - 40, W / 2 + tw / 2 + 60, py + ph_h + 70], 55, fill=IVORY)
+        d.text((W / 2, py + ph_h + 15), day.place, font=f, fill=MAROON, anchor='mm')
+    happenings(img, day, 2170, dark=True)
+    foot(img, H - 50, GOLD_SOFT)
+    return img
+
+
+# ---------------------------------------------------------------- month posters
+
+def month_grid(cal, photos, y, m, style):
+    """The BAPS month grid with a box for every day; a day with a photo shows it, a day without stays plain."""
+    img = paper((W, H)) if style == 'baps' else maroon_bg((W, H))
+    d = ImageDraw.Draw(img)
+    first = cal[f'{y}-{m:02d}-01']
+    last = cal[f'{y}-{m:02d}-{calendar.monthrange(y, m)[1]:02d}']
+    lunar = first['lunar_months'] if first['lunar_months'] == last['lunar_months'] else f"{first['lunar_months']}"
+    title = f'{calendar.month_name[m]} {y}'
+    if style == 'baps':
+        d.text((90, 115), title, font=font('serif-bold', 120), fill=(181, 54, 28), anchor='lm')
+        d.text((W - 90, 115), 'Bapa’s Diary', font=font('serif-bold', 64), fill=TAN_DARK, anchor='rm')
+        d.rectangle([90, 200, W - 90, 290], fill=TAN)
+        d.text((W / 2, 245), f"{title}  {lunar.replace('-', ' · ')},  Vikram Samvat {first['vikram_samvat']}", font=font('serif', 58), fill='white', anchor='mm')
+        top = 290
+    else:
+        d.text((W / 2, 170), title, font=font('serif-bold', 170), fill=GOLD, anchor='ms')
+        d.text((W / 2, 250), f"{lunar.replace('-', ' · ')}  ·  Vikram Samvat {first['vikram_samvat']}", font=font('serif', 62), fill=IVORY, anchor='mm')
+        top = 300
+    gx0, gx1 = 90, W - 90
+    cw = (gx1 - gx0) / 7
+    for i, wd in enumerate(['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']):
+        if style == 'baps':
+            d.rectangle([gx0 + i * cw, top, gx0 + (i + 1) * cw, top + 76], fill=SUN_RED if i == 0 else RUST, outline=CELL, width=2)
+            spaced(d, (gx0 + (i + .5) * cw, top + 38), wd, font('sans', 34), 'white', 8)
+        else:
+            spaced(d, (gx0 + (i + .5) * cw, top + 38), wd, font('sans', 34), GOLD if i else (255, 150, 120), 8)
+    start = (datetime.date(y, m, 1).weekday() + 1) % 7      # Sunday first, like baps.org
+    nd = calendar.monthrange(y, m)[1]
+    rows = (start + nd + 6) // 7
+    gy0, gy1 = top + 90, H - 150
+    ch = (gy1 - gy0) / rows
+    pad = 8
+    for d_ in range(1, nd + 1):
+        k = start + d_ - 1
+        r, c = divmod(k, 7)
+        x0, y0 = gx0 + c * cw + pad, gy0 + r * ch + pad
+        x1, y1 = x0 + cw - 2 * pad, y0 + ch - 2 * pad
+        info = cal[f'{y}-{m:02d}-{d_:02d}']
+        ph = photos['close'].get(str(d_))
+        fest = info['festivals'][0]['name'] if info['festivals'] else ''
+        sun = c == 0
+        strip = 92
+        if style == 'baps':
+            bg = EKADASHI if info['ekadashi'] else AMAS if info['amas'] else CELL
+            d.rectangle([x0, y0, x1, y1], fill=bg, outline=LINE, width=2)
+        else:
+            d.rounded_rectangle([x0, y0, x1, y1], 18, fill=(70, 16, 24) if not ph else IVORY)
+        if ph:
+            # a festival day shows the activity photo when there is one, like baps.org shows a picture for it
+            pick = photos['act'].get(str(d_)) if fest and photos['act'].get(str(d_)) else ph
+            pic = crop(os.path.join(photos['dir'], pick['file']), pick['face'], x1 - x0 - (0 if style == 'baps' else 12),
+                       y1 - y0 - strip - (0 if style == 'baps' else 6), tight=pick is ph)
+            if style == 'baps':
+                img.paste(pic, (round(x0), round(y0)))
+            else:
+                rounded(img, pic, (round(x0 + 6), round(y0 + 6)), 14)
+            nf = font('serif-bold', 60)
+            tx, ty = x0 + 18, y0 + 48
+            for o in ((2, 2), (-1, -1), (2, -1), (-1, 2)):
+                d.text((tx + o[0], ty + o[1]), str(d_), font=nf, fill=(0, 0, 0), anchor='lm')
+            d.text((tx, ty), str(d_), font=nf, fill='white', anchor='lm')
+        else:
+            d.text((x0 + 18, y0 + 50), str(d_), font=font('serif-bold', 72),
+                   fill=(SUN_RED if sun else INK) if style == 'baps' else ((255, 150, 120) if sun else GOLD_SOFT), anchor='lm')
+        # the strip under the photo: the tithi, and the festival in the calendar's blue
+        sy = y1 - strip
+        if style == 'baps':
+            d.rectangle([x0, sy, x1, y1], fill=bg)
+        tcol = GREY if style == 'baps' else ((150, 120, 100) if ph else IVORY)
+        tithi = info['indian_date'].split(' ', 1)[-1] if d_ > 1 and not info['indian_date'].startswith(('Adhik',)) and \
+            info['month'] == cal.get(f'{y}-{m:02d}-{d_ - 1:02d}', {}).get('month') else info['indian_date']
+        d.text(((x0 + x1) / 2, sy + (28 if fest else 46)), tithi, font=font('serif-med', 36 if len(tithi) < 16 else 30), fill=tcol, anchor='mm')
+        if fest:
+            short = re.sub(r'\s*\(.*?\)', '', fest)
+            if len(short) > 18 and ',' in short:
+                short = short.rsplit(',', 1)[1].strip()
+            d.text(((x0 + x1) / 2, sy + 66), wrap(d, short, font('serif-bold', 34), x1 - x0 - 16, 1)[0], font=font('serif-bold', 34),
+                   fill=LINK if style == 'baps' else SAFFRON, anchor='mm')
+    places = photos.get('places') or []
+    if places:
+        d.text((W / 2, H - 112), 'Bapa was in ' + ', '.join(places[:4]), font=font('serif-bold', 50),
+               fill=MAROON if style == 'baps' else GOLD, anchor='mm')
+    foot(img, H - 50, TAN_DARK if style == 'baps' else GOLD_SOFT)
+    return img
+
+
+def m3_special(cal, photos, y, m):
+    """The second card: the month's special moments, each with its date and Indian date."""
+    img = paper((W, H))
+    d = ImageDraw.Draw(img)
+    d.rectangle([0, 0, W, 330], fill=MAROON)
+    spaced(d, (W / 2, 95), 'SPECIAL MOMENTS', font('sans', 46), GOLD_SOFT, 18)
+    d.text((W / 2, 250), f'{calendar.month_name[m]} {y}', font=font('serif-bold', 150), fill=GOLD, anchor='ms')
+    hl, seen = [], set()
+    for x in photos['highlights']:
+        if x['day'] in seen:
+            continue
+        seen.add(x['day']); hl.append(x)
+        if len(hl) == 6:
+            break
+    hl.sort(key=lambda x: x['day'])
+    cols, gap = 2, 50
+    cw = (W - 2 * 100 - gap) / cols
+    chh = (H - 330 - 160 - 2 * gap) / 3
+    for i, x in enumerate(hl):
+        r, c = divmod(i, cols)
+        x0, y0 = 100 + c * (cw + gap), 390 + r * (chh + gap)
+        shadow(img, (x0, y0, x0 + cw, y0 + chh), r=8, blur=20, alpha=90, off=(0, 12))
+        d.rectangle([x0, y0, x0 + cw, y0 + chh], fill=IVORY, outline=(214, 198, 168), width=2)
+        pic = crop(os.path.join(photos['dir'], x['file']), x['face'], cw - 40, chh - 230, tight=False)
+        img.paste(pic, (round(x0 + 20), round(y0 + 20)))
+        info = cal[x['date']]
+        fest = info['festivals'][0]['name'] if info['festivals'] else ''
+        date = datetime.date.fromisoformat(x['date'])
+        d.text((x0 + 30, y0 + chh - 170), f'{date.day} {date:%B}', font=font('serif-bold', 54), fill=MAROON, anchor='lm')
+        d.text((x0 + cw - 30, y0 + chh - 170), info['indian_date'], font=font('serif', 40), fill=GREY, anchor='rm')
+        line = x['caption'][0].upper() + x['caption'][1:]
+        for j, ln in enumerate(wrap(d, (fest + ': ' if fest else '') + line, font('serif-med', 40), cw - 60, 2)):
+            d.text((x0 + 30, y0 + chh - 105 + 50 * j), ln, font=font('serif-med', 40), fill=INK, anchor='lm')
+    foot(img, H - 60, TAN_DARK)
+    return img
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--month', default='2012-01')
+    ap.add_argument('--day', type=int, default=9)
+    a = ap.parse_args()
+    y, m = map(int, a.month.split('-'))
+    folder = os.path.join(HERE, 'preview', 'poster', a.month)
+    photos = json.load(open(os.path.join(folder, 'photos.json'), encoding='utf-8'))
+    photos['dir'] = folder
+    photos['close'] = {str(k): v for k, v in photos['close'].items()}
+    photos['act'] = {str(k): v for k, v in photos['act'].items()}
+    photos['extra'] = {str(k): v for k, v in photos['extra'].items()}
+    cal = {x['date']: x for x in json.load(open(os.path.join(HERE, 'calendar', 'baps-calendar.json'), encoding='utf-8'))['days']}
+    out = os.path.join(folder, 'designs')
+    os.makedirs(out, exist_ok=True)
+    day = Day(cal, photos, datetime.date(y, m, a.day))
+    for name, fn in [('d1-calendar-leaf', d1_leaf), ('d2-baps-square', d2_cell), ('d3-maroon-medallion', d3_maroon)]:
+        fn(day).save(os.path.join(out, f'{name}-{a.day:02d}.jpg'), quality=88)
+    month_grid(cal, photos, y, m, 'baps').save(os.path.join(out, 'm1-baps-grid.jpg'), quality=88)
+    month_grid(cal, photos, y, m, 'diary').save(os.path.join(out, 'm2-diary-grid.jpg'), quality=88)
+    m3_special(cal, photos, y, m).save(os.path.join(out, 'm3-special-moments.jpg'), quality=88)
+    print('made', sorted(os.listdir(out)))
+
+
+if __name__ == '__main__':
+    main()
