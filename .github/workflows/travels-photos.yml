@@ -1,0 +1,35 @@
+# Website only (bapas-diary.com): the Travels globe's close up of Bapa for each place (tools/travels_photos.py).
+# Separate from the daily 2pm picture: touches nothing in that chain.
+# Changing site/travels-stops.json on a claude/** branch starts a run. The close ups go into the release
+# `travels-mockup` so Claude can build a private mockup page.
+name: travels-photos
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['site/travels-stops.json', 'tools/travels_photos.py', '.github/workflows/travels-photos.yml']
+  workflow_dispatch:
+concurrency:
+  group: travels-photos
+permissions:
+  contents: write
+jobs:
+  photos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -q opencv-python-headless numpy
+      - name: Close ups
+        run: python3 tools/travels_photos.py --stops site/travels-stops.json --out travels
+      - name: Into the release
+        if: always()
+        run: |
+          tar czf travels.tgz travels
+          gh release view travels-mockup -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create travels-mockup -R "$GITHUB_REPOSITORY" --prerelease --title "Travels globe mockup" --notes "Close ups for the Travels globe mockup. Not used by the daily picture."
+          gh release upload travels-mockup travels.tgz --clobber -R "$GITHUB_REPOSITORY"
