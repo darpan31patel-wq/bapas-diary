@@ -21,7 +21,7 @@ bapa flag) so a card centres on it. That is only for mockups: the cloud can't re
 import argparse, datetime, io, json, os, sqlite3, sys, time
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(HERE, 'tools'))
+sys.path[:0] = [HERE, os.path.join(HERE, 'tools')]
 
 TRIP_DAYS = 7   # photos dated "24 to 27 Oct" show on each of those days; a longer range only on its first day
 SMALL = 320
