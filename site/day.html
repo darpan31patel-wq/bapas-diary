@@ -314,23 +314,22 @@ function card(y, {Y, place, stories}) {
 }
 
 // a card brushed by the mouse (or a finger) leans a little the way it was brushed and drifts slowly back, like a
-// photo on a cord in a breeze: no spring and no bounce, never more than about one degree (Darpan, 24 Oct 2026: gentle, like wind)
+// photo on a cord in a breeze: no spring and no bounce, never more than about one and a half degrees (Darpan, 24 Oct 2026: gentle, like wind)
 const swinging = new Set();
-function nudge(c, e) {
-  if (reduce) return;
+function nudge(c, e) {   // only ever moves when someone brushes it, so it stays on even with reduced motion
   const r = c.el.getBoundingClientRect();
   const dx = c.lastX == null ? 0 : e.clientX - c.lastX;
   c.lastX = e.clientX;
   const low = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
-  c.to = Math.max(-1, Math.min(1, (c.to || 0) + Math.max(-1, Math.min(1, dx / 40)) * (.2 + low) * .12));
+  c.to = Math.max(-1.6, Math.min(1.6, (c.to || 0) + Math.max(-1, Math.min(1, dx / 40)) * (.2 + low) * .55));
   c.a = c.a || 0;
   if (!swinging.size) requestAnimationFrame(swing);
   swinging.add(c);
 }
 function swing() {
   swinging.forEach(c => {
-    c.a += (c.to - c.a) * .025;   // ease towards the lean, slowly
-    c.to *= .985;                 // and the breeze lets go
+    c.a += (c.to - c.a) * .035;   // ease towards the lean, slowly
+    c.to *= .99;                  // and the breeze lets go
     c.el.style.transform = `rotate(${c.a.toFixed(3)}deg)`;
     if (Math.abs(c.a) < .005 && Math.abs(c.to) < .005) { c.a = c.to = 0; c.el.style.transform = ''; swinging.delete(c); }
   });
