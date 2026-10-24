@@ -6,7 +6,7 @@ name: website-deploy
 on:
   push:
     branches: ['claude/**']
-    paths: ['live/**', 'site/search.html', 'tools/build_search.py', 'tools/site_menu.py', '.github/workflows/website-deploy.yml']
+    paths: ['live/**', 'site/search.html', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'tools/build_search.py', 'tools/site_menu.py', '.github/workflows/website-deploy.yml']
   workflow_call:   # website-hires (on main) rebuilds the site when a year of full size photos is in R2
 concurrency: website-deploy
 jobs:
@@ -48,6 +48,10 @@ jobs:
           # opens on 1999 while only 1999 photos are copied to R2 (site/photo-years.txt)
           python3 tools/build_search.py --db bapas.db --out out/search --tags tags.json --start-year 1999
           python3 tools/site_menu.py out   # every page's tabs in the same order
+          # share look (Darpan: yes share look): WhatsApp preview picture, icons, per page titles and lines, home screen manifest
+          python3 tools/web_share.py --out out
+          python3 tools/web_head.py --out out
+          python3 tools/web_seo.py --out out   # 404 page (Darpan: yes not found page), robots.txt, sitemap.xml
           du -sh out/*
           if grep -rli 'telegram\|t\.me/' out --include='*.html'; then echo 'Telegram found: not deploying'; exit 1; fi   # never on the public site
       - name: Deploy to Pages
@@ -74,6 +78,6 @@ jobs:
           api -X POST "$B" -d "{\"domain\":\"photos.$DOMAIN\",\"zoneId\":\"$ZONE\",\"enabled\":true,\"minTLS\":\"1.2\"}" | jq -c '{success, errors}'
           api "$B" | jq -c '[.result.domains[]? | {domain, status}]'
           sleep 20
-          for u in https://photos.$DOMAIN/s/ https://$PROJECT.pages.dev/search/ https://$PROJECT.pages.dev/travels/ https://$DOMAIN/ https://$DOMAIN/travels/ https://$DOMAIN/through-the-years/ https://$DOMAIN/calendar/; do
+          for u in https://photos.$DOMAIN/s/ https://$PROJECT.pages.dev/search/ https://$PROJECT.pages.dev/travels/ https://$DOMAIN/ https://$DOMAIN/travels/ https://$DOMAIN/through-the-years/ https://$DOMAIN/calendar/ https://$DOMAIN/share.jpg https://$DOMAIN/manifest.webmanifest https://$DOMAIN/no-such-page; do
             echo "$u -> $(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "$u")"
           done
