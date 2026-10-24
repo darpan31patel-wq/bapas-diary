@@ -20,3 +20,4 @@ Redeploy to pick up a new build from another thread: push any change here (e.g. 
 24 Oct 11:56 UTC: Calendar 5b85edc (place bubble row in the header, zoom), Darpan typed perfect.
 24 Oct 13:38 UTC: new About page (both gurus, Jay Swaminarayan on top, Vachanamrut Gadhada I-3 block, centred), Darpan typed yes go live.
 24 Oct 21:50 UTC: share look (preview picture, icons, manifest) and the not found page, Darpan typed yes share look and yes not found page.
+24 Oct 21:55 UTC: search colours C, Day ribbons (Darpan: 2 C); share look needs Pillow on the runner.

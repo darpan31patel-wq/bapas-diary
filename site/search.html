@@ -133,6 +133,17 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 .big-nav button:disabled { opacity: .35; cursor: default; }
 #big .close { position: absolute; top: 8px; right: 10px; font: 26px/1 var(--sans); background: rgba(0, 0, 0, .5); color: var(--gold-hi); border: 1px solid var(--line); border-radius: 50%; width: 38px; height: 38px; cursor: pointer; }
 @media (max-width: 760px) { .big-in { grid-template-columns: 1fr; } .big-info { padding-top: 16px; } }
+/* Day ribbons (Darpan picked C, 24 Oct 2026): a soft rose wash under everything, and each date on its own deep maroon
+   ribbon with gold writing, so the red of the top carries down the page and every day stands out */
+body { background: linear-gradient(#efdcd2, #f3e5d8) fixed; }
+.bar { background: rgba(239, 220, 210, .94); }
+.day-head { margin-top: 26px; padding: 16px 14px 14px; border-radius: 10px;
+  background: radial-gradient(ellipse 80% 120% at 50% 0%, #5a1626, #2a0910); box-shadow: 0 8px 18px rgba(59, 18, 25, .25); }
+.day-head .when { color: #ffe296; }
+.day-head .fest { color: #faf1de; }
+.day-head .tithi { color: #d9a441; }
+.day-head .about, .day-head .only { color: rgba(250, 241, 222, .75); }
+.grid { row-gap: 22px; }
 </style>
 
 <nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a class="on" href="/search/" aria-current="page">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/calendar/">Calendar</a><a href="/about/">About</a></nav>

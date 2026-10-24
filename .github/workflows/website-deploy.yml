@@ -49,6 +49,7 @@ jobs:
           python3 tools/build_search.py --db bapas.db --out out/search --tags tags.json --start-year 1999
           python3 tools/site_menu.py out   # every page's tabs in the same order
           # share look (Darpan: yes share look): WhatsApp preview picture, icons, per page titles and lines, home screen manifest
+          pip install -q pillow
           python3 tools/web_share.py --out out
           python3 tools/web_head.py --out out
           python3 tools/web_seo.py --out out   # 404 page (Darpan: yes not found page), robots.txt, sitemap.xml
