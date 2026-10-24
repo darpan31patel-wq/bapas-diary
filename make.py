@@ -248,7 +248,7 @@ def rare_caption(c):
 def is_special(c):
     """A special moment: a festival, pratishtha, visitor (SPECIAL) or rare words, and never an everyday line."""
     c = re.sub(r'\s+', ' ', c or '').strip()
-    return bool(c) and not EVERYDAY.search(c) and not JUST_A_FACE.search(c) and bool(SPECIAL.search(c) or rare_caption(c))
+    return bool(c) and (western(c) or not EVERYDAY.search(c) and not JUST_A_FACE.search(c) and bool(SPECIAL.search(c) or rare_caption(c)))
 
 
 PICK = 'special'      # 'special': every year a close darshan unless it has a special action shot (Darpan, 20 Oct 2026: 'this is perfect'); 'share': CLOSE_SHARE of the years are close ups
@@ -488,7 +488,7 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
             # Darpan, 22 Oct 2026 (2010 showed Bapa side on at Sharad Purnima): a side profile always loses to a photo
             # where he faces the camera, and is never a nice action shot
             s_doing -= SIDE_LOSS * max(0, SIDE_FRONT - front) / SIDE_FRONT
-        if PICK == 'special' and GUEST.search(caption(x)):   # Darpan (20 Oct 2026): not the honouring and meeting guests ones
+        if PICK == 'special' and GUEST.search(caption(x)) and not western(x.get('c')):   # Darpan (20 Oct 2026): not the honouring and meeting guests ones; 24 Oct: unless a western guest
             s_close -= 2.5; s_doing -= 2.5
         # a really nice action shot: he is doing something, he is the subject, not small, nothing cut off (or a special
         # moment), and it scores well; anything less and the year is better served by a close darshan
@@ -924,8 +924,28 @@ EVERYDAY = re.compile(   # the everyday lines that say nothing about that partic
     r"^greets (all|everyone|bhaktas|sadhus)$|folded hands|^observes prasad$|^engaged in (letter-writing|darshan|thought)|^(reads|reading) the shikshapatri|"
     r"^in thought|^seated$|^(has|having) (lunch|dinner|breakfast|his meal)$|^arrives|^departs|^listens attentively$|"
     r"^(honou?rs|honou?red|garlands|welcomes|meets|greets|receives|is honou?red|accepts|bless\w*)\b|with a (shawl|garland)|^honou?red", re.I)   # honouring, meeting or blessing someone is not special (Darpan, 20 Oct 2026)
-GUEST = re.compile(r"(?i:^(honou?rs|honou?red|garlands|welcomes|meets|receives|is honou?red|accepts)\b|with a (shawl|garland))|"
+GUEST = re.compile(r"(?i:^(honou?rs|honou?red|garlands|welcomes|meets|receives|is honou?red|accepts)\b|with a (shawl|garland)|"
+                   r"\bmeets?\b|\bmeeting\b|calls on|courtesy (call|visit))|"   # Darpan, 24 Oct 2026: 'Pujya Devprasadji Maharaj meets Bapa' too, wherever the word comes
                    r"^Blesses (?:Shri |Smt\.? |Dr\.? |Mr\.? |Mrs\.? |H\.?E\.? )?[A-Z][a-z]+(?:bhai|ben|ji| [A-Z][a-z]+)")   # 'Blesses Shri Yashwantbhai Shah': a named guest   # guest photos lose when every year is a close up
+
+
+# Darpan, 24 Oct 2026: "i dont like 'meeting other people' unless they are 'western' person, as bapa meets people all the time".
+# A western guest is told by a title or a country (Mayor, Congressman, Mr Paul Mashatile, Australian Prime Minister), and never
+# when the guest has an Indian name or post (Shri, Pujya, bhai, 'Consul General of India').
+WESTERN = re.compile(r"\b(Mr|Mrs|Ms|Miss|Sir|Lady|Baroness|Baron|Rabbi|Rev|Reverend|Father|Bishop|Archbishop|Cardinal|Pope|Imam|Mayor|"
+                     r"Senator|Congress(?:man|woman)|Ambassador|Consul|Councillor|Council\s?member|Sheriff|Prince|Princess|King|Queen|"
+                     r"MP|MLA|Hon|Rt|Lord(?! (?:Swaminarayan|Harikrishna|Krishna|Rama?|Shiva|Ganesh|Hanuman))|"
+                     r"American|British|English|Canadian|Australian|Israeli|European|French|German|Italian|Dutch|Swiss|Irish|Scottish|Welsh|Christian|Jewish|"
+                     r"U\.?S\.? (?:Senator|Congress\w*)|(?:Prime Minister|President|Premier) of [A-Z]\w*)\b")
+INDIAN = re.compile(r"\b(Shri|Smt|Pujya|P\.P\.|Sant|Swami\w*|Maharaj|Bapu|Muni|Mufti|Mahant|Acharya|Guru|Sadhus?|Kothari|"
+                    r"of India|Indian|India's|Gujarat|Patel|Shah|Desai|Mehta|Kumar|Singh|Sharma|Kapoor|Joshi|Trivedi|Pandya|Amin|Modi|Gandhi|Nagarpalika|Panchayat|Samaj|Mandal|Sangh|Sabha)\b|"
+                    r"\w+(bhai|ben|ji|das|lal|chand|nath|prasad|anand|aran)\b", re.I)
+
+
+def western(c):
+    """True when the caption is about meeting or honouring a western guest, which stays special (Darpan, 24 Oct 2026)."""
+    c = re.sub(r'\s+', ' ', c or '').strip()
+    return bool(GUEST.search(c) and WESTERN.search(c) and not INDIAN.search(re.sub(NAME, '', re.sub(r'\bBapa\b', '', c))))
 
 
 def summarise(c):
