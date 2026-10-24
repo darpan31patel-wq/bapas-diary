@@ -29,7 +29,7 @@ header{padding-block:6px 4px;padding-left:max(16px,env(safe-area-inset-left,0px)
 .track::-webkit-scrollbar{display:none}
 .track.drag{cursor:grabbing}
 .ribbon{height:100%;display:flex;align-items:stretch;gap:calc(var(--mgap) * var(--z));padding-inline:max(16px,30vw);padding-block:4px 10px;width:max-content;--mgap:clamp(28px,4vw,64px)}
-.month{position:relative;flex:none;height:var(--mh,100%);align-self:center;width:calc(7 * var(--cw) + 6 * var(--g));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:calc(26px * var(--z)) repeat(5,var(--bh) minmax(0,1fr));gap:0 var(--g);transition:opacity .25s linear}
+.month{position:relative;flex:none;height:var(--mh,100%);align-self:center;width:calc(7 * var(--cw) + 6 * var(--g));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:calc(26px * var(--z)) repeat(5,minmax(0,1fr));gap:var(--g);transition:opacity .25s linear}
 .mlab{display:none;position:absolute;left:0;right:0;bottom:100%;margin-bottom:10px;text-align:center;font-size:24px;font-weight:600;white-space:nowrap;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));-webkit-background-clip:text;background-clip:text;color:transparent}
 .zoomed .mlab{display:block}
 .wkd{font-family:var(--caps);font-weight:700;font-size:calc(clamp(12px,1.7vh,15px) * var(--z));letter-spacing:.22em;color:var(--muted);text-align:center;align-self:end;text-transform:uppercase}
@@ -52,13 +52,17 @@ header{padding-block:6px 4px;padding-left:max(16px,env(safe-area-inset-left,0px)
 .bnum{font-size:min(46cqh,40cqw);font-weight:600;line-height:.9;color:var(--maroon)}
 .bwd{font-family:var(--caps);font-weight:700;font-size:min(9cqh,7.5cqw);letter-spacing:.2em;text-transform:uppercase;color:#9a6a40}
 .bind{font-size:min(15cqh,11.5cqw);font-weight:500;line-height:1.05;color:var(--ink);text-wrap:balance}
-/* where Bapa was: a gold bracket over each stay that opens down onto its own days (Darpan picked this, 24 Oct) */
-.seg{position:relative;min-width:0;display:flex;align-items:flex-end;justify-content:center;text-align:center;padding:0 0 11px}
-.seg:before{content:'';position:absolute;left:3px;right:3px;bottom:0;height:9px;border:2px solid var(--gold-lo);border-bottom:0;border-radius:7px 7px 0 0;transition:border-color .25s,box-shadow .25s}
-.seg .pn{max-width:100%;padding:0 4px;font-size:calc(clamp(14px,2.2vh,20px) * var(--z));font-weight:600;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));-webkit-background-clip:text;background-clip:text;color:transparent;transition:filter .25s}
-.seg.unk:before{border-color:rgba(206,152,64,.35);border-style:dashed}
-.seg.on:before{border-color:var(--gold-hi);box-shadow:0 -4px 12px -4px rgba(255,214,120,.7)}
-.seg.on .pn{filter:drop-shadow(0 0 8px rgba(255,214,120,.55))}
+/* where Bapa was: one long row of place bubbles for every stay, 1999 to today; the bubble of the day under the mouse grows */
+.journey{position:relative;height:clamp(40px,6vh,52px);margin-top:2px;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+.jrow{position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;gap:0;white-space:nowrap;transition:transform .6s cubic-bezier(.3,.7,.2,1);will-change:transform}
+.stay{flex:none;display:inline-flex;align-items:baseline;gap:6px;padding:3px 10px 4px;border-radius:16px;border:1px solid rgba(206,152,64,.55);color:var(--ivory);font-size:clamp(13px,1.8vh,16px);line-height:1.1;opacity:.5;transform:scale(.92);transition:transform .35s cubic-bezier(.3,.7,.2,1),opacity .35s,background .35s,color .35s,box-shadow .35s;cursor:default}
+.stay small{font-family:var(--caps);font-weight:700;font-size:.62em;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.stay.cur{opacity:1;transform:scale(1)}
+.stay.on{opacity:1;transform:scale(1.4);background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--maroon-deep);border-color:transparent;box-shadow:0 0 18px rgba(255,214,120,.45);position:relative;z-index:1}
+.stay.on small{color:var(--maroon)}
+.hop{flex:none;width:22px;height:1px;margin:0 4px;background:rgba(206,152,64,.55);position:relative}
+.hop:after{content:'';position:absolute;right:-1px;top:-3px;border:3.5px solid transparent;border-left-color:rgba(206,152,64,.85);border-right:0}
+.mdiv{flex:none;font-family:var(--caps);font-weight:700;font-size:10px;letter-spacing:.2em;color:var(--gold-lo);margin:0 10px;opacity:.8}
 footer{padding-block:6px 12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .rail{position:relative;max-width:980px;margin:0 auto;height:34px}
 .rail .line{position:absolute;left:0;right:0;top:12px;height:1px;background:linear-gradient(90deg,transparent,rgba(206,152,64,.55) 6%,rgba(206,152,64,.55) 94%,transparent)}
@@ -94,6 +98,7 @@ footer{padding-block:6px 12px;padding-left:max(16px,env(safe-area-inset-left,0px
   <header>
     <div class="kicker">Darshan through the years</div>
     <div class="mtitle" aria-live="polite"><span id="t0"></span><span id="t1" class="out"></span></div>
+    <div class="journey" aria-label="Where Bapa was"><div class="jrow" id="jrow"></div></div>
   </header>
   <div class="track" id="track" tabindex="0" aria-label="Calendar of days, scroll sideways">
     <div class="ribbon" id="ribbon"><div class="loading">Opening the calendar…</div></div>
@@ -121,8 +126,8 @@ let D, keys=[], monthEls=[], shown=new Set(), MW=0, GAP=0, PAD=0;
 
 /* sizes: five rows of days fill the height; every month is the same width */
 function sizeCols(){
-  const h=(track.clientHeight-14)*Z, g=Math.max(3,Math.min(10,innerHeight*.009)*Z), bh=Math.max(34,Math.min(46,innerHeight*.05))*Z;
-  const rh=(h-26*Z-5*bh)/5, cw=Math.max(30,Math.round(rh*1.08));
+  const h=(track.clientHeight-14)*Z, g=Math.max(3,Math.min(10,innerHeight*.009)*Z), bh=0;
+  const rh=(h-26*Z-5*g)/5, cw=Math.max(30,Math.round(rh*1.08));
   const r=document.documentElement.style; r.setProperty('--cw',cw+'px'); r.setProperty('--g',g+'px'); r.setProperty('--bh',bh+'px');
   r.setProperty('--z',Z); r.setProperty('--mh',h+'px');
   MW=7*cw+6*g;
@@ -152,26 +157,6 @@ function render(mo){
   /* days: a sixth week wraps into the empty boxes of the first */
   const first=new Date(y,m-1,1).getDay(), grid=Array(35).fill(null);
   days.forEach((d,i)=>{let p=first+i, wr=false; if(p>=35){p-=35;wr=true} grid[p]={d,day:i+1,wr,pl:pl[i]}});
-  /* journey line over each week: one stretch per stay, a dot where Bapa moved on */
-  for(let r=0;r<5;r++){
-    const segs=[];
-    for(let c=0;c<7;c++){
-      const x=grid[r*7+c], l=segs[segs.length-1];
-      if(l&&x&&l.x&&l.p===x.pl&&l.last+1===x.day){l.n++;l.last=x.day}
-      else if(l&&!x&&!l.x) l.n++;
-      else segs.push({x,p:x?x.pl:null,c,n:1,first:x&&x.day,last:x&&x.day});
-    }
-    segs.forEach((s,i)=>{
-      let b;
-      if(!s.x) b=el('div','');
-      else{
-        b=el('div','seg'+(s.p?'':' unk'));
-        b.dataset.p=s.p||'';
-        if(s.p){b.title=`Bapa was in ${s.p}, ${s.first}${s.n>1?' to '+s.last:''} ${MONTHS[m-1]} ${y}`;b.innerHTML=`<span class="pn">${esc(s.p)}</span>`}
-      }
-      b.style.gridArea=`${2+2*r}/${s.c+1}/span 1/span ${s.n}`; mo.appendChild(b);
-    });
-  }
   mo._cards=[];
   for(let r=0;r<5;r++) for(let c=0;c<7;c++){
     const x=grid[r*7+c]; let b;
@@ -191,22 +176,60 @@ function render(mo){
       if(f.length) win.appendChild(el('div','fest',esc(f.join(' · '))));
       b.appendChild(el('div','tithi',esc(d[0]||'')));
       b.addEventListener('click',e=>{if(dragMoved)e.preventDefault()});
-      b.addEventListener('mouseenter',()=>light(mo,x.pl));
-      b.addEventListener('focus',()=>light(mo,x.pl));
+      b.addEventListener('mouseenter',()=>light(k,day));
+      b.addEventListener('focus',()=>light(k,day));
       b._row=r; mo._cards.push(b);
     }
-    b.style.gridArea=`${3+2*r}/${c+1}`; mo.appendChild(b);
+    b.style.gridArea=`${r+2}/${c+1}`; mo.appendChild(b);
   }
-  mo.addEventListener('mouseleave',()=>light(mo,null));
-  fitNames(mo);
-}
-/* a one day stop gets a smaller name rather than a cut one */
-function fitNames(mo){
-  mo.querySelectorAll('.seg .pn').forEach(n=>{n.style.fontSize='';let s=parseFloat(getComputedStyle(n).fontSize);
-    while(n.scrollWidth>n.clientWidth+1&&s>10){s-=1;n.style.fontSize=s+'px'}});
+  mo.addEventListener('mouseleave',()=>light(null));
 }
 function unrender(mo){if(!mo._done)return; mo._done=false; mo._cards=[]; mo.innerHTML=''}
-function light(mo,pl){mo.querySelectorAll('.seg').forEach(s=>s.classList.toggle('on',pl!=null&&s.dataset.p===pl))}
+/* the row of stays: built once for every month; dayStay maps "YYYY-MM day" to its bubble */
+const jrow=document.getElementById('jrow'); let stays=[], dayStay={}, monthStays={}, hoverStay=null, jx=0;
+function buildJourney(){
+  const MN=MONTHS.map(x=>x.slice(0,3)); let lastK=null, lastP=null, cur=null;
+  const frag=document.createDocumentFragment();
+  keys.forEach(k=>{
+    const [y,m]=k.split('-').map(Number);
+    places(k).forEach((p,i)=>{
+      const day=i+1;
+      if(!p){lastP=null;return}
+      if(cur&&p===lastP){cur.k1=k;cur.d1=day}
+      else{
+        if(lastK!==k&&k.endsWith('-01')&&stays.length) frag.appendChild(el('span','mdiv',String(y)));
+        cur={p,k0:k,d0:day,k1:k,d1:day,i:stays.length}; stays.push(cur);
+        if(stays.length>1) frag.appendChild(el('span','hop'));
+        cur.el=el('span','stay'); frag.appendChild(cur.el);
+      }
+      lastP=p; lastK=k; dayStay[k+' '+day]=cur.i; (monthStays[k]=monthStays[k]||new Set()).add(cur.i);
+    });
+  });
+  stays.forEach(s=>{
+    const [y0,m0]=s.k0.split('-').map(Number), [y1,m1]=s.k1.split('-').map(Number), a=`${s.d0} ${MN[m0-1]}`, b=`${s.d1} ${MN[m1-1]}`;
+    const when=s.k0===s.k1&&s.d0===s.d1?a:s.k0===s.k1?`${s.d0} to ${b}`:`${a} to ${b}${y0!==y1?' '+y1:''}`;
+    s.el.innerHTML=`${esc(s.p)} <small>${when}</small>`; s.el.title=`Bapa was in ${s.p}, ${when} ${y1}`;
+  });
+  jrow.appendChild(frag);
+}
+/* centre the row on a bubble (the hovered day's, else the middle of the month on screen) */
+function centreJourney(i){
+  const s=stays[i]; if(!s)return;
+  const W=jrow.parentNode.clientWidth, x=s.el.offsetLeft+s.el.offsetWidth/2;
+  jx=W/2-x; jrow.style.transform=`translateX(${jx}px)`;
+}
+let curStays=new Set();
+function journeyMonth(k){
+  curStays.forEach(i=>stays[i].el.classList.remove('cur')); curStays=monthStays[k]||new Set();
+  curStays.forEach(i=>stays[i].el.classList.add('cur'));
+  if(hoverStay==null&&curStays.size){const a=[...curStays]; centreJourney(a[Math.floor(a.length/2)])}
+}
+function light(k,day){
+  if(hoverStay!=null&&stays[hoverStay]) stays[hoverStay].el.classList.remove('on');
+  hoverStay=k==null?null:dayStay[k+' '+day]??null;
+  if(hoverStay!=null){stays[hoverStay].el.classList.add('on');centreJourney(hoverStay)}
+  else if(cur) journeyMonth(cur);
+}
 
 /* month title cross fade and the year rail */
 let cur=null, flip=0;
@@ -215,6 +238,7 @@ function setMonth(k){
   if(k===cur)return; cur=k; const [y,m]=k.split('-').map(Number);
   const nxt=t[1-flip], old=t[flip]; nxt.textContent=`${MONTHS[m-1]} ${y}`; nxt.classList.remove('out'); old.classList.add('out'); flip=1-flip;
   rail.querySelectorAll('.yr').forEach(b=>b.classList.toggle('on',+b.dataset.y===y));
+  journeyMonth(k);
   try{history.replaceState(null,'','#'+k)}catch(e){}
 }
 function goTo(k,smooth){
@@ -287,7 +311,7 @@ function setZoom(z,at){
   const W=track.clientWidth, x=at==null?W/2:at, u=MW?(track.scrollLeft+x-PAD)/(MW+GAP):null;
   Z=z; document.body.classList.toggle('zoomed',z<.86); zl.textContent=Math.round(z*100)+'%'; zin.disabled=z>=1; zout.disabled=z<=ZMIN;
   try{localStorage.setItem('calendarZoom',z)}catch(e){}
-  if(!D)return; sizeCols(); shown.forEach(i=>fitNames(monthEls[i]));
+  if(!D)return; sizeCols();
   if(u!=null) track.scrollLeft=PAD+u*(MW+GAP)-x;
   kick();
 }
@@ -325,10 +349,11 @@ fetch(DATA_URL).then(r=>r.json()).then(data=>{
     b.onclick=()=>{setPlay(false);const k=`${y}-${(cur||'-01').slice(5)}`;goTo(D.m[k]?k:keys.find(x=>x.startsWith(y))||keys[0],true)};
     rail.appendChild(b);
   }
+  buildJourney();
   sizeCols();
   const h=location.hash.slice(1);
   requestAnimationFrame(()=>{goTo(D.m[h]?h:D.start,false);kick()});
   addEventListener('resize',()=>{const k=cur;sizeCols();if(k)goTo(k,false);kick()});
-  document.fonts&&document.fonts.ready.then(()=>shown.forEach(i=>fitNames(monthEls[i])));
+  document.fonts&&document.fonts.ready.then(()=>{if(cur)journeyMonth(cur)});
 }).catch(()=>{ribbon.innerHTML='<div class="loading">The calendar could not load. Please refresh the page.</div>'});
 </script>
