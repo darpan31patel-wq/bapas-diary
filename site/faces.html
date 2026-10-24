@@ -2,6 +2,7 @@
 <title>Bapa Through the Years</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="stylesheet" href="/menu.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Mukta:wght@300;400;600&display=swap">
 <style>
@@ -16,13 +17,9 @@
 html, body { background: var(--bg); color: var(--ink); margin: 0; }
 [hidden] { display: none !important; }
 *, *::before, *::after { box-sizing: border-box; }
-body { font-family: var(--body); font-size: 16px; line-height: 1.5; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 18px 28px; }
+body { font-family: var(--body); font-size: 16px; line-height: 1.5; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 64px 28px; }   /* 46px kept free for the shared site menu */
 .wrap { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
 header { display: flex; flex-direction: column; gap: 4px; }
-nav.site { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-bottom: 8px; font-size: 15px; }
-nav.site a { color: var(--muted); text-decoration: none; padding: 2px 0; border-bottom: 2px solid transparent; }
-nav.site a:hover { color: var(--ink); }
-nav.site a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--saffron); }
 h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 5vw, 44px); line-height: 1; margin: 0; letter-spacing: .01em; }
 .sub { color: var(--muted); margin: 6px 0 0; font-size: 15px; }
 .tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -74,9 +71,10 @@ canvas.drag { cursor: grabbing; }
 @media (prefers-reduced-motion: reduce) { :root { --fade: 0ms; } .frame img.rest { transition: none; } }
 </style>
 
+<nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/" class="on" aria-current="page">Through the years</a><a href="/about/">About</a></nav>
+
 <div class="wrap">
   <header>
-    <nav class="site" aria-label="Bapa's Diary"><a href="/">Today</a><a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/" aria-current="page">Through the years</a><a href="/about/">About</a></nav>
     <h1>Bapa through the years</h1>
     <p class="sub">One close darshan for every day, his eyes always in the same place</p>
   </header>
