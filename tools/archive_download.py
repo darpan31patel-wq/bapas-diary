@@ -87,21 +87,23 @@ def save(path, body):
         f.write(body)
     os.replace(tmp, path)
     HOOK['files'] += 1; HOOK['bytes'] += len(body)
-    if HOOK['cmd'] and (HOOK['files'] >= HOOK['every'] or HOOK['bytes'] > 3e9):
-        hand_over()
+    if HOOK['cmd'] and (HOOK['files'] >= HOOK['every'] or HOOK['bytes'] > 1e9):
+        hand_over(full_only=True)
 
 
-def hand_over():
-    """On GitHub: send what has been saved so far to Drive (rclone move), so the runner's small disk never fills."""
+def hand_over(full_only=False):
+    """On GitHub: send what has been saved so far to Drive (rclone move), so the runner's small disk never fills.
+    Downloading waits while it goes (24 Oct 2026: Telegram's videos piled up faster than Drive took them, and the
+    last hand-over ran past the job's time)."""
     import subprocess, threading
     lock = HOOK.setdefault('lock', threading.Lock())
-    if not HOOK['cmd'] or not lock.acquire(blocking=False):
+    if not HOOK['cmd']:
         return
-    try:
+    with lock:
+        if full_only and HOOK['files'] < HOOK['every'] and HOOK['bytes'] <= 1e9:
+            return   # another thread has just handed them over
         HOOK['files'], HOOK['bytes'] = 0, 0
         subprocess.run(HOOK['cmd'], shell=True, check=False)
-    finally:
-        lock.release()
 
 
 class Progress:
