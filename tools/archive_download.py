@@ -179,7 +179,7 @@ def baps_photos(db, root, gap, stop_at, years=None, notes=None):
         originals = full_ok[0] and (year == 1999 or year >= 2022)
         for size in ('FullSizeImages', 'WebImages') if originals else ('WebImages',):
             # baps.org serves '.jpg' but refuses '.JPG', and some names have spaces (screensaver project, 22 Oct 2026)
-            name = urllib.parse.quote(re.sub(r'\.JPE?G$', '.jpg', file, flags=re.I))
+            name = urllib.parse.quote(re.sub(r'\.jpe?g$', lambda m: m[0].lower(), file, flags=re.I))   # '.JPEG' as '.jpeg', never '.jpg' (24 Oct)
             body, kind = get(SITE.format(album=album, size=size, file=name), may_be_missing=True)
             if body and kind.startswith('image'):
                 if size == 'FullSizeImages':
