@@ -770,6 +770,8 @@ def header_one(img, title, subtitle):
     dr = ImageDraw.Draw(img)
     tf = garamond(px(84))
     text = f'{title} {subtitle}'
+    while dr.textlength(text, font=tf) > W - px(500) and tf.size > px(56):   # 'Pramukh Swami Maharaj Jayanti, 17 December ...'
+        tf = garamond(tf.size - 2)
     tw = dr.textlength(text, font=tf)
     top = px(30)
     gold_text(img, ((W - tw) / 2, top), text, tf)
@@ -803,14 +805,20 @@ def header_line(img, title, subtitle):
     diamond(dr, fx + fw + pad + rule + 14, mid + 1, 5, GOLD)
 
 
-def footer(img, small=False, history=None):
+def footer(img, small=False, history=None, cal=None):
+    """cal: the BAPS calendar's (line, tomorrow) for the day (Darpan, 24 Oct 2026, mockups 1, 6 and 10): the line sits
+    before the project's name, tomorrow's festival goes in the bottom right corner."""
+    line, tomorrow = cal or ('', '')
+    name = f'{line}   ·   {FOOTER}' if line else FOOTER
     if history:   # 'On this day in 1959  Yogiji Maharaj sets off ...' along the bottom, the project's name small at the right
-        return history_footer(img, history)
+        return history_footer(img, history, name)
     dr = ImageDraw.Draw(img)
     f = garamond(px(26 if small else 40), 500)
-    w = dr.textlength(FOOTER, font=f)
+    w = dr.textlength(name, font=f)
     y = H - px(42 if small else 88)
-    dr.text(((W - w) / 2, y), FOOTER, font=f, fill=(226, 184, 104))
+    dr.text(((W - w) / 2, y), name, font=f, fill=(226, 184, 104))
+    if tomorrow:
+        dr.text((W - px(30), H - px(15)), f'Tomorrow: {tomorrow}', font=garamond(px(24), 500), fill=(226, 184, 104), anchor='rs')
     box = dr.textbbox(((W - w) / 2, y), 'Dp', font=f)                      # the rules run through the middle of the letters
     mid = (box[1] + box[3]) / 2 - f.size * .06
     if TITLE_RULES:
@@ -819,12 +827,12 @@ def footer(img, small=False, history=None):
     diamond(dr, (W - w) / 2 - px(28), mid + px(1), px(5), GOLD); diamond(dr, (W + w) / 2 + px(28), mid + px(1), px(5), GOLD)
 
 
-def history_footer(img, ev):
+def history_footer(img, ev, name=FOOTER):
     """One gold line along the bottom from the Today in BAPS History channel (Darpan, 19 Oct 2026, idea 1)."""
     dr = ImageDraw.Draw(img)
     lead, text = f'On this day in {ev["date"][:4]}', ev['line']
     lf, tf, ff = garamond(px(30), 700), garamond(px(30), 500), garamond(px(24), 500)
-    fw = dr.textlength(FOOTER, font=ff)
+    fw = dr.textlength(name, font=ff)
     room = W - 2 * (fw + px(90))                                           # the line stays clear of the name at the right
     while dr.textlength(lead + '   ' + text, font=tf) > room and tf.size > px(22):
         lf, tf = garamond(lf.size - 1, 700), garamond(tf.size - 1, 500)
@@ -834,7 +842,7 @@ def history_footer(img, ev):
     dr.text((x + lw, y), text, font=tf, fill=CAPTION_GOLD, anchor='ls')
     mid = y - tf.size * .33
     diamond(dr, x - px(26), mid, px(5), GOLD); diamond(dr, x + lw + tw + px(26), mid, px(5), GOLD)
-    dr.text((W - px(30), y), FOOTER, font=ff, fill=(226, 184, 104), anchor='rs')
+    dr.text((W - px(30), y), name, font=ff, fill=(226, 184, 104), anchor='rs')
 
 
 def background():
@@ -1363,6 +1371,8 @@ class WideCard(Card):
         photo = crop_to(x['im'], x['face'], PW, PH, x.get('crop', 'frame'), at=.3)   # Bapa high in the frame, no dead space over his head
         card.paste(polish(photo), (B, B))
         d.rectangle((B - 1, B - 1, B + PW, B + PH), outline=(150, 130, 100), width=max(1, round(SCALE)))
+        if x.get('fest'):   # the festival this photo was taken on, a small gold tab at its top left (Darpan, 24 Oct 2026, mockup 7)
+            fest_tag(d, x['fest'], B, PW)
         if self.band == 'none':
             self.foot_band(card, x)
             return card
@@ -1421,7 +1431,7 @@ class WideCard(Card):
             d.text((x0 + yw + sp, y), text, font=cf, fill=CAPTION_IVORY, anchor='ls')
 
 
-def compose_wide(photos, day, seed, style, history=None):
+def compose_wide(photos, day, seed, style, history=None, title=None, cal=None):
     """Three (W1, W2) or four (W3) cords of wide cards, every year on the day, sized to fill the picture."""
     lay = WIDE[style]
     rnd = random.Random(seed)
@@ -1429,7 +1439,7 @@ def compose_wide(photos, day, seed, style, history=None):
     if lay.get('oneline'):
         header_line(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
     elif lay.get('one_title'):
-        header_one(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
+        header_one(img, title or f'{day.day} {day:%B}', 'in Bapa’s Diary')
     else:
         header(img, f'{day.day} {day:%B}', 'in Bapa’s Diary', compact=lay.get('compact', False))
     n = len(photos)
@@ -1489,7 +1499,7 @@ def compose_wide(photos, day, seed, style, history=None):
         for f in later:
             f()
     if not lay.get('oneline'):
-        footer(img, small=lay.get('compact', False), history=history)
+        footer(img, small=lay.get('compact', False), history=history, cal=cal)
     return img
 
 
@@ -1558,9 +1568,11 @@ def dump_photos(photos, folder):
     json.dump(meta, open(os.path.join(folder, 'photos.json'), 'w'), default=float)
 
 
-def compose(photos, day, seed, style=None, look=None, history=None):
+def compose(photos, day, seed, style=None, look=None, history=None, title=None, cal=None):
     if style in WIDE:
-        return compose_wide(photos, day, seed, style, history)
+        if cal is None and title is None:   # the daily picture: the BAPS calendar's title and bottom line for this day
+            title, cal = cal_title(day), cal_footer(day)
+        return compose_wide(photos, day, seed, style, history, title, cal)
     rnd = random.Random(seed)
     img = background(); dr = ImageDraw.Draw(img)
     header(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
@@ -1741,6 +1753,174 @@ def tg_story(evs, photos):
     return max(left, key=tg_rank, default=None)
 
 
+# The BAPS calendar, every day from 2010 to 2027 (calendar/baps-calendar.json, read from baps.org/Calendar). Darpan
+# chose, 24 Oct 2026, from the calendar mockups: the Indian date in the bottom line (1), a small gold tab on a card taken
+# on a festival (3, 7), tomorrow's festival in the bottom right corner (6), the festival in the title on the day (8),
+# the Ekadashi in the bottom line (10), an 'Every Diwali' picture on big days (9), and calendar lines in the 2pm caption.
+CALENDAR = {}
+NATIONAL = re.compile(r'republic day|independence day', re.I)   # on baps.org's calendar, but not a day in Bapa's diary
+SHORT_FEST = [(r'annakut', 'Annakut'), (r'^bestu', 'New Year'), (r'hari.?nom', 'Swaminarayan Jayanti'), (r'gunatitanand.*(birthday|jayanti)', 'Gunatitanand Swami Jayanti'),
+              (r'pramukh swami.*jayanti', 'Pramukh Swami Maharaj Jayanti'), (r'mahant swami.*jayanti', 'Mahant Swami Maharaj Jayanti'),
+              (r'gunatitanand.*diksha', 'Gunatitanand Swami Diksha Day'), (r'vijaya dash', 'Dussehra'), (r'vasant panch', 'Vasant Panchami'),
+              (r'bhai b', 'Bhai Beej'), (r'pramukh var', 'Pramukh Varni Din'), (r'sam.?shrav', 'Sam Shravani'), (r'^holi', 'Holi'),
+              (r'dhan te|dhan tray', 'Dhan Teras'), (r'kali ch?audas', 'Kali Chaudas'), (r'akha ?trij', 'Akhatrij')]
+BIG_FEST = [(r'^diwali$', 'Diwali'), (r'annakut', 'Annakut'), (r'janmashtami', 'Janmashtami'), (r'hari.?nom', 'Swaminarayan Jayanti'),
+            (r'guru purnima', 'Guru Purnima'), (r'pramukh swami.*jayanti', 'Pramukh Swami Maharaj Jayanti'),
+            (r'mahant swami.*jayanti', 'Mahant Swami Maharaj Jayanti'), (r'gunatitanand.*(birthday|jayanti)', 'Gunatitanand Swami Jayanti')]
+
+
+def cal_day(day):
+    if not CALENDAR:
+        try:
+            CALENDAR.update({x['date']: x for x in json.load(open(os.path.join(HERE, 'calendar', 'baps-calendar.json'), encoding='utf-8'))['days']})
+        except Exception as e:
+            print('  no BAPS calendar:', e); CALENDAR['_none'] = {}
+    return CALENDAR.get(str(day)[:10])
+
+
+def festivals(c, short=True):
+    """The day's festivals as the cards and title say them ('Annakut and Bestu Varash' is 'Annakut')."""
+    out = []
+    for f in (c or {}).get('festivals', []):
+        n = re.sub(r'\s+q$', '', f['name']).strip()
+        if NATIONAL.search(n):
+            continue
+        if short:
+            n = next((v for k, v in SHORT_FEST if re.search(k, n, re.I)), re.split(r'[/,]', n)[0].strip())
+        else:
+            n = n.replace('/', ' and ')
+        if n not in out:
+            out.append(n)
+    return out
+
+
+def tithi(c):
+    """'Aso Vad Chaudas/Amas' reads as the day's first tithi."""
+    return re.sub(r'/\w+', '', c.get('indian_date') or '') if c else ''
+
+
+def ekadashi(c):
+    """'Rama Ekadashi (fast)' on an Ekadashi, else ''."""
+    if not c or not c.get('ekadashi'):
+        return ''
+    text = ' '.join(c.get('notes', []) + [f['name'] for f in c.get('festivals', [])]).replace('ã', 'a')
+    m = re.search(r'\b([A-Z][a-z]+)\s+Ekadashi', text)
+    name = f'{m.group(1)} Ekadashi' if m else 'Ekadashi'
+    return name + (' (fast)' if re.search(r'fast|upvas', text, re.I) else '')
+
+
+TITLE_FEST = {'Diwali', 'Annakut', 'Janmashtami', 'Swaminarayan Jayanti', 'Guru Purnima', 'Pramukh Swami Maharaj Jayanti',
+              'Mahant Swami Maharaj Jayanti', 'Gunatitanand Swami Jayanti', 'Yogi Jayanti', 'Vasant Panchami'}
+
+
+def cal_title(day):
+    """On a big festival the title starts with it: 'Diwali, 8 November' (mockup 8). Smaller days stay in the bottom
+    line (Darpan, 24 Oct 2026: not 'Vagh Baras, 5 November' in the title)."""
+    fs = [f for f in festivals(cal_day(day)) if f in TITLE_FEST]
+    return f'{fs[0]}, {day.day} {day:%B}' if fs else None
+
+
+def cal_footer(day):
+    """(the bottom line's calendar words, tomorrow's festival for the right corner)."""
+    c = cal_day(day)
+    if not c:
+        return None
+    fs, ek = festivals(c), ekadashi(c)
+    if ek and not cal_title(day):
+        line = ', '.join([ek] + [f for f in fs if 'Ekadashi' not in f] + [tithi(c)])                      # 'Rama Ekadashi (fast), Vagh Baras, Aso Vad Ekadashi'
+    elif cal_title(day):
+        line = tithi(c)                                                # the festival is already in the title
+    elif fs:
+        line = ', '.join(fs + [tithi(c)])                              # 'Dhan Teras, Aso Vad Baras' 
+    else:
+        line = f'{tithi(c)}, Vikram Samvat {c["vikram_samvat"]}'
+    nxt = festivals(cal_day(day + datetime.timedelta(days=1)))
+    return line, ', '.join(nxt)
+
+
+def tag_festivals(photos):
+    """Each card taken on a festival day of the calendar carries that festival (its own date, not the picture's)."""
+    for x in photos:
+        d = str(x.get('d') or '')[:10]
+        fs = festivals(cal_day(d)) if re.fullmatch(r'\d{4}-\d\d-\d\d', d) else []
+        if fs:
+            x['fest'] = fs[0]
+
+
+def fest_tag(d, text, B, PW):
+    f = garamond(PW * .085, 700)
+    while d.textlength(text, font=f) > PW * .8 and f.size > PW * .05:
+        f = garamond(f.size - 1, 700)
+    tw, h, pad = d.textlength(text, font=f), f.size * 1.35, PW * .03
+    x0 = y0 = B + PW * .03
+    box = (x0, y0, x0 + tw + 2 * pad, y0 + h)
+    d.rounded_rectangle(box, radius=h / 2, fill=(236, 192, 104), outline=(150, 100, 40), width=max(1, round(px(1))))
+    d.text(((box[0] + box[2]) / 2, (box[1] + box[3]) / 2), text, font=f, fill=(96, 20, 32), anchor='mm')
+
+
+def cal_caption(day, every=None):
+    """The calendar lines for the 2pm caption (captions 1, 2, 7, 8 and 9), above the day's stories."""
+    c = cal_day(day)
+    if not c:
+        return ''
+    lines, ek = [], ekadashi(c)
+    if ek:
+        lines.append(f'\U0001F64F Today is {", ".join([ek, tithi(c)] + [f for f in festivals(c, False) if "Ekadashi" not in f])}')
+    else:
+        lines.append(f'\U0001F5D3️ Today is {", ".join(festivals(c, False) + [tithi(c)])}, Vikram Samvat {c["vikram_samvat"]}')
+    nd = day + datetime.timedelta(days=1)
+    n = cal_day(nd)
+    when = f'{nd:%A} {nd.day} {nd:%B}'
+    if ekadashi(n):
+        lines.append(f'\U0001F64F Reminder: tomorrow, {when}, is {ekadashi(n)}')
+    elif festivals(n, False):
+        icon = '\U0001F315' if n.get('punam') else '\U0001FA94'
+        lines.append(f'{icon} Tomorrow, {when}, is {" and ".join(festivals(n, False))}')
+    if every:
+        name, first, last = every
+        lines.append(f"\U0001FA94 {name} through the years: one darshan from each year's own {name} day, {first} to {last}")
+    return '\n'.join(lines) + '\n'
+
+
+def every_festival(day, cache):
+    """On a big festival (BIG_FEST), a second picture: one photo from each year's own festival day (mockup 9).
+    Returns (picture, (name, first year, last year)) or (None, None)."""
+    fs = [f['name'] for f in (cal_day(day) or {}).get('festivals', [])]
+    big = next(((k, v) for k, v in BIG_FEST for f in fs if re.search(k, f, re.I)), None)
+    if not big:
+        return None, None
+    k, name = big
+    days = {}
+    for d, c in sorted(CALENDAR.items()):
+        y = int(d[:4]) if d[:4].isdigit() else 0
+        if 2010 <= y < day.year and y not in days and any(re.search(k, f['name'], re.I) for f in c.get('festivals', [])):
+            days[y] = datetime.date.fromisoformat(d)
+    items = []
+    for y, d in sorted(days.items()):
+        mmdd, have = f'{d:%m-%d}', {x['i'] for x in items}
+        got = [x for x in day_list(mmdd) if x['y'] == y]
+        path = os.path.join(HERE, 'archive', 'vicharan', mmdd + '.txt')
+        if os.path.exists(path):
+            got += [x for x in vicharan_items(path, mmdd, {}) if x['y'] == y]
+        for x in got:
+            if x['i'] not in have:
+                have.add(x['i']); items.append(dict(x, fday=str(d)))
+    if not items:
+        return None, None
+    album_towns(items)
+    download_all(items, cache)
+    photos = pick_one_per_year(items, seed=name, aspect=FRAME_ASPECT[LIVE_STYLE])
+    if len(photos) < 5:
+        return None, None
+    for x in photos:
+        fd = datetime.date.fromisoformat(x['fday'])
+        x['p'] = f'{fd.day} {fd:%b}'                                       # the card says which day that year's festival fell on
+    img = compose_wide(photos, day, seed=name, style=LIVE_STYLE, title=f'Every {name}',
+                       cal=(f'One darshan from each {name}, {photos[0]["y"]} to {photos[-1]["y"]}', ''))
+    print(f'  every {name}:', ', '.join(f'{x["y"]} ({x["fday"]})' for x in photos))
+    return img, (name, photos[0]['y'], photos[-1]['y'])
+
+
 def tg_caption(ev, evs=None):
     """Idea 4: the story for the 2pm WhatsApp message, added under Darpan's own caption by his script."""
     text = ev.get('whatsapp') or f'On this day in {ev["date"][:4]}, {ev["line"]}.'
@@ -1861,6 +2041,7 @@ def main():
     if not photos:
         raise SystemExit('No photos could be downloaded for ' + mmdd)
     remember(day, photos)
+    tag_festivals(photos)
     story = tg_story(tg_evs, photos)
     unsure = [x for x in photos if x.get('tg') and not x.get('guru') and (not x['face'] or x['sim'] < SAME_PERSON)]   # Darpan: carry on, but flag it and keep a backup
     for x in photos:
@@ -1946,8 +2127,19 @@ def main():
     left = [e for e in tg_evs if town(e) not in pictured and e.get('url') not in cards
             and not (e.get('channel') and (e['date'][:4], town(e)[1]) in pictured)]
     told = max(left, key=tg_rank, default=None)
+    every = None
+    if not special:   # a big festival with no special day in BAPS history: one darshan from each year's own festival day
+        try:
+            sp, every = every_festival(day, a.cache)
+            if sp:
+                sp.save(os.path.join(a.out, 'bapas-diary-special.png'), optimize=True)
+                sp.save(os.path.join(a.out, 'bapas-diary-special.jpg'), quality=95, optimize=True)
+        except Exception as e:
+            print('  no festival picture:', e)
+    text = cal_caption(day, every) + (('\n' if cal_day(day) else '') + tg_caption(told, left) if told else '')
+    if text.strip():
+        open(os.path.join(a.out, 'caption.txt'), 'w', encoding='utf-8').write(text)
     if told:
-        open(os.path.join(a.out, 'caption.txt'), 'w', encoding='utf-8').write(tg_caption(told, left))
         print('  caption story:', told['date'], told['line'], f'and {len({town(e) for e in left}) - 1} more' if len(left) > 1 else '')
     if unsure:   # a channel card where Bapa's face isn't surely recognised: say so, and keep the picture without it too
         with open(os.path.join(a.out, 'flags.txt'), 'w', encoding='utf-8') as f:
