@@ -24,3 +24,4 @@ Redeploy to pick up a new build from another thread: push any change here (e.g. 
 24 Oct 22:00 UTC: favourites, share a day, TV slideshow (Darpan: 3 yes, 4 yes, 1 yes on the coordinator's list).
 24 Oct 22:05 UTC: Large text button (Darpan: yes i like 1 and 2).
 24 Oct 22:10 UTC: About page with Darpan's two portraits (Pramukh Swami pair 8, Mahant Swami pair 2, framed above the mark), Darpan: yes perfec.
+24 Oct 22:43 UTC: phone design (bottom tab bar, phone Today and Calendar), Darpan typed yes phone design live.
