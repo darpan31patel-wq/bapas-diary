@@ -16,6 +16,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PROJECT: bapas-diary
       DOMAIN: bapas-diary.com
+      DAY_COMMIT: 15c4792a203661cf94ac557ae67a472ed79f8a0c   # claude/project-thread-2nuqbl, as Darpan approved it
     steps:
       - uses: actions/checkout@v4
       - name: Photo search (database from release database, photo tags from release website-mockup)
@@ -28,6 +29,10 @@ jobs:
           # Bapa through the years (its own thread builds it into release faces-mockup; Darpan: "okay go live")
           gh release download faces-mockup -p faces-site.tgz && tar -xzf faces-site.tgz -C out
           test -f out/through-the-years/index.html
+          # The home page, On this day (built by its own thread on its branch, pinned to the approved commit)
+          git fetch -q --depth 1 origin "$DAY_COMMIT" && mkdir daysrc && git archive "$DAY_COMMIT" tools site fonts | tar -x -C daysrc
+          (cd daysrc && python3 tools/web_day.py --db ../bapas.db --site ../day --photos-url https://photos.bapas-diary.com/ --search-url /search/ > /dev/null)
+          rsync -a day/ out/ && test -f out/index.html && ls out/data/day | wc -l
           sqlite3 bapas.db 'SELECT count(*) FROM calendar'
           # opens on 1999 while only 1999 photos are copied to R2 (site/photo-years.txt)
           python3 tools/build_search.py --db bapas.db --out out/search --tags tags.json --start-year 1999
