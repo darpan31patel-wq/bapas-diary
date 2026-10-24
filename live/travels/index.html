@@ -61,31 +61,45 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .next strong { color: var(--ink); font-weight: 400; }
 
 .rail { position: fixed; z-index: 5; left: 0; right: 0; bottom: 0;
-  padding-block: 10px calc(12px + env(safe-area-inset-bottom, 0px));
+  padding-block: 18px calc(12px + env(safe-area-inset-bottom, 0px));
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
-  background: linear-gradient(rgba(13,19,48,0), var(--night) 45%); display: flex; align-items: center; gap: 14px; }
-.play { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--gold); color: var(--night); cursor: pointer; display: grid; place-items: center; }
-.step { flex: none; width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--gold); background: transparent; color: var(--gold); cursor: pointer; display: grid; place-items: center; }
+  background: linear-gradient(rgba(13,19,48,0), var(--night) 30%); display: flex; flex-direction: column; gap: 10px; }
+/* every year as a big button; the strip scrolls sideways on small screens */
+.yrs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+.yrs::-webkit-scrollbar { display: none; }
+.yr { flex: 1 0 auto; min-width: 56px; height: 40px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line); background: rgba(13,19,48,.7);
+  color: var(--ink); font-family: var(--display); font-size: 18px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.yr:hover { border-color: var(--gold); }
+.yr.on { background: var(--gold); border-color: var(--gold); color: var(--night); }
+.row { display: flex; align-items: center; gap: 16px; }
+.play { flex: none; width: 60px; height: 60px; border-radius: 50%; border: 0; background: var(--gold); color: var(--night); cursor: pointer; display: grid; place-items: center; }
+.step { flex: none; width: 48px; height: 48px; border-radius: 50%; border: 1.5px solid var(--gold); background: transparent; color: var(--gold); cursor: pointer; display: grid; place-items: center; }
 .step:hover { background: rgba(242,181,68,.15); }
-.ctrls { flex: none; display: flex; align-items: center; gap: 8px; }
-.play:focus-visible, .yr:focus-visible, .step:focus-visible, .track:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
-.track { flex: 1; min-width: 0; position: relative; height: 44px; cursor: pointer; touch-action: none; }
-.months { position: absolute; inset: 22px 0 0; display: flex; }
-.months span { flex: 1; border-left: 1px solid var(--line); font-size: 11px; color: var(--mist); padding-left: 3px; white-space: nowrap; min-width: 0; }
-.months { overflow: hidden; }
-.years { position: absolute; inset: 0 0 auto; display: flex; height: 22px; }
-.yr.tick { border-left-color: var(--line); }
-.yr { flex: 1; min-width: 0; overflow: visible; white-space: nowrap; background: none; border: 0; color: var(--ink); font-family: var(--display); font-size: 16px; text-align: left; cursor: pointer; padding: 0 0 0 3px; border-left: 1px solid var(--mist); }
-.fill { position: absolute; left: 0; top: 20px; height: 3px; background: var(--gold); border-radius: 2px; }
-.dot { position: absolute; top: 12px; width: 19px; height: 19px; margin-left: -9px; cursor: grab; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 4px rgba(242,181,68,.25); }
+.speed { flex: none; height: 40px; min-width: 52px; border-radius: 999px; border: 1.5px solid var(--gold); background: transparent; color: var(--gold); font: 600 16px var(--body); cursor: pointer; }
+.ctrls { flex: none; display: flex; align-items: center; gap: 10px; }
+.play:focus-visible, .yr:focus-visible, .step:focus-visible, .speed:focus-visible, .track:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+/* every month of every year on one long tape that slides under the gold marker in the middle */
+.track { flex: 1; min-width: 0; position: relative; height: 64px; cursor: grab; touch-action: none; overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+.track.drag { cursor: grabbing; }
+.rail, .track, .tape, .story { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+body.dragging { -webkit-user-select: none; user-select: none; }
+.tape { position: absolute; top: 0; bottom: 0; left: 0; will-change: transform; }
+.mo { position: absolute; top: 34px; bottom: 0; border-left: 1px solid var(--line); font-size: 13px; color: var(--mist); padding-left: 4px; white-space: nowrap; }
+.mo.jan { border-left: 2px solid var(--gold); top: 0; color: var(--ink); }
+.mo.jan b { display: block; font-family: var(--display); font-weight: 400; font-size: 17px; color: var(--gold); height: 34px; line-height: 30px; }
+.bar { position: absolute; left: 0; top: 22px; height: 8px; border-radius: 4px; background: rgba(169,177,214,.22); }
+.pins i { position: absolute; top: 23px; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: var(--ink); opacity: .6; }
+.fill { position: absolute; left: 0; width: 50%; top: 22px; height: 8px; background: linear-gradient(90deg, rgba(242,181,68,0), var(--gold)); border-radius: 4px; pointer-events: none; }
+.dot { position: absolute; left: 50%; top: 11px; width: 30px; height: 30px; margin-left: -15px; border-radius: 50%; background: var(--gold); border: 3px solid var(--night); box-shadow: 0 0 0 5px rgba(242,181,68,.3); pointer-events: none; }
 
-.hint { position: fixed; z-index: 4; right: max(24px, env(safe-area-inset-right, 0px)); bottom: 92px; color: var(--mist); font-size: 14px; text-align: right; transition: opacity .6s; }
+.hint { position: fixed; z-index: 4; right: max(24px, env(safe-area-inset-right, 0px)); bottom: 180px; color: var(--mist); font-size: 14px; text-align: right; transition: opacity .6s; }
 .mock { position: fixed; z-index: 4; right: max(24px, env(safe-area-inset-right, 0px)); top: 70px; font-size: 12px; color: var(--mist); background: var(--card); border: 1px solid var(--line); padding: 4px 10px; border-radius: 999px; }
 
 #scroller { position: relative; z-index: 1; pointer-events: none; }
 
 @media (max-width: 760px) {
-  .story { top: auto; bottom: 84px; transform: none; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); width: auto; padding: 14px 16px; }
+  .story { top: auto; bottom: 236px; transform: none; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); width: auto; padding: 14px 16px; }
   .year { font-size: 40px; }
   .pic { width: 76px; height: 76px; margin: 0; border-radius: 10px; }
   .status { margin-top: 0; }
@@ -97,6 +111,15 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   .tabs span { padding: 4px 10px; font-size: 14px; }
   .brand { font-size: 19px; }
   .mock { top: auto; bottom: 0; display: none; }
+  .row { gap: 10px; }
+  .ctrls { gap: 6px; }
+  .step { width: 42px; height: 42px; }
+  .play { width: 52px; height: 52px; }
+  .speed { height: 36px; min-width: 44px; font-size: 14px; }
+  .yr { min-width: 60px; }
+  .row { flex-wrap: wrap; justify-content: center; }
+  .track { order: -1; flex: 1 0 100%; height: 64px; }
+  .stats { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .hint { transition: none; } }
 </style>
@@ -122,22 +145,25 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   <div class="next" id="next"></div>
 </section>
 
-<div class="hint" id="hint">Scroll, drag the timeline or use the arrows<br>to travel with Bapa, or press play</div>
+<div class="hint" id="hint">The journey plays by itself.<br>Tap a year, slide the months or scroll to explore.</div>
 
 <footer class="rail">
-  <div class="ctrls">
-  <button class="step" id="goPrev" type="button" aria-label="Previous place"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M9.5 2L4 7l5.5 5" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
-  <button class="play" id="play" type="button" aria-label="Play the journey">
-    <svg id="icoPlay" width="18" height="18" viewBox="0 0 18 18"><path d="M4 2l12 7-12 7z" fill="currentColor"/></svg>
-    <svg id="icoPause" width="18" height="18" viewBox="0 0 18 18" hidden><path d="M3 2h4v14H3zM11 2h4v14h-4z" fill="currentColor"/></svg>
-  </button>
-  <button class="step" id="goNext" type="button" aria-label="Next place"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M4.5 2L10 7l-5.5 5" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
-  </div>
-  <div class="track" id="track" role="slider" tabindex="0" aria-label="Drag through the dates">
-    <div class="years" id="years"></div>
-    <div class="months" id="months"></div>
-    <div class="fill" id="fill"></div>
-    <div class="dot" id="dot"></div>
+  <div class="yrs" id="years" aria-label="Years"></div>
+  <div class="row">
+    <div class="ctrls">
+      <button class="step" id="goPrev" type="button" aria-label="Previous place"><svg width="16" height="16" viewBox="0 0 14 14"><path d="M9.5 2L4 7l5.5 5" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+      <button class="play" id="play" type="button" aria-label="Play the journey">
+        <svg id="icoPlay" width="22" height="22" viewBox="0 0 18 18"><path d="M4 2l12 7-12 7z" fill="currentColor"/></svg>
+        <svg id="icoPause" width="22" height="22" viewBox="0 0 18 18" hidden><path d="M3 2h4v14H3zM11 2h4v14h-4z" fill="currentColor"/></svg>
+      </button>
+      <button class="step" id="goNext" type="button" aria-label="Next place"><svg width="16" height="16" viewBox="0 0 14 14"><path d="M4.5 2L10 7l-5.5 5" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+      <button class="speed" id="speed" type="button" aria-label="Play speed">1×</button>
+    </div>
+    <div class="track" id="track" role="slider" tabindex="0" aria-label="Drag through the months and years">
+      <div class="tape" id="tape"><div class="bar" id="bar"></div><div class="pins" id="pins"></div></div>
+      <div class="fill"></div>
+      <div class="dot"></div>
+    </div>
   </div>
 </footer>
 
@@ -176,7 +202,24 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
       if (d > 1e-5) { const f = 0.7 + 0.9 * Math.sqrt(d); segs.push({ kind: 'fly', i, d, t0: T, t1: T + f }); T += f; }
     }
   });
-  const UNIT = 260;
+  let cur = -Infinity;
+  segs.forEach((g, k) => {
+    const s = stops[g.i], n = stops[g.i + 1], a = +day(s.a), b = Math.max(a, +day(s.b));
+    const next = n ? Math.max(a, +day(n.a)) : b + 864e5;
+    const leave = Math.min(next, Math.max(b, a + .6 * (next - a)));   // when the flight takes off
+    const flies = segs[k + 1] && segs[k + 1].kind === 'fly';
+    let d0, d1;
+    if (g.kind === 'stay') { d0 = a; d1 = flies ? leave : next; } else { d0 = leave; d1 = next; }
+    g.d0 = Math.max(cur, d0); g.d1 = Math.max(d1, g.d0 + .4 * 864e5);   // never stands still, never goes back
+    cur = g.d1;
+  });
+  const dateAtT = t => {
+    let lo = 0, hi = segs.length - 1;
+    while (lo < hi) { const m = (lo + hi + 1) >> 1; if (segs[m].t0 <= t) lo = m; else hi = m - 1; }
+    const g = segs[lo];
+    return g.d0 + (g.d1 - g.d0) * Math.min(1, Math.max(0, (t - g.t0) / (g.t1 - g.t0)));
+  };
+  const UNIT = 180;   // page pixels per step of the journey: smaller moves through time faster
   const scroller = document.getElementById('scroller');
   const sizeScroller = () => { scroller.style.height = (T * UNIT + innerHeight) + 'px'; };
 
@@ -338,41 +381,58 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     $('next').innerHTML = up.length ? 'Then <strong>' + up.join('</strong>, <strong>') + '</strong>' : 'End of the mockup years';
   }
 
-  // Year and month rail
-  const span0 = day(YEARS[0] + '-01-01'), span1 = day((+YEARS[YEARS.length - 1] + 1) + '-01-01');
-  const yearsEl = $('years'), monthsEl = $('months');
-  // One slot per year; with many years only every few get a label so they never crowd
-  const many = YEARS.length > 4;
+  // Year buttons, and one long tape of months: drag it and December rolls straight on into the next January
+  const yearsEl = $('years'), tape = $('tape');
   YEARS.forEach(y => {
-    const b = document.createElement('button'); b.className = 'yr'; b.type = 'button'; b.dataset.y = y; b.setAttribute('aria-label', 'Go to ' + y);
+    const b = document.createElement('button'); b.className = 'yr'; b.type = 'button'; b.dataset.y = y; b.textContent = y;
     b.addEventListener('click', () => { stopPlay(); const k = stops.findIndex(s => s.year === +y); if (k >= 0) goStop(k, false); });
     yearsEl.appendChild(b);
-    if (many) { monthsEl.appendChild(document.createElement('span')); return; }
-    for (let m = 0; m < 12; m++) { const s = document.createElement('span'); s.textContent = innerWidth > 1100 ? MONTHS[m].slice(0, 3) : innerWidth > 560 ? (m % 3 === 0 ? MONTHS[m].slice(0, 3) : '') : (m === 6 ? 'Jul' : ''); monthsEl.appendChild(s); }
   });
-  function labelYears() {
-    const per = (document.getElementById('track').clientWidth || 300) / YEARS.length;
-    const step = [1, 2, 5, 10].find(n => n * per >= 54) || 10;
-    yearsEl.querySelectorAll('.yr').forEach((b, i) => { const y = +b.dataset.y; b.textContent = (!many || y % step === 0 || i === 0) && (i === 0 ? true : (y - +YEARS[0]) > step / 2) ? y : ''; b.classList.toggle('tick', !b.textContent); });
+  const Y0 = +YEARS[0], NM = YEARS.length * 12;
+  let PX = 80;   // pixels per month
+  const monthsOf = d => { const x = new Date(d), y = x.getUTCFullYear(), m = x.getUTCMonth();
+    const a = Date.UTC(y, m, 1), b = Date.UTC(y, m + 1, 1); return (y - Y0) * 12 + m + (d - a) / (b - a); };
+  const dateOf = mf => { mf = Math.max(0, Math.min(NM - 1e-6, mf)); const i = Math.floor(mf), y = Y0 + Math.floor(i / 12), m = i % 12;
+    const a = Date.UTC(y, m, 1), b = Date.UTC(y, m + 1, 1); return a + (mf - i) * (b - a); };
+  function buildTape() {
+    PX = innerWidth > 760 ? 84 : 58;
+    tape.style.width = NM * PX + 'px'; $('bar').style.width = NM * PX + 'px';
+    let h = '';
+    for (let i = 0; i < NM; i++) { const m = i % 12, y = Y0 + Math.floor(i / 12);
+      h += `<div class="mo${m ? '' : ' jan'}" style="left:${i * PX}px;width:${PX}px">${m ? '' : `<b>${y}</b>`}${MONTHS[m].slice(0, 3)}</div>`; }
+    tape.querySelectorAll('.mo').forEach(e => e.remove());
+    tape.insertAdjacentHTML('afterbegin', h);
+    $('pins').innerHTML = stops.map(s => `<i style="left:${monthsOf(+day(s.a)) * PX}px"></i>`).join('');
   }
-  labelYears(); addEventListener('resize', labelYears);
+  buildTape(); addEventListener('resize', buildTape);
+  let railYear = null, railM = 0;
   function rail(st) {
     const s = stops[st.i];
-    let d = +day(s.a);
-    if (st.flying) d = d + (+day(stops[st.i + 1].a) - d) * st.u;
-    const f = Math.max(0, Math.min(1, (d - span0) / (span1 - span0)));
-    $('fill').style.width = (f * 100) + '%'; $('dot').style.left = (f * 100) + '%';
+    const d = dateAtT(tNow);
+    railM = monthsOf(d);
+    tape.style.transform = `translateX(${$('track').clientWidth / 2 - railM * PX}px)`;
+    const y = new Date(d).getUTCFullYear();
+    if (y !== railYear) {
+      railYear = y;
+      yearsEl.querySelectorAll('.yr').forEach(b => { const on = +b.dataset.y === y; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
+        if (on) yearsEl.scrollTo({ left: b.offsetLeft - (yearsEl.clientWidth - b.offsetWidth) / 2, behavior: reduce ? 'auto' : 'smooth' }); });
+      $('track').setAttribute('aria-valuetext', MONTHS[new Date(d).getUTCMonth()] + ' ' + y);
+    }
   }
 
   // Scroll drives time; play just scrolls for you
-  let tNow = 0, playing = false;
+  let tNow = 0, playing = false, touched = false;
+  ['pointerdown', 'wheel', 'keydown', 'touchstart'].forEach(ev => addEventListener(ev, () => { touched = true; }, { passive: true, once: true }));
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const target = () => Math.min(T - 1e-3, Math.max(0, scrollY / UNIT));
+  const SPEEDS = [1, 2, 4]; let speedI = 0;
+  $('speed').addEventListener('click', () => { speedI = (speedI + 1) % SPEEDS.length; $('speed').textContent = SPEEDS[speedI] + '×'; });
+  function startPlay() { playing = true; $('icoPlay').hidden = true; $('icoPause').hidden = false; $('play').setAttribute('aria-label', 'Pause'); }
   function stopPlay() { playing = false; $('icoPlay').hidden = false; $('icoPause').hidden = true; $('play').setAttribute('aria-label', 'Play the journey'); }
   $('play').addEventListener('click', () => {
     if (playing) return stopPlay();
     if (target() >= T - 0.01) scrollTo({ top: 0 });
-    playing = true; $('icoPlay').hidden = true; $('icoPause').hidden = false; $('play').setAttribute('aria-label', 'Pause');
+    startPlay();
   });
   // Manual travel: back and next buttons, arrow keys, and dragging the timeline
   const stayT = k => segs.find(g => g.kind === 'stay' && g.i === k).t0 + 0.05;
@@ -387,22 +447,22 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     if (e.key === ' ') { e.preventDefault(); $('play').click(); }
   });
   const track = $('track');
-  const dateT = f => {
-    // a spot on the timeline becomes a moment in the journey: find the stop (or flight) at that date
-    const d = +span0 + f * (span1 - span0);
-    let k = 0; while (k < stops.length - 1 && +day(stops[k + 1].a) <= d) k++;
-    const sg = segs.find(g => g.kind === 'stay' && g.i === k);
-    const a = +day(stops[k].a), b = k < stops.length - 1 ? +day(stops[k + 1].a) : +span1;
-    const fl = segs.find(g => g.kind === 'fly' && g.i === k);
-    const end = fl ? fl.t1 : sg.t1;
-    return sg.t0 + (end - sg.t0) * Math.min(1, Math.max(0, (d - a) / Math.max(1, b - a)));
+  const dateT = d => {
+    // the other way round: a date on the strip becomes a moment in the journey
+    let k = 0; while (k < segs.length - 1 && segs[k + 1].d0 <= d) k++;
+    const g = segs[k];
+    return g.t0 + (g.t1 - g.t0) * Math.min(1, Math.max(0, (d - g.d0) / Math.max(1, g.d1 - g.d0)));
   };
-  let dragging = false;
-  const dragTo = e => { const r = track.getBoundingClientRect(); const f = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)); scrollTo({ top: dateT(f) * UNIT, behavior: 'auto' }); };
-  track.addEventListener('pointerdown', e => { if (e.target.closest('.yr')) return; stopPlay(); dragging = true; track.setPointerCapture(e.pointerId); dragTo(e); });
-  track.addEventListener('pointermove', e => { if (dragging) dragTo(e); });
-  track.addEventListener('pointerup', () => { dragging = false; });
-  track.addEventListener('pointercancel', () => { dragging = false; });
+  const goMonth = mf => scrollTo({ top: dateT(dateOf(mf)) * UNIT, behavior: 'auto' });
+  let drag = null;
+  track.addEventListener('pointerdown', e => { e.preventDefault(); getSelection && getSelection().removeAllRanges(); stopPlay(); drag = { x: e.clientX, m: railM, moved: false }; track.setPointerCapture(e.pointerId); track.classList.add('drag'); document.body.classList.add('dragging'); });
+  track.addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX - drag.x;
+    if (Math.abs(dx) > 4) drag.moved = true; if (drag.moved) goMonth(drag.m + 1.6 * dx / PX); });   // drag right to go forward in time (Darpan, 24 Oct)
+  const endDrag = e => { if (!drag) return;
+    if (!drag.moved && e.type === 'pointerup') { const r = track.getBoundingClientRect(); goMonth(drag.m + (e.clientX - r.left - r.width / 2) / PX); }
+    drag = null; track.classList.remove('drag'); document.body.classList.remove('dragging'); };
+  track.addEventListener('pointerup', endDrag); track.addEventListener('pointercancel', endDrag);
+  track.addEventListener('keydown', e => { if (e.key === 'PageDown' || e.key === 'PageUp') { e.preventDefault(); stopPlay(); goMonth(railM + (e.key === 'PageDown' ? 1 : -1)); } });
   addEventListener('wheel', stopPlay, { passive: true }); addEventListener('touchstart', e => { if (!e.target.closest('.rail')) stopPlay(); }, { passive: true });
   addEventListener('scroll', () => { if (scrollY > 40) $('hint').style.opacity = 0; }, { passive: true });
   addEventListener('resize', () => { resize(); });
@@ -410,7 +470,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   let last = performance.now();
   function frame(now) {
     const dt = Math.min(64, now - last); last = now;
-    if (playing) { scrollBy(0, dt * 0.09 * (UNIT / 260)); if (target() >= T - 0.01) stopPlay(); }
+    if (playing) { scrollBy(0, dt * 0.09 * SPEEDS[speedI] * UNIT / 260); if (target() >= T - 0.01) stopPlay(); }
     const goal = target();
     tNow = reduce ? goal : tNow + (goal - tNow) * Math.min(1, dt / 140);
     if (Math.abs(goal - tNow) < 1e-4) tNow = goal;
@@ -419,6 +479,8 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     requestAnimationFrame(frame);
   }
   resize(); tNow = target(); requestAnimationFrame(frame);
+  // Auto play: the journey starts by itself a moment after the page opens; any touch, scroll or button pauses it
+  if (!reduce) setTimeout(() => { if (!touched) startPlay(); }, 1500);
 })();
 </script>
 
