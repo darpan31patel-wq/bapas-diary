@@ -18,12 +18,14 @@ html, body { background: var(--bg); color: var(--ink); margin: 0; }
 [hidden] { display: none !important; }
 *, *::before, *::after { box-sizing: border-box; }
 body { font-family: var(--body); font-size: 16px; line-height: 1.5; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 64px 28px; }   /* 46px kept free for the shared site menu */
-.wrap { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
-header { display: flex; flex-direction: column; gap: 4px; }
+.wrap { max-width: 1560px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+.top { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-areas: "psm title msm"; align-items: center; gap: 12px 24px; }
+header { grid-area: title; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+#tab-psm { grid-area: psm; } #tab-msm { grid-area: msm; text-align: right; align-items: flex-end; }
+@media (max-width: 900px) { .top { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "title title" "psm msm"; } #tab-msm { text-align: left; align-items: flex-start; } }
 h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 5vw, 44px); line-height: 1; margin: 0; letter-spacing: .01em; }
 .sub { color: var(--muted); margin: 6px 0 0; font-size: 15px; }
-.tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.tab { font: inherit; text-align: left; color: var(--ink); background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 14px 18px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.tab { font: inherit; text-align: left; color: var(--ink); background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 10px 18px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
 .tab .who { font-family: var(--display); font-size: clamp(19px, 2.6vw, 26px); line-height: 1.15; }
 .tab .yrs { font-size: 14px; color: var(--muted); }
 .tab:hover { border-color: var(--saffron); }
@@ -31,8 +33,8 @@ h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 5vw, 
 .tab[aria-selected="true"] .yrs { color: var(--bg); opacity: .8; }
 .tab:focus-visible, button:focus-visible, canvas:focus-visible, select:focus-visible { outline: 2px solid var(--saffron); outline-offset: 2px; }
 .note { font-size: 13.5px; color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; padding: 8px 12px; margin: 0; }
-.stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 520px) minmax(0, 1fr); grid-template-areas: "left frame right" "scrub scrub scrub"; gap: 18px 28px; align-items: center; }
-.frame { grid-area: frame; position: relative; aspect-ratio: 4 / 5; width: 100%; max-width: 100%; overflow: hidden; background: radial-gradient(closest-side, var(--glow), transparent); }
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr); grid-template-areas: "left frame right" "scrub scrub scrub"; gap: 18px 28px; align-items: center; }
+.frame { grid-area: frame; position: relative; aspect-ratio: 4 / 5; width: min(860px, calc((100vh - 210px) * .8), 56vw); max-width: 100%; justify-self: center; overflow: hidden; background: radial-gradient(closest-side, var(--glow), transparent); }
 .frame img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; opacity: 0; transition: opacity var(--fade) linear; box-shadow: 0 12px 40px -10px rgba(0,0,0,.7); }
 .frame img.on { opacity: 1; }
 .frame img.rest { transition: opacity var(--fade) linear, transform 1.4s ease-in-out; }
@@ -58,14 +60,21 @@ h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 5vw, 
 .btn[aria-pressed="true"] { border-color: var(--saffron); color: var(--saffron); }
 .btn.play { min-width: 84px; font-weight: 600; }
 select.btn { padding-right: 8px; }
-canvas { display: block; width: 100%; height: 132px; border-radius: 8px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); touch-action: none; cursor: grab; }
+canvas { display: block; width: 100%; height: 86px; border-radius: 8px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); touch-action: none; cursor: grab; }
 canvas.drag { cursor: grabbing; }
-.days { width: 100%; margin: 4px 0; accent-color: var(--saffron); height: 34px; cursor: pointer; }
+.days { -webkit-appearance: none; appearance: none; width: 100%; height: 64px; margin: 4px 0; background: transparent; cursor: pointer; touch-action: none; }
+.days::-webkit-slider-runnable-track { height: 22px; border-radius: 11px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); }
+.days::-moz-range-track { height: 22px; border-radius: 11px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); }
+.days::-moz-range-progress { height: 22px; border-radius: 11px; background: var(--saffron); opacity: .55; }
+.days::-webkit-slider-thumb { -webkit-appearance: none; width: 54px; height: 54px; margin-top: -16px; border-radius: 50%; background: var(--saffron); border: 4px solid var(--ink); box-shadow: 0 4px 14px rgba(0,0,0,.5); }
+.days::-moz-range-thumb { width: 46px; height: 46px; border-radius: 50%; background: var(--saffron); border: 4px solid var(--ink); box-shadow: 0 4px 14px rgba(0,0,0,.5); }
+.days:focus-visible { outline: 2px solid var(--saffron); outline-offset: 4px; border-radius: 12px; }
 .speed { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
 .speed input { width: 120px; accent-color: var(--saffron); }
 .hint { font-size: 13px; color: var(--muted); margin: 0; }
 @media (max-width: 1000px) {
   .stage { grid-template-columns: minmax(0, 1fr); grid-template-areas: "frame" "scrub" "left" "right"; }
+  .frame { width: min(100%, calc((100vh - 210px) * .8)); }
   .info.l { text-align: left; align-items: flex-start; }
 }
 @media (prefers-reduced-motion: reduce) { :root { --fade: 0ms; } .frame img.rest { transition: none; } }
@@ -74,11 +83,11 @@ canvas.drag { cursor: grabbing; }
 <nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/" class="on" aria-current="page">Through the years</a><a href="/calendar/">Calendar</a><a href="/about/">About</a></nav>
 
 <div class="wrap">
-  <header>
-    <h1>Bapa through the years</h1>
-    <p class="sub">One close darshan for every day, his eyes always in the same place</p>
-  </header>
-  <div class="tabs" role="tablist" aria-label="Guru">
+  <div class="top" role="tablist" aria-label="Guru">
+    <header role="presentation">
+      <h1>Bapa through the years</h1>
+      <p class="sub">One close darshan for every day, his eyes always in the same place</p>
+    </header>
     <button class="tab" role="tab" id="tab-psm" data-era="psm" aria-selected="true"><span class="who">Pramukh Swami Maharaj</span><span class="yrs">1999 to 13 August 2016</span></button>
     <button class="tab" role="tab" id="tab-msm" data-era="msm" aria-selected="false"><span class="who">Mahant Swami Maharaj</span><span class="yrs">13 August 2016 to today</span></button>
   </div>
@@ -114,8 +123,8 @@ canvas.drag { cursor: grabbing; }
         <button class="btn" id="zIn" type="button" aria-label="Zoom in">+</button>
         <button class="btn" id="eyeBtn" type="button" aria-pressed="false">Eye line</button>
       </div>
-      <canvas id="tl" tabindex="0" aria-label="Timeline: drag left or right to move through the days"></canvas>
       <input class="days" type="range" id="days" min="0" max="0" value="0" aria-label="Move through the days">
+      <canvas id="tl" tabindex="0" aria-label="Timeline: drag left or right to move through the days"></canvas>
       <p class="hint">Move through the days at your own speed: slide the bar, drag the strip, or scroll over the photo. Pinch or use + and − to zoom the strip; tap a year or month to jump to it. Arrow keys step one day.</p>
     </div>
   </section>
@@ -223,29 +232,29 @@ function draw() {
   const ink = css('--ink'), muted = css('--muted'), line = css('--line'), saf = css('--saffron');
   const X = t => w / 2 + (t + .5 - center) * ppd, t0 = center - w / 2 / ppd, t1 = center + w / 2 / ppd;
   const y0 = dOf(t0).getUTCFullYear(), y1 = dOf(t1).getUTCFullYear();
-  cx.font = `600 13px ${css('--body')}`; cx.textBaseline = 'middle';
+  cx.font = `600 12px ${css('--body')}`; cx.textBaseline = 'middle';
   // years
   for (let y = y0; y <= y1; y++) {
     const a = X(Date.UTC(y, 0, 1) / DAYMS - .5), b = X(Date.UTC(y + 1, 0, 1) / DAYMS - .5);
     cx.fillStyle = line; cx.fillRect(Math.round(a), 0, 1, h);
     cx.fillStyle = ink; const lx = Math.max(a + 6, 6);
-    if (lx < b - 36) cx.fillText(String(y), lx, 13);
+    if (lx < b - 36) cx.fillText(String(y), lx, 10);
   }
   // months
   const mw = 30 * ppd;
   if (mw > 14) {
-    cx.font = `400 12px ${css('--body')}`;
+    cx.font = `400 11px ${css('--body')}`;
     for (let y = y0; y <= y1; y++) for (let m = 0; m < 12; m++) {
       const a = X(Date.UTC(y, m, 1) / DAYMS - .5), b = X(Date.UTC(y, m + 1, 1) / DAYMS - .5);
       if (b < 0 || a > w) continue;
-      if (m) { cx.fillStyle = line; cx.fillRect(Math.round(a), 26, 1, h - 26); }
+      if (m) { cx.fillStyle = line; cx.fillRect(Math.round(a), 19, 1, h - 19); }
       const name = mw > 80 ? MONTHS[m] : mw > 32 ? MONTHS[m].slice(0, 3) : MONTHS[m][0];
       cx.fillStyle = muted; const lx = Math.max(a + 5, 5);
-      if (lx + cx.measureText(name).width < b - 2) cx.fillText(name, lx, 37);
+      if (lx + cx.measureText(name).width < b - 2) cx.fillText(name, lx, 26);
     }
   }
   // days: thumbnails when there is room, otherwise a tick for each day with a close darshan
-  const top = 50, th = h - top - 8, tw = th * .8;
+  const top = 36, th = h - top - 6, tw = th * .8;
   const i0 = Math.max(0, nearest(t0) - 1), i1 = Math.min(list.length - 1, nearest(t1) + 1);
   const room = ppd >= tw * .55;
   for (let i = i0; i <= i1; i++) {
@@ -322,8 +331,8 @@ cv.addEventListener('wheel', e => {
 function tap(e) {
   const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
   const t = center + (x - W() / 2) / ppd, d = dOf(t), Y = d.getUTCFullYear(), M = d.getUTCMonth();
-  if (y < 26) { const a = Date.UTC(Y, 0, 1) / DAYMS; zoomTo(368, a + 182); show(nearest(Math.max(a, list[0].t))); return; }
-  if (y < 46 && 30 * ppd > 14) { const a = Date.UTC(Y, M, 1) / DAYMS; zoomTo(33, a + 15); show(nearest(a + .5)); return; }
+  if (y < 18) { const a = Date.UTC(Y, 0, 1) / DAYMS; zoomTo(368, a + 182); show(nearest(Math.max(a, list[0].t))); return; }
+  if (y < 33 && 30 * ppd > 14) { const a = Date.UTC(Y, M, 1) / DAYMS; zoomTo(33, a + 15); show(nearest(a + .5)); return; }
   show(nearest(t)); follow(); draw();
 }
 cv.addEventListener('keydown', e => {
