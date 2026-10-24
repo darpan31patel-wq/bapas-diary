@@ -7,6 +7,7 @@ on:
   push:
     branches: ['claude/**']
     paths: ['live/**', 'site/search.html', 'tools/build_search.py', 'tools/site_menu.py', '.github/workflows/website-deploy.yml']
+  workflow_call:   # website-hires (on main) rebuilds the site when a year of full size photos is in R2
 concurrency: website-deploy
 jobs:
   deploy:
@@ -20,6 +21,8 @@ jobs:
       CAL_COMMIT: 5b85edc002d8a2f85922e00d6ffdc932882df298   # claude/project-thread-69b2ir, as Darpan approved it
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'push' && github.sha || 'claude/project-thread-eawr12' }}
       - name: Photo search (database from release database, photo tags from release website-mockup)
         env:
           GH_TOKEN: ${{ github.token }}
@@ -34,9 +37,12 @@ jobs:
           git fetch -q --depth 1 origin "$DAY_COMMIT" && mkdir daysrc && git archive "$DAY_COMMIT" tools site fonts | tar -x -C daysrc
           (cd daysrc && python3 tools/web_day.py --db ../bapas.db --site ../day --photos-url https://photos.bapas-diary.com/ --search-url /search/ > /dev/null)
           rsync -a day/ out/ && test -f out/index.html && ls out/data/day | wc -l
+          # years with photos in R2: site/photo-years.txt plus every year website-hires has finished
+          { cat site/photo-years.txt; curl -fs https://photos.$DOMAIN/years.txt || true; } | grep -E '^[0-9]{4}$' | sort -un > photo-years.txt
+          echo "photo years: $(tr '\n' ' ' < photo-years.txt)"
           # The scrolling years calendar (its own thread, branch pinned to the approved commit; Darpan: "perfect go live")
           git fetch -q --depth 1 origin "$CAL_COMMIT" && mkdir calsrc && git archive "$CAL_COMMIT" tools/web_calendar.py site/calendar.html fonts | tar -x -C calsrc
-          python3 calsrc/tools/web_calendar.py --db bapas.db --site cal --photos-url https://photos.bapas-diary.com/ --search-url /search/ --photo-years site/photo-years.txt
+          python3 calsrc/tools/web_calendar.py --db bapas.db --site cal --photos-url https://photos.bapas-diary.com/ --search-url /search/ --photo-years photo-years.txt
           rsync -a cal/ out/ && test -f out/calendar/index.html
           sqlite3 bapas.db 'SELECT count(*) FROM calendar'
           # opens on 1999 while only 1999 photos are copied to R2 (site/photo-years.txt)
