@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>My favourite darshans · Bapa's Diary</title>
+<meta name="description" content="A little album of Bapa's darshan, chosen with love.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Bapa's Diary">
+<meta property="og:title" content="Favourite darshans · Bapa's Diary">
+<meta property="og:description" content="A little album of Bapa's darshan, chosen with love. Open His diary to see where He was.">
+<meta property="og:url" content="https://bapas-diary.com/favourites/">
+<meta property="og:image" content="https://bapas-diary.com/share.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#42101c">
+<link rel="stylesheet" href="/menu.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Arimo:wght@400;700&display=swap">
+<link rel="stylesheet" href="/extras.css">
+<style>
+/* My favourites (Darpan typed yes, 24 Oct 2026): every hearted photo together, newest first, to share as one album
+   link or play on the TV. A shared album opens here too (#a=...), with a button to keep it. Website only. */
+:root {
+  --maroon-in: #42101c; --maroon-out: #160509; --maroon: #6e1424; --ink: #3b1219; --muted: #7a5c4c;
+  --gold-hi: #ffe296; --gold-soft: #d9a441; --gold-deep: #a8742a; --paper: #f3ead9; --cap: #faf1de;
+  --ivory-top: #fdf9f0; --ivory-bot: #efe4cd; --ivory-edge: #d3c19c;
+  --serif: "EB Garamond", Garamond, "Times New Roman", serif; --sans: Arimo, Arial, Helvetica, sans-serif;
+}
+* { box-sizing: border-box; }
+html { background: var(--maroon-out); }
+body { margin: 0; min-height: 100dvh; background: var(--paper); color: var(--ink); font: 500 19px/1.5 var(--serif); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.band { background: radial-gradient(ellipse 60% 70% at 50% 0%, rgba(255, 196, 110, .18), transparent 70%), radial-gradient(ellipse 90% 120% at 50% 30%, var(--maroon-in), var(--maroon-out));
+  color: var(--cap); text-align: center; padding-top: 46px; }
+.band .wrap { padding-block: 26px 30px; display: grid; gap: 10px; justify-items: center; }
+h1 { margin: 0; font: 700 clamp(38px, 7vw, 64px)/1.05 var(--serif); text-wrap: balance;
+  background: linear-gradient(#ffe296, #ce9840); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .45)); }
+.sub { margin: 0; max-width: 52ch; color: rgba(250, 241, 222, .78); font-style: italic; text-wrap: balance; }
+.btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding-top: 6px; }
+.btns button { font: 700 12px var(--sans); letter-spacing: .16em; text-transform: uppercase; padding: 12px 20px; border-radius: 999px; cursor: pointer; border: 1px solid var(--gold-soft); background: none; color: var(--gold-hi); }
+.btns .main { background: linear-gradient(#ffe296, #ce9840); color: var(--ink); border: 0; }
+.btns button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 3px; }
+main { padding-block: 30px 70px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 26px clamp(12px, 2vw, 24px); align-items: start; }
+@media (max-width: 520px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 12px; } }
+.card { position: relative; min-width: 0; background: linear-gradient(var(--ivory-top), var(--ivory-bot)); border: 1px solid var(--ivory-edge); padding: 8px 8px 0; box-shadow: 0 8px 16px rgba(59, 18, 25, .14); cursor: pointer; }
+.card .pic img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; object-position: 50% 25%; background: #e8dcc2; }
+.card .when { display: block; text-align: center; font: 700 17px/1.2 var(--serif); color: var(--maroon); padding: 9px 4px 2px; text-wrap: balance; }
+.card .pl { display: block; text-align: center; font: italic 500 15px/1.3 var(--serif); color: var(--muted); padding: 0 4px 10px; }
+.empty { text-align: center; max-width: 40ch; margin: 30px auto; font-style: italic; color: var(--muted); text-wrap: balance; }
+.empty a { color: var(--maroon); }
+</style>
+</head>
+<body>
+<nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a href="/calendar/">Calendar</a><a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/about/">About</a></nav>
+<div class="band"><div class="wrap">
+  <h1 id="title">My favourite darshans</h1>
+  <p class="sub" id="sub"></p>
+  <div class="btns" id="btns"></div>
+</div></div>
+<main class="wrap">
+  <div class="grid" id="grid"></div>
+  <p class="empty" id="empty" hidden>Nothing here yet. Tap the heart on any photo in <a href="/search/">Search</a> or on the <a href="/">Today</a> page, and it will be kept here, on this phone or computer.</p>
+</main>
+<script src="/extras.js"></script>
+<script>
+// A shared album arrives as #a=ALBUM/FILE~YYYY-MM-DD|... (the date may be missing).
+const $ = id => document.getElementById(id);
+const B = window.BapaDiary;
+const esc = s => String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function shared() {
+  const m = /^#a=(.+)$/.exec(location.hash);
+  if (!m) return null;
+  return decodeURIComponent(m[1]).split('|').map(x => { const [k, d] = x.split('~'); return { k, d: d || '', p: '', c: '' }; }).filter(i => /\//.test(i.k));
+}
+function card(f) {
+  const a = document.createElement('article'); a.className = 'card'; a.tabIndex = 0;
+  a.innerHTML = `<div class="pic"><img loading="lazy" alt="${esc(f.c || 'Darshan')}" src="${B.PHOTOS}s/${esc(f.k)}"></div>` +
+    `<span class="when">${esc(B.niceDate(f.d) || 'Darshan')}</span>${f.p ? `<span class="pl">${esc(f.p)}</span>` : '<span class="pl"></span>'}`;
+  const h = document.createElement('button'); h.type = 'button'; h.className = 'bd-heart';
+  h.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.3 3 4.5 6.7 4.5c2.2 0 3.6 1.2 5.3 3.1 1.7-1.9 3.1-3.1 5.3-3.1 3.7 0 5.8 3.8 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>';
+  Object.assign(h.dataset, { fav: f.k, date: f.d, place: f.p, cap: f.c });
+  a.querySelector('.pic').append(h);
+  return a;
+}
+function button(text, main, fn) { const b = document.createElement('button'); b.type = 'button'; b.textContent = text; if (main) b.className = 'main'; b.onclick = fn; return b; }
+async function shareAlbum(list) {
+  const url = `${location.origin}/favourites/#a=` + encodeURIComponent(list.slice(0, 120).map(f => f.k + (f.d ? '~' + f.d : '')).join('|'));
+  const text = `My favourite darshans of Bapa, ${list.length === 1 ? '1 darshan' : list.length + ' darshans'} 🙏🏽`;
+  if (navigator.share) { try { await navigator.share({ title: "My favourite darshans · Bapa's Diary", text, url }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+  window.open('https://wa.me/?text=' + encodeURIComponent(text + '\n' + url), '_blank', 'noopener');
+}
+let shownKeys = '';
+function draw() {
+  const album = shared(), list = album || B.fav.list();
+  const keys = list.map(f => f.k).join();
+  const n = list.length === 1 ? '1 darshan' : list.length + ' darshans';
+  $('title').textContent = album ? 'Darshans shared with you' : 'My favourite darshans';
+  $('sub').textContent = album ? `${n}, chosen with love. Tap a heart to keep any of them for yourself.`
+    : list.length ? `${n}, kept on this phone or computer.` : 'Your own little album of Bapa.';
+  $('btns').replaceChildren(...(list.length ? [
+    album ? button('Keep them all', true, () => { B.fav.addAll(album); B.toast('All kept in your favourites 💛', ['See them', '/favourites/']); })
+          : button('Share this album', true, () => shareAlbum(list)),
+    button('Play as slideshow', false, () => B.slideshow(list.map(B.photoOf), album ? 'Shared with you' : 'My favourites')),
+  ] : []));
+  $('empty').hidden = list.length > 0;
+  if (keys !== shownKeys) { $('grid').replaceChildren(...list.map(card)); shownKeys = keys; }
+  document.dispatchEvent(new Event('bapa-redraw'));
+}
+// tapping a photo plays from that one
+$('grid').addEventListener('click', e => {
+  const c = e.target.closest('.card'); if (!c || e.target.closest('[data-fav]')) return;
+  const list = shared() || B.fav.list(), i = [...$('grid').children].indexOf(c);
+  B.slideshow([...list.slice(i), ...list.slice(0, i)].map(B.photoOf), 'My favourites');
+});
+$('grid').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.classList.contains('card')) e.target.click(); });
+document.addEventListener('bapa-favourites', () => { if (!shared()) draw(); });
+addEventListener('hashchange', draw);
+draw();
+</script>
+</body>
+</html>
