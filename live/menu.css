@@ -2,7 +2,8 @@
    (Darpan, 24 Oct 2026: "keep them in position, but just fade them out gently"). Use it as
      <link rel="stylesheet" href="/menu.css">
      <nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a href="/search/">Search</a>
-       <a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/about/">About</a></nav>
+       <a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/calendar/">Calendar</a>
+       <a href="/about/">About</a></nav>
    with class="on" aria-current="page" on the page's own tab, as the very first thing in <body>, and 46px of
    room left at the top of the page under it. It scrolls away with the page; add class "stay" to keep it pinned (pages that do not scroll, like Travels). */
 .site-menu {
@@ -20,7 +21,7 @@
   color: #d9a441; text-decoration: none; padding: 6px 0 5px; border-bottom: 1px solid transparent; white-space: nowrap;
 }
 .site-menu a:hover, .site-menu a.on { color: #ffe296; border-bottom-color: #d9a441; }
-@media (max-width: 600px) { .site-menu { gap: 0 11px; } .site-menu a { font-size: 10px; letter-spacing: .12em; } }
+@media (max-width: 600px) { .site-menu { gap: 0 10px; } .site-menu a { font-size: 10px; letter-spacing: .08em; } }   /* on the narrowest phones the row can be swiped */
 .site-menu a:focus-visible { outline: 2px solid #ffe296; outline-offset: 3px; }
 /* moving between pages: a gentle fade (browsers without this simply switch pages) */
 @view-transition { navigation: auto; }
