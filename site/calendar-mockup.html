@@ -41,7 +41,7 @@ header{padding-block:18px 6px;padding-left:max(16px,env(safe-area-inset-left,0px
 .card:hover,.card:focus-visible{z-index:2;box-shadow:0 0 0 2px var(--gold-hi),0 0 18px 4px rgba(255,214,120,.55),0 0 42px 10px rgba(206,152,64,.35),0 6px 16px rgba(0,0,0,.42)}
 .card{transition:box-shadow .3s ease}
 .win{position:relative;flex:1;min-height:0;overflow:hidden;background:transparent}
-.win img{position:absolute;top:-1px;left:-12%;width:124%;height:calc(100% + 2px);object-fit:cover;will-change:transform;transition:filter .3s}
+.win img{position:absolute;top:-1px;left:-12%;width:124%;max-width:none;height:calc(100% + 2px);object-fit:cover;will-change:transform;transition:filter .3s}
 .card:hover .win img{filter:brightness(1.06)}
 .num{position:absolute;left:4px;top:2px;font-size:clamp(14px,2.5vh,22px);font-weight:600;color:var(--ivory);text-shadow:0 1px 4px rgba(0,0,0,.75);line-height:1}
 .wrapmark{position:absolute;right:4px;top:4px;font-family:var(--caps);font-size:8px;letter-spacing:.12em;background:rgba(22,5,9,.7);color:var(--gold-hi);padding:2px 4px;border-radius:2px}
