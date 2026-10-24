@@ -214,8 +214,9 @@ def check(db, root):
     missing = set()
     for path in glob.glob(os.path.join(root, 'photos', 'missing*.txt')):
         missing |= {l.split('\t')[0] for l in open(path).read().split('\n')}
-    years, gone = {}, []
+    years, gone, todo, folders = {}, [], [], set()
     for y, album, file, rel, src in db.execute('SELECT year, album, file, local_path, source FROM photos ORDER BY year'):
+        folders.add(os.path.dirname(rel))
         c = years.setdefault(y, [0, 0, 0, 0])   # known, saved, refused by baps.org, still to fetch
         c[0] += 1
         if there(os.path.join(root, rel)):
@@ -223,7 +224,10 @@ def check(db, root):
         elif f'{album}/{file}' in missing:
             c[2] += 1; gone.append(f'{album}/{file}')
         else:
-            c[3] += 1
+            c[3] += 1; todo.append(rel)
+    no_captions = sorted(f for f in folders if not there(os.path.join(root, f, 'captions.csv')))
+    posts = db.execute('SELECT local_folder FROM tg_posts').fetchall()
+    no_text = sorted(rel for rel, in posts if not there(os.path.join(root, rel, 'post.txt')))
     by_src = dict(db.execute('SELECT source, count(*) FROM photos GROUP BY source').fetchall())
     tg = db.execute('SELECT channel, local_folder FROM tg_posts WHERE photos > 0 OR videos > 0').fetchall()
     tg_done = sum(there(os.path.join(root, rel, '.done')) for _, rel in tg)
@@ -234,12 +238,18 @@ def check(db, root):
              f'{total[2]:,} refused by baps.org, {total[3]:,} still to fetch', '',
              'Year    known    saved  refused  to fetch'] + [
              f'{y}  {c[0]:>7,}  {c[1]:>7,}  {c[2]:>7,}  {c[3]:>8,}' for y, c in sorted(years.items())] + [
-             '', f'Telegram: {len(tg):,} posts with photos or videos, {tg_done:,} saved']
+             '', f'Captions: {len(folders) - len(no_captions):,} of {len(folders):,} day folders have their captions.csv',
+             f'Telegram: {len(tg):,} posts with photos or videos, {tg_done:,} saved; '
+             f'{len(posts) - len(no_text):,} of {len(posts):,} posts have their post.txt (the words)']
     scan = db.execute("SELECT value FROM about WHERE key = 'scan'").fetchone()
     if scan:
         lines.append(f'Album scan: {scan[0]}')
     if gone:
         lines += ['', 'Refused by baps.org (tried every run):'] + gone
+    if todo or no_captions or no_text:   # every photo, caption and post not yet in the folder, by name
+        lines += ['', 'Not saved yet:'] + todo + [f'{f}/captions.csv' for f in no_captions] + [f'{r}/post.txt' for r in no_text]
+    else:
+        lines += ['', 'Every photo, caption and Telegram post in the database is saved.']
     with open(os.path.join(root, 'check.txt'), 'w') as f:
         f.write('\n'.join(lines) + '\n')
     print('\n'.join(lines[:3]))

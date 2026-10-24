@@ -3,7 +3,7 @@ name: Download to Drive
 # Darpan, 23 Oct 2026: every baps.org photo with its caption and both Telegram channels, saved straight into his
 # Google Drive ("Bapa's Archive") by GitHub instead of his Mac. tools/archive_download.py does the downloading, the
 # same script as on the Mac; rclone hands each 1,500 files to Drive so the runner's disk never fills.
-# Four runs share the baps.org years and a fifth does Telegram. A round stops after 4 to 4.5 hours (then hands its last files over); while anything
+# Ten runs share the baps.org years and one does Telegram. A round stops after 4 to 4.5 hours (then hands its last files over); while anything
 # is left it starts the next round itself, and each round writes check.txt (known against saved) into the folder.
 # Needs the secret RCLONE_DRIVE_TOKEN (from "rclone authorize", scope drive.file: it only sees what it made).
 
@@ -50,12 +50,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:   # about 65,000 photos each (2026 split off 24 Oct: its full size originals are big)
-          - { name: photos-a, only: baps, years: '2005,2008,2010,2016,2017,2021,2025' }
-          - { name: photos-b, only: baps, years: '2000,2001,2007,2013,2014,2022,2024' }
-          - { name: photos-c, only: baps, years: '2002,2003,2004,2006,2011,2018,2020' }
-          - { name: photos-e, only: baps, years: '2026' }   # 2026 has its own run: its originals are about 12 MB each
-          - { name: photos-d, only: baps, years: '1999,2009,2012,2015,2019,2023' }
+        include:   # about 26,000 photos each, ten at once (Darpan 24 Oct 2026: more machines); 2026 alone, its originals are big
+          - { name: year-2026, only: baps, years: '2026' }
+          - { name: year-2025, only: baps, years: '2005,2025' }
+          - { name: year-2024, only: baps, years: '2024' }
+          - { name: year-2023, only: baps, years: '2003,2023' }
+          - { name: year-2022, only: baps, years: '2008,2012,2022' }
+          - { name: year-2021, only: baps, years: '2006,2007,2014,2021' }
+          - { name: year-2020, only: baps, years: '2000,2009,2013,2020' }
+          - { name: year-2019, only: baps, years: '2002,2004,2019' }
+          - { name: year-2018, only: baps, years: '2001,2011,2016,2018' }
+          - { name: year-2017, only: baps, years: '1999,2010,2015,2017' }
           - { name: telegram, only: telegram, years: '' }
     steps:
       - uses: actions/checkout@v4
@@ -117,7 +122,7 @@ jobs:
       - name: Start the next round while anything is left
         run: |
           cat status/* 2>/dev/null || true
-          if [ "$(cat status/* 2>/dev/null | grep -c done)" -lt 6 ]; then
+          if [ "$(cat status/* 2>/dev/null | grep -c done)" -lt 11 ]; then
             gh workflow run drive.yml --ref main && echo "Next round started"
           else
             echo "Everything is in Drive"
