@@ -23,7 +23,8 @@ for m in ('2010-01','2012-01'):
             pos='50% 30%'
             if fx and sz: pos=f"{round((fx[0]+fx[2]/2)/sz[0]*100)}% {round((fx[1]+fx[3]/2)/sz[1]*100)}%"
             e['place']=r.get('place','')
-            e['ph'].append({'src':enc(p,600),'cap':r.get('caption',''),'pos':pos})
+            ff=[round(fx[0]/sz[0],3),round(fx[1]/sz[1],3),round(fx[2]/sz[0],3),round(fx[3]/sz[1],3)] if fx and sz else None
+            e['ph'].append({'f':ff,'ar':round(sz[0]/sz[1],3) if sz else None,'src':enc(p,600),'cap':r.get('caption',''),'pos':pos})
         days.append(e)
     out[m]={'places':pj['places'],'days':days}
 s=json.dumps(out); print(len(s)/1e6,'MB')

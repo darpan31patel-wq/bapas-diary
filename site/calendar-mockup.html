@@ -41,14 +41,14 @@ header{padding-block:18px 6px;padding-left:max(16px,env(safe-area-inset-left,0px
 .card:hover,.card:focus-visible{z-index:2;box-shadow:0 0 0 2px var(--gold-hi),0 0 18px 4px rgba(255,214,120,.55),0 0 42px 10px rgba(206,152,64,.35),0 6px 16px rgba(0,0,0,.42)}
 .card{transition:box-shadow .3s ease}
 .win{position:relative;flex:1;min-height:0;overflow:hidden;background:transparent}
-.win img{position:absolute;top:-1px;left:-12%;width:124%;max-width:none;height:calc(100% + 2px);object-fit:cover;will-change:transform;transition:filter .3s}
+.win img{position:absolute;top:-1px;left:-5%;width:110%;max-width:none;height:calc(100% + 2px);object-fit:cover;will-change:transform;transition:filter .3s}
 .card:hover .win img{filter:brightness(1.06)}
 .num{position:absolute;left:4px;top:2px;font-size:clamp(14px,2.5vh,22px);font-weight:600;color:var(--ivory);text-shadow:0 1px 4px rgba(0,0,0,.75);line-height:1}
 .wrapmark{position:absolute;right:4px;top:4px;font-family:var(--caps);font-size:8px;letter-spacing:.12em;background:rgba(22,5,9,.7);color:var(--gold-hi);padding:2px 4px;border-radius:2px}
 .fest{position:absolute;left:0;right:0;bottom:0;padding:12px 5px 4px;text-align:center;font-family:var(--caps);font-size:clamp(7.5px,1.15vh,10px);font-weight:600;letter-spacing:.06em;color:var(--gold-hi);
   background:linear-gradient(0deg,rgba(22,5,9,.92),rgba(22,5,9,0));line-height:1.2;text-wrap:balance}
 .tithi{font-family:var(--caps);font-size:clamp(7px,1.05vh,9.5px);letter-spacing:.1em;text-transform:uppercase;color:#7a4e36;padding:3px 1px 4px;white-space:nowrap;overflow:hidden;text-align:center}
-.pin{position:absolute;left:50%;top:5px;transform:translateX(-50%);max-width:84%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--caps);font-size:clamp(7.5px,1.1vh,10px);font-weight:600;letter-spacing:.08em;text-transform:uppercase;background:var(--maroon);color:var(--gold-hi);padding:2px 6px 2px 5px;border-radius:9px;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.pin{position:absolute;left:50%;top:calc(clamp(14px,2.5vh,22px) + 8px);transform:translateX(-50%);max-width:84%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--caps);font-size:clamp(7.5px,1.1vh,10px);font-weight:600;letter-spacing:.08em;text-transform:uppercase;background:var(--maroon);color:var(--gold-hi);padding:2px 6px 2px 5px;border-radius:9px;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .pin:before{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--gold-hi);margin-right:4px;vertical-align:1px}
 .card.blank .win{background:radial-gradient(circle at 50% 40%,#fbf6ea,#e9dcc0);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:4px;gap:2px;container-type:size}
 .card.blank .tithi{visibility:hidden}
@@ -100,7 +100,7 @@ const monthEls=[], cards=[];
 
 function sizeCols(){
   const h=track.clientHeight-14, g=Math.max(5,Math.min(10,innerHeight*.009));
-  const rh=(h-22-5*g)/5; const cw=Math.round(rh*1.18);
+  const rh=(h-22-5*g)/5; const cw=Math.round(rh*1.08);
   document.documentElement.style.setProperty('--cw',cw+'px');
 }
 
@@ -132,7 +132,7 @@ keys.forEach((k,mi)=>{
       b.setAttribute('aria-label',`${d.wd} ${d.d} ${MONTHS[m-1]} ${y}, ${d.ind}. Open this day's gallery`);
       const win=el('div','win');
       if(d.ph.length){
-        const im=new Image(); im.src=d.ph[0].src; im.alt=d.ph[0].cap; im.loading='lazy'; im.style.objectPosition=d.ph[0].pos; im.draggable=false; win.appendChild(im);
+        const im=new Image(); im.src=d.ph[0].src; im.alt=d.ph[0].cap; im.loading='lazy'; im._ph=d.ph[0]; im.style.objectPosition=d.ph[0].pos; im.draggable=false; win.appendChild(im);
         win.appendChild(el('div','num',d.d));
       } else {
         win.appendChild(el('div','bnum',d.d)); win.appendChild(el('div','bwd',esc(d.wd)));
@@ -202,7 +202,7 @@ function frame(){
       const r=c.getBoundingClientRect(); if(r.right<-50||r.left>W+50)continue;
       const off=(r.left+r.width/2-W/2)/W;
       c.style.transform=`translateX(${(lag*(1+c._row*.18)).toFixed(1)}px) rotate(${(lag*.04).toFixed(2)}deg)`;
-      const im=c.querySelector('img'); if(im) im.style.transform=`translateX(${(-off*9).toFixed(2)}%)`;
+      const im=c.querySelector('img'); if(im) im.style.transform=`translateX(${(-off*4).toFixed(2)}%)`;
     }
   }
   if(Math.abs(vel)>.05||ticking){ticking=false;requestAnimationFrame(frame)} else vel=0;
@@ -216,6 +216,18 @@ track.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse')return;down=
 addEventListener('pointermove',e=>{if(!down)return;const dx=e.clientX-down.x;if(Math.abs(dx)>4){dragMoved=true;track.classList.add('drag')}track.scrollLeft=down.s-dx});
 addEventListener('pointerup',()=>{down=null;track.classList.remove('drag');setTimeout(()=>dragMoved=false,0)});
 
-sizeCols(); addEventListener('resize',()=>{sizeCols();kick()});
+/* place each photo so Bapa's whole head and shoulders stay inside the frame */
+function fitAll(){
+  document.querySelectorAll('.win img').forEach(im=>{
+    const ph=im._ph; if(!ph||!ph.f||!ph.ar)return;
+    const w=im.parentNode.clientWidth*1.10, h=im.parentNode.clientHeight+2; if(!w||!h)return;
+    const s=Math.max(w/ph.ar,h), dw=ph.ar*s, dh=s, [fx,fy,fw,fh]=ph.f;
+    const top=Math.max(0,fy-.6*fh)*dh, bot=Math.min(1,fy+fh*1.3)*dh;
+    let oy=bot-top>h? top-4 : (top+bot)/2-h/2; oy=Math.max(0,Math.min(dh-h,oy));
+    let ox=(fx+fw/2)*dw-w/2; ox=Math.max(0,Math.min(dw-w,ox));
+    im.style.objectPosition=`${dw-w>1?(ox/(dw-w)*100).toFixed(1):50}% ${dh-h>1?(oy/(dh-h)*100).toFixed(1):50}%`;
+  });
+}
+sizeCols(); fitAll(); addEventListener('resize',()=>{sizeCols();fitAll();kick()});
 requestAnimationFrame(()=>{track.scrollLeft=0;kick();});
 </script>
