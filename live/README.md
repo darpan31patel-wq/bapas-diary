@@ -16,3 +16,4 @@ daily 2pm picture. A page goes in here only after Darpan's typed yes.
 Redeploy to pick up a new build from another thread: push any change here (e.g. this log). 24 Oct 00:00 UTC: faces-site.tgz with the About tab.
 24 Oct 10:31 UTC: new Through the years (close up framing, big day slider), Darpan typed go live.
 24 Oct 11:48 UTC: one-screen Through the years (fits the window, controls pinned at the bottom, commit 6a1069d), Darpan typed perfect go live.
+24 Oct 11:51 UTC: Today page b70e8d6 (edge to edge cords, crooked hang, pendulum swing, Calendar second), Darpan typed yes perfect.
