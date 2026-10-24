@@ -21,7 +21,8 @@ import argparse, datetime, glob, gzip, html, os, re, shutil, sqlite3, sys, time,
 DB_URL = 'https://github.com/darpan31patel-wq/bapas-diary/releases/download/database/bapas.db.gz'
 SITE = 'https://www.baps.org/Data/Sites/1/Media/GalleryImages/{album}/{size}/{file}'
 CHANNELS = {'history': 'TodayinBAPShistory', 'satpurush': 'SatpurushInUKEurope'}
-UA = 'Mozilla/5.0 (Macintosh) bapas-diary-archive (personal offline copy)'
+# the same browser name the screensaver and the probe use: the 2023 USA albums answered 403 to the old one and 200 to this (24 Oct 2026)
+UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36'
 
 
 class SlowDown(Exception):
