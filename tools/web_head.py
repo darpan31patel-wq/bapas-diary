@@ -16,7 +16,9 @@ NAME = "Bapa's Diary"
 LINE = 'A smruti of Bapa for every day. Open His diary to see where He was.'   # Darpan's final words, 24 Oct 2026
 PAGES = {
     '': (NAME, LINE),
-    'search/': (NAME, LINE),   # bapas-diary.com opens the search until the home page is live
+    'search/': (NAME, LINE),
+    'calendar/': ("Calendar · Bapa's Diary",
+                  "A smruti for every day since 1999. Scroll through Bapa's calendar."),
     'travels/': ("Bapa's Travels · Bapa's Diary",
                  'A smruti of every journey. Follow Bapa across the world, year by year.'),
     'through-the-years/': ("Bapa Through the Years · Bapa's Diary",
