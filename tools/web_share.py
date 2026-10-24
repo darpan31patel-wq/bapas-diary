@@ -118,8 +118,29 @@ def share_card(out):
     img.save(os.path.join(out, 'share.jpg'), 'JPEG', quality=88, optimize=True, progressive=True)
 
 
-ICONS = ('b', 'tilak', 'diary', 'polaroid')
+ICONS = ('b', 'tilak', 'diary', 'polaroid', 'ring-words', 'seal', 'diary-words')
 RED = (0xc8, 0x1e, 0x2a)
+
+
+def arc_text(img, text, f, c, r, start, fill, step=None):
+    """Capitals set around a circle of radius r, centre c, reading clockwise from angle start (degrees, 0 = top)."""
+    import math
+    widths = [f.getlength(ch) for ch in text]
+    track = step or 0
+    ang = math.radians(start)
+    for ch, w in zip(text, widths):
+        a = ang + (w / 2) / r
+        tile = Image.new('RGBA', (f.size * 2, f.size * 2))
+        ImageDraw.Draw(tile).text((f.size, f.size), ch, font=f, fill=fill, anchor='mm')
+        tile = tile.rotate(-math.degrees(a), Image.BICUBIC)
+        x, y = c + r * math.sin(a), c - r * math.cos(a)
+        img.paste(tile, (round(x - f.size), round(y - f.size)), tile)
+        ang += (w + track) / r
+
+
+def gold_ring(d, c, r):
+    for i, w in ((0, 10), (34, 3)):
+        d.ellipse([c - r + i, c - r + i, c + r - i, c + r - i], outline=GOLD_SOFT, width=w)
 
 
 def icon(size, style='b'):
@@ -165,6 +186,62 @@ def icon(size, style='b'):
                 y = 400 + i * 70
                 d.line([(c + s * 70, y + 10 - i * 0), (c + s * 290, y - 30)], fill=mix(GOLD, MAROON_IN, 0.45), width=10)
         d.polygon([(c + 120, 300), (c + 170, 293), (c + 170, 420), (c + 145, 395), (c + 120, 420)], fill=RED)
+    elif style == 'ring-words':
+        gold_ring(d, c, 400)
+        f = font('eb-garamond-latin-700-normal', 205)
+        gold_text(img, (c, c - 22), 'Bapa\u2019s', f, anchor='ms')
+        gold_text(img, (c, c + 158), 'Diary', f, anchor='ms')
+        for y in (c - 250, c + 250):
+            d.regular_polygon((c, y, 13), 4, rotation=45, fill=GOLD_SOFT)
+    elif style == 'seal':
+        gold_ring(d, c, 440)
+        d.ellipse([c - 300, c - 300, c + 300, c + 300], outline=GOLD_SOFT, width=4)
+        k = font('arimo-latin-700-normal', 74)
+        text = 'BAPA\u2019S DIARY'
+        import math
+        span = sum(k.getlength(ch) for ch in text) + 22 * (len(text) - 1)
+        arc_text(img, text, k, c, 352, -math.degrees(span / 352) / 2, GOLD_HI, 22)
+        bottom = 'DARSHAN THROUGH THE YEARS'
+        k2 = font('arimo-latin-700-normal', 40)
+        span2 = sum(k2.getlength(ch) for ch in bottom) + 10 * (len(bottom) - 1)
+        # the lower words read left to right along the bottom, letters upright
+        ang = math.radians(180) + span2 / 352 / 2
+        for ch in bottom:
+            w = k2.getlength(ch)
+            at = ang - (w / 2) / 352
+            tile = Image.new('RGBA', (80, 80))
+            ImageDraw.Draw(tile).text((40, 40), ch, font=k2, fill=GOLD_SOFT, anchor='mm')
+            tile = tile.rotate(180 - math.degrees(at), Image.BICUBIC)
+            x, y = c + 352 * math.sin(at), c - 352 * math.cos(at)
+            img.paste(tile, (round(x - 40), round(y - 40)), tile)
+            ang -= (w + 10) / 352
+        for a in (90, 270):
+            x, y = c + 352 * math.sin(math.radians(a)), c - 352 * math.cos(math.radians(a))
+            d.regular_polygon((x, y, 14), 4, rotation=45, fill=GOLD_SOFT)
+        gold_text(img, (c, c + 18), 'B', font('eb-garamond-latin-700-normal', 440), anchor='mm')
+    elif style == 'diary-words':
+        m = Image.new('L', (S, S))
+        md = ImageDraw.Draw(m)
+        for sg in (-1, 1):
+            md.polygon([(c, 300), (c + sg * 400, 250), (c + sg * 400, 760), (c, 810)], fill=255)
+        pages = Image.new('RGB', (S, S))
+        gd = ImageDraw.Draw(pages)
+        for y in range(S):
+            gd.line([(0, y), (S, y)], fill=mix(IVORY_TOP, IVORY_BOT, y / S))
+        img.paste((0, 0, 0), (0, 0), m.filter(ImageFilter.GaussianBlur(14)).point(lambda v: v * 0.5))
+        img.paste(pages, (0, 0), m)
+        for sg in (-1, 1):
+            d.line([(c + sg * 400, 250), (c + sg * 400, 760)], fill=GOLD, width=10)
+        d.line([(c, 300), (c, 810)], fill=IVORY_EDGE, width=8)
+        f = font('eb-garamond-latin-700-normal', 128)
+        ink = (0x6e, 0x14, 0x24)
+        d.text((c - 200, 560), 'Bapa\u2019s', font=f, fill=ink, anchor='ms')
+        d.text((c + 200, 560), 'Diary', font=f, fill=ink, anchor='ms')
+        for sg in (-1, 1):
+            for i in range(2):
+                y = 640 + i * 46
+                d.line([(c + sg * 90, y), (c + sg * 320, y - 10)], fill=mix(IVORY_EDGE, ink, 0.15), width=7)
+        d.polygon([(c + 250, 236), (c + 300, 230), (c + 300, 380), (c + 275, 352), (c + 250, 380)], fill=RED)
     else:
         photo = Image.open(os.path.join(HERE, 'site', 'art', 'preview-psm.jpg')).convert('RGB')
         side = photo.width
