@@ -25,7 +25,7 @@ body{background:var(--maroon-out);color:var(--cream);font-family:var(--serif)}
 a{color:inherit}
 button{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--gold-hi);outline-offset:3px}
-.page{min-height:100vh;background:
+.page{min-height:100vh;overflow-x:clip;background:
   radial-gradient(ellipse 60% 30% at 50% 0%,rgba(255,196,110,.16),transparent 70%),
   radial-gradient(ellipse 90% 70% at 50% 30%,var(--maroon-in),var(--maroon-out)) no-repeat;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:calc(46px + 14px) 48px}
@@ -50,7 +50,7 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 
 /* board */
 .board{position:relative;margin-top:30px}
-.cords{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.cords{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible}
 .cards{position:relative;display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));column-gap:clamp(12px,1.6vw,26px);row-gap:clamp(30px,3.4vw,46px);padding-top:16px}
 @media (max-width:520px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .slot{display:flex;flex-direction:column;align-items:center;min-width:0}
@@ -134,7 +134,7 @@ footer{text-align:center;margin-top:52px;font:600 19px var(--serif);color:var(--
 @media (prefers-reduced-motion:reduce){.photo img,.cap{transition:none}.viewer.play .vframe img{animation:none}}
 </style>
 
-<nav class="site-menu" aria-label="Website tabs"><a href="/" class="on" aria-current="page">Today</a><a href="{{SEARCH}}">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/calendar/">Calendar</a><a href="/about/">About</a></nav>
+<nav class="site-menu" aria-label="Website tabs"><a href="/" class="on" aria-current="page">Today</a><a href="/calendar/">Calendar</a><a href="{{SEARCH}}">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/about/">About</a></nav>
 <div class="page"><div class="wrap">
 
   <div class="datebar">
@@ -390,13 +390,16 @@ document.addEventListener('visibilitychange', () => document.hidden ? stop() : s
 
 // one cord per row of cards, drawn through the pegs
 function cords() {
-  const svg = $('cords'), box = svg.getBoundingClientRect(), rows = {};
-  cards.forEach(c => { const r = c.el.getBoundingClientRect(); const top = Math.round(r.top - box.top); (rows[top] = rows[top] || []).push(1); });
+  // the cords run the full width of the window, edge to edge, even where the board itself is narrower (Darpan, 24 Oct 2026)
+  const svg = $('cords'), board = $('board').getBoundingClientRect(), vw = document.documentElement.clientWidth, rows = {};
+  svg.style.left = -board.left + 'px'; svg.style.width = vw + 'px';
+  cards.forEach(c => { const r = c.el.getBoundingClientRect(); const top = Math.round(r.top - board.top); rows[top] = 1; });
   svg.innerHTML = Object.keys(rows).map(top => {
-    const y = +top - 5, w = box.width, sag = Math.min(14, w * .012);
-    return `<path d="M -30 ${y - sag} Q ${w / 2} ${y + sag * 1.4} ${w + 30} ${y - sag}" fill="none" stroke="var(--cord)" stroke-width="3" stroke-linecap="round" opacity=".8"/>`;
+    const y = +top - 5, sag = Math.min(14, vw * .01);
+    return `<path d="M 0 ${y - sag} Q ${vw / 2} ${y + sag * 1.4} ${vw} ${y - sag}" fill="none" stroke="var(--cord)" stroke-width="3" opacity=".8"/>`;
   }).join('');
 }
+addEventListener('resize', () => requestAnimationFrame(cords));
 new ResizeObserver(() => requestAnimationFrame(cords)).observe($('cards'));
 document.fonts && document.fonts.ready.then(cords);
 
