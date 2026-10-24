@@ -54,7 +54,19 @@
 .bd-toast.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
 .bd-toast a { color: var(--bd-gold-hi); margin-left: 6px; }
 
-/* the slideshow */
+/* text size: the Aa at the end of the menu, and its choices */
+.bd-aa { flex: none; align-self: center; margin-left: 4px; display: inline-flex; align-items: baseline; gap: 1px; border: 1px solid #d9a441; color: #ffe296; background: rgba(0, 0, 0, .25);
+  border-radius: 999px; padding: 3px 10px; font: 700 12px/1.2 var(--bd-serif); letter-spacing: 0; cursor: pointer; }
+.bd-aa b { font-size: 17px; }
+.bd-aa:focus-visible { outline: 2px solid #ffe296; outline-offset: 2px; }
+.bd-size .bd-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.bd-size .bd-row button { display: grid !important; grid-template-columns: none !important; justify-items: center; gap: 2px !important; min-width: 96px; padding: 10px 12px !important;
+  font: 600 15px var(--bd-sans) !important; }
+.bd-size .bd-row b { font-family: var(--bd-serif); line-height: 1; color: var(--bd-maroon); }
+.bd-size .bd-row button[aria-pressed="true"] { border: 2px solid var(--bd-maroon) !important; background: #fff7e8 !important; }
+
+/* the slideshow (it always fills the screen at its own size, whatever the text size) */
+.bd-show { zoom: calc(1 / var(--bd-zoom, 1)); }
 .bd-showing, .bd-showing body { overflow: hidden; }
 .bd-show { position: fixed; inset: 0; z-index: 2000; container-type: size; color: var(--bd-cap); cursor: none; outline: 0;
   background: radial-gradient(ellipse 80% 90% at 50% 40%, #2a0a12, #0d0306); }

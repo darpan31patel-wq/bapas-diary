@@ -22,3 +22,4 @@ Redeploy to pick up a new build from another thread: push any change here (e.g. 
 24 Oct 21:50 UTC: share look (preview picture, icons, manifest) and the not found page, Darpan typed yes share look and yes not found page.
 24 Oct 21:55 UTC: search colours C, Day ribbons (Darpan: 2 C); share look needs Pillow on the runner.
 24 Oct 22:00 UTC: favourites, share a day, TV slideshow (Darpan: 3 yes, 4 yes, 1 yes on the coordinator's list).
+24 Oct 22:05 UTC: Large text button (Darpan: yes i like 1 and 2).

@@ -6,14 +6,20 @@ Website only: nothing here touches the daily 2pm picture. Runs in the deploy on 
 
   out/extras.js, out/extras.css   from site/extras/: hearts, the share choices and the slideshow (see extras.js)
   out/favourites/index.html       My favourite darshans (site/extras/favourites.html)
-and adds the two files to the Today page and the Search page, where extras.js puts its hearts and share buttons.
+and adds the two files to Today, Search, About and My favourites: hearts and share buttons on Today and
+Search, and on every one of them the Aa text size button (Darpan typed yes to large text, 24 Oct 2026).
 The day pictures and day links come from tools/web_dayshare.py.
 """
 import argparse, os, shutil
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(HERE, 'site', 'extras')
-PAGES = ['index.html', os.path.join('search', 'index.html')]
+# not Calendar: it fits the screen and already has its own zoom buttons
+PAGES = ['index.html', os.path.join('search', 'index.html'),
+         os.path.join('about', 'index.html'), os.path.join('favourites', 'index.html')]
+# the chosen text size is set before the page is drawn, so the page never jumps
+SIZE = ("<script>try{var z=+localStorage.getItem('bapas-diary-text');"
+        "if(z>1)document.documentElement.style.zoom=z}catch(e){}</script>\n")
 TAGS = '<link rel="stylesheet" href="/extras.css">\n<script src="/extras.js" defer></script>\n'
 
 
@@ -31,9 +37,10 @@ def main():
             print('extras: no', page)
             continue
         s = open(p, encoding='utf-8').read()
-        if '/extras.js' in s:
+        if 'bapas-diary-text' in s:
             continue
-        s = s.replace('</head>', TAGS + '</head>', 1) if '</head>' in s else s.replace('</title>', '</title>\n' + TAGS, 1)
+        tags = SIZE + ('' if '/extras.js' in s else TAGS)
+        s = s.replace('</head>', tags + '</head>', 1) if '</head>' in s else s.replace('</title>', '</title>\n' + tags, 1)
         open(p, 'w', encoding='utf-8').write(s)
         print('extras: added to', page)
 
