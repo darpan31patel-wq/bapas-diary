@@ -29,7 +29,7 @@ header{padding-block:6px 4px;padding-left:max(16px,env(safe-area-inset-left,0px)
 .track::-webkit-scrollbar{display:none}
 .track.drag{cursor:grabbing}
 .ribbon{height:100%;display:flex;align-items:stretch;gap:var(--mgap);padding-inline:max(16px,30vw);padding-block:4px 10px;width:max-content;--mgap:clamp(28px,4vw,64px)}
-.month{flex:none;height:100%;width:calc(7 * var(--cw) + 6 * var(--g));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:26px repeat(5,var(--bh) minmax(0,1fr));gap:3px var(--g);transition:opacity .25s linear}
+.month{flex:none;height:100%;width:calc(7 * var(--cw) + 6 * var(--g));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:26px repeat(5,var(--bh) minmax(0,1fr));gap:0 var(--g);transition:opacity .25s linear}
 .wkd{font-family:var(--caps);font-weight:700;font-size:clamp(12px,1.7vh,15px);letter-spacing:.22em;color:var(--muted);text-align:center;align-self:end;text-transform:uppercase}
 .empty{min-width:0;border:1px dashed rgba(234,223,200,.13);border-radius:3px}
 .card{position:relative;min-height:0;min-width:0;text-decoration:none;background:linear-gradient(170deg,var(--ivory),var(--ivory-2));border-radius:3px;padding:4px 4px 0;display:flex;flex-direction:column;color:var(--ink);
@@ -50,15 +50,12 @@ header{padding-block:6px 4px;padding-left:max(16px,env(safe-area-inset-left,0px)
 .bnum{font-size:min(46cqh,40cqw);font-weight:600;line-height:.9;color:var(--maroon)}
 .bwd{font-family:var(--caps);font-weight:700;font-size:min(9cqh,7.5cqw);letter-spacing:.2em;text-transform:uppercase;color:#9a6a40}
 .bind{font-size:min(15cqh,11.5cqw);font-weight:500;line-height:1.05;color:var(--ink);text-wrap:balance}
-/* journey line over every week, lined up with the days: where Bapa was (Darpan picked this, 24 Oct) */
-.seg{position:relative;min-width:0;display:flex;align-items:flex-start;justify-content:center;text-align:center}
-.seg:before{content:'';position:absolute;left:0;right:calc(-1 * var(--g));bottom:5px;height:2px;background:linear-gradient(90deg,var(--gold-lo),var(--gold-hi),var(--gold-lo));border-radius:2px;transition:height .25s,bottom .25s,box-shadow .25s}
-.seg.end:before{right:0}
-.seg:after{content:'';position:absolute;left:-5px;bottom:1px;width:10px;height:10px;border-radius:50%;background:var(--gold-hi);box-shadow:0 0 0 3px var(--maroon-deep),0 0 8px rgba(255,214,120,.6)}
-.seg.cont:after,.seg.unk:after{display:none}
+/* where Bapa was: a gold bracket over each stay that opens down onto its own days (Darpan picked this, 24 Oct) */
+.seg{position:relative;min-width:0;display:flex;align-items:flex-end;justify-content:center;text-align:center;padding:0 0 11px}
+.seg:before{content:'';position:absolute;left:3px;right:3px;bottom:0;height:9px;border:2px solid var(--gold-lo);border-bottom:0;border-radius:7px 7px 0 0;transition:border-color .25s,box-shadow .25s}
 .seg .pn{max-width:100%;padding:0 4px;font-size:clamp(14px,2.2vh,20px);font-weight:600;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));-webkit-background-clip:text;background-clip:text;color:transparent;transition:filter .25s}
-.seg.unk:before{background:repeating-linear-gradient(90deg,rgba(206,152,64,.45) 0 5px,transparent 5px 10px);height:1px;bottom:6px}
-.seg.on:before{height:4px;bottom:4px;box-shadow:0 0 12px rgba(255,214,120,.7)}
+.seg.unk:before{border-color:rgba(206,152,64,.35);border-style:dashed}
+.seg.on:before{border-color:var(--gold-hi);box-shadow:0 -4px 12px -4px rgba(255,214,120,.7)}
 .seg.on .pn{filter:drop-shadow(0 0 8px rgba(255,214,120,.55))}
 footer{padding-block:6px 12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .rail{position:relative;max-width:980px;margin:0 auto;height:34px}
@@ -114,8 +111,8 @@ let D, keys=[], monthEls=[], shown=new Set(), MW=0, GAP=0, PAD=0;
 
 /* sizes: five rows of days fill the height; every month is the same width */
 function sizeCols(){
-  const h=track.clientHeight-14, g=Math.max(5,Math.min(10,innerHeight*.009)), bh=Math.max(22,Math.min(32,innerHeight*.034));
-  const rh=(h-26-5*bh-10*3)/5, cw=Math.max(60,Math.round(rh*1.08));
+  const h=track.clientHeight-14, g=Math.max(5,Math.min(10,innerHeight*.009)), bh=Math.max(34,Math.min(46,innerHeight*.05));
+  const rh=(h-26-5*bh)/5, cw=Math.max(60,Math.round(rh*1.08));
   const r=document.documentElement.style; r.setProperty('--cw',cw+'px'); r.setProperty('--g',g+'px'); r.setProperty('--bh',bh+'px');
   MW=7*cw+6*g;
   if(monthEls.length>1){GAP=monthEls[1].offsetLeft-monthEls[0].offsetLeft-MW;PAD=monthEls[0].offsetLeft}
@@ -156,8 +153,7 @@ function render(mo){
       let b;
       if(!s.x) b=el('div','');
       else{
-        const before=s.first>1?pl[s.first-2]:prevPl;
-        b=el('div','seg'+(s.p?'':' unk')+(s.p&&before===s.p?' cont':'')+(s.c+s.n===7||!segs[i+1]||!segs[i+1].x?' end':''));
+        b=el('div','seg'+(s.p?'':' unk'));
         b.dataset.p=s.p||'';
         if(s.p){b.title=`Bapa was in ${s.p}, ${s.first}${s.n>1?' to '+s.last:''} ${MONTHS[m-1]} ${y}`;b.innerHTML=`<span class="pn">${esc(s.p)}</span>`}
       }
@@ -190,6 +186,12 @@ function render(mo){
     b.style.gridArea=`${3+2*r}/${c+1}`; mo.appendChild(b);
   }
   mo.addEventListener('mouseleave',()=>light(mo,null));
+  fitNames(mo);
+}
+/* a one day stop gets a smaller name rather than a cut one */
+function fitNames(mo){
+  mo.querySelectorAll('.seg .pn').forEach(n=>{n.style.fontSize='';let s=parseFloat(getComputedStyle(n).fontSize);
+    while(n.scrollWidth>n.clientWidth+1&&s>10){s-=1;n.style.fontSize=s+'px'}});
 }
 function unrender(mo){if(!mo._done)return; mo._done=false; mo._cards=[]; mo.innerHTML=''}
 function light(mo,pl){mo.querySelectorAll('.seg').forEach(s=>s.classList.toggle('on',pl!=null&&s.dataset.p===pl))}
@@ -282,5 +284,6 @@ fetch(DATA_URL).then(r=>r.json()).then(data=>{
   const h=location.hash.slice(1);
   requestAnimationFrame(()=>{goTo(D.m[h]?h:D.start,false);kick()});
   addEventListener('resize',()=>{const k=cur;sizeCols();if(k)goTo(k,false);kick()});
+  document.fonts&&document.fonts.ready.then(()=>shown.forEach(i=>fitNames(monthEls[i])));
 }).catch(()=>{ribbon.innerHTML='<div class="loading">The calendar could not load. Please refresh the page.</div>'});
 </script>
