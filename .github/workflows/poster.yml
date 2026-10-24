@@ -1,17 +1,19 @@
 name: Poster mockup photos
 
 # Photos for the BAPS calendar style poster mockups (23 Oct 2026). Writes preview/poster/<month>/ on the branch it
-# runs on; never touches main, the daily picture, its releases or Drive.
+# runs on; never touches main, the daily picture or its releases, and only reads Bapa's Archive on Drive.
+# Run by hand only (no push trigger), so it never fetches from baps.org unasked.
 
 on:
-  push:
-    branches: ['claude/project-thread-vtl1ke']
-    paths: ['tools/poster_photos.py', '.github/workflows/poster.yml']
   workflow_dispatch:
     inputs:
       month:
         description: 'Month (YYYY-MM)'
         required: false
+      source:
+        description: 'archive (Bapa''s Archive on Drive) or baps.org'
+        required: false
+        default: 'archive'
 
 permissions:
   contents: write
@@ -23,7 +25,7 @@ jobs:
   photos:
     if: github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
 
@@ -41,10 +43,26 @@ jobs:
           key: month-photos-${{ inputs.month || '2012-01' }}-${{ github.run_id }}
           restore-keys: month-photos-${{ inputs.month || '2012-01' }}-
 
+      - name: Copy the month's photos from Bapa's Archive on Drive (baps.org asked us to slow down)
+        if: inputs.source != 'baps.org' && github.event_name == 'workflow_dispatch'
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          MONTH: ${{ inputs.month }}
+        run: |
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          mkdir -p ~/.config/rclone
+          python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
+          curl -sL -o bapas.db.gz https://github.com/${{ github.repository }}/releases/download/database/bapas.db.gz && gunzip -f bapas.db.gz
+          python tools/poster_photos.py --month "$MONTH" --db bapas.db --need > need.txt
+          echo "$(wc -l < need.txt) photos to copy"
+          rclone copy "gdrive:Bapa's Archive" archive --files-from need.txt --transfers 8 --stats-one-line --stats 60s || true
+
       - name: Pick and save the photos
         env:
           MONTH: ${{ inputs.month || '2012-01' }}
-        run: python tools/poster_photos.py --month "$MONTH"
+        run: |
+          if [ -d archive ]; then python tools/poster_photos.py --month "$MONTH" --db bapas.db --drive archive
+          else python tools/poster_photos.py --month "$MONTH"; fi
 
       - name: Save them on this branch
         run: |

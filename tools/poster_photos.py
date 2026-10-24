@@ -4,10 +4,15 @@ baps.org's photos: picks a month's photos the way the month cards do (tools/mont
 their captions, places and where Bapa's face is, in preview/poster/<month>/ so the posters can be drawn anywhere.
 
     python tools/poster_photos.py --month 2012-01
+    python tools/poster_photos.py --month 2024-02 --db bapas.db --need > need.txt      the archive copies it needs
+    python tools/poster_photos.py --month 2024-02 --db bapas.db --drive archive        from Bapa's Archive, not baps.org
+
+baps.org asked us to slow down (23 Oct 2026), so a month already in Bapa's Archive on Drive is read from there: the
+biggest copy baps.org had, at the path bapas.db gives it (photos.local_path).
 
 Mockups only: nothing here touches the daily picture.
 """
-import argparse, json, os, sys
+import argparse, json, os, sqlite3, sys
 
 from PIL import Image
 
@@ -53,15 +58,37 @@ def any_face(x):
                 unsure=True)
 
 
+def archive_paths(items, db):
+    """Each photo's path in Bapa's Archive (photos.local_path in bapas.db), None when the database doesn't know it."""
+    con = sqlite3.connect(db)
+    out = []
+    for x in items:
+        r = con.execute('SELECT local_path FROM photos WHERE album = ? AND file = ?', (make.album(x['i']), x['i'].rsplit('/', 1)[1])).fetchone()
+        out.append(r[0] if r and r[0] else None)
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--month', default='2012-01')
     ap.add_argument('--cache', default=os.path.join(month.HERE, '.cache', 'month'))
+    ap.add_argument('--db', help='bapas.db, to find each photo in the archive')
+    ap.add_argument('--need', action='store_true', help='print the archive paths this month needs, one a line')
+    ap.add_argument('--drive', help='folder holding the archive copies (rclone copy --files-from the --need list)')
     a = ap.parse_args()
     y, m = map(int, a.month.split('-'))
+    items = [x for x in month.month_items(y, m) if not make.JUNK.search(x.get('c') or '')]
+    if a.need:
+        print('\n'.join(sorted({p for p in archive_paths(items, a.db) if p})))
+        return
     out = os.path.join(month.HERE, 'preview', 'poster', a.month)
     os.makedirs(out, exist_ok=True)
-    got = month.full_size(month.month_items(y, m), a.cache)
+    if a.drive:
+        got = [dict(x, path=os.path.join(a.drive, p)) for x, p in zip(items, archive_paths(items, a.db))
+               if p and os.path.exists(os.path.join(a.drive, p))]
+        print(f'  {len(got)} of {len(items)} photos found in the archive', flush=True)
+    else:
+        got = month.full_size(items, a.cache)
     photos = month.analyse(got)
     mo = month.Month(photos, y, m)
     meta, done = dict(month=a.month, places=mo.places, count=mo.count, close={}, act={}, highlights=[], extra={}), {}
