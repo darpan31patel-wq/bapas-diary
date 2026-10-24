@@ -5,6 +5,9 @@ Website only: nothing here touches the daily 2pm picture.
 
     python3 tools/web_day.py --db bapas.db --out day                      every day of the year, data only
     python3 tools/web_day.py --db bapas.db --out day --days 10-24 --photos   one day, with small photos (mockups)
+    python3 tools/web_day.py --db bapas.db --site out --photos-url https://photos.bapas-diary.com/   the home page, ready to put live
+
+--site writes the home page as the website wants it: out/index.html (site/day.html), out/fonts/ and out/data/day/MM-DD.json.
 
 Writes day/MM-DD.json for each day:
   {"date": "10-24", "title": "24 October",
@@ -102,6 +105,27 @@ def save_photos(data, out, gap):
         print(f"  {Y['y']}: {len(Y['p'])} photos, {len(Y.get('t', []))} from the trip", flush=True)
 
 
+FONTS = {'G5': 'eb-garamond-latin-500-normal.woff2', 'G6': 'eb-garamond-latin-600-normal.woff2',
+         'G7': 'eb-garamond-latin-700-normal.woff2', 'A7': 'arimo-latin-700-normal.woff2'}
+
+
+def page(site, photos, search):
+    """site/day.html as the website's home page, with its fonts."""
+    import shutil
+    os.makedirs(os.path.join(site, 'fonts'), exist_ok=True)
+    body = open(os.path.join(HERE, 'site', 'day.html'), encoding='utf-8').read()
+    body = body.replace('<meta charset="utf-8">\n', '')
+    for k, f in FONTS.items():
+        shutil.copy(os.path.join(HERE, 'fonts', f), os.path.join(site, 'fonts', f))
+        body = body.replace('{{FONT_%s}}' % k, '/fonts/' + f)
+    body = body.replace('{{DATA}}', '/data/day/').replace('{{PHOTOS}}', photos).replace('{{SEARCH}}', search)
+    with open(os.path.join(site, 'index.html'), 'w', encoding='utf-8') as f:
+        f.write('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
+                '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
+                '<meta name="description" content="Bapa on this day, every year: darshan photos from 1999 to today, with the BAPS calendar.">\n'
+                '</head>\n<body>\n' + body + '\n</body>\n</html>\n')
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--db', default='bapas.db')
@@ -109,7 +133,13 @@ def main():
     ap.add_argument('--days', nargs='*', help='MM-DD; every day of the year when left out')
     ap.add_argument('--photos', action='store_true', help='also save small photos from baps.org (mockups only)')
     ap.add_argument('--gap', type=float, default=1.0, help='seconds between photos')
+    ap.add_argument('--site', help='write the whole home page into this folder (index.html, fonts/, data/day/)')
+    ap.add_argument('--photos-url', default='https://photos.bapas-diary.com/', help='where the s/ and m/ photos are (R2)')
+    ap.add_argument('--search-url', default='/search/')
     a = ap.parse_args()
+    if a.site:
+        page(a.site, a.photos_url, a.search_url)
+        a.out = os.path.join(a.site, 'data', 'day')
     os.makedirs(a.out, exist_ok=True)
     db = sqlite3.connect(a.db)
     days = a.days or [f'{d:%m-%d}' for d in (datetime.date(2000, 1, 1) + datetime.timedelta(n) for n in range(366))]
