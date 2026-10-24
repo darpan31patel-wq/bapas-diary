@@ -13,17 +13,18 @@ import argparse, json, os, re
 
 SITE = 'https://bapas-diary.com'
 NAME = "Bapa's Diary"
+LINE = 'A smruti of Bapa for every day. Open His diary to see where He was.'   # Darpan's final words, 24 Oct 2026
 PAGES = {
-    'search/': ("Search Bapa's darshan · Bapa's Diary",
-                'Find any darshan of Pramukh Swami Maharaj by date, place or festival.'),
+    '': (NAME, LINE),
+    'search/': (NAME, LINE),   # bapas-diary.com opens the search until the home page is live
     'travels/': ("Bapa's Travels · Bapa's Diary",
-                 "Follow Swamishri's vicharan around the world, year by year, on a globe."),
+                 'A smruti of every journey. Follow Bapa across the world, year by year.'),
     'through-the-years/': ("Bapa Through the Years · Bapa's Diary",
-                           'Close up darshan of Swamishri, month by month, through the years.'),
+                           "A smruti of every month. See Bapa's smile through the years."),
     'about/': ("About Bapa's Diary",
-               'Daily darshan of Pramukh Swami Maharaj and Mahant Swami Maharaj through the years.'),
+               'Why Bapa\'s Diary was made, with love and thanks to BAPS.'),
 }
-DEFAULT = (NAME, 'Daily darshan of Pramukh Swami Maharaj and Mahant Swami Maharaj through the years.')
+DEFAULT = (NAME, LINE)
 THEME = '#42101c'
 
 
