@@ -628,6 +628,7 @@ def clean_caption(c):
     if len(parts) == 2 and len(parts[0].split()) >= 2:
         c = parts[0]
     return c
+ROUTINE = re.compile(r'(?i)\b(puja|tilak|mala|discourse|assembly|meditation|reads?|listens|light moment|greets|welcome|darshan)\b')
 NOT_FESTIVAL = re.compile(r'^\(?fast\)?$|^smart$|vruddhi|kshay|shraddh|\b(sud|vad)\b', re.I)   # a note that only repeats a tithi is not a festival
 
 
@@ -659,7 +660,8 @@ def pick_month(photos, aspect):
     or the same caption on another day loses; a photo whose crop would cut Bapa's head is passed over."""
     import make
     cands = {int(k): v for k, v in photos.get('cands', {}).items()}
-    nice = lambda x: x.get('special') and x['s_act'] >= 2 and x.get('subject') and not x.get('unsure')
+    nice = lambda x: (x.get('special') and x['s_act'] >= 2 and x.get('subject') and not x.get('unsure')
+                      and not make.EVERYDAY.search(x.get('caption') or '') and not ROUTINE.search(x.get('caption') or '') and not make.GUEST.search(x.get('caption') or ''))
     order = sorted(cands, key=lambda d: (-max([x['s_act'] for x in cands[d] if nice(x)] or [-9]), d))
     chosen, used = {}, set()
     for d in order:
