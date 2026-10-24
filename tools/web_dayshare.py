@@ -212,7 +212,8 @@ def main():
         try:
             if a.local:
                 return key, Image.open(os.path.join(a.local, key)).convert('RGB')
-            with urllib.request.urlopen(a.photos_url + 's/' + key, timeout=30) as r:
+            req = urllib.request.Request(a.photos_url + 's/' + key, headers={'User-Agent': 'bapas-diary-deploy'})
+            with urllib.request.urlopen(req, timeout=30) as r:
                 return key, Image.open(io.BytesIO(r.read())).convert('RGB')
         except Exception as e:
             print('photo missing:', key, e)
