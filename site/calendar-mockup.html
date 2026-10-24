@@ -20,19 +20,19 @@ header{padding-block:18px 6px;padding-left:max(16px,env(safe-area-inset-left,0px
 .mtitle span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:clamp(34px,6.2vh,58px);font-weight:500;line-height:1;
   background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));-webkit-background-clip:text;background-clip:text;color:transparent;transition:opacity .7s ease, transform .7s ease;white-space:nowrap}
 .mtitle span.out{opacity:0;transform:translateY(8px)}
-.where{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:4px 0;min-height:30px;transition:opacity .5s;font-size:clamp(14px,2vh,18px)}
-.where .lead{font-style:italic;color:var(--muted);margin-right:10px}
-.stay{display:inline-flex;align-items:baseline;gap:6px;padding:3px 11px;border-radius:14px;border:1px solid rgba(206,152,64,.45);color:var(--ivory);transition:background .25s,color .25s,border-color .25s}
-.stay small{font-family:var(--caps);font-size:10px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+.where{display:none;justify-content:center;align-items:center;flex-wrap:wrap;gap:6px 0;min-height:44px;margin-top:4px;transition:opacity .5s;font-size:clamp(19px,2.9vh,27px)}
+.where .lead{font-style:italic;color:var(--ivory-2);margin-right:12px}
+.stay{display:inline-flex;align-items:baseline;gap:9px;padding:5px 16px 6px;border-radius:24px;border:1.5px solid var(--gold-lo);background:rgba(206,152,64,.12);color:var(--gold-hi);font-weight:600;transition:background .25s,color .25s,border-color .25s}
+.stay small{font-family:var(--caps);font-size:clamp(10px,1.4vh,12px);font-weight:400;letter-spacing:.12em;color:var(--ivory-2);text-transform:uppercase}
 .stay.on{background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--maroon-deep);border-color:transparent}
 .stay.on small{color:var(--maroon)}
-.hop{width:22px;height:1px;background:rgba(206,152,64,.6);position:relative;margin:0 2px}
+.hop{width:34px;height:1px;background:rgba(206,152,64,.6);position:relative;margin:0 2px}
 .hop:after{content:'';position:absolute;right:-1px;top:-3px;border:3.5px solid transparent;border-left-color:rgba(206,152,64,.8);border-right:0}
 .track{flex:1;min-height:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;cursor:grab;position:relative;outline:none}
 .track::-webkit-scrollbar{display:none}
 .track.drag{cursor:grabbing}
 .ribbon{height:100%;display:flex;align-items:stretch;gap:clamp(28px,4vw,64px);padding-inline:max(16px,30vw);padding-block:4px 10px;width:max-content}
-.month{--g:clamp(5px,.9vh,10px);height:100%;width:calc(7 * var(--cw) + 6 * var(--g));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:26px repeat(5,minmax(0,1fr));gap:var(--g);transition:opacity .25s linear,grid-template-columns .45s cubic-bezier(.3,.7,.2,1),grid-template-rows .45s cubic-bezier(.3,.7,.2,1)}
+.month{--g:clamp(5px,.9vh,10px);height:100%;width:calc(7 * var(--cw) + 6 * var(--g));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:var(--jh) 26px repeat(5,minmax(0,1fr));gap:var(--g);transition:opacity .25s linear,grid-template-columns .45s cubic-bezier(.3,.7,.2,1),grid-template-rows .45s cubic-bezier(.3,.7,.2,1)}
 .wkd{font-family:var(--caps);font-size:clamp(12px,1.7vh,15px);font-weight:600;letter-spacing:.22em;color:var(--muted);text-align:center;align-self:end;text-transform:uppercase}
 .empty{min-width:0;border:1px dashed rgba(234,223,200,.13);border-radius:3px}
 .card{position:relative;min-height:0;min-width:0;text-decoration:none;background:linear-gradient(170deg,var(--ivory),var(--ivory-2));border-radius:3px;padding:4px 4px 0;display:flex;flex-direction:column;color:var(--ink);
@@ -68,6 +68,19 @@ footer{padding-block:6px 14px;padding-left:max(16px,env(safe-area-inset-left,0px
 .yr.on{color:var(--gold-hi)}
 .yr span{display:none}
 .yr.label span,.yr.has span{display:block}
+.month{--jh:clamp(46px,6.8vh,64px)}
+/* journey band: where Bapa was, as a timeline running along the top of each month */
+.journey{grid-area:1/1/2/-1;display:flex;min-width:0}
+.seg{position:relative;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;padding:0 6px 14px;text-align:center}
+.seg:before{content:'';position:absolute;left:0;right:0;bottom:6px;height:2px;background:linear-gradient(90deg,var(--gold-lo),var(--gold-hi),var(--gold-lo));border-radius:2px;transition:height .25s,bottom .25s,box-shadow .25s}
+.seg:after{content:'';position:absolute;left:-6px;bottom:1px;width:12px;height:12px;border-radius:50%;background:var(--gold-hi);box-shadow:0 0 0 3px var(--maroon-deep),0 0 10px rgba(255,214,120,.6)}
+.seg .lab{position:sticky;left:20px;right:20px;align-self:center;display:flex;flex-direction:column;align-items:center;max-width:100%;min-width:0}
+.seg .pn{max-width:100%;font-size:clamp(17px,2.7vh,25px);font-weight:600;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));-webkit-background-clip:text;background-clip:text;color:transparent;transition:filter .25s}
+.seg .pd{font-family:var(--caps);font-size:clamp(8.5px,1.2vh,11px);letter-spacing:.14em;text-transform:uppercase;color:var(--ivory-2);white-space:nowrap;overflow:hidden;max-width:100%;margin-top:2px}
+.seg.unk:before{background:repeating-linear-gradient(90deg,rgba(206,152,64,.45) 0 5px,transparent 5px 10px);height:1px;bottom:7px}
+.seg.unk:after{display:none}
+.seg.on:before{height:4px;bottom:5px;box-shadow:0 0 12px rgba(255,214,120,.7)}
+.seg.on .pn{filter:drop-shadow(0 0 8px rgba(255,214,120,.55))}
 .hint{text-align:center;font-family:var(--caps);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-top:4px}
 @media (prefers-reduced-motion:reduce){.mtitle span,.month{transition:none}}
 </style>
@@ -100,7 +113,7 @@ const monthEls=[], cards=[];
 
 function sizeCols(){
   const h=track.clientHeight-14, g=Math.max(5,Math.min(10,innerHeight*.009));
-  const rh=(h-22-5*g)/5; const cw=Math.round(rh*1.08);
+  const jh=Math.max(46,Math.min(64,innerHeight*.068)); const rh=(h-26-jh-6*g)/5; const cw=Math.round(rh*1.08);
   document.documentElement.style.setProperty('--cw',cw+'px');
 }
 
@@ -119,7 +132,16 @@ keys.forEach((k,mi)=>{
   const first=new Date(y,m-1,1).getDay();
   const st=stays(M.days); M.stays=st.out;
   const mo=el('div','month'); mo.dataset.k=k;
-  WD.forEach((w,c)=>{const x=el('div','wkd',w);x.style.gridArea=`1/${c+1}`;mo.appendChild(x)});
+  const jr=el('div','journey'), mn=MONTHS[m-1].slice(0,3), segs=[];
+  st.pl.forEach((p,i)=>{const l=segs[segs.length-1]; if(l&&l.p===p) l.n++; else segs.push({p,from:i+1,n:1})});
+  segs.forEach(s=>{const to=s.from+s.n-1, x=el('div','seg'+(s.p?'':' unk'));
+    x.style.flex=`${s.n} 1 0`; x.dataset.p=s.p||'';
+    if(s.p){x.title=`Bapa was in ${s.p}, ${s.from}${s.n>1?' to '+to:''} ${MONTHS[m-1]}`;
+      x.innerHTML=`<span class="lab"><span class="pn">${esc(s.p)}</span><span class="pd">${s.n>1?s.from+' to '+to:s.from} ${mn}</span></span>`}
+    jr.appendChild(x)});
+  mo.appendChild(jr);
+  WD.forEach((w,c)=>{const x=el('div','wkd',w);x.style.gridArea=`2/${c+1}`;mo.appendChild(x)});
+
   const grid=[...Array(35)].map(()=>null);
   M.days.forEach((d,i)=>{let p=first+d.d-1, wrapped=false; if(p>=35){p-=35;wrapped=true}
     grid[p]={...d,wrapped,pl:st.pl[i],newpl:M.stays.length>1&&st.pl[i]&&st.pl[i]!==(i?st.pl[i-1]:null)}});
@@ -139,7 +161,6 @@ keys.forEach((k,mi)=>{
         win.appendChild(el('div','bind',esc(d.ind)));
       }
       if(d.wrapped) win.appendChild(el('div','wrapmark','31ST'));
-      if(d.newpl) win.appendChild(el('div','pin',esc(d.pl)));
       const f=[...d.fest,...d.notes.filter(n=>!/^(Fast|Sud|Vad) ?\w*$/.test(n))];
       if(f.length) win.appendChild(el('div','fest',esc(f.join(' · '))));
       b.appendChild(win);
@@ -149,7 +170,7 @@ keys.forEach((k,mi)=>{
       b.addEventListener('focus',()=>grow(mo,r,c,d.pl));
       b._row=r; cards.push(b);
     }
-    b.style.gridArea=`${r+2}/${c+1}`; mo.appendChild(b);
+    b.style.gridArea=`${r+3}/${c+1}`; mo.appendChild(b);
   }
   mo.addEventListener('mouseleave',()=>grow(mo,-1,-1,null));
   ribbon.appendChild(mo); monthEls.push(mo);
@@ -157,7 +178,7 @@ keys.forEach((k,mi)=>{
 
 /* hover: the day under the mouse glows gold (CSS) and its stay lights up */
 function grow(mo,r,c,pl){
-  where.querySelectorAll('.stay').forEach(s=>s.classList.toggle('on',pl!=null&&s.dataset.p===pl));
+  mo.querySelectorAll('.seg').forEach(s=>s.classList.toggle('on',pl!=null&&s.dataset.p===pl));
 }
 
 /* year rail 1999 to 2026 */
