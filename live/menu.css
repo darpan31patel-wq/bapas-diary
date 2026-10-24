@@ -1,9 +1,10 @@
 /* The menu at the top of every bapas-diary.com page, shared so it sits in exactly the same place on each one
    (Darpan, 24 Oct 2026: "keep them in position, but just fade them out gently"). Use it as
      <link rel="stylesheet" href="/menu.css">
-     <nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a href="/search/">Search</a>
-       <a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/calendar/">Calendar</a>
+     <nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a href="/calendar/">Calendar</a>
+       <a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a>
        <a href="/about/">About</a></nav>
+   (the deploy puts the tabs in this order on every page anyway: tools/site_menu.py)
    with class="on" aria-current="page" on the page's own tab, as the very first thing in <body>, and 46px of
    room left at the top of the page under it. It scrolls away with the page; add class "stay" to keep it pinned (pages that do not scroll, like Travels). */
 .site-menu {

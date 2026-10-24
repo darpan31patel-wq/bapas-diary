@@ -6,7 +6,7 @@ name: website-deploy
 on:
   push:
     branches: ['claude/**']
-    paths: ['live/**', 'site/search.html', 'tools/build_search.py', '.github/workflows/website-deploy.yml']
+    paths: ['live/**', 'site/search.html', 'tools/build_search.py', 'tools/site_menu.py', '.github/workflows/website-deploy.yml']
 concurrency: website-deploy
 jobs:
   deploy:
@@ -41,6 +41,7 @@ jobs:
           sqlite3 bapas.db 'SELECT count(*) FROM calendar'
           # opens on 1999 while only 1999 photos are copied to R2 (site/photo-years.txt)
           python3 tools/build_search.py --db bapas.db --out out/search --tags tags.json --start-year 1999
+          python3 tools/site_menu.py out   # every page's tabs in the same order
           du -sh out/*
           if grep -rli 'telegram\|t\.me/' out --include='*.html'; then echo 'Telegram found: not deploying'; exit 1; fi   # never on the public site
       - name: Deploy to Pages
