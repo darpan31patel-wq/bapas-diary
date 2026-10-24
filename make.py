@@ -612,24 +612,87 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
     return picked
 
 
+FILL_KEEP = .85   # an action shot that can't simply fill its frame is zoomed in until only this much of it is left across and down, so what Bapa does stays in
+
+
+def trim_bars(im, face):
+    """The photo without the flat black bars a video still or a channel's frame leaves round it, and his face moved to match."""
+    g = np.asarray(im.convert('L').resize((max(1, im.width // 4), max(1, im.height // 4))), dtype=float)
+    def bar(a):
+        n = 0
+        for r in a:
+            if r.mean() > 30 or r.std() > 14:
+                break
+            n += 1
+        return n * 4
+    t, b, l, r = bar(g), bar(g[::-1]), bar(g.T), bar(g.T[::-1])
+    if t + b > im.height * .5 or l + r > im.width * .5 or not (t or b or l or r):
+        return im, face
+    return im.crop((l, t, im.width - r, im.height - b)), (face and (face[0] - l, face[1] - t, face[2], face[3]))
+
+
+def any_face(im):
+    """The biggest face anyone has in the photo, to keep in view when Bapa himself wasn't recognised."""
+    small = im.copy(); small.thumbnail((1280, 1280))
+    k = im.width / small.width
+    bgr = cv2.cvtColor(np.array(small), cv2.COLOR_RGB2BGR)
+    with FACE_LOCK:
+        DETECT.setInputSize((bgr.shape[1], bgr.shape[0]))
+        faces = DETECT.detect(bgr)[1]
+    if faces is None or not len(faces):
+        return None
+    f = max(faces, key=lambda f: f[2] * f[3])
+    return tuple(float(v) * k for v in f[:4]) if f[3] >= small.height * .06 else None
+
+
+def fill(im, face, w, h, at=.38, keep=FILL_KEEP, action=True):
+    """The photo zoomed in to fill a w:h frame (Darpan, 24 Oct 2026: no blurred bands of dead space), but never so far
+    that it loses more than 1 - keep across or down, or any of his head (turban included); whatever gap is left
+    is filled with the photo's own colours, softened. An action shot keeps everything below his head it can (his
+    hands and what he holds are lower in the photo), a close portrait only needs his head."""
+    iw, ih = im.size
+    cw, ch = (ih * w / h, ih) if iw / ih > w / h else (iw, iw * h / w)   # the window that fills the frame
+    if cw < keep * iw:
+        cw = keep * iw; ch = cw * h / w
+    if ch < keep * ih:
+        ch = keep * ih; cw = ch * w / h
+    if face:
+        fx, fy, fw, fh = face
+        head = (fx - .6 * fw, fy - .9 * fh, fx + 1.6 * fw, fy + 1.4 * fh) if action else (fx - .35 * fw, fy - .6 * fh, fx + 1.35 * fw, fy + 1.15 * fh)
+        grow = max(1, (head[2] - head[0]) / cw / .96, (head[3] - head[1]) / ch / .96)
+        cw, ch = cw * grow, ch * grow
+        x0, y0 = fx + fw / 2 - cw / 2, (head[1] - ch * .06) if action else (fy + fh / 2 - ch * at)
+        y0 = max(y0, head[3] - ch); y0 = min(y0, head[1])
+        y0 = max(y0, head[1] - ch * .14)
+        x0 = max(x0, head[2] - cw); x0 = min(x0, head[0])
+    else:
+        x0, y0 = (iw - cw) / 2, (ih - ch) * .3   # no face: cut more from the foot than the top, where heads are
+    x0 = min(max(0, x0), iw - cw) if cw <= iw else (iw - cw) / 2
+    y0 = min(max(0, y0), ih - ch) if ch <= ih else (ih - ch) / 2
+    k = w / cw
+    out = im.resize((w, h), Image.LANCZOS).filter(ImageFilter.GaussianBlur(14))
+    out = Image.blend(out, Image.new('RGB', (w, h), MAROON_OUT), .3)
+    sx, sy, ex, ey = max(0, x0), max(0, y0), min(iw, x0 + cw), min(ih, y0 + ch)
+    part = im.crop((round(sx), round(sy), round(ex), round(ey))).resize((max(1, round((ex - sx) * k)), max(1, round((ey - sy) * k))), Image.LANCZOS)
+    out.paste(part, (round((sx - x0) * k), round((sy - y0) * k)))
+    return out
+
+
 def crop_to(im, face, w, h, mode='frame', at=.38):
     """A w:h window on the photo. 'frame': fills the frame around Bapa (face `at` of the way down).
     'close': a tight darshan, his head and shoulders filling the frame. 'whole', or no recognised face:
-    the entire photo, softened into its own colours at the edges. His whole head stays in view in every mode."""
+    the photo zoomed in as far as it can go without losing what he is doing (fill). His whole head stays in view in every mode."""
+    im, face = trim_bars(im, face)
     iw, ih = im.size
     if not face or mode == 'whole':
-        fill = im.resize((w, h), Image.LANCZOS).filter(ImageFilter.GaussianBlur(14))
-        fill = Image.blend(fill, Image.new('RGB', (w, h), MAROON_OUT), .3)
-        whole = im.copy(); whole.thumbnail((w, h), Image.LANCZOS)
-        fill.paste(whole, ((w - whole.width) // 2, (h - whole.height) // 2))
-        return fill
+        return fill(im, face or any_face(im), w, h, at)
     fx, fy, fw, fh = face
     cw, ch = (ih * w / h, ih) if iw / ih > w / h else (iw, iw * h / w)
     if mode == 'close':   # the face about 30% of the window's height, never bigger than the photo allows
         ch = min(ch, fh / (.38 if w > h else .30)); cw = min(cw, ch * w / h); ch = cw * h / w   # a wide frame is cropped tighter
     head = (fx - .35 * fw, fy - .5 * fh, fx + 1.35 * fw, fy + 1.4 * fh)    # top of the head (the detector's box starts at the brow) down to the chin and neck
-    if head[3] - head[1] > ch * .98 or head[2] - head[0] > cw * .98:   # a wide window on a close portrait: show the whole photo
-        return crop_to(im, None, w, h)
+    if head[3] - head[1] > ch * .98 or head[2] - head[0] > cw * .98:   # a wide window on a close portrait: zoom out only as far as his head needs
+        return fill(im, face, w, h, at, keep=0, action=False)
     x0, y0 = fx + fw / 2 - cw / 2, fy + fh / 2 - ch * ((.42 if h >= w else .36) if mode == 'close' else at)   # less dead space above his head in a wide frame
     y0 = max(y0, head[3] - ch); y0 = min(y0, head[1])                        # never slice through the head
     y0 = max(y0, head[1] - ch * (.07 if mode == 'close' else .14))            # and not much dead space above it (Darpan, 18 Oct 2026)
