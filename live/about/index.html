@@ -24,11 +24,11 @@ body { margin: 0; color: var(--ink); font: 400 18.5px/1.75 var(--serif); backgro
   radial-gradient(ellipse 60% 40% at 50% 0%, rgba(255, 196, 110, .18), transparent 70%),
   radial-gradient(ellipse 110% 70% at 50% 15%, var(--maroon-in), var(--maroon-out)); }
 .wrap { max-width: 720px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-.gurus { display: flex; justify-content: center; gap: clamp(18px, 5vw, 40px); margin: 0 auto 26px; }
+.gurus { display: flex; justify-content: center; gap: clamp(14px, 4vw, 34px); margin: 0 auto 26px; }
 .gurus figure { margin: 0; text-align: center; }
-.ring { width: clamp(132px, 34vw, 180px); aspect-ratio: 1; border-radius: 50%; padding: 5px;
-  background: linear-gradient(#ffe296, #a8742a); box-shadow: 0 0 0 8px rgba(217, 164, 65, .12), 0 14px 40px rgba(0, 0, 0, .55); }
-.ring img { display: block; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.ring { width: clamp(150px, 40vw, 240px); aspect-ratio: 4 / 5; border-radius: 999px 999px 16px 16px; padding: 5px;
+  background: linear-gradient(#ffe296, #a8742a); box-shadow: 0 0 0 8px rgba(217, 164, 65, .12), 0 18px 44px rgba(0, 0, 0, .55); }
+.ring img { display: block; width: 100%; height: 100%; border-radius: 999px 999px 11px 11px; object-fit: cover; }
 figcaption { margin-top: 14px; font: 700 10px/1.5 var(--sans); letter-spacing: .2em; text-transform: uppercase; color: var(--gold-soft); text-wrap: balance; }
 h1 { font: 600 clamp(32px, 5.4vw, 54px)/1.15 var(--title); letter-spacing: .02em; margin: 0 0 34px; text-wrap: balance; text-align: center;
   background: linear-gradient(#ffe296, #ce9840); -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -70,8 +70,8 @@ a { color: var(--maroon); }
 <header class="wrap">
   <p class="jay">Jay Swaminarayan</p>
   <div class="gurus">
-    <figure><div class="ring"><img src="/about/img/psm.jpg" alt="Pramukh Swami Maharaj smiling" style="object-position: 50% 22%"></div><figcaption>Pramukh Swami Maharaj</figcaption></figure>
-    <figure><div class="ring"><img src="/about/img/msm.jpg" alt="Mahant Swami Maharaj smiling" style="object-position: 50% 20%"></div><figcaption>Mahant Swami Maharaj</figcaption></figure>
+    <figure><div class="ring"><img src="/about/img/psm.jpg" alt="Pramukh Swami Maharaj"></div><figcaption>Pramukh Swami Maharaj</figcaption></figure>
+    <figure><div class="ring"><img src="/about/img/msm.jpg" alt="Mahant Swami Maharaj"></div><figcaption>Mahant Swami Maharaj</figcaption></figure>
   </div>
   <h1>About Bapa's Diary</h1>
 </header>
