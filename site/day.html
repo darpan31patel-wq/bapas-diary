@@ -1,4 +1,5 @@
 <meta charset="utf-8">
+<link rel="stylesheet" href="{{MENU_CSS}}">
 <title>Bapa's Diary</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
@@ -27,18 +28,12 @@ button{font:inherit;color:inherit}
 .page{min-height:100vh;background:
   radial-gradient(ellipse 60% 30% at 50% 0%,rgba(255,196,110,.16),transparent 70%),
   radial-gradient(ellipse 90% 70% at 50% 30%,var(--maroon-in),var(--maroon-out)) no-repeat;
-  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 48px}
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:calc(46px + 14px) 48px}
 .wrap{max-width:1500px;margin:0 auto}
 .caps{font:700 11px/1.2 var(--sans);letter-spacing:.2em;text-transform:uppercase}
 
-/* menu */
-.menu{display:flex;justify-content:center;flex-wrap:wrap;gap:4px 18px;padding-bottom:12px;border-bottom:1px solid rgba(217,164,65,.18)}
-.menu a,.menu span{font:700 10.5px/1 var(--sans);letter-spacing:.2em;text-transform:uppercase;text-decoration:none;color:var(--gold-soft);padding:8px 2px}
-.menu a[aria-current="page"]{color:var(--gold-hi);box-shadow:inset 0 -2px var(--gold-soft)}
-.menu span{opacity:.4;cursor:default}
-
 /* date bar */
-.datebar{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:8px;margin-top:16px}
+.datebar{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:8px}
 .pill{font:700 11px/1 var(--sans);letter-spacing:.14em;text-transform:uppercase;background:rgba(0,0,0,.22);color:var(--gold-hi);border:1px solid rgba(217,164,65,.45);border-radius:999px;padding:10px 16px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
 .pill:hover{background:rgba(217,164,65,.14)}
 .pill.solid{background:var(--gold-soft);color:var(--maroon-out);border-color:var(--gold-soft)}
@@ -139,14 +134,8 @@ footer{text-align:center;margin-top:52px;font:600 19px var(--serif);color:var(--
 @media (prefers-reduced-motion:reduce){.photo img,.cap{transition:none}.viewer.play .vframe img{animation:none}}
 </style>
 
+<nav class="site-menu" aria-label="Website tabs"><a href="/" class="on" aria-current="page">Today</a><a href="{{SEARCH}}">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/about/">About</a></nav>
 <div class="page"><div class="wrap">
-  <nav class="menu" aria-label="Pages">
-    <a href="./" aria-current="page">Today</a>
-    <a href="{{SEARCH}}" id="menu-search" target="_top">Search</a>
-    <a href="/travels/" target="_top">Travels</a>
-    <a href="/through-the-years/" target="_top">Through the years</a>
-    <a href="/about/" target="_top">About</a>
-  </nav>
 
   <div class="datebar">
     <button class="pill" id="prev" type="button"></button>

@@ -118,12 +118,13 @@ def page(site, photos, search):
     for k, f in FONTS.items():
         shutil.copy(os.path.join(HERE, 'fonts', f), os.path.join(site, 'fonts', f))
         body = body.replace('{{FONT_%s}}' % k, '/fonts/' + f)
-    body = body.replace('{{DATA}}', '/data/day/').replace('{{PHOTOS}}', photos).replace('{{SEARCH}}', search)
+    body = body.replace('{{MENU_CSS}}', '/menu.css').replace('{{DATA}}', '/data/day/').replace('{{PHOTOS}}', photos).replace('{{SEARCH}}', search)
+    head, body = body.split('</style>\n', 1)   # title, menu link and styles go in the head
     with open(os.path.join(site, 'index.html'), 'w', encoding='utf-8') as f:
         f.write('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
                 '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
                 '<meta name="description" content="Bapa on this day, every year: darshan photos from 1999 to today, with the BAPS calendar.">\n'
-                '</head>\n<body>\n' + body + '\n</body>\n</html>\n')
+                + head + '</style>\n</head>\n<body>\n' + body.lstrip() + '\n</body>\n</html>\n')
 
 
 def main():
