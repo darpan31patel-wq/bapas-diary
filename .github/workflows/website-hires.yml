@@ -1,0 +1,60 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, fetches nothing
+# from baps.org. Every few hours it looks at the Drive archive's check.txt and copies each year the archive has
+# finished into R2 at the highest resolution there is (tools/hires_photos.py), then rebuilds the website so the
+# year shows. It starts by itself, carries on where it stopped, and keeps 04:30 to 07:30 UTC free.
+# This file has to sit on main, because GitHub only runs timed workflows from there; everything it runs (the copy
+# script and the website build) comes from the website branch claude/project-thread-eawr12.
+name: website-hires
+on:
+  schedule:
+    - cron: '40 8,14,20 * * *'   # 08:40, 14:40, 20:40 UTC; one run at a time, each up to about 5.5 hours
+    - cron: '40 1 * * *'         # 01:40 UTC; stops itself at 04:30
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: website-photos   # never at the same time as the older baps.org copy
+jobs:
+  hires:
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    outputs:
+      finished: ${{ steps.copy.outputs.finished }}
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BUCKET: bapas-diary-photos
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/project-thread-eawr12
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Get ready (database, the Drive archive's check.txt, Drive and R2 access)
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+        run: |
+          pip install -q pillow
+          gh release download database -p bapas.db.gz -p check.txt && gunzip bapas.db.gz
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          mkdir -p ~/.config/rclone && python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
+          id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
+          { echo "AWS_ACCESS_KEY_ID=$id"; echo "AWS_SECRET_ACCESS_KEY=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1)"
+            echo "AWS_DEFAULT_REGION=auto"; echo "R2=https://$CF_ACCOUNT.r2.cloudflarestorage.com"; } >> "$GITHUB_ENV"
+      - name: Highest resolution photos into R2
+        id: copy
+        run: |
+          aws s3 cp "s3://$BUCKET/years.txt" done.txt --endpoint-url "$R2" || : > done.txt
+          aws s3 ls "s3://$BUCKET/o/" --recursive --endpoint-url "$R2" | awk '{ $1=$2=$3=""; sub(/^ +/, ""); print }' > have.txt || true
+          echo "$(wc -l < have.txt) photos already in R2 at full size; years finished: $(tr '\n' ' ' < done.txt)"
+          python3 tools/hires_photos.py --db bapas.db --check check.txt --done done.txt --have have.txt \
+            --send 'aws s3 sync "$OUT" "s3://$BUCKET/" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000, immutable" --content-type image/jpeg' \
+            --year-done 'echo "$YEAR" >> done.txt && sort -un done.txt -o done.txt && aws s3 cp done.txt "s3://$BUCKET/years.txt" --endpoint-url "$R2" --content-type text/plain --cache-control "max-age=300" && echo finished=yes >> "$GITHUB_OUTPUT"'
+  # a year was finished: rebuild the website (the same build as every deploy) so it shows
+  site:
+    needs: hires
+    if: needs.hires.outputs.finished == 'yes'
+    uses: darpan31patel-wq/bapas-diary/.github/workflows/website-deploy.yml@claude/project-thread-eawr12
+    secrets: inherit
