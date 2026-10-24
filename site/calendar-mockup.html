@@ -81,6 +81,15 @@ footer{padding-block:6px 14px;padding-left:max(16px,env(safe-area-inset-left,0px
 .seg.unk:after{display:none}
 .seg.on:before{height:4px;bottom:5px;box-shadow:0 0 12px rgba(255,214,120,.7)}
 .seg.on .pn{filter:drop-shadow(0 0 8px rgba(255,214,120,.55))}
+.ctrl{display:flex;justify-content:center;align-items:center;gap:14px;margin-top:2px}
+.play{display:inline-flex;align-items:center;gap:9px;border:0;cursor:pointer;padding:7px 16px 7px 8px;border-radius:22px;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--maroon-deep);font-family:var(--caps);font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;box-shadow:0 3px 12px rgba(0,0,0,.4)}
+.play:focus-visible,.spd button:focus-visible{outline:2px solid var(--gold-hi);outline-offset:3px}
+.play i{width:24px;height:24px;border-radius:50%;background:var(--maroon-deep);display:grid;place-items:center}
+.play svg{width:10px;height:10px;fill:var(--gold-hi)}
+.play.on{box-shadow:0 0 0 3px rgba(255,226,150,.25),0 0 18px rgba(255,214,120,.45)}
+.spd{display:inline-flex;border:1px solid rgba(206,152,64,.5);border-radius:18px;overflow:hidden}
+.spd button{border:0;background:none;color:var(--ivory-2);font-family:var(--caps);font-size:10px;letter-spacing:.16em;text-transform:uppercase;padding:7px 11px;cursor:pointer}
+.spd button[aria-pressed="true"]{background:rgba(206,152,64,.28);color:var(--gold-hi)}
 .hint{text-align:center;font-family:var(--caps);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-top:4px}
 @media (prefers-reduced-motion:reduce){.mtitle span,.month{transition:none}}
 </style>
@@ -96,7 +105,8 @@ footer{padding-block:6px 14px;padding-left:max(16px,env(safe-area-inset-left,0px
   </div>
   <footer>
     <div class="rail" id="rail"><div class="line"></div></div>
-    <div class="hint">Scroll or swipe sideways · tap a day to open its gallery</div>
+    <div class="ctrl"><button class="play" id="play" aria-pressed="false"></button><div class="spd" role="group" aria-label="Speed"><button data-s="22" aria-pressed="false">Slow</button><button data-s="40" aria-pressed="true">Gentle</button><button data-s="85" aria-pressed="false">Faster</button></div></div>
+    <div class="hint">Scroll or swipe sideways · tap a day to open its gallery · space bar plays</div>
   </footer>
 </div>
 
@@ -249,6 +259,28 @@ function fitAll(){
     im.style.objectPosition=`${dw-w>1?(ox/(dw-w)*100).toFixed(1):50}% ${dh-h>1?(oy/(dh-h)*100).toFixed(1):50}%`;
   });
 }
+/* play: glide slowly through the days; any touch, wheel or drag pauses it */
+const playBtn=document.getElementById('play'), PLAY_ICON='<svg viewBox="0 0 10 10"><path d="M2 1l7 4-7 4z"/></svg>', PAUSE_ICON='<svg viewBox="0 0 10 10"><path d="M1.5 1h2.5v8H1.5zM6 1h2.5v8H6z"/></svg>';
+let playing=false, speed=40, pos=0, lastT=0;
+function setPlay(on){
+  playing=on; playBtn.classList.toggle('on',on);
+  playBtn.innerHTML=`<i>${on?PAUSE_ICON:PLAY_ICON}</i>${on?'Pause':'Play'}`;
+  playBtn.setAttribute('aria-pressed',on);
+  if(on){ if(track.scrollLeft>=track.scrollWidth-track.clientWidth-2) track.scrollLeft=0; pos=track.scrollLeft; lastT=0; requestAnimationFrame(step)}
+}
+function step(t){
+  if(!playing)return;
+  if(lastT){pos+=speed*Math.min(.1,(t-lastT)/1000); track.scrollLeft=pos;
+    if(pos>=track.scrollWidth-track.clientWidth-1){setPlay(false);return}}
+  lastT=t; requestAnimationFrame(step);
+}
+playBtn.onclick=()=>setPlay(!playing);
+document.querySelectorAll('.spd button').forEach(b=>b.onclick=()=>{
+  speed=+b.dataset.s; document.querySelectorAll('.spd button').forEach(x=>x.setAttribute('aria-pressed',x===b)); if(!playing)setPlay(true)});
+['wheel','pointerdown','touchstart'].forEach(ev=>track.addEventListener(ev,()=>{if(playing)setPlay(false)},{passive:true}));
+addEventListener('keydown',e=>{if(e.code==='Space'&&!e.target.closest('button,a')){e.preventDefault();setPlay(!playing)}});
+setPlay(false);
+
 sizeCols(); fitAll(); addEventListener('resize',()=>{sizeCols();fitAll();kick()});
 requestAnimationFrame(()=>{track.scrollLeft=0;kick();});
 </script>
