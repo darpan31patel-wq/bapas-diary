@@ -36,7 +36,7 @@ jobs:
           curl -s https://rclone.org/install.sh | sudo bash >/dev/null
           mkdir -p ~/.config/rclone
           python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
-      - name: Make the folders first, so the five runs never make the same one twice
+      - name: Make the folders first, so the runs never make the same one twice
         run: |
           for d in "" photos photos/baps.org telegram; do rclone mkdir "$REMOTE/$d"; done
           seq 1999 2026 | while read -r y; do rclone mkdir "$REMOTE/photos/baps.org/$y"; done
@@ -50,10 +50,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:   # about 65,000 photos each
+        include:   # about 65,000 photos each (2026 split off 24 Oct: its full size originals are big)
           - { name: photos-a, only: baps, years: '2005,2008,2010,2016,2017,2021,2025' }
           - { name: photos-b, only: baps, years: '2000,2001,2007,2013,2014,2022,2024' }
-          - { name: photos-c, only: baps, years: '2002,2003,2004,2006,2011,2018,2020,2026' }
+          - { name: photos-c, only: baps, years: '2002,2003,2004,2006,2011,2018,2020' }
+          - { name: photos-e, only: baps, years: '2026' }   # 2026 has its own run: its originals are about 12 MB each
           - { name: photos-d, only: baps, years: '1999,2009,2012,2015,2019,2023' }
           - { name: telegram, only: telegram, years: '' }
     steps:
@@ -116,7 +117,7 @@ jobs:
       - name: Start the next round while anything is left
         run: |
           cat status/* 2>/dev/null || true
-          if [ "$(cat status/* 2>/dev/null | grep -c done)" -lt 5 ]; then
+          if [ "$(cat status/* 2>/dev/null | grep -c done)" -lt 6 ]; then
             gh workflow run drive.yml --ref main && echo "Next round started"
           else
             echo "Everything is in Drive"

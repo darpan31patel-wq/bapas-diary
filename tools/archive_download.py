@@ -50,7 +50,7 @@ def get(url, timeout=60, may_be_missing=False):
             break
         except urllib.error.HTTPError as e:
             if e.code in (403, 404) and may_be_missing:   # e.g. no original upload kept for this photo
-                return None, ''
+                return None, str(e.code)
             if e.code == 404:
                 return None, ''
             if e.code in (403, 429):
@@ -162,13 +162,13 @@ def baps_photos(db, root, gap, stop_at, years=None, notes=None):
     notes = notes or os.path.join(root, 'photos', 'missing.txt')
     p = Progress('baps.org photos', len(rows))
     full_ok = [True, 0, 0]   # still trying originals, originals found, originals missing
-    misses = 0
+    misses, skip, skipped = 0, None, 0   # photos in a row that wouldn't come; an album given up on for this run
     print(f'baps.org: {len(rows):,} photos, newest years first')
     for album, file, rel, year in rows:
         if stop_at and datetime.datetime.now() >= stop_at:
             print('  time to stop for tonight'); return False
         path = os.path.join(root, rel)
-        if there(path):
+        if there(path) or album == skip:
             p.tick(); continue
         body = None
         # FullSizeImages is the photographer's upload when baps.org kept it (only kept for 1999 and from 2022, up to 5472 px); WebImages is
@@ -190,14 +190,17 @@ def baps_photos(db, root, gap, stop_at, years=None, notes=None):
                     print('  baps.org has no full size originals for these, saving the web size')
         if body:
             save(path, body)
-            misses = 0
+            misses, skipped = 0, 0
         else:
             os.makedirs(os.path.dirname(notes), exist_ok=True)
             with open(notes, 'a') as f:
-                f.write(f'{album}/{file}\n')
+                f.write(f'{album}/{file}\t{kind}\n')
             misses += 1
-            if misses >= 30:   # thirty in a row is not missing photos, it is baps.org saying no for now
-                raise SlowDown('30 photos in a row refused by baps.org')
+            if misses >= 15:   # a whole album that won't come (24 Oct 2026: some 2023 USA albums): leave it, go on
+                print(f'  album {album} ({rel.split("/")[3]}): 15 photos in a row would not come ({kind}), left for now', flush=True)
+                skip, misses, skipped = album, 0, skipped + 1
+                if skipped >= 5:   # five albums in a row: that is baps.org saying no for now
+                    raise SlowDown('5 albums in a row refused by baps.org')
         p.tick(len(body or b''))
         time.sleep(gap)
     return True
@@ -207,7 +210,7 @@ def check(db, root):
     """check.txt: every photo and Telegram post the database knows, against what is saved in the folder."""
     missing = set()
     for path in glob.glob(os.path.join(root, 'photos', 'missing*.txt')):
-        missing |= set(open(path).read().split('\n'))
+        missing |= {l.split('\t')[0] for l in open(path).read().split('\n')}
     years, gone = {}, []
     for y, album, file, rel, src in db.execute('SELECT year, album, file, local_path, source FROM photos ORDER BY year'):
         c = years.setdefault(y, [0, 0, 0, 0])   # known, saved, refused by baps.org, still to fetch

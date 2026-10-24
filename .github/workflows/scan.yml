@@ -14,6 +14,9 @@ on:
       probe:
         description: 'Type yes to only test which photos have full size originals (fullsize-probe.json)'
         required: false
+      where:
+        description: 'With probe: only photos matching this, e.g. file LIKE ''%Robbinsville%'''
+        required: false
 
 permissions:
   contents: write
@@ -41,7 +44,7 @@ jobs:
       - name: Test which photos have full size originals
         if: inputs.probe == 'yes'
         run: |
-          python tools/fullsize_probe.py --db bapas.db --out fullsize-probe.json
+          python tools/fullsize_probe.py --db bapas.db --out fullsize-probe.json ${{ inputs.where && format('--where "{0}"', inputs.where) || '' }}
           gh release upload database fullsize-probe.json --clobber
       - name: Scan the albums (stops after 5 hours, the next night carries on)
         if: inputs.probe != 'yes'

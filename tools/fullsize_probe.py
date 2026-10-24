@@ -42,18 +42,19 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--db', required=True)
     ap.add_argument('--out', required=True)
+    ap.add_argument('--where', help="only these photos, e.g. \"file LIKE '%Robbinsville%'\" (24 Oct 2026: albums that won't come)")
     a = ap.parse_args()
     db = sqlite3.connect(a.db)
-    rows = []
-    for (y,) in db.execute('SELECT DISTINCT year FROM photos ORDER BY year'):
+    rows = db.execute(f'SELECT year, album, file FROM photos WHERE {a.where} ORDER BY random() LIMIT 30').fetchall() if a.where else []
+    for (y,) in [] if a.where else db.execute('SELECT DISTINCT year FROM photos ORDER BY year'):
         rows += db.execute('SELECT year, album, file FROM photos WHERE year = ? ORDER BY random() LIMIT 12', (y,)).fetchall()
     out = []
     for y, album, file in rows:
         stem, ext = os.path.splitext(file)
-        names = list(dict.fromkeys([stem + '.jpg', file, stem + '.JPG', stem + '.jpeg', stem + '.png']))
+        names = list(dict.fromkeys([stem + '.jpg', file, stem + '.JPG', stem + '.jpeg', stem + '.png', file.replace('_', ' ')]))
         r = {'year': y, 'album': album, 'file': file, 'tries': {}}
         for folder in FOLDERS:
-            for n in names if folder == 'FullSizeImages' else names[:1]:
+            for n in names if folder in ('FullSizeImages', 'WebImages') else names[:1]:
                 code, dims, length = fetch(SITE.format(album=album, size=folder, file=urllib.parse.quote(n)))
                 r['tries'][f'{folder}/{n}'] = [code, dims, length]
         out.append(r)
