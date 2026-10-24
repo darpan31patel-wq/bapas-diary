@@ -14,3 +14,4 @@ daily 2pm picture. A page goes in here only after Darpan's typed yes.
             tools/web_day.py from the pinned DAY_COMMIT on branch claude/project-thread-2nuqbl.
 
 Redeploy to pick up a new build from another thread: push any change here (e.g. this log). 24 Oct 00:00 UTC: faces-site.tgz with the About tab.
+24 Oct 10:31 UTC: new Through the years (close up framing, big day slider), Darpan typed go live.
