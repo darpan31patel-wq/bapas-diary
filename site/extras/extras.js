@@ -264,9 +264,45 @@
     }).observe(stage, { childList: true });
   }
 
+  // ---- text size, for older family members (Darpan typed yes, 24 Oct 2026) -------------------------------------------
+  // The whole page grows together (CSS zoom on the page). tools/web_extras.py also puts a one line script in the head
+  // that sets the size before the page is drawn, so it never jumps.
+  const SIZE = 'bapas-diary-text', SIZES = [['Normal', 1, 18], ['Large', 1.3, 24], ['Larger', 1.6, 30]];
+  const getSize = () => { try { return +localStorage.getItem(SIZE) || 1; } catch (e) { return 1; } };
+  function setSize(z) {
+    try { z === 1 ? localStorage.removeItem(SIZE) : localStorage.setItem(SIZE, z); } catch (e) {}
+    document.documentElement.style.zoom = z === 1 ? '' : z;
+    document.documentElement.style.setProperty('--bd-zoom', z);
+  }
+  function textSize() {
+    const nav = document.querySelector('nav.site-menu');
+    if (!nav || nav.querySelector('.bd-aa')) return;
+    const b = el('button', 'bd-aa', 'A<b>A</b>'); b.type = 'button'; b.setAttribute('aria-label', 'Text size'); b.setAttribute('aria-haspopup', 'dialog');
+    nav.append(b);
+    b.addEventListener('click', e => {
+      e.preventDefault();
+      const d = el('dialog', 'bd-sheet bd-size');
+      d.setAttribute('aria-label', 'Text size');
+      const now = getSize();
+      d.innerHTML = '<div class="bd-h">Text size</div><div class="bd-row">' +
+        SIZES.map(([name, z, px]) => `<button type="button" data-z="${z}" aria-pressed="${z === now}"><b style="font-size:${px}px">A</b>${name}</button>`).join('') +
+        '</div><button type="button" class="bd-x" data-z="0">Done</button>';
+      document.body.append(d);
+      d.addEventListener('close', () => d.remove());
+      d.addEventListener('click', ev => {
+        if (ev.target === d) return d.close();
+        const c = ev.target.closest('[data-z]'); if (!c) return;
+        if (+c.dataset.z) { setSize(+c.dataset.z); d.querySelectorAll('[data-z]').forEach(x => x.setAttribute('aria-pressed', x === c)); } else d.close();
+      });
+      d.showModal();
+    });
+  }
+  document.documentElement.style.setProperty('--bd-zoom', getSize());
+
   window.BapaDiary = { fav, shareDay, slideshow, photoOf, toast, niceDate, PHOTOS };
   const ready = () => {
     const path = location.pathname;
+    textSize();
     if (path.startsWith('/search')) onSearch();
     else if (path === '/' || path === '/index.html') onToday();
     sync();
