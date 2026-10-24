@@ -17,7 +17,7 @@ jobs:
       PROJECT: bapas-diary
       DOMAIN: bapas-diary.com
       DAY_COMMIT: b70e8d6027107e96bc14ce457e61143ab5c95e32   # claude/project-thread-2nuqbl, as Darpan approved it
-      CAL_COMMIT: eb3d71acda2d221f305625b761c37dabdde0d613   # claude/project-thread-69b2ir, as Darpan approved it
+      CAL_COMMIT: 5b85edc002d8a2f85922e00d6ffdc932882df298   # claude/project-thread-69b2ir, as Darpan approved it
     steps:
       - uses: actions/checkout@v4
       - name: Photo search (database from release database, photo tags from release website-mockup)
