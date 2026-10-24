@@ -6,7 +6,7 @@ name: website-deploy
 on:
   push:
     branches: ['claude/**']
-    paths: ['live/**', 'site/search.html', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'tools/build_search.py', 'tools/site_menu.py', '.github/workflows/website-deploy.yml']
+    paths: ['live/**', 'site/search.html', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'tools/web_dayshare.py', 'tools/build_search.py', 'tools/site_menu.py', '.github/workflows/website-deploy.yml']
   workflow_call:   # website-hires (on main) rebuilds the site when a year of full size photos is in R2
 concurrency: website-deploy
 jobs:
@@ -53,6 +53,9 @@ jobs:
           python3 tools/web_share.py --out out
           python3 tools/web_head.py --out out
           python3 tools/web_seo.py --out out   # 404 page (Darpan: yes not found page), robots.txt, sitemap.xml
+          # favourites, share a day and the TV slideshow (Darpan: 3 yes, 4 yes, 1 yes)
+          python3 tools/web_dayshare.py --db bapas.db --out out --tags tags.json --photo-years photo-years.txt
+          python3 tools/web_extras.py --out out
           du -sh out/*
           if grep -rli 'telegram\|t\.me/' out --include='*.html'; then echo 'Telegram found: not deploying'; exit 1; fi   # never on the public site
       - name: Deploy to Pages
@@ -79,6 +82,6 @@ jobs:
           api -X POST "$B" -d "{\"domain\":\"photos.$DOMAIN\",\"zoneId\":\"$ZONE\",\"enabled\":true,\"minTLS\":\"1.2\"}" | jq -c '{success, errors}'
           api "$B" | jq -c '[.result.domains[]? | {domain, status}]'
           sleep 20
-          for u in https://photos.$DOMAIN/s/ https://$PROJECT.pages.dev/search/ https://$PROJECT.pages.dev/travels/ https://$DOMAIN/ https://$DOMAIN/travels/ https://$DOMAIN/through-the-years/ https://$DOMAIN/calendar/ https://$DOMAIN/share.jpg https://$DOMAIN/manifest.webmanifest https://$DOMAIN/no-such-page; do
+          for u in https://photos.$DOMAIN/s/ https://$PROJECT.pages.dev/search/ https://$PROJECT.pages.dev/travels/ https://$DOMAIN/ https://$DOMAIN/travels/ https://$DOMAIN/through-the-years/ https://$DOMAIN/calendar/ https://$DOMAIN/share.jpg https://$DOMAIN/manifest.webmanifest https://$DOMAIN/no-such-page https://$DOMAIN/favourites/ https://$DOMAIN/day/10-24/ https://$DOMAIN/share/day/10-24.jpg; do
             echo "$u -> $(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "$u")"
           done

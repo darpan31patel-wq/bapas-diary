@@ -21,3 +21,4 @@ Redeploy to pick up a new build from another thread: push any change here (e.g. 
 24 Oct 13:38 UTC: new About page (both gurus, Jay Swaminarayan on top, Vachanamrut Gadhada I-3 block, centred), Darpan typed yes go live.
 24 Oct 21:50 UTC: share look (preview picture, icons, manifest) and the not found page, Darpan typed yes share look and yes not found page.
 24 Oct 21:55 UTC: search colours C, Day ribbons (Darpan: 2 C); share look needs Pillow on the runner.
+24 Oct 22:00 UTC: favourites, share a day, TV slideshow (Darpan: 3 yes, 4 yes, 1 yes on the coordinator's list).
