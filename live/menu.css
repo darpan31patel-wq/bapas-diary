@@ -1,0 +1,28 @@
+/* The menu at the top of every bapas-diary.com page, shared so it sits in exactly the same place on each one
+   (Darpan, 24 Oct 2026: "keep them in position, but just fade them out gently"). Use it as
+     <link rel="stylesheet" href="/menu.css">
+     <nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a href="/search/">Search</a>
+       <a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/about/">About</a></nav>
+   with class="on" aria-current="page" on the page's own tab, as the very first thing in <body>, and 46px of
+   room left at the top of the page under it. It scrolls away with the page; add class "stay" to keep it pinned (pages that do not scroll, like Travels). */
+.site-menu {
+  box-sizing: border-box; position: absolute; top: env(safe-area-inset-top, 0px); left: 0; right: 0; z-index: 50; height: 46px;
+  display: flex; justify-content: safe center; align-items: flex-end; flex-wrap: nowrap; gap: 0 clamp(12px, 3vw, 26px);
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) 6px max(16px, env(safe-area-inset-left, 0px));
+  overflow-x: auto; scrollbar-width: none;
+  view-transition-name: site-menu;   /* stays still while the page under it fades */
+}
+/* pinned, with a soft dark fade behind it so it stays readable over the page */
+.site-menu.stay { position: fixed; background: linear-gradient(rgba(10, 8, 20, .85), rgba(10, 8, 20, 0)); }
+.site-menu::-webkit-scrollbar { display: none; }
+.site-menu a {
+  box-sizing: border-box; flex: none; font: 700 11px/1 Arimo, Arial, Helvetica, sans-serif; letter-spacing: .26em; text-transform: uppercase;
+  color: #d9a441; text-decoration: none; padding: 6px 0 5px; border-bottom: 1px solid transparent; white-space: nowrap;
+}
+.site-menu a:hover, .site-menu a.on { color: #ffe296; border-bottom-color: #d9a441; }
+@media (max-width: 600px) { .site-menu { gap: 0 11px; } .site-menu a { font-size: 10px; letter-spacing: .12em; } }
+.site-menu a:focus-visible { outline: 2px solid #ffe296; outline-offset: 3px; }
+/* moving between pages: a gentle fade (browsers without this simply switch pages) */
+@view-transition { navigation: auto; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .45s; animation-timing-function: ease; }
+@media (prefers-reduced-motion: reduce) { ::view-transition-old(root), ::view-transition-new(root) { animation: none; } }
