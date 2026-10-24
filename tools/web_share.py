@@ -6,7 +6,8 @@ Garamond title, the photo as an ivory polaroid):
     python3 tools/web_share.py --out live
 
   live/share.jpg              1200 x 630, the preview card WhatsApp and others show when a link is sent
-  live/icon-512.png, icon-192.png, apple-touch-icon.png (180), favicon-32.png   the site icon
+  live/icon-512.png, icon-192.png, apple-touch-icon.png (180), favicon-32.png   the site icon (Bapa's Diary in a gold ring;
+                              the tab icon is the plain gold B, as words are too small there)
 The photos are site/art/preview-psm.jpg (1999, 3208/TP_1999_117_36.jpg) and preview-msm.jpg (28 Sep 2016).
 """
 import argparse, os
@@ -258,13 +259,14 @@ def icon(size, style='b'):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--out', default=os.path.join(HERE, 'live'))
-    ap.add_argument('--icon', choices=ICONS, default='b')
+    ap.add_argument('--icon', choices=ICONS, default='ring-words')   # Darpan chose icon 5, 24 Oct 2026
     ap.add_argument('--all-icons', action='store_true', help='also save icon-STYLE.png of every style, to choose from')
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     share_card(a.out)
     for name, size in (('icon-512.png', 512), ('icon-192.png', 192), ('apple-touch-icon.png', 180), ('favicon-32.png', 32)):
-        icon(size, a.icon).save(os.path.join(a.out, name), optimize=True)
+        style = 'b' if size < 64 and a.icon in ('ring-words', 'seal') else a.icon   # words are unreadable in a tab
+        icon(size, style).save(os.path.join(a.out, name), optimize=True)
     if a.all_icons:
         for style in ICONS:
             icon(512, style).save(os.path.join(a.out, f'icon-{style}.png'), optimize=True)
