@@ -7,47 +7,96 @@
 <meta name="description" content="Bapa's Diary: daily darshan of Pramukh Swami Maharaj and Mahant Swami Maharaj through the years.">
 <link rel="stylesheet" href="/menu.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Arimo:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Lora:ital,wght@0,400;0,500;1,400&family=Arimo:wght@400;700&display=swap">
 <style>
-/* The same look as the search page: maroon band with the gold title, ivory paper below. */
+/* Deep maroon page, Pramukh Swami Maharaj and Mahant Swami Maharaj side by side in gold rings, the words centred on one ivory card */
 :root {
-  --maroon-in: #42101c; --maroon-out: #160509; --maroon: #6e1424; --ink: #3b1219; --muted: #7a5c4c;
-  --gold-hi: #ffe296; --gold-deep: #a8742a; --gold-soft: #d9a441; --paper: #f3ead9; --cap: #faf1de;
-  --serif: "EB Garamond", Garamond, "Times New Roman", serif;
+  --maroon-in: #42101c; --maroon-out: #160509; --maroon: #6e1424; --ink: #3b1219;
+  --gold-hi: #ffe296; --gold-deep: #a8742a; --gold-soft: #d9a441; --paper: #f3ead9;
+  --serif: Lora, Georgia, "Times New Roman", serif;
+  --title: Cinzel, "Trajan Pro", Georgia, serif;
+  --script: "Cormorant Garamond", Garamond, Georgia, serif;
   --sans: Arimo, Arial, Helvetica, sans-serif;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--paper); color: var(--ink); font: 500 20px/1.6 var(--serif); }
+body { margin: 0; color: var(--ink); font: 400 18.5px/1.75 var(--serif); background: var(--maroon-out); }
+.page { min-height: 100vh; padding: 70px 0; background:
+  radial-gradient(ellipse 60% 40% at 50% 0%, rgba(255, 196, 110, .18), transparent 70%),
+  radial-gradient(ellipse 110% 70% at 50% 15%, var(--maroon-in), var(--maroon-out)); }
 .wrap { max-width: 720px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-.band { background:
-  radial-gradient(ellipse 60% 70% at 50% 0%, rgba(255, 196, 110, .18), transparent 70%),
-  radial-gradient(ellipse 90% 120% at 50% 30%, var(--maroon-in), var(--maroon-out)); color: var(--cap); text-align: center; }
-h1 { font: 700 clamp(36px, 6vw, 60px)/1.05 var(--serif); margin: 0; padding: 62px 0 30px; text-wrap: balance;
+.gurus { display: flex; justify-content: center; gap: clamp(18px, 5vw, 40px); margin: 0 auto 26px; }
+.gurus figure { margin: 0; text-align: center; }
+.ring { width: clamp(132px, 34vw, 180px); aspect-ratio: 1; border-radius: 50%; padding: 5px;
+  background: linear-gradient(#ffe296, #a8742a); box-shadow: 0 0 0 8px rgba(217, 164, 65, .12), 0 14px 40px rgba(0, 0, 0, .55); }
+.ring img { display: block; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+figcaption { margin-top: 14px; font: 700 10px/1.5 var(--sans); letter-spacing: .2em; text-transform: uppercase; color: var(--gold-soft); text-wrap: balance; }
+h1 { font: 600 clamp(32px, 5.4vw, 54px)/1.15 var(--title); letter-spacing: .02em; margin: 0 0 34px; text-wrap: balance; text-align: center;
   background: linear-gradient(#ffe296, #ce9840); -webkit-background-clip: text; background-clip: text; color: transparent;
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .45)); }
-main { padding-block: 34px 60px; }
-h2 { font: 700 13px var(--sans); letter-spacing: .3em; text-transform: uppercase; color: var(--gold-deep); text-align: center; margin: 40px 0 14px; }
-h2:first-child { margin-top: 0; }
-p { margin: 0 0 16px; text-wrap: pretty; }
+.card { text-align: center; background: linear-gradient(#faf3e6, #f3ead9); border-radius: 18px; padding: 40px clamp(20px, 5vw, 52px) 36px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .45), inset 0 0 0 1px rgba(168, 116, 42, .35), inset 0 0 0 7px #faf3e6, inset 0 0 0 8px rgba(168, 116, 42, .3); }
+h2 { font: 600 15px var(--title); letter-spacing: .2em; text-transform: uppercase; color: var(--gold-deep); margin: 0 0 14px; }
+p { margin: 0 0 16px; text-wrap: balance; }
+p.long { text-wrap: pretty; }   /* balance gives up on long paragraphs; pretty still keeps a word from sitting alone */
+.orn { display: flex; align-items: center; justify-content: center; gap: 14px; color: var(--gold-soft); font-size: 15px; margin: 26px auto; max-width: 260px; }
+.orn::before, .orn::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, currentColor, transparent); }
+/* the Vachanamrut words, set apart on their own between the title and the card */
+.vach { position: relative; margin: 0 auto 40px; max-width: 640px; padding: 9px; border-radius: 8px;
+  background: linear-gradient(135deg, #f0a23a, #c8551a 30%, #e9a43c 50%, #b8441a 72%, #f2b04a);
+  box-shadow: 0 0 0 1px #ffe296, 0 0 60px rgba(255, 180, 80, .35), 0 24px 50px rgba(0, 0, 0, .55); }
+.vach::before { content: ""; position: absolute; inset: -40px -60px; z-index: -1; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 50%, rgba(255, 200, 110, .28), transparent 65%); }
+.leaf { position: relative; text-align: center; border-radius: 3px; padding: 26px clamp(26px, 7vw, 64px) 30px;
+  background: radial-gradient(ellipse 80% 70% at 50% 40%, #fffaf0, #f6e8c8 70%, #ecd6a6);
+  box-shadow: inset 0 0 0 2px #c8952f, inset 0 0 0 6px #fbf3e0, inset 0 0 0 7px rgba(168, 116, 42, .6), inset 0 0 40px rgba(168, 116, 42, .25); }
+.leaf .corner { position: absolute; width: 46px; height: 46px; color: #b07a22; }
+.leaf .corner.tl { top: 10px; left: 10px; } .leaf .corner.tr { top: 10px; right: 10px; transform: scaleX(-1); }
+.leaf .corner.bl { bottom: 10px; left: 10px; transform: scaleY(-1); } .leaf .corner.br { bottom: 10px; right: 10px; transform: scale(-1); }
+.leaf .lotus { display: block; width: 74px; height: 40px; margin: 0 auto 6px; }
+.leaf .rubric { margin: 0 0 14px; font: 600 12px var(--title); letter-spacing: .26em; text-transform: uppercase; color: #b8441a; }
+.leaf blockquote { margin: 0; font: italic 600 clamp(22px, 3.3vw, 28px)/1.45 var(--script); color: #4a1220; text-wrap: balance; }
+.leaf blockquote b { font-weight: 700; color: #b8441a; }
+.leaf .rule { display: block; width: 120px; height: 10px; margin: 18px auto 0; color: #b07a22; }
+@media (max-width: 520px) { .leaf .corner { width: 30px; height: 30px; } }
 a { color: var(--maroon); }
-.bye { text-align: center; font: italic 600 24px var(--serif); color: var(--maroon); margin-top: 40px; }
+.mail { white-space: nowrap; }
+.jay { font: italic 600 clamp(26px, 4vw, 34px)/1.2 var(--script); color: var(--gold-hi); text-align: center; margin: 0 0 22px; letter-spacing: .02em;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, .5); }
 </style>
 </head>
 <body>
-<nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/calendar/">Calendar</a><a class="on" href="/about/" aria-current="page">About</a></nav>
-<div class="band">
-  <h1 class="wrap">About Bapa's Diary</h1>
-</div>
+<nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a href="/calendar/">Calendar</a><a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a class="on" href="/about/" aria-current="page">About</a></nav>
+<div class="page">
+<header class="wrap">
+  <p class="jay">Jay Swaminarayan</p>
+  <div class="gurus">
+    <figure><div class="ring"><img src="/about/img/psm.jpg" alt="Pramukh Swami Maharaj smiling" style="object-position: 50% 22%"></div><figcaption>Pramukh Swami Maharaj</figcaption></figure>
+    <figure><div class="ring"><img src="/about/img/msm.jpg" alt="Mahant Swami Maharaj smiling" style="object-position: 50% 20%"></div><figcaption>Mahant Swami Maharaj</figcaption></figure>
+  </div>
+  <h1>About Bapa's Diary</h1>
+</header>
 <main class="wrap">
+<figure class="vach"><div class="leaf"><svg class="corner tl" viewBox="0 0 46 46" aria-hidden="true"><path d="M2 44V14C2 7 7 2 14 2h30" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M7 44V18c0-6 5-11 11-11h26" fill="none" stroke="currentColor" stroke-width=".8"/><circle cx="14" cy="14" r="3" fill="currentColor"/><path d="M20 14c4-6 10-6 13-2-4 0-6 2-7 5-2-2-4-3-6-3zM14 20c-6 4-6 10-2 13 0-4 2-6 5-7-2-2-3-4-3-6z" fill="currentColor"/></svg><svg class="corner tr" viewBox="0 0 46 46" aria-hidden="true"><path d="M2 44V14C2 7 7 2 14 2h30" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M7 44V18c0-6 5-11 11-11h26" fill="none" stroke="currentColor" stroke-width=".8"/><circle cx="14" cy="14" r="3" fill="currentColor"/><path d="M20 14c4-6 10-6 13-2-4 0-6 2-7 5-2-2-4-3-6-3zM14 20c-6 4-6 10-2 13 0-4 2-6 5-7-2-2-3-4-3-6z" fill="currentColor"/></svg><svg class="corner bl" viewBox="0 0 46 46" aria-hidden="true"><path d="M2 44V14C2 7 7 2 14 2h30" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M7 44V18c0-6 5-11 11-11h26" fill="none" stroke="currentColor" stroke-width=".8"/><circle cx="14" cy="14" r="3" fill="currentColor"/><path d="M20 14c4-6 10-6 13-2-4 0-6 2-7 5-2-2-4-3-6-3zM14 20c-6 4-6 10-2 13 0-4 2-6 5-7-2-2-3-4-3-6z" fill="currentColor"/></svg><svg class="corner br" viewBox="0 0 46 46" aria-hidden="true"><path d="M2 44V14C2 7 7 2 14 2h30" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M7 44V18c0-6 5-11 11-11h26" fill="none" stroke="currentColor" stroke-width=".8"/><circle cx="14" cy="14" r="3" fill="currentColor"/><path d="M20 14c4-6 10-6 13-2-4 0-6 2-7 5-2-2-4-3-6-3zM14 20c-6 4-6 10-2 13 0-4 2-6 5-7-2-2-3-4-3-6z" fill="currentColor"/></svg>
+<svg class="lotus" viewBox="0 0 74 40" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f2b04a"/><stop offset="1" stop-color="#b8441a"/></linearGradient></defs>
+<path d="M37 2c7 8 9 20 0 34-9-14-7-26 0-34z" fill="url(#lg)"/>
+<path d="M37 36c-3-12-12-22-24-24 1 13 10 22 24 24z" fill="url(#lg)" opacity=".85"/>
+<path d="M37 36c3-12 12-22 24-24-1 13-10 22-24 24z" fill="url(#lg)" opacity=".85"/>
+<path d="M37 37C30 30 16 26 2 28c8 8 22 11 35 9zM37 37c7-7 21-11 35-9-8 8-22 11-35 9z" fill="#c8952f" opacity=".7"/></svg>
+<p class="rubric">Vachanamrut · Gadhada I-3</p>
+<blockquote>In Vachanamrut Gadhada I-3, Bhagwan Swaminarayan says that by remembering the divine incidents of God and His Sadhu, <b>you will attain moksha (liberation)</b> even if you cannot remember His form or murti.</blockquote>
+<svg class="rule" viewBox="0 0 120 10" aria-hidden="true"><path d="M0 5h48M72 5h48" stroke="currentColor" stroke-width=".8"/><path d="M60 0l5 5-5 5-5-5z" fill="currentColor"/><circle cx="51" cy="5" r="1.5" fill="currentColor"/><circle cx="69" cy="5" r="1.5" fill="currentColor"/></svg>
+</div></figure>
+<div class="card">
 <h2>What this is</h2>
 <p>Bapa's Diary is a small offering of love, so that we can stay close to Pramukh Swami Maharaj and Mahant Swami Maharaj every single day.</p>
-<p>Here you can relive Swamishri's divine darshan, day by day, through the years: his gentle smile, his blessings, the villages and cities he sanctified on his vicharan, and the utsavs of the BAPS calendar. Pick any date to have darshan from that very day. "On this day" brings together every memory of the same date across the years, so each day begins with fresh darshan and fresh inspiration.</p>
-<p>It is free for every devotee and well wisher, with no login needed. May this darshan fill our hearts with bhakti and keep Bapa's memories alive in every home.</p>
+<p class="long">Here you can relive Swamishri's divine darshan, day by day, through the years: his gentle smile, his blessings, the villages and cities he sanctified on his vicharan, and the utsavs of the BAPS calendar. Pick any date to have darshan from that very day. "On this day" brings together every memory of the same date across the years, so each day begins with fresh darshan and fresh inspiration.</p>
+<div class="orn">❖</div>
 <h2>With thanks</h2>
-<p>All darshan photos come from BAPS Swaminarayan Sanstha. We are deeply grateful to BAPS for kindly giving permission to share them here. Every photo remains the property of BAPS. To see more, please visit <a href="https://www.baps.org">baps.org</a>.</p>
+<p class="long">All darshan photos come from BAPS Swaminarayan Sanstha. We are deeply grateful to BAPS for kindly giving permission to share them here. Every photo remains the property of BAPS. To see more, please visit <a href="https://www.baps.org">baps.org</a>.</p>
+<div class="orn">❖</div>
 <h2>Get in touch</h2>
-<p>Spotted a mistake, or have a memory to share? Email <a href="mailto:hello@bapas-diary.com">hello@bapas-diary.com</a></p>
-<p class="bye">Jay Swaminarayan 🙏🏽</p>
-</main>
+<p>Spotted a mistake, or have a memory to share? Email <a class="mail" href="mailto:hello@bapas-diary.com">hello@bapas-diary.com</a></p>
+</div></main>
+</div>
 </body>
 </html>

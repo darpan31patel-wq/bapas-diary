@@ -18,3 +18,4 @@ Redeploy to pick up a new build from another thread: push any change here (e.g. 
 24 Oct 11:48 UTC: one-screen Through the years (fits the window, controls pinned at the bottom, commit 6a1069d), Darpan typed perfect go live.
 24 Oct 11:51 UTC: Today page b70e8d6 (edge to edge cords, crooked hang, pendulum swing, Calendar second), Darpan typed yes perfect.
 24 Oct 11:56 UTC: Calendar 5b85edc (place bubble row in the header, zoom), Darpan typed perfect.
+24 Oct 13:38 UTC: new About page (both gurus, Jay Swaminarayan on top, Vachanamrut Gadhada I-3 block, centred), Darpan typed yes go live.
