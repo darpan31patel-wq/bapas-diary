@@ -16,7 +16,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PROJECT: bapas-diary
       DOMAIN: bapas-diary.com
-      DAY_COMMIT: 15c4792a203661cf94ac557ae67a472ed79f8a0c   # claude/project-thread-2nuqbl, as Darpan approved it
+      DAY_COMMIT: 642cb6b5297dfaa2cf12aeb9763d2739027d9c16   # claude/project-thread-2nuqbl, as Darpan approved it
     steps:
       - uses: actions/checkout@v4
       - name: Photo search (database from release database, photo tags from release website-mockup)
