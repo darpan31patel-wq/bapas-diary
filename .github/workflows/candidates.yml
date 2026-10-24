@@ -1,0 +1,37 @@
+name: Photo candidates
+
+# Makes preview/<name>.jpg: a labelled sheet of chosen baps.org photos (this is how a year's options get compared).
+# Runs when tools/candidates.txt changes on a test branch, or by hand. The file: line 1 the name, line 2 the title,
+# then one photo per line as album:id:label.
+
+on:
+  push:
+    branches-ignore: [main]
+    paths: ['tools/candidates.txt']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sheet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -q pillow
+      - name: Make the sheet
+        run: |
+          NAME=$(sed -n 1p tools/candidates.txt); TITLE=$(sed -n 2p tools/candidates.txt)
+          mapfile -t LIST < <(sed '1,2d;/^\s*$/d' tools/candidates.txt)
+          python tools/candidates.py --out "out/$NAME.jpg" --title "$TITLE" "${LIST[@]}"
+          echo "NAME=$NAME" >> "$GITHUB_ENV"
+      - name: Keep it on this branch under preview/
+        run: |
+          mkdir -p preview && cp "out/$NAME.jpg" preview/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add preview && git commit -q -m "Candidates sheet $NAME" && git push -q
