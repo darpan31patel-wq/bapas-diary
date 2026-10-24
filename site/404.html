@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Page not found · Bapa's Diary</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/menu.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,500;0,700;1,500&family=Arimo:wght@400;700&display=swap">
+<style>
+/* The page someone lands on after a broken or mistyped link (Darpan, 24 Oct 2026: a warm page that offers today's
+   darshan instead). The On this day look: maroon glow, gold Garamond, today's photos from other years as polaroids. */
+:root {
+  --maroon-in: #42101c; --maroon-out: #160509; --maroon: #6e1424; --gold-hi: #ffe296; --gold-soft: #d9a441;
+  --cap: #faf1de; --ivory-top: #fdf9f0; --ivory-bot: #efe4cd; --ivory-edge: #d3c19c;
+  --serif: "EB Garamond", Garamond, "Times New Roman", serif; --sans: Arimo, Arial, Helvetica, sans-serif;
+}
+* { box-sizing: border-box; }
+html { min-height: 100%; background: var(--maroon-out); }
+body { margin: 0; min-height: 100dvh; color: var(--cap); font: 500 20px/1.5 var(--serif); display: grid; place-items: center;
+  background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(255, 196, 110, .16), transparent 70%),
+              radial-gradient(ellipse 90% 90% at 50% 40%, var(--maroon-in), var(--maroon-out));
+  padding: 70px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); }
+main { max-width: 900px; width: 100%; text-align: center; display: grid; gap: 18px; justify-items: center; }
+.kicker { display: flex; align-items: center; gap: 14px; font: 700 12px/1 var(--sans); letter-spacing: .38em; padding-left: .38em; color: var(--gold-soft); text-transform: uppercase; }
+.kicker::before, .kicker::after { content: ""; width: 44px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold-soft)); }
+.kicker::after { transform: scaleX(-1); }
+h1 { margin: 0; font: 700 clamp(38px, 7vw, 66px)/1.05 var(--serif); text-wrap: balance;
+  background: linear-gradient(#ffe296, #ce9840); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .45)); }
+p.lead { margin: 0; max-width: 34ch; font-style: italic; color: rgba(250, 241, 222, .82); text-wrap: balance; }
+.photos { display: flex; justify-content: center; gap: clamp(10px, 3vw, 28px); padding: 18px 0 6px; flex-wrap: wrap; min-height: 40px; }
+.photos a { width: clamp(120px, 24vw, 210px); text-decoration: none; color: var(--maroon); padding: clamp(8px, 2vw, 13px) clamp(8px, 2vw, 13px) 0;
+  background: linear-gradient(var(--ivory-top), var(--ivory-bot)); border: 1px solid var(--ivory-edge);
+  box-shadow: 0 14px 26px rgba(0, 0, 0, .45); transition: transform .3s ease; }
+.photos a:nth-child(1) { transform: rotate(-3deg); }
+.photos a:nth-child(2) { transform: rotate(1.5deg) translateY(10px); }
+.photos a:nth-child(3) { transform: rotate(3.5deg); }
+.photos a:hover, .photos a:focus-visible { transform: rotate(0) translateY(-4px); }
+.photos img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; object-position: 50% 25%; background: #e8dcc2; }
+.photos span { display: block; font: 700 22px/2.1 var(--serif); }
+.go { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; padding-top: 14px; }
+.go a { font: 700 12px var(--sans); letter-spacing: .2em; text-transform: uppercase; text-decoration: none; padding: 13px 22px; border-radius: 999px; }
+.go .main { background: linear-gradient(#ffe296, #ce9840); color: #3b1219; }
+.go .soft { border: 1px solid var(--gold-soft); color: var(--gold-hi); }
+.go a:hover { filter: brightness(1.08); }
+a:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .photos a { transition: none; } }
+</style>
+</head>
+<body>
+<nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a href="/calendar/">Calendar</a><a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/about/">About</a></nav>
+<main>
+  <div class="kicker">Page not found</div>
+  <h1>This page isn’t in the diary</h1>
+  <p class="lead" id="lead">The link may be old or mistyped. But Bapa has darshan waiting for you today.</p>
+  <div class="photos" id="photos"></div>
+  <div class="go"><a class="main" href="/">Today's darshan</a><a class="soft" href="/search/">Search the diary</a></div>
+</main>
+<script>
+// Today's photos from other years, from the home page's own data (/data/day/MM-DD.json). If anything is missing the
+// page still reads well without them.
+(function () {
+  var PHOTOS = 'https://photos.bapas-diary.com/';
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  var now = new Date(), mm = String(now.getMonth() + 1).padStart(2, '0'), dd = String(now.getDate()).padStart(2, '0');
+  var box = document.getElementById('photos');
+  function show(day) {
+    document.getElementById('lead').textContent = 'The link may be old or mistyped. But Bapa has darshan waiting for you, from ' + now.getDate() + ' ' + MONTHS[now.getMonth()] + ' through the years.';
+    var picks = [];
+    (day.years || []).slice().sort(function () { return 0; }).forEach(function (y) {
+      var p = (y.p || []).filter(function (p) { return p[3]; })[0] || (y.p || [])[0];
+      if (p) picks.push({ y: y.y, p: p });
+    });
+    // three years spread across the span, oldest to newest
+    if (picks.length > 3) picks = [picks[0], picks[Math.floor(picks.length / 2)], picks[picks.length - 1]];
+    picks.forEach(function (k) {
+      var a = document.createElement('a');
+      a.href = '/search/#date=' + k.y + '-' + mm + '-' + dd;
+      var img = new Image();
+      img.alt = 'Darshan on ' + now.getDate() + ' ' + MONTHS[now.getMonth()] + ' ' + k.y;
+      img.src = (window.PHOTO_URL || function (p) { return PHOTOS + 's/' + p[0] + '/' + p[1]; })(k.p);
+      img.onerror = function () { a.remove(); };
+      var s = document.createElement('span');
+      s.textContent = k.y;
+      a.append(img, s);
+      box.append(a);
+    });
+  }
+  if (window.DAY_DATA) return show(window.DAY_DATA);
+  fetch('/data/day/' + mm + '-' + dd + '.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) { if (d) show(d); }).catch(function () {});
+})();
+</script>
+</body>
+</html>
