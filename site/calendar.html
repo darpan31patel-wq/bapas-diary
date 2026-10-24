@@ -12,7 +12,7 @@
   --ivory:#f8f2e4; --ivory-2:#eadfc8; --ink:#3a1a12; --muted:#c9a98a;
   --serif:"EB Garamond", Garamond, "Times New Roman", serif;
   --caps:Arimo, "Helvetica Neue", Arial, sans-serif;
-  --cw:140px; --g:8px; --jh:56px;
+  --cw:140px; --g:8px; --bh:28px;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -29,7 +29,7 @@ header{padding-block:6px 4px;padding-left:max(16px,env(safe-area-inset-left,0px)
 .track::-webkit-scrollbar{display:none}
 .track.drag{cursor:grabbing}
 .ribbon{height:100%;display:flex;align-items:stretch;gap:var(--mgap);padding-inline:max(16px,30vw);padding-block:4px 10px;width:max-content;--mgap:clamp(28px,4vw,64px)}
-.month{flex:none;height:100%;width:calc(7 * var(--cw) + 6 * var(--g));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:var(--jh) 26px repeat(5,minmax(0,1fr));gap:var(--g);transition:opacity .25s linear}
+.month{flex:none;height:100%;width:calc(7 * var(--cw) + 6 * var(--g));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:26px repeat(5,var(--bh) minmax(0,1fr));gap:3px var(--g);transition:opacity .25s linear}
 .wkd{font-family:var(--caps);font-weight:700;font-size:clamp(12px,1.7vh,15px);letter-spacing:.22em;color:var(--muted);text-align:center;align-self:end;text-transform:uppercase}
 .empty{min-width:0;border:1px dashed rgba(234,223,200,.13);border-radius:3px}
 .card{position:relative;min-height:0;min-width:0;text-decoration:none;background:linear-gradient(170deg,var(--ivory),var(--ivory-2));border-radius:3px;padding:4px 4px 0;display:flex;flex-direction:column;color:var(--ink);
@@ -50,18 +50,15 @@ header{padding-block:6px 4px;padding-left:max(16px,env(safe-area-inset-left,0px)
 .bnum{font-size:min(46cqh,40cqw);font-weight:600;line-height:.9;color:var(--maroon)}
 .bwd{font-family:var(--caps);font-weight:700;font-size:min(9cqh,7.5cqw);letter-spacing:.2em;text-transform:uppercase;color:#9a6a40}
 .bind{font-size:min(15cqh,11.5cqw);font-weight:500;line-height:1.05;color:var(--ink);text-wrap:balance}
-/* journey band: where Bapa was, as a timeline running along the top of each month */
-.journey{grid-area:1/1/2/-1;display:flex;min-width:0}
-.seg{position:relative;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;padding:0 6px 14px;text-align:center}
-.seg:before{content:'';position:absolute;left:0;right:0;bottom:6px;height:2px;background:linear-gradient(90deg,var(--gold-lo),var(--gold-hi),var(--gold-lo));border-radius:2px;transition:height .25s,bottom .25s,box-shadow .25s}
-.seg:after{content:'';position:absolute;left:-6px;bottom:1px;width:12px;height:12px;border-radius:50%;background:var(--gold-hi);box-shadow:0 0 0 3px var(--maroon-deep),0 0 10px rgba(255,214,120,.6)}
-.seg.cont:after{display:none}
-.seg .lab{position:sticky;left:20px;right:20px;align-self:center;display:flex;flex-direction:column;align-items:center;max-width:100%;min-width:0}
-.seg .pn{max-width:100%;font-size:clamp(17px,2.7vh,25px);font-weight:600;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));-webkit-background-clip:text;background-clip:text;color:transparent;transition:filter .25s}
-.seg .pd{font-family:var(--caps);font-weight:700;font-size:clamp(8.5px,1.2vh,11px);letter-spacing:.14em;text-transform:uppercase;color:var(--ivory-2);white-space:nowrap;overflow:hidden;max-width:100%;margin-top:2px}
-.seg.unk:before{background:repeating-linear-gradient(90deg,rgba(206,152,64,.45) 0 5px,transparent 5px 10px);height:1px;bottom:7px}
-.seg.unk:after{display:none}
-.seg.on:before{height:4px;bottom:5px;box-shadow:0 0 12px rgba(255,214,120,.7)}
+/* journey line over every week, lined up with the days: where Bapa was (Darpan picked this, 24 Oct) */
+.seg{position:relative;min-width:0;display:flex;align-items:flex-start;justify-content:center;text-align:center}
+.seg:before{content:'';position:absolute;left:0;right:calc(-1 * var(--g));bottom:5px;height:2px;background:linear-gradient(90deg,var(--gold-lo),var(--gold-hi),var(--gold-lo));border-radius:2px;transition:height .25s,bottom .25s,box-shadow .25s}
+.seg.end:before{right:0}
+.seg:after{content:'';position:absolute;left:-5px;bottom:1px;width:10px;height:10px;border-radius:50%;background:var(--gold-hi);box-shadow:0 0 0 3px var(--maroon-deep),0 0 8px rgba(255,214,120,.6)}
+.seg.cont:after,.seg.unk:after{display:none}
+.seg .pn{max-width:100%;padding:0 4px;font-size:clamp(14px,2.2vh,20px);font-weight:600;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));-webkit-background-clip:text;background-clip:text;color:transparent;transition:filter .25s}
+.seg.unk:before{background:repeating-linear-gradient(90deg,rgba(206,152,64,.45) 0 5px,transparent 5px 10px);height:1px;bottom:6px}
+.seg.on:before{height:4px;bottom:4px;box-shadow:0 0 12px rgba(255,214,120,.7)}
 .seg.on .pn{filter:drop-shadow(0 0 8px rgba(255,214,120,.55))}
 footer{padding-block:6px 12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .rail{position:relative;max-width:980px;margin:0 auto;height:34px}
@@ -117,9 +114,9 @@ let D, keys=[], monthEls=[], shown=new Set(), MW=0, GAP=0, PAD=0;
 
 /* sizes: five rows of days fill the height; every month is the same width */
 function sizeCols(){
-  const h=track.clientHeight-14, g=Math.max(5,Math.min(10,innerHeight*.009)), jh=Math.max(46,Math.min(64,innerHeight*.068));
-  const rh=(h-26-jh-6*g)/5, cw=Math.max(60,Math.round(rh*1.08));
-  const r=document.documentElement.style; r.setProperty('--cw',cw+'px'); r.setProperty('--g',g+'px'); r.setProperty('--jh',jh+'px');
+  const h=track.clientHeight-14, g=Math.max(5,Math.min(10,innerHeight*.009)), bh=Math.max(22,Math.min(32,innerHeight*.034));
+  const rh=(h-26-5*bh-10*3)/5, cw=Math.max(60,Math.round(rh*1.08));
+  const r=document.documentElement.style; r.setProperty('--cw',cw+'px'); r.setProperty('--g',g+'px'); r.setProperty('--bh',bh+'px');
   MW=7*cw+6*g;
   if(monthEls.length>1){GAP=monthEls[1].offsetLeft-monthEls[0].offsetLeft-MW;PAD=monthEls[0].offsetLeft}
 }
@@ -142,19 +139,31 @@ function render(mo){
   if(mo._done)return; mo._done=true; mo.innerHTML='';
   const k=mo.dataset.k, [y,m]=k.split('-').map(Number), days=D.m[k], pl=places(k), mn=MONTHS[m-1].slice(0,3);
   const prev=keys[keys.indexOf(k)-1], prevPl=prev?places(prev).slice(-1)[0]:null;
-  /* journey band */
-  const jr=el('div','journey'), segs=[];
-  pl.forEach((p,i)=>{const l=segs[segs.length-1]; if(l&&l.p===p) l.n++; else segs.push({p,from:i+1,n:1})});
-  segs.forEach((s,i)=>{const to=s.from+s.n-1, x=el('div','seg'+(s.p?'':' unk')+(i===0&&s.p&&s.p===prevPl?' cont':''));
-    x.style.flex=`${s.n} 1 0`; x.dataset.p=s.p||'';
-    if(s.p){x.title=`Bapa was in ${s.p}, ${s.from}${s.n>1?' to '+to:''} ${MONTHS[m-1]} ${y}`;
-      x.innerHTML=`<span class="lab"><span class="pn">${esc(s.p)}</span><span class="pd">${s.n>1?s.from+' to '+to:s.from} ${mn}</span></span>`}
-    jr.appendChild(x)});
-  mo.appendChild(jr);
-  WD.forEach((w,c)=>{const x=el('div','wkd',w);x.style.gridArea=`2/${c+1}`;mo.appendChild(x)});
+  WD.forEach((w,c)=>{const x=el('div','wkd',w);x.style.gridArea=`1/${c+1}`;mo.appendChild(x)});
   /* days: a sixth week wraps into the empty boxes of the first */
   const first=new Date(y,m-1,1).getDay(), grid=Array(35).fill(null);
   days.forEach((d,i)=>{let p=first+i, wr=false; if(p>=35){p-=35;wr=true} grid[p]={d,day:i+1,wr,pl:pl[i]}});
+  /* journey line over each week: one stretch per stay, a dot where Bapa moved on */
+  for(let r=0;r<5;r++){
+    const segs=[];
+    for(let c=0;c<7;c++){
+      const x=grid[r*7+c], l=segs[segs.length-1];
+      if(l&&x&&l.x&&l.p===x.pl&&l.last+1===x.day){l.n++;l.last=x.day}
+      else if(l&&!x&&!l.x) l.n++;
+      else segs.push({x,p:x?x.pl:null,c,n:1,first:x&&x.day,last:x&&x.day});
+    }
+    segs.forEach((s,i)=>{
+      let b;
+      if(!s.x) b=el('div','');
+      else{
+        const before=s.first>1?pl[s.first-2]:prevPl;
+        b=el('div','seg'+(s.p?'':' unk')+(s.p&&before===s.p?' cont':'')+(s.c+s.n===7||!segs[i+1]||!segs[i+1].x?' end':''));
+        b.dataset.p=s.p||'';
+        if(s.p){b.title=`Bapa was in ${s.p}, ${s.first}${s.n>1?' to '+s.last:''} ${MONTHS[m-1]} ${y}`;b.innerHTML=`<span class="pn">${esc(s.p)}</span>`}
+      }
+      b.style.gridArea=`${2+2*r}/${s.c+1}/span 1/span ${s.n}`; mo.appendChild(b);
+    });
+  }
   mo._cards=[];
   for(let r=0;r<5;r++) for(let c=0;c<7;c++){
     const x=grid[r*7+c]; let b;
@@ -178,7 +187,7 @@ function render(mo){
       b.addEventListener('focus',()=>light(mo,x.pl));
       b._row=r; mo._cards.push(b);
     }
-    b.style.gridArea=`${r+3}/${c+1}`; mo.appendChild(b);
+    b.style.gridArea=`${3+2*r}/${c+1}`; mo.appendChild(b);
   }
   mo.addEventListener('mouseleave',()=>light(mo,null));
 }
