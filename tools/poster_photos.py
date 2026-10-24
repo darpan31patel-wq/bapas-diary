@@ -63,7 +63,7 @@ def archive_paths(items, db):
     con = sqlite3.connect(db)
     out = []
     for x in items:
-        r = con.execute('SELECT local_path FROM photos WHERE album = ? AND file = ?', (make.album(x['i']), x['i'].rsplit('/', 1)[1])).fetchone()
+        r = con.execute('SELECT local_path FROM photos WHERE album = ? AND file = ? COLLATE NOCASE', (make.album(x['i']), x['i'].rsplit('/', 1)[1])).fetchone()
         out.append(r[0] if r and r[0] else None)
     return out
 
