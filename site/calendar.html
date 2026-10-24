@@ -12,7 +12,7 @@
   --ivory:#f8f2e4; --ivory-2:#eadfc8; --ink:#3a1a12; --muted:#c9a98a;
   --serif:"EB Garamond", Garamond, "Times New Roman", serif;
   --caps:Arimo, "Helvetica Neue", Arial, sans-serif;
-  --cw:140px; --g:8px; --bh:28px;
+  --cw:140px; --g:8px; --z:1; --bh:28px;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -28,9 +28,11 @@ header{padding-block:6px 4px;padding-left:max(16px,env(safe-area-inset-left,0px)
 .track{flex:1;min-height:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;cursor:grab;position:relative;outline:none}
 .track::-webkit-scrollbar{display:none}
 .track.drag{cursor:grabbing}
-.ribbon{height:100%;display:flex;align-items:stretch;gap:var(--mgap);padding-inline:max(16px,30vw);padding-block:4px 10px;width:max-content;--mgap:clamp(28px,4vw,64px)}
-.month{flex:none;height:100%;width:calc(7 * var(--cw) + 6 * var(--g));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:26px repeat(5,var(--bh) minmax(0,1fr));gap:0 var(--g);transition:opacity .25s linear}
-.wkd{font-family:var(--caps);font-weight:700;font-size:clamp(12px,1.7vh,15px);letter-spacing:.22em;color:var(--muted);text-align:center;align-self:end;text-transform:uppercase}
+.ribbon{height:100%;display:flex;align-items:stretch;gap:calc(var(--mgap) * var(--z));padding-inline:max(16px,30vw);padding-block:4px 10px;width:max-content;--mgap:clamp(28px,4vw,64px)}
+.month{position:relative;flex:none;height:var(--mh,100%);align-self:center;width:calc(7 * var(--cw) + 6 * var(--g));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:calc(26px * var(--z)) repeat(5,var(--bh) minmax(0,1fr));gap:0 var(--g);transition:opacity .25s linear}
+.mlab{display:none;position:absolute;left:0;right:0;bottom:100%;margin-bottom:10px;text-align:center;font-size:24px;font-weight:600;white-space:nowrap;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));-webkit-background-clip:text;background-clip:text;color:transparent}
+.zoomed .mlab{display:block}
+.wkd{font-family:var(--caps);font-weight:700;font-size:calc(clamp(12px,1.7vh,15px) * var(--z));letter-spacing:.22em;color:var(--muted);text-align:center;align-self:end;text-transform:uppercase}
 .empty{min-width:0;border:1px dashed rgba(234,223,200,.13);border-radius:3px}
 .card{position:relative;min-height:0;min-width:0;text-decoration:none;background:linear-gradient(170deg,var(--ivory),var(--ivory-2));border-radius:3px;padding:4px 4px 0;display:flex;flex-direction:column;color:var(--ink);
   box-shadow:0 6px 16px rgba(0,0,0,.42),0 1px 0 rgba(255,255,255,.4) inset;cursor:pointer;will-change:transform;text-align:center;transition:box-shadow .3s ease}
@@ -38,13 +40,13 @@ header{padding-block:6px 4px;padding-left:max(16px,env(safe-area-inset-left,0px)
 .win{position:relative;flex:1;min-height:0;overflow:hidden}
 .win img{position:absolute;top:-1px;left:-5%;width:110%;max-width:none;height:calc(100% + 2px);object-fit:cover;object-position:50% 22%;will-change:transform;transition:filter .3s}
 .card:hover .win img{filter:brightness(1.06)}
-.num{position:absolute;left:4px;top:2px;font-size:clamp(14px,2.5vh,22px);font-weight:600;color:var(--ivory);text-shadow:0 1px 4px rgba(0,0,0,.75);line-height:1}
-.wrapmark{position:absolute;right:4px;top:4px;font-family:var(--caps);font-weight:700;font-size:8px;letter-spacing:.12em;background:rgba(22,5,9,.7);color:var(--gold-hi);padding:2px 4px;border-radius:2px}
+.num{position:absolute;left:4px;top:2px;font-size:calc(clamp(14px,2.5vh,22px) * var(--z));font-weight:600;color:var(--ivory);text-shadow:0 1px 4px rgba(0,0,0,.75);line-height:1}
+.wrapmark{position:absolute;right:4px;top:4px;font-family:var(--caps);font-weight:700;font-size:calc(8px * var(--z));letter-spacing:.12em;background:rgba(22,5,9,.7);color:var(--gold-hi);padding:2px 4px;border-radius:2px}
 .card.blank .wrapmark{background:var(--maroon)}
-.fest{position:absolute;left:0;right:0;bottom:0;padding:12px 5px 4px;text-align:center;font-family:var(--caps);font-weight:700;font-size:clamp(7.5px,1.15vh,10px);letter-spacing:.06em;color:var(--gold-hi);
+.fest{position:absolute;left:0;right:0;bottom:0;padding:12px 5px 4px;text-align:center;font-family:var(--caps);font-weight:700;font-size:calc(clamp(7.5px,1.15vh,10px) * var(--z));letter-spacing:.06em;color:var(--gold-hi);
   background:linear-gradient(0deg,rgba(22,5,9,.92),rgba(22,5,9,0));line-height:1.2;text-wrap:balance}
 .card.blank .fest{position:static;background:none;color:#9a5a20;padding:2px 0 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.tithi{font-family:var(--caps);font-weight:700;font-size:clamp(7px,1.05vh,9.5px);letter-spacing:.1em;text-transform:uppercase;color:#7a4e36;padding:3px 1px 4px;white-space:nowrap;overflow:hidden;text-align:center;min-height:1.6em}
+.tithi{font-family:var(--caps);font-weight:700;font-size:calc(clamp(7px,1.05vh,9.5px) * var(--z));letter-spacing:.1em;text-transform:uppercase;color:#7a4e36;padding:3px 1px 4px;white-space:nowrap;overflow:hidden;text-align:center;min-height:1.6em}
 .card.blank .win{background:radial-gradient(circle at 50% 40%,#fbf6ea,#e9dcc0);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:4px;gap:2px;container-type:size}
 .card.blank .tithi{visibility:hidden}
 .bnum{font-size:min(46cqh,40cqw);font-weight:600;line-height:.9;color:var(--maroon)}
@@ -53,7 +55,7 @@ header{padding-block:6px 4px;padding-left:max(16px,env(safe-area-inset-left,0px)
 /* where Bapa was: a gold bracket over each stay that opens down onto its own days (Darpan picked this, 24 Oct) */
 .seg{position:relative;min-width:0;display:flex;align-items:flex-end;justify-content:center;text-align:center;padding:0 0 11px}
 .seg:before{content:'';position:absolute;left:3px;right:3px;bottom:0;height:9px;border:2px solid var(--gold-lo);border-bottom:0;border-radius:7px 7px 0 0;transition:border-color .25s,box-shadow .25s}
-.seg .pn{max-width:100%;padding:0 4px;font-size:clamp(14px,2.2vh,20px);font-weight:600;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));-webkit-background-clip:text;background-clip:text;color:transparent;transition:filter .25s}
+.seg .pn{max-width:100%;padding:0 4px;font-size:calc(clamp(14px,2.2vh,20px) * var(--z));font-weight:600;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));-webkit-background-clip:text;background-clip:text;color:transparent;transition:filter .25s}
 .seg.unk:before{border-color:rgba(206,152,64,.35);border-style:dashed}
 .seg.on:before{border-color:var(--gold-hi);box-shadow:0 -4px 12px -4px rgba(255,214,120,.7)}
 .seg.on .pn{filter:drop-shadow(0 0 8px rgba(255,214,120,.55))}
@@ -67,7 +69,12 @@ footer{padding-block:6px 12px;padding-left:max(16px,env(safe-area-inset-left,0px
 .yr span{display:none}
 .yr.label span,.yr.on span{display:block}
 .yr:focus-visible{outline:2px solid var(--gold-hi);outline-offset:3px}
-.ctrl{display:flex;justify-content:center;align-items:center;gap:14px;margin-top:2px}
+.ctrl{display:flex;justify-content:center;align-items:center;gap:14px;margin-top:2px;flex-wrap:wrap}
+.zm{display:inline-flex;align-items:center;border:1px solid rgba(206,152,64,.5);border-radius:18px;overflow:hidden}
+.zm button{border:0;background:none;color:var(--gold-hi);font:600 20px/1 var(--serif);width:34px;height:30px;cursor:pointer}
+.zm button:disabled{opacity:.3;cursor:default}
+.zm button:focus-visible{outline:2px solid var(--gold-hi);outline-offset:-2px}
+.zm span{font-family:var(--caps);font-weight:700;font-size:10px;letter-spacing:.16em;color:var(--ivory-2);min-width:44px;text-align:center;text-transform:uppercase}
 .play{display:inline-flex;align-items:center;gap:9px;border:0;cursor:pointer;padding:7px 16px 7px 8px;border-radius:22px;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--maroon-deep);font-family:var(--caps);font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;box-shadow:0 3px 12px rgba(0,0,0,.4)}
 .play:focus-visible,.spd button:focus-visible{outline:2px solid var(--gold-hi);outline-offset:3px}
 .play i{width:24px;height:24px;border-radius:50%;background:var(--maroon-deep);display:grid;place-items:center}
@@ -82,7 +89,7 @@ footer{padding-block:6px 12px;padding-left:max(16px,env(safe-area-inset-left,0px
 @media (prefers-reduced-motion:reduce){.mtitle span,.month{transition:none}}
 </style>
 
-<nav class="site-menu stay" aria-label="Website tabs"><a href="/">Today</a><a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/calendar/" class="on" aria-current="page">Calendar</a><a href="/about/">About</a></nav>
+<nav class="site-menu stay" aria-label="Website tabs"><a href="/">Today</a><a href="/calendar/" class="on" aria-current="page">Calendar</a><a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/about/">About</a></nav>
 <div class="app">
   <header>
     <div class="kicker">Darshan through the years</div>
@@ -93,7 +100,7 @@ footer{padding-block:6px 12px;padding-left:max(16px,env(safe-area-inset-left,0px
   </div>
   <footer>
     <div class="rail" id="rail"><div class="line"></div></div>
-    <div class="ctrl"><button class="play" id="play" aria-pressed="false"></button><div class="spd" role="group" aria-label="Speed"><button data-s="22" aria-pressed="false">Slow</button><button data-s="40" aria-pressed="true">Gentle</button><button data-s="85" aria-pressed="false">Faster</button></div></div>
+    <div class="ctrl"><button class="play" id="play" aria-pressed="false"></button><div class="spd" role="group" aria-label="Speed"><button data-s="22" aria-pressed="false">Slow</button><button data-s="40" aria-pressed="true">Gentle</button><button data-s="85" aria-pressed="false">Faster</button></div><div class="zm" role="group" aria-label="Zoom"><button id="zout" aria-label="Zoom out, see more months">−</button><span id="zl">100%</span><button id="zin" aria-label="Zoom in">+</button></div></div>
     <div class="hint">Scroll or swipe sideways · tap a day to open its gallery · space bar plays</div>
   </footer>
 </div>
@@ -107,13 +114,17 @@ const track=document.getElementById('track'), ribbon=document.getElementById('ri
 const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const ord=n=>n+(n%10==1&&n!=11?'ST':n%10==2&&n!=12?'ND':n%10==3&&n!=13?'RD':'TH');
+/* zoom: smaller days so more months fit on the screen (Darpan, 24 Oct) */
+const ZOOMS=[1,.8,.65,.5]; let Z=1;
+try{const z=+localStorage.getItem('calendarZoom'); if(ZOOMS.includes(z)) Z=z}catch(e){}
 let D, keys=[], monthEls=[], shown=new Set(), MW=0, GAP=0, PAD=0;
 
 /* sizes: five rows of days fill the height; every month is the same width */
 function sizeCols(){
-  const h=track.clientHeight-14, g=Math.max(5,Math.min(10,innerHeight*.009)), bh=Math.max(34,Math.min(46,innerHeight*.05));
-  const rh=(h-26-5*bh)/5, cw=Math.max(60,Math.round(rh*1.08));
+  const h=(track.clientHeight-14)*Z, g=Math.max(3,Math.min(10,innerHeight*.009)*Z), bh=Math.max(34,Math.min(46,innerHeight*.05))*Z;
+  const rh=(h-26*Z-5*bh)/5, cw=Math.max(30,Math.round(rh*1.08));
   const r=document.documentElement.style; r.setProperty('--cw',cw+'px'); r.setProperty('--g',g+'px'); r.setProperty('--bh',bh+'px');
+  r.setProperty('--z',Z); r.setProperty('--mh',h+'px');
   MW=7*cw+6*g;
   if(monthEls.length>1){GAP=monthEls[1].offsetLeft-monthEls[0].offsetLeft-MW;PAD=monthEls[0].offsetLeft}
 }
@@ -136,6 +147,7 @@ function render(mo){
   if(mo._done)return; mo._done=true; mo.innerHTML='';
   const k=mo.dataset.k, [y,m]=k.split('-').map(Number), days=D.m[k], pl=places(k), mn=MONTHS[m-1].slice(0,3);
   const prev=keys[keys.indexOf(k)-1], prevPl=prev?places(prev).slice(-1)[0]:null;
+  mo.appendChild(el('div','mlab',`${MONTHS[m-1]} ${y}`));
   WD.forEach((w,c)=>{const x=el('div','wkd',w);x.style.gridArea=`1/${c+1}`;mo.appendChild(x)});
   /* days: a sixth week wraps into the empty boxes of the first */
   const first=new Date(y,m-1,1).getDay(), grid=Array(35).fill(null);
@@ -225,7 +237,7 @@ function frame(){
   const lag=reduce?0:Math.max(-22,Math.min(22,-vel*.9));
   for(const i of shown){
     const mo=monthEls[i], c=PAD+i*(MW+GAP)+MW/2, edge=Math.max(0,Math.abs(c-mid)-MW/2);
-    mo.style.opacity=Math.max(.28,1-edge/(W*.55)).toFixed(3);
+    mo.style.opacity=Math.max(Z<1?.55:.28,1-edge/(W*.55/Z)).toFixed(3);
     if(reduce)continue;
     for(const cd of mo._cards){
       const r=cd.getBoundingClientRect(); if(r.right<-50||r.left>W+50)continue;
@@ -268,6 +280,16 @@ document.querySelectorAll('.spd button').forEach(b=>b.onclick=()=>{
 ['wheel','pointerdown','touchstart'].forEach(ev=>track.addEventListener(ev,()=>{if(playing)setPlay(false)},{passive:true}));
 addEventListener('keydown',e=>{if(e.code==='Space'&&!e.target.closest('button,a')){e.preventDefault();setPlay(!playing)}});
 setPlay(false);
+const zin=document.getElementById('zin'), zout=document.getElementById('zout'), zl=document.getElementById('zl');
+function setZoom(z){
+  Z=z; document.body.classList.toggle('zoomed',z<1); zl.textContent=Math.round(z*100)+'%'; zin.disabled=z===ZOOMS[0]; zout.disabled=z===ZOOMS[ZOOMS.length-1];
+  try{localStorage.setItem('calendarZoom',z)}catch(e){}
+  if(!D)return; const k=cur; sizeCols(); shown.forEach(i=>fitNames(monthEls[i])); if(k)goTo(k,false); kick();
+}
+zout.onclick=()=>setZoom(ZOOMS[Math.min(ZOOMS.length-1,ZOOMS.indexOf(Z)+1)]);
+zin.onclick=()=>setZoom(ZOOMS[Math.max(0,ZOOMS.indexOf(Z)-1)]);
+addEventListener('keydown',e=>{if(e.target.closest('input'))return;if(e.key==='-')zout.click();if(e.key==='='||e.key==='+')zin.click()});
+setZoom(Z);
 
 fetch(DATA_URL).then(r=>r.json()).then(data=>{
   D=data; keys=Object.keys(D.m).sort();
