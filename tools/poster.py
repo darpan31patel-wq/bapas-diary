@@ -612,8 +612,23 @@ def m4_mix(cal, photos, y, m, kind):
     return img
 
 
-SPELLING = {'asembly': 'assembly', 'Swamianrayan': 'Swaminarayan', 'Swaminaryan': 'Swaminarayan'}
-NOT_FESTIVAL = re.compile(r'^\(?fast\)?$|^smart$|vruddhi|kshay|shraddh', re.I)
+ASPECT = 3 / 2      # every day's photo window: one fixed landscape shape (the brief suggests 4:3; 3:2 gives captions room)
+SPELLING = {'asembly': 'assembly', 'Swamianrayan': 'Swaminarayan', 'Swaminaryan': 'Swaminarayan', 'blesess': 'blesses',
+            'Swamsihri': 'Swamishri'}
+VERBS = r'(?:bids|blesses|performs|reads|greets|offers|meets|honours|honors|sanctifies|inaugurates|lights|applies|listens|watches)'
+
+
+def clean_caption(c):
+    """The brief's caption fixes the website's text still needs: spelling slips, the name left in when it was misspelt,
+    and two captions run together ('Reads Shikshapatri bids Jai Swaminarayan to all': only the first is kept)."""
+    for a_, b_ in SPELLING.items():
+        c = re.sub(rf'\b{a_}\b', b_, c)
+    c = re.sub(r'^Swamishri\s+(\w)', lambda m: m.group(1).upper(), c)
+    parts = re.split(rf'(?<!\band)(?<!\bwho)(?<!,) (?={VERBS}\b)', c, maxsplit=1)
+    if len(parts) == 2 and len(parts[0].split()) >= 2:
+        c = parts[0]
+    return c
+NOT_FESTIVAL = re.compile(r'^\(?fast\)?$|^smart$|vruddhi|kshay|shraddh|\b(sud|vad)\b', re.I)   # a note that only repeats a tithi is not a festival
 
 
 def head_fits(x, w, h, mode):
@@ -626,6 +641,9 @@ def head_fits(x, w, h, mode):
         ch = min(ch, fh / (.38 if w > h else .30)); cw = min(cw, ch * w / h); ch = cw * h / w
     # 'snug' (a tight portrait in a wide frame): the whole head and chin, the neck may go
     head = (fx - .35 * fw, fy - .5 * fh, fx + 1.35 * fw, fy + (1.15 if mode == 'snug' else 1.4) * fh)
+    if mode == 'top':   # last resort, a face too big for the window: keep the top of his head, let the chin go
+        x0 = min(max(0, fx + fw / 2 - cw / 2), iw - cw); y0 = min(max(0, head[1] - ch * .04), ih - ch)
+        return x0, y0, x0 + cw, y0 + ch
     if head[3] - head[1] > ch * .98 or head[2] - head[0] > cw * .98:
         return None
     x0, y0 = fx + fw / 2 - cw / 2, fy + fh / 2 - ch * ((.42 if h >= w else .36) if mode == 'close' else .38)
@@ -650,11 +668,12 @@ def pick_month(photos, aspect):
             if x['url'] in used:
                 continue
             act = nice(x)
-            modes = ['frame', 'snug'] if act or x.get('unsure') else ['close', 'frame', 'snug']
+            modes = (['frame', 'snug'] if act or x.get('unsure') else ['close', 'frame', 'snug']) + ['top']
             mode = next((m for m in modes if head_fits(x, aspect, 1, m)), None)
             if not mode:
                 continue
-            score = (x['s_act'] if act else x['s_close'] - (0 if mode == 'close' else .5)) - (.3 if mode == 'snug' else 0)
+            score = (x['s_act'] if act else x['s_close'] - (0 if mode == 'close' else .5)) - {'snug': .3, 'top': 1}.get(mode, 0)
+            score -= 6 if x.get('unsure') and x.get('sim', 0) < .35 else 0     # a murti or someone else: only when nothing has Bapa
             k = make.caption_key(x['caption'])
             for c in chosen.values():
                 if make.same_caption(k, make.caption_key(c['caption'])):
@@ -686,7 +705,7 @@ def fitted(d, text, maxw, lines=2):
 
 def m6_calendar(cal, photos, y, m):
     """The month calendar by Darpan's design brief (23 Oct 2026): the M4 look (maroon, gold, ivory cards on a cord
-    per week), the month on the left and where Bapa was on the right, every photo window the same 4:3 size and filled
+    per week), the month on the left and where Bapa was on the right, every photo window the same 3:2 size and filled
     with a head aware crop, a caption on every card, the tithi and festival on every day, and the first week's empty
     boxes used for where Bapa went that month. 16:9, 3840 x 2160."""
     import month as mc, make
@@ -695,7 +714,7 @@ def m6_calendar(cal, photos, y, m):
     d = ImageDraw.Draw(img)
     nd = calendar.monthrange(y, m)[1]
     first = cal[f'{y}-{m:02d}-01']
-    picks = pick_month(photos, 4 / 3)
+    picks = pick_month(photos, ASPECT)
     # where he went, in order: runs of days in one place
     runs = []
     for dn in range(1, nd + 1):
@@ -727,10 +746,10 @@ def m6_calendar(cal, photos, y, m):
     rows = 5
     gy0, gy1 = 272, H2 - 18
     rh = (gy1 - gy0) / rows
-    border, band = 11, 122
+    border, band = 11, 114
     card_h = rh - 22
     ph = round(card_h - border - band)
-    pw = round(ph * 4 / 3)
+    pw = round(ph * ASPECT)
     card_w = pw + 2 * border
     rnd = random.Random(7)
     wrapped = [dn for dn in range(36 - start, nd + 1)] if start + nd > 35 else []
@@ -779,7 +798,7 @@ def m6_calendar(cal, photos, y, m):
             cd.rectangle((0, 0, card.width - 1, card.height - 1), outline=mc.IVORY_EDGE, width=2)
             if x:
                 im = Image.open(os.path.join(photos['dir'], x['file'])).convert('RGB')
-                box = head_fits(x, 4 / 3, 1, x['mode'])
+                box = head_fits(x, ASPECT, 1, x['mode'])
                 card.paste(make.polish(im.crop(box).resize((pw, ph), Image.LANCZOS)), (border, border))
             else:
                 cd.rectangle((border, border, border + pw, border + ph), fill=(232, 220, 198))
@@ -790,21 +809,19 @@ def m6_calendar(cal, photos, y, m):
             num = f'{dn} {calendar.month_abbr[m]}' if extra else str(dn)
             nw, tw = cd.textlength(num, font=nf), cd.textlength(tithi, font=tf2)
             x0 = (card.width - nw - 12 - tw) / 2
-            cd.text((x0, by + 40), num, font=nf, fill=(170, 34, 34) if c == 0 else MAROON, anchor='ls')
-            cd.text((x0 + nw + 12, by + 39), tithi, font=tf2, fill=(110, 70, 56), anchor='ls')
-            ly = by + 66
+            cd.text((x0, by + 38), num, font=nf, fill=(170, 34, 34) if c == 0 else MAROON, anchor='ls')
+            cd.text((x0 + nw + 12, by + 37), tithi, font=tf2, fill=(110, 70, 56), anchor='ls')
+            ly = by + 62
             if fest:
                 cd.text((card.width / 2, ly), wrap(cd, fest[0], make.garamond(24, 700), card.width - 2 * border, 1)[0],
                         font=make.garamond(24, 700), fill=(176, 40, 30), anchor='ms')
-                ly += 25
+                ly += 24
             if x and x.get('caption'):
-                cap = x['caption']
-                for a_, b_ in SPELLING.items():
-                    cap = re.sub(rf'\b{a_}\b', b_, cap)
+                cap = clean_caption(x['caption'])
                 lines, cf = fitted(cd, cap, card.width - 2 * border - 4, 2)
                 for t in lines:
                     cd.text((card.width / 2, ly), t, font=cf, fill=(88, 34, 34), anchor='ms')
-                    ly += 24
+                    ly += 22
             if extra:   # the month's last days, carried into the first week's empty boxes, sit back a little
                 card.putalpha(card.split()[3].point(lambda v: v * 4 // 5))
             card = card.rotate(rnd.uniform(-1, 1), Image.BICUBIC, expand=True)
