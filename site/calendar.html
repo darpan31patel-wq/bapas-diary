@@ -25,7 +25,7 @@ header{padding-block:6px 4px;padding-left:max(16px,env(safe-area-inset-left,0px)
 .mtitle span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:clamp(32px,5.8vh,56px);font-weight:500;line-height:1;
   background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));-webkit-background-clip:text;background-clip:text;color:transparent;transition:opacity .7s ease, transform .7s ease;white-space:nowrap}
 .mtitle span.out{opacity:0;transform:translateY(8px)}
-.track{flex:1;min-height:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;cursor:grab;position:relative;outline:none}
+.track{flex:1;min-height:0;touch-action:pan-x;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;cursor:grab;position:relative;outline:none}
 .track::-webkit-scrollbar{display:none}
 .track.drag{cursor:grabbing}
 .ribbon{height:100%;display:flex;align-items:stretch;gap:calc(var(--mgap) * var(--z));padding-inline:max(16px,30vw);padding-block:4px 10px;width:max-content;--mgap:clamp(28px,4vw,64px)}
@@ -115,8 +115,8 @@ const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=nu
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const ord=n=>n+(n%10==1&&n!=11?'ST':n%10==2&&n!=12?'ND':n%10==3&&n!=13?'RD':'TH');
 /* zoom: smaller days so more months fit on the screen (Darpan, 24 Oct) */
-const ZOOMS=[1,.8,.65,.5]; let Z=1;
-try{const z=+localStorage.getItem('calendarZoom'); if(ZOOMS.includes(z)) Z=z}catch(e){}
+const ZOOMS=[1,.8,.65,.5], ZMIN=.4; let Z=1;
+try{const z=+localStorage.getItem('calendarZoom'); if(z>=ZMIN&&z<=1) Z=z}catch(e){}
 let D, keys=[], monthEls=[], shown=new Set(), MW=0, GAP=0, PAD=0;
 
 /* sizes: five rows of days fill the height; every month is the same width */
@@ -252,7 +252,7 @@ const kick=()=>{if(!ticking){ticking=true;requestAnimationFrame(frame)}};
 
 /* wheel, keys and mouse drag move sideways */
 track.addEventListener('scroll',kick,{passive:true});
-track.addEventListener('wheel',e=>{if(Math.abs(e.deltaY)>Math.abs(e.deltaX)){track.scrollLeft+=e.deltaY;e.preventDefault()}},{passive:false});
+track.addEventListener('wheel',e=>{if(e.ctrlKey||e.metaKey)return;if(Math.abs(e.deltaY)>Math.abs(e.deltaX)){track.scrollLeft+=e.deltaY;e.preventDefault()}},{passive:false});
 track.addEventListener('keydown',e=>{if(e.key==='ArrowRight')track.scrollBy({left:200,behavior:'smooth'});if(e.key==='ArrowLeft')track.scrollBy({left:-200,behavior:'smooth'})});
 let down=null, dragMoved=false;
 track.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse')return;down={x:e.clientX,s:track.scrollLeft};dragMoved=false});
@@ -281,14 +281,37 @@ document.querySelectorAll('.spd button').forEach(b=>b.onclick=()=>{
 addEventListener('keydown',e=>{if(e.code==='Space'&&!e.target.closest('button,a')){e.preventDefault();setPlay(!playing)}});
 setPlay(false);
 const zin=document.getElementById('zin'), zout=document.getElementById('zout'), zl=document.getElementById('zl');
-function setZoom(z){
-  Z=z; document.body.classList.toggle('zoomed',z<1); zl.textContent=Math.round(z*100)+'%'; zin.disabled=z===ZOOMS[0]; zout.disabled=z===ZOOMS[ZOOMS.length-1];
+/* at = the screen x that stays put while zooming (the mouse or the pinch), else the middle */
+function setZoom(z,at){
+  z=Math.max(ZMIN,Math.min(1,Math.round(z*100)/100));
+  const W=track.clientWidth, x=at==null?W/2:at, u=MW?(track.scrollLeft+x-PAD)/(MW+GAP):null;
+  Z=z; document.body.classList.toggle('zoomed',z<.86); zl.textContent=Math.round(z*100)+'%'; zin.disabled=z>=1; zout.disabled=z<=ZMIN;
   try{localStorage.setItem('calendarZoom',z)}catch(e){}
-  if(!D)return; const k=cur; sizeCols(); shown.forEach(i=>fitNames(monthEls[i])); if(k)goTo(k,false); kick();
+  if(!D)return; sizeCols(); shown.forEach(i=>fitNames(monthEls[i]));
+  if(u!=null) track.scrollLeft=PAD+u*(MW+GAP)-x;
+  kick();
 }
-zout.onclick=()=>setZoom(ZOOMS[Math.min(ZOOMS.length-1,ZOOMS.indexOf(Z)+1)]);
-zin.onclick=()=>setZoom(ZOOMS[Math.max(0,ZOOMS.indexOf(Z)-1)]);
+zout.onclick=()=>setZoom(ZOOMS.find(s=>s<Z-.01)??ZMIN);
+zin.onclick=()=>setZoom([...ZOOMS].reverse().find(s=>s>Z+.01)??1);
 addEventListener('keydown',e=>{if(e.target.closest('input'))return;if(e.key==='-')zout.click();if(e.key==='='||e.key==='+')zin.click()});
+/* Ctrl + mouse wheel (Windows) and trackpad pinch zoom the calendar instead of the page */
+let zt=null;
+const zoomBy=(f,x)=>{zt=zt??Z; zt=Math.max(ZMIN,Math.min(1,zt*f)); requestAnimationFrame(()=>{if(zt!=null){setZoom(zt,x);zt=null}})};
+track.addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey))return; e.preventDefault();
+  const r=track.getBoundingClientRect(), dy=e.deltaY*(e.deltaMode?33:1);
+  /* a mouse wheel click is one gentle step; a trackpad pinch follows the fingers */
+  zoomBy(Math.abs(dy)>=50?(dy>0?.88:1/.88):Math.exp(-dy*.01),e.clientX-r.left)},{passive:false});
+/* Safari trackpad pinch */
+let gz=null;
+track.addEventListener('gesturestart',e=>{e.preventDefault();gz=Z});
+track.addEventListener('gesturechange',e=>{e.preventDefault();if(gz!=null){const r=track.getBoundingClientRect();setZoom(gz*e.scale,e.clientX-r.left)}});
+track.addEventListener('gestureend',e=>{e.preventDefault();gz=null});
+/* two finger pinch on phones and tablets */
+let pz=null;
+const tdist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+track.addEventListener('touchstart',e=>{if(e.touches.length===2){const r=track.getBoundingClientRect();pz={d:tdist(e.touches),z:Z,x:(e.touches[0].clientX+e.touches[1].clientX)/2-r.left}}},{passive:true});
+track.addEventListener('touchmove',e=>{if(pz&&e.touches.length===2){e.preventDefault();setZoom(pz.z*tdist(e.touches)/pz.d,pz.x)}},{passive:false});
+track.addEventListener('touchend',e=>{if(e.touches.length<2)pz=null});
 setZoom(Z);
 
 fetch(DATA_URL).then(r=>r.json()).then(data=>{
