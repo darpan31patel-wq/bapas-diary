@@ -31,8 +31,8 @@ h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 5vw, 
 .tab[aria-selected="true"] .yrs { color: var(--bg); opacity: .8; }
 .tab:focus-visible, button:focus-visible, canvas:focus-visible, select:focus-visible { outline: 2px solid var(--saffron); outline-offset: 2px; }
 .note { font-size: 13.5px; color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; padding: 8px 12px; margin: 0; }
-.stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 660px) minmax(0, 1fr); grid-template-areas: "left frame right" "scrub scrub scrub"; gap: 18px 28px; align-items: center; }
-.frame { grid-area: frame; position: relative; aspect-ratio: 4 / 3; width: 100%; max-width: 100%; overflow: hidden; background: radial-gradient(closest-side, var(--glow), transparent); }
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 520px) minmax(0, 1fr); grid-template-areas: "left frame right" "scrub scrub scrub"; gap: 18px 28px; align-items: center; }
+.frame { grid-area: frame; position: relative; aspect-ratio: 4 / 5; width: 100%; max-width: 100%; overflow: hidden; background: radial-gradient(closest-side, var(--glow), transparent); }
 .frame img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; opacity: 0; transition: opacity var(--fade) linear; box-shadow: 0 12px 40px -10px rgba(0,0,0,.7); }
 .frame img.on { opacity: 1; }
 .frame img.rest { transition: opacity var(--fade) linear, transform 1.4s ease-in-out; }
@@ -132,7 +132,7 @@ const dOf = t => new Date(t * DAYMS);
 
 const eras = { psm: [], msm: [] };
 for (const r of DAYS) eras[r[5]].push({ day: r[0], to: r[1], place: r[2], cap: r[3], photos: r[4], tithi: r[6], fest: r[7], eyes: r.slice(8, 12), span: r[12], w: r[13], h: r[14], t: tOf(r[0]) });
-const EYE_X = .5, EYE_Y = .4, GAP = .06;    // where his eyes sit in the frame, and how big his face is (eyes to mouth, share of the frame's width)
+const EYE_X = .5, EYE_Y = .4, GAP = .15;    // where his eyes sit in the frame, and how big his face is (eyes to mouth, share of the frame's width)
 
 const $ = id => document.getElementById(id);
 const cv = $('tl'), cx = cv.getContext('2d');
@@ -150,24 +150,15 @@ function rangeDate(a, b) {
 }
 function ageOn(d) { const b = BORN[era]; let a = +d.slice(0, 4) - +b.slice(0, 4); if (d.slice(5) < b.slice(5)) a--; return a; }
 
-// the whole photo, turned and sized so his eyes sit at (EYE_X, EYE_Y), shrunk only if it would otherwise be cut;
-// once the days stop moving it eases back to lying straight in the middle (Darpan, 23 Oct 2026)
+// a close up framed on his face: the photo turned and sized so his eyes sit at (EYE_X, EYE_Y) every day, with the
+// empty space around him left outside the frame (Darpan, 24 Oct 2026: 'the closest face picture ... and cropped the
+// deadspace'); once the days stop moving it eases to lying straight (Darpan, 23 Oct 2026)
 function place(img, x, rest) {
-  const fr = $('frame'), W = fr.clientWidth, H = fr.clientHeight, ex = EYE_X * W, ey = EYE_Y * H, pad = 4;
+  const fr = $('frame'), W = fr.clientWidth, H = fr.clientHeight, ex = EYE_X * W, ey = EYE_Y * H;
   img.style.width = x.w + 'px'; img.style.height = x.h + 'px';
-  if (rest) {
-    const k = Math.min((W - 2 * pad) / x.w, (H - 2 * pad) / x.h);
-    img.style.transform = `matrix(${k},0,0,${k},${(W - k * x.w) / 2},${(H - k * x.h) / 2})`;
-    return;
-  }
   const [rx, ry, lx, ly] = x.eyes, mx = (rx + lx) / 2, my = (ry + ly) / 2;
-  const a = Math.atan2(ly - ry, lx - rx), c = Math.cos(a), s = Math.sin(a);
-  let k = GAP * W / x.span;
-  for (const [px, py] of [[0, 0], [x.w, 0], [0, x.h], [x.w, x.h]]) {
-    const vx = c * (px - mx) + s * (py - my), vy = -s * (px - mx) + c * (py - my);
-    if (vx > 0) k = Math.min(k, (W - pad - ex) / vx); else if (vx < 0) k = Math.min(k, (pad - ex) / vx);
-    if (vy > 0) k = Math.min(k, (H - pad - ey) / vy); else if (vy < 0) k = Math.min(k, (pad - ey) / vy);
-  }
+  const a = rest ? 0 : Math.atan2(ly - ry, lx - rx), c = Math.cos(a), s = Math.sin(a);
+  const k = GAP * W / x.span;
   const A = k * c, B = -k * s, C = k * s, D = k * c;
   img.style.transform = `matrix(${A},${B},${C},${D},${ex - (A * mx + C * my)},${ey - (B * mx + D * my)})`;
   fr.style.setProperty('--eye-y', EYE_Y * 100 + '%');
