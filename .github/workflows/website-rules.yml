@@ -7,6 +7,7 @@
 #   mockup  the Today page and the share a day pictures of a few days, before and after, packed into release
 #           website-rules (mockup-rules.tgz) so Claude can show Darpan the real page before anything goes live
 # Nothing here publishes the website: website-deploy.yml does that, once Darpan has typed yes.
+# Runs when this file, tools/web_rules.py, site/day.html or tools/web_dayshare.py change on this branch.
 name: website-rules
 on:
   push:
