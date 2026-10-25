@@ -30,22 +30,27 @@ def models():
 
 
 def bapa_face(im, when):
-    """As make.bapa_face, with need=0: Bapa's best matching face as ((x, y, w, h), similarity, front, faces found),
-    the box in im's own pixels, or (None, 0, 0, faces) when the photo has no face at all."""
+    """As make.bapa_face, with need=0: Bapa's best matching face as ((x, y, w, h), similarity, front, faces found, other),
+    the box in im's own pixels, or (None, 0, 0, faces, 0) when no face looks more like that day's Bapa than the other guru.
+    One thing more than make.py: a face only counts when it is closer to that day's Bapa than to the other guru (the
+    website has every baps.org album, and in 1999 Mahant Swami Maharaj, then on his own travels, scores up to .7 against
+    Pramukh Swami Maharaj's fingerprint). other is that face's score against the other guru."""
     m = models()
     small = im.copy(); small.thumbnail((1280, 1280))
     k = im.width / small.width
     bgr = cv2.cvtColor(np.array(small), cv2.COLOR_RGB2BGR)
-    ref = m['bapa']['psm' if when < PSM_UNTIL else 'msm']
-    best, best_sim, front = None, 0, 0
+    psm = when < PSM_UNTIL
+    ref, alt = m['bapa']['psm' if psm else 'msm'], m['bapa']['msm' if psm else 'psm']
+    best, best_sim, front, other = None, 0, 0, 0
     m['detect'].setInputSize((bgr.shape[1], bgr.shape[0]))
     faces = m['detect'].detect(bgr)[1]
     for f in faces if faces is not None else []:
         e = m['recognise'].feature(m['recognise'].alignCrop(bgr, f))[0]
-        sim = float(ref @ (e / np.linalg.norm(e)))
-        if sim > best_sim:
-            best, best_sim, front = tuple(float(v) * k for v in f[:4]), sim, front_view(f)
-    return best, best_sim, front, 0 if faces is None else len(faces)
+        e = e / np.linalg.norm(e)
+        sim, sim_alt = float(ref @ e), float(alt @ e)
+        if sim > best_sim and sim > sim_alt:
+            best, best_sim, front, other = tuple(float(v) * k for v in f[:4]), sim, front_view(f), sim_alt
+    return best, best_sim, front, 0 if faces is None else len(faces), other
 
 
 def front_view(f):

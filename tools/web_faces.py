@@ -6,12 +6,13 @@ from R2 (photos.bapas-diary.com, the high res copy), one year at a time as each 
 (.github/workflows/website-faces.yml), never 04:30 to 07:30 UTC.
 
     python3 tools/web_faces.py plan --db bapas.db --years years.txt --have have.txt     shards still to look at
-    python3 tools/web_faces.py scan --db bapas.db --shard 2026-0-12 --out faces-2026-0-12.json.gz
+    python3 tools/web_faces.py scan --db bapas.db --shard 2026-0-12 --out face2-2026-0-12.json.gz
     python3 tools/web_faces.py pick --db bapas.db --faces faces --out bapa.db --top bapa-top.db
     python3 tools/web_faces.py order --db bapa.db --day out/data/day                  best darshan first on Today
     python3 tools/web_faces.py mockup --old bapas.db --db bapa.db --days 10-25 --out mockup
 
-scan keeps, for every photo, Bapa's best face: {"ALBUM/FILE": [similarity, x, y, w, h, front, sharp, bright, W, H, faces]}
+scan keeps, for every photo, Bapa's best face: {"ALBUM/FILE": [similarity, x, y, w, h, front, sharp, bright, W, H, faces, other]}
+(other: that face's score against the other guru, which must be lower)
 (x, y, w, h as parts of the photo's width and height, W and H the size of the m/ copy that was looked at).
 
 pick writes bapa.db: the database with only the photos of Bapa the rules keep, and table bapa_pick (album, file, rank,
@@ -23,10 +24,12 @@ import argparse, datetime, gzip, io, json, os, re, sqlite3, shutil, sys, time, u
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import cv2
 import web_bapa_rules as R
 
 PHOTOS = 'https://photos.bapas-diary.com/'
 ASPECT = .69     # the frame make.py judges an action shot against (its tall cards)
+PREFIX = 'face2-'   # the shard files in release website-faces (face2: also checked against the other guru)
 THIN_DAY = 5     # fewer years than this with a recognised photo: the other years keep their caption based photos
 
 
@@ -51,7 +54,7 @@ def plan(a):
     for y in years:
         n = db.execute('SELECT count(*) FROM photos WHERE year = ?', (y,)).fetchone()[0]
         parts = max(1, -(-n // a.size))
-        todo += [f'{y}-{i}-{parts}' for i in range(parts) if f'faces-{y}-{i}-{parts}.json.gz' not in have]
+        todo += [f'{y}-{i}-{parts}' for i in range(parts) if f'{PREFIX}{y}-{i}-{parts}.json.gz' not in have]
     print(json.dumps(todo[:a.max]))
 
 
@@ -60,15 +63,16 @@ def look(job):
     key, when, body = job
     try:
         from PIL import Image
+        cv2.setNumThreads(1)   # one photo per process already uses every core
         im = Image.open(io.BytesIO(body)).convert('RGB')
-        face, sim, front, n = R.bapa_face(im, when)
+        face, sim, front, n, other = R.bapa_face(im, when)
         if not face:
-            return key, [0, 0, 0, 0, 0, 0, 0, 0, im.width, im.height, n]
+            return key, [0, 0, 0, 0, 0, 0, 0, 0, im.width, im.height, n, 0]
         sharp, bright = R.face_quality(im, face)
         x, y, w, h = face
         W, H = im.size
         return key, [round(sim, 3), round(x / W, 4), round(y / H, 4), round(w / W, 4), round(h / H, 4), round(front, 2),
-                     round(sharp), round(bright), W, H, n]
+                     round(sharp), round(bright), W, H, n, round(other, 3)]
     except Exception as e:
         print(key, e, flush=True)
         return key, None
@@ -116,14 +120,14 @@ def scan(a):
 def load_faces(folder):
     faces = {}
     for f in sorted(os.listdir(folder)):
-        if f.startswith('faces-') and f.endswith('.json.gz'):
+        if f.startswith(PREFIX) and f.endswith('.json.gz'):
             faces.update(json.load(gzip.open(os.path.join(folder, f), 'rt')))
     return faces
 
 
 def judge(c, rec):
     """make.py's two scores for one recognised photo: (close darshan score, action shot score, nice, special, close_ok)."""
-    sim, x, y, w, h, front, sharp, bright, W, H, _ = rec
+    sim, x, y, w, h, front, sharp, bright, W, H = rec[:10]
     r = h
     keep = R.frame_keep(W, H, ASPECT)
     cap = R.caption({'c': c})
@@ -147,7 +151,7 @@ def judge(c, rec):
 
 def pick(a):
     faces = load_faces(a.faces)
-    scanned = {int(f.split('-')[1]) for f in os.listdir(a.faces) if f.startswith('faces-')}
+    scanned = {int(f[len(PREFIX):].split('-')[0]) for f in os.listdir(a.faces) if f.startswith(PREFIX)}
     src = sqlite3.connect(a.db)
     pins = json.load(open(os.path.join(R.HERE, 'archive', 'picks.json'))) if os.path.exists(os.path.join(R.HERE, 'archive', 'picks.json')) else {}
     diary = {}

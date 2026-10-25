@@ -57,8 +57,8 @@ jobs:
         run: |
           pip install -q -r requirements.txt
           gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
-          python3 tools/web_faces.py scan --db bapas.db --shard ${{ matrix.shard }} --out faces-${{ matrix.shard }}.json.gz
-          gh release upload website-faces faces-${{ matrix.shard }}.json.gz --clobber
+          python3 tools/web_faces.py scan --db bapas.db --shard ${{ matrix.shard }} --out face2-${{ matrix.shard }}.json.gz
+          gh release upload website-faces face2-${{ matrix.shard }}.json.gz --clobber
   pick:
     needs: [plan, scan]
     if: always() && needs.plan.result == 'success'
@@ -74,7 +74,7 @@ jobs:
           sudo apt-get install -y -qq fonts-dejavu-core >/dev/null
           gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
           curl -sf https://photos.bapas-diary.com/years.txt -o years.txt
-          mkdir faces && gh release download website-faces -p 'faces-*.json.gz' -D faces
+          mkdir faces && gh release download website-faces -p 'face2-*.json.gz' -D faces
           python3 tools/web_faces.py pick --db bapas.db --faces faces --out bapa.db --top bapa-top.db
           python3 tools/web_faces.py mockup --old bapas.db --db bapa.db --years years.txt --days 10-25 10-26 --out mockup
           gzip -kf bapa.db bapa-top.db
