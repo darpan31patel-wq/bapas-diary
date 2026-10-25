@@ -159,7 +159,7 @@ body { background: linear-gradient(#efdcd2, #f3e5d8) fixed; }
 <div class="bar">
   <div class="wrap">
     <div class="controls">
-      <input id="q" type="search" placeholder="Search anything, e.g. annakut London" autocomplete="off" aria-label="Search words">
+      <input id="q" type="search" placeholder="Search anything, or ask: When did Bapa go to London?" autocomplete="off" aria-label="Search words or ask a question">
       <button class="reset" id="clear" type="button" title="Clear the search and every filter">&#x2715; Clear all</button>
       <select id="order" aria-label="Order"><option value="old">Oldest first</option><option value="new">Newest first</option></select>
     </div>
@@ -189,8 +189,11 @@ body { background: linear-gradient(#efdcd2, #f3e5d8) fixed; }
   <section class="can" aria-label="Things you can search">
     <p class="lead">Search for anything: a word from a caption, a place, a festival, a mandir opening, a date, or what is happening in a photo.</p>
     <div class="chips" id="c-try"></div>
+    <p class="lead ask-lead">Or ask the diary a question, in your own words:</p>
+    <div class="chips ask-chips" id="c-ask"></div>
     <div class="hint">Every word must appear. Use <code>"quotes"</code> for a phrase and <code>-word</code> to leave a word out. Pick a month and day with no year to see that date across every year.</div>
   </section>
+  <section id="answer" class="answer-card" aria-live="polite" hidden></section>
   <div class="years" id="years" aria-label="Matches per year"></div>
   <div class="status"><div id="count">Loading…</div></div>
   <div id="results"></div>
@@ -272,12 +275,15 @@ const yearKey = y => y < FIRST ? 'old' : String(y);
 
 function search() {
   $('day-view')?.remove();
-  const { want, not } = parse($('q').value), year = $('year').value, month = $('month').value, day = $('day').value;
+  // a question ("When did Bapa go to London?", site/search-ask.js): its answer goes above the results, and the
+  // results are the photos (with Bapa) and stories that answer it, instead of photos that have every word
+  const asked = window.askDiary ? askDiary($('q').value) : null;
+  const { want, not } = asked ? { want: [], not: [] } : parse($('q').value), year = $('year').value, month = $('month').value, day = $('day').value;
   const from = $('from').value, to = $('to').value, fest = $('fest').value, place = $('place').value || linkPlace, act = $('act').value, mandir = $('mandir').value;
   const lp = linkPlace.toLowerCase();   // a place from a map link also finds albums named after two places, or 'Washington DC'
   const byYear = {};
   hits = [];
-  if (!want.length && !not.length && !year && !month && !day && !from && !to && !fest && !place && !act && !mandir) { render(byYear, want); return; }
+  if (!asked && !want.length && !not.length && !year && !month && !day && !from && !to && !fest && !place && !act && !mandir) { render(byYear, want); return; }
   for (const r of items) {
     if (month && r.d.slice(5, 7) !== month) continue;
     if (day && r.d.slice(8, 10) !== day) continue;
@@ -287,6 +293,7 @@ function search() {
     if (place && !(r.kind === 'photo' ? r.city === place || (place === linkPlace && r.g[2].split(',').some(c => c.trim().toLowerCase().startsWith(lp))) : (r.place || '').includes(place))) continue;
     if (act && !(r.tags && r.tags.split(', ').includes(act))) continue;
     if (mandir && !(r.m || '').includes(mandir)) continue;
+    if (asked && !asked.keep(r)) continue;
     if (want.length || not.length) {
       const hay = r.hay + ' ' + calWords(r.d);
       if (!want.every(w => hay.includes(w)) || not.some(w => hay.includes(w))) continue;
@@ -512,11 +519,11 @@ async function load() {
   const tg = fetch('data/stories.json').then(r => r.json()).then(list => add(list.filter(p => p[0]).map(([d, place, text, m = '']) =>
     ({ kind: 'post', d, y: +d.slice(0, 4), place, text, m, hay: (text + ' ' + place + ' ' + mandirWords(m)).toLowerCase() }))));
   await Promise.all(about.years.map(y => fetch(`data/${y}.json`).then(r => r.json()).then(data =>
-    add(data.p.map(([gi, file, cap, tags]) => {
+    add(data.p.map(([gi, file, cap, tags, bapa]) => {
       const g = data.g[gi];
       tags = typeof tags === 'string' ? tags : '';
       const m = g[4] || '';
-      return { kind: 'photo', y, g, d: g[0], city: g[2].split(',')[0].trim(), file, cap, tags, m, hay: (cap + ' ' + g[2] + ' ' + tags + ' ' + mandirWords(m)).toLowerCase() };
+      return { kind: 'photo', y, g, d: g[0], city: g[2].split(',')[0].trim(), file, cap, tags, m, b: bapa === 1, hay: (cap + ' ' + g[2] + ' ' + tags + ' ' + mandirWords(m)).toLowerCase() };
     })))));
   await tg;
   if (START_YEAR && !linked && !$('q').value.trim() && !$('year').value) { $('year').value = START_YEAR; search(); }   // unless they already started searching

@@ -7,16 +7,23 @@ Writes a folder that works as it is on any web host (Cloudflare Pages, or opened
   data/YYYY.json      one file per year of baps.org photos:
                         {"g": [[date, date_to, place, album, mandir], ...],  a group = one album on one day (or date range);
                                                                     mandir only on mandir days, e.g. "p" (see MANDIR)
-                         "p": [[group, file, caption, tags], ...]}   tags: what is happening in it, e.g. "smiling, garland"    every photo, nothing cut out
+                         "p": [[group, file, caption, tags, bapa], ...]}   tags: what is happening in it, e.g. "smiling, garland"    every photo, nothing cut out
+                                                                    bapa: 1 when Bapa is in the photo (is_bapa), else 0
   data/stories.json   every On this day story (the Telegram channel posts, shown without any Telegram links): [[date, place, text, mandir?], ...]
   data/calendar.json  every BAPS calendar day, when the database has the calendar table:
                         [[date, weekday, vikram_samvat, indian_date, festivals, festival_about, notes, source], ...]
   data/about.json     years, counts and when it was built
+  data/stops.json     Bapa's travels for Ask the diary, from the live Travels page (live/travels/index.html):
+                        {"stops": [[year, place, from, to, photos, caption, close up or 0], ...], "country": {place: country}}
+The questions people type into the search bar ("When did Bapa go to London?") are read by site/search-ask.js, which
+is put inside index.html, so it works offline too.
 """
 import argparse, json, os, re, sqlite3
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PAGE = os.path.join(HERE, 'site', 'search.html')
+ASK = os.path.join(HERE, 'site', 'search-ask.js')
+TRAVELS = os.path.join(HERE, 'live', 'travels', 'index.html')
 
 
 # The BAPS calendar spells some festivals differently from year to year. Each spelling maps to one name, so the
@@ -152,7 +159,7 @@ def main():
         if key not in yr['at']:
             yr['at'][key] = len(yr['g'])
             yr['g'].append(list(key))
-        yr['p'].append([yr['at'][key], file, cap or '', tags(f'{album}/{file}')])
+        yr['p'].append([yr['at'][key], file, cap or '', tags(f'{album}/{file}'), 1 if bapa == 1 else 0])
         g = yr['g'][yr['at'][key]]
         for k in mandir(cap) if date else ():
             if len(g) < 5:
@@ -182,11 +189,19 @@ def main():
             del r[8:]
         write(os.path.join(a.out, 'data', 'calendar.json'), cal)
 
+    # Bapa's travels (Ask the diary): the stops the Travels page shows, with their close ups (Darpan, 25 Oct 2026: "go live")
+    trips = json.loads(re.search(r'<script[^>]*id="trips"[^>]*>(.*?)</script>', open(TRAVELS, encoding='utf-8').read(), re.S).group(1))
+    stops = [[int(y), x['p'], x['a'], x['b'], x['n'], x.get('cap', ''), trips.get('pics', {}).get(f'{y}-{i}', 0)]
+             for y, ss in sorted(trips['years'].items()) for i, x in enumerate(ss)]
+    write(os.path.join(a.out, 'data', 'stops.json'),
+          {'stops': stops, 'country': {v['name']: v['country'] for v in trips['places'].values()}})
+
     built = dict(db.execute("SELECT key, value FROM about"))
     write(os.path.join(a.out, 'data', 'about.json'),
           {'built': built.get('built'), 'years': sorted(counts), 'photos': counts, 'stories': len(tg), 'calendar': len(cal)})
 
     body = open(PAGE, encoding='utf-8').read().replace('{{PHOTOS}}', a.photos).replace('{{START_YEAR}}', a.start_year)
+    body += '\n<script>\n' + open(ASK, encoding='utf-8').read() + '</script>'
     with open(os.path.join(a.out, 'index.html'), 'w', encoding='utf-8') as f:
         f.write('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
                 '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
