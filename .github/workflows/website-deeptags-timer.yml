@@ -1,0 +1,16 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, fetches nothing
+# from baps.org. Every few hours it tags the photos of any new year in R2 (what is in each photo, for Search) and,
+# when there were new photos, rebuilds the website. Everything it runs comes from the deep tags branch
+# claude/project-thread-vcys74 (.github/workflows/website-deeptags.yml); it sits here only because GitHub runs timed
+# workflows from main. Keeps 04:30 to 07:30 UTC free for the daily picture's morning run. (Darpan: yes timer, 25 Oct 2026)
+name: website-deeptags-timer
+on:
+  schedule:
+    - cron: '10 3,11,17,23 * * *'   # 03:10, 11:10, 17:10, 23:10 UTC, a few hours after each high res copy run
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  tags:
+    uses: darpan31patel-wq/bapas-diary/.github/workflows/website-deeptags.yml@claude/project-thread-vcys74
+    secrets: inherit
