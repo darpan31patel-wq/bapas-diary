@@ -120,6 +120,7 @@ jobs:
           git fetch -q --depth 1 origin "$CAL_COMMIT" && mkdir calsrc && git archive "$CAL_COMMIT" tools/web_calendar.py site/calendar.html fonts | tar -x -C calsrc
           python3 calsrc/tools/web_calendar.py --db before-top.db --site m/before --photos-url https://photos.bapas-diary.com/ --search-url /search/ --photo-years photo-years.txt
           python3 calsrc/tools/web_calendar.py --db bapa-top.db --site m/after --photos-url https://photos.bapas-diary.com/ --search-url /search/ --photo-years photo-years.txt
+          python3 tools/web_rules.py calfaces --site m/after --faces faces
           # the small photos those days and months show
           python3 - <<'EOF' | sort -u > keys.txt
           import glob, json

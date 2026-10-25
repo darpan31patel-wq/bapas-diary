@@ -6,6 +6,7 @@ picture chain. Like web_bapa_rules.py, the parts of make.py used here are copies
     python3 tools/web_rules.py tg --db bapas.db --drive tgsrc --out tg      5  darshan before 1999 from the channel photos
     python3 tools/web_rules.py day --day out/data/day --db bapa.db --faces faces --tg tg-cards.json
                                                                           3 4 5 6 7  the Today page's data
+    python3 tools/web_rules.py calfaces --site cal --faces faces          3  the Calendar tab's photos keep his head too
     python3 tools/web_rules.py look --out out                             2  the gentle finish on every photo of Bapa
     python3 tools/web_rules.py calendar --db bapas.db --db bapa.db ...    the BAPS calendar days the picture shows (25 Oct 2026)
 
@@ -340,6 +341,55 @@ def R_faces(folder):
     return out
 
 
+# ---------------------------------------------------------------- 3 on the Calendar tab
+
+# Darpan, 25 Oct 2026 (13 October 2026 cut through Bapa's head): the Calendar's photos are framed the same way, his
+# whole head in view. The Calendar page belongs to its own thread, so this only adds where his face is to its data
+# ("f") and a small script that moves each photo to keep the head in its window (make.fill's head box).
+CAL_SCRIPT = r"""<script id="cal-faces">
+(() => {
+  let F = null;
+  const key = im => im.dataset.k || ((m => m && m[1] + '/' + decodeURIComponent(m[2]))(im.src.match(/\/s\/(.+?)\/([^\/?]+)$/)));
+  function place(im) {
+    const f = F && F[key(im)];
+    if (!f) return;
+    if (!im.complete || !im.naturalWidth) { im.addEventListener('load', () => place(im), {once: true}); return; }
+    const w = im.clientWidth, h = im.clientHeight, iw = im.naturalWidth, ih = im.naturalHeight;
+    if (!w || !h) return;
+    const k = Math.max(w / iw, h / ih), cw = w / k, ch = h / k;
+    const fx = f[0] * iw, fy = f[1] * ih, fw = f[2] * iw, fh = f[3] * ih, top = fy - .9 * fh, bottom = fy + 1.4 * fh;
+    let x0 = fx + fw / 2 - cw / 2, y0 = Math.min(top, Math.max(bottom - ch, top - ch * .1));
+    x0 = Math.min(Math.max(0, x0), iw - cw); y0 = Math.min(Math.max(0, y0), ih - ch);
+    im.style.objectPosition = `${iw - cw > 1 ? x0 / (iw - cw) * 100 : 50}% ${ih - ch > 1 ? y0 / (ih - ch) * 100 : 50}%`;
+  }
+  const all = () => document.querySelectorAll('.win img').forEach(place);
+  fetch('/data/calendar.json').then(r => r.json()).then(d => { F = d.f || {}; all(); }).catch(() => {});
+  new MutationObserver(l => l.forEach(r => r.addedNodes.forEach(n => n.nodeType === 1 &&
+    (n.matches('.win img') ? [n] : n.querySelectorAll('.win img')).forEach(place)))).observe(document.documentElement, {childList: true, subtree: true});
+  addEventListener('resize', all);
+})();
+</script>"""
+
+
+def calfaces(a):
+    faces = R_faces(a.faces)
+    path = os.path.join(a.site, 'data', 'calendar.json')
+    c = json.load(open(path, encoding='utf-8'))
+    c['f'] = {}
+    for days in c['m'].values():
+        for d in days:
+            if len(d) > 5:
+                rec = faces.get(f'{d[4]}/{d[5]}')
+                if rec and rec[0] >= TG_SAME_PERSON:
+                    c['f'][f'{d[4]}/{d[5]}'] = [round(v, 4) for v in rec[1:5]]
+    json.dump(c, open(path, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+    page = os.path.join(a.site, 'calendar', 'index.html')
+    body = open(page, encoding='utf-8').read()
+    if 'id="cal-faces"' not in body:
+        open(page, 'w', encoding='utf-8').write(body.replace('</body>', CAL_SCRIPT + '\n</body>', 1))
+    print(f"calendar: {len(c['f'])} photos framed by Bapa's face")
+
+
 # ---------------------------------------------------------------- 2 the gentle finish
 
 # make.polish: a light levels stretch, a little more red and a little less blue, then robes and skin drawn together.
@@ -397,6 +447,7 @@ def main():
     s = sub.add_parser('day'); s.add_argument('--day', required=True); s.add_argument('--db', required=True)
     s.add_argument('--faces'); s.add_argument('--tg'); s.set_defaults(fn=day)
     s = sub.add_parser('calendar'); s.add_argument('--db', action='append', required=True); s.set_defaults(fn=calendar)
+    s = sub.add_parser('calfaces'); s.add_argument('--site', required=True); s.add_argument('--faces', required=True); s.set_defaults(fn=calfaces)
     s = sub.add_parser('look'); s.add_argument('--out', required=True); s.set_defaults(fn=look)
     a = ap.parse_args()
     a.fn(a)
