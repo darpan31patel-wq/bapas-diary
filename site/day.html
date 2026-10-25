@@ -1,0 +1,518 @@
+<meta charset="utf-8">
+<link rel="stylesheet" href="{{MENU_CSS}}">
+<title>Bapa's Diary</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+@font-face{font-family:"Diary Garamond";font-weight:500;src:url({{FONT_G5}}) format("woff2")}
+@font-face{font-family:"Diary Garamond";font-weight:600;src:url({{FONT_G6}}) format("woff2")}
+@font-face{font-family:"Diary Garamond";font-weight:700;src:url({{FONT_G7}}) format("woff2")}
+@font-face{font-family:"Diary Arimo";font-weight:700;src:url({{FONT_A7}}) format("woff2")}
+/* Layout: the 2pm On this day picture as a living page. Maroon ground, gold title, a board of ivory polaroids
+   hanging straight on cords (one cord per row), each card fading through its year; under it every photo of the day. */
+:root{
+  --maroon-in:#42101c; --maroon-out:#160509; --maroon-ink:#6e1424; --maroon-deep:#2a0a12;
+  --gold-hi:#ffe296; --gold:#ce9840; --gold-soft:#d9a441;
+  --ivory-top:#f8f2e4; --ivory-bot:#eadfc8; --ivory-edge:#c4b292; --cream:#faf1de;
+  --cord:#c9a46a; --mist:rgba(250,241,222,.62);
+  --serif:"Diary Garamond","EB Garamond",Garamond,"Times New Roman",serif;
+  --sans:"Diary Arimo",Arimo,Arial,Helvetica,sans-serif;
+  color-scheme:dark;
+}
+html,body{min-height:100%}
+[hidden]{display:none!important}
+*,*::before,*::after{box-sizing:border-box}
+body{background:var(--maroon-out);color:var(--cream);font-family:var(--serif)}
+a{color:inherit}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold-hi);outline-offset:3px}
+.page{min-height:100vh;overflow-x:clip;background:
+  radial-gradient(ellipse 60% 30% at 50% 0%,rgba(255,196,110,.16),transparent 70%),
+  radial-gradient(ellipse 90% 70% at 50% 30%,var(--maroon-in),var(--maroon-out)) no-repeat;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:calc(46px + 14px) 48px}
+.wrap{max-width:1500px;margin:0 auto}
+.caps{font:700 11px/1.2 var(--sans);letter-spacing:.2em;text-transform:uppercase}
+
+/* date bar */
+.datebar{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:8px}
+.pill{font:700 11px/1 var(--sans);letter-spacing:.14em;text-transform:uppercase;background:rgba(0,0,0,.22);color:var(--gold-hi);border:1px solid rgba(217,164,65,.45);border-radius:999px;padding:10px 16px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+.pill:hover{background:rgba(217,164,65,.14)}
+.pill.solid{background:var(--gold-soft);color:var(--maroon-out);border-color:var(--gold-soft)}
+.pill[hidden]{display:none}
+
+header{text-align:center;margin:22px 0 4px}
+h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-gradient(var(--gold-hi),var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 2px rgba(0,0,0,.45));text-wrap:balance}
+.sub{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:12px;font:700 clamp(11px,1.4vw,14px)/1 var(--sans);letter-spacing:.42em;color:var(--gold-soft);padding-left:.42em}
+.sub::before,.sub::after{content:"";width:48px;height:1px;background:linear-gradient(90deg,transparent,var(--gold-soft))}
+.sub::after{transform:scaleX(-1)}
+.tithi{margin:16px auto 0;font:500 clamp(17px,2vw,21px)/1.4 var(--serif);color:var(--cream);text-wrap:balance;max-width:44ch}
+.tithi b{font-weight:700;color:var(--gold-hi)}
+.count{margin:8px auto 0;font-size:15px;color:var(--mist);max-width:60ch;line-height:1.45}
+
+/* board */
+.board{position:relative;margin-top:30px}
+.cords{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.cards{position:relative;display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));column-gap:clamp(12px,1.6vw,26px);row-gap:clamp(30px,3.4vw,46px);padding-top:16px}
+@media (max-width:520px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.slot{display:flex;flex-direction:column;align-items:center;min-width:0}
+.card{position:relative;display:block;width:100%;background:linear-gradient(var(--ivory-top),var(--ivory-bot));border:1px solid var(--ivory-edge);padding:7% 7% 0;box-shadow:0 10px 18px rgba(0,0,0,.42),0 2px 4px rgba(0,0,0,.3);cursor:pointer;text-align:center;text-decoration:none;transform-origin:50% -12px;will-change:transform}
+.peg{position:absolute;left:50%;top:-17px;width:12px;height:30px;margin-left:-6px;border-radius:6px 6px 3px 3px;background:linear-gradient(90deg,#6b4022,#b07a4a 30%,#9a6538 55%,#5d361c);box-shadow:1px 3px 4px rgba(0,0,0,.45);z-index:2}
+.peg::after{content:"";position:absolute;left:1px;right:1px;top:12px;height:3px;background:#3a2210;opacity:.7}
+.photo{position:relative;aspect-ratio:3/4;max-width:100%;overflow:hidden;background:var(--maroon-deep)}
+.photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 3.2s ease-in-out}
+.photo img.on{opacity:1}
+.photo .words{position:absolute;inset:0;display:grid;place-items:center;padding:12%;background:radial-gradient(circle at 50% 40%,#5a1626,var(--maroon-deep));transition:opacity 3.2s ease-in-out}
+.photo .words p{margin:0;font:500 clamp(14px,1.3vw,16px)/1.35 var(--serif);font-style:italic;color:var(--gold-hi);text-align:center;text-wrap:balance;overflow-wrap:anywhere;transition:opacity 1.5s ease-in-out}
+.photo .words.off{opacity:0}
+.photo.story{display:grid;place-items:center;padding:12%;background:radial-gradient(circle at 50% 40%,#5a1626,var(--maroon-deep))}
+.photo.story p{margin:0;font:500 clamp(14px,1.3vw,16px)/1.35 var(--serif);font-style:italic;color:var(--gold-hi);text-wrap:balance}
+.label{padding:9px 2px 10px;color:var(--maroon-ink)}
+.yr{font:600 clamp(21px,2vw,25px)/1 var(--serif)}
+.pl{margin-top:5px;font:700 9px/1.2 var(--sans);letter-spacing:.2em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ti{margin-top:4px;font:500 12.5px/1.25 var(--serif);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fest{display:inline-block;margin-top:5px;max-width:100%;font:700 8.5px/1.25 var(--sans);letter-spacing:.14em;text-transform:uppercase;background:var(--maroon-ink);color:var(--gold-hi);padding:3px 7px;border-radius:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.of{margin-top:5px;font:700 8.5px/1 var(--sans);letter-spacing:.16em;color:rgba(110,20,36,.6);font-variant-numeric:tabular-nums}
+.cap{margin-top:11px;min-height:2.8em;text-align:center;font:500 15px/1.35 var(--serif);color:var(--cream);transition:opacity 1.5s ease-in-out;text-wrap:balance;max-width:100%;overflow-wrap:anywhere}
+.cap.fade{opacity:0}
+
+.controls{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:28px;align-items:center}
+.controls select{font:700 11px var(--sans);letter-spacing:.1em;text-transform:uppercase;background:rgba(0,0,0,.25);color:var(--gold-hi);border:1px solid rgba(217,164,65,.45);border-radius:999px;padding:9px 12px;cursor:pointer}
+.controls label{font:700 10px var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--gold-soft)}
+
+/* every photo of the day */
+.all{margin-top:56px;border-top:1px solid rgba(217,164,65,.22);padding-top:30px}
+.all>h2{margin:0;text-align:center;font:700 clamp(28px,4vw,42px)/1.1 var(--serif);color:var(--gold-hi);text-wrap:balance}
+.all>p{text-align:center;color:var(--mist);margin:8px 0 0;font-size:15px}
+.yeargroup{margin-top:34px;scroll-margin-top:16px}
+.yhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;padding-bottom:10px;border-bottom:1px solid rgba(217,164,65,.18)}
+.yhead h3{margin:0;font:700 30px/1 var(--serif);color:var(--gold-hi)}
+.yhead .caps{color:var(--gold-soft)}
+.yhead .it{font:500 16px var(--serif);font-style:italic;color:var(--cream)}
+.yhead .fest{margin:0;background:var(--gold-soft);color:var(--maroon-out)}
+.yhead a{margin-left:auto;font:700 10px var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--gold-soft)}
+.story-line{margin:12px 0 0;font:500 16px/1.45 var(--serif);font-style:italic;color:var(--cream);max-width:70ch}
+.story-line b{font-style:normal;font:700 10px var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--gold-soft);margin-right:8px}
+.tripnote{margin:18px 0 0;font:700 10px var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--gold-soft)}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px;margin-top:12px}
+.thumb{display:block;padding:5px 5px 0;background:linear-gradient(var(--ivory-top),var(--ivory-bot));border:0;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,.35);min-width:0}
+.thumb .im{display:block;aspect-ratio:1;max-width:100%;background:var(--maroon-deep) center/cover no-repeat;overflow:hidden}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb small{display:block;padding:5px 2px 6px;font:500 11.5px/1.25 var(--serif);color:var(--maroon-ink);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+footer{text-align:center;margin-top:52px;font:600 19px var(--serif);color:var(--gold-soft);letter-spacing:.04em}
+
+/* the wide view and the slideshow */
+.viewer{position:fixed;inset:0;z-index:30;background:rgba(14,3,6,.96);display:grid;grid-template-rows:auto minmax(0,1fr) auto;padding:calc(10px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.vtop{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.vtop .caps{color:var(--gold-soft)}
+.vstage{position:relative;display:grid;place-items:center;min-height:0;padding:12px 0}
+.vframe{background:linear-gradient(var(--ivory-top),var(--ivory-bot));padding:10px 10px 0;max-width:100%;max-height:100%;display:flex;flex-direction:column;box-shadow:0 18px 40px rgba(0,0,0,.6)}
+.vframe img{display:block;max-width:min(92vw,1100px);max-height:calc(100vh - 230px);object-fit:contain;margin:0 auto}
+.vframe .none{width:min(80vw,520px);aspect-ratio:4/3;display:grid;place-items:center;padding:8%;background:radial-gradient(circle at 50% 40%,#5a1626,var(--maroon-deep));color:var(--gold-hi);font:500 italic 20px/1.4 var(--serif);text-align:center}
+.thumb .im.words{display:grid;place-items:center;padding:8px;background:radial-gradient(circle at 50% 40%,#5a1626,var(--maroon-deep));color:var(--gold-hi);font:500 italic 12px/1.3 var(--serif);text-align:center;overflow:hidden}
+.vcap{padding:10px 6px 12px;color:var(--maroon-ink);text-align:center;max-width:min(92vw,1100px)}
+.vcap p{margin:0;font:500 17px/1.35 var(--serif);text-wrap:balance}
+.vcap div{margin-top:5px;font:700 9.5px/1.4 var(--sans);letter-spacing:.18em;text-transform:uppercase}
+.vnav{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+.viewer.play .vframe img{animation:breathe 7s ease-in-out both}
+@keyframes breathe{from{transform:scale(1)}to{transform:scale(1.025)}}
+
+/* choose a day */
+.picker{position:fixed;inset:0;z-index:40;background:rgba(14,3,6,.9);display:grid;place-items:center;padding:16px max(16px,env(safe-area-inset-right,0px)) 16px max(16px,env(safe-area-inset-left,0px))}
+.pbox{background:linear-gradient(var(--ivory-top),var(--ivory-bot));color:var(--maroon-ink);width:min(440px,100%);padding:20px 18px 18px;box-shadow:0 18px 40px rgba(0,0,0,.6)}
+.pbox h2{margin:0;font:700 26px var(--serif);text-align:center}
+.months{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+.months button{background:none;border:1px solid var(--ivory-edge);border-radius:999px;width:38px;height:38px;cursor:pointer;color:var(--maroon-ink);font:700 16px var(--sans)}
+.months b{font:600 22px var(--serif)}
+.daygrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:12px}
+.daygrid button{aspect-ratio:1;border:1px solid var(--ivory-edge);background:rgba(255,255,255,.4);color:var(--maroon-ink);font:600 17px var(--serif);cursor:pointer;border-radius:3px;font-variant-numeric:tabular-nums}
+.daygrid button.on{background:var(--maroon-ink);color:var(--gold-hi);border-color:var(--maroon-ink)}
+.daygrid button.today{box-shadow:inset 0 0 0 2px var(--gold)}
+.pbox .pill{margin:16px auto 0;display:flex;width:max-content;color:var(--maroon-ink);border-color:var(--ivory-edge);background:none}
+
+.loading{text-align:center;margin:60px 0;color:var(--mist);font:500 18px var(--serif);font-style:italic}
+.mocknote{margin:14px auto 0;max-width:62ch;text-align:center;font:500 14px/1.45 var(--serif);color:var(--gold-hi);background:rgba(0,0,0,.25);border:1px dashed rgba(217,164,65,.45);padding:9px 14px}
+@media (prefers-reduced-motion:reduce){.photo img,.cap{transition:none}.viewer.play .vframe img{animation:none}}
+</style>
+
+<nav class="site-menu" aria-label="Website tabs"><a href="/" class="on" aria-current="page">Today</a><a href="/calendar/">Calendar</a><a href="{{SEARCH}}">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/about/">About</a></nav>
+<div class="page"><div class="wrap">
+
+  <div class="datebar">
+    <button class="pill" id="prev" type="button"></button>
+    <button class="pill solid" id="choose" type="button">Choose a day</button>
+    <button class="pill" id="next" type="button"></button>
+    <button class="pill" id="back-today" type="button" hidden>Back to today</button>
+  </div>
+
+  <header>
+    <h1 id="title"></h1>
+    <div class="sub" id="subtitle">IN BAPA'S DIARY</div>
+    <p class="tithi" id="tithi" hidden></p>
+    <p class="count" id="count"></p>
+    <div id="mocknote"></div>
+  </header>
+
+  <div class="loading" id="loading">Opening the diary</div>
+  <div class="board" id="board" hidden>
+    <svg class="cords" id="cords" aria-hidden="true"></svg>
+    <div class="cards" id="cards"></div>
+  </div>
+
+  <div class="controls" id="controls" hidden>
+    <button class="pill" id="pause" type="button">Pause</button>
+    <label for="speed">Speed</label>
+    <select id="speed"><option value="12000">Slow</option><option value="8000" selected>Gentle</option><option value="5000">Quick</option></select>
+    <button class="pill" id="slideshow" type="button">Slideshow</button>
+    <a class="pill" id="search-day" target="_blank" rel="noopener">Search this date</a>
+  </div>
+
+  <section class="all" id="all" hidden>
+    <h2 id="all-title"></h2>
+    <p id="all-count"></p>
+    <div id="groups"></div>
+  </section>
+
+  <footer>Darpan’s Smruti Project</footer>
+</div></div>
+
+<div class="viewer" id="viewer" hidden role="dialog" aria-modal="true" aria-label="Photo">
+  <div class="vtop"><span class="caps" id="vpos"></span><button class="pill solid" id="vclose" type="button">Close</button></div>
+  <div class="vstage" id="vstage"></div>
+  <div class="vnav">
+    <button class="pill" id="vprev" type="button">Previous</button>
+    <button class="pill" id="vplay" type="button">Play</button>
+    <button class="pill" id="vnext" type="button">Next</button>
+  </div>
+</div>
+
+<div class="picker" id="picker" hidden role="dialog" aria-modal="true" aria-labelledby="picker-title">
+  <div class="pbox">
+    <h2 id="picker-title">Choose a day</h2>
+    <div class="months"><button type="button" id="pm-prev" aria-label="Previous month">‹</button><b id="pm-name"></b><button type="button" id="pm-next" aria-label="Next month">›</button></div>
+    <div class="daygrid" id="daygrid"></div>
+    <button class="pill" id="pclose" type="button">Close</button>
+  </div>
+</div>
+
+<script>
+// Where things are. The website build fills these in; a mockup may replace SRC.day and SRC.photo.
+const SRC = {
+  day: mmdd => fetch('{{DATA}}' + mmdd + '.json').then(r => { if (!r.ok) throw r.status; return r.json(); }),
+  photo: p => '{{PHOTOS}}s/' + p[0] + '/' + p[1],
+  big: p => '{{PHOTOS}}m/' + p[0] + '/' + p[1],
+  search: d => '{{SEARCH}}#' + (d.length === 5 ? 'day=' : 'date=') + d,   // '10-24' every year on this date, '2014-10-24' one day
+};
+if (window.MOCK) Object.assign(SRC, window.MOCK);
+
+const $ = id => document.getElementById(id);
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const LEN = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const pad = n => String(n).padStart(2, '0');
+const now = new Date();
+const TODAY = pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+const nice = m => `${+m.slice(3)} ${MONTHS[+m.slice(0, 2) - 1]}`;
+const short = m => `${+m.slice(3)} ${MONTHS[+m.slice(0, 2) - 1].slice(0, 3)}`;
+function shift(m, n) {
+  const d = new Date(2000, +m.slice(0, 2) - 1, +m.slice(3) + n);   // 2000 has 29 February
+  return pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const festOf = c => c ? (c[1] || '').split(/;\s*/)[0] : '';
+const tithiOf = c => c ? c[0] : '';
+
+let DAY = null, cards = [], everyPhoto = [], timers = [], paused = false, showing = null;
+
+// the date in the address (#10-24) opens that day; no date opens today
+function wanted() { const h = location.hash.slice(1); return /^\d\d-\d\d$/.test(h) && +h.slice(3) <= LEN[+h.slice(0, 2) - 1] ? h : TODAY; }
+
+async function open(mmdd, push) {
+  stop();
+  showing = mmdd;
+  if (push) history.replaceState(null, '', mmdd === TODAY ? location.pathname + location.search : '#' + mmdd);
+  $('title').textContent = nice(mmdd);
+  $('subtitle').textContent = mmdd === TODAY ? "TODAY IN BAPA'S DIARY" : "IN BAPA'S DIARY";
+  $('prev').textContent = '‹ ' + short(shift(mmdd, -1));
+  $('next').textContent = short(shift(mmdd, 1)) + ' ›';
+  $('back-today').hidden = mmdd === TODAY;
+  $('loading').hidden = false; $('board').hidden = $('controls').hidden = $('all').hidden = true;
+  $('tithi').hidden = true; $('count').textContent = ''; $('mocknote').innerHTML = '';
+  document.title = mmdd === TODAY ? "Bapa's Diary" : `${nice(mmdd)} in Bapa's Diary`;
+  let data;
+  try { data = await SRC.day(mmdd); } catch (e) { $('loading').textContent = 'This day could not be opened. Please try again in a moment.'; return; }
+  if (showing !== mmdd) return;
+  DAY = data;
+  $('loading').hidden = true;
+  render();
+}
+
+function render() {
+  const D = DAY, year = String(now.getFullYear());
+  // this date in the BAPS calendar this year
+  const c = D.cal && D.cal[year];
+  if (c) {
+    const f = [c[1], c[2]].filter(Boolean).join('; ');
+    $('tithi').innerHTML = `${D.date === TODAY ? 'Today is' : `In ${year} this date is`} <b>${esc(c[0])}</b>${f ? ', ' + esc(f) : ''}`;
+    $('tithi').hidden = false;
+  }
+  // one card per year: its photos, or, for the older years, the On this day story
+  const byYear = {};
+  D.years.forEach(Y => byYear[Y.y] = {Y, stories: []});
+  D.stories.forEach(([y, place, line]) => (byYear[y] = byYear[y] || {Y: null, place, stories: []}).stories.push(line));
+  const years = Object.keys(byYear).map(Number).sort((a, b) => a - b);
+  everyPhoto = [];
+  const n = D.years.reduce((s, Y) => s + Y.p.length + (Y.t || []).length, 0);
+  $('count').textContent = n ? `${years.length} years and ${n.toLocaleString()} photos from this day. Each card fades through all of its year's photos. Tap a card to see them all.`
+                             : `${years.length} years remembered on this day.`;
+  if (window.MOCK && MOCK.note && MOCK.note(D.date)) $('mocknote').innerHTML = `<p class="mocknote">${MOCK.note(D.date)}</p>`;
+
+  $('cards').innerHTML = ''; $('groups').innerHTML = '';
+  cards = years.map(y => card(y, byYear[y]));
+  $('board').hidden = $('controls').hidden = false;
+  $('search-day').href = SRC.search(D.date);
+  $('all-title').textContent = `Every photo from ${D.title}`;
+  $('all-count').textContent = n ? `${n.toLocaleString()} photos, year by year` : 'No photos on this day yet';
+  $('all').hidden = !n;
+  requestAnimationFrame(cords);
+  start();
+}
+
+function card(y, {Y, place, stories}) {
+  const photos = Y ? (Y.p.length ? Y.p : Y.t || []) : [];
+  const where = Y ? Y.place : place;
+  const cal = DAY.cal && DAY.cal[y];
+  const slot = document.createElement('div'); slot.className = 'slot';
+  const el = document.createElement('a'); el.className = 'card';
+  el.href = '#y' + y;
+  el.addEventListener('click', e => { e.preventDefault(); const g = $('y' + y); if (g) g.scrollIntoView({behavior: reduce ? 'auto' : 'smooth'}); else if (photos.length) view(0); });
+  el.setAttribute('aria-label', photos.length ? `${y}, ${where}: see all ${photos.length} photos` : `${y}, ${where}`);
+  const ph = document.createElement('div'); ph.className = 'photo';
+  const c = {y, el, slot, photos, k: -1, imgs: [], cur: 0, rest: hang(y)};
+  el.style.transform = `rotate(${c.rest}deg)`;
+  if (photos.length) {
+    const a = new Image(), b = new Image(); a.alt = b.alt = ''; ph.append(a, b); c.imgs = [a, b];
+  } else {
+    ph.classList.add('story'); ph.innerHTML = `<p>${esc(stories[0] || '')}</p>`;
+  }
+  el.innerHTML = '<div class="peg"></div>';
+  el.append(ph);
+  const fest = festOf(cal);
+  const lab = document.createElement('div'); lab.className = 'label';
+  lab.innerHTML = `<div class="yr">${y}</div><div class="pl">${esc(where || '')}</div>` +
+    (cal ? `<div class="ti">${esc(tithiOf(cal))}</div>` : '') + (fest ? `<div class="fest">${esc(fest)}</div>` : '') +
+    (photos.length > 1 ? `<div class="of"></div>` : '');
+  el.append(lab);
+  const cap = document.createElement('div'); cap.className = 'cap';
+  cap.textContent = photos.length ? '' : 'On this day';
+  slot.append(el, cap); $('cards').append(slot);
+  Object.assign(c, {cap, of: lab.querySelector('.of'), ph});
+  el.addEventListener('pointermove', e => nudge(c, e));
+  el.addEventListener('pointerleave', () => c.lastX = null);
+  el.addEventListener('pointerdown', e => { c.lastX = e.clientX - 30 * (Math.random() < .5 ? 1 : -1); nudge(c, e); });
+  if (photos.length) show(c, Math.max(0, photos.findIndex(p => p[3])), true);   // open on a darshan of Bapa
+  group(y, Y, where, cal, stories);
+  return c;
+}
+
+// Each card hangs a little crooked on its peg, the way real photos do on a cord (Darpan liked the uneven hang, 24 Oct 2026).
+// Brushed by the mouse (or a finger), it swings like a pendulum: out one way, back past straight the other way, and
+// slowly settles, the way a photo really would. Never more than about four degrees from where it hangs.
+const swinging = new Set();
+function hang(y) { let h = y * 2654435761 % 4294967296; h = ((h ^ (h >>> 15)) >>> 0) % 1000 / 1000; return +((h * 2 - 1) * 2.2).toFixed(2); }
+function nudge(c, e) {   // only ever moves when someone brushes it, so it stays on even with reduced motion
+  const r = c.el.getBoundingClientRect();
+  const dx = c.lastX == null ? 0 : e.clientX - c.lastX;
+  c.lastX = e.clientX;
+  const low = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
+  c.v = Math.max(-.22, Math.min(.22, (c.v || 0) + Math.max(-1, Math.min(1, dx / 30)) * (.3 + low) * .07));
+  c.a = c.a || 0;
+  if (!swinging.size) requestAnimationFrame(swing);
+  swinging.add(c);
+}
+function swing() {
+  swinging.forEach(c => {
+    c.v += -c.a * .0033;   // the peg pulls it back towards hanging (one swing there and back takes about two seconds)
+    c.v *= .992;           // and each swing is a little smaller than the last
+    c.a = Math.max(-4, Math.min(4, c.a + c.v));
+    c.el.style.transform = `rotate(${(c.rest + c.a).toFixed(3)}deg)`;
+    if (Math.abs(c.a) < .01 && Math.abs(c.v) < .002) { c.a = c.v = 0; c.el.style.transform = `rotate(${c.rest}deg)`; swinging.delete(c); }
+  });
+  if (swinging.size) requestAnimationFrame(swing);
+}
+
+function focus(p) { const f = p[4]; return f ? `${(f[0] * 100).toFixed(1)}% ${Math.min(100, f[1] * 115).toFixed(1)}%` : '50% 28%'; }
+
+function show(c, k, first) {
+  const p = c.photos[k], url = SRC.photo(p);
+  c.k = k;
+  // a photo not copied to the website yet: the card shows its caption in the frame instead, like a diary line
+  const done = missing => {
+    if (c.of) c.of.textContent = `${k + 1} of ${c.photos.length}`;
+    let w = c.ph.querySelector('.words');
+    if (missing && !w) { c.ph.insertAdjacentHTML('beforeend', '<div class="words"><p></p></div>'); w = c.ph.querySelector('.words'); }
+    if (w) {
+      const t = w.querySelector('p');
+      if (missing && t.textContent && !w.classList.contains('off')) {   // a caption already in the frame fades into the next
+        t.style.opacity = 0;
+        setTimeout(() => { t.textContent = p[2] || 'Darshan'; t.style.opacity = 1; }, 1500);
+      } else if (missing) t.textContent = p[2] || 'Darshan';
+      w.classList.toggle('off', !missing);
+    }
+    c.cap.classList.add('fade');
+    setTimeout(() => { c.cap.textContent = p[2]; c.cap.classList.remove('fade'); }, first ? 0 : 1500);
+  };
+  if (!url) return done(true);
+  const next = c.imgs[first ? 0 : 1 - c.cur];
+  const swap = () => {
+    next.style.objectPosition = focus(p);
+    if (!first) c.imgs[c.cur].classList.remove('on');
+    next.classList.add('on'); c.cur = c.imgs.indexOf(next); done(false);
+  };
+  next.onload = () => requestAnimationFrame(swap);
+  next.onerror = () => done(true);
+  next.src = url;
+}
+
+// every card turns on its own, a little out of step with the others, so the board breathes rather than flashes
+function start() {
+  stop();
+  if (paused) return;
+  const every = +$('speed').value * (reduce ? 1.6 : 1);
+  cards.filter(c => c.photos.length > 1).forEach(c => {
+    const t = setTimeout(function turn() {
+      show(c, (c.k + 1) % c.photos.length);
+      timers.push(setTimeout(turn, every * (.85 + Math.random() * .3)));
+    }, every * (.3 + Math.random()));
+    timers.push(t);
+  });
+}
+function stop() { timers.forEach(clearTimeout); timers = []; }
+$('pause').onclick = () => { paused = !paused; $('pause').textContent = paused ? 'Play' : 'Pause'; start(); };
+$('speed').onchange = start;
+document.addEventListener('visibilitychange', () => document.hidden ? stop() : start());
+
+// one cord per row of cards, drawn through the pegs
+function cords() {
+  // the cords run the full width of the window, edge to edge, even where the board itself is narrower (Darpan, 24 Oct 2026)
+  const svg = $('cords'), board = $('board').getBoundingClientRect(), vw = document.documentElement.clientWidth, rows = {};
+  svg.style.left = -board.left + 'px'; svg.style.width = vw + 'px';
+  cards.forEach(c => { const r = c.el.getBoundingClientRect(); const top = Math.round(r.top - board.top); rows[top] = 1; });
+  svg.innerHTML = Object.keys(rows).map(top => {
+    const y = +top - 5, sag = Math.min(14, vw * .01);
+    return `<path d="M 0 ${y - sag} Q ${vw / 2} ${y + sag * 1.4} ${vw} ${y - sag}" fill="none" stroke="var(--cord)" stroke-width="3" opacity=".8"/>`;
+  }).join('');
+}
+addEventListener('resize', () => requestAnimationFrame(cords));
+new ResizeObserver(() => requestAnimationFrame(cords)).observe($('cards'));
+document.fonts && document.fonts.ready.then(cords);
+
+// every photo of the day, year by year
+function group(y, Y, where, cal, stories) {
+  if (!Y) return;
+  const g = document.createElement('section'); g.className = 'yeargroup'; g.id = 'y' + y;
+  const fest = [cal && cal[1], cal && cal[2]].filter(Boolean).join('; ');
+  g.innerHTML = `<div class="yhead"><h3>${y}</h3><span class="caps">${esc(where || '')}</span>` +
+    (cal ? `<span class="it">${esc(cal[0])}</span>` : '') + (fest ? `<span class="fest">${esc(fest)}</span>` : '') +
+    `<a href="${esc(SRC.search(y + '-' + DAY.date))}" target="_blank" rel="noopener">Search this day</a></div>` +
+    stories.map(s => `<p class="story-line"><b>On this day</b>${esc(s)}</p>`).join('');
+  const add = (list, note) => {
+    if (!list || !list.length) return;
+    if (note) g.insertAdjacentHTML('beforeend', `<p class="tripnote">${note}</p>`);
+    const grid = document.createElement('div'); grid.className = 'thumbs';
+    list.forEach(p => {
+      const i = everyPhoto.length;
+      everyPhoto.push({p, y, where, cal, trip: note ? Y.trip : null});
+      const b = document.createElement('button'); b.className = 'thumb'; b.type = 'button';
+      const url = SRC.photo(p);
+      b.innerHTML = `<span class="im">${url ? `<img loading="lazy" decoding="async" alt="${esc(p[2])}" src="${esc(url)}">` : ''}</span><small>${esc(p[2] || 'Darshan')}</small>`;
+      const im = b.querySelector('.im'), words = () => { im.classList.add('words'); im.textContent = p[2] || 'Darshan'; };
+      if (!url) words(); else b.querySelector('img').onerror = words;
+      b.onclick = () => view(i);
+      grid.append(b);
+    });
+    g.append(grid);
+  };
+  add(Y.p);
+  if (Y.trip) add(Y.t, `${Y.p.length ? 'From the same trip' : 'From these days'}, ${tripText(Y.trip)}`);
+  $('groups').append(g);
+}
+function tripText([a, b]) {
+  const d = s => `${+s.slice(8)} ${MONTHS[+s.slice(5, 7) - 1]}`;
+  return a === b ? d(a) : `${d(a)} to ${d(b)}`;
+}
+
+// the wide view, which is also the slideshow
+let vi = 0, vtimer = null, lastFocus = null;
+function view(i, play) {
+  if (!everyPhoto.length) return;
+  if ($('viewer').hidden) { lastFocus = document.activeElement; $('viewer').hidden = false; document.body.style.overflow = 'hidden'; $('vclose').focus(); }
+  vi = (i + everyPhoto.length) % everyPhoto.length;
+  const {p, y, where, cal, trip} = everyPhoto[vi];
+  const url = SRC.big(p) || SRC.photo(p);
+  const when = trip ? tripText(trip) + ' ' + y : `${DAY.title} ${y}`;
+  const none = `<div class="none">${esc(p[2] || 'Darshan')}</div>`;
+  $('vstage').innerHTML = `<figure class="vframe" style="margin:0">${url ? `<img alt="${esc(p[2])}" src="${esc(url)}">` : none}` +
+    `<figcaption class="vcap"><p>${esc(p[2] || 'Darshan')}</p><div>${esc([when, where, cal && cal[0], festOf(cal)].filter(Boolean).join(' · '))}</div></figcaption></figure>`;
+  const img = $('vstage').querySelector('img');
+  if (img) img.onerror = () => img.outerHTML = none;
+  $('vpos').textContent = `${vi + 1} of ${everyPhoto.length}`;
+  if (play !== undefined) setPlay(play);
+  const n = everyPhoto[(vi + 1) % everyPhoto.length].p, pre = SRC.big(n) || SRC.photo(n);
+  if (pre) new Image().src = pre;   // the next photo is ready before it is needed
+}
+function setPlay(on) {
+  clearInterval(vtimer); vtimer = null;
+  $('viewer').classList.toggle('play', on);
+  $('vplay').textContent = on ? 'Pause' : 'Play';
+  if (on) vtimer = setInterval(() => view(vi + 1), reduce ? 9000 : 6000);
+}
+function shut() {
+  setPlay(false); $('viewer').hidden = true; document.body.style.overflow = '';
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  lastFocus && lastFocus.focus();
+}
+$('vclose').onclick = shut;
+$('vprev').onclick = () => view(vi - 1);
+$('vnext').onclick = () => view(vi + 1);
+$('vplay').onclick = () => setPlay(!vtimer);
+$('slideshow').onclick = () => {
+  view(0, true);
+  const fs = $('viewer').requestFullscreen; if (fs) fs.call($('viewer')).catch(() => {});
+};
+let sx = null;
+$('vstage').addEventListener('touchstart', e => sx = e.touches[0].clientX, {passive: true});
+$('vstage').addEventListener('touchend', e => { if (sx === null) return; const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 40) view(vi + (dx < 0 ? 1 : -1)); sx = null; });
+
+// choosing a day
+let pm = 0;
+function month(m) {
+  pm = (m + 12) % 12;
+  $('pm-name').textContent = MONTHS[pm];
+  $('daygrid').innerHTML = '';
+  for (let d = 1; d <= LEN[pm]; d++) {
+    const k = pad(pm + 1) + '-' + pad(d), b = document.createElement('button');
+    b.type = 'button'; b.textContent = d; b.setAttribute('aria-label', `${d} ${MONTHS[pm]}`);
+    if (k === showing) b.className = 'on'; if (k === TODAY) b.classList.add('today');
+    b.onclick = () => { $('picker').hidden = true; open(k, true); scrollTo({top: 0}); };
+    $('daygrid').append(b);
+  }
+}
+$('choose').onclick = () => { month(+showing.slice(0, 2) - 1); $('picker').hidden = false; $('pm-name').focus && $('daygrid').querySelector('.on, button').focus(); };
+$('pm-prev').onclick = () => month(pm - 1);
+$('pm-next').onclick = () => month(pm + 1);
+$('pclose').onclick = () => { $('picker').hidden = true; $('choose').focus(); };
+$('prev').onclick = () => open(shift(showing, -1), true);
+$('next').onclick = () => open(shift(showing, 1), true);
+$('back-today').onclick = () => open(TODAY, true);
+
+addEventListener('keydown', e => {
+  if (!$('picker').hidden && e.key === 'Escape') { $('pclose').click(); return; }
+  if ($('viewer').hidden) return;
+  if (e.key === 'Escape') shut();
+  else if (e.key === 'ArrowRight') view(vi + 1);
+  else if (e.key === 'ArrowLeft') view(vi - 1);
+});
+addEventListener('hashchange', () => { if (/^#\d\d-\d\d$/.test(location.hash) || !location.hash) open(wanted()); });
+
+open(wanted());
+</script>
