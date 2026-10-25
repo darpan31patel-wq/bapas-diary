@@ -299,3 +299,20 @@ def caption(x):
     return c
 
 
+BAPA_WORDS = re.compile(r"\b(HH|H\.H\.|Param Pujya|P\.P\.|Pramukh|Mahant|Swami|Swamishri|Maharaj|Bapa|his|the|a|an|of|to|and|in|on|at|with|by|for|all)\b", re.I)
+STANDARD = re.compile(r"divine|jovial|\bmood\b|morning puja|\bpuja\b|bless\w* (all|the assembly|everyone|devotees)\s*$|"
+                      r"^\W*bless\w*\W*$|greet\w* (all|everyone|devotees)|folded hands|shikshapatri|satsang diksha|"
+                      r"darshan of (the )?(shrine|murtis?|thakorji)|tapni mala|\bmala\b|\bdarshan\s*$|engaged in|"
+                      r"listens|seated|in thought|smil|^\W*\w+ (performs|performing|does) (the )?(arti|aarti)\W*$", re.I)
+
+
+def unique_caption(c):
+    """True when the caption tells of something that happened that day (a visitor, a ceremony, balaks
+    dressed as sadhus, playing the drum) rather than an everyday line (divine mood, morning puja,
+    blesses all, greets all with folded hands, reads the Shikshapatri)."""
+    c = re.sub(r"\s+", " ", c or "").strip()
+    if not c or STANDARD.search(c):
+        return False
+    rest = re.findall(r"[A-Za-z][A-Za-z.]+", BAPA_WORDS.sub(" ", c))
+    return len(rest) >= 2
+

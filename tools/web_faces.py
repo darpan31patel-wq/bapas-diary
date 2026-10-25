@@ -30,6 +30,9 @@ import web_bapa_rules as R
 PHOTOS = 'https://photos.bapas-diary.com/'
 ASPECT = .69     # the frame make.py judges an action shot against (its tall cards)
 PREFIX = 'face2-'   # the shard files in release website-faces (face2: also checked against the other guru)
+UNIQUE = 1.2     # what a unique caption adds (make.py, unique=True)
+LOOSE = .38      # Darpan, 25 Oct 2026: a unique moment the caption says is Bapa's stays even when his face is side on and
+                 # only half recognised ('Throws balls into the goal'), after the photos where he is recognised
 THIN_DAY = 5     # fewer years than this with a recognised photo: the other years keep their caption based photos
 
 
@@ -189,7 +192,7 @@ def pick(a):
     def seen(al, fi):   # Bapa recognised by face, in a photo that isn't of the other guru
         return faces.get(f'{al}/{fi}', [0])[0] >= R.SAME_PERSON and (al, fi) not in other
 
-    keep, why = {}, {'recognised': 0, 'pin': 0, 'caption only (year not in R2 yet)': 0, 'caption only (thin day)': 0}
+    keep, why = {}, {'recognised': 0, 'unique moment': 0, 'pin': 0, 'caption only (year not in R2 yet)': 0, 'caption only (thin day)': 0}
     by_day = {}
     for (g, y), rows in groups.items():
         if g[:4] != 'trip':
@@ -209,7 +212,12 @@ def pick(a):
                 continue
             if seen(al, fi):
                 sc, sd, nice, special, close_ok = judge(c, rec)
+                if R.unique_caption(c):   # make.py's unique caption rule: something that happened that day wins a close call
+                    sc += UNIQUE; sd += UNIQUE
                 ranked.append(dict(k=(al, fi), c=c, sc=sc, sd=sd, nice=nice, special=special, close=close_ok, rec=rec, pin=pinned, why='recognised'))
+            elif bapa == 1 and rec and rec[0] >= LOOSE and R.unique_caption(c) and R.bapa_is_subject(c):   # a one-off moment, his face turned away
+                sc, sd, nice, special, close_ok = judge(c, rec)
+                ranked.append(dict(k=(al, fi), c=c, sc=sc - 1, sd=sd - 1, nice=False, special=special, close=False, rec=rec, pin=False, why='unique moment'))
             elif pinned:
                 ranked.append(dict(k=(al, fi), c=c, sc=-5, sd=-5, nice=False, special=False, close=False, rec=rec, pin=True, why='pin'))
             elif bapa == 1 and (y not in scanned or rec is None):
@@ -217,7 +225,7 @@ def pick(a):
             elif bapa == 1 and mmdd and len(by_day.get(mmdd, ())) < THIN_DAY:
                 ranked.append(dict(k=(al, fi), c=c, sc=-9, sd=-9, nice=False, special=False, close=False, rec=None, pin=False, why='caption only (thin day)'))
         if any(v['why'] == 'recognised' for v in ranked):   # recognised photos come first: then nothing unrecognised but pins
-            ranked = [v for v in ranked if v['why'] in ('recognised', 'pin')]
+            ranked = [v for v in ranked if v['why'] in ('recognised', 'pin', 'unique moment')]
         if not ranked:
             continue
         action = any(v['nice'] and v['special'] for v in ranked)   # a close darshan, unless a special action shot

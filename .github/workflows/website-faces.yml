@@ -5,13 +5,14 @@
 # Maharaj before 13 Aug 2016, Mahant Swami Maharaj after) on its own machine, kept in release website-faces. Then
 # tools/web_faces.py pick turns them into bapa.db and bapa-top.db, plus a before and after mockup.
 # Carries on where it stopped: shards already kept are skipped. Waits out 04:30 to 07:30 UTC.
-# Not live: the website build does not read it until Darpan says yes.
+# Darpan, 25 Oct 2026: "YES FACE PHOTOS". The website build (website-deploy.yml) reads the face2-*.json.gz shards.
 name: website-faces
 on:
   push:
     branches: ['claude/project-thread-9isen0']
     paths: ['.github/workflows/website-faces.yml', 'tools/web_faces.py', 'tools/web_bapa_rules.py']
   workflow_dispatch:
+  workflow_call:   # website-hires (on main) checks the faces of each year it has just copied into R2
 permissions:
   contents: write
 concurrency:
@@ -25,6 +26,8 @@ jobs:
       shards: ${{ steps.plan.outputs.shards }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'push' && github.sha || 'claude/project-thread-9isen0' }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -50,6 +53,8 @@ jobs:
         shard: ${{ fromJSON(needs.plan.outputs.shards) }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'push' && github.sha || 'claude/project-thread-9isen0' }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -65,6 +70,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'push' && github.sha || 'claude/project-thread-9isen0' }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
