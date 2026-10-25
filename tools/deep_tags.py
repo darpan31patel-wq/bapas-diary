@@ -9,6 +9,10 @@ seconds (score), so adding a new search word never needs the photos again.
     python3 tools/deep_tags.py sample --db bapas.db --years years.txt --n 2000 --out photos
     python3 tools/deep_tags.py embed --photos photos --out emb.npz
     python3 tools/deep_tags.py sheets --emb emb.npz --photos photos --out sheets
+
+Every photo (.github/workflows/website-deeptags.yml): plan cuts the years in R2 into shards, each shard is fetched
+and embedded on its own machine and kept as emb-YEAR-I-N.npz in the release deep-tags, then tags turns all of them
+into deep-tags.json ({"ALBUM/FILE": "smiling, garland"}) with the words checked by eye (KEEP in tools/deep_words.py).
 """
 import argparse, json, os, random, sqlite3, sys, time, urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -24,26 +28,71 @@ def sample(a):
     random.Random(a.seed).shuffle(rows)
     rows = rows[:a.n]
     print(f'{len(rows)} photos from years {sorted(years)}')
+    fetch(rows, a.out, a.tier)
 
+
+def plan(a):
+    """The shards still to do: every year in R2 cut into pieces of about --size photos, minus those already kept."""
+    years = sorted(int(l) for l in open(a.years) if l.strip().isdigit())
+    have = set(open(a.have).read().split()) if a.have and os.path.exists(a.have) else set()
+    db = sqlite3.connect(a.db)
+    todo = []
+    for y in years:
+        n = db.execute('SELECT count(*) FROM photos WHERE year = ?', (y,)).fetchone()[0]
+        parts = max(1, -(-n // a.size))
+        todo += [f'{y}-{i}-{parts}' for i in range(parts) if f'emb-{y}-{i}-{parts}.npz' not in have]
+    print(json.dumps(todo[:a.max]))
+
+
+def shard(a):
+    """Download one shard's small photos from R2: YEAR-I-N is the I-th of N slices of that year."""
+    y, i, n = map(int, a.shard.split('-'))
+    db = sqlite3.connect(a.db)
+    rows = db.execute('SELECT year, album, file FROM photos WHERE year = ? ORDER BY album, file', (y,)).fetchall()
+    k = -(-len(rows) // n)
+    fetch(rows[i * k:(i + 1) * k], a.out, a.tier)
+
+
+def fetch(rows, out, tier):
     def get(r):
         key = f'{r[1]}/{r[2]}'
-        path = os.path.join(a.out, key)
+        path = os.path.join(out, key)
         if os.path.exists(path):
             return 1
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        for _ in range(3):
+        err = None
+        for wait in (2, 10, 30):
             try:
-                req = urllib.request.Request(PHOTOS + a.tier + '/' + urllib.request.quote(key), headers={'User-Agent': 'bapas-diary-tags'})
+                req = urllib.request.Request(PHOTOS + tier + '/' + urllib.request.quote(key), headers={'User-Agent': 'bapas-diary-tags'})
                 data = urllib.request.urlopen(req, timeout=30).read()
                 open(path, 'wb').write(data)
                 return 1
             except Exception as e:
                 err = e
-                time.sleep(2)
+                time.sleep(wait)
         print(key, err)
         return 0
     with ThreadPoolExecutor(16) as ex:
-        print(sum(ex.map(get, rows)), 'downloaded')
+        print(sum(ex.map(get, rows)), 'of', len(rows), 'downloaded')
+
+
+def tags(a):
+    """Every kept photo number against the checked words (KEEP) -> {ALBUM/FILE: 'smiling, garland'}."""
+    import glob, numpy as np
+    sys.path.insert(0, os.path.dirname(__file__))
+    from deep_words import KEEP
+    w = np.load(a.words)
+    names = list(w['words'])
+    out = {}
+    for f in sorted(glob.glob(os.path.join(a.emb, 'emb-*.npz'))):
+        z = np.load(f)
+        L = z['emb'].astype('float32') @ w['emb'].T * float(w['scale']) + float(w['bias'])
+        for k, row in zip(z['keys'], L):
+            got = [t for t, ws in KEEP.items() if any(row[names.index(n)] > b for n, b in ws)]
+            if got:
+                out[str(k)] = ', '.join(got)
+    json.dump(out, open(a.out, 'w'), separators=(',', ':'), ensure_ascii=False)
+    print(len(out), 'photos tagged')
 
 
 def load_model():
@@ -177,8 +226,23 @@ def main():
     h.add_argument('--bar', type=float, default=0.1)
     w = sub.add_parser('words')
     w.add_argument('--out', default='words.npz')
+    p = sub.add_parser('plan')
+    p.add_argument('--db', default='bapas.db')
+    p.add_argument('--years', required=True)
+    p.add_argument('--have', help='names of the files already kept, one a line')
+    p.add_argument('--size', type=int, default=2500)
+    p.add_argument('--max', type=int, default=250)
+    d = sub.add_parser('shard')
+    d.add_argument('--db', default='bapas.db')
+    d.add_argument('--shard', required=True)
+    d.add_argument('--tier', default='s')
+    d.add_argument('--out', default='photos')
+    t = sub.add_parser('tags')
+    t.add_argument('--emb', required=True, help='folder of emb-*.npz')
+    t.add_argument('--words', default='words.npz')
+    t.add_argument('--out', default='deep-tags.json')
     a = ap.parse_args()
-    {'sample': sample, 'embed': embed, 'sheets': sheets, 'words': words}[a.cmd](a)
+    {'sample': sample, 'embed': embed, 'sheets': sheets, 'words': words, 'plan': plan, 'shard': shard, 'tags': tags}[a.cmd](a)
 
 
 if __name__ == '__main__':
