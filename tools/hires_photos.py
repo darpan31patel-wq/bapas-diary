@@ -98,14 +98,27 @@ def main():
     ap.add_argument('--year-done', required=True, help='command run with YEAR set when a year is finished')
     ap.add_argument('--chunk', type=int, default=400)
     ap.add_argument('--minutes', type=float, default=320)
+    ap.add_argument('--shard', type=int, default=0, help='this machine, counted from 0 (Darpan, 25 Oct: 6 machines at once)')
+    ap.add_argument('--shards', type=int, default=1, help='how many machines share the years')
     a = ap.parse_args()
     end = time.time() + a.minutes * 60
     done = {int(l) for l in open(a.done).read().split() if l.isdigit()} if os.path.exists(a.done) else set()
     have = set(open(a.have).read().split('\n')) if os.path.exists(a.have) else set()
     ready = ready_years(a.check)
     todo = [y for y in sorted(ready, key=lambda y: (y != 1999, -y)) if y not in done]
-    print(f'Drive archive finished: {sorted(ready)}; already in R2 at full size: {sorted(done)}; to do now: {todo}', flush=True)
     db = sqlite3.connect(a.db)
+    if a.shards > 1:
+        # every machine works out the same split from the database alone, so no year is done twice or missed:
+        # the biggest years first, each to the machine with the fewest photos so far
+        size = dict(db.execute('SELECT year, COUNT(*) FROM photos GROUP BY year'))
+        load, mine = [0] * a.shards, []
+        for y in sorted(ready, key=lambda y: (-size.get(y, 0), y)):
+            k = load.index(min(load))
+            load[k] += size.get(y, 0)
+            if k == a.shard:
+                mine.append(y)
+        todo = [y for y in todo if y in mine]
+    print(f'Drive archive finished: {sorted(ready)}; already in R2 at full size: {sorted(done)}; to do now: {todo}', flush=True)
     inbox, out = os.path.join(a.work, 'in'), os.path.join(a.work, 'out')
     with ProcessPoolExecutor() as pool:
         for year in todo:
@@ -124,7 +137,7 @@ def main():
                 with open(os.path.join(a.work, 'list.txt'), 'w') as f:
                     f.write('\n'.join(rel for _, _, rel in part) + '\n')
                 subprocess.run(['rclone', 'copy', a.remote, inbox, '--files-from-raw', os.path.join(a.work, 'list.txt'),
-                                '--transfers', '16', '--checkers', '16', '--ignore-errors'], check=False)
+                                '--transfers', '8', '--checkers', '8', '--ignore-errors'], check=False)
                 jobs = [(os.path.join(inbox, rel), out, f'{al}/{f}') for al, f, rel in part if os.path.exists(os.path.join(inbox, rel))]
                 for err in pool.map(make, jobs, chunksize=8):
                     if err:
