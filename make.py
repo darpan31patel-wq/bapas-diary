@@ -1846,19 +1846,41 @@ def tg_story(evs, photos):
 
 
 # The BAPS calendar, every day from 2010 to 2027 (calendar/baps-calendar.json, read from baps.org/Calendar). Darpan
-# chose, 24 Oct 2026, from the calendar mockups: the Indian date in the bottom line (1), a small gold tab on a card taken
-# on a festival (3, 7), tomorrow's festival in the bottom right corner (6), the festival in the title on the day (8),
-# the Ekadashi in the bottom line (10), an 'Every Diwali' picture on big days (9), and calendar lines in the 2pm caption.
+# chose, 24 Oct 2026, from the calendar mockups: the Indian date in the bottom line, a small gold tab on a card taken on
+# a festival, an 'Every Diwali' picture on big days, and calendar lines in the 2pm caption. 25 Oct 2026: the title is
+# only ever the date; what is coming up goes in the caption; festivals follow the Indian date, birthdays and
+# anniversaries the English date; and only the days he kept (DAYS, FIXED) are shown.
 CALENDAR = {}
-NATIONAL = re.compile(r'republic day|independence day', re.I)   # on baps.org's calendar, but not a day in Bapa's diary
-SHORT_FEST = [(r'annakut', 'Annakut'), (r'^bestu', 'New Year'), (r'hari.?nom', 'Swaminarayan Jayanti'), (r'gunatitanand.*(birthday|jayanti)', 'Gunatitanand Swami Jayanti'),
-              (r'pramukh swami.*jayanti', 'Pramukh Swami Maharaj Jayanti'), (r'mahant swami.*jayanti', 'Mahant Swami Maharaj Jayanti'),
-              (r'gunatitanand.*diksha', 'Gunatitanand Swami Diksha Day'), (r'vijaya dash', 'Dussehra'), (r'vasant panch', 'Vasant Panchami'),
-              (r'bhai b', 'Bhai Beej'), (r'pramukh var', 'Pramukh Varni Din'), (r'sam.?shrav', 'Sam Shravani'), (r'^holi', 'Holi'),
-              (r'dhan te|dhan tray', 'Dhan Teras'), (r'kali ch?audas', 'Kali Chaudas'), (r'akha ?trij', 'Akhatrij')]
-BIG_FEST = [(r'^diwali$', 'Diwali'), (r'annakut', 'Annakut'), (r'janmashtami', 'Janmashtami'), (r'hari.?nom', 'Swaminarayan Jayanti'),
-            (r'guru purnima', 'Guru Purnima'), (r'pramukh swami.*jayanti', 'Pramukh Swami Maharaj Jayanti'),
-            (r'mahant swami.*jayanti', 'Mahant Swami Maharaj Jayanti'), (r'gunatitanand.*(birthday|jayanti)', 'Gunatitanand Swami Jayanti')]
+# the calendar's festivals and notes Darpan kept, as they are shown (Indian date)
+DAYS = [(r'^diwali$', 'Diwali'), (r'annakut', 'Annakut'), (r'\bbestu', 'New Year'), (r'janmashtami', 'Janmashtami'),
+        (r'guru purnima', 'Guru Purnima'), (r'vasant panch', 'Vasant Panchami'), (r'^holi', 'Holi'),
+        (r'pushpadol|dhuleti', 'Pushpadolotsav'), (r'ram ?navm', 'Ram Navami'), (r'hari.?nom|swaminarayan jayanti', 'Swaminarayan Jayanti'),
+        (r'rathyatra', 'Rathyatra'), (r'jal jhilani', 'Jal Jhilani Ekadashi'), (r'^prabodhini ekadashi$', 'Prabodhini Ekadashi'),
+        (r'^dev diwali$', 'Dev Diwali'), (r'akshar purnima', 'Akshar Purnima'), (r'shri hari navmi', 'Shri Hari Navmi'),
+        (r'hindola prarambh', 'Hindola begins'), (r'hindola samapt', 'Hindola ends'), (r'devpodhi|devshayani', 'Devpodhi Ekadashi'),
+        (r'vagh baras$', 'Vagh Baras'), (r'dhan te|dhan tray', 'Dhan Teras'), (r'kali ch?audas', 'Kali Chaudas'), (r'^bhai b', 'Bhai Beej'),
+        (r'la+bh pancham', 'Labh Pancham'), (r'makar sankranti', 'Makar Sankranti'), (r'shivratri', 'Shivratri'),
+        (r'raksha bandhan', 'Raksha Bandhan'), (r'republic day', 'Republic Day'), (r'independence day', 'Independence Day'),
+        (r'jagaswami', 'Jagaswami Jayanti'), (r'grahan', 'Eclipse'), (r'shra+d+h', 'Shraddh'), (r'dhanurmas prarambh', 'Dhanurmas begins'),
+        (r'dhanurmas (samapt|purn|end)', 'Dhanurmas ends'), (r'holashtak', 'Holashtak begins')]
+ONCE = {'Shri Hari Navmi': 'Kartak', 'Akshar Purnima': 'Magshar'}   # on the calendar every month, shown once a year
+# birthdays and anniversaries on their English date (Darpan, 25 Oct 2026); the calendar's tithi days for them are not used
+FIXED = {'01-20': 'Gunatitanand Swami Diksha Day', '01-23': 'Yogiji Maharaj Smrutiparva', '01-31': 'Shastriji Maharaj Jayanti',
+         '03-20': 'Bhagatji Maharaj Jayanti', '05-10': 'Shastriji Maharaj Smrutiparva', '05-21': 'Pramukh Varni Din',
+         '05-23': 'Yogiji Maharaj Jayanti', '06-01': 'Bhagwan Swaminarayan Smrutiparva', '08-13': 'Pramukh Swami Maharaj Smrutiparva',
+         '09-13': 'Mahant Swami Maharaj Jayanti', '10-11': 'Gunatitanand Swami Smrutiparva', '10-17': 'Gunatitanand Swami Jayanti',
+         '11-07': 'Bhagatji Maharaj Smrutiparva', '12-07': 'Pramukh Swami Maharaj Jayanti'}
+# Only photos whose caption says they are from the day go on its 'Every <day>' picture (Darpan, 25 Oct 2026: all the
+# years of Bapa celebrating it, never random photos of that day). Fewer years than FEST_MIN: no picture.
+BIG = {'Diwali': r'diwali|deepavali|chopda|sharda.?pujan|lakshmi.?pujan|account books',
+       'Annakut': r'annakut|new year|bestu|nutan varsh',
+       'Janmashtami': r'janmashtami|janmotsav|krishna|nand mahotsav|panjari',
+       'Swaminarayan Jayanti': r'hari.?nom|ram.?navmi|swaminarayan jayanti|janmotsav',
+       'Guru Purnima': r'guru.?purnima|guru.?pujan|guru.?bhakti',
+       'Pramukh Swami Maharaj Jayanti': r'jayanti|birthday|janma|janmotsav',
+       'Mahant Swami Maharaj Jayanti': r'jayanti|birthday|janma|janmotsav',
+       'Gunatitanand Swami Jayanti': r'gunatitanand|jayanti|birthday|janma'}
+FEST_MIN = 5
 
 
 def cal_day(day):
@@ -1870,20 +1892,19 @@ def cal_day(day):
     return CALENDAR.get(str(day)[:10])
 
 
-def festivals(c, short=True):
-    """The day's festivals as the cards and title say them ('Annakut and Bestu Varash' is 'Annakut')."""
-    out = []
-    for f in (c or {}).get('festivals', []):
-        n = re.sub(r'\s+q$', '', f['name']).strip()
-        if NATIONAL.search(n):
-            continue
-        if short:
-            n = next((v for k, v in SHORT_FEST if re.search(k, n, re.I)), re.split(r'[/,]', n)[0].strip())
-        else:
-            n = n.replace('/', ' and ')
-        if n not in out:
-            out.append(n)
-    return out
+def festivals(day):
+    """The days Darpan kept that fall on this date: the calendar's (Indian date) then the fixed English ones."""
+    c, out = cal_day(day), []
+    for n in [f['name'] for f in (c or {}).get('festivals', [])] + (c or {}).get('notes', []):
+        for part in re.split(r'\s*,\s*', n):
+            for k, v in DAYS:
+                if re.search(k, part.strip(), re.I) and v not in out and ONCE.get(v, c.get('month')) == c.get('month'):
+                    out.append(v)
+    for flag, word in (('punam', 'Punam'), ('amas', 'Amas')):   # a Punam or Amas the day's first tithi doesn't name
+        if (c or {}).get(flag) and word not in tithi(c) and word not in out:
+            out.append(word)
+    fixed = FIXED.get(str(day)[5:10])
+    return out + ([fixed] if fixed else [])
 
 
 def tithi(c):
@@ -1892,49 +1913,36 @@ def tithi(c):
 
 
 def ekadashi(c):
-    """'Rama Ekadashi (fast)' on an Ekadashi, else ''."""
-    if not c or not c.get('ekadashi'):
-        return ''
-    text = ' '.join(c.get('notes', []) + [f['name'] for f in c.get('festivals', [])]).replace('ã', 'a')
-    m = re.search(r'\b([A-Z][a-z]+)\s+Ekadashi', text)
-    name = f'{m.group(1)} Ekadashi' if m else 'Ekadashi'
-    return name + (' (fast)' if re.search(r'fast|upvas', text, re.I) else '')
-
-
-TITLE_FEST = {'Diwali', 'Annakut', 'Janmashtami', 'Swaminarayan Jayanti', 'Guru Purnima', 'Pramukh Swami Maharaj Jayanti',
-              'Mahant Swami Maharaj Jayanti', 'Gunatitanand Swami Jayanti', 'Yogi Jayanti', 'Vasant Panchami'}
+    """'Ekadashi' on an Ekadashi (no name, Darpan 25 Oct 2026), else ''."""
+    return 'Ekadashi' if c and c.get('ekadashi') else ''
 
 
 def cal_title(day):
-    """On a big festival the title starts with it: 'Diwali, 8 November' (mockup 8). Smaller days stay in the bottom
-    line (Darpan, 24 Oct 2026: not 'Vagh Baras, 5 November' in the title)."""
-    fs = [f for f in festivals(cal_day(day)) if f in TITLE_FEST]
-    return f'{fs[0]}, {day.day} {day:%B}' if fs else None
+    """The title is only ever the date (Darpan, 25 Oct 2026): the festival goes in the bottom line."""
+    return None
+
+
+def cal_parts(day):
+    """['Ekadashi', 'Vagh Baras', 'Aso Vad Ekadashi'] or ['Aso Sud Teras', 'Vikram Samvat 2082']."""
+    c = cal_day(day)
+    if not c:
+        return []
+    fs = [f for f in festivals(day) if 'Ekadashi' not in f or not ekadashi(c)]
+    ek = [f for f in festivals(day) if 'Ekadashi' in f][:1] or ([ekadashi(c)] if ekadashi(c) else [])
+    return ek + fs + [tithi(c)] + ([] if ek or fs else [f'Vikram Samvat {c["vikram_samvat"]}'])
 
 
 def cal_footer(day):
-    """(the bottom line's calendar words, tomorrow's festival for the right corner)."""
-    c = cal_day(day)
-    if not c:
-        return None
-    fs, ek = festivals(c), ekadashi(c)
-    if ek and not cal_title(day):
-        line = ', '.join([ek] + [f for f in fs if 'Ekadashi' not in f] + [tithi(c)])                      # 'Rama Ekadashi (fast), Vagh Baras, Aso Vad Ekadashi'
-    elif cal_title(day):
-        line = tithi(c)                                                # the festival is already in the title
-    elif fs:
-        line = ', '.join(fs + [tithi(c)])                              # 'Dhan Teras, Aso Vad Baras' 
-    else:
-        line = f'{tithi(c)}, Vikram Samvat {c["vikram_samvat"]}'
-    nxt = festivals(cal_day(day + datetime.timedelta(days=1)))
-    return line, ', '.join(nxt)
+    """(the bottom line's calendar words, ''): what is coming up goes in the 2pm caption, not the picture (Darpan, 25 Oct 2026)."""
+    parts = cal_parts(day)
+    return (', '.join(parts), '') if parts else None
 
 
 def tag_festivals(photos):
-    """Each card taken on a festival day of the calendar carries that festival (its own date, not the picture's)."""
+    """Each card taken on one of the kept days carries it (the photo's own date, not the picture's)."""
     for x in photos:
         d = str(x.get('d') or '')[:10]
-        fs = festivals(cal_day(d)) if re.fullmatch(r'\d{4}-\d\d-\d\d', d) else []
+        fs = [f for f in festivals(d) if f != 'Eclipse'] if re.fullmatch(r'\d{4}-\d\d-\d\d', d) else []
         if fs:
             x['fest'] = fs[0]
 
@@ -1951,67 +1959,66 @@ def fest_tag(d, text, B, PW):
 
 
 def cal_caption(day, every=None):
-    """The calendar lines for the 2pm caption (captions 1, 2, 7, 8 and 9), above the day's stories."""
-    c = cal_day(day)
-    if not c:
+    """The calendar lines for the 2pm caption: today, then tomorrow's day or Ekadashi, above the day's stories."""
+    parts = cal_parts(day)
+    if not parts:
         return ''
-    lines, ek = [], ekadashi(c)
-    if ek:
-        lines.append(f'\U0001F64F Today is {", ".join([ek, tithi(c)] + [f for f in festivals(c, False) if "Ekadashi" not in f])}')
-    else:
-        lines.append(f'\U0001F5D3️ Today is {", ".join(festivals(c, False) + [tithi(c)])}, Vikram Samvat {c["vikram_samvat"]}')
+    c = cal_day(day)
+    if not parts[-1].startswith('Vikram'):
+        parts.append(f'Vikram Samvat {c["vikram_samvat"]}')
+    lines = [f'{chr(0x1F64F) if parts[0] == "Ekadashi" else chr(0x1F5D3) + chr(0xFE0F)} Today is {", ".join(parts)}']
     nd = day + datetime.timedelta(days=1)
-    n = cal_day(nd)
+    n, nf = cal_day(nd), festivals(nd)
     when = f'{nd:%A} {nd.day} {nd:%B}'
-    if ekadashi(n):
-        lines.append(f'\U0001F64F Reminder: tomorrow, {when}, is {ekadashi(n)}')
-    elif festivals(n, False):
-        icon = '\U0001F315' if n.get('punam') else '\U0001FA94'
-        lines.append(f'{icon} Tomorrow, {when}, is {" and ".join(festivals(n, False))}')
+    if ekadashi(n) and not any('Ekadashi' in f for f in nf):
+        lines.append(f'{chr(0x1F64F)} Reminder: tomorrow, {when}, is Ekadashi')
+    elif nf:
+        icon = '\U0001F1EE\U0001F1F3' if re.search(r'republic|independence', ' '.join(nf), re.I) else '\U0001F315' if (n or {}).get('punam') else '\U0001FA94'
+        lines.append(f'{icon} Tomorrow, {when}, is {" and ".join(nf)}')
     if every:
         name, first, last = every
-        lines.append(f"\U0001FA94 {name} through the years: one darshan from each year's own {name} day, {first} to {last}")
+        lines.append(f"\U0001FA94 {name} through the years: one darshan from each {name}, {first} to {last}")
     return '\n'.join(lines) + '\n'
 
 
 def every_festival(day, cache):
-    """On a big festival (BIG_FEST), a second picture: one photo from each year's own festival day (mockup 9).
-    Returns (picture, (name, first year, last year)) or (None, None)."""
-    fs = [f['name'] for f in (cal_day(day) or {}).get('festivals', [])]
-    big = next(((k, v) for k, v in BIG_FEST for f in fs if re.search(k, f, re.I)), None)
-    if not big:
+    """On a big day (BIG), a second picture: one photo from each year's own day (a festival's Indian date, a
+    birthday's English date) whose caption says it is from it. Returns (picture, (name, first, last)) or (None, None)."""
+    name = next((f for f in festivals(day) if f in BIG), None)
+    if not name:
         return None, None
-    k, name = big
+    cal_day(day)
     days = {}
-    for d, c in sorted(CALENDAR.items()):
-        y = int(d[:4]) if d[:4].isdigit() else 0
-        if 2010 <= y < day.year and y not in days and any(re.search(k, f['name'], re.I) for f in c.get('festivals', [])):
-            days[y] = datetime.date.fromisoformat(d)
-    items = []
+    if name in FIXED.values():   # a birthday: the same English date every year, back to the first photos
+        mmdd = next(k for k, v in FIXED.items() if v == name)
+        for y in range(1950, day.year):
+            days[y] = datetime.date(y, int(mmdd[:2]), int(mmdd[3:]))
+    else:
+        for d in sorted(CALENDAR):
+            if d[:4].isdigit() and int(d[:4]) < day.year and int(d[:4]) not in days and name in festivals(d):
+                days[int(d[:4])] = datetime.date.fromisoformat(d)
+    words, items, lists = re.compile(BIG[name], re.I), [], {}
     for y, d in sorted(days.items()):
         mmdd, have = f'{d:%m-%d}', {x['i'] for x in items}
-        got = [x for x in day_list(mmdd) if x['y'] == y]
-        path = os.path.join(HERE, 'archive', 'vicharan', mmdd + '.txt')
-        if os.path.exists(path):
-            got += [x for x in vicharan_items(path, mmdd, {}) if x['y'] == y]
-        for x in got:
-            if x['i'] not in have:
+        if mmdd not in lists:
+            lists[mmdd] = day_list(mmdd)
+            path = os.path.join(HERE, 'archive', 'vicharan', mmdd + '.txt')
+            if os.path.exists(path):
+                lists[mmdd] = lists[mmdd] + vicharan_items(path, mmdd, {})
+        for x in lists[mmdd]:
+            if x['y'] == y and x['i'] not in have and words.search(x.get('c') or ''):
                 have.add(x['i']); items.append(dict(x, fday=str(d)))
-    if not items:
+    if len({x['y'] for x in items}) < FEST_MIN:
         return None, None
     album_towns(items)
     download_all(items, cache)
     photos = pick_one_per_year(items, seed=name, aspect=FRAME_ASPECT[LIVE_STYLE])
-    if len(photos) < 5:
+    if len(photos) < FEST_MIN:
         return None, None
-    for x in photos:
-        fd = datetime.date.fromisoformat(x['fday'])
-        x['p'] = f'{fd.day} {fd:%b}'                                       # the card says which day that year's festival fell on
     img = compose_wide(photos, day, seed=name, style=LIVE_STYLE, title=f'Every {name}',
                        cal=(f'One darshan from each {name}, {photos[0]["y"]} to {photos[-1]["y"]}', ''))
     print(f'  every {name}:', ', '.join(f'{x["y"]} ({x["fday"]})' for x in photos))
     return img, (name, photos[0]['y'], photos[-1]['y'])
-
 
 def tg_caption(ev, evs=None):
     """Idea 4: the story for the 2pm WhatsApp message, added under Darpan's own caption by his script."""
