@@ -39,11 +39,17 @@ jobs:
       - name: Get ready (database, the Drive archive's check.txt, Drive and R2 access)
         env:
           TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          CLIENT_ID: ${{ secrets.RCLONE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.RCLONE_CLIENT_SECRET }}
         run: |
           pip install -q pillow
           gh release download database -p bapas.db.gz -p check.txt && gunzip bapas.db.gz
           curl -s https://rclone.org/install.sh | sudo bash >/dev/null
           mkdir -p ~/.config/rclone && python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
+          if [ -n "$CLIENT_ID" ] && ! grep -q '^client_id' ~/.config/rclone/rclone.conf; then   # Darpan's own Google login (the website branch's copy of rclone_conf.py may not know it yet)
+            sed -i 's/^scope = .*/scope = drive/' ~/.config/rclone/rclone.conf
+            printf 'client_id = %s\nclient_secret = %s\n' "$CLIENT_ID" "$CLIENT_SECRET" >> ~/.config/rclone/rclone.conf
+          fi
           id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
           key=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1)
           echo "::add-mask::$id"; echo "::add-mask::$key"   # keep both out of the run logs

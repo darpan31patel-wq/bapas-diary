@@ -49,6 +49,8 @@ jobs:
         timeout-minutes: 8
         env:
           TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          CLIENT_ID: ${{ secrets.RCLONE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.RCLONE_CLIENT_SECRET }}
           GH_TOKEN: ${{ github.token }}
         run: |
           [ -n "$TOKEN" ] || { echo "The RCLONE_DRIVE_TOKEN secret isn't set, so the photos come from baps.org"; exit 0; }

@@ -31,6 +31,8 @@ jobs:
       - name: Connect to Drive
         env:
           TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          CLIENT_ID: ${{ secrets.RCLONE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.RCLONE_CLIENT_SECRET }}
         run: |
           [ -n "$TOKEN" ] || { echo "::error::The RCLONE_DRIVE_TOKEN secret isn't set yet"; exit 1; }
           curl -s https://rclone.org/install.sh | sudo bash >/dev/null
@@ -70,6 +72,8 @@ jobs:
       - name: Connect to Drive
         env:
           TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          CLIENT_ID: ${{ secrets.RCLONE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.RCLONE_CLIENT_SECRET }}
         run: |
           curl -s https://rclone.org/install.sh | sudo bash >/dev/null
           mkdir -p ~/.config/rclone
@@ -130,6 +134,8 @@ jobs:
       - name: Write check.txt (every photo and post known, against what is in Drive)
         env:
           TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          CLIENT_ID: ${{ secrets.RCLONE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.RCLONE_CLIENT_SECRET }}
         run: |
           curl -s https://rclone.org/install.sh | sudo bash >/dev/null
           mkdir -p ~/.config/rclone
