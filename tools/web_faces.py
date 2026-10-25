@@ -149,6 +149,28 @@ def judge(c, rec):
     return s_close, s_doing, nice, special, close_ok
 
 
+ERA_NAMES = {True: (r'Pramukh Swami|Swamishri|\bBapa\b|\bHDH\b', r'Mahant Swami'),    # (this Bapa, the other guru)
+             False: (r'Mahant Swami|Swamishri|\bBapa\b|\bHDH\b', r'Pramukh Swami')}
+
+
+def other_guru(db):
+    """Photos of the other guru, by caption, which the face check can't always tell apart: in 1999 Mahant Swami Maharaj,
+    then on his own travels (Africa, Israel), scores up to .8 against Pramukh Swami Maharaj's fingerprint and only .3
+    against his own, which is made from photos of him today. A photo is the other guru's when its caption names him and
+    not that day's Bapa, or when it is in an album whose captions name the other guru more often than Bapa (so the
+    album's 'Performs the arti' photos go too), unless its own caption names Bapa."""
+    albums, rows = {}, []
+    for al, fi, cap, d in db.execute('SELECT album, file, caption, coalesce(date, date_from) FROM photos'):
+        this, that = ERA_NAMES[(d or '') < R.PSM_UNTIL]
+        c = cap or ''
+        mine, theirs = bool(re.search(this, c)), bool(re.search(that, c)) and not re.search(that + r"(?: Maharaj)?(?:'s|’s)? (?:murti|portrait|photo|image)", c)
+        n = albums.setdefault(al, [0, 0])
+        n[0] += mine; n[1] += theirs
+        rows.append((al, fi, mine, theirs))
+    return {(al, fi) for al, fi, mine, theirs in rows
+            if not mine and (theirs or albums[al][1] > albums[al][0])}
+
+
 def pick(a):
     faces = load_faces(a.faces)
     scanned = {int(f[len(PREFIX):].split('-')[0]) for f in os.listdir(a.faces) if f.startswith(PREFIX)}
@@ -162,13 +184,17 @@ def pick(a):
             'SELECT year, date, date_from, date_to, album, file, caption, is_bapa FROM photos'):
         g = date or f'trip|{d0}|{d1}'
         groups.setdefault((g, y), []).append((album, file, cap or '', bapa or 0, d0))
+    other = other_guru(src)
+
+    def seen(al, fi):   # Bapa recognised by face, in a photo that isn't of the other guru
+        return faces.get(f'{al}/{fi}', [0])[0] >= R.SAME_PERSON and (al, fi) not in other
 
     keep, why = {}, {'recognised': 0, 'pin': 0, 'caption only (year not in R2 yet)': 0, 'caption only (thin day)': 0}
     by_day = {}
     for (g, y), rows in groups.items():
         if g[:4] != 'trip':
             by_day.setdefault(g[5:], set())
-            if y in scanned and any(faces.get(f'{r[0]}/{r[1]}', [0])[0] >= R.SAME_PERSON for r in rows):
+            if y in scanned and any(seen(r[0], r[1]) for r in rows):
                 by_day[g[5:]].add(y)
     for (g, y), rows in groups.items():
         mmdd = g[5:] if g[:4] != 'trip' else None
@@ -179,7 +205,9 @@ def pick(a):
             pinned = (al, fi) in diary or (isinstance(want, str) and want.lower() in c.lower())
             if R.JUNK.search(c) and not pinned:   # website link text, not a photo of the day
                 continue
-            if rec and rec[0] >= R.SAME_PERSON:
+            if (al, fi) in other and not pinned:
+                continue
+            if seen(al, fi):
                 sc, sd, nice, special, close_ok = judge(c, rec)
                 ranked.append(dict(k=(al, fi), c=c, sc=sc, sd=sd, nice=nice, special=special, close=close_ok, rec=rec, pin=pinned, why='recognised'))
             elif pinned:
