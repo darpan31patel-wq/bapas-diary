@@ -1,0 +1,359 @@
+<title>Calendar · Bapa's Diary</title>
+<meta name="description" content="Bapa's days from 1999 to today, month by month: a darshan photo for each day, the BAPS calendar and where Bapa was.">
+<link rel="stylesheet" href="{{MENU_CSS}}">
+<style>
+/* Calendar: one endless ribbon of five week rows, months side by side from 1999 (left) to today (right).
+   Website only (bapas-diary.com): nothing here touches the daily 2pm picture. Built by tools/web_calendar.py. */
+@font-face{font-family:"EB Garamond";font-weight:500;font-display:swap;src:url({{FONT_G5}}) format("woff2")}
+@font-face{font-family:"EB Garamond";font-weight:600;font-display:swap;src:url({{FONT_G6}}) format("woff2")}
+@font-face{font-family:Arimo;font-weight:700;font-display:swap;src:url({{FONT_A7}}) format("woff2")}
+:root{
+  --maroon:#42101c; --maroon-deep:#160509; --gold-hi:#ffe296; --gold-lo:#ce9840;
+  --ivory:#f8f2e4; --ivory-2:#eadfc8; --ink:#3a1a12; --muted:#c9a98a;
+  --serif:"EB Garamond", Garamond, "Times New Roman", serif;
+  --caps:Arimo, "Helvetica Neue", Arial, sans-serif;
+  --cw:140px; --g:8px; --z:1; --bh:28px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:radial-gradient(120% 90% at 50% 0%, var(--maroon) 0%, var(--maroon-deep) 78%);background-color:var(--maroon-deep);color:var(--ivory);font-family:var(--serif);overflow:hidden}
+.app{height:100%;display:flex;flex-direction:column;padding-top:calc(46px + env(safe-area-inset-top, 0px));padding-bottom:env(safe-area-inset-bottom, 0px)}
+header{padding-block:6px 4px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));text-align:center}
+.kicker{font-family:var(--caps);font-weight:700;font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:var(--muted)}
+.mtitle{position:relative;height:clamp(40px,6.6vh,64px);margin-top:2px}
+.mtitle span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:clamp(32px,5.8vh,56px);font-weight:500;line-height:1;
+  background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));-webkit-background-clip:text;background-clip:text;color:transparent;transition:opacity .7s ease, transform .7s ease;white-space:nowrap}
+.mtitle span.out{opacity:0;transform:translateY(8px)}
+.track{flex:1;min-height:0;touch-action:pan-x;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;cursor:grab;position:relative;outline:none}
+.track::-webkit-scrollbar{display:none}
+.track.drag{cursor:grabbing}
+.ribbon{height:100%;display:flex;align-items:stretch;gap:calc(var(--mgap) * var(--z));padding-inline:max(16px,30vw);padding-block:4px 10px;width:max-content;--mgap:clamp(28px,4vw,64px)}
+.month{position:relative;flex:none;height:var(--mh,100%);align-self:center;width:calc(7 * var(--cw) + 6 * var(--g));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:calc(26px * var(--z)) repeat(5,minmax(0,1fr));gap:var(--g);transition:opacity .25s linear}
+.mlab{display:none;position:absolute;left:0;right:0;bottom:100%;margin-bottom:10px;text-align:center;font-size:24px;font-weight:600;white-space:nowrap;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));-webkit-background-clip:text;background-clip:text;color:transparent}
+.zoomed .mlab{display:block}
+.wkd{font-family:var(--caps);font-weight:700;font-size:calc(clamp(12px,1.7vh,15px) * var(--z));letter-spacing:.22em;color:var(--muted);text-align:center;align-self:end;text-transform:uppercase}
+.empty{min-width:0;border:1px dashed rgba(234,223,200,.13);border-radius:3px}
+.card{position:relative;min-height:0;min-width:0;text-decoration:none;background:linear-gradient(170deg,var(--ivory),var(--ivory-2));border-radius:3px;padding:4px 4px 0;display:flex;flex-direction:column;color:var(--ink);
+  box-shadow:0 6px 16px rgba(0,0,0,.42),0 1px 0 rgba(255,255,255,.4) inset;cursor:pointer;will-change:transform;text-align:center;transition:box-shadow .3s ease}
+.card:hover,.card:focus-visible{z-index:2;outline:none;box-shadow:0 0 0 2px var(--gold-hi),0 0 18px 4px rgba(255,214,120,.55),0 0 42px 10px rgba(206,152,64,.35),0 6px 16px rgba(0,0,0,.42)}
+.win{position:relative;flex:1;min-height:0;overflow:hidden}
+.win img{position:absolute;top:-1px;left:-5%;width:110%;max-width:none;height:calc(100% + 2px);object-fit:cover;object-position:50% 22%;will-change:transform;transition:filter .3s}
+.card:hover .win img{filter:brightness(1.06)}
+.num{position:absolute;left:4px;top:2px;font-size:calc(clamp(14px,2.5vh,22px) * var(--z));font-weight:600;color:var(--ivory);text-shadow:0 1px 4px rgba(0,0,0,.75);line-height:1}
+.wrapmark{position:absolute;right:4px;top:4px;font-family:var(--caps);font-weight:700;font-size:calc(8px * var(--z));letter-spacing:.12em;background:rgba(22,5,9,.7);color:var(--gold-hi);padding:2px 4px;border-radius:2px}
+.card.blank .wrapmark{background:var(--maroon)}
+.fest{position:absolute;left:0;right:0;bottom:0;padding:12px 5px 4px;text-align:center;font-family:var(--caps);font-weight:700;font-size:calc(clamp(7.5px,1.15vh,10px) * var(--z));letter-spacing:.06em;color:var(--gold-hi);
+  background:linear-gradient(0deg,rgba(22,5,9,.92),rgba(22,5,9,0));line-height:1.2;text-wrap:balance}
+.card.blank .fest{position:static;background:none;color:#9a5a20;padding:2px 0 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tithi{font-family:var(--caps);font-weight:700;font-size:calc(clamp(7px,1.05vh,9.5px) * var(--z));letter-spacing:.1em;text-transform:uppercase;color:#7a4e36;padding:3px 1px 4px;white-space:nowrap;overflow:hidden;text-align:center;min-height:1.6em}
+.card.blank .win{background:radial-gradient(circle at 50% 40%,#fbf6ea,#e9dcc0);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:4px;gap:2px;container-type:size}
+.card.blank .tithi{visibility:hidden}
+.bnum{font-size:min(46cqh,40cqw);font-weight:600;line-height:.9;color:var(--maroon)}
+.bwd{font-family:var(--caps);font-weight:700;font-size:min(9cqh,7.5cqw);letter-spacing:.2em;text-transform:uppercase;color:#9a6a40}
+.bind{font-size:min(15cqh,11.5cqw);font-weight:500;line-height:1.05;color:var(--ink);text-wrap:balance}
+/* where Bapa was: one long row of place bubbles for every stay, 1999 to today; the bubble of the day under the mouse grows */
+.journey{position:relative;height:clamp(40px,6vh,52px);margin-top:2px;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+.jrow{position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;gap:0;white-space:nowrap;transition:transform .6s cubic-bezier(.3,.7,.2,1);will-change:transform}
+.stay{flex:none;display:inline-flex;align-items:baseline;gap:6px;padding:3px 10px 4px;border-radius:16px;border:1px solid rgba(206,152,64,.55);color:var(--ivory);font-size:clamp(13px,1.8vh,16px);line-height:1.1;opacity:.5;transform:scale(.92);transition:transform .35s cubic-bezier(.3,.7,.2,1),opacity .35s,background .35s,color .35s,box-shadow .35s;cursor:default}
+.stay small{font-family:var(--caps);font-weight:700;font-size:.62em;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.stay.cur{opacity:1;transform:scale(1)}
+.stay.on{opacity:1;transform:scale(1.4);background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--maroon-deep);border-color:transparent;box-shadow:0 0 18px rgba(255,214,120,.45);position:relative;z-index:1}
+.stay.on small{color:var(--maroon)}
+.hop{flex:none;width:22px;height:1px;margin:0 4px;background:rgba(206,152,64,.55);position:relative}
+.hop:after{content:'';position:absolute;right:-1px;top:-3px;border:3.5px solid transparent;border-left-color:rgba(206,152,64,.85);border-right:0}
+.mdiv{flex:none;font-family:var(--caps);font-weight:700;font-size:10px;letter-spacing:.2em;color:var(--gold-lo);margin:0 10px;opacity:.8}
+footer{padding-block:6px 12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.rail{position:relative;max-width:980px;margin:0 auto;height:34px}
+.rail .line{position:absolute;left:0;right:0;top:12px;height:1px;background:linear-gradient(90deg,transparent,rgba(206,152,64,.55) 6%,rgba(206,152,64,.55) 94%,transparent)}
+.yr{position:absolute;top:0;transform:translateX(-50%);background:none;border:0;padding:0;font-family:var(--caps);font-weight:700;font-size:9px;color:var(--ivory-2);display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer}
+.yr i{width:7px;height:7px;border-radius:50%;background:var(--gold-lo);margin-top:9px}
+.yr.on i{background:var(--gold-hi);box-shadow:0 0 0 4px rgba(255,226,150,.18)}
+.yr.on{color:var(--gold-hi)}
+.yr span{display:none}
+.yr.label span,.yr.on span{display:block}
+.yr:focus-visible{outline:2px solid var(--gold-hi);outline-offset:3px}
+.ctrl{display:flex;justify-content:center;align-items:center;gap:14px;margin-top:2px;flex-wrap:wrap}
+.zm{display:inline-flex;align-items:center;border:1px solid rgba(206,152,64,.5);border-radius:18px;overflow:hidden}
+.zm button{border:0;background:none;color:var(--gold-hi);font:600 20px/1 var(--serif);width:34px;height:30px;cursor:pointer}
+.zm button:disabled{opacity:.3;cursor:default}
+.zm button:focus-visible{outline:2px solid var(--gold-hi);outline-offset:-2px}
+.zm span{font-family:var(--caps);font-weight:700;font-size:10px;letter-spacing:.16em;color:var(--ivory-2);min-width:44px;text-align:center;text-transform:uppercase}
+.play{display:inline-flex;align-items:center;gap:9px;border:0;cursor:pointer;padding:7px 16px 7px 8px;border-radius:22px;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--maroon-deep);font-family:var(--caps);font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;box-shadow:0 3px 12px rgba(0,0,0,.4)}
+.play:focus-visible,.spd button:focus-visible{outline:2px solid var(--gold-hi);outline-offset:3px}
+.play i{width:24px;height:24px;border-radius:50%;background:var(--maroon-deep);display:grid;place-items:center}
+.play svg{width:10px;height:10px;fill:var(--gold-hi)}
+.play.on{box-shadow:0 0 0 3px rgba(255,226,150,.25),0 0 18px rgba(255,214,120,.45)}
+.spd{display:inline-flex;border:1px solid rgba(206,152,64,.5);border-radius:18px;overflow:hidden}
+.spd button{border:0;background:none;color:var(--ivory-2);font-family:var(--caps);font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;padding:7px 11px;cursor:pointer}
+.spd button[aria-pressed="true"]{background:rgba(206,152,64,.28);color:var(--gold-hi)}
+.hint{text-align:center;font-family:var(--caps);font-weight:700;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+.loading{align-self:center;font-style:italic;color:var(--muted);font-size:18px}
+@media (max-width:600px){.hint{display:none}}
+@media (prefers-reduced-motion:reduce){.mtitle span,.month{transition:none}}
+</style>
+
+<nav class="site-menu stay" aria-label="Website tabs"><a href="/">Today</a><a href="/calendar/" class="on" aria-current="page">Calendar</a><a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/about/">About</a></nav>
+<div class="app">
+  <header>
+    <div class="kicker">Darshan through the years</div>
+    <div class="mtitle" aria-live="polite"><span id="t0"></span><span id="t1" class="out"></span></div>
+    <div class="journey" aria-label="Where Bapa was"><div class="jrow" id="jrow"></div></div>
+  </header>
+  <div class="track" id="track" tabindex="0" aria-label="Calendar of days, scroll sideways">
+    <div class="ribbon" id="ribbon"><div class="loading">Opening the calendar…</div></div>
+  </div>
+  <footer>
+    <div class="rail" id="rail"><div class="line"></div></div>
+    <div class="ctrl"><button class="play" id="play" aria-pressed="false"></button><div class="spd" role="group" aria-label="Speed"><button data-s="22" aria-pressed="false">Slow</button><button data-s="40" aria-pressed="true">Gentle</button><button data-s="85" aria-pressed="false">Faster</button></div><div class="zm" role="group" aria-label="Zoom"><button id="zout" aria-label="Zoom out, see more months">−</button><span id="zl">100%</span><button id="zin" aria-label="Zoom in">+</button></div></div>
+    <div class="hint">Scroll or swipe sideways · tap a day to open its gallery · space bar plays</div>
+  </footer>
+</div>
+
+<script>
+const DATA_URL='{{DATA}}', PHOTOS='{{PHOTOS}}', SEARCH='{{SEARCH}}';
+const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const WD=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"], WDL=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const track=document.getElementById('track'), ribbon=document.getElementById('ribbon'), rail=document.getElementById('rail');
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ord=n=>n+(n%10==1&&n!=11?'ST':n%10==2&&n!=12?'ND':n%10==3&&n!=13?'RD':'TH');
+/* zoom: smaller days so more months fit on the screen (Darpan, 24 Oct) */
+const ZOOMS=[1,.8,.65,.5], ZMIN=.4; let Z=1;
+try{const z=+localStorage.getItem('calendarZoom'); if(z>=ZMIN&&z<=1) Z=z}catch(e){}
+let D, keys=[], monthEls=[], shown=new Set(), MW=0, GAP=0, PAD=0;
+
+/* sizes: five rows of days fill the height; every month is the same width */
+function sizeCols(){
+  const h=(track.clientHeight-14)*Z, g=Math.max(3,Math.min(10,innerHeight*.009)*Z), bh=0;
+  const rh=(h-26*Z-5*g)/5, cw=Math.max(30,Math.round(rh*1.08));
+  const r=document.documentElement.style; r.setProperty('--cw',cw+'px'); r.setProperty('--g',g+'px'); r.setProperty('--bh',bh+'px');
+  r.setProperty('--z',Z); r.setProperty('--mh',h+'px');
+  MW=7*cw+6*g;
+  if(monthEls.length>1){GAP=monthEls[1].offsetLeft-monthEls[0].offsetLeft-MW;PAD=monthEls[0].offsetLeft}
+}
+
+/* where Bapa was each day: days with no photo take the place of the days around them when both agree */
+function places(k){
+  const days=D.m[k], pl=days.map(d=>d[3]||null);
+  for(let i=0;i<pl.length;i++) if(!pl[i]){let a=i-1,b=i;while(b<pl.length&&!pl[b])b++; if(a>=0&&b<pl.length&&pl[a]===pl[b]) for(let j=i;j<b;j++)pl[j]=pl[a]; i=b}
+  return pl;
+}
+
+function blank(win,d,y,m,day){
+  win.innerHTML='';
+  win.append(el('div','bnum',day),el('div','bwd',WDL[new Date(y,m-1,day).getDay()]));
+  if(d[0]) win.appendChild(el('div','bind',esc(d[0])));
+  win.parentNode.classList.add('blank');
+}
+
+function render(mo){
+  if(mo._done)return; mo._done=true; mo.innerHTML='';
+  const k=mo.dataset.k, [y,m]=k.split('-').map(Number), days=D.m[k], pl=places(k), mn=MONTHS[m-1].slice(0,3);
+  const prev=keys[keys.indexOf(k)-1], prevPl=prev?places(prev).slice(-1)[0]:null;
+  mo.appendChild(el('div','mlab',`${MONTHS[m-1]} ${y}`));
+  WD.forEach((w,c)=>{const x=el('div','wkd',w);x.style.gridArea=`1/${c+1}`;mo.appendChild(x)});
+  /* days: a sixth week wraps into the empty boxes of the first */
+  const first=new Date(y,m-1,1).getDay(), grid=Array(35).fill(null);
+  days.forEach((d,i)=>{let p=first+i, wr=false; if(p>=35){p-=35;wr=true} grid[p]={d,day:i+1,wr,pl:pl[i]}});
+  mo._cards=[];
+  for(let r=0;r<5;r++) for(let c=0;c<7;c++){
+    const x=grid[r*7+c]; let b;
+    if(!x) b=el('div','empty');
+    else{
+      const {d,day}=x, date=`${k}-${String(day).padStart(2,'0')}`;
+      b=el('a','card'); b.href=`${SEARCH}#date=${date}`; b.draggable=false;
+      b.setAttribute('aria-label',`${WDL[new Date(y,m-1,day).getDay()]} ${day} ${MONTHS[m-1]} ${y}${d[0]?', '+d[0]:''}. Open this day's photos`);
+      const win=el('div','win'); b.appendChild(win);
+      if(d[4]){
+        const im=new Image(); im.alt=d[6]||''; im.loading='lazy'; im.decoding='async'; im.draggable=false;
+        im.onerror=()=>blank(win,d,y,m,day); im.src=`${PHOTOS}s/${d[4]}/${encodeURIComponent(d[5])}`;
+        win.append(im,el('div','num',day));
+      } else blank(win,d,y,m,day);
+      if(x.wr) win.appendChild(el('div','wrapmark',ord(day)));
+      const f=[d[1],d[2]].filter(Boolean).join('; ').split('; ').filter(n=>n&&!/^(Fast|Sud|Vad) ?\w*$/.test(n));
+      if(f.length) win.appendChild(el('div','fest',esc(f.join(' · '))));
+      b.appendChild(el('div','tithi',esc(d[0]||'')));
+      b.addEventListener('click',e=>{if(dragMoved)e.preventDefault()});
+      b.addEventListener('mouseenter',()=>light(k,day));
+      b.addEventListener('focus',()=>light(k,day));
+      b._row=r; mo._cards.push(b);
+    }
+    b.style.gridArea=`${r+2}/${c+1}`; mo.appendChild(b);
+  }
+  mo.addEventListener('mouseleave',()=>light(null));
+}
+function unrender(mo){if(!mo._done)return; mo._done=false; mo._cards=[]; mo.innerHTML=''}
+/* the row of stays: built once for every month; dayStay maps "YYYY-MM day" to its bubble */
+const jrow=document.getElementById('jrow'); let stays=[], dayStay={}, monthStays={}, hoverStay=null, jx=0;
+function buildJourney(){
+  const MN=MONTHS.map(x=>x.slice(0,3)); let lastK=null, lastP=null, cur=null;
+  const frag=document.createDocumentFragment();
+  keys.forEach(k=>{
+    const [y,m]=k.split('-').map(Number);
+    places(k).forEach((p,i)=>{
+      const day=i+1;
+      if(!p){lastP=null;return}
+      if(cur&&p===lastP){cur.k1=k;cur.d1=day}
+      else{
+        if(lastK!==k&&k.endsWith('-01')&&stays.length) frag.appendChild(el('span','mdiv',String(y)));
+        cur={p,k0:k,d0:day,k1:k,d1:day,i:stays.length}; stays.push(cur);
+        if(stays.length>1) frag.appendChild(el('span','hop'));
+        cur.el=el('span','stay'); frag.appendChild(cur.el);
+      }
+      lastP=p; lastK=k; dayStay[k+' '+day]=cur.i; (monthStays[k]=monthStays[k]||new Set()).add(cur.i);
+    });
+  });
+  stays.forEach(s=>{
+    const [y0,m0]=s.k0.split('-').map(Number), [y1,m1]=s.k1.split('-').map(Number), a=`${s.d0} ${MN[m0-1]}`, b=`${s.d1} ${MN[m1-1]}`;
+    const when=s.k0===s.k1&&s.d0===s.d1?a:s.k0===s.k1?`${s.d0} to ${b}`:`${a} to ${b}${y0!==y1?' '+y1:''}`;
+    s.el.innerHTML=`${esc(s.p)} <small>${when}</small>`; s.el.title=`Bapa was in ${s.p}, ${when} ${y1}`;
+  });
+  jrow.appendChild(frag);
+}
+/* centre the row on a bubble (the hovered day's, else the middle of the month on screen) */
+function centreJourney(i){
+  const s=stays[i]; if(!s)return;
+  const W=jrow.parentNode.clientWidth, x=s.el.offsetLeft+s.el.offsetWidth/2;
+  jx=W/2-x; jrow.style.transform=`translateX(${jx}px)`;
+}
+let curStays=new Set();
+function journeyMonth(k){
+  curStays.forEach(i=>stays[i].el.classList.remove('cur')); curStays=monthStays[k]||new Set();
+  curStays.forEach(i=>stays[i].el.classList.add('cur'));
+  if(hoverStay==null&&curStays.size){const a=[...curStays]; centreJourney(a[Math.floor(a.length/2)])}
+}
+function light(k,day){
+  if(hoverStay!=null&&stays[hoverStay]) stays[hoverStay].el.classList.remove('on');
+  hoverStay=k==null?null:dayStay[k+' '+day]??null;
+  if(hoverStay!=null){stays[hoverStay].el.classList.add('on');centreJourney(hoverStay)}
+  else if(cur) journeyMonth(cur);
+}
+
+/* month title cross fade and the year rail */
+let cur=null, flip=0;
+const t=[document.getElementById('t0'),document.getElementById('t1')];
+function setMonth(k){
+  if(k===cur)return; cur=k; const [y,m]=k.split('-').map(Number);
+  const nxt=t[1-flip], old=t[flip]; nxt.textContent=`${MONTHS[m-1]} ${y}`; nxt.classList.remove('out'); old.classList.add('out'); flip=1-flip;
+  rail.querySelectorAll('.yr').forEach(b=>b.classList.toggle('on',+b.dataset.y===y));
+  journeyMonth(k);
+  try{history.replaceState(null,'','#'+k)}catch(e){}
+}
+function goTo(k,smooth){
+  const i=Math.max(0,keys.indexOf(k)); const left=PAD+i*(MW+GAP)-(track.clientWidth-MW)/2;
+  const far=Math.abs(left-track.scrollLeft)>track.clientWidth*3;
+  track.scrollTo({left,behavior:smooth&&!far&&!reduce?'smooth':'auto'});
+}
+
+/* scroll motion: months fade by distance, frames lag behind the scroll, photos drift inside frames */
+let last=0, vel=0, ticking=false;
+function frame(){
+  const W=track.clientWidth, sl=track.scrollLeft, mid=sl+W/2;
+  vel+=(sl-last-vel)*.25; last=sl;
+  const ci=Math.max(0,Math.min(keys.length-1,Math.round((mid-PAD-MW/2)/(MW+GAP))));
+  setMonth(keys[ci]);
+  /* only the months near the screen are drawn */
+  const lo=Math.floor((sl-PAD-W)/(MW+GAP)), hi=Math.ceil((sl+2*W-PAD)/(MW+GAP));
+  for(const i of [...shown]) if(i<lo-1||i>hi+1){unrender(monthEls[i]);shown.delete(i)}
+  for(let i=Math.max(0,lo);i<=Math.min(keys.length-1,hi);i++) if(!shown.has(i)){render(monthEls[i]);shown.add(i)}
+  const lag=reduce?0:Math.max(-22,Math.min(22,-vel*.9));
+  for(const i of shown){
+    const mo=monthEls[i], c=PAD+i*(MW+GAP)+MW/2, edge=Math.max(0,Math.abs(c-mid)-MW/2);
+    mo.style.opacity=Math.max(Z<1?.55:.28,1-edge/(W*.55/Z)).toFixed(3);
+    if(reduce)continue;
+    for(const cd of mo._cards){
+      const r=cd.getBoundingClientRect(); if(r.right<-50||r.left>W+50)continue;
+      const off=(r.left+r.width/2-W/2)/W;
+      cd.style.transform=`translateX(${(lag*(1+cd._row*.18)).toFixed(1)}px) rotate(${(lag*.04).toFixed(2)}deg)`;
+      const im=cd.querySelector('img'); if(im) im.style.transform=`translateX(${(-off*4).toFixed(2)}%)`;
+    }
+  }
+  if(Math.abs(vel)>.05||ticking){ticking=false;requestAnimationFrame(frame)} else vel=0;
+}
+const kick=()=>{if(!ticking){ticking=true;requestAnimationFrame(frame)}};
+
+/* wheel, keys and mouse drag move sideways */
+track.addEventListener('scroll',kick,{passive:true});
+track.addEventListener('wheel',e=>{if(e.ctrlKey||e.metaKey)return;if(Math.abs(e.deltaY)>Math.abs(e.deltaX)){track.scrollLeft+=e.deltaY;e.preventDefault()}},{passive:false});
+track.addEventListener('keydown',e=>{if(e.key==='ArrowRight')track.scrollBy({left:200,behavior:'smooth'});if(e.key==='ArrowLeft')track.scrollBy({left:-200,behavior:'smooth'})});
+let down=null, dragMoved=false;
+track.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse')return;down={x:e.clientX,s:track.scrollLeft};dragMoved=false});
+addEventListener('pointermove',e=>{if(!down)return;const dx=e.clientX-down.x;if(Math.abs(dx)>4){dragMoved=true;track.classList.add('drag')}track.scrollLeft=down.s-dx});
+addEventListener('pointerup',()=>{down=null;track.classList.remove('drag');setTimeout(()=>dragMoved=false,0)});
+
+/* play: glide slowly through the days; any touch, wheel or drag pauses it */
+const playBtn=document.getElementById('play'), PLAY_ICON='<svg viewBox="0 0 10 10"><path d="M2 1l7 4-7 4z"/></svg>', PAUSE_ICON='<svg viewBox="0 0 10 10"><path d="M1.5 1h2.5v8H1.5zM6 1h2.5v8H6z"/></svg>';
+let playing=false, speed=40, pos=0, lastT=0;
+function setPlay(on){
+  playing=on; playBtn.classList.toggle('on',on);
+  playBtn.innerHTML=`<i>${on?PAUSE_ICON:PLAY_ICON}</i>${on?'Pause':'Play'}`;
+  playBtn.setAttribute('aria-pressed',on);
+  if(on){ if(track.scrollLeft>=track.scrollWidth-track.clientWidth-2) track.scrollLeft=0; pos=track.scrollLeft; lastT=0; requestAnimationFrame(step)}
+}
+function step(t){
+  if(!playing)return;
+  if(lastT){pos+=speed*Math.min(.1,(t-lastT)/1000); track.scrollLeft=pos;
+    if(pos>=track.scrollWidth-track.clientWidth-1){setPlay(false);return}}
+  lastT=t; requestAnimationFrame(step);
+}
+playBtn.onclick=()=>setPlay(!playing);
+document.querySelectorAll('.spd button').forEach(b=>b.onclick=()=>{
+  speed=+b.dataset.s; document.querySelectorAll('.spd button').forEach(x=>x.setAttribute('aria-pressed',x===b)); if(!playing)setPlay(true)});
+['wheel','pointerdown','touchstart'].forEach(ev=>track.addEventListener(ev,()=>{if(playing)setPlay(false)},{passive:true}));
+addEventListener('keydown',e=>{if(e.code==='Space'&&!e.target.closest('button,a')){e.preventDefault();setPlay(!playing)}});
+setPlay(false);
+const zin=document.getElementById('zin'), zout=document.getElementById('zout'), zl=document.getElementById('zl');
+/* at = the screen x that stays put while zooming (the mouse or the pinch), else the middle */
+function setZoom(z,at){
+  z=Math.max(ZMIN,Math.min(1,Math.round(z*100)/100));
+  const W=track.clientWidth, x=at==null?W/2:at, u=MW?(track.scrollLeft+x-PAD)/(MW+GAP):null;
+  Z=z; document.body.classList.toggle('zoomed',z<.86); zl.textContent=Math.round(z*100)+'%'; zin.disabled=z>=1; zout.disabled=z<=ZMIN;
+  try{localStorage.setItem('calendarZoom',z)}catch(e){}
+  if(!D)return; sizeCols();
+  if(u!=null) track.scrollLeft=PAD+u*(MW+GAP)-x;
+  kick();
+}
+zout.onclick=()=>setZoom(ZOOMS.find(s=>s<Z-.01)??ZMIN);
+zin.onclick=()=>setZoom([...ZOOMS].reverse().find(s=>s>Z+.01)??1);
+addEventListener('keydown',e=>{if(e.target.closest('input'))return;if(e.key==='-')zout.click();if(e.key==='='||e.key==='+')zin.click()});
+/* Ctrl + mouse wheel (Windows) and trackpad pinch zoom the calendar instead of the page */
+let zt=null;
+const zoomBy=(f,x)=>{zt=zt??Z; zt=Math.max(ZMIN,Math.min(1,zt*f)); requestAnimationFrame(()=>{if(zt!=null){setZoom(zt,x);zt=null}})};
+track.addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey))return; e.preventDefault();
+  const r=track.getBoundingClientRect(), dy=e.deltaY*(e.deltaMode?33:1);
+  /* a mouse wheel click is one gentle step; a trackpad pinch follows the fingers */
+  zoomBy(Math.abs(dy)>=50?(dy>0?.88:1/.88):Math.exp(-dy*.01),e.clientX-r.left)},{passive:false});
+/* Safari trackpad pinch */
+let gz=null;
+track.addEventListener('gesturestart',e=>{e.preventDefault();gz=Z});
+track.addEventListener('gesturechange',e=>{e.preventDefault();if(gz!=null){const r=track.getBoundingClientRect();setZoom(gz*e.scale,e.clientX-r.left)}});
+track.addEventListener('gestureend',e=>{e.preventDefault();gz=null});
+/* two finger pinch on phones and tablets */
+let pz=null;
+const tdist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+track.addEventListener('touchstart',e=>{if(e.touches.length===2){const r=track.getBoundingClientRect();pz={d:tdist(e.touches),z:Z,x:(e.touches[0].clientX+e.touches[1].clientX)/2-r.left}}},{passive:true});
+track.addEventListener('touchmove',e=>{if(pz&&e.touches.length===2){e.preventDefault();setZoom(pz.z*tdist(e.touches)/pz.d,pz.x)}},{passive:false});
+track.addEventListener('touchend',e=>{if(e.touches.length<2)pz=null});
+setZoom(Z);
+
+fetch(DATA_URL).then(r=>r.json()).then(data=>{
+  D=data; keys=Object.keys(D.m).sort();
+  ribbon.innerHTML='';
+  keys.forEach(k=>{const mo=el('div','month');mo.dataset.k=k;ribbon.appendChild(mo);monthEls.push(mo)});
+  const y0=+keys[0].slice(0,4), y1=+keys[keys.length-1].slice(0,4);
+  for(let y=y0;y<=y1;y++){
+    const b=el('button','yr'+((y-y0)%3===0||y===y1?' label':''),`<i></i><span>${y}</span>`);
+    b.style.left=((y-y0)/(y1-y0)*100)+'%'; b.dataset.y=y; b.title=`Go to ${y}`;
+    b.onclick=()=>{setPlay(false);const k=`${y}-${(cur||'-01').slice(5)}`;goTo(D.m[k]?k:keys.find(x=>x.startsWith(y))||keys[0],true)};
+    rail.appendChild(b);
+  }
+  buildJourney();
+  sizeCols();
+  const h=location.hash.slice(1);
+  requestAnimationFrame(()=>{goTo(D.m[h]?h:D.start,false);kick()});
+  addEventListener('resize',()=>{const k=cur;sizeCols();if(k)goTo(k,false);kick()});
+  document.fonts&&document.fonts.ready.then(()=>{if(cur)journeyMonth(cur)});
+}).catch(()=>{ribbon.innerHTML='<div class="loading">The calendar could not load. Please refresh the page.</div>'});
+</script>
