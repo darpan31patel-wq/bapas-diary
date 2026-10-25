@@ -28,3 +28,21 @@
 @view-transition { navigation: auto; }
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .45s; animation-timing-function: ease; }
 @media (prefers-reduced-motion: reduce) { ::view-transition-old(root), ::view-transition-new(root) { animation: none; } }
+/* Darpan, 25 Oct 2026: no dark edge round the page, text size and language buttons in the top right corner on computers,
+   the page you are on clearly lit up, a little more room between the tabs. nav.site-menu (not .site-menu) so a page's own
+   class of the same name (the Calendar's travel stops are also called .stay) can't change the menu */
+html, body { margin: 0; }
+nav.site-menu { display: flex; align-items: flex-end; gap: 0 clamp(18px, 3.2vw, 36px); border: 0; border-radius: 0; opacity: 1; transform: none;
+  font-size: inherit; line-height: normal; cursor: auto; color: inherit;
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) 6px max(16px, env(safe-area-inset-left, 0px)); }
+nav.site-menu a.on { color: #fff3cf; background: rgba(255, 211, 107, .16); border: 1px solid rgba(255, 211, 107, .65); border-radius: 999px;
+  padding: 6px 13px 5px; text-shadow: 0 0 12px rgba(255, 211, 107, .55); }
+@media (max-width: 600px) { nav.site-menu { gap: 0 10px; } }
+@media (min-width: 761px) {
+  nav.site-menu { padding-right: 236px; }
+  nav.site-menu .bd-aa, nav.site-menu .gu-switch { position: absolute; top: 10px; margin: 0; }
+  nav.site-menu .gu-switch { right: 16px; }
+  nav.site-menu .bd-aa { right: 124px; }
+}
+@media (min-width: 761px) and (max-width: 1199px) { nav.site-menu { gap: 0 14px; } nav.site-menu a { letter-spacing: .14em; } }
+@media (min-width: 1200px) { nav.site-menu { padding-left: 236px; } }   /* same room both sides, so the tabs stay in the middle */
