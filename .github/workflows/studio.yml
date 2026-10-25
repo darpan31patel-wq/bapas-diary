@@ -1,0 +1,49 @@
+name: Studio photo packs
+
+# The photos Bapa's Diary Studio (the dashboard) offers for each date: today and the next six days, made after
+# the morning picture, kept on the branch 'studio'. Reads the day lists and shown.json, changes nothing else:
+# not the daily picture, the release, Drive or main. Run it by hand with dates to add any other day.
+on:
+  schedule:
+    - cron: '30 9 * * *'   # 9:30 UTC, after the morning picture and outside baps.org's busy early hours
+  workflow_dispatch:
+    inputs:
+      dates:
+        description: 'Extra dates to add (YYYY-MM-DD, comma separated). Leave blank for the next seven days.'
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: studio
+
+jobs:
+  packs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -q -r requirements.txt
+      - name: Bring the packs already made
+        run: |
+          mkdir -p site
+          if git fetch -q --depth 1 origin studio; then git archive origin/studio | tar -x -C site; fi
+      - name: Make the new packs
+        env:
+          DATES: ${{ inputs.dates }}
+        run: python tools/studio_packs.py site --dates "$DATES"
+      - name: Save them on the studio branch (one fresh commit, so old photos don't pile up)
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          cp dashboard/index.html site/index.html
+          cd site
+          git init -q -b studio
+          git config user.name "Bapa's Diary bot"; git config user.email "actions@github.com"
+          git add -A && git commit -qm "Studio packs $(date -u +%F)"
+          git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" studio
