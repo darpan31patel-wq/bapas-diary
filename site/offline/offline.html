@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>No internet · Bapa's Diary</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#42101c">
+<link rel="stylesheet" href="/menu.css">
+<style>
+/* Shown with no internet when a page was never opened on this phone (Darpan, 25 Oct 2026: works offline for
+   travelling). The On this day look: maroon glow and gold. No photos, so it never needs the internet. */
+:root { --maroon-in: #42101c; --maroon-out: #160509; --gold-hi: #ffe296; --gold-soft: #d9a441; --cap: #faf1de;
+  --serif: "EB Garamond", Garamond, "Times New Roman", serif; --sans: Arimo, Arial, Helvetica, sans-serif; }
+* { box-sizing: border-box; }
+html { min-height: 100%; background: var(--maroon-out); }
+body { margin: 0; min-height: 100dvh; color: var(--cap); font: 500 20px/1.5 var(--serif); display: grid; place-items: center;
+  background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(255, 196, 110, .16), transparent 70%),
+              radial-gradient(ellipse 90% 90% at 50% 40%, var(--maroon-in), var(--maroon-out));
+  padding: 70px max(16px, env(safe-area-inset-right, 0px)) 110px max(16px, env(safe-area-inset-left, 0px)); }
+main { max-width: 640px; width: 100%; text-align: center; display: grid; gap: 18px; justify-items: center; }
+.kicker { display: flex; align-items: center; gap: 14px; font: 700 12px/1 var(--sans); letter-spacing: .38em; padding-left: .38em; color: var(--gold-soft); text-transform: uppercase; }
+.kicker::before, .kicker::after { content: ""; width: 44px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold-soft)); }
+.kicker::after { transform: scaleX(-1); }
+h1 { margin: 0; font: 700 clamp(36px, 7vw, 60px)/1.05 var(--serif); text-wrap: balance;
+  background: linear-gradient(#ffe296, #ce9840); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .45)); }
+p { margin: 0; max-width: 34ch; font-style: italic; color: rgba(250, 241, 222, .82); text-wrap: balance; }
+.go { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; padding-top: 14px; }
+.go a, .go button { font: 700 12px var(--sans); letter-spacing: .2em; text-transform: uppercase; text-decoration: none; padding: 13px 22px; border-radius: 999px; cursor: pointer; }
+.go .main { background: linear-gradient(#ffe296, #ce9840); color: #3b1219; border: 0; }
+.go .soft { border: 1px solid var(--gold-soft); color: var(--gold-hi); background: none; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 3px; }
+</style>
+</head>
+<body>
+<nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a href="/calendar/">Calendar</a><a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/about/">About</a></nav>
+<main>
+  <div class="kicker">No internet</div>
+  <h1>This page is not saved yet</h1>
+  <p>It opens as soon as you are back online. Every page you have opened before still works with no internet.</p>
+  <div class="go"><a class="main" href="/">Today's darshan</a><a class="soft" href="/calendar/">Calendar</a><button class="soft" type="button" onclick="location.reload()">Try again</button></div>
+</main>
+</body>
+</html>
