@@ -101,20 +101,32 @@
   .ph-cal-wrap { position: fixed; z-index: 1; left: 0; right: 0; top: calc(46px + env(safe-area-inset-top, 0px)); bottom: var(--ph-bar);
     overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; font-family: "EB Garamond", Garamond, serif; color: #f8f2e4; }
   .ph-cal-wrap::-webkit-scrollbar { display: none; }
-  .ph-years { position: sticky; top: 0; z-index: 3; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 6px 16px 10px; background: linear-gradient(#3a0e19 82%, rgba(58, 14, 25, 0)); }
+  /* years and places in one bar at the top (Darpan, 25 Oct 2026); tap a place and its days glow */
+  .ph-jbar { position: sticky; top: 0; z-index: 3; background: linear-gradient(#3a0e19 92%, rgba(58, 14, 25, 0)); padding-bottom: 6px; }
+  .ph-years { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 6px 16px 8px; position: relative; }
   .ph-years::-webkit-scrollbar { display: none; }
   .ph-years button { flex: none; min-width: 60px; height: 38px; border-radius: 19px; border: 1px solid rgba(217, 164, 65, .3); background: none; color: #e8cf9c; font: 700 13px/1 Arimo, Arial, sans-serif; cursor: pointer; }
   .ph-years button[aria-pressed="true"] { background: linear-gradient(#ffe296, #ce9840); color: #3a0d17; border-color: transparent; }
   .ph-month { box-sizing: border-box; padding-bottom: 26px; }
-  .ph-mt { position: sticky; top: 54px; z-index: 2; display: flex; justify-content: center; align-items: baseline; gap: 10px; padding: 6px 16px 8px; background: rgba(42, 10, 18, .94); }
+  .ph-mt { position: sticky; top: var(--ph-jbar, 54px); z-index: 2; display: flex; justify-content: center; align-items: baseline; gap: 10px; padding: 6px 16px 8px; background: rgba(42, 10, 18, .94); }
   .ph-mt b { font: 500 27px/1 "EB Garamond", Garamond, serif; color: #ffe296; }
   .ph-mt span { font: 700 12px/1 Arimo, Arial, sans-serif; letter-spacing: .2em; color: #d9a441; }
-  .ph-stays { position: relative; min-height: 52px; box-sizing: border-box; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 8px 16px 0; }
-  .ph-stays::-webkit-scrollbar { display: none; }
-  .ph-stay { flex: none; display: flex; flex-direction: column; justify-content: center; gap: 3px; min-height: 44px; padding: 0 12px; border-radius: 12px; background: rgba(255, 226, 150, .07); border: 1px solid rgba(217, 164, 65, .22); }
+  .ph-jrow { position: relative; display: flex; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px 16px 4px; }
+  .ph-jrow::-webkit-scrollbar { display: none; }
+  .ph-ymark { flex: none; font: 700 12px/1 Arimo, Arial, sans-serif; letter-spacing: .1em; color: #3a0d17; background: #ce9840; border-radius: 10px; padding: 5px 8px; margin-left: 6px; }
+  .ph-stay { flex: none; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 3px; min-height: 44px; padding: 0 12px; border-radius: 22px; background: rgba(255, 226, 150, .05); border: 1px solid rgba(217, 164, 65, .3); opacity: .7; cursor: pointer; }
   .ph-stay b { font: 600 16px/1 "EB Garamond", Garamond, serif; color: #ffe296; }
-  .ph-stay small { font: 400 11px/1 Arimo, Arial, sans-serif; color: #e8cf9c; }
-  .ph-stay.on { border-color: #ffe296; background: rgba(255, 226, 150, .16); }
+  .ph-stay small { font: 400 11px/1 Arimo, Arial, sans-serif; color: #e8cf9c; white-space: nowrap; }
+  .ph-stay.cur { opacity: 1; border-color: rgba(255, 226, 150, .65); }
+  .ph-stay.on { opacity: 1; background: linear-gradient(#ffe296, #ce9840); border-color: transparent; box-shadow: 0 0 14px rgba(255, 214, 120, .5); }
+  .ph-stay.on b, .ph-stay.on small { color: #3a0d17; }
+  .ph-jnote { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 30px; padding: 2px 16px 0; font: 400 12px/1.2 Arimo, Arial, sans-serif; color: #c9a98a; text-align: center; }
+  .ph-jnote b { font: 600 16px/1 "EB Garamond", Garamond, serif; color: #ffe296; }
+  .ph-jnote a { color: #ffe296; font-weight: 700; }
+  .ph-jnote button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(217, 164, 65, .5); background: none; color: #ffe296; font-size: 13px; cursor: pointer; }
+  .ph-picking .ph-day { opacity: .3; transition: opacity .4s; }
+  .ph-picking .ph-day.lit { opacity: 1; border-radius: 12px; box-shadow: 0 0 0 1px rgba(255, 214, 120, .5), 0 0 10px 2px rgba(240, 190, 90, .45), 0 0 26px 7px rgba(206, 152, 64, .25); z-index: 1; overflow: visible; }
+  .ph-picking .ph-day.lit img { border-radius: 10px; }
   .ph-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; padding: 14px 16px 0; }
   .ph-grid .wk { text-align: center; font: 700 11px/1 Arimo, Arial, sans-serif; color: #d9a441; padding-bottom: 6px; }
   .ph-day { position: relative; aspect-ratio: 1; border: 0; padding: 0; border-radius: 9px; overflow: hidden; cursor: pointer; background: rgba(255, 226, 150, .06); color: #e8cf9c; font: 600 17px/1 "EB Garamond", Garamond, serif; }

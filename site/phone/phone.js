@@ -4,7 +4,8 @@
      every page   a small "Bapa's Diary" and a round About button in the strip at the top
      Today        One year (swipe from year to year) or All years together, zoomed with + and − or a pinch
                   (1 to 4 cards a row, remembered); swipe down on a full screen photo closes it
-     Calendar     the months scroll up and down instead of sideways, with where Bapa was, and the tapped day's card */
+     Calendar     the months scroll up and down instead of sideways, the tapped day's card, and at the top one bar with
+                  the years and every place Bapa stayed: tap a place and its days glow (Darpan, 25 Oct 2026) */
 (() => {
   const narrow = matchMedia('(max-width: 760px)');
   narrow.addEventListener('change', () => location.reload());   // turning a tablet: lay the page out again
@@ -132,18 +133,68 @@
         for (let i = 0; i < pl.length; i++) if (!pl[i]) { let a = i - 1, b = i; while (b < pl.length && !pl[b]) b++; if (a >= 0 && b < pl.length && pl[a] === pl[b]) for (let j = i; j < b; j++) pl[j] = pl[a]; i = b; }
         return pl;
       })());
-      const staysOf = k => {
-        const out = [];
-        places(k).forEach((p, i) => { const last = out[out.length - 1]; if (!p) return; if (last && last.p === p && last.b === i) last.b = i + 1; else out.push({p, a: i + 1, b: i + 1}); });
-        return out;
-      };
 
       wrap.innerHTML = '';
+      // one bar that stays at the top: the years, every place Bapa stayed (1999 to today, a gold year where each year
+      // starts), and a line about the place picked
+      const bar = el('div', 'ph-jbar');
       const yrs = el('div', 'ph-years'); yrs.setAttribute('role', 'group'); yrs.setAttribute('aria-label', 'Years');
-      wrap.append(yrs);
+      const jrow = el('div', 'ph-jrow'); jrow.setAttribute('aria-label', 'Where Bapa was, swipe sideways');
+      const note = el('div', 'ph-jnote', 'Tap a place to light up those days'); note.setAttribute('aria-live', 'polite');
+      bar.append(yrs, jrow, note);
+      wrap.append(bar);
       const years = [...new Set(keys.map(k => k.slice(0, 4)))];
-      years.forEach(y => { const b = el('button', '', y); b.type = 'button'; b.dataset.y = y; b.onclick = () => go(keys.find(k => k.startsWith(y))); yrs.append(b); });
+      years.forEach(y => { const b = el('button', '', y); b.type = 'button'; b.dataset.y = y; b.onclick = () => { unpick(); go(keys.find(k => k.startsWith(y))); const m = jrow.querySelector(`.ph-ymark[data-y="${y}"]`); if (m) jrow.scrollTo({left: m.offsetLeft - 16, behavior: 'smooth'}); browsed = Date.now(); }; yrs.append(b); });
+      const MN = MONTHS.map(x => x.slice(0, 3)), pad2 = n => String(n).padStart(2, '0');
+      const stays = [], monthStays = {};
+      { let lastP = null, cur = null, lastY = null, gap = 0;   // a stay carries on over up to 3 days with no place (as on the computer)
+        keys.forEach(k => { const y = k.slice(0, 4); places(k).forEach((p, i) => {
+          if (!p) { if (++gap > 3) lastP = null; return; }
+          if (cur && p === lastP) { cur.k1 = k; cur.d1 = i + 1; gap = 0; }
+          else {
+            if (y !== lastY) { const m = el('span', 'ph-ymark', y); m.dataset.y = y; jrow.append(m); lastY = y; }
+            cur = {p, k0: k, d0: i + 1, k1: k, d1: i + 1, i: stays.length}; stays.push(cur); gap = 0;
+            cur.el = el('button', 'ph-stay'); cur.el.type = 'button'; cur.el.dataset.i = cur.i; jrow.append(cur.el);
+          }
+          lastP = p; (monthStays[k] = monthStays[k] || new Set()).add(cur.i);
+        }); });
+      }
+      stays.forEach(x => {
+        const [y0, m0] = x.k0.split('-').map(Number), [y1, m1] = x.k1.split('-').map(Number), a = `${x.d0} ${MN[m0 - 1]}`, b = `${x.d1} ${MN[m1 - 1]}`;
+        x.when = x.k0 === x.k1 && x.d0 === x.d1 ? a : x.k0 === x.k1 ? `${x.d0} to ${b}` : `${a} to ${b}`;
+        x.from = `${x.k0}-${pad2(x.d0)}`; x.to = `${x.k1}-${pad2(x.d1)}`; x.y1 = y1;
+        x.days = Math.round((new Date(x.to) - new Date(x.from)) / 864e5) + 1;
+        x.el.innerHTML = `<b>${esc(x.p)}</b><small>${x.when}</small>`;
+        x.el.setAttribute('aria-label', `Bapa was in ${x.p}, ${x.when} ${y0}. Light up these days`);
+      });
+      let browsed = 0, pickI = null, curStays = new Set();
+      ['touchstart', 'wheel', 'pointerdown'].forEach(ev => jrow.addEventListener(ev, () => browsed = Date.now(), {passive: true}));
+      jrow.addEventListener('click', e => { const b = e.target.closest('.ph-stay'); if (b) { const i = +b.dataset.i; pickI === i ? unpick() : pickStay(i); } });
+      // a tap anywhere else puts everything back to normal (Darpan, 25 Oct); a glowing day still shows its card
+      document.addEventListener('click', e => {
+        if (pickI == null || e.target.closest('.ph-jbar, .ph-card, nav')) return;
+        const d = e.target.closest('.ph-day'); if (d && d.classList.contains('lit')) return;
+        if (d) { e.preventDefault(); e.stopPropagation(); } unpick();
+      }, true);
+      const lit = b => { const x = stays[pickI]; b.classList.toggle('lit', !!x && b._date >= x.from && b._date <= x.to); };
+      function pickStay(i) {
+        const x = stays[i];
+        if (pickI != null) stays[pickI].el.classList.remove('on');
+        pickI = i; x.el.classList.add('on'); centre(x.el);
+        wrap.classList.add('ph-picking'); wrap.querySelectorAll('.ph-day').forEach(lit);
+        note.innerHTML = `<b>${esc(x.p)}</b> ${x.when} ${x.y1} · ${x.days} ${x.days === 1 ? 'day' : 'days'} <a href="${SR}#place=${encodeURIComponent(x.p)}&from=${x.from}&to=${x.to}">Photos</a><button type="button" aria-label="Clear">✕</button>`;
+        note.querySelector('button').onclick = unpick;
+        go(x.k0, x.d0);
+      }
+      function unpick() {
+        if (pickI == null) return;
+        stays[pickI].el.classList.remove('on'); pickI = null;
+        wrap.classList.remove('ph-picking'); wrap.querySelectorAll('.ph-day.lit').forEach(b => b.classList.remove('lit'));
+        note.textContent = 'Tap a place to light up those days';
+      }
 
+      const barH = () => wrap.style.setProperty('--ph-jbar', bar.offsetHeight + 'px');
+      barH(); addEventListener('resize', barH);
       // every month gets its place at once (so the scroll bar is right); its days are drawn when it comes near the screen
       const sections = keys.map(k => {
         const [y, m] = k.split('-').map(Number), first = new Date(y, m - 1, 1).getDay(), rows = Math.ceil((first + D.m[k].length) / 7);
@@ -162,11 +213,6 @@
       function draw(s) {
         if (s._done) return; s._done = true;
         const k = s.dataset.k, [y, m] = k.split('-').map(Number), days = D.m[k], pl = places(k), first = new Date(y, m - 1, 1).getDay();
-        const st = el('div', 'ph-stays');
-        staysOf(k).forEach(x => {
-          const c = el('div', 'ph-stay', `<b>${esc(x.p)}</b><small>${x.a === x.b ? x.a : x.a + ' to ' + x.b} ${MONTHS[m - 1].slice(0, 3)}</small>`);
-          c.dataset.a = x.a; c.dataset.b = x.b; st.append(c);
-        });
         const g = el('div', 'ph-grid');
         WD.forEach(w => g.append(el('span', 'wk', w)));
         for (let i = 0; i < first; i++) g.append(el('span'));
@@ -182,16 +228,15 @@
             im.src = `${PH}s/${d[4]}/${encodeURIComponent(d[5])}`;
             b.append(im, el('i', '', day));
           } else b.textContent = day;
+          b._date = `${k}-${pad2(day)}`; if (pickI != null) lit(b);
           b.onclick = () => pick(s, b, k, day, d, pl[i], fest);
           g.append(b);
         });
-        s.append(st, g);
+        s.append(g);
       }
       function pick(s, b, k, day, d, place, fest) {
         if (sel) sel.setAttribute('aria-pressed', 'false');
         sel = b; b.setAttribute('aria-pressed', 'true');
-        wrap.querySelectorAll('.ph-stay.on').forEach(x => x.classList.remove('on'));
-        s.querySelectorAll('.ph-stay').forEach(x => { if (day >= +x.dataset.a && day <= +x.dataset.b) { x.classList.add('on'); centre(x); } });
         const [y, m] = k.split('-').map(Number), date = `${k}-${String(day).padStart(2, '0')}`;
         const im = b.querySelector('img');
         card.href = `${SR}#date=${date}`;
@@ -206,11 +251,17 @@
       sections.forEach(s => io.observe(s));
 
       // the year buttons follow the scroll
-      let curY = null;
+      let curY = null, curK = null;
       const mark = () => {
-        const t = wrap.getBoundingClientRect().top + 120;
+        const t = wrap.getBoundingClientRect().top + bar.offsetHeight + 60;
         const s = sections.find(x => x.getBoundingClientRect().bottom > t) || sections[0];
         const y = s.dataset.k.slice(0, 4);
+        if (s.dataset.k !== curK) {
+          curK = s.dataset.k;
+          curStays.forEach(i => stays[i].el.classList.remove('cur')); curStays = monthStays[curK] || new Set();
+          curStays.forEach(i => stays[i].el.classList.add('cur'));
+          if (pickI == null && Date.now() - browsed > 6000 && curStays.size) { const a = [...curStays]; centre(stays[a[Math.floor(a.length / 2)]].el); }
+        }
         if (y !== curY) {
           curY = y;
           yrs.querySelectorAll('button').forEach(b => { const on = b.dataset.y === y; b.setAttribute('aria-pressed', on); if (on) centre(b); });
@@ -219,9 +270,10 @@
       };
       let tick = false;
       wrap.addEventListener('scroll', () => { if (!tick) { tick = true; requestAnimationFrame(() => { tick = false; mark(); }); } }, {passive: true});
-      function go(k) {
+      function go(k, day) {
         const s = sections[Math.max(0, keys.indexOf(k))];
-        wrap.scrollTop = s.offsetTop - yrs.offsetHeight + 2;
+        wrap.scrollTop = s.offsetTop - bar.offsetHeight + 2;
+        if (day) { draw(s); const b = s.querySelectorAll('.ph-day')[day - 1]; if (b) wrap.scrollTop = Math.max(wrap.scrollTop, b.offsetTop - bar.offsetHeight - 70); }
         mark();
       }
       const h = location.hash.slice(1);
