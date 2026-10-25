@@ -147,6 +147,9 @@
     if (w) return digits(w);
     for (const [re, f] of P) { const m = s.match(re); if (m) { const g = f(m); if (g) return digits(g); } }
     const d = doing(s); if (d) return digits(d);
+    // the Bapa pages say what Bapa does without his name ('Performs his daily puja', the On this day picture's captions)
+    const v = /^[A-Z][a-z]/.test(s) && word('~' + s[0].toLowerCase() + s.slice(1));
+    if (v) return digits(v[0] === '+' ? v.slice(1) : v);
     const more = s.match(/^(.+?)[.\s]*For more photos.*$/i);   // a leftover link line from baps.org
     if (more) return gu(more[1]);
     const end = s.match(/^([\s\S]*?)([\s,.;:-]+)$/);    // "Shri Swaminarayan Mandir," and the like

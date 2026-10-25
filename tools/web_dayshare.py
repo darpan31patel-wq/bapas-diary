@@ -20,6 +20,7 @@ from concurrent.futures import ThreadPoolExecutor
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from web_share import HERE, CAP, GOLD_HI, GOLD_SOFT, MAROON_IN, font, gold_text, ground, icon, mix, polaroid, spaced
 from PIL import Image, ImageDraw, ImageFilter
+from web_rules import polish
 
 INK = (0x6e, 0x14, 0x24)
 MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October',
@@ -34,20 +35,24 @@ def days():
         d += datetime.timedelta(days=1)
 
 
-def crop45(im, face_top=0.22, ratio=0.8):
-    """A 4:5 portrait (or another width / height ratio) from any photo, kept near the top where the face usually is."""
+def crop45(im, face_top=0.22, ratio=0.8, face=None):
+    """A 4:5 portrait (or another width / height ratio) from any photo, kept near the top where the face usually is.
+    face: where Bapa's face is ([x, y] as parts of the photo, tools/web_faces.py): the crop keeps it about 38 percent of
+    the way down and centred across, so his head and pagh are never cut (the On this day picture's rule, Darpan, 25 Oct 2026)."""
     w, h = im.size
     if w / h > ratio:
         nw = round(h * ratio)
-        return im.crop(((w - nw) // 2, 0, (w - nw) // 2 + nw, h))
+        left = (w - nw) // 2 if not face else max(0, min(w - nw, round(face[0] * w - nw / 2)))
+        return im.crop((left, 0, left + nw, h))
     nh = round(w / ratio)
-    top = max(0, min(h - nh, round(h * face_top - nh * 0.2)))
+    top = round(h * face_top - nh * 0.2) if not face else round(face[1] * h - nh * 0.38)
+    top = max(0, min(h - nh, top))
     return im.crop((0, top, w, top + nh))
 
 
-def card(photo, width, label, tilt, ratio=0.8):
+def card(photo, width, label, tilt, ratio=0.8, face=None):
     """A polaroid with 'YEAR · Place' written on its frame, tilted a little; drawn at twice the size for smooth edges."""
-    c = polaroid(crop45(photo, ratio=ratio), width * 2)
+    c = polaroid(crop45(photo, ratio=ratio, face=face), width * 2)
     size = round(width * 0.135)
     while size > 10 and font('eb-garamond-latin-700-normal', size).getlength(label) > width * 1.5:
         size -= 2
@@ -75,6 +80,9 @@ def kicker(d, xy, size, spacing, rule):
             d.point((x0 + s * i, xy[1]), fill=mix(GOLD_SOFT, MAROON_IN, i / rule))
 
 
+face_of = lambda pick: pick[2] if len(pick) > 2 else None
+
+
 def years_line(n):
     return 'Darshan on this day in 1 year' if n == 1 else f'Darshan on this day in {n} different years'
 
@@ -90,13 +98,13 @@ def tall(title, indian, picks, nyears):
     n = len(picks)
     tilts = [3, -2.5, -2, 2.5]
     if n == 1:
-        c = card(picks[0][0], 520, picks[0][1], 2)
+        c = card(picks[0][0], 520, picks[0][1], 2, face=face_of(picks[0]))
         spots = [(c, (W - c.width) // 2, 330)]
     elif n == 2:
-        cs = [card(p, 460, l, t) for (p, l), t in zip(picks, tilts)]
+        cs = [card(p[0], 460, p[1], t, face=face_of(p)) for p, t in zip(picks, tilts)]
         spots = [(cs[0], 66, 345), (cs[1], 548, 375)]
     else:
-        cs = [card(p, 330, l, t, ratio=1) for (p, l), t in zip(picks, tilts)]   # square, so two rows fit
+        cs = [card(p[0], 330, p[1], t, ratio=1, face=face_of(p)) for p, t in zip(picks, tilts)]   # square, so two rows fit
         xs = [(150, 318), (590, 330), (170, 700), (570, 690)] if n == 4 else [(150, 318), (590, 330), (375, 700)]
         spots = [(c, x, y) for c, (x, y) in zip(cs, xs)]
     lay(img, spots)
@@ -115,10 +123,10 @@ def wide(title, indian, picks, nyears):
     img = ground(W, H, cx=0.66)
     two = picks[:2]
     if len(two) == 1:
-        c = card(two[0][0], 300, two[0][1], 3)
+        c = card(two[0][0], 300, two[0][1], 3, face=face_of(two[0]))
         spots = [(c, (580 - c.width) // 2, (H - c.height) // 2)]
     else:
-        spots = [(card(two[0][0], 280, two[0][1], 3.5), 46, 64), (card(two[1][0], 280, two[1][1], -3), 318, 88)]
+        spots = [(card(two[0][0], 280, two[0][1], 3.5, face=face_of(two[0])), 46, 64), (card(two[1][0], 280, two[1][1], -3, face=face_of(two[1])), 318, 88)]
     lay(img, spots)
     d = ImageDraw.Draw(img)
     mid = 885
@@ -182,6 +190,10 @@ def main():
         score = {k: sum(v[i] for i in want) for k, v in t['photos'].items()}
     db = sqlite3.connect(a.db)
     this_year = datetime.date.today().year
+    try:   # where Bapa's face is in each photo (tools/web_faces.py pick)
+        faces = {f'{al}/{fi}': (fx, fy) for al, fi, fx, fy in db.execute('SELECT album, file, fx, fy FROM bapa_pick WHERE fx IS NOT NULL')}
+    except sqlite3.OperationalError:
+        faces = {}
 
     plan = {}
     for mmdd, title in days():
@@ -211,10 +223,10 @@ def main():
     def fetch(key):
         try:
             if a.local:
-                return key, Image.open(os.path.join(a.local, key)).convert('RGB')
+                return key, polish(Image.open(os.path.join(a.local, key)).convert('RGB'))
             req = urllib.request.Request(a.photos_url + 's/' + key, headers={'User-Agent': 'bapas-diary-deploy'})
             with urllib.request.urlopen(req, timeout=30) as r:
-                return key, Image.open(io.BytesIO(r.read())).convert('RGB')
+                return key, polish(Image.open(io.BytesIO(r.read())).convert('RGB'))   # the On this day picture's finish, look D
         except Exception as e:
             print('photo missing:', key, e)
             return key, None
@@ -227,7 +239,7 @@ def main():
 
     os.makedirs(os.path.join(a.out, 'share', 'day'), exist_ok=True)
     for mmdd, (title, indian, picks, nyears) in plan.items():
-        got = [(photos[k], l) for k, l in picks if photos.get(k)] or gurus
+        got = [(photos[k], l, faces.get(k)) for k, l in picks if photos.get(k)] or gurus
         tall(title, indian, got, nyears).save(os.path.join(a.out, 'share', 'day', f'{mmdd}.jpg'), 'JPEG', quality=84, optimize=True, progressive=True)
         wide(title, indian, got, nyears).save(os.path.join(a.out, 'share', 'day', f'{mmdd}-wide.jpg'), 'JPEG', quality=84, optimize=True, progressive=True)
         os.makedirs(os.path.join(a.out, 'day', mmdd), exist_ok=True)

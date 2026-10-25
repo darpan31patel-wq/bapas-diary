@@ -1,0 +1,129 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, fetches nothing
+# from baps.org. Darpan, 25 Oct 2026: bring the On this day picture's rules to the website ("want all of them apart
+# from 8"), tools/web_rules.py.
+#   tg      the darshan cards before 1999: the two On this day channels' photos from the Drive archive ("Bapa's Archive"),
+#           only those where Bapa (Pramukh Swami Maharaj) is recognised, copied to R2 as s/tg/ and m/tg/, and the list of
+#           them (tg-cards.json) kept in release website-rules for the website build
+#   mockup  the Today page and the share a day pictures of a few days, before and after, packed into release
+#           website-rules (mockup-rules.tgz) so Claude can show Darpan the real page before anything goes live
+# Nothing here publishes the website: website-deploy.yml does that, once Darpan has typed yes.
+name: website-rules
+on:
+  push:
+    branches: ['claude/project-thread-5r6zpj']
+    paths: ['.github/workflows/website-rules.yml', 'tools/web_rules.py', 'site/day.html', 'tools/web_dayshare.py']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: website-rules
+env:
+  GH_TOKEN: ${{ github.token }}
+jobs:
+  tg:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BUCKET: bapas-diary-photos
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Drive and R2 access
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          CLIENT_ID: ${{ secrets.RCLONE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.RCLONE_CLIENT_SECRET }}
+        run: |
+          pip install -q -r requirements.txt
+          gh release view website-rules >/dev/null 2>&1 || \
+            gh release create website-rules --prerelease --title "Website: the On this day picture's rules" --notes "Website only: darshan cards before 1999 from the On this day channels, and mockups. Not used by the daily picture."
+          gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          mkdir -p ~/.config/rclone && python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
+          if [ -n "$CLIENT_ID" ] && ! grep -q '^client_id' ~/.config/rclone/rclone.conf; then   # Darpan's own Google login
+            sed -i 's/^scope = .*/scope = drive/' ~/.config/rclone/rclone.conf
+            printf 'client_id = %s\nclient_secret = %s\n' "$CLIENT_ID" "$CLIENT_SECRET" >> ~/.config/rclone/rclone.conf
+          fi
+          id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
+          key=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1)
+          echo "::add-mask::$id"; echo "::add-mask::$key"   # keep both out of the run logs
+          { echo "AWS_ACCESS_KEY_ID=$id"; echo "AWS_SECRET_ACCESS_KEY=$key"
+            echo "AWS_DEFAULT_REGION=auto"; echo "R2=https://$CF_ACCOUNT.r2.cloudflarestorage.com"; } >> "$GITHUB_ENV"
+      - name: The channels' photos before 1999, from the Drive archive
+        run: |
+          python3 - > want.txt <<'EOF'
+          import json, sqlite3
+          db = sqlite3.connect('bapas.db')
+          post = {(c, i): (f, n) for c, i, f, n in db.execute('SELECT channel, id, local_folder, photos FROM tg_posts')}
+          for ch, date, posts, data, guru in db.execute('SELECT channel, date, posts, data, guru FROM tg_events'):
+              if not guru and json.loads(data).get('card') and 1950 <= int(date[:4]) < 1999:
+                  for n in json.loads(posts or '[]'):
+                      f, k = post.get((ch, n), (None, 0))
+                      for i in range(1, (k or 0) + 1):
+                          print(f'{f}/photo {i}.jpg')
+          EOF
+          sort -u want.txt -o want.txt
+          echo "$(wc -l < want.txt) photos wanted"
+          mkdir tgsrc
+          rclone copy "gdrive:Bapa's Archive" tgsrc --files-from-raw want.txt --transfers 16 --checkers 16 || true
+          echo "$(find tgsrc -name '*.jpg' | wc -l) photos copied"
+      - name: Bapa's face in each, and the cards
+        run: |
+          python3 tools/web_rules.py tg --db bapas.db --drive tgsrc --out tg
+          aws s3 sync tg/s/tg "s3://$BUCKET/s/tg" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000, immutable" --content-type image/jpeg
+          aws s3 sync tg/m/tg "s3://$BUCKET/m/tg" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000, immutable" --content-type image/jpeg
+          gh release upload website-rules tg/tg-cards.json --clobber
+  mockup:
+    needs: tg
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Before and after, a few days
+        run: |
+          pip install -q -r requirements.txt
+          gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
+          mkdir faces && gh release download website-faces -p 'face2-*.json.gz' -D faces
+          gh release download website-rules -p tg-cards.json || echo '{}' > tg-cards.json
+          gh release download website-mockup -p tags.json
+          python3 tools/web_faces.py pick --db bapas.db --faces faces --out bapa.db --top bapa-top.db
+          cp bapa.db before.db && cp bapa-top.db before-top.db
+          days=$(python3 -c "import json; c=json.load(open('tg-cards.json')); print(' '.join(['10-26', '11-08'] + sorted(c, key=lambda d: -len({x[0] for x in c[d]}))[:1]))")
+          echo "days: $days"
+          { cat site/photo-years.txt; curl -fs https://photos.bapas-diary.com/years.txt || true; } | grep -E '^[0-9]{4}$' | sort -un > photo-years.txt
+          # after
+          python3 tools/web_rules.py captions --db bapa.db --db bapa-top.db
+          python3 tools/web_day.py --db bapa.db --site m/after --days $days --photos-url https://photos.bapas-diary.com/ --search-url /search/ > /dev/null
+          python3 tools/web_faces.py order --db bapa.db --day m/after/data/day
+          python3 tools/web_rules.py day --day m/after/data/day --db bapa.db --faces faces --tg tg-cards.json
+          python3 tools/web_dayshare.py --db bapa-top.db --out m/after --tags tags.json --photo-years photo-years.txt --days $days
+          # before: the Today page and share pictures as they are live now (website branch)
+          git fetch -q origin claude/project-thread-eawr12
+          mkdir -p old && git archive FETCH_HEAD tools site fonts | tar -x -C old
+          DAY_COMMIT=$(git show FETCH_HEAD:.github/workflows/website-deploy.yml | sed -n 's/^ *DAY_COMMIT: \([0-9a-f]*\).*/\1/p')
+          git fetch -q --depth 1 origin "$DAY_COMMIT" && mkdir daysrc && git archive "$DAY_COMMIT" tools site fonts | tar -x -C daysrc
+          (cd daysrc && python3 tools/web_day.py --db ../before.db --site ../m/before --days $days --photos-url https://photos.bapas-diary.com/ --search-url /search/ > /dev/null)
+          python3 old/tools/web_faces.py order --db before.db --day m/before/data/day
+          python3 old/tools/web_dayshare.py --db before-top.db --out m/before --tags tags.json --photo-years photo-years.txt --days $days
+          # the small photos those days show
+          python3 - <<'EOF' | sort -u > keys.txt
+          import glob, json
+          for f in glob.glob('m/*/data/day/*.json'):
+              for Y in json.load(open(f))['years']:
+                  for p in Y['p'] + Y.get('t', []):
+                      print(f'{p[0]}/{p[1]}')
+          EOF
+          echo "$(wc -l < keys.txt) photos"
+          mkdir -p m/s && cd m/s && xargs -P 16 -I{} sh -c 'mkdir -p "$(dirname "{}")" && curl -sf -o "{}" "https://photos.bapas-diary.com/s/{}" || true' < ../../keys.txt && cd ../..
+          echo "$(find m/s -type f | wc -l) photos fetched"
+          cp tg-cards.json m/
+          tar czf mockup-rules.tgz m
+          gh release upload website-rules mockup-rules.tgz --clobber

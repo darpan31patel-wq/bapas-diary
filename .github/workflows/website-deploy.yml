@@ -5,8 +5,8 @@
 name: website-deploy
 on:
   push:
-    branches: ['claude/**']
-    paths: ['live/**', 'site/search.html', 'site/search-ask.js', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'tools/web_offline.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', '.github/workflows/website-deploy.yml']
+    branches: ['claude/**', '!claude/project-thread-5r6zpj']   # the picture rules branch publishes only after Darpan's typed yes
+    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'tools/web_offline.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', '.github/workflows/website-deploy.yml']
   workflow_call:   # website-hires (on main) rebuilds the site when a year of full size photos is in R2
 concurrency: website-deploy
 jobs:
@@ -17,7 +17,6 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PROJECT: bapas-diary
       DOMAIN: bapas-diary.com
-      DAY_COMMIT: b70e8d6027107e96bc14ce457e61143ab5c95e32   # claude/project-thread-2nuqbl, as Darpan approved it
       CAL_COMMIT: 5b85edc002d8a2f85922e00d6ffdc932882df298   # claude/project-thread-69b2ir, as Darpan approved it
     steps:
       - uses: actions/checkout@v4
@@ -36,15 +35,19 @@ jobs:
           pip install -q -r requirements.txt
           mkdir faces && gh release download website-faces -p 'face2-*.json.gz' -D faces
           python3 tools/web_faces.py pick --db bapas.db --faces faces --out bapa.db --top bapa-top.db
+          # the On this day picture's rules (Darpan, 25 Oct 2026, tools/web_rules.py): captions say what Bapa does
+          python3 tools/web_rules.py captions --db bapa.db --db bapa-top.db
           gh release download website-mockup -p tags.json
           gh release download deep-tags -p deep-tags.json   # what is in each photo (Darpan: yes deep tags)
           # Bapa through the years (its own thread builds it into release faces-mockup; Darpan: "okay go live")
           gh release download faces-mockup -p faces-site.tgz && tar -xzf faces-site.tgz -C out
           test -f out/through-the-years/index.html
-          # The home page, On this day (built by its own thread on its branch, pinned to the approved commit)
-          git fetch -q --depth 1 origin "$DAY_COMMIT" && mkdir daysrc && git archive "$DAY_COMMIT" tools site fonts | tar -x -C daysrc
-          (cd daysrc && python3 tools/web_day.py --db ../bapa.db --site ../day --photos-url https://photos.bapas-diary.com/ --search-url /search/ > /dev/null)
+          # The home page, On this day (site/day.html and tools/web_day.py, merged here from claude/project-thread-2nuqbl)
+          python3 tools/web_day.py --db bapa.db --site day --photos-url https://photos.bapas-diary.com/ --search-url /search/ > /dev/null
           python3 tools/web_faces.py order --db bapa.db --day day/data/day   # each year opens on its best darshan, centred on his face
+          # the picture's rules: whole head framed, nearby days only for an empty date, darshan before 1999, no story twice
+          gh release download website-rules -p tg-cards.json || echo '{}' > tg-cards.json
+          python3 tools/web_rules.py day --day day/data/day --db bapa.db --faces faces --tg tg-cards.json
           rsync -a day/ out/ && test -f out/index.html && ls out/data/day | wc -l
           # years with photos in R2: site/photo-years.txt plus every year website-hires has finished
           { cat site/photo-years.txt; curl -fs https://photos.$DOMAIN/years.txt || true; } | grep -E '^[0-9]{4}$' | sort -un > photo-years.txt
@@ -66,6 +69,7 @@ jobs:
           python3 tools/web_dayshare.py --db bapa-top.db --out out --tags tags.json --photo-years photo-years.txt
           python3 tools/web_extras.py --out out
           python3 tools/web_phone.py --out out   # phone design: bottom tab bar, phone Today and Calendar (Darpan: yes)
+          python3 tools/web_rules.py look --out out   # the On this day picture's finish, look D, on the photos (Darpan: 2)
           python3 tools/web_gujarati.py --out out   # English / Gujarati switch (Darpan: yes Gujarati)
           python3 tools/web_offline.py --out out --photo-years photo-years.txt   # works with no internet, Save for travelling (Darpan: yes offline)
           python3 tools/web_gujarati.py --out out   # again, for the page the offline step just added

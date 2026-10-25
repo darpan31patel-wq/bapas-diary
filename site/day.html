@@ -60,6 +60,10 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 .photo{position:relative;aspect-ratio:3/4;max-width:100%;overflow:hidden;background:var(--maroon-deep)}
 .photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 3.2s ease-in-out}
 .photo img.on{opacity:1}
+/* Darpan, 25 Oct 2026 (the On this day picture's rules): Bapa's whole head stays in the frame, an action shot keeps at
+   least 85 percent of the photo, and any space left is filled with the photo's own colours, softened (make.fill) */
+.photo img.placed{inset:auto;max-width:none;object-fit:fill}
+.photo img.bg{inset:-8%;width:116%;height:116%;object-fit:cover;filter:blur(12px) brightness(.72)}
 .photo .words{position:absolute;inset:0;display:grid;place-items:center;padding:12%;background:radial-gradient(circle at 50% 40%,#5a1626,var(--maroon-deep));transition:opacity 3.2s ease-in-out}
 .photo .words p{margin:0;font:500 clamp(14px,1.3vw,16px)/1.35 var(--serif);font-style:italic;color:var(--gold-hi);text-align:center;text-wrap:balance;overflow-wrap:anywhere;transition:opacity 1.5s ease-in-out}
 .photo .words.off{opacity:0}
@@ -71,7 +75,7 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 .ti{margin-top:4px;font:500 12.5px/1.25 var(--serif);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fest{display:inline-block;margin-top:5px;max-width:100%;font:700 8.5px/1.25 var(--sans);letter-spacing:.14em;text-transform:uppercase;background:var(--maroon-ink);color:var(--gold-hi);padding:3px 7px;border-radius:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .of{margin-top:5px;font:700 8.5px/1 var(--sans);letter-spacing:.16em;color:rgba(110,20,36,.6);font-variant-numeric:tabular-nums}
-.cap{margin-top:11px;min-height:2.8em;text-align:center;font:500 15px/1.35 var(--serif);color:var(--cream);transition:opacity 1.5s ease-in-out;text-wrap:balance;max-width:100%;overflow-wrap:anywhere}
+.cap{margin-top:11px;min-height:2.8em;text-align:center;font:500 15px/1.35 var(--serif);color:var(--cream);transition:opacity 1.5s ease-in-out;text-wrap:balance;max-width:100%;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .cap.fade{opacity:0}
 
 .controls{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:28px;align-items:center}
@@ -219,6 +223,19 @@ function shift(m, n) {
 }
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 const festOf = c => c ? (c[1] || '').split(/;\s*/)[0] : '';
+// the big festivals that go in the title, said the way the On this day picture says them (make.py SHORT_FEST, TITLE_FEST)
+const SHORT_FEST = [[/annakut/i, 'Annakut'], [/^bestu/i, 'New Year'], [/hari.?nom/i, 'Swaminarayan Jayanti'], [/gunatitanand.*(birthday|jayanti)/i, 'Gunatitanand Swami Jayanti'],
+  [/pramukh swami.*jayanti/i, 'Pramukh Swami Maharaj Jayanti'], [/mahant swami.*jayanti/i, 'Mahant Swami Maharaj Jayanti'], [/vasant panch/i, 'Vasant Panchami']];
+const TITLE_FEST = ['Diwali', 'Annakut', 'Janmashtami', 'Swaminarayan Jayanti', 'Guru Purnima', 'Pramukh Swami Maharaj Jayanti',
+  'Mahant Swami Maharaj Jayanti', 'Gunatitanand Swami Jayanti', 'Yogi Jayanti', 'Vasant Panchami'];
+function bigFestival(c) {
+  if (!c || !c[1]) return '';
+  for (const f of c[1].split(/;\s*/)) {
+    const n = (SHORT_FEST.find(([re]) => re.test(f)) || [0, f.split(/[\/,]/)[0].trim()])[1];
+    if (TITLE_FEST.includes(n)) return n;
+  }
+  return '';
+}
 const tithiOf = c => c ? c[0] : '';
 
 let DAY = null, cards = [], everyPhoto = [], timers = [], paused = false, showing = null;
@@ -250,6 +267,8 @@ function render() {
   const D = DAY, year = String(now.getFullYear());
   // this date in the BAPS calendar this year
   const c = D.cal && D.cal[year];
+  const big = bigFestival(c);   // Darpan, 25 Oct 2026, from the On this day picture: "Diwali, 8 November"
+  $('title').textContent = big ? `${big}, ${nice(D.date)}` : nice(D.date);
   if (c) {
     const f = [c[1], c[2]].filter(Boolean).join('; ');
     $('tithi').innerHTML = `${D.date === TODAY ? 'Today is' : `In ${year} this date is`} <b>${esc(c[0])}</b>${f ? ', ' + esc(f) : ''}`;
@@ -290,7 +309,9 @@ function card(y, {Y, place, stories}) {
   const c = {y, el, slot, photos, k: -1, imgs: [], cur: 0, rest: hang(y)};
   el.style.transform = `rotate(${c.rest}deg)`;
   if (photos.length) {
-    const a = new Image(), b = new Image(); a.alt = b.alt = ''; ph.append(a, b); c.imgs = [a, b];
+    const a = new Image(), b = new Image(); a.alt = b.alt = '';
+    c.bgs = [new Image(), new Image()]; c.bgs.forEach(g => { g.alt = ''; g.className = 'bg'; g.setAttribute('aria-hidden', 'true'); });
+    ph.append(c.bgs[0], c.bgs[1], a, b); c.imgs = [a, b];
   } else {
     ph.classList.add('story'); ph.innerHTML = `<p>${esc(stories[0] || '')}</p>`;
   }
@@ -342,6 +363,39 @@ function swing() {
 
 function focus(p) { const f = p[4]; return f ? `${(f[0] * 100).toFixed(1)}% ${Math.min(100, f[1] * 115).toFixed(1)}%` : '50% 28%'; }
 
+// make.fill, the On this day picture's framing (Darpan, 24 and 25 Oct 2026): the photo zoomed in to fill the card, but
+// never so far that it loses more than 15 percent across or down of an action shot, or any of Bapa's head, pagh
+// included; whatever space is left shows the photo's own colours, softened. p[4] is where his face is
+// [centre x, centre y, x, y, w, h, width / height, close darshan], as parts of the photo. Returns true when there is space left.
+const KEEP = .85;
+function frame(img, p) {
+  const box = img.parentNode, w = box.clientWidth, h = box.clientHeight, iw = img.naturalWidth, ih = img.naturalHeight;
+  if (!w || !h || !iw || !ih) return false;
+  const f = p[4] && p[4].length > 7 ? p[4] : null, action = !(f && f[7]);
+  let [cw, ch] = iw / ih > w / h ? [ih * w / h, ih] : [iw, iw * h / w], x0, y0;
+  const keep = action ? KEEP : 0;
+  if (cw < keep * iw) { cw = keep * iw; ch = cw * h / w; }
+  if (ch < keep * ih) { ch = keep * ih; cw = ch * w / h; }
+  if (f) {
+    const fx = f[2] * iw, fy = f[3] * ih, fw = f[4] * iw, fh = f[5] * ih;
+    const head = action ? [fx - .6 * fw, fy - .9 * fh, fx + 1.6 * fw, fy + 1.4 * fh] : [fx - .35 * fw, fy - .6 * fh, fx + 1.35 * fw, fy + 1.15 * fh];
+    const grow = Math.max(1, (head[2] - head[0]) / cw / .96, (head[3] - head[1]) / ch / .96);
+    cw *= grow; ch *= grow;
+    x0 = fx + fw / 2 - cw / 2; y0 = action ? head[1] - ch * .06 : fy + fh / 2 - ch * .38;
+    y0 = Math.min(Math.max(y0, head[3] - ch), head[1]);
+    y0 = Math.max(y0, head[1] - ch * .14);
+    x0 = Math.min(Math.max(x0, head[2] - cw), head[0]);
+  } else {
+    x0 = (iw - cw) / 2; y0 = (ih - ch) * .3;   // no face: cut more from the foot than the top, where heads are
+  }
+  x0 = cw <= iw ? Math.min(Math.max(0, x0), iw - cw) : (iw - cw) / 2;
+  y0 = ch <= ih ? Math.min(Math.max(0, y0), ih - ch) : (ih - ch) / 2;
+  img.classList.add('placed');
+  Object.assign(img.style, {width: iw / cw * 100 + '%', height: ih / ch * 100 + '%', left: -x0 / cw * 100 + '%', top: -y0 / ch * 100 + '%'});
+  return cw > iw + 1 || ch > ih + 1;
+}
+addEventListener('resize', () => cards.forEach(c => (c.imgs || []).forEach(i => i.p && frame(i, i.p))));
+
 function show(c, k, first) {
   const p = c.photos[k], url = SRC.photo(p);
   c.k = k;
@@ -359,14 +413,16 @@ function show(c, k, first) {
       w.classList.toggle('off', !missing);
     }
     c.cap.classList.add('fade');
-    setTimeout(() => { c.cap.textContent = p[2]; c.cap.classList.remove('fade'); }, first ? 0 : 1500);
+    setTimeout(() => { c.cap.textContent = p[5] || p[2]; c.cap.classList.remove('fade'); }, first ? 0 : 1500);
   };
   if (!url) return done(true);
-  const next = c.imgs[first ? 0 : 1 - c.cur];
+  const next = c.imgs[first ? 0 : 1 - c.cur], bg = c.bgs[c.imgs.indexOf(next)];
   const swap = () => {
-    next.style.objectPosition = focus(p);
-    if (!first) c.imgs[c.cur].classList.remove('on');
-    next.classList.add('on'); c.cur = c.imgs.indexOf(next); done(false);
+    next.p = p;
+    const gap = frame(next, p);
+    if (gap) bg.src = url;
+    if (!first) { c.imgs[c.cur].classList.remove('on'); c.bgs[c.cur].classList.remove('on'); }
+    next.classList.add('on'); bg.classList.toggle('on', gap); c.cur = c.imgs.indexOf(next); done(false);
   };
   next.onload = () => requestAnimationFrame(swap);
   next.onerror = () => done(true);
@@ -424,7 +480,7 @@ function group(y, Y, where, cal, stories) {
       everyPhoto.push({p, y, where, cal, trip: note ? Y.trip : null});
       const b = document.createElement('button'); b.className = 'thumb'; b.type = 'button';
       const url = SRC.photo(p);
-      b.innerHTML = `<span class="im">${url ? `<img loading="lazy" decoding="async" alt="${esc(p[2])}" src="${esc(url)}">` : ''}</span><small>${esc(p[2] || 'Darshan')}</small>`;
+      b.innerHTML = `<span class="im">${url ? `<img loading="lazy" decoding="async" alt="${esc(p[2])}" src="${esc(url)}" style="object-position:${focus(p)}">` : ''}</span><small>${esc(p[2] || 'Darshan')}</small>`;
       const im = b.querySelector('.im'), words = () => { im.classList.add('words'); im.textContent = p[2] || 'Darshan'; };
       if (!url) words(); else b.querySelector('img').onerror = words;
       b.onclick = () => view(i);
