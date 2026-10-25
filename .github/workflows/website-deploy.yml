@@ -6,7 +6,7 @@ name: website-deploy
 on:
   push:
     branches: ['claude/**']
-    paths: ['live/**', 'site/search.html', 'site/search-ask.js', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'site/offline/**', 'tools/web_offline.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', '.github/workflows/website-deploy.yml']
+    paths: ['live/**', 'site/search.html', 'site/search-ask.js', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'tools/web_offline.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', '.github/workflows/website-deploy.yml']
   workflow_call:   # website-hires (on main) rebuilds the site when a year of full size photos is in R2
 concurrency: website-deploy
 jobs:
@@ -31,7 +31,11 @@ jobs:
           gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
           # Bapa's own pages (Today, Calendar, share pictures) show only photos with Bapa in them; Search keeps every photo
           # (Darpan, 25 Oct 2026: "anything Bapa specific should only have pictures of Bapa on there")
-          cp bapas.db bapa.db && sqlite3 bapa.db 'DELETE FROM photos WHERE coalesce(is_bapa, 0) != 1; VACUUM' && sqlite3 bapa.db 'SELECT count(*) FROM photos'
+          # Darpan, 25 Oct 2026: chosen by face with the On this day rules (tools/web_faces.py): only photos where Bapa's face is
+          # recognised, best darshan first; years whose faces are not looked at yet keep the caption based choice (is_bapa = 1)
+          pip install -q -r requirements.txt
+          mkdir faces && gh release download website-faces -p 'face2-*.json.gz' -D faces
+          python3 tools/web_faces.py pick --db bapas.db --faces faces --out bapa.db --top bapa-top.db
           gh release download website-mockup -p tags.json
           gh release download deep-tags -p deep-tags.json   # what is in each photo (Darpan: yes deep tags)
           # Bapa through the years (its own thread builds it into release faces-mockup; Darpan: "okay go live")
@@ -40,13 +44,14 @@ jobs:
           # The home page, On this day (built by its own thread on its branch, pinned to the approved commit)
           git fetch -q --depth 1 origin "$DAY_COMMIT" && mkdir daysrc && git archive "$DAY_COMMIT" tools site fonts | tar -x -C daysrc
           (cd daysrc && python3 tools/web_day.py --db ../bapa.db --site ../day --photos-url https://photos.bapas-diary.com/ --search-url /search/ > /dev/null)
+          python3 tools/web_faces.py order --db bapa.db --day day/data/day   # each year opens on its best darshan, centred on his face
           rsync -a day/ out/ && test -f out/index.html && ls out/data/day | wc -l
           # years with photos in R2: site/photo-years.txt plus every year website-hires has finished
           { cat site/photo-years.txt; curl -fs https://photos.$DOMAIN/years.txt || true; } | grep -E '^[0-9]{4}$' | sort -un > photo-years.txt
           echo "photo years: $(tr '\n' ' ' < photo-years.txt)"
           # The scrolling years calendar (its own thread, branch pinned to the approved commit; Darpan: "perfect go live")
           git fetch -q --depth 1 origin "$CAL_COMMIT" && mkdir calsrc && git archive "$CAL_COMMIT" tools/web_calendar.py site/calendar.html fonts | tar -x -C calsrc
-          python3 calsrc/tools/web_calendar.py --db bapa.db --site cal --photos-url https://photos.bapas-diary.com/ --search-url /search/ --photo-years photo-years.txt
+          python3 calsrc/tools/web_calendar.py --db bapa-top.db --site cal --photos-url https://photos.bapas-diary.com/ --search-url /search/ --photo-years photo-years.txt
           rsync -a cal/ out/ && test -f out/calendar/index.html
           sqlite3 bapas.db 'SELECT count(*) FROM calendar'
           # opens on 1999 while only 1999 photos are copied to R2 (site/photo-years.txt)
@@ -58,7 +63,7 @@ jobs:
           python3 tools/web_head.py --out out
           python3 tools/web_seo.py --out out   # 404 page (Darpan: yes not found page), robots.txt, sitemap.xml
           # favourites, share a day and the TV slideshow (Darpan: 3 yes, 4 yes, 1 yes)
-          python3 tools/web_dayshare.py --db bapa.db --out out --tags tags.json --photo-years photo-years.txt
+          python3 tools/web_dayshare.py --db bapa-top.db --out out --tags tags.json --photo-years photo-years.txt
           python3 tools/web_extras.py --out out
           python3 tools/web_phone.py --out out   # phone design: bottom tab bar, phone Today and Calendar (Darpan: yes)
           python3 tools/web_gujarati.py --out out   # English / Gujarati switch (Darpan: yes Gujarati)
