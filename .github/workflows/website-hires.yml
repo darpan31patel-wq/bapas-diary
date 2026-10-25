@@ -1,6 +1,6 @@
 # Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, fetches nothing
 # from baps.org. Every few hours it looks at the Drive archive's check.txt and copies each year the archive has
-# finished into R2, on 6 machines at once, at the highest resolution there is (tools/hires_photos.py), then rebuilds the website so the
+# finished into R2, on 12 machines at once, at the highest resolution there is (tools/hires_photos.py), then rebuilds the website so the
 # year shows. It starts by itself, carries on where it stopped, and keeps 04:30 to 07:30 UTC free.
 # This file has to sit on main, because GitHub only runs timed workflows from there; everything it runs (the copy
 # script and the website build) comes from the website branch claude/project-thread-eawr12.
@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3, 4, 5]   # 6 machines at once, each its own years (Darpan, 25 Oct: yes)
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]   # 12 machines at once, each its own years (Darpan, 25 Oct: yes, then yes 12)
     timeout-minutes: 345
     outputs:
       finished: ${{ steps.copy.outputs.finished }}
@@ -69,7 +69,7 @@ jobs:
             echo "$y: ${new:-0} new photos in Drive that R2 doesn't have yet"
             if [ "${new:-0}" -gt 0 ]; then sed -i "/^$y\$/d" done.txt; fi
           fi
-          python3 tools/hires_photos.py --db bapas.db --check check.txt --done done.txt --have have.txt --shard ${{ matrix.shard }} --shards 6 \
+          python3 tools/hires_photos.py --db bapas.db --check check.txt --done done.txt --have have.txt --shard ${{ matrix.shard }} --shards 12 \
             --send 'aws s3 sync "$OUT" "s3://$BUCKET/" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000, immutable" --content-type image/jpeg' \
             --year-done 'aws s3 cp "s3://$BUCKET/years.txt" done.txt --endpoint-url "$R2" --only-show-errors || true; echo "$YEAR" >> done.txt && sort -un done.txt -o done.txt && aws s3 cp done.txt "s3://$BUCKET/years.txt" --endpoint-url "$R2" --content-type text/plain --cache-control "max-age=300" && echo finished=yes >> "$GITHUB_OUTPUT"'
   # a year was finished: find Bapa's face in each of its photos, from R2 (website only; Darpan, 25 Oct: "yes main faces")
