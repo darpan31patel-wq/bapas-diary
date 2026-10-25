@@ -52,27 +52,46 @@ header{padding-block:6px 4px;padding-left:max(16px,env(safe-area-inset-left,0px)
 .bnum{font-size:min(46cqh,40cqw);font-weight:600;line-height:.9;color:var(--maroon)}
 .bwd{font-family:var(--caps);font-weight:700;font-size:min(9cqh,7.5cqw);letter-spacing:.2em;text-transform:uppercase;color:#9a6a40}
 .bind{font-size:min(15cqh,11.5cqw);font-weight:500;line-height:1.05;color:var(--ink);text-wrap:balance}
-/* where Bapa was: one long row of place bubbles for every stay, 1999 to today; the bubble of the day under the mouse grows */
-.journey{position:relative;height:clamp(40px,6vh,52px);margin-top:2px;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
-.jrow{position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;gap:0;white-space:nowrap;transition:transform .6s cubic-bezier(.3,.7,.2,1);will-change:transform}
-.stay{flex:none;display:inline-flex;align-items:baseline;gap:6px;padding:3px 10px 4px;border-radius:16px;border:1px solid rgba(206,152,64,.55);color:var(--ivory);font-size:clamp(13px,1.8vh,16px);line-height:1.1;opacity:.5;transform:scale(.92);transition:transform .35s cubic-bezier(.3,.7,.2,1),opacity .35s,background .35s,color .35s,box-shadow .35s;cursor:default}
-.stay small{font-family:var(--caps);font-weight:700;font-size:.62em;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-.stay.cur{opacity:1;transform:scale(1)}
-.stay.on{opacity:1;transform:scale(1.4);background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--maroon-deep);border-color:transparent;box-shadow:0 0 18px rgba(255,214,120,.45);position:relative;z-index:1}
-.stay.on small{color:var(--maroon)}
-.hop{flex:none;width:22px;height:1px;margin:0 4px;background:rgba(206,152,64,.55);position:relative}
+/* years and places in one bar at the bottom (Darpan, 25 Oct: put them together, easier to understand, select and scroll):
+   a row of years, and under it every stay from 1999 to today, a gold year label where each year starts.
+   Scroll the places freely; tap a year to jump; tap a place to light up its days on the calendar. */
+footer{padding-block:4px 10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.jbar{max-width:1180px;margin:0 auto;border:1px solid rgba(206,152,64,.35);border-radius:18px;background:rgba(22,5,9,.55);padding:6px 6px 4px}
+.years{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;padding:2px 4px 6px;border-bottom:1px solid rgba(206,152,64,.22)}
+.years::-webkit-scrollbar{display:none}
+.yr{flex:1 0 auto;min-width:38px;border:0;background:none;padding:5px 4px;border-radius:12px;font-family:var(--caps);font-weight:700;font-size:11px;letter-spacing:.04em;color:var(--muted);cursor:pointer;transition:background .25s,color .25s}
+.yr:hover{color:var(--gold-hi);background:rgba(206,152,64,.14)}
+.yr.on{background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--maroon-deep)}
+.yr:focus-visible{outline:2px solid var(--gold-hi);outline-offset:1px}
+.jwrap{position:relative;display:flex;align-items:center;gap:4px;margin-top:6px}
+.jarr{flex:none;width:34px;height:34px;border-radius:50%;border:1px solid rgba(206,152,64,.5);background:none;color:var(--gold-hi);font:600 22px/1 var(--serif);cursor:pointer;display:grid;place-items:center;padding:0 0 3px}
+.jarr:hover{background:rgba(206,152,64,.18)}
+.jarr:focus-visible{outline:2px solid var(--gold-hi);outline-offset:2px}
+.jscroll{position:relative;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;scroll-behavior:auto;cursor:grab;-webkit-mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent);mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent)}
+.jscroll::-webkit-scrollbar{display:none}
+.jscroll.drag{cursor:grabbing}
+.jrow{display:flex;align-items:center;white-space:nowrap;padding:8px 40%;width:max-content}
+.place{flex:none;display:inline-flex;align-items:baseline;gap:6px;padding:6px 13px 7px;border-radius:18px;border:1px solid rgba(206,152,64,.55);background:none;color:var(--ivory);font-family:var(--serif);font-size:clamp(14px,1.9vh,17px);line-height:1.1;opacity:.6;cursor:pointer;
+  transition:transform .35s cubic-bezier(.3,.7,.2,1),opacity .35s,background .35s,color .35s,box-shadow .35s}
+.place small{font-family:var(--caps);font-weight:700;font-size:.62em;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.place:hover,.place:focus-visible{opacity:1;outline:none;border-color:var(--gold-hi);box-shadow:0 0 12px rgba(255,214,120,.3)}
+.place.cur{opacity:1}
+.place.on{opacity:1;transform:scale(1.12);border-color:var(--gold-hi);box-shadow:0 0 14px rgba(255,214,120,.4)}
+.place.sel{opacity:1;transform:scale(1.12);background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--maroon-deep);border-color:transparent;box-shadow:0 0 18px rgba(255,214,120,.55)}
+.place.on small,.place.sel small{color:var(--maroon)}
+.place.on small{color:var(--gold-hi)}
+.hop{flex:none;width:18px;height:1px;margin:0 4px;background:rgba(206,152,64,.55);position:relative}
 .hop:after{content:'';position:absolute;right:-1px;top:-3px;border:3.5px solid transparent;border-left-color:rgba(206,152,64,.85);border-right:0}
-.mdiv{flex:none;font-family:var(--caps);font-weight:700;font-size:10px;letter-spacing:.2em;color:var(--gold-lo);margin:0 10px;opacity:.8}
-footer{padding-block:6px 12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.rail{position:relative;max-width:980px;margin:0 auto;height:34px}
-.rail .line{position:absolute;left:0;right:0;top:12px;height:1px;background:linear-gradient(90deg,transparent,rgba(206,152,64,.55) 6%,rgba(206,152,64,.55) 94%,transparent)}
-.yr{position:absolute;top:0;transform:translateX(-50%);background:none;border:0;padding:0;font-family:var(--caps);font-weight:700;font-size:9px;color:var(--ivory-2);display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer}
-.yr i{width:7px;height:7px;border-radius:50%;background:var(--gold-lo);margin-top:9px}
-.yr.on i{background:var(--gold-hi);box-shadow:0 0 0 4px rgba(255,226,150,.18)}
-.yr.on{color:var(--gold-hi)}
-.yr span{display:none}
-.yr.label span,.yr.on span{display:block}
-.yr:focus-visible{outline:2px solid var(--gold-hi);outline-offset:3px}
+.ymark{flex:none;font-family:var(--caps);font-weight:700;font-size:12px;letter-spacing:.14em;color:var(--maroon-deep);background:var(--gold-lo);border-radius:10px;padding:4px 9px;margin:0 10px 0 12px}
+.jnote{min-height:22px;display:flex;align-items:center;justify-content:center;gap:10px;font-family:var(--caps);font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:2px 8px 2px;text-align:center}
+.jnote b{font-family:var(--serif);font-weight:600;font-size:15px;letter-spacing:0;text-transform:none;color:var(--gold-hi)}
+.jnote button{border:1px solid rgba(206,152,64,.5);background:none;color:var(--gold-hi);border-radius:12px;font:inherit;padding:3px 10px;cursor:pointer}
+/* the days of the chosen stay glow in a round gold light; the other days step back */
+.ribbon.picking .card{opacity:.28;transition:opacity .4s,box-shadow .4s}
+.ribbon.picking .card.lit{opacity:1;z-index:1;border-radius:10px;box-shadow:0 0 0 2px var(--gold-hi),0 0 22px 6px rgba(255,214,120,.6),0 0 60px 16px rgba(206,152,64,.35)}
+.ribbon.picking .card.lit .win{border-radius:7px}
+@media (prefers-reduced-motion:no-preference){.ribbon.picking .card.lit{animation:glow 2.6s ease-in-out infinite alternate}}
+@keyframes glow{to{box-shadow:0 0 0 2px var(--gold-hi),0 0 30px 9px rgba(255,214,120,.75),0 0 80px 22px rgba(206,152,64,.4)}}
 .ctrl{display:flex;justify-content:center;align-items:center;gap:14px;margin-top:2px;flex-wrap:wrap}
 .zm{display:inline-flex;align-items:center;border:1px solid rgba(206,152,64,.5);border-radius:18px;overflow:hidden}
 .zm button{border:0;background:none;color:var(--gold-hi);font:600 20px/1 var(--serif);width:34px;height:30px;cursor:pointer}
@@ -98,13 +117,20 @@ footer{padding-block:6px 12px;padding-left:max(16px,env(safe-area-inset-left,0px
   <header>
     <div class="kicker">Darshan through the years</div>
     <div class="mtitle" aria-live="polite"><span id="t0"></span><span id="t1" class="out"></span></div>
-    <div class="journey" aria-label="Where Bapa was"><div class="jrow" id="jrow"></div></div>
   </header>
   <div class="track" id="track" tabindex="0" aria-label="Calendar of days, scroll sideways">
     <div class="ribbon" id="ribbon"><div class="loading">Opening the calendar…</div></div>
   </div>
   <footer>
-    <div class="rail" id="rail"><div class="line"></div></div>
+    <div class="jbar" role="group" aria-label="Where Bapa was, year by year">
+      <div class="years" id="years" role="group" aria-label="Years"></div>
+      <div class="jwrap">
+        <button class="jarr" id="jprev" type="button" aria-label="Earlier places">‹</button>
+        <div class="jscroll" id="jscroll" aria-label="Where Bapa was, scroll sideways"><div class="jrow" id="jrow"></div></div>
+        <button class="jarr" id="jnext" type="button" aria-label="Later places">›</button>
+      </div>
+      <div class="jnote" id="jnote" aria-live="polite">Tap a place to light up those days</div>
+    </div>
     <div class="ctrl"><button class="play" id="play" aria-pressed="false"></button><div class="spd" role="group" aria-label="Speed"><button data-s="22" aria-pressed="false">Slow</button><button data-s="40" aria-pressed="true">Gentle</button><button data-s="85" aria-pressed="false">Faster</button></div><div class="zm" role="group" aria-label="Zoom"><button id="zout" aria-label="Zoom out, see more months">−</button><span id="zl">100%</span><button id="zin" aria-label="Zoom in">+</button></div></div>
     <div class="hint">Scroll or swipe sideways · tap a day to open its gallery · space bar plays</div>
   </footer>
@@ -115,7 +141,7 @@ const DATA_URL='{{DATA}}', PHOTOS='{{PHOTOS}}', SEARCH='{{SEARCH}}';
 const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
 const WD=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"], WDL=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
-const track=document.getElementById('track'), ribbon=document.getElementById('ribbon'), rail=document.getElementById('rail');
+const track=document.getElementById('track'), ribbon=document.getElementById('ribbon'), yearsEl=document.getElementById('years');
 const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const ord=n=>n+(n%10==1&&n!=11?'ST':n%10==2&&n!=12?'ND':n%10==3&&n!=13?'RD':'TH');
@@ -131,7 +157,8 @@ function sizeCols(){
   const r=document.documentElement.style; r.setProperty('--cw',cw+'px'); r.setProperty('--g',g+'px'); r.setProperty('--bh',bh+'px');
   r.setProperty('--z',Z); r.setProperty('--mh',h+'px');
   MW=7*cw+6*g;
-  if(monthEls.length>1){GAP=monthEls[1].offsetLeft-monthEls[0].offsetLeft-MW;PAD=monthEls[0].offsetLeft}
+  /* measured across all the months, so a rounding of a fraction of a pixel doesn't add up over 300 months */
+  const n=monthEls.length; if(n>1){GAP=(monthEls[n-1].offsetLeft-monthEls[0].offsetLeft)/(n-1)-MW;PAD=monthEls[0].offsetLeft}
 }
 
 /* where Bapa was each day: days with no photo take the place of the days around them when both agree */
@@ -178,58 +205,113 @@ function render(mo){
       b.addEventListener('click',e=>{if(dragMoved)e.preventDefault()});
       b.addEventListener('mouseenter',()=>light(k,day));
       b.addEventListener('focus',()=>light(k,day));
-      b._row=r; mo._cards.push(b);
+      b._row=r; b._date=date; mo._cards.push(b); if(sel!=null)litCard(b);
     }
     b.style.gridArea=`${r+2}/${c+1}`; mo.appendChild(b);
   }
   mo.addEventListener('mouseleave',()=>light(null));
 }
 function unrender(mo){if(!mo._done)return; mo._done=false; mo._cards=[]; mo.innerHTML=''}
-/* the row of stays: built once for every month; dayStay maps "YYYY-MM day" to its bubble */
-const jrow=document.getElementById('jrow'); let stays=[], dayStay={}, monthStays={}, hoverStay=null, jx=0;
+/* where Bapa was: every stay from 1999 to today in one row under the years; dayStay maps "YYYY-MM day" to its stay */
+const jrow=document.getElementById('jrow'), jscroll=document.getElementById('jscroll'), jnote=document.getElementById('jnote');
+let stays=[], dayStay={}, monthStays={}, hoverStay=null, browsed=0, sel=null;
+const pad2=n=>String(n).padStart(2,'0');
 function buildJourney(){
-  const MN=MONTHS.map(x=>x.slice(0,3)); let lastK=null, lastP=null, cur=null;
+  const MN=MONTHS.map(x=>x.slice(0,3)); let lastP=null, cur=null, lastY=null, gap=0;   // a stay carries on over up to 3 days with no place
   const frag=document.createDocumentFragment();
   keys.forEach(k=>{
-    const [y,m]=k.split('-').map(Number);
+    const y=+k.slice(0,4);
     places(k).forEach((p,i)=>{
       const day=i+1;
-      if(!p){lastP=null;return}
-      if(cur&&p===lastP){cur.k1=k;cur.d1=day}
+      if(!p){if(++gap>3)lastP=null;return}
+      if(cur&&p===lastP){cur.k1=k;cur.d1=day;gap=0}
       else{
-        if(lastK!==k&&k.endsWith('-01')&&stays.length) frag.appendChild(el('span','mdiv',String(y)));
-        cur={p,k0:k,d0:day,k1:k,d1:day,i:stays.length}; stays.push(cur);
-        if(stays.length>1) frag.appendChild(el('span','hop'));
-        cur.el=el('span','stay'); frag.appendChild(cur.el);
+        if(y!==lastY){const ym=el('span','ymark',String(y)); ym.dataset.y=y; frag.appendChild(ym); lastY=y}
+        else if(stays.length) frag.appendChild(el('span','hop'));
+        cur={p,k0:k,d0:day,k1:k,d1:day,i:stays.length}; stays.push(cur); gap=0;
+        cur.el=el('button','place'); cur.el.type='button'; cur.el.dataset.i=cur.i; frag.appendChild(cur.el);
       }
-      lastP=p; lastK=k; dayStay[k+' '+day]=cur.i; (monthStays[k]=monthStays[k]||new Set()).add(cur.i);
+      lastP=p; dayStay[k+' '+day]=cur.i; (monthStays[k]=monthStays[k]||new Set()).add(cur.i);
     });
   });
   stays.forEach(s=>{
     const [y0,m0]=s.k0.split('-').map(Number), [y1,m1]=s.k1.split('-').map(Number), a=`${s.d0} ${MN[m0-1]}`, b=`${s.d1} ${MN[m1-1]}`;
-    const when=s.k0===s.k1&&s.d0===s.d1?a:s.k0===s.k1?`${s.d0} to ${b}`:`${a} to ${b}${y0!==y1?' '+y1:''}`;
-    s.el.innerHTML=`${esc(s.p)} <small>${when}</small>`; s.el.title=`Bapa was in ${s.p}, ${when} ${y1}`;
+    s.when=s.k0===s.k1&&s.d0===s.d1?a:s.k0===s.k1?`${s.d0} to ${b}`:`${a} to ${b}${y0!==y1?' '+y1:''}`;
+    s.y=y0; s.from=`${s.k0}-${pad2(s.d0)}`; s.to=`${s.k1}-${pad2(s.d1)}`;
+    s.days=Math.round((new Date(s.to)-new Date(s.from))/864e5)+1;
+    s.el.innerHTML=`${esc(s.p)} <small>${s.when}</small>`;
+    s.el.setAttribute('aria-label',`Bapa was in ${s.p}, ${s.when} ${y0}. Light up these days`);
   });
   jrow.appendChild(frag);
 }
-/* centre the row on a bubble (the hovered day's, else the middle of the month on screen) */
-function centreJourney(i){
-  const s=stays[i]; if(!s)return;
-  const W=jrow.parentNode.clientWidth, x=s.el.offsetLeft+s.el.offsetWidth/2;
-  jx=W/2-x; jrow.style.transform=`translateX(${jx}px)`;
+/* slide the row of places so a stay sits in the middle (not while someone is looking through the row themselves) */
+function centreJourney(i,force){
+  const s=stays[i]; if(!s||(!force&&Date.now()-browsed<6000))return;
+  jscroll.scrollTo({left:s.el.offsetLeft+s.el.offsetWidth/2-jscroll.clientWidth/2,behavior:reduce?'auto':'smooth'});
 }
 let curStays=new Set();
 function journeyMonth(k){
   curStays.forEach(i=>stays[i].el.classList.remove('cur')); curStays=monthStays[k]||new Set();
   curStays.forEach(i=>stays[i].el.classList.add('cur'));
-  if(hoverStay==null&&curStays.size){const a=[...curStays]; centreJourney(a[Math.floor(a.length/2)])}
+  if(hoverStay==null&&sel==null&&curStays.size){const a=[...curStays]; centreJourney(a[Math.floor(a.length/2)])}
 }
 function light(k,day){
   if(hoverStay!=null&&stays[hoverStay]) stays[hoverStay].el.classList.remove('on');
   hoverStay=k==null?null:dayStay[k+' '+day]??null;
-  if(hoverStay!=null){stays[hoverStay].el.classList.add('on');centreJourney(hoverStay)}
+  if(hoverStay!=null){stays[hoverStay].el.classList.add('on');if(sel==null)centreJourney(hoverStay)}
   else if(cur) journeyMonth(cur);
 }
+/* the years row shows the year of the places in the middle of the row */
+function markYear(y){yearsEl.querySelectorAll('.yr').forEach(b=>{const on=+b.dataset.y===y;if(on!==b.classList.contains('on')){b.classList.toggle('on',on);if(on)b.scrollIntoView({block:'nearest',inline:'nearest'})}})}
+function rowYear(){
+  const mid=jscroll.scrollLeft+jscroll.clientWidth/2; let y=null;
+  for(const m of jrow.querySelectorAll('.ymark')){if(m.offsetLeft<=mid)y=+m.dataset.y;else break}
+  if(y!=null)markYear(y);
+}
+let rowTick=false;
+jscroll.addEventListener('scroll',()=>{if(!rowTick){rowTick=true;requestAnimationFrame(()=>{rowTick=false;rowYear()})}},{passive:true});
+/* the row of places scrolls by itself: mouse wheel, trackpad, swipe, drag, or the arrows */
+jscroll.addEventListener('wheel',e=>{browsed=Date.now();if(e.ctrlKey)return;if(Math.abs(e.deltaY)>Math.abs(e.deltaX)){jscroll.scrollLeft+=e.deltaY;e.preventDefault()}},{passive:false});
+['touchstart','pointerdown'].forEach(ev=>jscroll.addEventListener(ev,()=>browsed=Date.now(),{passive:true}));
+let jdown=null, jmoved=false;
+jscroll.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse')return;jdown={x:e.clientX,s:jscroll.scrollLeft};jmoved=false});
+addEventListener('pointermove',e=>{if(!jdown)return;const dx=e.clientX-jdown.x;if(Math.abs(dx)>4){jmoved=true;jscroll.classList.add('drag')}jscroll.scrollLeft=jdown.s-dx;browsed=Date.now()});
+addEventListener('pointerup',()=>{jdown=null;jscroll.classList.remove('drag');setTimeout(()=>jmoved=false,0)});
+document.getElementById('jprev').onclick=()=>{browsed=Date.now();jscroll.scrollBy({left:-jscroll.clientWidth*.7,behavior:reduce?'auto':'smooth'})};
+document.getElementById('jnext').onclick=()=>{browsed=Date.now();jscroll.scrollBy({left:jscroll.clientWidth*.7,behavior:reduce?'auto':'smooth'})};
+jrow.addEventListener('click',e=>{const b=e.target.closest('.place');if(!b||jmoved)return;const i=+b.dataset.i;sel===i?unpick():pick(i)});
+
+/* tap a place: the calendar glides to that stay, its days glow, and if the stay is longer than fits on the screen
+   the calendar zooms out until it all fits (Darpan, 25 Oct); Clear (or Esc) puts the zoom back */
+const ZSEL=.15; let zBefore=null;
+function pick(i){
+  const s=stays[i]; if(!s)return;
+  setPlay(false);
+  if(sel!=null&&stays[sel]) stays[sel].el.classList.remove('sel');
+  sel=i; s.el.classList.add('sel'); s.el.setAttribute('aria-pressed','true');
+  ribbon.classList.add('picking');
+  monthEls.forEach(mo=>(mo._cards||[]).forEach(litCard));
+  const i0=keys.indexOf(s.k0), i1=keys.indexOf(s.k1), n=i1-i0+1, W=track.clientWidth;
+  if(zBefore==null) zBefore=Z;
+  let z=Z;
+  const fits=()=>n*MW+(n-1)*GAP<=W*.94;
+  if(!fits()){ for(z=Z;z>ZSEL;z=Math.round((z-.01)*100)/100){Z=z;sizeCols();if(fits())break} setZoom(z,null,true) }
+  const left=PAD+(i0*(MW+GAP)+i1*(MW+GAP)+MW)/2-W/2;
+  track.scrollTo({left,behavior:reduce||Math.abs(left-track.scrollLeft)>W*3?'auto':'smooth'});
+  centreJourney(i,true);
+  jnote.innerHTML=`<b>${esc(s.p)}</b><span>${s.when} ${+s.k1.slice(0,4)} · ${s.days} ${s.days===1?'day':'days'}</span>`+
+    `<a href="${SEARCH}#place=${encodeURIComponent(s.p)}&from=${s.from}&to=${s.to}" style="color:var(--gold-hi)">See these photos</a><button type="button" id="jclear">Clear</button>`;
+  document.getElementById('jclear').onclick=unpick;
+}
+function unpick(){
+  if(sel==null)return;
+  stays[sel].el.classList.remove('sel'); stays[sel].el.removeAttribute('aria-pressed'); sel=null;
+  ribbon.classList.remove('picking'); ribbon.querySelectorAll('.card.lit').forEach(c=>c.classList.remove('lit'));
+  jnote.textContent='Tap a place to light up those days';
+  if(zBefore!=null){const z=zBefore;zBefore=null;setZoom(z)}
+}
+function litCard(c){const s=stays[sel];c.classList.toggle('lit',!!s&&c._date>=s.from&&c._date<=s.to)}
+addEventListener('keydown',e=>{if(e.key==='Escape')unpick()});
 
 /* month title cross fade and the year rail */
 let cur=null, flip=0;
@@ -237,7 +319,7 @@ const t=[document.getElementById('t0'),document.getElementById('t1')];
 function setMonth(k){
   if(k===cur)return; cur=k; const [y,m]=k.split('-').map(Number);
   const nxt=t[1-flip], old=t[flip]; nxt.textContent=`${MONTHS[m-1]} ${y}`; nxt.classList.remove('out'); old.classList.add('out'); flip=1-flip;
-  rail.querySelectorAll('.yr').forEach(b=>b.classList.toggle('on',+b.dataset.y===y));
+  if(sel==null&&Date.now()-browsed>6000) markYear(y);
   journeyMonth(k);
   try{history.replaceState(null,'','#'+k)}catch(e){}
 }
@@ -261,7 +343,8 @@ function frame(){
   const lag=reduce?0:Math.max(-22,Math.min(22,-vel*.9));
   for(const i of shown){
     const mo=monthEls[i], c=PAD+i*(MW+GAP)+MW/2, edge=Math.max(0,Math.abs(c-mid)-MW/2);
-    mo.style.opacity=Math.max(Z<1?.55:.28,1-edge/(W*.55/Z)).toFixed(3);
+    const inSel=sel!=null&&mo.dataset.k>=stays[sel].k0&&mo.dataset.k<=stays[sel].k1;
+    mo.style.opacity=inSel?'1':Math.max(Z<1?.55:.28,1-edge/(W*.55/Z)).toFixed(3);
     if(reduce)continue;
     for(const cd of mo._cards){
       const r=cd.getBoundingClientRect(); if(r.right<-50||r.left>W+50)continue;
@@ -306,11 +389,11 @@ addEventListener('keydown',e=>{if(e.code==='Space'&&!e.target.closest('button,a'
 setPlay(false);
 const zin=document.getElementById('zin'), zout=document.getElementById('zout'), zl=document.getElementById('zl');
 /* at = the screen x that stays put while zooming (the mouse or the pinch), else the middle */
-function setZoom(z,at){
-  z=Math.max(ZMIN,Math.min(1,Math.round(z*100)/100));
+function setZoom(z,at,forPlace){
+  z=Math.max(forPlace?ZSEL:ZMIN,Math.min(1,Math.round(z*100)/100));
   const W=track.clientWidth, x=at==null?W/2:at, u=MW?(track.scrollLeft+x-PAD)/(MW+GAP):null;
   Z=z; document.body.classList.toggle('zoomed',z<.86); zl.textContent=Math.round(z*100)+'%'; zin.disabled=z>=1; zout.disabled=z<=ZMIN;
-  try{localStorage.setItem('calendarZoom',z)}catch(e){}
+  if(!forPlace) try{localStorage.setItem('calendarZoom',z)}catch(e){}
   if(!D)return; sizeCols();
   if(u!=null) track.scrollLeft=PAD+u*(MW+GAP)-x;
   kick();
@@ -344,10 +427,10 @@ fetch(DATA_URL).then(r=>r.json()).then(data=>{
   keys.forEach(k=>{const mo=el('div','month');mo.dataset.k=k;ribbon.appendChild(mo);monthEls.push(mo)});
   const y0=+keys[0].slice(0,4), y1=+keys[keys.length-1].slice(0,4);
   for(let y=y0;y<=y1;y++){
-    const b=el('button','yr'+((y-y0)%3===0||y===y1?' label':''),`<i></i><span>${y}</span>`);
-    b.style.left=((y-y0)/(y1-y0)*100)+'%'; b.dataset.y=y; b.title=`Go to ${y}`;
-    b.onclick=()=>{setPlay(false);const k=`${y}-${(cur||'-01').slice(5)}`;goTo(D.m[k]?k:keys.find(x=>x.startsWith(y))||keys[0],true)};
-    rail.appendChild(b);
+    const b=el('button','yr',String(y)); b.type='button'; b.dataset.y=y; b.title=`Go to ${y}`;
+    b.onclick=()=>{setPlay(false);unpick();browsed=0;const k=`${y}-${(cur||'-01').slice(5)}`;goTo(D.m[k]?k:keys.find(x=>x.startsWith(y))||keys[0],true);
+      const m=jrow.querySelector(`.ymark[data-y="${y}"]`); markYear(y); if(m) jscroll.scrollTo({left:m.offsetLeft-12,behavior:reduce?'auto':'smooth'}); browsed=Date.now()};
+    yearsEl.appendChild(b);
   }
   buildJourney();
   sizeCols();
