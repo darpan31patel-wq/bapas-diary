@@ -3,13 +3,14 @@
 # Deep photo tags for Search (Darpan, 25 Oct 2026: "red flowers or blue sky or smiling or food or animals"):
 # every year in R2 is cut into shards, each shard is embedded with the open SigLIP 2 model on its own machine and
 # kept in the release deep-tags, then all of them become deep-tags.json with the words checked by eye.
-# Carries on where it stopped: shards already kept are skipped. Not live: the website build does not read it yet.
+# Carries on where it stopped: shards already kept are skipped. The website build reads deep-tags.json (Darpan: yes deep tags, 25 Oct).
 name: website-deeptags
 on:
   push:
     branches: ['claude/project-thread-vcys74']
     paths: ['.github/workflows/website-deeptags.yml', 'tools/deep_tags.py', 'tools/deep_words.py']
   workflow_dispatch:
+  workflow_call:   # the timer on main (website-deeptags-timer.yml) runs this every few hours
 permissions:
   contents: write
 concurrency:
@@ -58,7 +59,7 @@ jobs:
           gh release upload deep-tags emb-${{ matrix.shard }}.npz --clobber
   tags:
     needs: [plan, shard]
-    if: always() && needs.plan.result == 'success'
+    if: always() && needs.plan.result == 'success' && (needs.plan.outputs.shards != '[]' || github.event_name == 'push')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -73,3 +74,9 @@ jobs:
           python3 tools/deep_tags.py words --out words.npz
           python3 tools/deep_tags.py tags --emb emb --words words.npz --out deep-tags.json
           gh release upload deep-tags deep-tags.json words.npz --clobber
+  # new photos were tagged: rebuild the website (the same build as every deploy) so Search finds them
+  site:
+    needs: [plan, tags]
+    if: always() && needs.tags.result == 'success' && github.event_name != 'push'
+    uses: darpan31patel-wq/bapas-diary/.github/workflows/website-deploy.yml@claude/project-thread-eawr12
+    secrets: inherit
