@@ -25,14 +25,19 @@ jobs:
       shards: ${{ steps.plan.outputs.shards }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - id: plan
         run: |
+          pip install -q -r requirements.txt
           gh release view website-faces >/dev/null 2>&1 || \
             gh release create website-faces --prerelease --title "Website: photos of Bapa by face" --notes "Website only: Bapa's face found in each photo in R2, for the Bapa pages. Not used by the daily picture."
           gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
           curl -sf https://photos.bapas-diary.com/years.txt -o years.txt; echo "years in R2: $(tr '\n' ' ' < years.txt)"
           gh release view website-faces --json assets -q '.assets[].name' > have.txt
-          echo "shards=$(python3 tools/web_faces.py plan --db bapas.db --years years.txt --have have.txt)" | tee -a "$GITHUB_OUTPUT"
+          shards=$(python3 tools/web_faces.py plan --db bapas.db --years years.txt --have have.txt)
+          echo "shards=$shards" | tee -a "$GITHUB_OUTPUT"
   scan:
     needs: plan
     if: needs.plan.outputs.shards != '[]'
