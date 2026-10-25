@@ -80,6 +80,19 @@ def embed(a):
     np.savez_compressed(a.out, keys=np.array(keys), emb=np.concatenate(vecs))
 
 
+def words(a):
+    """Only the words: their numbers, so photos can be scored anywhere without the model."""
+    import numpy as np, torch
+    sys.path.insert(0, os.path.dirname(__file__))
+    from deep_words import WORDS
+    model, _, tok = load_model()
+    with torch.no_grad():
+        t = model.encode_text(tok(list(WORDS.values())))
+        t = t / t.norm(dim=-1, keepdim=True)
+    np.savez_compressed(a.out, words=np.array(list(WORDS)), emb=t.numpy().astype('float32'),
+                        scale=model.logit_scale.exp().item(), bias=model.logit_bias.item())
+
+
 def probs(emb, words):
     """Each word against each photo: SigLIP gives a real yes chance (0 to 1), not just a ranking."""
     import numpy as np, torch
@@ -162,8 +175,10 @@ def main():
     h.add_argument('--photos', required=True)
     h.add_argument('--out', default='sheets')
     h.add_argument('--bar', type=float, default=0.1)
+    w = sub.add_parser('words')
+    w.add_argument('--out', default='words.npz')
     a = ap.parse_args()
-    {'sample': sample, 'embed': embed, 'sheets': sheets}[a.cmd](a)
+    {'sample': sample, 'embed': embed, 'sheets': sheets, 'words': words}[a.cmd](a)
 
 
 if __name__ == '__main__':
