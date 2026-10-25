@@ -106,7 +106,7 @@ jobs:
     needs: [setup, download]
     if: always() && needs.setup.result != 'failure'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -134,8 +134,14 @@ jobs:
           curl -s https://rclone.org/install.sh | sudo bash >/dev/null
           mkdir -p ~/.config/rclone
           python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
-          rclone lsf -R --files-only --fast-list "$REMOTE" > have.txt
-          mkdir -p work && rclone copy "$REMOTE" work --include "photos/missing*"
+          # one listing per year and channel, eight at a time (one listing of the whole folder ran past an hour, 25 Oct)
+          { seq 1999 2026 | sed 's|^|photos/baps.org/|'; rclone lsf --dirs-only "$REMOTE/telegram" | sed 's|/$||; s|^|telegram/|'; } > dirs.txt
+          mkdir -p lists
+          xargs -d '\n' -P 8 -I{} sh -c 'f="lists/$(echo "$1" | tr "/ " "__").txt"; for i in 1 2 3; do rclone lsf -R --files-only --fast-list "$REMOTE/$1" > "$f" && break; sleep 30; done; awk -v p="$1/" "{print p \$0}" "$f" > "$f.x" && mv "$f.x" "$f"' _ {} < dirs.txt
+          cat lists/*.txt > have.txt
+          rclone lsf --files-only "$REMOTE" >> have.txt
+          echo "$(wc -l < have.txt) files in Drive"
+          mkdir -p work/photos && rclone copy "$REMOTE/photos" work/photos --include "missing*" --max-depth 1
           python tools/archive_download.py --to work --check --have have.txt
           rclone copyto work/check.txt "$REMOTE/check.txt"
           gh release upload database work/check.txt --clobber
