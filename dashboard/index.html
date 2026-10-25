@@ -142,7 +142,7 @@ const $ = s => document.querySelector(s);
 const MAROON = '#601420', PLACE = '#582222', IVORY_TOP = '#f8f2e4', IVORY_BOT = '#eadfc8', IVORY_EDGE = '#c4b292';
 const CAP_IVORY = '#faf1de', CAP_GOLD = '#f0d6a0', GOLD = '#ffcf6b';
 const SERIF = '"EB Garamond", Georgia, serif', SANS = '"Arimo", Arial, sans-serif';
-const store = { get(k) { try { return JSON.parse(localStorage.getItem(k)) } catch (e) { return null } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)) } catch (e) {} } };
+const store = { get(k) { try { return JSON.parse(localStorage.getItem(k)) } catch (e) { return null } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true } catch (e) { return false } } };
 
 // ------------------------------------------------------------ settings
 const LOOKS = {   // background tones, all within the approved maroon and gold
@@ -570,16 +570,20 @@ let EXPMODE = 'new';
 const todayLondon = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
 // the Drive connection is kept in this browser twice (storage and a cookie), so a refresh or a cleared storage keeps it
 const COOKIE = 'studio_drive';
-function driveCode() {
+let DRIVE_NOW = '';   // this visit's connection, for when the browser will not keep it
+function savedDrive() {
   const v = store.get('studio-drive');
   if (v) return v;
-  const m = document.cookie.match(new RegExp('(?:^|; )' + COOKIE + '=([^;]*)'));
-  return m ? decodeURIComponent(m[1]) : '';
+  try { const m = document.cookie.match(new RegExp('(?:^|; )' + COOKIE + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : '' } catch (e) { return '' }
 }
-function setDrive(v) {
+const driveCode = () => savedDrive() || DRIVE_NOW;
+function setDrive(v) {   // true when the browser kept it for next time
+  DRIVE_NOW = v;
   store.set('studio-drive', v);
   try { document.cookie = `${COOKIE}=${encodeURIComponent(v)}; path=/; max-age=${v ? 3e8 : 0}; SameSite=Lax; Secure` } catch (e) {}
+  return savedDrive() === v;
 }
+const NOT_KEPT = 'This browser is not letting the Studio save anything, so it will forget the connection when you refresh. In Chrome open Settings, then Privacy and security, then Site settings, then On device site data, and allow sites to save data (or add akshar-kutir-mandir-room.pages.dev to the allowed list). Then connect again.';
 function fillMode() {
   const isToday = S.mode === 'day' && S.day.date === todayLondon();
   $('#expmode').hidden = S.mode !== 'day';
@@ -616,8 +620,10 @@ $('#drive-save').addEventListener('click', () => {
   st.className = 'status warn';
   if (!url) { st.textContent = (key ? 'Your code is saved. ' : '') + (isDev ? 'That address ends /dev, the test one. ' : '') + 'Now paste the Web app URL: in the script click Deploy, then Manage deployments, and copy the address that ends /exec.'; return }
   if (!key) { st.textContent = 'The address is saved. Now paste the code: run studioCode, and copy the letters and numbers after the # sign.'; return }
-  setDrive(url + '#' + key); store.set('studio-key-pending', ''); store.set('studio-url-pending', '');
-  delete $('#drive').dataset.open; st.className = 'status ok'; st.textContent = 'Connected to Google Drive.'; fillMode();
+  const kept = setDrive(url + '#' + key); store.set('studio-key-pending', ''); store.set('studio-url-pending', '');
+  delete $('#drive').dataset.open; fillMode();
+  if (kept) { st.className = 'status ok'; st.textContent = 'Connected to Google Drive. It stays connected on this device.' }
+  else st.textContent = 'Connected for now. ' + NOT_KEPT;
 });
 async function toBase64(blob) { const buf = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < buf.length; i += 32768) s += String.fromCharCode.apply(null, buf.subarray(i, i + 32768)); return btoa(s) }
 async function sendToDrive(mode, png, jpg) {
@@ -876,6 +882,7 @@ document.querySelectorAll('.modes button').forEach(b => b.addEventListener('clic
 
 (async () => {
   build();
+  if (!store.set('studio-check', 1) || store.get('studio-check') !== 1) { $('#status').className = 'status warn'; $('#status').textContent = NOT_KEPT }
   try { await document.fonts.load(`700 84px ${SERIF}`); await document.fonts.load(`500 21px ${SERIF}`); await document.fonts.load(`600 21px ${SERIF}`); await document.fonts.load(`700 20px ${SANS}`) } catch (e) {}
   try {
     await loadIndex();
