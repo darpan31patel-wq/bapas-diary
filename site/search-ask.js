@@ -433,8 +433,9 @@
     return A;
   };
   // questions to try, under the search bar
+  // six, in two even rows of three (Darpan, 25 Oct 2026)
   const ASK = ['When did Bapa go to London?', 'Where was Bapa on Diwali 2005?', 'How many times did Bapa go to Africa?', 'Where was Bapa on 7 December?',
-    'Where did Bapa go in March 2026?', 'Where was Bapa on Janmashtami?', 'Bapa smiling with children in 2026', 'Murti pratishtha in Robbinsville'];
+    'Where did Bapa go in March 2026?', 'Where was Bapa on Janmashtami?'];
   if ($('c-ask')) {
     $('c-ask').innerHTML = ASK.map(x => `<button type="button" data-ask="${esc(x)}">${esc(x)}</button>`).join('');
     $('c-ask').addEventListener('click', e => {
@@ -460,7 +461,6 @@
 
   const css = document.createElement('style');
   css.textContent = `
-.ask-lead { margin-top: 6px !important; }
 .can .ask-chips button { font-style: italic; font-weight: 500; }
 .answer-card { margin-top: 18px; background: linear-gradient(var(--ivory-top), var(--paper-hi)); border: 1px solid var(--ivory-edge); border-radius: 10px;
   padding: 22px clamp(16px, 4vw, 34px) 18px; box-shadow: 0 10px 26px -16px rgba(59, 18, 25, .45); scroll-margin-top: 90px; }
@@ -492,7 +492,6 @@
 :root.gu .ask-gu { display: inline; }
 :root.gu .ask-en { display: none; }
 @media (max-width: 600px) {
-  .can .ask-chips button:nth-child(n+6) { display: none; }
   .ask-gurus { grid-template-columns: 1fr; }
   .ask-row { grid-template-columns: 40px 50px minmax(0, 1fr); gap: 10px; }
   .ask-cu { width: 50px; height: 50px; }

@@ -145,14 +145,39 @@ body { background: linear-gradient(#efdcd2, #f3e5d8) fixed; }
 .day-head .tithi { color: #d9a441; }
 .day-head .about, .day-head .only { color: rgba(250, 241, 222, .75); }
 .grid { row-gap: 22px; }
+/* Calmer search (Darpan picked look 3, 25 Oct 2026): every filter, word and question stays on show, but each group has
+   its own gentle look. Filters are underlined fields, the words are soft gold pills in two even rows, the questions are
+   soft rose boxes. The intro is upright and short, the photo count in gold, and no "Darshan through the years" line. */
+.sub { margin-top: 18px; max-width: 34em; font: 500 18px/1.5 var(--serif); color: rgba(250, 241, 222, .66); }
+.sub .count { white-space: nowrap; color: rgba(250, 241, 222, .62); }
+.sub .count::before { content: "("; }
+.sub .count::after { content: ")"; }
+.sub .count b { font: 700 21px var(--serif); letter-spacing: .02em; font-variant-numeric: lining-nums;
+  background: linear-gradient(#ffe296, #ce9840); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.filters { gap: 8px; }
+.flabel { font-size: 10px; color: var(--muted); }
+.frow select, .frow input[type=date] { border: 0; border-bottom: 1px solid rgba(110, 20, 36, .3); border-radius: 0; background: transparent; padding: 7px 4px; font-weight: 600; }
+.frow select:hover, .frow input[type=date]:hover { border-bottom-color: var(--maroon); }
+.can { padding-block: 30px 0; gap: 12px; }
+.can .lead { font: 500 17px/1.45 var(--serif); color: #8a5a22; }
+#c-try { display: grid; grid-template-columns: repeat(6, auto); justify-content: center; gap: 8px; }
+#c-try button { border: 0; background: rgba(207, 152, 64, .2); padding: 6px 14px; font: 600 13.5px var(--sans); letter-spacing: .02em; color: #7a3d14; border-radius: 99px; white-space: nowrap; }
+#c-try button:hover { background: var(--gold); color: #2a0910; }
+.can .ask-lead { margin-top: 20px; color: var(--maroon); }
+#c-ask { display: grid; grid-template-columns: repeat(3, auto); justify-content: center; gap: 8px 10px; }
+.can #c-ask button { border: 1px solid rgba(110, 20, 36, .22); background: rgba(110, 20, 36, .06); color: var(--maroon); border-radius: 10px; padding: 6px 16px 7px; font: italic 500 17px var(--serif); }
+.can #c-ask button:hover { background: var(--maroon); color: var(--gold-hi); }
+.can .hint { margin-top: 8px; font-size: 12.5px; }
+@media (max-width: 860px) { #c-try { grid-template-columns: repeat(4, auto); } #c-ask { grid-template-columns: repeat(2, auto); } }
+@media (max-width: 600px) { #c-try { grid-template-columns: repeat(3, minmax(0, auto)); gap: 7px 6px; } #c-try button { padding: 6px 10px; font-size: 12.5px; }
+  #c-ask { grid-template-columns: 1fr; justify-items: center; } }
 </style>
 
 <nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a class="on" href="/search/" aria-current="page">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/calendar/">Calendar</a><a href="/about/">About</a></nav>
 <div class="band">
 <header class="top wrap">
   <h1>Bapa's Diary</h1>
-  <div class="kicker">Darshan through the years</div>
-  <p class="sub" id="sub">Every vicharan photo on baps.org, the On this day stories and the BAPS calendar, all mixed together by date.</p>
+  <p class="sub" id="sub">Every vicharan photo on baps.org</p>
 </header>
 </div>
 
@@ -180,16 +205,16 @@ body { background: linear-gradient(#efdcd2, #f3e5d8) fixed; }
   <div class="frow"><span class="flabel">Filter</span>
     <select id="place" aria-label="Place"><option value="">Every place</option></select>
     <select id="fest" aria-label="Festival"><option value="">Every festival</option></select>
-    <select id="act" aria-label="What is happening"><option value="">Every action</option></select>
-    <select id="mandir" aria-label="Mandir days"><option value="">Every mandir day</option></select>
+    <select id="act" aria-label="What is happening, or a mandir day"><option value="">Every action</option></select>
+    <select id="mandir" hidden aria-hidden="true" tabindex="-1"><option value=""></option></select>
   </div>
 </div>
 
 <main class="wrap">
   <section class="can" aria-label="Things you can search">
-    <p class="lead">Search for anything: a word from a caption, a place, a festival, a mandir opening, a date, or what is happening in a photo.</p>
+    <p class="lead">Search for anything: a word, a place, a festival, a mandir opening, a date, or what is in a photo.</p>
     <div class="chips" id="c-try"></div>
-    <p class="lead ask-lead">Or ask the diary a question, in your own words:</p>
+    <p class="lead ask-lead">Or ask the diary a question in your own words:</p>
     <div class="chips ask-chips" id="c-ask"></div>
     <div class="hint">Every word must appear. Use <code>"quotes"</code> for a phrase and <code>-word</code> to leave a word out. Pick a month and day with no year to see that date across every year.</div>
   </section>
@@ -279,7 +304,7 @@ function search() {
   // results are the photos (with Bapa) and stories that answer it, instead of photos that have every word
   const asked = window.askDiary ? askDiary($('q').value) : null;
   const { want, not } = asked ? { want: [], not: [] } : parse($('q').value), year = $('year').value, month = $('month').value, day = $('day').value;
-  const from = $('from').value, to = $('to').value, fest = $('fest').value, place = $('place').value || linkPlace, act = $('act').value, mandir = $('mandir').value;
+  const from = $('from').value, to = $('to').value, fest = $('fest').value, place = $('place').value || linkPlace, act = $('act').value.startsWith('@') ? '' : $('act').value, mandir = mandirPicked();
   const lp = linkPlace.toLowerCase();   // a place from a map link also finds albums named after two places, or 'Washington DC'
   const byYear = {};
   hits = [];
@@ -317,7 +342,7 @@ function render(byYear, want) {
     return `<button class="${k === year ? 'on' : ''}" data-y="${k}" title="${name}: ${n.toLocaleString()} found" aria-label="${name}: ${n.toLocaleString()} found"><span class="n">${n.toLocaleString()}</span><div class="col" style="height:${n ? Math.max(3, 62 * n / max) : 0}%"></div><span>${label}</span></button>`;
   }).join('') : '';
   if (!hits.length) {
-    const asked = Object.keys(byYear).length || $('q').value.trim() || year || $('fest').value || $('place').value || $('act').value || $('mandir').value || $('month').value || $('day').value || $('from').value || $('to').value;
+    const asked = Object.keys(byYear).length || $('q').value.trim() || year || $('fest').value || $('place').value || $('act').value || $('month').value || $('day').value || $('from').value || $('to').value;
     $('count').innerHTML = asked ? `Nothing found${loaded < total ? ' yet, still loading' : ''}.` : 'Type a word or pick a date to start.';
     $('results').innerHTML = '';
     $('more').hidden = true;
@@ -440,7 +465,7 @@ $('big').addEventListener('click', e => { if (e.target === $('big')) $('big').cl
 document.querySelector('.can').addEventListener('click', e => {
   if (e.target.dataset.q) { $('q').value = e.target.dataset.q; search(); }
   if (e.target.dataset.fest) { $('q').value = ''; $('fest').value = e.target.dataset.fest; search(); }
-  if (e.target.dataset.mandir) { $('q').value = ''; $('mandir').value = 'p'; search(); }
+  if (e.target.dataset.mandir) { $('q').value = ''; $('act').value = '@p'; search(); }
 });
 // A date heading opens that whole day: every photo and story of the date, whatever was searched; Back returns.
 let before = null;
@@ -479,16 +504,18 @@ function fillPlacesActions() {
     .map(k => `<option value="${esc(k)}">${esc(k)} (${o[k].toLocaleString()})</option>`).join('');
   $('place').innerHTML = opts(places, 'Every place');
   if (linkPlace) placeOption(linkPlace);
-  $('act').innerHTML = opts(acts, 'Every action');
-  // mandir days, with how many days each has; the date headings get their gold ribbon from mandirDay
+  // mandir days, with how many days each has, at the end of the action list (Darpan, 25 Oct 2026: one list, not two);
+  // their values start with @ so search() can tell them from actions. The date headings get their gold ribbon from mandirDay
   for (const r of items) if (r.m) for (const k of r.m) (mandirDay[r.d] = mandirDay[r.d] || new Set()).add(k);
   const days = {};
   for (const ks of Object.values(mandirDay)) for (const k of ks) days[k] = (days[k] || 0) + 1;
-  const keep = $('mandir').value;
-  $('mandir').innerHTML = '<option value="">Every mandir day</option>' + Object.keys(MANDIR).filter(k => days[k])
-    .map(k => `<option value="${k}">${esc(MANDIR[k][0])} (${days[k].toLocaleString()})</option>`).join('');
-  $('mandir').value = keep;
+  const keep = $('act').value;
+  $('act').innerHTML = opts(acts, 'Every action') + '<optgroup label="Mandir days">' + Object.keys(MANDIR).filter(k => days[k])
+    .map(k => `<option value="@${k}">${esc(MANDIR[k][0])} (${days[k].toLocaleString()})</option>`).join('') + '</optgroup>';
+  $('act').value = keep;
 }
+// the mandir day picked in the action list (#mandir= links pick it there too); #mandir only stays so older code can clear it
+const mandirPicked = () => $('act').value.startsWith('@') ? $('act').value.slice(1) : '';
 function fillCan() {
   $('c-try').innerHTML = TRY.map(([w, kind]) => `<button data-${kind}="${esc(w)}">${esc(w)}</button>`).join('');
 }
@@ -502,8 +529,8 @@ async function load() {
   const about = await (await fetch('data/about.json')).json();
   total = about.years.length + 1 + (about.calendar ? 1 : 0);
   const nPhotos = Object.values(about.photos).reduce((a, b) => a + b, 0);
-  $('sub').textContent = `Every vicharan photo on baps.org from ${about.years[0]} to ${about.years.at(-1)} (${nPhotos.toLocaleString()} photos), ${about.stories.toLocaleString()} On this day stories`
-    + (about.calendar ? ` and the BAPS calendar for ${about.calendar.toLocaleString()} days` : '') + ', all mixed together by date. Search for words, or pick a year, month, day or range of dates.';
+  // the years and the photo count follow the data, so they grow by themselves as photos are added
+  $('sub').innerHTML = `Every vicharan photo on baps.org from ${about.years[0]} to ${about.years.at(-1)} <span class="count"><b>${nPhotos.toLocaleString()}</b> photos</span>.`;
   $('q').value = 'annakut';
   const linked = fromLink();
   if (START_YEAR && !linked) $('q').value = '';
@@ -549,7 +576,7 @@ function fromLink() {
   if (linkPlace) placeOption(linkPlace);
   $('q').value = h.get('q') || '';
   const m = h.get('mandir');
-  if (MANDIR[m]) { $('mandir').innerHTML += `<option value="${m}">${esc(MANDIR[m][0])}</option>`; $('mandir').value = m; }
+  if (MANDIR[m]) { $('act').innerHTML += `<option value="@${m}">${esc(MANDIR[m][0])}</option>`; $('act').value = '@' + m; }
   return true;
 }
 window.addEventListener('hashchange', () => { if (fromLink()) search(); });
