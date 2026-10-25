@@ -1,0 +1,24 @@
+# Website only. Read-only look at the live Search (bapas-diary.com) to see the deep photo tags arrived.
+name: website-deeptags-check
+on:
+  push:
+    branches: ['claude/project-thread-vcys74']
+    paths: ['.github/workflows/website-deeptags-check.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          for y in 1999 2026; do
+            curl -sf "https://bapas-diary.com/search/data/$y.json" -o $y.json
+            python3 -c "
+          import json, collections
+          d = json.load(open('$y.json'))
+          c = collections.Counter(t for p in d['p'] if isinstance(p[3], str) for t in p[3].split(', ') if t)
+          print('$y', len(d['p']), 'photos;', sum(1 for p in d['p'] if p[3]), 'with words;', dict(c.most_common(60)))"
+          done
+          curl -sf https://bapas-diary.com/search/ -o search.html
+          echo "In this photo lines: $(grep -c 'In this photo' search.html || true)"
