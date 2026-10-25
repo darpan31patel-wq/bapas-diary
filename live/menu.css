@@ -22,6 +22,8 @@
   color: #d9a441; text-decoration: none; padding: 6px 0 5px; border-bottom: 1px solid transparent; white-space: nowrap;
 }
 .site-menu a:hover, .site-menu a.on { color: #ffe296; border-bottom-color: #d9a441; }
+/* scroll bars in the site's gold instead of the bright grey ones Windows draws by default */
+html { scrollbar-color: rgba(217, 164, 65, .55) transparent; }
 @media (max-width: 600px) { .site-menu { gap: 0 10px; } .site-menu a { font-size: 10px; letter-spacing: .08em; } }   /* on the narrowest phones the row can be swiped */
 .site-menu a:focus-visible { outline: 2px solid #ffe296; outline-offset: 3px; }
 /* moving between pages: a gentle fade (browsers without this simply switch pages) */

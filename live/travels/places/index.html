@@ -38,6 +38,8 @@ button { font: inherit; color: inherit; }
   backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); overflow: hidden; }
 .scroll { flex: 1; overflow-y: auto; padding: 20px 22px 22px; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 .grab { display: none; }
+/* iPads standing up: a wider list, so long names never run into their visit counts */
+@media (min-width: 761px) and (max-width: 1100px) { .panel { width: min(410px, 48vw); } }
 h1 { font: 400 30px/1.15 var(--display); margin: 0; text-wrap: balance; }
 .lead { color: var(--mist); margin: 6px 0 14px; font-size: 15px; text-wrap: balance; }
 .find { width: 100%; padding: 11px 14px; font: 400 17px var(--body); color: var(--ink); background: rgba(255,255,255,.06);

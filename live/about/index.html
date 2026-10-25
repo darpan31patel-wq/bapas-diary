@@ -20,7 +20,7 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; color: var(--ink); font: 400 18.5px/1.75 var(--serif); background: var(--maroon-out); }
-.page { min-height: 100vh; padding: 70px 0; background:
+.page { overflow-x: hidden; overflow-x: clip; min-height: 100vh; padding: 70px 0; background:
   radial-gradient(ellipse 60% 40% at 50% 0%, rgba(255, 196, 110, .18), transparent 70%),
   radial-gradient(ellipse 110% 70% at 50% 15%, var(--maroon-in), var(--maroon-out)); }
 .wrap { max-width: 720px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }

@@ -278,7 +278,18 @@
     const nav = document.querySelector('nav.site-menu');
     if (!nav || nav.querySelector('.bd-aa')) return;
     const b = el('button', 'bd-aa', 'A<b>A</b>'); b.type = 'button'; b.setAttribute('aria-label', 'Text size'); b.setAttribute('aria-haspopup', 'dialog');
-    nav.append(b);
+    // on phones the menu is the tab bar at the bottom, so the Aa goes in the top strip beside the other round buttons
+    // (in the tab bar it made a sixth tab and pushed About and Search wider than the screen)
+    const narrow = matchMedia('(max-width: 760px)');
+    const place = () => {
+      if (!narrow.matches) { if (b.parentNode !== nav) nav.append(b); return; }
+      const top = document.querySelector('.ph-top');
+      if (!top) return;   // not drawn yet: never put it in the tab bar, not even for a moment
+      const next = top.querySelector('.bd-off-right, .ph-about');
+      next ? next.before(b) : top.append(b);
+    };
+    place(); setTimeout(place, 0); setTimeout(place, 300); setTimeout(place, 1000);
+    narrow.addEventListener && narrow.addEventListener('change', place);
     b.addEventListener('click', e => {
       e.preventDefault();
       const d = el('dialog', 'bd-sheet bd-size');
@@ -298,6 +309,28 @@
     });
   }
   document.documentElement.style.setProperty('--bd-zoom', getSize());
+
+  // Windows has no flag pictures in its emoji, so a flag shows as two letters (GB, US, IN). On Windows only, flags are
+  // drawn with the free Twemoji Country Flags font (it holds nothing but flags, so all other text stays as it is).
+  if (/Windows/.test(navigator.userAgent)) {
+    const css = document.createElement('style');
+    css.textContent = "@font-face { font-family: 'Bd Flags'; unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E007F; font-display: swap;" +
+      " src: url('https://cdn.jsdelivr.net/npm/country-flag-emoji-polyfill@0.1.8/dist/TwemojiCountryFlags.woff2') format('woff2'); }" +
+      " .bd-flag { font-family: 'Bd Flags', 'Segoe UI Emoji', sans-serif; font-style: normal; }";
+    document.head.append(css);
+    const FLAG = /(?:[\u{1F1E6}-\u{1F1FF}]{2})+/u;
+    const wrap = root => {
+      const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => FLAG.test(n.data) && !(n.parentNode.closest && n.parentNode.closest('.bd-flag, script, style, textarea, input')) ? 1 : 2 });
+      const hits = []; while (w.nextNode()) hits.push(w.currentNode);
+      for (const n of hits) {
+        const f = document.createDocumentFragment();
+        n.data.split(/((?:[\u{1F1E6}-\u{1F1FF}]{2})+)/u).forEach((t, i) => { if (!t) return; if (i % 2) { const s = document.createElement('span'); s.className = 'bd-flag'; s.textContent = t; f.append(s); } else f.append(t); });
+        n.replaceWith(f);
+      }
+    };
+    const go = () => { wrap(document.body); new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(x => x.nodeType === 1 ? wrap(x) : x.nodeType === 3 && x.parentNode && wrap(x.parentNode)))).observe(document.body, { childList: true, subtree: true }); };
+    document.body ? go() : document.addEventListener('DOMContentLoaded', go);
+  }
 
   window.BapaDiary = { fav, shareDay, slideshow, photoOf, toast, niceDate, PHOTOS };
   const ready = () => {
