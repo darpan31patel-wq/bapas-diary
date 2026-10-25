@@ -122,6 +122,7 @@ input[type=checkbox] { accent-color: var(--gold); width: 16px; height: 16px }
         <button data-v="replace" aria-pressed="false">Replace today's picture</button>
       </div>
       <span class="hint" id="exp-mode-hint"></span>
+      <span class="hint" id="drive-on" hidden><b style="color:var(--ok)">● Connected to Google Drive</b> · <button class="btn" id="drive-off" style="padding:2px 8px;font-size:12px">Disconnect</button></span>
     </div>
     <div class="status" id="status" role="status"></div>
     <div class="last" id="last"></div>
@@ -567,7 +568,18 @@ const SIZES = {
 // ------------------------------------------------------------ what Export does: a new export, or today's 2pm picture replaced (Darpan, 25 Oct 2026)
 let EXPMODE = 'new';
 const todayLondon = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
-const driveCode = () => store.get('studio-drive') || '';
+// the Drive connection is kept in this browser twice (storage and a cookie), so a refresh or a cleared storage keeps it
+const COOKIE = 'studio_drive';
+function driveCode() {
+  const v = store.get('studio-drive');
+  if (v) return v;
+  const m = document.cookie.match(new RegExp('(?:^|; )' + COOKIE + '=([^;]*)'));
+  return m ? decodeURIComponent(m[1]) : '';
+}
+function setDrive(v) {
+  store.set('studio-drive', v);
+  try { document.cookie = `${COOKIE}=${encodeURIComponent(v)}; path=/; max-age=${v ? 3e8 : 0}; SameSite=Lax; Secure` } catch (e) {}
+}
 function fillMode() {
   const isToday = S.mode === 'day' && S.day.date === todayLondon();
   $('#expmode').hidden = S.mode !== 'day';
@@ -582,10 +594,12 @@ function fillMode() {
   $('#exp-go').textContent = EXPMODE === 'replace' ? 'Replace today’s 2pm picture' : 'Export picture';
   $('#exp-size').hidden = EXPMODE === 'replace';
   $('#drive').hidden = !!driveCode() && !$('#drive').dataset.open;
+  $('#drive-on').hidden = !driveCode() || S.mode !== 'day';
   const last = store.get('studio-last');
   $('#last').innerHTML = last ? `Last export: <b>${last.how}</b>, ${last.what}, ${last.when}` : '';
 }
 document.querySelectorAll('#exp-mode button').forEach(b => b.addEventListener('click', () => { EXPMODE = b.dataset.v; fillMode() }));
+$('#drive-off').addEventListener('click', () => { setDrive(''); $('#status').className = 'status'; $('#status').textContent = 'Disconnected from Google Drive on this device.'; fillMode() });
 $('#drive-save').addEventListener('click', () => {
   // the line studioCode shows is '<web app address>#<code>'. The address and the code may also come one at a time, in
   // either order; a test address (ending /dev) is not kept, the real one ends /exec
@@ -602,7 +616,7 @@ $('#drive-save').addEventListener('click', () => {
   st.className = 'status warn';
   if (!url) { st.textContent = (key ? 'Your code is saved. ' : '') + (isDev ? 'That address ends /dev, the test one. ' : '') + 'Now paste the Web app URL: in the script click Deploy, then Manage deployments, and copy the address that ends /exec.'; return }
   if (!key) { st.textContent = 'The address is saved. Now paste the code: run studioCode, and copy the letters and numbers after the # sign.'; return }
-  store.set('studio-drive', url + '#' + key); store.set('studio-key-pending', ''); store.set('studio-url-pending', '');
+  setDrive(url + '#' + key); store.set('studio-key-pending', ''); store.set('studio-url-pending', '');
   delete $('#drive').dataset.open; st.className = 'status ok'; st.textContent = 'Connected to Google Drive.'; fillMode();
 });
 async function toBase64(blob) { const buf = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < buf.length; i += 32768) s += String.fromCharCode.apply(null, buf.subarray(i, i + 32768)); return btoa(s) }
@@ -613,7 +627,7 @@ async function sendToDrive(mode, png, jpg) {
   try { r = await fetch(url, { method: 'POST', body }) } catch (e) { throw new Error('Google Drive could not be reached from here. Use the Studio tab on your master dashboard, or check your internet.') }
   const ans = await r.json().catch(() => null);
   if (!ans) throw new Error('Google Drive did not answer clearly. Check the Bapa’s Diary folder before trying again.');
-  if (!ans.ok) { if (/code is wrong/.test(ans.error)) { store.set('studio-drive', ''); fillMode() } throw new Error(ans.error) }
+  if (!ans.ok) { if (/code is wrong/.test(ans.error)) { setDrive(''); fillMode() } throw new Error(ans.error) }
   return ans;
 }
 function drawAt(width) {
