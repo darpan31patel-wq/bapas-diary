@@ -102,6 +102,7 @@ jobs:
           { cat site/photo-years.txt; curl -fs https://photos.bapas-diary.com/years.txt || true; } | grep -E '^[0-9]{4}$' | sort -un > photo-years.txt
           # after
           python3 tools/web_rules.py captions --db bapa.db --db bapa-top.db
+          python3 tools/web_rules.py calendar --db bapa.db --db bapa-top.db
           python3 tools/web_day.py --db bapa.db --site m/after --days $days --photos-url https://photos.bapas-diary.com/ --search-url /search/ > /dev/null
           python3 tools/web_faces.py order --db bapa.db --day m/after/data/day
           python3 tools/web_rules.py day --day m/after/data/day --db bapa.db --faces faces --tg tg-cards.json

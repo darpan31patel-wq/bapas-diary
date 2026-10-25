@@ -37,6 +37,7 @@ jobs:
           python3 tools/web_faces.py pick --db bapas.db --faces faces --out bapa.db --top bapa-top.db
           # the On this day picture's rules (Darpan, 25 Oct 2026, tools/web_rules.py): captions say what Bapa does
           python3 tools/web_rules.py captions --db bapa.db --db bapa-top.db
+          python3 tools/web_rules.py calendar --db bapas.db --db bapa.db --db bapa-top.db   # the calendar days the picture shows
           gh release download website-mockup -p tags.json
           gh release download deep-tags -p deep-tags.json   # what is in each photo (Darpan: yes deep tags)
           # Bapa through the years (its own thread builds it into release faces-mockup; Darpan: "okay go live")

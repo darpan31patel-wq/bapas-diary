@@ -223,19 +223,6 @@ function shift(m, n) {
 }
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 const festOf = c => c ? (c[1] || '').split(/;\s*/)[0] : '';
-// the big festivals that go in the title, said the way the On this day picture says them (make.py SHORT_FEST, TITLE_FEST)
-const SHORT_FEST = [[/annakut/i, 'Annakut'], [/^bestu/i, 'New Year'], [/hari.?nom/i, 'Swaminarayan Jayanti'], [/gunatitanand.*(birthday|jayanti)/i, 'Gunatitanand Swami Jayanti'],
-  [/pramukh swami.*jayanti/i, 'Pramukh Swami Maharaj Jayanti'], [/mahant swami.*jayanti/i, 'Mahant Swami Maharaj Jayanti'], [/vasant panch/i, 'Vasant Panchami']];
-const TITLE_FEST = ['Diwali', 'Annakut', 'Janmashtami', 'Swaminarayan Jayanti', 'Guru Purnima', 'Pramukh Swami Maharaj Jayanti',
-  'Mahant Swami Maharaj Jayanti', 'Gunatitanand Swami Jayanti', 'Yogi Jayanti', 'Vasant Panchami'];
-function bigFestival(c) {
-  if (!c || !c[1]) return '';
-  for (const f of c[1].split(/;\s*/)) {
-    const n = (SHORT_FEST.find(([re]) => re.test(f)) || [0, f.split(/[\/,]/)[0].trim()])[1];
-    if (TITLE_FEST.includes(n)) return n;
-  }
-  return '';
-}
 const tithiOf = c => c ? c[0] : '';
 
 let DAY = null, cards = [], everyPhoto = [], timers = [], paused = false, showing = null;
@@ -267,8 +254,6 @@ function render() {
   const D = DAY, year = String(now.getFullYear());
   // this date in the BAPS calendar this year
   const c = D.cal && D.cal[year];
-  const big = bigFestival(c);   // Darpan, 25 Oct 2026, from the On this day picture: "Diwali, 8 November"
-  $('title').textContent = big ? `${big}, ${nice(D.date)}` : nice(D.date);
   if (c) {
     const f = [c[1], c[2]].filter(Boolean).join('; ');
     $('tithi').innerHTML = `${D.date === TODAY ? 'Today is' : `In ${year} this date is`} <b>${esc(c[0])}</b>${f ? ', ' + esc(f) : ''}`;

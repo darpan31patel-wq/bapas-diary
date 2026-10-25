@@ -7,6 +7,7 @@ picture chain. Like web_bapa_rules.py, the parts of make.py used here are copies
     python3 tools/web_rules.py day --day out/data/day --db bapa.db --faces faces --tg tg-cards.json
                                                                           3 4 5 6 7  the Today page's data
     python3 tools/web_rules.py look --out out                             2  the gentle finish on every photo of Bapa
+    python3 tools/web_rules.py calendar --db bapas.db --db bapa.db ...    the BAPS calendar days the picture shows (25 Oct 2026)
 
 1  A caption says what Bapa does, without his name, dates or link text; "devotee" is "bhakta"; an album's own date
    heading is "Darshan". On a card it is summarised to fit two lines, never cut with "...".
@@ -93,6 +94,58 @@ def captions(a):
         print(f'{path}: {changed} of {len(rows)} captions tidied', flush=True)
         for (n, _, _), r in list(zip(new, rows))[:: max(1, len(rows) // 12)][:12]:
             print(f'   {r[2]!r} -> {n!r}')
+
+
+# ---------------------------------------------------------------- the BAPS calendar, as the picture says it
+
+# Copied from make.py (live 25 Oct 2026, 9e668e8): only the days Darpan kept, festivals on the Indian date, birthdays
+# and anniversaries on their English date, an Ekadashi without its name. National days stay (he said no to 8).
+DAYS = [(r'^diwali$', 'Diwali'), (r'annakut', 'Annakut'), (r'\bbestu', 'New Year'), (r'janmashtami', 'Janmashtami'),
+        (r'guru purnima', 'Guru Purnima'), (r'vasant panch', 'Vasant Panchami'), (r'^holi', 'Holi'),
+        (r'pushpadol|dhuleti', 'Pushpadolotsav'), (r'ram ?navm', 'Ram Navami'), (r'hari.?nom|swaminarayan jayanti', 'Swaminarayan Jayanti'),
+        (r'rathyatra', 'Rathyatra'), (r'jal jhilani', 'Jal Jhilani Ekadashi'), (r'^prabodhini ekadashi$', 'Prabodhini Ekadashi'),
+        (r'^dev diwali$', 'Dev Diwali'), (r'akshar purnima', 'Akshar Purnima'), (r'shri hari navmi', 'Shri Hari Navmi'),
+        (r'hindola prarambh', 'Hindola begins'), (r'hindola samapt', 'Hindola ends'), (r'devpodhi|devshayani', 'Devpodhi Ekadashi'),
+        (r'vagh baras$', 'Vagh Baras'), (r'dhan te|dhan tray', 'Dhan Teras'), (r'kali ch?audas', 'Kali Chaudas'), (r'^bhai b', 'Bhai Beej'),
+        (r'la+bh pancham', 'Labh Pancham'), (r'makar sankranti', 'Makar Sankranti'), (r'shivratri', 'Shivratri'),
+        (r'raksha bandhan', 'Raksha Bandhan'), (r'republic day', 'Republic Day'), (r'independence day', 'Independence Day'),
+        (r'jagaswami', 'Jagaswami Jayanti'), (r'grahan', 'Eclipse'), (r'shra+d+h', 'Shraddh'), (r'dhanurmas prarambh', 'Dhanurmas begins'),
+        (r'dhanurmas (samapt|purn|end)', 'Dhanurmas ends'), (r'holashtak', 'Holashtak begins')]
+ONCE = {'Shri Hari Navmi': 'Kartak', 'Akshar Purnima': 'Magshar'}   # on the calendar every month, shown once a year
+FIXED = {'01-20': 'Gunatitanand Swami Diksha Day', '01-23': 'Yogiji Maharaj Smrutiparva', '01-31': 'Shastriji Maharaj Jayanti',
+         '03-20': 'Bhagatji Maharaj Jayanti', '05-10': 'Shastriji Maharaj Smrutiparva', '05-21': 'Pramukh Varni Din',
+         '05-23': 'Yogiji Maharaj Jayanti', '06-01': 'Bhagwan Swaminarayan Smrutiparva', '08-13': 'Pramukh Swami Maharaj Smrutiparva',
+         '09-13': 'Mahant Swami Maharaj Jayanti', '10-11': 'Gunatitanand Swami Smrutiparva', '10-17': 'Gunatitanand Swami Jayanti',
+         '11-07': 'Bhagatji Maharaj Smrutiparva', '12-07': 'Pramukh Swami Maharaj Jayanti'}
+
+
+def kept_days(date, month, names, ekadashi, punam, amas, indian_date):
+    """make.festivals and cal_parts: the kept days on this date, an Ekadashi first (by its own name only when the
+    calendar gives it one of the kept names), then the English date ones."""
+    out = []
+    for n in names:
+        for part in re.split(r'\s*[,;]\s*', n):
+            for k, v in DAYS:
+                if re.search(k, part.strip(), re.I) and v not in out and ONCE.get(v, month) == month:
+                    out.append(v)
+    for flag, word in ((punam, 'Punam'), (amas, 'Amas')):   # the website shows the whole Indian date ('Aso Sud Chaudas/Punam')
+        if flag and word not in (indian_date or '') and word not in out:
+            out.append(word)
+    if date[5:10] in FIXED:
+        out.append(FIXED[date[5:10]])
+    ek = [f for f in out if 'Ekadashi' in f][:1] or (['Ekadashi'] if ekadashi else [])
+    return ek + [f for f in out if f not in ek]
+
+
+def calendar(a):
+    """The calendar table of each database says what the picture says: festivals = the kept days, notes left empty."""
+    for path in a.db:
+        db = sqlite3.connect(path)
+        rows = db.execute('SELECT date, month, festivals, notes, ekadashi, punam, amas, indian_date FROM calendar').fetchall()
+        new = [('; '.join(kept_days(d, m, [f or '', n or ''], ek, pu, am, ind)), '', d) for d, m, f, n, ek, pu, am, ind in rows]
+        db.executemany('UPDATE calendar SET festivals = ?, notes = ? WHERE date = ?', new)
+        db.commit()
+        print(f'{path}: {len(rows)} calendar days, {sum(1 for x in new if x[0])} with a kept day')
 
 
 # ---------------------------------------------------------------- 5 channel darshans before 1999
@@ -343,6 +396,7 @@ def main():
     s = sub.add_parser('tg'); s.add_argument('--db', required=True); s.add_argument('--drive', required=True); s.add_argument('--out', required=True); s.set_defaults(fn=tg)
     s = sub.add_parser('day'); s.add_argument('--day', required=True); s.add_argument('--db', required=True)
     s.add_argument('--faces'); s.add_argument('--tg'); s.set_defaults(fn=day)
+    s = sub.add_parser('calendar'); s.add_argument('--db', action='append', required=True); s.set_defaults(fn=calendar)
     s = sub.add_parser('look'); s.add_argument('--out', required=True); s.set_defaults(fn=look)
     a = ap.parse_args()
     a.fn(a)
