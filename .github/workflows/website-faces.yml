@@ -1,0 +1,77 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, fetches nothing
+# from baps.org (the photos come from R2, photos.bapas-diary.com, which is public, so no secrets are needed).
+# Darpan, 25 Oct 2026: the website's Bapa pages choose photos of Bapa by the same rules as the On this day picture.
+# Every year in R2 is cut into shards; each shard's photos get make.py's face check (YuNet + SFace, Pramukh Swami
+# Maharaj before 13 Aug 2016, Mahant Swami Maharaj after) on its own machine, kept in release website-faces. Then
+# tools/web_faces.py pick turns them into bapa.db and bapa-top.db, plus a before and after mockup.
+# Carries on where it stopped: shards already kept are skipped. Waits out 04:30 to 07:30 UTC.
+# Not live: the website build does not read it until Darpan says yes.
+name: website-faces
+on:
+  push:
+    branches: ['claude/project-thread-9isen0']
+    paths: ['.github/workflows/website-faces.yml', 'tools/web_faces.py', 'tools/web_bapa_rules.py']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: website-faces
+env:
+  GH_TOKEN: ${{ github.token }}
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.plan.outputs.shards }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: plan
+        run: |
+          gh release view website-faces >/dev/null 2>&1 || \
+            gh release create website-faces --prerelease --title "Website: photos of Bapa by face" --notes "Website only: Bapa's face found in each photo in R2, for the Bapa pages. Not used by the daily picture."
+          gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
+          curl -sf https://photos.bapas-diary.com/years.txt -o years.txt; echo "years in R2: $(tr '\n' ' ' < years.txt)"
+          gh release view website-faces --json assets -q '.assets[].name' > have.txt
+          echo "shards=$(python3 tools/web_faces.py plan --db bapas.db --years years.txt --have have.txt)" | tee -a "$GITHUB_OUTPUT"
+  scan:
+    needs: plan
+    if: needs.plan.outputs.shards != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      max-parallel: 4   # the high res copy and deep tags use machines too
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Bapa's face in each photo
+        run: |
+          pip install -q -r requirements.txt
+          gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
+          python3 tools/web_faces.py scan --db bapas.db --shard ${{ matrix.shard }} --out faces-${{ matrix.shard }}.json.gz
+          gh release upload website-faces faces-${{ matrix.shard }}.json.gz --clobber
+  pick:
+    needs: [plan, scan]
+    if: always() && needs.plan.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Photos of Bapa by Darpan's rules, and a before and after mockup
+        run: |
+          pip install -q -r requirements.txt
+          sudo apt-get install -y -qq fonts-dejavu-core >/dev/null
+          gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
+          curl -sf https://photos.bapas-diary.com/years.txt -o years.txt
+          mkdir faces && gh release download website-faces -p 'faces-*.json.gz' -D faces
+          python3 tools/web_faces.py pick --db bapas.db --faces faces --out bapa.db --top bapa-top.db
+          python3 tools/web_faces.py mockup --old bapas.db --db bapa.db --years years.txt --days 10-25 10-26 --out mockup
+          gzip -kf bapa.db bapa-top.db
+          cd mockup && for f in *; do mv "$f" "mockup-$f"; done && cd ..
+          gh release upload website-faces bapa.db.gz bapa-top.db.gz mockup/* --clobber
