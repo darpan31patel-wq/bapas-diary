@@ -6,7 +6,7 @@ name: website-deploy
 on:
   push:
     branches: ['claude/**']
-    paths: ['live/**', 'site/search.html', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/build_search.py', 'tools/site_menu.py', '.github/workflows/website-deploy.yml']
+    paths: ['live/**', 'site/search.html', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'site/offline/**', 'tools/web_offline.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', '.github/workflows/website-deploy.yml']
   workflow_call:   # website-hires (on main) rebuilds the site when a year of full size photos is in R2
 concurrency: website-deploy
 jobs:
@@ -57,6 +57,9 @@ jobs:
           python3 tools/web_dayshare.py --db bapas.db --out out --tags tags.json --photo-years photo-years.txt
           python3 tools/web_extras.py --out out
           python3 tools/web_phone.py --out out   # phone design: bottom tab bar, phone Today and Calendar (Darpan: yes)
+          python3 tools/web_gujarati.py --out out   # English / Gujarati switch (Darpan: yes Gujarati)
+          python3 tools/web_offline.py --out out --photo-years photo-years.txt   # works with no internet, Save for travelling (Darpan: yes offline)
+          python3 tools/web_gujarati.py --out out   # again, for the page the offline step just added
           du -sh out/*
           if grep -rli 'telegram\|t\.me/' out --include='*.html'; then echo 'Telegram found: not deploying'; exit 1; fi   # never on the public site
       - name: Deploy to Pages
@@ -82,7 +85,9 @@ jobs:
           echo "== photos.$DOMAIN"
           api -X POST "$B" -d "{\"domain\":\"photos.$DOMAIN\",\"zoneId\":\"$ZONE\",\"enabled\":true,\"minTLS\":\"1.2\"}" | jq -c '{success, errors}'
           api "$B" | jq -c '[.result.domains[]? | {domain, status}]'
+          echo "== photos CORS, so the offline version saves real copies"
+          api -X PUT "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/r2/buckets/bapas-diary-photos/cors" -d '{"rules":[{"allowed":{"origins":["https://bapas-diary.com","https://www.bapas-diary.com"],"methods":["GET","HEAD"]},"maxAgeSeconds":86400}]}' | jq -c '{success, errors}'
           sleep 20
-          for u in https://photos.$DOMAIN/s/ https://$PROJECT.pages.dev/search/ https://$PROJECT.pages.dev/travels/ https://$DOMAIN/ https://$DOMAIN/travels/ https://$DOMAIN/through-the-years/ https://$DOMAIN/calendar/ https://$DOMAIN/share.jpg https://$DOMAIN/manifest.webmanifest https://$DOMAIN/no-such-page https://$DOMAIN/favourites/ https://$DOMAIN/day/10-24/ https://$DOMAIN/share/day/10-24.jpg https://$DOMAIN/then-and-now/ https://$DOMAIN/travels/places/; do
+          for u in https://photos.$DOMAIN/s/ https://$PROJECT.pages.dev/search/ https://$PROJECT.pages.dev/travels/ https://$DOMAIN/ https://$DOMAIN/travels/ https://$DOMAIN/through-the-years/ https://$DOMAIN/calendar/ https://$DOMAIN/share.jpg https://$DOMAIN/manifest.webmanifest https://$DOMAIN/no-such-page https://$DOMAIN/favourites/ https://$DOMAIN/day/10-24/ https://$DOMAIN/share/day/10-24.jpg https://$DOMAIN/then-and-now/ https://$DOMAIN/travels/places/ https://$DOMAIN/sw.js https://$DOMAIN/offline.js https://$DOMAIN/offline/ https://$DOMAIN/offline/files.json https://$DOMAIN/gu/gu.js https://$DOMAIN/gu/words.json; do
             echo "$u -> $(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "$u")"
           done

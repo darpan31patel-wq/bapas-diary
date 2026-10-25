@@ -90,6 +90,9 @@ def main():
             shell.append(u)
     for f in os.listdir(os.path.join(out, 'fonts')) if os.path.isdir(os.path.join(out, 'fonts')) else []:
         shell.append('/fonts/' + f)
+    for d, _, files in os.walk(os.path.join(out, 'gu')):   # the Gujarati switch, its words and fonts
+        for f in sorted(files):
+            shell.append('/' + os.path.relpath(os.path.join(d, f), out).replace(os.sep, '/'))
     shell = list(dict.fromkeys(shell))
 
     pack, size = [], 0
