@@ -21,6 +21,10 @@ nightly album scan already does. From there the noon Drive download, the high re
 5. For each part: `CAP.short(i)` (and `CAP.short(i, 90)`, ... while capsTotal is bigger), write it to a file exactly
    (caption pieces joined in order), `python3 tools/captions/captions_merge.py --part that.json --crawl crawl`.
    A "hash does not match" means it was copied wrongly: read that part again.
-6. Commit `crawl/button` on `database`, push to `refs/heads/database` (pull first), then
+6. Bapa's schedule (for the Darshan Screensaver, Darpan 25 Oct): `await CAP.schedule()` in the same tab. If it gives
+   an error, skip it. Otherwise write it exactly to a file (text joined from
+   `CAP.scheduleText(800)`, `(1600)`, ... up to textTotal; drop textTotal) and `captions_merge.py --schedule that.json --crawl crawl`
+   (saves `crawl/schedule/latest.json`; the screensaver reads it from raw.githubusercontent.com).
+7. Commit `crawl/button` and `crawl/schedule` on `database`, push to `refs/heads/database` (pull first), then
    `gh api -X POST repos/darpan31patel-wq/bapas-diary/actions/workflows/archive.yml/dispatches -f ref=main`.
-7. Close the tab. If Chrome isn't connected (Mac off), do nothing: the next run catches up.
+8. Close the tab. If Chrome isn't connected (Mac off), do nothing: the next run catches up.

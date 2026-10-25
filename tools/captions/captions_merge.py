@@ -4,6 +4,7 @@ caption (build_archive.py reads crawl/button as source 'button'). A page read ag
 
     python3 captions_merge.py --known --crawl crawl            (pages already saved, to hand to CAP.run)
     python3 captions_merge.py --part part.json --crawl crawl
+    python3 captions_merge.py --schedule schedule.json --crawl crawl   (Bapa's schedule page, for the screensaver)
 part.json is CAP.part(i), CAP.compact(i) or CAP.short(i) exactly (CAP.short's caption pieces joined); its hash must match, so a page passed on wrongly is never saved.
 """
 import argparse, datetime, json, os, re, sys
@@ -21,7 +22,17 @@ ap = argparse.ArgumentParser()
 ap.add_argument('--part')
 ap.add_argument('--crawl', default='crawl')
 ap.add_argument('--known', action='store_true', help='print the pages already saved, for CAP.run')
+ap.add_argument('--schedule', help="CAP.schedule()'s answer: saved as crawl/schedule/latest.json for the screensaver")
 a = ap.parse_args()
+if a.schedule:
+    x = json.load(open(a.schedule, encoding='utf-8'))
+    x.pop('textTotal', None)
+    if js_hash(json.dumps([x['tables'], x['text']], ensure_ascii=False, separators=(',', ':'))) != x.pop('hash'):
+        sys.exit('schedule: hash does not match, read it again with CAP.schedule')
+    os.makedirs(os.path.join(a.crawl, 'schedule'), exist_ok=True)
+    json.dump(x, open(os.path.join(a.crawl, 'schedule', 'latest.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    print(f"schedule: {len(x['tables'])} tables saved ({x['read']})")
+    sys.exit()
 if a.known:
     import glob
     print(json.dumps(sorted({h['page'] for p in glob.glob(os.path.join(a.crawl, 'button', '*.json'))

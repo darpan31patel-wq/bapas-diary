@@ -4,6 +4,8 @@
 // It never tries to get past baps.org's Cloudflare check: if a page doesn't load it is skipped and tried again tomorrow.
 //   await CAP.run(['/Vicharan/2026/21-October-2026-32045.aspx', ...pages already saved], 3)  -> list of pages to save
 //   CAP.part(0)  -> {page, title, rows: [[album, file, caption], ...], hash}   one page
+//   await CAP.schedule() -> Bapa's Upcoming Vicharan Schedule page (tables and text), for captions_merge.py --schedule;
+//                   its text comes 800 letters at a time: CAP.scheduleText(800), (1600), ... up to textTotal
 //   CAP.short(0) -> the same page written short (numbered files as runs, a caption repeated in a row as [n, caption]),
 //                   90 captions at a time: CAP.short(0, 90) gives the next ones (capsTotal says how many there are)
 window.CAP = (() => {
@@ -86,5 +88,22 @@ window.CAP = (() => {
     }
     return {...x, caps: caps.slice(from, from + 90), capsFrom: from, capsTotal: caps.length};
   }
-  return {run, part: i => out[i], compact, short, hash};
+  // Darpan, 25 Oct 2026 (for his Darshan Screensaver): read Bapa's Upcoming Vicharan Schedule page once in the same run,
+  // saved as crawl/schedule/latest.json. A check page or anything else is skipped, never clicked or solved.
+  const SCHEDULE = '/Announcement/2018/HH-Mahant-Swami-Maharajs-Upcoming-Vicharan-Schedule-13400.aspx';
+  async function schedule() {
+    const s = await get(SCHEDULE);
+    if (!s) return {error: 'the schedule page did not load'};
+    s.querySelectorAll('script, style, noscript, link, meta, iframe, svg').forEach(x => x.remove());
+    const tables = [...s.querySelectorAll('table')].map(t => [...t.rows].map(row => [...row.cells].map(c => (c.textContent || '').replace(/\s+/g, ' ').trim())));
+    let text = (s.body.textContent || '').split('\n').map(l => l.trim()).filter(Boolean).join('\n');
+    const at = text.search(/^.*Upcoming Vicharan Schedule$/m);   // the page itself starts at its heading (the site menu comes before)
+    if (at < 0) return {error: 'not the schedule page (a check page?), skipped'};
+    text = text.slice(at, at + 100000);
+    sched = {read: new Date().toISOString(), p: SCHEDULE, t: (s.title || '').trim(), tables, text, hash: hash(JSON.stringify([tables, text]))};
+    return {...sched, text: text.slice(0, 800), textTotal: text.length};
+  }
+  let sched = null;
+  const scheduleText = from => sched.text.slice(from, from + 800);   // the rest of the text, 800 letters at a time (longer answers get cut off)
+  return {run, part: i => out[i], compact, short, schedule, scheduleText, hash};
 })();
