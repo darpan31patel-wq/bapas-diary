@@ -5,14 +5,15 @@
 Writes a folder that works as it is on any web host (Cloudflare Pages, or opened from a small local server):
   index.html          the search page (site/search.html wrapped as a full page)
   data/YYYY.json      one file per year of baps.org photos:
-                        {"g": [[date, date_to, place, album], ...],      a group = one album on one day (or date range)
+                        {"g": [[date, date_to, place, album, mandir], ...],  a group = one album on one day (or date range);
+                                                                    mandir only on mandir days, e.g. "p" (see MANDIR)
                          "p": [[group, file, caption, tags], ...]}   tags: what is happening in it, e.g. "smiling, garland"    every photo, nothing cut out
-  data/stories.json   every On this day story (the Telegram channel posts, shown without any Telegram links): [[date, place, text], ...]
+  data/stories.json   every On this day story (the Telegram channel posts, shown without any Telegram links): [[date, place, text, mandir?], ...]
   data/calendar.json  every BAPS calendar day, when the database has the calendar table:
                         [[date, weekday, vikram_samvat, indian_date, festivals, festival_about, notes, source], ...]
   data/about.json     years, counts and when it was built
 """
-import argparse, json, os, sqlite3
+import argparse, json, os, re, sqlite3
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PAGE = os.path.join(HERE, 'site', 'search.html')
@@ -91,6 +92,24 @@ def tag_picker(data):
     return lambda key: ', '.join(t for t, b, x in zip(names, bars, photos.get(key, ())) if b is not None and x >= b)
 
 
+# Mandir days (Darpan, 25 Oct 2026: mandir openings belong in the photo search, not on a page of their own). A day of
+# an album is a mandir day when any caption of it says so, and then every photo of that day and album is too (the
+# nagar yatra, the yagna and the assembly of an opening are part of it). p = murti pratishtha (a mandir opening, or
+# murtis consecrated for a new mandir), s = shilanyas (foundation stone), t = patotsav (a mandir's anniversary).
+# "Inaugurates a new publication" is not a mandir, so only the inaugurating of a mandir counts.
+MANDIR = {
+    'p': re.compile(r'prati?sh?th?a|consecration ceremony|newly consecrated|murtis? to be consecrated|consecrat\w* (?:the )?murti'
+                    r'|opening ceremony of the (?:new )?mandir|inaugurat\w* (?:the )?(?:new )?'
+                    r'(?:baps )?(?:shri )?(?:swaminarayan )?(?:hari )?mandir', re.I),
+    's': re.compile(r'shilany|khat ?muhurt|foundation stone', re.I),
+    't': re.compile(r'patotsav', re.I),
+}
+
+
+def mandir(text):
+    return ''.join(k for k, rx in MANDIR.items() if rx.search(text or ''))
+
+
 def write(path, data):
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
@@ -114,15 +133,24 @@ def main():
     for y, date, d0, d1, place, album, file, cap, bapa in rows:
         yr = years.setdefault(y, {'g': [], 'p': [], 'at': {}})
         key = (date or d0, '' if date else (d1 or ''), place or '', album)
+        if not date and mandir(cap):
+            # an album with only a range of dates may be a whole tour, so there only the photos that say so are mandir photos
+            key += (mandir(cap),)
         if key not in yr['at']:
             yr['at'][key] = len(yr['g'])
             yr['g'].append(list(key))
         yr['p'].append([yr['at'][key], file, cap or '', tags(f'{album}/{file}')])
+        g = yr['g'][yr['at'][key]]
+        for k in mandir(cap) if date else ():
+            if len(g) < 5:
+                g.append('')
+            if k not in g[4]:
+                g[4] = ''.join(sorted(g[4] + k))
     for y, yr in years.items():
         write(os.path.join(a.out, 'data', f'{y}.json'), {'g': yr['g'], 'p': yr['p']})
         counts[y] = len(yr['p'])
 
-    tg = [[date or (posted or '')[:10], place or '', text.strip()]
+    tg = [[date or (posted or '')[:10], place or '', text.strip()] + ([mandir(text)] if mandir(text) else [])
           for posted, date, place, text in db.execute(
               "SELECT posted, date, place, text FROM tg_posts "
               "WHERE trim(coalesce(text, '')) != '' ORDER BY coalesce(date, posted)")]
