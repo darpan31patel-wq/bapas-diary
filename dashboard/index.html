@@ -587,9 +587,18 @@ function fillMode() {
 }
 document.querySelectorAll('#exp-mode button').forEach(b => b.addEventListener('click', () => { EXPMODE = b.dataset.v; fillMode() }));
 $('#drive-save').addEventListener('click', () => {
-  const v = $('#drive-code').value.trim();
-  if (!/^https:\/\/script\.google\.com\/.+\/exec#\w{16,}$/.test(v)) { $('#status').className = 'status warn'; $('#status').textContent = 'That doesn’t look like the line from studioCode. It starts with https://script.google.com and ends with #code.'; return }
-  store.set('studio-drive', v); delete $('#drive').dataset.open; $('#status').className = 'status ok'; $('#status').textContent = 'Connected to Google Drive.'; fillMode();
+  // the line studioCode shows: '<web app address>#<code>'. Read it loosely (extra words, spaces, line breaks), and when the
+  // script gave its test address (ending /dev) take the code now and the real address (ending /exec) next
+  const raw = $('#drive-code').value.replace(/\s+/g, ''), st = $('#status');
+  const key = (raw.match(/#([A-Za-z0-9]{16,})/) || [])[1] || store.get('studio-key-pending') || '';
+  const url = (raw.match(/https:\/\/script\.google\.com\/[^#]*?\/(exec|dev)\b/) || [])[0] || '';
+  if (key) store.set('studio-key-pending', key);
+  st.className = 'status warn';
+  if (url.endsWith('/dev')) { $('#drive-code').value = ''; st.textContent = 'Nearly there: that line has the test address (ending /dev). Your code is saved. In the script click Deploy, then Manage deployments, copy the Web app URL (it ends /exec), paste it here and press Connect.'; return }
+  if (!url) { st.textContent = key ? 'Your code is saved. Now paste the Web app URL (Deploy, then Manage deployments; it ends /exec) and press Connect.' : 'Paste the whole line from studioCode. It has a web address starting https://script.google.com and a code after a # sign.'; return }
+  if (!key) { st.textContent = 'The address is fine, but the code after the # sign is missing. Run studioCode again and paste the whole line.'; return }
+  store.set('studio-drive', url + '#' + key); store.set('studio-key-pending', ''); $('#drive-code').value = '';
+  delete $('#drive').dataset.open; st.className = 'status ok'; st.textContent = 'Connected to Google Drive.'; fillMode();
 });
 async function toBase64(blob) { const buf = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < buf.length; i += 32768) s += String.fromCharCode.apply(null, buf.subarray(i, i + 32768)); return btoa(s) }
 async function sendToDrive(mode, png, jpg) {
