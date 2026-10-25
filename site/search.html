@@ -274,7 +274,8 @@ const yearKey = y => y < FIRST ? 'old' : String(y);
 function search() {
   $('day-view')?.remove();
   const { want, not } = parse($('q').value), year = $('year').value, month = $('month').value, day = $('day').value;
-  const from = $('from').value, to = $('to').value, fest = $('fest').value, place = $('place').value, act = $('act').value, mandir = $('mandir').value;
+  const from = $('from').value, to = $('to').value, fest = $('fest').value, place = $('place').value || linkPlace, act = $('act').value, mandir = $('mandir').value;
+  const lp = linkPlace.toLowerCase();   // a place from a map link also finds albums named after two places, or 'Washington DC'
   const byYear = {};
   hits = [];
   if (!want.length && !not.length && !year && !month && !day && !from && !to && !fest && !place && !act && !mandir) { render(byYear, want); return; }
@@ -284,7 +285,7 @@ function search() {
     if (from && r.d < from) continue;
     if (to && r.d > to) continue;
     if (fest && !(cal[r.d] && cal[r.d].list.includes(fest))) continue;
-    if (place && !(r.kind === 'photo' ? r.city === place : (r.place || '').includes(place))) continue;
+    if (place && !(r.kind === 'photo' ? r.city === place || (place === linkPlace && r.g[2].split(',').some(c => c.trim().toLowerCase().startsWith(lp))) : (r.place || '').includes(place))) continue;
     if (act && !(r.tags && r.tags.split(', ').includes(act))) continue;
     if (mandir && !(r.m || '').includes(mandir)) continue;
     if (want.length || not.length) {
@@ -378,6 +379,7 @@ function more(want = parse($('q').value).want) {
 let timer;
 function soon() { clearTimeout(timer); timer = setTimeout(search, 180); }
 $('q').addEventListener('input', soon);
+$('place').addEventListener('change', () => { linkPlace = ''; });   // first, so the search below sees the new choice
 ['fest', 'place', 'act', 'mandir', 'year', 'month', 'day', 'order', 'from', 'to'].forEach(id => $(id).addEventListener('change', search));
 $('more').addEventListener('click', () => more());
 // No button to press: more results load by themselves as you scroll near the end.
@@ -451,7 +453,7 @@ $('years').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   $('year').value = $('year').value === b.dataset.y ? '' : b.dataset.y; search();
 });
-$('clear').addEventListener('click', () => { ['q', 'fest', 'place', 'act', 'mandir', 'year', 'month', 'day', 'from', 'to'].forEach(id => $(id).value = ''); search(); });
+$('clear').addEventListener('click', () => { linkPlace = ''; ['q', 'fest', 'place', 'act', 'mandir', 'year', 'month', 'day', 'from', 'to'].forEach(id => $(id).value = ''); search(); });
 
 function fillFestivals() {
   const when = {};   // festival -> the month-days it falls on, to order the list through the year
@@ -470,6 +472,7 @@ function fillPlacesActions() {
   const opts = (o, first) => `<option value="">${first}</option>` + Object.keys(o).sort((a, b) => a.localeCompare(b))
     .map(k => `<option value="${esc(k)}">${esc(k)} (${o[k].toLocaleString()})</option>`).join('');
   $('place').innerHTML = opts(places, 'Every place');
+  if (linkPlace) placeOption(linkPlace);
   $('act').innerHTML = opts(acts, 'Every action');
   // mandir days, with how many days each has; the date headings get their gold ribbon from mandirDay
   for (const r of items) if (r.m) for (const k of r.m) (mandirDay[r.d] = mandirDay[r.d] || new Set()).add(k);
@@ -521,13 +524,23 @@ async function load() {
 }
 // Links into the search (used by the day page): #date=1999-10-24 is that whole day, #day=10-24 is that day in
 // every year, #q=annakut is a search, #mandir=p is every murti pratishtha day (s shilanyas, t patotsav).
+// #place=London is every photo from there (used by the Travels Places map), with #from= and #to= for one visit.
+var linkPlace = '';
+function placeOption(pl) {   // a place from a link: picked in the list, added to it if it is only part of an album's place
+  if (![...$('place').options].some(o => o.value === pl)) $('place').innerHTML += `<option value="${esc(pl)}">${esc(pl)}</option>`;
+  $('place').value = pl;
+}
 function fromLink() {
   const h = new URLSearchParams(location.hash.slice(1));
-  if (!['date', 'day', 'q', 'mandir'].some(k => h.has(k))) return false;
+  if (!['date', 'day', 'q', 'mandir', 'place', 'from'].some(k => h.has(k))) return false;
   ['q', 'fest', 'place', 'act', 'mandir', 'year', 'month', 'day', 'from', 'to'].forEach(id => $(id).value = '');
   const date = h.get('date') || '', day = h.get('day') || '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(date)) $('from').value = $('to').value = date;
   if (/^\d{2}-\d{2}$/.test(day)) { $('month').value = day.slice(0, 2); $('day').value = day.slice(3); }
+  const from = h.get('from') || '', to = h.get('to') || from;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(from) && /^\d{4}-\d{2}-\d{2}$/.test(to)) { $('from').value = from; $('to').value = to; }
+  linkPlace = h.get('place') || '';
+  if (linkPlace) placeOption(linkPlace);
   $('q').value = h.get('q') || '';
   const m = h.get('mandir');
   if (MANDIR[m]) { $('mandir').innerHTML += `<option value="${m}">${esc(MANDIR[m][0])}</option>`; $('mandir').value = m; }

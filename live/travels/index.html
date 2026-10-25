@@ -128,12 +128,19 @@ body.dragging { -webkit-user-select: none; user-select: none; }
   .stats { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .hint { transition: none; } }
+/* Journey | Places switch (Places: every place on the globe, tap one for every visit; /travels/places/) */
+.views { position: fixed; z-index: 6; top: calc(56px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
+  display: flex; padding: 4px; gap: 4px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); }
+.views a { padding: 7px 20px; border-radius: 999px; color: var(--mist); text-decoration: none; font-size: 15px; }
+.views a.on { background: var(--gold); color: var(--night); font-weight: 600; }
+@media (max-width: 760px) { .views { top: calc(52px + env(safe-area-inset-top, 0px)); } .views a { padding: 6px 16px; font-size: 14px; } }
 </style>
 
 </head>
 <body>
 <nav class="site-menu stay" aria-label="Website tabs"><a href="/">Today</a><a href="/search/">Search</a><a class="on" href="/travels/" aria-current="page">Travels</a><a href="/through-the-years/">Through the years</a><a href="/calendar/">Calendar</a><a href="/about/">About</a></nav>
 <canvas id="globe" aria-label="Globe showing Bapa's travels"></canvas>
+<nav class="views" aria-label="Travels views"><a class="on" href="/travels/" aria-current="page">Journey</a><a href="/travels/places/">Places</a></nav>
 
 
 
