@@ -60,8 +60,8 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 .photo{position:relative;aspect-ratio:3/4;max-width:100%;overflow:hidden;background:var(--maroon-deep)}
 .photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 3.2s ease-in-out}
 .photo img.on{opacity:1}
-/* Darpan, 25 Oct 2026 (the On this day picture's rules): Bapa's whole head stays in the frame, an action shot keeps at
-   least 85 percent of the photo, and any space left is filled with the photo's own colours, softened (make.fill) */
+/* Darpan, 25 Oct 2026 (the On this day picture's rules): Bapa's whole head stays in the frame; any space left when it
+   has to zoom out is filled with the photo's own colours, softened (make.fill) */
 .photo img.placed{inset:auto;max-width:none;object-fit:fill}
 .photo img.bg{inset:-8%;width:116%;height:116%;object-fit:cover;filter:blur(12px) brightness(.72)}
 .photo .words{position:absolute;inset:0;display:grid;place-items:center;padding:12%;background:radial-gradient(circle at 50% 40%,#5a1626,var(--maroon-deep));transition:opacity 3.2s ease-in-out}
@@ -348,31 +348,25 @@ function swing() {
 
 function focus(p) { const f = p[4]; return f ? `${(f[0] * 100).toFixed(1)}% ${Math.min(100, f[1] * 115).toFixed(1)}%` : '50% 28%'; }
 
-// make.fill, the On this day picture's framing (Darpan, 24 and 25 Oct 2026): the photo zoomed in to fill the card, but
-// never so far that it loses more than 15 percent across or down of an action shot, or any of Bapa's head, pagh
-// included; whatever space is left shows the photo's own colours, softened. p[4] is where his face is
+// make.crop_to, the On this day picture's framing (Darpan, 25 Oct 2026): the photo fills the card around Bapa, his face
+// about 38 percent of the way down, and never slices through his head, pagh included; when his head is bigger than the
+// card it zooms out just enough, and the space left shows the photo's own colours, softened. p[4] is where his face is
 // [centre x, centre y, x, y, w, h, width / height, close darshan], as parts of the photo. Returns true when there is space left.
-const KEEP = .85;
 function frame(img, p) {
   const box = img.parentNode, w = box.clientWidth, h = box.clientHeight, iw = img.naturalWidth, ih = img.naturalHeight;
-  if (!w || !h || !iw || !ih) return false;
-  const f = p[4] && p[4].length > 7 ? p[4] : null, action = !(f && f[7]);
-  let [cw, ch] = iw / ih > w / h ? [ih * w / h, ih] : [iw, iw * h / w], x0, y0;
-  const keep = action ? KEEP : 0;
-  if (cw < keep * iw) { cw = keep * iw; ch = cw * h / w; }
-  if (ch < keep * ih) { ch = keep * ih; cw = ch * w / h; }
-  if (f) {
-    const fx = f[2] * iw, fy = f[3] * ih, fw = f[4] * iw, fh = f[5] * ih;
-    const head = action ? [fx - .6 * fw, fy - .9 * fh, fx + 1.6 * fw, fy + 1.4 * fh] : [fx - .35 * fw, fy - .6 * fh, fx + 1.35 * fw, fy + 1.15 * fh];
-    const grow = Math.max(1, (head[2] - head[0]) / cw / .96, (head[3] - head[1]) / ch / .96);
-    cw *= grow; ch *= grow;
-    x0 = fx + fw / 2 - cw / 2; y0 = action ? head[1] - ch * .06 : fy + fh / 2 - ch * .38;
-    y0 = Math.min(Math.max(y0, head[3] - ch), head[1]);
-    y0 = Math.max(y0, head[1] - ch * .14);
-    x0 = Math.min(Math.max(x0, head[2] - cw), head[0]);
-  } else {
-    x0 = (iw - cw) / 2; y0 = (ih - ch) * .3;   // no face: cut more from the foot than the top, where heads are
+  const f = p[4] && p[4].length > 7 ? p[4] : null;
+  if (!f || !w || !h || !iw || !ih) {   // where his face is isn't known yet: as before
+    img.classList.remove('placed'); img.removeAttribute('style'); img.style.objectPosition = focus(p); return false;
   }
+  let [cw, ch] = iw / ih > w / h ? [ih * w / h, ih] : [iw, iw * h / w];
+  const fx = f[2] * iw, fy = f[3] * ih, fw = f[4] * iw, fh = f[5] * ih;
+  const head = [fx - .35 * fw, fy - .5 * fh, fx + 1.35 * fw, fy + 1.4 * fh];   // the detector's box starts at the brow
+  const grow = Math.max(1, (head[2] - head[0]) / cw / .96, (head[3] - head[1]) / ch / .96);
+  cw *= grow; ch *= grow;
+  let x0 = fx + fw / 2 - cw / 2, y0 = fy + fh / 2 - ch * .38;
+  y0 = Math.min(Math.max(y0, head[3] - ch), head[1]);   // never slice through the head
+  y0 = Math.max(y0, head[1] - ch * .14);                 // and not much space above it
+  x0 = Math.min(Math.max(x0, head[2] - cw), head[0]);
   x0 = cw <= iw ? Math.min(Math.max(0, x0), iw - cw) : (iw - cw) / 2;
   y0 = ch <= ih ? Math.min(Math.max(0, y0), ih - ch) : (ih - ch) / 2;
   img.classList.add('placed');

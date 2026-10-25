@@ -13,8 +13,8 @@ picture chain. Like web_bapa_rules.py, the parts of make.py used here are copies
 1  A caption says what Bapa does, without his name, dates or link text; "devotee" is "bhakta"; an album's own date
    heading is "Darshan". On a card it is summarised to fit two lines, never cut with "...".
 2  Look D, the picture's "Natural" finish with a touch of warmth and richer skin: drawn by the browser on the photos.
-3  Each Today card frames Bapa's whole head (pagh included) and keeps at least 85 percent of an action shot; the
-   page does the framing (site/day.html) from where his face is, which this adds to each photo.
+3  Each Today and Calendar photo frames Bapa's whole head (pagh included); the pages do the framing from where his face
+   is, which this adds to their data.
 4  A year's card only borrows photos from other days when that date has none: the same trip's range, or the nearest
    day up to 3 days away.
 5  Years before 1999 get a darshan card from the two On this day channels' photos when Bapa (Pramukh Swami Maharaj)
@@ -28,7 +28,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import web_bapa_rules as R
 
 HERE = R.HERE
-CARD_CHARS = 56   # a Today card's caption fits two lines in about this many letters
+CARD_CHARS = 40   # a Today card's caption fits two lines in about this many letters (cards are 150 to 200 px wide)
 NEAR_DAYS = 3     # make.py: a day up to 3 days away may fill a year that has no photos on the date
 TG_SAME_PERSON = .38   # make.py: the channel's photos are often old video stills of a younger Bapa
 TG_FROM = 1950    # make.py: channel darshans of Bapa from this year (earlier ones are of the gurus before him)
