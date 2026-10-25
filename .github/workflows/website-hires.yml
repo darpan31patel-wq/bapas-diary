@@ -72,9 +72,16 @@ jobs:
           python3 tools/hires_photos.py --db bapas.db --check check.txt --done done.txt --have have.txt --shard ${{ matrix.shard }} --shards 6 \
             --send 'aws s3 sync "$OUT" "s3://$BUCKET/" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000, immutable" --content-type image/jpeg' \
             --year-done 'aws s3 cp "s3://$BUCKET/years.txt" done.txt --endpoint-url "$R2" --only-show-errors || true; echo "$YEAR" >> done.txt && sort -un done.txt -o done.txt && aws s3 cp done.txt "s3://$BUCKET/years.txt" --endpoint-url "$R2" --content-type text/plain --cache-control "max-age=300" && echo finished=yes >> "$GITHUB_OUTPUT"'
-  # a year was finished: rebuild the website (the same build as every deploy) so it shows
-  site:
+  # a year was finished: find Bapa's face in each of its photos, from R2 (website only; Darpan, 25 Oct: "yes main faces")
+  faces:
     needs: hires
+    if: ${{ !cancelled() && needs.hires.outputs.finished == 'yes' }}
+    permissions:
+      contents: write   # keeps the results in release website-faces
+    uses: darpan31patel-wq/bapas-diary/.github/workflows/website-faces.yml@claude/project-thread-9isen0
+  # then rebuild the website (the same build as every deploy) so it shows
+  site:
+    needs: [hires, faces]
     if: ${{ !cancelled() && needs.hires.outputs.finished == 'yes' }}   # even if one machine had trouble
     uses: darpan31patel-wq/bapas-diary/.github/workflows/website-deploy.yml@claude/project-thread-eawr12
     secrets: inherit
