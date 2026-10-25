@@ -73,6 +73,19 @@ def make(job):
         return f'{key}: {e}'
 
 
+def send(cmd, out):
+    """Send OUT to R2. R2 sometimes says 'reduce your request rate' for a moment, so wait and try again (sync only
+    sends what is not there yet)."""
+    for wait in (10, 30, 90, 240, 0):
+        env = {'AWS_RETRY_MODE': 'adaptive', 'AWS_MAX_ATTEMPTS': '8', **os.environ, 'OUT': out}
+        if subprocess.run(cmd, shell=True, env=env).returncode == 0:
+            return True
+        if wait:
+            print(f'  R2 did not take every file, trying again in {wait} s', flush=True)
+            time.sleep(wait)
+    return False
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--db', default='bapas.db')
@@ -81,7 +94,7 @@ def main():
     ap.add_argument('--have', default='have.txt', help='o/ALBUM/FILE keys already in R2')
     ap.add_argument('--remote', default="gdrive:Bapa's Archive")
     ap.add_argument('--work', default='work')
-    ap.add_argument('--send', required=True, help='command that sends WORK/out to R2')
+    ap.add_argument('--send', required=True, help='command that sends WORK/out to R2 (tried again if it fails)')
     ap.add_argument('--year-done', required=True, help='command run with YEAR set when a year is finished')
     ap.add_argument('--chunk', type=int, default=400)
     ap.add_argument('--minutes', type=float, default=320)
@@ -117,8 +130,8 @@ def main():
                     if err:
                         print('  could not use', err)
                 lost += len(part) - len(jobs)
-                if jobs:
-                    subprocess.run(a.send, shell=True, check=True, env={**os.environ, 'OUT': out})
+                if jobs and not send(a.send, out):   # R2 still saying no after a few tries: count them as not done yet
+                    lost += len(jobs)
                 print(f'  {year}: {min(i + a.chunk, len(rows)):,} of {len(rows):,} ({len(part) - len(jobs)} not in Drive)', flush=True)
             if lost > max(20, len(rows) // 50):   # more than baps.org ever refused: Drive was not answering, try again next run
                 print(f'{year}: {lost} photos did not come from Drive; the next run tries them again')
