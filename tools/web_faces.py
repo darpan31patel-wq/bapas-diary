@@ -351,7 +351,8 @@ def mockup(a):
                     cap = R.caption({'c': c}) or ''
                     dr.text((x0, y0 + 32 + CH), cap[:21] + ('...' if len(cap) > 21 else ''), font=font, fill=(60, 40, 40))
                 if not lst:
-                    dr.text((240, y0 + 120), 'year left out: Bapa not recognised in any photo', font=font, fill=(120, 90, 80))
+                    dr.text((240, y0 + 120), 'no caption that day names Bapa' if k == 0 else 'year left out: Bapa not recognised in any photo',
+                            font=font, fill=(120, 90, 80))
             top += 2 * rowh + 50
         sheet.save(os.path.join(a.out, f'{mmdd}.jpg'), quality=84)
         print(mmdd, json.dumps(summary[mmdd]))
