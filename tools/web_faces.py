@@ -293,65 +293,67 @@ def order(a):
 
 
 def mockup(a):
-    """Before and after, for a few days: each year's first photo on Today now (caption based, album order) and with
-    the face rules, side by side, from R2's small copies. Only years in R2 (--years)."""
+    """Before and after, for a few days: for each year in R2 (--years), the first photos its Today card shows now
+    (the caption says Bapa, album order, the 2pm picture's photo first) and with the face rules, from R2's small copies."""
     from PIL import Image, ImageDraw, ImageFont, ImageOps
     years = {int(l) for l in open(a.years) if l.strip().isdigit()}
     old, new = sqlite3.connect(a.old), sqlite3.connect(a.db)
-    font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 20)
-    bold = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 26)
+    font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 17)
+    bold = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 30)
+    mid = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 21)
     os.makedirs(a.out, exist_ok=True)
+    N, CW, CH, GAP = 6, 200, 250, 12
 
-    def photo(key, w, h, focus=None):
+    def photo(key, focus=None):
         try:
             req = urllib.request.Request(PHOTOS + 's/' + urllib.parse.quote(key), headers={'User-Agent': 'bapas-diary-faces'})
-            im = Image.open(io.BytesIO(urllib.request.urlopen(req, timeout=30).read())).convert('RGB')
+            im = ImageOps.exif_transpose(Image.open(io.BytesIO(urllib.request.urlopen(req, timeout=30).read()))).convert('RGB')
         except Exception:
-            return Image.new('RGB', (w, h), (60, 40, 40))
-        return ImageOps.fit(im, (w, h), Image.LANCZOS, centering=focus or (.5, .28))
+            return Image.new('RGB', (CW, CH), (60, 40, 40))
+        return ImageOps.fit(im, (CW, CH), Image.LANCZOS, centering=focus or (.5, .28))
 
     summary = {}
     for mmdd in a.days:
-        before, after = {}, {}
-        for y, al, fi, c, bapa in old.execute('SELECT year, album, file, caption, is_bapa FROM photos WHERE substr(date, 6) = ? '
-                                              'ORDER BY date, album, file', (mmdd,)):
-            if y in years:
-                before.setdefault(y, []).append((al, fi, c or '', bapa))
-        for y, al, fi, c, r, fx, fy, sim in new.execute(
-                'SELECT p.year, p.album, p.file, p.caption, b.rank, b.fx, b.fy, b.sim FROM photos p JOIN bapa_pick b USING (album, file) '
-                'WHERE substr(p.date, 6) = ? ORDER BY b.rank', (mmdd,)):
-            if y in years:
-                after.setdefault(y, []).append((al, fi, c or '', fx, fy, sim))
-        ys = sorted(set(before) | set(after))
-        for y in ys:   # as the live page opens a card: the 2pm picture's photo first, else the first with Bapa in the caption
+        strips = []
+        for y in sorted(years):
             d = old.execute('SELECT photo_url FROM diary WHERE date = ?', (f'{y}-{mmdd}',)).fetchone()
-            b = before.get(y, [])
-            first = next((p for p in b if d and d[0] and d[0].endswith('/' + p[1]) and f'/{p[0]}/' in d[0]), None) or next((p for p in b if p[3]), None)
-            before[y] = (first, sum(1 for p in b if p[3]))
-            after[y] = (after[y][0], len(after[y])) if y in after else (None, 0)
-        W, CW, CH = 1400, 300, 380
-        rows = len(ys)
-        sheet = Image.new('RGB', (W, 120 + rows * (CH + 90)), (250, 244, 232))
+            first = (d[0].split('/GalleryImages/')[-1].split('/')[0], d[0].rsplit('/', 1)[-1]) if d and d[0] else None
+            b = [(al, fi, c or '', None) for al, fi, c in old.execute(
+                'SELECT album, file, caption FROM photos WHERE date = ? AND is_bapa = 1 ORDER BY album, file', (f'{y}-{mmdd}',))]
+            b.sort(key=lambda p: (p[0], p[1]) != first)
+            n_all = old.execute('SELECT count(*) FROM photos WHERE date = ?', (f'{y}-{mmdd}',)).fetchone()[0]
+            f = [(al, fi, c or '', (fx, min(1, fy * 1.15)) if fx is not None else None) for al, fi, c, fx, fy in new.execute(
+                'SELECT p.album, p.file, p.caption, b.fx, b.fy FROM photos p JOIN bapa_pick b USING (album, file) '
+                'WHERE p.date = ? ORDER BY b.rank', (f'{y}-{mmdd}',))]
+            if not b and not f:
+                continue
+            strips.append((y, n_all, b, f))
+            summary.setdefault(mmdd, {})[str(y)] = {'photos that day': n_all, 'now': len(b), 'face rules': len(f)}
+        if not strips:
+            continue
+        W = 230 + N * (CW + GAP) + 30
+        rowh = CH + 60
+        sheet = Image.new('RGB', (W, 110 + len(strips) * (2 * rowh + 50)), (250, 244, 232))
         dr = ImageDraw.Draw(sheet)
         title = datetime.date(2000, int(mmdd[:2]), int(mmdd[3:])).strftime('%-d %B')
-        dr.text((40, 30), f'{title}: first photo of each year on Today', font=bold, fill=(90, 20, 30))
-        dr.text((380, 80), 'Now (caption says Bapa)', font=font, fill=(90, 20, 30))
-        dr.text((900, 80), 'With the face rules', font=font, fill=(90, 20, 30))
-        for i, y in enumerate(ys):
-            top = 120 + i * (CH + 90)
-            dr.text((40, top + CH // 2 - 30), str(y), font=bold, fill=(90, 20, 30))
-            for col, (p, cnt), x0, label in ((0, before[y], 380, 'photos'), (1, after[y], 900, 'photos of Bapa')):
-                if p:
-                    focus = (p[3], min(1, p[4] * 1.15)) if col == 1 and p[3] is not None else None
-                    sheet.paste(photo(f'{p[0]}/{p[1]}', CW, CH, focus), (x0, top))
-                    cap = R.caption({'c': p[2]}) or ''
-                    dr.text((x0, top + CH + 6), (cap[:38] + '...') if len(cap) > 40 else cap, font=font, fill=(60, 40, 40))
-                    dr.text((x0, top + CH + 32), f'{cnt} {label}' + (f', face match {p[5]:.2f}' if col == 1 and p[5] else ''), font=font, fill=(120, 90, 80))
-                else:
-                    dr.rectangle((x0, top, x0 + CW, top + CH), fill=(230, 220, 205))
-                    dr.text((x0 + 20, top + CH // 2), 'year left out:\nBapa not recognised', font=font, fill=(120, 90, 80))
-        sheet.save(os.path.join(a.out, f'{mmdd}.jpg'), quality=82)
-        summary[mmdd] = {str(y): {'before': before[y][1], 'after': after[y][1]} for y in ys}
+        dr.text((30, 30), f'{title} on Today: the photos each year shows first', font=bold, fill=(90, 20, 30))
+        top = 100
+        for y, n_all, b, f in strips:
+            dr.text((30, top + 10), str(y), font=bold, fill=(90, 20, 30))
+            dr.text((30, top + 52), f'{n_all} photos\nthat day', font=font, fill=(120, 90, 80))
+            for k, (lst, label) in enumerate(((b, f'Now: {len(b)} photos (caption says Bapa)'),
+                                              (f, f'With the face rules: {len(f)} photos (Bapa\'s face recognised)'))):
+                y0 = top + k * rowh
+                dr.text((230, y0), label, font=mid, fill=(150, 40, 40) if k == 0 else (40, 110, 60))
+                for i, (al, fi, c, focus) in enumerate(lst[:N]):
+                    x0 = 230 + i * (CW + GAP)
+                    sheet.paste(photo(f'{al}/{fi}', focus), (x0, y0 + 30))
+                    cap = R.caption({'c': c}) or ''
+                    dr.text((x0, y0 + 32 + CH), cap[:21] + ('...' if len(cap) > 21 else ''), font=font, fill=(60, 40, 40))
+                if not lst:
+                    dr.text((240, y0 + 120), 'year left out: Bapa not recognised in any photo', font=font, fill=(120, 90, 80))
+            top += 2 * rowh + 50
+        sheet.save(os.path.join(a.out, f'{mmdd}.jpg'), quality=84)
         print(mmdd, json.dumps(summary[mmdd]))
     json.dump(summary, open(os.path.join(a.out, 'summary.json'), 'w'), indent=1)
 

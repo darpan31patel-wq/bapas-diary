@@ -76,7 +76,7 @@ jobs:
           curl -sf https://photos.bapas-diary.com/years.txt -o years.txt
           mkdir faces && gh release download website-faces -p 'face2-*.json.gz' -D faces
           python3 tools/web_faces.py pick --db bapas.db --faces faces --out bapa.db --top bapa-top.db
-          python3 tools/web_faces.py mockup --old bapas.db --db bapa.db --years years.txt --days 10-25 10-26 --out mockup
+          python3 tools/web_faces.py mockup --old bapas.db --db bapa.db --years years.txt --days 10-23 10-10 08-10 05-03 --out mockup
           gzip -kf bapa.db bapa-top.db
           cd mockup && for f in *; do mv "$f" "mockup-$f"; done && cd ..
           gh release upload website-faces bapa.db.gz bapa-top.db.gz mockup/* --clobber
