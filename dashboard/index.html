@@ -126,7 +126,7 @@ input[type=checkbox] { accent-color: var(--gold); width: 16px; height: 16px }
     <div class="status" id="status" role="status"></div>
     <div class="last" id="last"></div>
     <div class="drive" id="drive" hidden>
-      <div><b>Connect to Google Drive</b> (once on each device). In your “gets 2pm picture ready” script, run <b>studioCode</b> and paste the line it shows here.</div>
+      <div><b>Connect to Google Drive</b> (once on each device). In your “gets 2pm picture ready” script, run <b>studioCode</b> and paste the line it shows here. You can also paste the Web app URL and the code (after the #) one at a time.</div>
       <div class="row2"><input type="text" id="drive-code" placeholder="https://script.google.com/macros/s/…/exec#…" aria-label="Studio code from your script"><button class="btn" id="drive-save">Connect</button></div>
     </div>
     <div class="easel"><canvas id="view" width="2796" height="1290" aria-label="Live preview of the picture"></canvas></div>
@@ -587,17 +587,22 @@ function fillMode() {
 }
 document.querySelectorAll('#exp-mode button').forEach(b => b.addEventListener('click', () => { EXPMODE = b.dataset.v; fillMode() }));
 $('#drive-save').addEventListener('click', () => {
-  // the line studioCode shows: '<web app address>#<code>'. Read it loosely (extra words, spaces, line breaks), and when the
-  // script gave its test address (ending /dev) take the code now and the real address (ending /exec) next
+  // the line studioCode shows is '<web app address>#<code>'. The address and the code may also come one at a time, in
+  // either order; a test address (ending /dev) is not kept, the real one ends /exec
   const raw = $('#drive-code').value.replace(/\s+/g, ''), st = $('#status');
-  const key = (raw.match(/#([A-Za-z0-9]{16,})/) || [])[1] || store.get('studio-key-pending') || '';
-  const url = (raw.match(/https:\/\/script\.google\.com\/[^#]*?\/(exec|dev)\b/) || [])[0] || '';
+  const found = raw.match(/#([A-Za-z0-9]{16,})/) || raw.replace(/https:\/\/\S*/, '').match(/\b([a-f0-9]{32})\b/i);
+  const key = (found || [])[1] || store.get('studio-key-pending') || '';
+  let url = (raw.match(/https:\/\/script\.google\.com\/[^#]*?\/(exec|dev)\b/) || [])[0] || '';
+  const isDev = url.endsWith('/dev');
+  if (isDev) url = '';
+  url = url || store.get('studio-url-pending') || '';
   if (key) store.set('studio-key-pending', key);
+  if (url) store.set('studio-url-pending', url);
+  $('#drive-code').value = '';
   st.className = 'status warn';
-  if (url.endsWith('/dev')) { $('#drive-code').value = ''; st.textContent = 'Nearly there: that line has the test address (ending /dev). Your code is saved. In the script click Deploy, then Manage deployments, copy the Web app URL (it ends /exec), paste it here and press Connect.'; return }
-  if (!url) { st.textContent = key ? 'Your code is saved. Now paste the Web app URL (Deploy, then Manage deployments; it ends /exec) and press Connect.' : 'Paste the whole line from studioCode. It has a web address starting https://script.google.com and a code after a # sign.'; return }
-  if (!key) { st.textContent = 'The address is fine, but the code after the # sign is missing. Run studioCode again and paste the whole line.'; return }
-  store.set('studio-drive', url + '#' + key); store.set('studio-key-pending', ''); $('#drive-code').value = '';
+  if (!url) { st.textContent = (key ? 'Your code is saved. ' : '') + (isDev ? 'That address ends /dev, the test one. ' : '') + 'Now paste the Web app URL: in the script click Deploy, then Manage deployments, and copy the address that ends /exec.'; return }
+  if (!key) { st.textContent = 'The address is saved. Now paste the code: run studioCode, and copy the letters and numbers after the # sign.'; return }
+  store.set('studio-drive', url + '#' + key); store.set('studio-key-pending', ''); store.set('studio-url-pending', '');
   delete $('#drive').dataset.open; st.className = 'status ok'; st.textContent = 'Connected to Google Drive.'; fillMode();
 });
 async function toBase64(blob) { const buf = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < buf.length; i += 32768) s += String.fromCharCode.apply(null, buf.subarray(i, i + 32768)); return btoa(s) }
