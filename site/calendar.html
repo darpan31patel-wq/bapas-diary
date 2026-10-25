@@ -87,11 +87,11 @@ footer{padding-block:4px 10px;padding-left:max(16px,env(safe-area-inset-left,0px
 .jnote b{font-family:var(--serif);font-weight:600;font-size:15px;letter-spacing:0;text-transform:none;color:var(--gold-hi)}
 .jnote button{border:1px solid rgba(206,152,64,.5);background:none;color:var(--gold-hi);border-radius:12px;font:inherit;padding:3px 10px;cursor:pointer}
 /* the days of the chosen stay glow in a round gold light; the other days step back */
-.ribbon.picking .card{opacity:.28;transition:opacity .4s,box-shadow .4s}
-.ribbon.picking .card.lit{opacity:1;z-index:1;border-radius:10px;box-shadow:0 0 0 2px var(--gold-hi),0 0 22px 6px rgba(255,214,120,.6),0 0 60px 16px rgba(206,152,64,.35)}
+.ribbon.picking .card{opacity:.32;transition:opacity .4s,box-shadow .4s}
+.ribbon.picking .card.lit{opacity:1;z-index:1;border-radius:10px;box-shadow:0 0 0 1px rgba(255,226,150,.35),0 0 16px 4px rgba(255,214,120,.28),0 0 44px 12px rgba(206,152,64,.16)}
 .ribbon.picking .card.lit .win{border-radius:7px}
-@media (prefers-reduced-motion:no-preference){.ribbon.picking .card.lit{animation:glow 2.6s ease-in-out infinite alternate}}
-@keyframes glow{to{box-shadow:0 0 0 2px var(--gold-hi),0 0 30px 9px rgba(255,214,120,.75),0 0 80px 22px rgba(206,152,64,.4)}}
+@media (prefers-reduced-motion:no-preference){.ribbon.picking .card.lit{animation:glow 3.2s ease-in-out infinite alternate}}
+@keyframes glow{to{box-shadow:0 0 0 1px rgba(255,226,150,.45),0 0 22px 6px rgba(255,214,120,.36),0 0 56px 16px rgba(206,152,64,.2)}}
 .ctrl{display:flex;justify-content:center;align-items:center;gap:14px;margin-top:2px;flex-wrap:wrap}
 .zm{display:inline-flex;align-items:center;border:1px solid rgba(206,152,64,.5);border-radius:18px;overflow:hidden}
 .zm button{border:0;background:none;color:var(--gold-hi);font:600 20px/1 var(--serif);width:34px;height:30px;cursor:pointer}
@@ -295,7 +295,9 @@ function pick(i){
   if(zBefore==null) zBefore=Z;
   let z=Z;
   const fits=()=>n*MW+(n-1)*GAP<=W*.94;
-  if(!fits()){ for(z=Z;z>ZSEL;z=Math.round((z-.01)*100)/100){Z=z;sizeCols();if(fits())break} setZoom(z,null,true) }
+  if(!fits()){ const z0=Z; for(z=Z;z>ZSEL;z=Math.round((z-.01)*100)/100){Z=z;sizeCols();if(fits())break}
+    z=Math.min(z0,z*1.25);   // 25% less zoomed out than a full fit, so the pictures stay bigger (Darpan, 25 Oct)
+    setZoom(z,null,true) }
   const left=PAD+(i0*(MW+GAP)+i1*(MW+GAP)+MW)/2-W/2;
   track.scrollTo({left,behavior:reduce||Math.abs(left-track.scrollLeft)>W*3?'auto':'smooth'});
   centreJourney(i,true);
@@ -312,6 +314,13 @@ function unpick(){
 }
 function litCard(c){const s=stays[sel];c.classList.toggle('lit',!!s&&c._date>=s.from&&c._date<=s.to)}
 addEventListener('keydown',e=>{if(e.key==='Escape')unpick()});
+/* a click anywhere else puts everything back to normal (Darpan, 25 Oct); a glowing day still opens its photos,
+   any other day only clears the glow; dragging the calendar sideways keeps it */
+document.addEventListener('click',e=>{
+  if(sel==null||dragMoved||jmoved||e.target.closest('.jbar,.ctrl'))return;
+  const c=e.target.closest('.card'); if(c&&c.classList.contains('lit'))return;
+  if(c)e.preventDefault(); unpick();
+},true);
 
 /* month title cross fade and the year rail */
 let cur=null, flip=0;

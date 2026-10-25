@@ -125,7 +125,7 @@
   .ph-jnote a { color: #ffe296; font-weight: 700; }
   .ph-jnote button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(217, 164, 65, .5); background: none; color: #ffe296; font-size: 13px; cursor: pointer; }
   .ph-picking .ph-day { opacity: .3; transition: opacity .4s; }
-  .ph-picking .ph-day.lit { opacity: 1; border-radius: 12px; box-shadow: 0 0 0 2px #ffe296, 0 0 14px 4px rgba(255, 214, 120, .6); z-index: 1; overflow: visible; }
+  .ph-picking .ph-day.lit { opacity: 1; border-radius: 12px; box-shadow: 0 0 0 1px rgba(255, 226, 150, .4), 0 0 12px 3px rgba(255, 214, 120, .3); z-index: 1; overflow: visible; }
   .ph-picking .ph-day.lit img { border-radius: 10px; }
   .ph-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; padding: 14px 16px 0; }
   .ph-grid .wk { text-align: center; font: 700 11px/1 Arimo, Arial, sans-serif; color: #d9a441; padding-bottom: 6px; }

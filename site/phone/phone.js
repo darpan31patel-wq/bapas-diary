@@ -170,6 +170,12 @@
       let browsed = 0, pickI = null, curStays = new Set();
       ['touchstart', 'wheel', 'pointerdown'].forEach(ev => jrow.addEventListener(ev, () => browsed = Date.now(), {passive: true}));
       jrow.addEventListener('click', e => { const b = e.target.closest('.ph-stay'); if (b) { const i = +b.dataset.i; pickI === i ? unpick() : pickStay(i); } });
+      // a tap anywhere else puts everything back to normal (Darpan, 25 Oct); a glowing day still shows its card
+      document.addEventListener('click', e => {
+        if (pickI == null || e.target.closest('.ph-jbar, .ph-card, nav')) return;
+        const d = e.target.closest('.ph-day'); if (d && d.classList.contains('lit')) return;
+        if (d) { e.preventDefault(); e.stopPropagation(); } unpick();
+      }, true);
       const lit = b => { const x = stays[pickI]; b.classList.toggle('lit', !!x && b._date >= x.from && b._date <= x.to); };
       function pickStay(i) {
         const x = stays[i];
