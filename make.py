@@ -145,11 +145,16 @@ def from_archive(items, cache):
     listed = os.path.join(cache, 'archive-files.txt')
     open(listed, 'w', encoding='utf-8').write(''.join(f'{rel}\n' for rel in sorted(set(want.values()))))
     t = time.time()
-    try:
-        subprocess.run(['rclone', 'copy', ARCHIVE, full, '--files-from-raw', listed, '--transfers', '16', '--checkers', '16',
-                        '--retries', '3', '--low-level-retries', '5', '--stats', '0'], timeout=20 * 60)
-    except Exception as e:
-        print('  the archive could not be read, carrying on with baps.org:', e)
+    for wait in (60, 120, 240, None):   # Google sometimes says 'too many requests' for a minute or two (25 Oct 2026): wait and ask again
+        try:
+            if subprocess.run(['rclone', 'copy', ARCHIVE, full, '--files-from-raw', listed, '--transfers', '8', '--checkers', '8',
+                               '--retries', '3', '--low-level-retries', '10', '--stats', '0'], timeout=20 * 60).returncode == 0:
+                break
+        except Exception as e:
+            print('  the archive could not be read:', e)
+        if wait:
+            print(f'  Drive said no, asking again in {wait}s', flush=True)
+            time.sleep(wait)
     got = 0
     for x in items:
         rel = want.get(x['i'])
