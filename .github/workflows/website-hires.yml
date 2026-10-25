@@ -61,6 +61,14 @@ jobs:
           aws s3 cp "s3://$BUCKET/years.txt" done.txt --endpoint-url "$R2" || : > done.txt
           aws s3 ls "s3://$BUCKET/o/" --recursive --endpoint-url "$R2" | awk '{ $1=$2=$3=""; sub(/^ +/, ""); print }' > have.txt || true
           echo "$(wc -l < have.txt) photos already in R2 at full size; years finished: $(tr '\n' ' ' < done.txt)"
+          # this year keeps growing: once Drive has new photos of it that R2 lacks, copy them too (Darpan, 25 Oct: YES)
+          y=$(date -u +%Y)
+          if grep -qx "$y" done.txt; then
+            rclone lsf -R --files-only --fast-list "gdrive:Bapa's Archive/photos/baps.org/$y" | sed "s|^|photos/baps.org/$y/|" > drive-year.txt || : > drive-year.txt
+            new=$(python3 -c "import sqlite3, sys; have = set(open('have.txt').read().split(chr(10))); drive = set(open('drive-year.txt').read().split(chr(10))); print(sum(f'o/{a}/{f}' not in have and p in drive for a, f, p in sqlite3.connect('bapas.db').execute('SELECT album, file, local_path FROM photos WHERE year = ?', (int(sys.argv[1]),))))" "$y" || echo 0)
+            echo "$y: ${new:-0} new photos in Drive that R2 doesn't have yet"
+            if [ "${new:-0}" -gt 0 ]; then sed -i "/^$y\$/d" done.txt; fi
+          fi
           python3 tools/hires_photos.py --db bapas.db --check check.txt --done done.txt --have have.txt --shard ${{ matrix.shard }} --shards 6 \
             --send 'aws s3 sync "$OUT" "s3://$BUCKET/" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000, immutable" --content-type image/jpeg' \
             --year-done 'aws s3 cp "s3://$BUCKET/years.txt" done.txt --endpoint-url "$R2" --only-show-errors || true; echo "$YEAR" >> done.txt && sort -un done.txt -o done.txt && aws s3 cp done.txt "s3://$BUCKET/years.txt" --endpoint-url "$R2" --content-type text/plain --cache-control "max-age=300" && echo finished=yes >> "$GITHUB_OUTPUT"'
