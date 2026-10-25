@@ -1,7 +1,7 @@
 # Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, fetches nothing
 # from baps.org. Darpan, 25 Oct 2026: bring the On this day picture's rules to the website ("want all of them apart
 # from 8"), tools/web_rules.py.
-#   tg      the darshan cards before 1999: the two On this day channels' photos from the Drive archive ("Bapa's Archive"),
+#   tg      (only when the commit says [tg], or run by hand) the darshan cards before 1999: the two On this day channels' photos from the Drive archive ("Bapa's Archive"),
 #           only those where Bapa (Pramukh Swami Maharaj) is recognised, copied to R2 as s/tg/ and m/tg/, and the list of
 #           them (tg-cards.json) kept in release website-rules for the website build
 #   mockup  the Today page and the share a day pictures of a few days, before and after, packed into release
@@ -22,6 +22,7 @@ env:
   GH_TOKEN: ${{ github.token }}
 jobs:
   tg:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[tg]')
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
@@ -108,15 +109,15 @@ jobs:
           python3 tools/web_rules.py day --day m/after/data/day --db bapa.db --faces faces --tg tg-cards.json
           python3 tools/web_dayshare.py --db bapa-top.db --out m/after --tags tags.json --photo-years photo-years.txt --days $days
           # before: the Today page and share pictures as they are live now (website branch)
-          git fetch -q origin claude/project-thread-eawr12
-          mkdir -p old && git archive FETCH_HEAD tools site fonts | tar -x -C old
-          DAY_COMMIT=$(git show FETCH_HEAD:.github/workflows/website-deploy.yml | sed -n 's/^ *DAY_COMMIT: \([0-9a-f]*\).*/\1/p')
+          git fetch -q origin claude/project-thread-eawr12:web
+          mkdir -p old && git archive web tools site fonts | tar -x -C old
+          DAY_COMMIT=$(git show web:.github/workflows/website-deploy.yml | sed -n 's/^ *DAY_COMMIT: \([0-9a-f]*\).*/\1/p')
           git fetch -q --depth 1 origin "$DAY_COMMIT" && mkdir daysrc && git archive "$DAY_COMMIT" tools site fonts | tar -x -C daysrc
           (cd daysrc && python3 tools/web_day.py --db ../before.db --site ../m/before --days $days --photos-url https://photos.bapas-diary.com/ --search-url /search/ > /dev/null)
           python3 old/tools/web_faces.py order --db before.db --day m/before/data/day
           python3 old/tools/web_dayshare.py --db before-top.db --out m/before --tags tags.json --photo-years photo-years.txt --days $days
           # the Calendar tab, before and after (its own thread's approved page), a few months only
-          CAL_COMMIT=$(git show FETCH_HEAD:.github/workflows/website-deploy.yml | sed -n 's/^ *CAL_COMMIT: \([0-9a-f]*\).*/\1/p')
+          CAL_COMMIT=$(git show web:.github/workflows/website-deploy.yml | sed -n 's/^ *CAL_COMMIT: \([0-9a-f]*\).*/\1/p')
           git fetch -q --depth 1 origin "$CAL_COMMIT" && mkdir calsrc && git archive "$CAL_COMMIT" tools/web_calendar.py site/calendar.html fonts | tar -x -C calsrc
           python3 calsrc/tools/web_calendar.py --db before-top.db --site m/before --photos-url https://photos.bapas-diary.com/ --search-url /search/ --photo-years photo-years.txt
           python3 calsrc/tools/web_calendar.py --db bapa-top.db --site m/after --photos-url https://photos.bapas-diary.com/ --search-url /search/ --photo-years photo-years.txt
