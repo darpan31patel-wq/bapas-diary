@@ -44,6 +44,19 @@ jobs:
       - name: Install
         run: pip install -q -r requirements.txt
 
+      - name: Open Darpan's downloaded archive in Drive (the photos come from there, baps.org only for anything it lacks)
+        continue-on-error: true
+        timeout-minutes: 8
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -n "$TOKEN" ] || { echo "The RCLONE_DRIVE_TOKEN secret isn't set, so the photos come from baps.org"; exit 0; }
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          mkdir -p ~/.config/rclone && python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
+          gh release download database -p bapas.db.gz --clobber && gunzip -f bapas.db.gz
+          echo "ARCHIVE=gdrive:Bapa's Archive" >> "$GITHUB_ENV"
+
       - name: Open the bank and see which days are missing
         run: |
           gh release view "$RELEASE" >/dev/null 2>&1 || gh release create "$RELEASE" --title "Backup bank" \
@@ -75,7 +88,7 @@ jobs:
           start=$(date +%s)
           while read -r d; do
             [ $(( $(date +%s) - start )) -gt 16200 ] && { echo "Out of time, the rest come tomorrow night"; break; }
-            rm -rf out
+            rm -rf out .cache/archive   # the archive's originals for one day at a time, so the disk never fills
             if ! python make.py --date "$d" --out out; then echo "::warning::$d could not be made, tried again tomorrow night"; continue; fi
             cp out/bapas-diary.png "bank/$d.png"
             cp out/bapas-diary.jpg "bank/$d.jpg"
