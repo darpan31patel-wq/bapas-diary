@@ -115,13 +115,29 @@ jobs:
           (cd daysrc && python3 tools/web_day.py --db ../before.db --site ../m/before --days $days --photos-url https://photos.bapas-diary.com/ --search-url /search/ > /dev/null)
           python3 old/tools/web_faces.py order --db before.db --day m/before/data/day
           python3 old/tools/web_dayshare.py --db before-top.db --out m/before --tags tags.json --photo-years photo-years.txt --days $days
-          # the small photos those days show
+          # the Calendar tab, before and after (its own thread's approved page), a few months only
+          CAL_COMMIT=$(git show FETCH_HEAD:.github/workflows/website-deploy.yml | sed -n 's/^ *CAL_COMMIT: \([0-9a-f]*\).*/\1/p')
+          git fetch -q --depth 1 origin "$CAL_COMMIT" && mkdir calsrc && git archive "$CAL_COMMIT" tools/web_calendar.py site/calendar.html fonts | tar -x -C calsrc
+          python3 calsrc/tools/web_calendar.py --db before-top.db --site m/before --photos-url https://photos.bapas-diary.com/ --search-url /search/ --photo-years photo-years.txt
+          python3 calsrc/tools/web_calendar.py --db bapa-top.db --site m/after --photos-url https://photos.bapas-diary.com/ --search-url /search/ --photo-years photo-years.txt
+          # the small photos those days and months show
           python3 - <<'EOF' | sort -u > keys.txt
           import glob, json
           for f in glob.glob('m/*/data/day/*.json'):
               for Y in json.load(open(f))['years']:
                   for p in Y['p'] + Y.get('t', []):
                       print(f'{p[0]}/{p[1]}')
+          for side in ('before', 'after'):
+              path = f'm/{side}/data/calendar.json'
+              c = json.load(open(path))
+              keep = [k for k in c['m'] if k[5:] in ('10', '11') and k[:4] in ('2025', '2026')]
+              c['m'] = {k: c['m'][k] for k in keep}
+              c['start'] = keep[-1]
+              json.dump(c, open(path, 'w'))
+              for days in c['m'].values():
+                  for d in days:
+                      if len(d) > 5:
+                          print(f'{d[4]}/{d[5]}')
           EOF
           echo "$(wc -l < keys.txt) photos"
           mkdir -p m/s && cd m/s && xargs -P 16 -I{} sh -c 'mkdir -p "$(dirname "{}")" && curl -sf -o "{}" "https://photos.bapas-diary.com/s/{}" || true' < ../../keys.txt && cd ../..
