@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Then and now · Bapa's Diary</title>
+<meta name="description" content="Pramukh Swami Maharaj and Mahant Swami Maharaj at the same mandir, doing the same thing, years apart.">
+<link rel="stylesheet" href="/menu.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Lora:ital,wght@0,400;0,500;1,400&family=Arimo:wght@400;700&display=swap">
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+/* Then and now (bapas-diary.com/then-and-now/): one pair at a time, two equal frames side by side joined by a gold seam that names the years between;
+   the site's maroon and gold look, like the About page. Built by tools/build_then_now.py. */
+:root {
+  --maroon-out: #160509; --maroon-in: #42101c; --maroon: #6e1424;
+  --gold-hi: #ffe296; --gold: #d9a441; --gold-deep: #a8742a; --paper: #f3ead9; --muted: #c9b79a;
+  --title: Cinzel, "Trajan Pro", Georgia, serif; --serif: Lora, Georgia, "Times New Roman", serif;
+  --script: "Cormorant Garamond", Garamond, Georgia, serif; --sans: Arimo, Arial, Helvetica, sans-serif;
+  color-scheme: dark;
+}
+html, body { min-height: 100%; }
+body {
+  background: radial-gradient(120% 80% at 50% 0%, var(--maroon-in), var(--maroon-out) 70%) fixed, var(--maroon-out);
+  color: var(--paper); font: 400 16px/1.55 var(--serif);
+}
+main { max-width: 1100px; margin: 0 auto; padding-block: 56px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 22px; }
+header { text-align: center; display: grid; gap: 6px; }
+.crumb { font: 700 11px/1 var(--sans); letter-spacing: .22em; text-transform: uppercase; color: var(--muted); }
+.crumb a { color: var(--muted); text-decoration: none; } .crumb a:hover { color: var(--gold-hi); }
+.crumb b { color: var(--gold); font-weight: 700; }
+h1 { margin: 0; font: 600 clamp(28px, 5vw, 46px)/1.1 var(--title); letter-spacing: .06em; color: var(--gold-hi); text-wrap: balance; }
+.moment { font: italic 500 clamp(19px, 2.6vw, 24px)/1.2 var(--script); color: var(--paper); }
+
+.pair { display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch; gap: 0; }
+figure { margin: 0; display: grid; grid-template-rows: auto 1fr; gap: 10px; min-width: 0; align-content: start; }
+.frame { position: relative; aspect-ratio: 4 / 5; max-width: 100%; overflow: hidden; border: 1px solid var(--gold-deep);
+  background: var(--maroon-out); box-shadow: 0 18px 40px rgba(0,0,0,.45); }
+.frame .bg { position: absolute; inset: -20px; background-size: cover; background-position: center; filter: blur(18px) brightness(.45); }
+.frame img { position: relative; width: 100%; height: 100%; object-fit: contain; display: block; }
+figcaption { text-align: center; display: grid; gap: 2px; align-content: start; }
+.guru { font: 600 clamp(13px, 1.7vw, 17px)/1.25 var(--title); letter-spacing: .04em; color: var(--gold-hi); }
+.date { font: 700 11px/1.4 var(--sans); letter-spacing: .18em; text-transform: uppercase; color: var(--gold); font-variant-numeric: tabular-nums; }
+.cap { font: italic 400 14px/1.45 var(--serif); color: var(--muted); }
+
+.seam { position: relative; width: clamp(34px, 7vw, 92px); display: grid; place-items: center; }
+.seam::before { content: ""; position: absolute; top: 4%; bottom: 30%; left: 50%; width: 1px; background: linear-gradient(transparent, var(--gold), transparent); }
+.years { position: relative; display: grid; place-items: center; width: clamp(34px, 6.4vw, 78px); aspect-ratio: 1; border-radius: 50%;
+  border: 1px solid var(--gold); background: var(--maroon); color: var(--gold-hi); text-align: center; margin-bottom: 26%; }
+.years b { display: block; font: 600 clamp(14px, 2.6vw, 26px)/1 var(--title); }
+.years small { display: block; font: 700 clamp(7px, .9vw, 9px)/1.2 var(--sans); letter-spacing: .14em; text-transform: uppercase; }
+
+.nav { display: grid; grid-template-columns: auto minmax(0, auto) auto; align-items: center; justify-content: center; gap: 14px; }
+.arrow { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--gold-deep); background: transparent; color: var(--gold-hi);
+  font: 400 20px/1 var(--serif); cursor: pointer; }
+.arrow:hover { border-color: var(--gold); background: rgba(217,164,65,.08); }
+.places { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.places button { font: 700 11px/1 var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--gold); background: transparent;
+  border: 1px solid rgba(217,164,65,.35); padding: 10px 14px; cursor: pointer; }
+.places button[aria-pressed="true"] { color: var(--maroon-out); background: var(--gold); border-color: var(--gold); }
+button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 3px; }
+.links { text-align: center; font: 400 13px/1.6 var(--sans); color: var(--muted); }
+.links a { color: var(--gold); }
+.note { max-width: 62ch; margin: 6px auto 0; text-align: center; font: 400 13px/1.6 var(--sans); color: var(--muted);
+  border-top: 1px solid rgba(217,164,65,.25); padding-top: 16px; }
+.fade { animation: in .5s ease; }
+@keyframes in { from { opacity: .2; } to { opacity: 1; } }
+@media (max-width: 560px) { .cap { font-size: 12px; } }
+@media (prefers-reduced-motion: reduce) { .fade { animation: none; } }
+</style>
+</head>
+<body>
+<nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a href="/calendar/">Calendar</a><a href="/search/">Search</a><a class="on" href="/travels/" aria-current="page">Travels</a><a href="/through-the-years/">Through the years</a><a href="/about/">About</a></nav>
+<main>
+  <header>
+    <div class="crumb"><a href="/travels/">Travels</a> &nbsp;›&nbsp; <b id="crumb">Surat</b> &nbsp;›&nbsp; Then and now</div>
+    <h1 id="place">Surat</h1>
+    <div class="moment" id="moment">Darshan of Thakorji</div>
+  </header>
+  <section class="pair" id="pair" aria-live="polite">
+    <figure><div class="frame"><div class="bg" id="pbg"></div><img id="pimg" alt=""></div>
+      <figcaption><span class="guru">Pramukh Swami Maharaj</span><span class="date" id="pdate"></span><span class="cap" id="pcap"></span></figcaption></figure>
+    <div class="seam"><div class="years"><div><b id="gap">26</b><small>years</small></div></div></div>
+    <figure><div class="frame"><div class="bg" id="mbg"></div><img id="mimg" alt=""></div>
+      <figcaption><span class="guru">Mahant Swami Maharaj</span><span class="date" id="mdate"></span><span class="cap" id="mcap"></span></figcaption></figure>
+  </section>
+  <div class="nav">
+    <button class="arrow" id="prev" aria-label="Previous">‹</button>
+    <div class="places" id="places"></div>
+    <button class="arrow" id="next" aria-label="Next">›</button>
+  </div>
+  <div class="links">See every photo of <a id="plink">that day in <span id="py"></span></a> or <a id="mlink">that day in <span id="my"></span></a></div>
+</main>
+<script>
+const short = p => p.split(',')[0];
+const PAIRS = [{"place":"Surat, India","moment":"Darshan of Thakorji","psm":{"date":"1999-12-20","cap":"Swamishri engrossed in darshan of Shri Harikrishna Maharaj","album":"3158","file":"158-3f.jpg","r":1.499},"msm":{"date":"2025-04-09","cap":"Swamishri engrossed in darshan of Shri Harikrishna Maharaj and Shri Gunatitanand Swami Maharaj","album":"32841","file":"2025_04_09_016_Surat.jpg","r":1.499}},{"place":"Bharuch, India","moment":"Arti","psm":{"date":"1999-04-02","cap":"Swamishri performs the arti","album":"4312","file":"09_TP_1999_40_14.jpg","r":0.75},"msm":{"date":"2025-07-01","cap":"Swamishri performs the arti","album":"33432","file":"2025_07_01_040_Bharuch.jpg","r":0.667}},{"place":"Bochasan, India","moment":"Blessing the assembly","psm":{"date":"1999-11-22","cap":"Swamishri blesses the assembly","album":"3167","file":"TP_1999_134_07.jpg","r":1.499},"msm":{"date":"2025-07-27","cap":"Swamishri blesses the assembly","album":"33567","file":"2025_07_27_037_Bochasan.jpg","r":1.499}},{"place":"Nairobi, Kenya","moment":"Arti","psm":{"date":"1999-10-13","cap":"Swamishri performs the arti","album":"3228","file":"TP_1999_135_02.jpg","r":1.499},"msm":{"date":"2025-01-12","cap":"Swamishri performs the arti","album":"32551","file":"2025_01_12_070_Nairobi.jpg","r":1.499}},{"place":"Surat, India","moment":"Blessing the assembly","psm":{"date":"1999-12-20","cap":"Swamishri blesses the assembly","album":"3158","file":"TP_1999_154_36.jpg","r":1.499},"msm":{"date":"2025-04-06","cap":"Swamishri during the assembly","album":"32799","file":"2025_04_06_087_Surat.jpg","r":1.499}},{"place":"Bochasan, India","moment":"Arti","psm":{"date":"1999-03-30","cap":"Swamishri performs the arti","album":"4311","file":"01_TP_1999_39_18.jpg","r":0.75},"msm":{"date":"2025-07-07","cap":"Swamishri takes ashka after the arti","album":"33482","file":"2025_07_07_041_Bochasan.jpg","r":0.667}}];
+const R2 = 'https://photos.bapas-diary.com/m/';
+PAIRS.forEach(p => ['psm', 'msm'].forEach(g => p[g].src = R2 + p[g].album + '/' + encodeURIComponent(p[g].file)));
+const slug = p => short(p).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+const fmt = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+const clean = c => c.replace(/^Swamishri /, '').replace(/^./, s => s.toUpperCase());
+const $ = id => document.getElementById(id);
+let i = 0;
+const places = [...new Set(PAIRS.map(p => short(p.place)))];
+places.forEach(pl => { const b = document.createElement('button'); b.textContent = pl; b.onclick = () => show(PAIRS.findIndex(p => short(p.place) === pl)); $('places').append(b); });
+function show(n) {
+  i = (n + PAIRS.length) % PAIRS.length; const p = PAIRS[i], pl = short(p.place);
+  $('place').textContent = pl; $('crumb').textContent = pl; $('moment').textContent = p.moment;
+  for (const [k, s] of [['p', p.psm], ['m', p.msm]]) {
+    $(k + 'img').src = s.src; $(k + 'img').alt = (k === 'p' ? 'Pramukh Swami Maharaj' : 'Mahant Swami Maharaj') + ', ' + pl + ', ' + fmt(s.date);
+    $(k + 'bg').style.backgroundImage = `url(${s.src})`; $(k + 'date').textContent = fmt(s.date); $(k + 'cap').textContent = clean(s.cap);
+    $(k + 'link').href = '/search/#date=' + s.date; $(k + 'y').textContent = s.date.slice(0, 4);
+  }
+  const r = Math.min(p.psm.r, p.msm.r); document.querySelectorAll('.frame').forEach(f => f.style.aspectRatio = String(r));
+  $('gap').textContent = +p.msm.date.slice(0, 4) - +p.psm.date.slice(0, 4);
+  history.replaceState(null, '', '#' + slug(p.place));
+  [...$('places').children].forEach(b => b.setAttribute('aria-pressed', b.textContent === pl));
+  const el = $('pair'); el.classList.remove('fade'); void el.offsetWidth; el.classList.add('fade');
+}
+$('prev').onclick = () => show(i - 1); $('next').onclick = () => show(i + 1);
+addEventListener('keydown', e => { if (e.key === 'ArrowLeft') show(i - 1); if (e.key === 'ArrowRight') show(i + 1); });
+const want = PAIRS.findIndex(p => slug(p.place) === location.hash.slice(1));
+show(want >= 0 ? want : 0);
+addEventListener('hashchange', () => { const k = PAIRS.findIndex(p => slug(p.place) === location.hash.slice(1)); if (k >= 0 && slug(PAIRS[k].place) !== slug(PAIRS[i].place)) show(k); });
+</script>
+</body>
+</html>

@@ -83,6 +83,6 @@ jobs:
           api -X POST "$B" -d "{\"domain\":\"photos.$DOMAIN\",\"zoneId\":\"$ZONE\",\"enabled\":true,\"minTLS\":\"1.2\"}" | jq -c '{success, errors}'
           api "$B" | jq -c '[.result.domains[]? | {domain, status}]'
           sleep 20
-          for u in https://photos.$DOMAIN/s/ https://$PROJECT.pages.dev/search/ https://$PROJECT.pages.dev/travels/ https://$DOMAIN/ https://$DOMAIN/travels/ https://$DOMAIN/through-the-years/ https://$DOMAIN/calendar/ https://$DOMAIN/share.jpg https://$DOMAIN/manifest.webmanifest https://$DOMAIN/no-such-page https://$DOMAIN/favourites/ https://$DOMAIN/day/10-24/ https://$DOMAIN/share/day/10-24.jpg; do
+          for u in https://photos.$DOMAIN/s/ https://$PROJECT.pages.dev/search/ https://$PROJECT.pages.dev/travels/ https://$DOMAIN/ https://$DOMAIN/travels/ https://$DOMAIN/through-the-years/ https://$DOMAIN/calendar/ https://$DOMAIN/share.jpg https://$DOMAIN/manifest.webmanifest https://$DOMAIN/no-such-page https://$DOMAIN/favourites/ https://$DOMAIN/day/10-24/ https://$DOMAIN/share/day/10-24.jpg https://$DOMAIN/then-and-now/; do
             echo "$u -> $(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "$u")"
           done

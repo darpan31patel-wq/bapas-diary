@@ -25,3 +25,4 @@ Redeploy to pick up a new build from another thread: push any change here (e.g. 
 24 Oct 22:05 UTC: Large text button (Darpan: yes i like 1 and 2).
 24 Oct 22:10 UTC: About page with Darpan's two portraits (Pramukh Swami pair 8, Mahant Swami pair 2, framed above the mark), Darpan: yes perfec.
 24 Oct 22:43 UTC: phone design (bottom tab bar, phone Today and Calendar), Darpan typed yes phone design live.
+25 Oct 01:00 UTC: Then and now page (inside Travels, not in the menu) and the Then and now link on Travels, Darpan: 1 and 2 happy go live.
