@@ -33,6 +33,7 @@ jobs:
           # (Darpan, 25 Oct 2026: "anything Bapa specific should only have pictures of Bapa on there")
           cp bapas.db bapa.db && sqlite3 bapa.db 'DELETE FROM photos WHERE coalesce(is_bapa, 0) != 1; VACUUM' && sqlite3 bapa.db 'SELECT count(*) FROM photos'
           gh release download website-mockup -p tags.json
+          gh release download deep-tags -p deep-tags.json   # what is in each photo (Darpan: yes deep tags)
           # Bapa through the years (its own thread builds it into release faces-mockup; Darpan: "okay go live")
           gh release download faces-mockup -p faces-site.tgz && tar -xzf faces-site.tgz -C out
           test -f out/through-the-years/index.html
@@ -49,7 +50,7 @@ jobs:
           rsync -a cal/ out/ && test -f out/calendar/index.html
           sqlite3 bapas.db 'SELECT count(*) FROM calendar'
           # opens on 1999 while only 1999 photos are copied to R2 (site/photo-years.txt)
-          python3 tools/build_search.py --db bapas.db --out out/search --tags tags.json --start-year 1999
+          python3 tools/build_search.py --db bapas.db --out out/search --tags tags.json --deep-tags deep-tags.json --start-year 1999
           python3 tools/site_menu.py out   # every page's tabs in the same order
           # share look (Darpan: yes share look): WhatsApp preview picture, icons, per page titles and lines, home screen manifest
           pip install -q pillow

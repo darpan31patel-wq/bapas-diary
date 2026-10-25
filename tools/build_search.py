@@ -92,6 +92,16 @@ def tag_picker(data):
     return lambda key: ', '.join(t for t, b, x in zip(names, bars, photos.get(key, ())) if b is not None and x >= b)
 
 
+def with_deep(tags, deep):
+    """Add the deep photo tags (release deep-tags, deep-tags.json from tools/deep_tags.py on branch
+    claude/project-thread-vcys74: {"ALBUM/FILE": "red flowers, smiling"}, each word checked by eye)."""
+    def both(key):
+        out = [t for t in tags(key).split(', ') if t]
+        out += [t for t in deep.get(key, '').split(', ') if t and t not in out]
+        return ', '.join(out)
+    return both
+
+
 # Mandir days (Darpan, 25 Oct 2026: mandir openings belong in the photo search, not on a page of their own). A day of
 # an album is a mandir day when any caption of it says so, and then every photo of that day and album is too (the
 # nagar yatra, the yagna and the assembly of an opening are part of it). p = murti pratishtha (a mandir opening, or
@@ -120,6 +130,7 @@ def main():
     ap.add_argument('--db', default='bapas.db')
     ap.add_argument('--out', default='search')
     ap.add_argument('--tags', help='tags.json from tools/photo_tags.py (what is happening in each photo)')
+    ap.add_argument('--deep-tags', help='deep-tags.json from release deep-tags (red flowers, food, crowd...)')
     ap.add_argument('--photos', default='https://photos.bapas-diary.com/', help='where the s/ and m/ photos are (R2)')
     ap.add_argument('--start-year', default='', help='the year the page opens on, e.g. while only that year has photos')
     a = ap.parse_args()
@@ -127,6 +138,8 @@ def main():
     db = sqlite3.connect(a.db)
 
     tags = tag_picker(json.load(open(a.tags)) if a.tags and os.path.exists(a.tags) else {})
+    if a.deep_tags and os.path.exists(a.deep_tags):
+        tags = with_deep(tags, json.load(open(a.deep_tags)))
     years, counts = {}, {}
     rows = db.execute("SELECT year, date, date_from, date_to, place, album, file, caption, is_bapa FROM photos "
                       "ORDER BY coalesce(date, date_from), album, file")
