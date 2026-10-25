@@ -6,7 +6,7 @@
 
 Writes out/bapas-diary.png and .jpg (2796 x 1290, iPhone landscape), out/date.txt and out/summary.txt.
 """
-import argparse, collections, concurrent.futures, datetime, glob, hashlib, json, os, random, re, threading, time, urllib.request
+import argparse, collections, concurrent.futures, datetime, glob, hashlib, json, os, random, re, shutil, sqlite3, subprocess, threading, time, urllib.parse, urllib.request
 from zoneinfo import ZoneInfo
 
 import cv2
@@ -105,8 +105,95 @@ def album_towns(items):
                     x['p'] = named[0]
 
 
+# Darpan, 25 Oct 2026: the photos come from his own downloaded archive in Google Drive ("Bapa's Archive", drive.yml), not
+# baps.org, which is only asked for anything the archive doesn't have. daily.yml sets ARCHIVE to the rclone remote and
+# puts the archive's database (it knows each photo's file in Drive) at ARCHIVE_DB; without them it is baps.org as before.
+ARCHIVE = os.environ.get('ARCHIVE', '')
+ARCHIVE_DB = os.environ.get('ARCHIVE_DB', os.path.join(HERE, 'bapas.db'))
+WORK_SIZE = 1200   # the photos are judged at baps.org's web size (1200 px from 2014), so the picks come out as before
+SHOW_SIZE = 3000   # the chosen ones are drawn from the archive's full size original, kept to this so memory holds
+
+
+def baps_key(u):
+    """('2776', 'p1010081f.jpg') for a baps.org photo address, None for others."""
+    if '/GalleryImages/' not in u or '/WebImages/' not in u:
+        return None
+    a, f = u.split('/GalleryImages/', 1)[1].split('/WebImages/', 1)
+    return a, urllib.parse.unquote(f).lower()
+
+
+def from_archive(items, cache):
+    """Every baps.org photo of the day the archive has, copied from Drive in one go: a working copy at web size in the
+    cache (as baps.org's own would be), and x['full'] the original, for the cards that get chosen."""
+    if not ARCHIVE or not os.path.exists(ARCHIVE_DB) or not shutil.which('rclone'):
+        print('  no archive to hand, the photos come from baps.org')
+        return
+    keys = {x['i']: baps_key(x['i']) for x in items}
+    albums = sorted({k[0] for k in keys.values() if k})
+    db = sqlite3.connect(ARCHIVE_DB)
+    where = {}
+    for i in range(0, len(albums), 500):
+        part = albums[i:i + 500]
+        for a, f, rel in db.execute(f'SELECT album, file, local_path FROM photos WHERE local_path IS NOT NULL AND album IN ({",".join("?" * len(part))})', part):
+            where[(a, urllib.parse.unquote(f).lower())] = rel
+    db.close()
+    want = {x['i']: where[keys[x['i']]] for x in items if keys[x['i']] in where}
+    if not want:
+        return
+    full = os.path.join(cache, 'archive')
+    os.makedirs(full, exist_ok=True)
+    listed = os.path.join(cache, 'archive-files.txt')
+    open(listed, 'w', encoding='utf-8').write(''.join(f'{rel}\n' for rel in sorted(set(want.values()))))
+    t = time.time()
+    try:
+        subprocess.run(['rclone', 'copy', ARCHIVE, full, '--files-from-raw', listed, '--transfers', '16', '--checkers', '16',
+                        '--retries', '3', '--low-level-retries', '5', '--stats', '0'], timeout=20 * 60)
+    except Exception as e:
+        print('  the archive could not be read, carrying on with baps.org:', e)
+    got = 0
+    for x in items:
+        rel = want.get(x['i'])
+        src = rel and os.path.join(full, rel)
+        if not src or not os.path.exists(src) or os.path.getsize(src) < 2000:
+            continue
+        path = os.path.join(cache, hashlib.sha1(x['i'].encode()).hexdigest() + '.jpg')
+        try:
+            im = Image.open(src)
+            if max(im.size) <= WORK_SIZE and not im.getexif().get(0x0112):   # baps.org's web copy is what the archive kept
+                shutil.copyfile(src, path)
+            else:   # a full size original: turned the way the photographer held the camera, made web size to be judged
+                im = ImageOps.exif_transpose(im).convert('RGB')
+                im.thumbnail((WORK_SIZE, WORK_SIZE), Image.LANCZOS)
+                im.save(path, quality=93)
+                x['full'] = src
+        except Exception as e:
+            print('  archive photo would not open', rel, e)
+            continue
+        got += 1
+    print(f'  {got} of {len(items)} photos from the archive in Drive ({time.time() - t:.0f}s), the rest from baps.org', flush=True)
+
+
+def full_size(photos):
+    """The chosen photos drawn from the archive's original instead of the web size copy they were judged on, so the
+    cards (close darshans above all) are sharp; his face box grows with it."""
+    for x in photos:
+        if not x.get('full'):
+            continue
+        try:
+            big = ImageOps.exif_transpose(Image.open(x['full'])).convert('RGB')
+        except Exception as e:
+            print('  original would not open, keeping the web size', x['full'], e)
+            continue
+        big.thumbnail((SHOW_SIZE, SHOW_SIZE), Image.LANCZOS)
+        k = big.width / x['im'].width
+        if big.width <= x['im'].width or abs(big.height / k - x['im'].height) > 3:   # not bigger, or not the same shape
+            continue
+        x['im'], x['face'] = big, x['face'] and tuple(v * k for v in x['face'])
+
+
 def download_all(items, cache):
     os.makedirs(cache, exist_ok=True)
+    from_archive(items, cache)
 
     def one(x, timeout=25, quiet=True):
         path = os.path.join(cache, hashlib.sha1(x['i'].encode()).hexdigest() + '.jpg')
@@ -2041,6 +2128,7 @@ def main():
     if not photos:
         raise SystemExit('No photos could be downloaded for ' + mmdd)
     remember(day, photos)
+    full_size(photos)
     tag_festivals(photos)
     story = tg_story(tg_evs, photos)
     unsure = [x for x in photos if x.get('tg') and not x.get('guru') and (not x['face'] or x['sim'] < SAME_PERSON)]   # Darpan: carry on, but flag it and keep a backup

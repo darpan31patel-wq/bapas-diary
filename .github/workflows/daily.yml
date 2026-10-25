@@ -62,6 +62,20 @@ jobs:
             gh issue create --title "No new vicharan photos since $last" --body "The daily collector hasn't found new vicharan photos of Bapa for $days days. Either baps.org hasn't uploaded any, or it has changed how its photos are named (see collect.py and archive/state.json). The daily picture keeps working with every photo already saved. Close this issue once it's sorted."
           fi
 
+      - name: Open Darpan's downloaded archive in Drive (the photos come from there, baps.org only for anything it lacks)
+        if: steps.done.outputs.skip != '1'
+        continue-on-error: true
+        timeout-minutes: 8
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -n "$TOKEN" ] || { echo "The RCLONE_DRIVE_TOKEN secret isn't set, so the photos come from baps.org"; exit 0; }
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          mkdir -p ~/.config/rclone && python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
+          gh release download database -p bapas.db.gz --clobber && gunzip -f bapas.db.gz
+          echo "ARCHIVE=gdrive:Bapa's Archive" >> "$GITHUB_ENV"
+
       - name: Make the picture
         if: steps.done.outputs.skip != '1'
         env:
