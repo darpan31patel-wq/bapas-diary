@@ -11,6 +11,13 @@
  * The backup bank (Darpan, 20 Oct 2026): GitHub also makes the next 90 days ahead of time. This script keeps
  * a copy of them in a second folder, "Bapa's Diary backup", and if today's fresh picture still hasn't come
  * by 10:30am it puts today's backup picture into Bapa's Diary instead, so 2pm still has something to send.
+ *
+ * Bapa's Diary Studio (Darpan, 25 Oct 2026): the Studio tab on your master dashboard can send a picture you made
+ * there straight into Drive. "Replace today's picture" swaps today's picture in Bapa's Diary (so 2pm sends yours);
+ * "Save as a new export" puts it in a separate folder, "Bapa's Diary Studio exports", and leaves today's alone.
+ * To switch it on (once): Deploy > New deployment > Select type: Web app > Execute as: Me, Who has access: Anyone
+ * > Deploy (allow it). Then choose "studioCode" in the function menu, press Run, and paste the line it shows into
+ * the Studio's "Connect to Google Drive" box. Nobody can send a picture without that code.
  */
 
 const FOLDER_NAME = "Bapa's Diary";
@@ -18,6 +25,7 @@ const BACKUP_NAME = "Bapa's Diary backup";
 const SOURCE = 'https://github.com/darpan31patel-wq/bapas-diary/releases/download/today/';
 const BANK = 'https://api.github.com/repos/darpan31patel-wq/bapas-diary/releases/tags/bank';
 const TZ = 'Europe/London';
+const STUDIO_NAME = "Bapa's Diary Studio exports";
 
 function setup() {
   ScriptApp.getProjectTriggers().forEach(t => ScriptApp.deleteTrigger(t));
@@ -142,4 +150,50 @@ function folder_() {
 function backupFolder_() {
   const found = DriveApp.getFoldersByName(BACKUP_NAME);
   return found.hasNext() ? found.next() : DriveApp.createFolder(BACKUP_NAME);
+}
+
+/** Shows the line to paste into the Studio's "Connect to Google Drive" box (makes a new secret code the first time). */
+function studioCode() {
+  const props = PropertiesService.getScriptProperties();
+  let key = props.getProperty('STUDIO_KEY');
+  if (!key) { key = Utilities.getUuid().replace(/-/g, ''); props.setProperty('STUDIO_KEY', key); }
+  const url = ScriptApp.getService().getUrl();
+  if (!url) { console.log('Deploy the script as a web app first (Deploy > New deployment > Web app), then run studioCode again.'); return; }
+  console.log('Paste this into the Studio:  ' + url + '#' + key);
+}
+
+/** A picture from the Studio. {key, mode: 'replace' | 'new', date: 'yyyy-MM-dd', png, jpg (base64)} */
+function doPost(e) {
+  const answer = o => ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+  try {
+    const p = JSON.parse(e.postData.contents);
+    const key = PropertiesService.getScriptProperties().getProperty('STUDIO_KEY');
+    if (!key || p.key !== key) return answer({ ok: false, error: 'The Studio code is wrong. Run studioCode in the script and paste the new line into the Studio.' });
+    const when = new Date(p.date + 'T12:00:00Z');
+    const day = Utilities.formatDate(when, TZ, 'd MMMM yyyy');
+    const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+    const png = Utilities.newBlob(Utilities.base64Decode(p.png), 'image/png');
+    const jpg = p.jpg ? Utilities.newBlob(Utilities.base64Decode(p.jpg), 'image/jpeg') : null;
+    if (p.mode === 'replace') {
+      if (p.date !== today) return answer({ ok: false, error: "Only today's picture can be replaced. This picture is for " + day + '.' });
+      const folder = folder_();
+      const oldPng = alive_(folder, day + '.png');
+      const hour = +Utilities.formatDate(new Date(), TZ, 'H');
+      if (!oldPng && hour >= 14) return answer({ ok: false, error: "Today's picture has already gone out at 2pm, so it can't be replaced now. Use Save as a new export instead." });
+      if (oldPng) oldPng.setTrashed(true);
+      const oldJpg = alive_(folder, day + ' photo.jpg');
+      if (oldJpg) oldJpg.setTrashed(true);
+      folder.createFile(png.setName(day + '.png')).setDescription('from the Studio');
+      if (jpg) folder.createFile(jpg.setName(day + ' photo.jpg')).setDescription('from the Studio');
+      return answer({ ok: true, mode: 'replace', folder: FOLDER_NAME, name: day + '.png', time: Utilities.formatDate(new Date(), TZ, 'HH:mm') });
+    }
+    const found = DriveApp.getFoldersByName(STUDIO_NAME);
+    const out = found.hasNext() ? found.next() : DriveApp.createFolder(STUDIO_NAME);
+    const name = day + ' studio ' + Utilities.formatDate(new Date(), TZ, 'HH.mm');
+    out.createFile(png.setName(name + '.png'));
+    if (jpg) out.createFile(jpg.setName(name + ' photo.jpg'));
+    return answer({ ok: true, mode: 'new', folder: STUDIO_NAME, name: name + '.png', time: Utilities.formatDate(new Date(), TZ, 'HH:mm') });
+  } catch (err) {
+    return answer({ ok: false, error: String(err) });
+  }
 }

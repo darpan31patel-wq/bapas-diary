@@ -72,6 +72,15 @@ input[type=checkbox] { accent-color: var(--gold); width: 16px; height: 16px }
 .btn.primary:disabled { opacity: .5; cursor: wait }
 .status { font-size: 13px; color: var(--muted); min-height: 1.4em }
 .status.ok { color: var(--ok) }
+.status.warn { color: var(--saffron) }
+.expmode { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
+.expmode .seg button[data-v="replace"][aria-pressed="true"] { background: var(--saffron); border-color: var(--saffron); color: #fff }
+.drive { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 10px 12px; display: grid; gap: 8px; font-size: 13px; color: var(--muted) }
+.drive b { color: var(--gold) }
+.drive .row2 { display: flex; gap: 8px; flex-wrap: wrap }
+.drive input { flex: 1 1 260px; min-width: 0 }
+.last { font-size: 13px; color: var(--muted) }
+.last b { color: var(--fg) }
 .note { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 10px 12px; font-size: 13px; color: var(--muted) }
 .note b { color: var(--gold) }
 .compare { display: none }
@@ -107,7 +116,19 @@ input[type=checkbox] { accent-color: var(--gold); width: 16px; height: 16px }
         <button class="btn primary" id="exp-go">Export picture</button>
       </div>
     </div>
+    <div class="expmode" id="expmode" hidden>
+      <div class="seg" role="group" id="exp-mode" aria-label="What the export does">
+        <button data-v="new" aria-pressed="true">Save as a new export</button>
+        <button data-v="replace" aria-pressed="false">Replace today's picture</button>
+      </div>
+      <span class="hint" id="exp-mode-hint"></span>
+    </div>
     <div class="status" id="status" role="status"></div>
+    <div class="last" id="last"></div>
+    <div class="drive" id="drive" hidden>
+      <div><b>Connect to Google Drive</b> (once on each device). In your “gets 2pm picture ready” script, run <b>studioCode</b> and paste the line it shows here.</div>
+      <div class="row2"><input type="text" id="drive-code" placeholder="https://script.google.com/macros/s/…/exec#…" aria-label="Studio code from your script"><button class="btn" id="drive-save">Connect</button></div>
+    </div>
     <div class="easel"><canvas id="view" width="2796" height="1290" aria-label="Live preview of the picture"></canvas></div>
     <div class="note" id="tipnote"><b>Tip:</b> click any card in the picture to jump to its photo, crop and caption.</div>
     <div class="compare" id="compare"><p class="hint">The picture the automatic morning run makes for this date, for comparison:</p><img id="real" alt="The automatic run's picture for this date"></div>
@@ -543,10 +564,69 @@ const SIZES = {
   day: [['full', 'Full size PNG, 5592 × 2580', 2, 'png'], ['whatsapp', 'WhatsApp JPG, 4096 wide', 4096 / 2796, 'jpg'], ['small', 'Small JPG, 2048 wide', 2048 / 2796, 'jpg']],
   month: [['full', 'Full size JPG, 3840 × 2160 (16:9)', 1, 'jpg'], ['big', 'Print PNG, 5760 × 3240', 1.5, 'png'], ['small', 'Small JPG, 1920 wide', .5, 'jpg']],
 };
+// ------------------------------------------------------------ what Export does: a new export, or today's 2pm picture replaced (Darpan, 25 Oct 2026)
+let EXPMODE = 'new';
+const todayLondon = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+const driveCode = () => store.get('studio-drive') || '';
+function fillMode() {
+  const isToday = S.mode === 'day' && S.day.date === todayLondon();
+  $('#expmode').hidden = S.mode !== 'day';
+  if (!isToday && EXPMODE === 'replace') EXPMODE = 'new';
+  document.querySelectorAll('#exp-mode button').forEach(b => {
+    b.setAttribute('aria-pressed', String(b.dataset.v === EXPMODE));
+    if (b.dataset.v === 'replace') b.disabled = !isToday;
+  });
+  $('#exp-mode-hint').textContent = EXPMODE === 'replace'
+    ? 'Swaps today’s picture in your Bapa’s Diary folder, so the 2pm send goes out with this one.'
+    : (isToday || S.mode !== 'day' ? 'Downloads it, and keeps a copy in “Bapa’s Diary Studio exports” on Drive. Today’s 2pm picture stays as it is.' : 'Only today’s picture can be replaced; other dates save as a new export.');
+  $('#exp-go').textContent = EXPMODE === 'replace' ? 'Replace today’s 2pm picture' : 'Export picture';
+  $('#exp-size').hidden = EXPMODE === 'replace';
+  $('#drive').hidden = !!driveCode() && !$('#drive').dataset.open;
+  const last = store.get('studio-last');
+  $('#last').innerHTML = last ? `Last export: <b>${last.how}</b>, ${last.what}, ${last.when}` : '';
+}
+document.querySelectorAll('#exp-mode button').forEach(b => b.addEventListener('click', () => { EXPMODE = b.dataset.v; fillMode() }));
+$('#drive-save').addEventListener('click', () => {
+  const v = $('#drive-code').value.trim();
+  if (!/^https:\/\/script\.google\.com\/.+\/exec#\w{16,}$/.test(v)) { $('#status').className = 'status warn'; $('#status').textContent = 'That doesn’t look like the line from studioCode. It starts with https://script.google.com and ends with #code.'; return }
+  store.set('studio-drive', v); delete $('#drive').dataset.open; $('#status').className = 'status ok'; $('#status').textContent = 'Connected to Google Drive.'; fillMode();
+});
+async function toBase64(blob) { const buf = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < buf.length; i += 32768) s += String.fromCharCode.apply(null, buf.subarray(i, i + 32768)); return btoa(s) }
+async function sendToDrive(mode, png, jpg) {
+  const [url, key] = driveCode().split('#');
+  const body = JSON.stringify({ key, mode, date: S.day.date, png: await toBase64(png), jpg: jpg ? await toBase64(jpg) : null });
+  let r;
+  try { r = await fetch(url, { method: 'POST', body }) } catch (e) { throw new Error('Google Drive could not be reached from here. Use the Studio tab on your master dashboard, or check your internet.') }
+  const ans = await r.json().catch(() => null);
+  if (!ans) throw new Error('Google Drive did not answer clearly. Check the Bapa’s Diary folder before trying again.');
+  if (!ans.ok) { if (/code is wrong/.test(ans.error)) { store.set('studio-drive', ''); fillMode() } throw new Error(ans.error) }
+  return ans;
+}
+function drawAt(width) {
+  const [W, H] = S.mode === 'day' ? [2796, 1290] : [3840, 2160], k = width / W;
+  const c = document.createElement('canvas'); c.width = Math.round(W * k); c.height = Math.round(H * k);
+  const ctx = c.getContext('2d'); ctx.scale(k, k);
+  S.mode === 'day' ? drawDay(ctx, P.day, S.day, []) : drawMonth(ctx, P.month, S.month, []);
+  return c;
+}
+const blobOf = (c, type, q) => new Promise(r => c.toBlob(r, type, q));
+function remember(how, what) { store.set('studio-last', { how, what, when: new Date().toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }); fillMode() }
+
 function fillSizes() { $('#exp-size').innerHTML = SIZES[S.mode].map(([k, l]) => `<option value="${k}">${l}</option>`).join('') }
 $('#exp-go').addEventListener('click', async () => {
   const [, , k, ext] = SIZES[S.mode].find(s => s[0] === $('#exp-size').value) || SIZES[S.mode][0];
   const btn = $('#exp-go'), st = $('#status'); btn.disabled = true; st.className = 'status'; st.textContent = 'Drawing the full size picture…';
+  if (EXPMODE === 'replace') {
+    try {
+      if (!driveCode()) { $('#drive').dataset.open = '1'; fillMode(); throw new Error('Connect to Google Drive first (the box below), then press Replace again.') }
+      const png = await blobOf(drawAt(5635), 'image/png'), jpg = await blobOf(drawAt(4096), 'image/jpeg', .93);
+      st.textContent = 'Sending it to your Bapa’s Diary folder…';
+      const ans = await sendToDrive('replace', png, jpg);
+      st.className = 'status ok'; st.textContent = `Replaced today’s 2pm picture: ${ans.name} in ${ans.folder}, at ${ans.time}. The 2pm send will use this one.`;
+      remember('Replace today’s picture', ans.name);
+    } catch (e) { st.className = 'status warn'; st.textContent = `Not replaced: ${(e && e.message) || e}` } finally { btn.disabled = false }
+    return;
+  }
   try {
     const [W, H] = S.mode === 'day' ? [2796, 1290] : [3840, 2160];
     const c = document.createElement('canvas'); c.width = Math.round(W * k); c.height = Math.round(H * k);
@@ -558,7 +638,16 @@ $('#exp-go').addEventListener('click', async () => {
     const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
     if (dl) await dl.save({ filename: name, data: blob });
     else { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000) }
-    st.className = 'status ok'; st.textContent = `Saved ${name} (${(blob.size / 1e6).toFixed(1)} MB).`;
+    st.className = 'status ok'; st.textContent = `Saved as a new export: ${name} (${(blob.size / 1e6).toFixed(1)} MB). Today’s 2pm picture is unchanged.`;
+    let where = name;
+    if (driveCode() && S.mode === 'day') {
+      try {
+        st.textContent += ' Keeping a copy on Drive…';
+        const ans = await sendToDrive('new', await blobOf(drawAt(5635), 'image/png'), await blobOf(drawAt(4096), 'image/jpeg', .93));
+        st.textContent = `Saved as a new export: ${name}, with a copy in “${ans.folder}” on Drive. Today’s 2pm picture is unchanged.`; where = `${ans.name} in ${ans.folder}`;
+      } catch (e) { st.textContent = `Saved as a new export: ${name} on this device (the Drive copy didn’t work: ${e.message}). Today’s 2pm picture is unchanged.` }
+    }
+    remember('Save as a new export', where);
   } catch (e) {
     st.textContent = e && e.code === 'declined' ? 'Export cancelled.' : `Export did not finish: ${(e && e.message) || e}`;
   } finally { btn.disabled = false }
@@ -704,7 +793,7 @@ function build() {
     if (S.mode === 'day') { const n = dayCards(pack, S.day).length; $('#meta').innerHTML = `<b>${pack.title}</b> · ${n} years · photos chosen on GitHub ${pack.made.slice(0, 10)}` }
     else $('#meta').innerHTML = `<b>${pack.title}</b> · ${pack.days.length} days · option ${S.month.option}`;
   }
-  fillSizes(); wire(); render();
+  fillSizes(); fillMode(); wire(); render();
 }
 function wire() {
   const o = cur(), p = S.mode === 'day' ? 'd' : 'm';
