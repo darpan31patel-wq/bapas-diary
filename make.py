@@ -1958,6 +1958,9 @@ def fest_tag(d, text, B, PW):
     d.text(((box[0] + box[2]) / 2, (box[1] + box[3]) / 2), text, font=f, fill=(96, 20, 32), anchor='mm')
 
 
+PRAY = '\U0001F64F\U0001F3FD'   # folded hands in a light brown skin tone, always (Darpan, 25 Oct 2026)
+
+
 def cal_caption(day, every=None):
     """The calendar lines for the 2pm caption: today, then tomorrow's day or Ekadashi, above the day's stories."""
     parts = cal_parts(day)
@@ -1966,12 +1969,12 @@ def cal_caption(day, every=None):
     c = cal_day(day)
     if not parts[-1].startswith('Vikram'):
         parts.append(f'Vikram Samvat {c["vikram_samvat"]}')
-    lines = [f'{chr(0x1F64F) if parts[0] == "Ekadashi" else chr(0x1F5D3) + chr(0xFE0F)} Today is {", ".join(parts)}']
+    lines = [f'{PRAY if parts[0] == "Ekadashi" else chr(0x1F5D3) + chr(0xFE0F)} Today is {", ".join(parts)}']
     nd = day + datetime.timedelta(days=1)
     n, nf = cal_day(nd), festivals(nd)
     when = f'{nd:%A} {nd.day} {nd:%B}'
     if ekadashi(n) and not any('Ekadashi' in f for f in nf):
-        lines.append(f'{chr(0x1F64F)} Reminder: tomorrow, {when}, is Ekadashi')
+        lines.append(f'{PRAY} Reminder: tomorrow, {when}, is Ekadashi')
     elif nf:
         icon = '\U0001F1EE\U0001F1F3' if re.search(r'republic|independence', ' '.join(nf), re.I) else '\U0001F315' if (n or {}).get('punam') else '\U0001FA94'
         lines.append(f'{icon} Tomorrow, {when}, is {" and ".join(nf)}')
