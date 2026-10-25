@@ -221,14 +221,13 @@ WORDS = {
 # The search tags, checked by eye (25 Oct 2026) on ladders of 2000 random R2 photos (1999 and 2026): for each word the
 # photos were laid out from the best match down, and the bar is halfway between the last right one and the next. tag: [(word, bar)];
 # a photo gets the tag when any of its words is over its bar. Bars are SigLIP 2 logits (ViT-SO400M-14-SigLIP2).
-# Words not listed here were too often wrong (glasses, meditating, mala, abhishek, walking...) or too rare in the
+# Wheelchair worked but Darpan asked to leave it out (25 Oct 2026). Words not listed here were too often wrong (glasses, meditating, mala, abhishek, walking...) or too rare in the
 # sample to check (most animals, snow, sea, mountains); they wait for more years in R2.
 KEEP = {
     'smiling': [('smiling', -4.84)],
     'laughing': [('laughing', -1.53)],
     'close up': [('close up', -3.64)],
     'garland': [('garland', -2.38)],
-    'wheelchair': [('wheelchair', -2.57)],
     'blessing': [('blessing', -1.25), ('waving', -1.75)],
     'folded hands': [('folded hands', -2.16)],
     'speaking': [('speaking', -0.09)],
