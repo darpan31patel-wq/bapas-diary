@@ -20,7 +20,8 @@ PHOTOS = 'https://photos.bapas-diary.com/'
 TAGS = '<link rel="stylesheet" href="/offline.css">\n<script src="/offline.js" defer></script>\n'
 PHONE = '<link rel="stylesheet" href="/phone.css">\n<script src="/phone.js" defer></script>\n'
 # the pages saved the first time anyone opens the site, and the lists they need straight away
-PAGES = ['/', '/calendar/', '/search/', '/travels/', '/through-the-years/', '/about/', '/favourites/', '/offline/']
+PAGES = ['/', '/calendar/', '/search/', '/travels/', '/travels/places/', '/then-and-now/', '/through-the-years/', '/about/',
+         '/favourites/', '/offline/']
 DATA = ['/data/calendar.json', '/search/data/about.json', '/search/data/calendar.json', '/manifest.webmanifest',
         '/icon-192.png', '/apple-touch-icon.png', '/favicon-32.png']
 # kept only when someone taps Save for travelling
