@@ -74,6 +74,17 @@
     [/^(Every vicharan photo .+ all mixed together by date\.) Search for words, or pick a year, month, day or range of dates\.$/,
       m => tr(m[1]) !== m[1] && `${tr(m[1])} શબ્દો શોધો, કે વર્ષ, મહિનો, દિવસ કે તારીખો પસંદ કરો.`],
     [/^(.+) \((.+)\)$/, m => N(m[1]) && N(m[2]) && `${N(m[1])} (${N(m[2])})`],
+    [/^›\s+(.+)$/, m => tr(m[1]) !== m[1] && `› ${tr(m[1])}`],   // a page name after the menu arrow
+    // Travels Places, Then and now, and the offline version (25 Oct)
+    [/^([\d,]+) (visits?|days?|photos?|places?|countries|country)$/, m => `${m[1]} ${{visit: 'મુલાકાત', visits: 'મુલાકાતો', day: 'દિવસ', days: 'દિવસ', photo: 'ફોટો', photos: 'ફોટા', place: 'સ્થળ', places: 'સ્થળો', country: 'દેશ', countries: 'દેશો'}[m[2]]}`],
+    [/^See all ([\d,]+) photos from (.+)$/, m => N(m[2]) && `${N(m[2])}ના બધા ${m[1]} ફોટા જુઓ`],
+    [/^([\d,]+) places in ([\d,]+) countries, (\d{4}) to (\d{4})\. Tap a gold dot on the globe, or find a place by name\.$/,
+      m => `${m[2]} દેશોમાં ${m[1]} સ્થળો, ${m[3]}થી ${m[4]}. ગ્લોબ પર સોનેરી ટપકું દબાવો, કે નામથી સ્થળ શોધો.`],
+    [/^Tap below to also keep the next (\d+) days of darshan with their photos, all of Search, Travels and\s+Bapa through the years\. It needs about (\d+) MB, so WiFi is best\.$/,
+      m => `નીચે દબાવો તો આવતા ${m[1]} દિવસનાં દર્શન તેમના ફોટા સાથે, આખું શોધો, વિચરણ અને વર્ષોવર્ષ પણ સચવાઈ જશે. આશરે ${m[2]} MB જોઈશે, એટલે WiFi સારું.`],
+    [/^on (\d+) (\w+)\. It tops itself up each day you have internet\.(?: Using about (\d+) MB\.)?$/,
+      m => T[m[2]] && `${m[1]} ${T[m[2]]}ના રોજ. જે દિવસે ઇન્ટરનેટ હોય તે દિવસે તે જાતે નવું ઉમેરે છે.${m[3] ? ` આશરે ${m[3]} MB વપરાય છે.` : ''}`],
+    [/^Saving ([\d,]+) of ([\d,]+)…$/, m => `${m[2]}માંથી ${m[1]} સચવાયા…`],
     [/^Vikram Samvat (\d+)$/, m => `વિક્રમ સંવત ${m[1]}`],
     [/^V\.S\. (\d+)$/, m => `વિ.સં. ${m[1]}`],
     [/^(.+)'s Birthday$/, m => tr(m[1]) !== m[1] && `${tr(m[1])} પ્રાગટ્ય દિન`],
