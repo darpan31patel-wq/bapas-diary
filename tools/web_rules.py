@@ -311,7 +311,7 @@ def day(a):
             if y not in years:
                 stats['tg_years'] += 1
             Y = years.setdefault(y, {'y': y, 'place': (place or '').split(',')[0].strip(), 'p': [], 'tg': 1})
-            Y['p'].append([al, key, cap, 1, box, short])
+            Y['p'].append([al, key, cap, 1, box, card_caption(cap)])
         for Y in years.values():
             if not Y.get('tg'):
                 for part in ('p', 't'):
