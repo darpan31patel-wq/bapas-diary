@@ -124,6 +124,7 @@
   .ph-stay.cur { opacity: 1; border-color: rgba(255, 226, 150, .65); }
   .ph-stay.on { opacity: 1; background: linear-gradient(#ffe296, #ce9840); border-color: transparent; box-shadow: 0 0 14px rgba(255, 214, 120, .5); }
   .ph-stay.on b, .ph-stay.on small { color: #3a0d17; }
+  .ph-jnote:empty { display: none; }
   .ph-jnote { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 30px; padding: 2px 16px 0; font: 400 12px/1.2 Arimo, Arial, sans-serif; color: #c9a98a; text-align: center; }
   .ph-jnote b { font: 600 16px/1 "EB Garamond", Garamond, serif; color: #ffe296; }
   .ph-jnote a { color: #ffe296; font-weight: 700; }

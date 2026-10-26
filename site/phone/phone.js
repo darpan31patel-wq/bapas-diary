@@ -140,7 +140,7 @@
       const bar = el('div', 'ph-jbar');
       const yrs = el('div', 'ph-years'); yrs.setAttribute('role', 'group'); yrs.setAttribute('aria-label', 'Years');
       const jrow = el('div', 'ph-jrow'); jrow.setAttribute('aria-label', 'Where Bapa was, swipe sideways');
-      const note = el('div', 'ph-jnote', 'Tap a place to light up those days'); note.setAttribute('aria-live', 'polite');
+      const note = el('div', 'ph-jnote'); note.setAttribute('aria-live', 'polite');
       bar.append(yrs, jrow, note);
       wrap.append(bar);
       const years = [...new Set(keys.map(k => k.slice(0, 4)))];
@@ -190,7 +190,7 @@
         if (pickI == null) return;
         stays[pickI].el.classList.remove('on'); pickI = null;
         wrap.classList.remove('ph-picking'); wrap.querySelectorAll('.ph-day.lit').forEach(b => b.classList.remove('lit'));
-        note.textContent = 'Tap a place to light up those days';
+        note.textContent = '';
       }
 
       const barH = () => wrap.style.setProperty('--ph-jbar', bar.offsetHeight + 'px');
