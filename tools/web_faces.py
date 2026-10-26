@@ -233,7 +233,9 @@ def pick(a):
                 if R.unique_caption(c):   # make.py's unique caption rule: something that happened that day wins a close call
                     sc += UNIQUE; sd += UNIQUE
                 ranked.append(dict(k=(al, fi), c=c, sc=sc, sd=sd, nice=nice, special=special, close=close_ok, rec=rec, pin=pinned, why='recognised'))
-            elif bapa == 1 and rec and rec[0] >= LOOSE and R.unique_caption(c) and R.bapa_is_subject(c):   # a one-off moment, his face turned away
+            # a one-off moment, his face turned away; the face must be sharp, so a picture printed on a book cover or a
+            # blurry face far away is not taken for him (Darpan, 26 Oct 2026: a book of prayers on flowers reached Today)
+            elif bapa == 1 and rec and rec[0] >= LOOSE and len(rec) > 6 and rec[6] >= R.SHARP_MIN and R.unique_caption(c) and R.bapa_is_subject(c):
                 sc, sd, nice, special, close_ok = judge(c, rec)
                 ranked.append(dict(k=(al, fi), c=c, sc=sc - 1, sd=sd - 1, nice=False, special=special, close=False, rec=rec, pin=False, why='unique moment'))
             elif pinned:
