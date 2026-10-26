@@ -83,6 +83,7 @@ footer{padding-block:4px 10px;padding-left:max(16px,env(safe-area-inset-left,0px
 .hop{flex:none;width:18px;height:1px;margin:0 4px;background:rgba(206,152,64,.55);position:relative}
 .hop:after{content:'';position:absolute;right:-1px;top:-3px;border:3.5px solid transparent;border-left-color:rgba(206,152,64,.85);border-right:0}
 .ymark{flex:none;font-family:var(--caps);font-weight:700;font-size:12px;letter-spacing:.14em;color:var(--maroon-deep);background:var(--gold-lo);border-radius:10px;padding:4px 9px;margin:0 10px 0 12px}
+.jnote:empty{display:none}
 .jnote{min-height:22px;display:flex;align-items:center;justify-content:center;gap:10px;font-family:var(--caps);font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:2px 8px 2px;text-align:center}
 .jnote b{font-family:var(--serif);font-weight:600;font-size:15px;letter-spacing:0;text-transform:none;color:var(--gold-hi)}
 .jnote button{border:1px solid rgba(206,152,64,.5);background:none;color:var(--gold-hi);border-radius:12px;font:inherit;padding:3px 10px;cursor:pointer}
@@ -115,7 +116,6 @@ footer{padding-block:4px 10px;padding-left:max(16px,env(safe-area-inset-left,0px
 <nav class="site-menu stay" aria-label="Website tabs"><a href="/">Today</a><a href="/calendar/" class="on" aria-current="page">Calendar</a><a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/about/">About</a></nav>
 <div class="app">
   <header>
-    <div class="kicker">Darshan through the years</div>
     <div class="mtitle" aria-live="polite"><span id="t0"></span><span id="t1" class="out"></span></div>
   </header>
   <div class="track" id="track" tabindex="0" aria-label="Calendar of days, scroll sideways">
@@ -129,10 +129,9 @@ footer{padding-block:4px 10px;padding-left:max(16px,env(safe-area-inset-left,0px
         <div class="jscroll" id="jscroll" aria-label="Where Bapa was, scroll sideways"><div class="jrow" id="jrow"></div></div>
         <button class="jarr" id="jnext" type="button" aria-label="Later places">›</button>
       </div>
-      <div class="jnote" id="jnote" aria-live="polite">Tap a place to light up those days</div>
+      <div class="jnote" id="jnote" aria-live="polite"></div>
     </div>
     <div class="ctrl"><button class="play" id="play" aria-pressed="false"></button><div class="spd" role="group" aria-label="Speed"><button data-s="22" aria-pressed="false">Slow</button><button data-s="40" aria-pressed="true">Gentle</button><button data-s="85" aria-pressed="false">Faster</button></div><div class="zm" role="group" aria-label="Zoom"><button id="zout" aria-label="Zoom out, see more months">−</button><span id="zl">100%</span><button id="zin" aria-label="Zoom in">+</button></div></div>
-    <div class="hint">Scroll or swipe sideways · tap a day to open its gallery · space bar plays</div>
   </footer>
 </div>
 
@@ -309,7 +308,7 @@ function unpick(){
   if(sel==null)return;
   stays[sel].el.classList.remove('sel'); stays[sel].el.removeAttribute('aria-pressed'); sel=null;
   ribbon.classList.remove('picking'); ribbon.querySelectorAll('.card.lit').forEach(c=>c.classList.remove('lit'));
-  jnote.textContent='Tap a place to light up those days';
+  jnote.textContent='';
   if(zBefore!=null){const z=zBefore;zBefore=null;setZoom(z)}
 }
 function litCard(c){const s=stays[sel];c.classList.toggle('lit',!!s&&c._date>=s.from&&c._date<=s.to)}
