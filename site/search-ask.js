@@ -279,15 +279,15 @@
     } else {
       en = `The diary has no photos of ${GURU[k]} on ${named}.`; gu = `${namedGu}ના દિવસના ${GURU_GU[k]}ના ફોટા ડાયરીમાં નથી.`;
       const bits = [];
-      if (w.before) bits.push(`On ${fmt(w.before.b)} he was in ${esc(w.before.p)}`);
-      if (w.after) bits.push(`on ${fmt(w.after.a)} he was in ${esc(w.after.p)}`);
+      if (w.before) bits.push(`On ${fmt(w.before.b)} He was in ${esc(w.before.p)}`);
+      if (w.after) bits.push(`${bits.length ? 'on' : 'On'} ${fmt(w.after.a)} He was in ${esc(w.after.p)}`);
       sub = bits.length ? andList(bits) + '.' : '';
     }
     if (fests.length && !label) sub += ` BAPS calendar: ${esc(andList(fests))}.`;
     const vals = { P: '', M: '' }, valsGu = { P: '', M: '' };
     vals[k] = w.ok ? `In ${esc(w.s.p)} that day` : 'No photos that day'; valsGu[k] = w.ok ? `તે દિવસે ${esc(inGu(w.s.p))}` : 'તે દિવસના ફોટા નથી';
     const list = w.ok ? [w.s] : [w.before, w.after].filter(Boolean);
-    return { html: card(Q, en, gu, [sub.trim(), subGu], gurus(vals, valsGu) + rows(list, w.ok ? 'Where he was' : 'The nearest days in the diary', w.ok ? 'તેઓ ક્યાં હતા' : 'ડાયરીના નજીકના દિવસો') + below(n)),
+    return { html: card(Q, en, gu, [sub.trim(), subGu], gurus(vals, valsGu) + rows(list, w.ok ? 'Where He was' : 'The nearest days in the diary', w.ok ? 'તેઓ ક્યાં હતા' : 'ડાયરીના નજીકના દિવસો') + below(n)),
       keep: r => covers(r, d) && bapaOnly(r) };
   }
 
@@ -337,7 +337,7 @@
     const y0 = found[0].d.slice(0, 4), y1 = found.at(-1).d.slice(0, 4);
     const dates = new Set(found.map(x => x.d));
     return { html: card(Q, `Bapa's darshan on ${label} is in the diary ${plural(found.length, 'time')}, from ${y0} to ${y1}.`,
-      gd(`${labelGu}નાં બાપાનાં દર્શન ડાયરીમાં ${found.length} વાર છે, ${y0} થી ${y1}.`), [`${num(total)} photos across the years. Here is where he was each time.`, ''],
+      gd(`${labelGu}નાં બાપાનાં દર્શન ડાયરીમાં ${found.length} વાર છે, ${y0} થી ${y1}.`), [`${num(total)} photos across the years. Here is where He was each time.`, ''],
       gurus({ P: by('P') ? plural(by('P'), 'year') : '', M: by('M') ? plural(by('M'), 'year') : '' }, { P: by('P') ? gd(`${by('P')} વર્ષ`) : '', M: by('M') ? gd(`${by('M')} વર્ષ`) : '' }) +
       rows(list, `${label}, year by year`, `${labelGu}, વર્ષે વર્ષે`) + below(total)),
       keep: r => coversAny(r, dates) && bapaOnly(r) };

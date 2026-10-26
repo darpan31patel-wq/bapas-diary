@@ -132,6 +132,32 @@ def write(path, data):
         json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
 
 
+def one_of_each(stories):
+    """The same story is posted again most years (20 July 1980 was there 7 times), with small changes like "London"
+    or "London, UK". Search shows each story once, the fullest copy, in the place of its first copy (Darpan: go live,
+    26 Oct 2026). Two stories of one day are the same when one holds all the other's words in order (12 words or more),
+    or when 80% of their words are shared. The database keeps every copy."""
+    words = lambda t: re.findall(r'[a-z0-9\u0a80-\u0aff]+', t.lower())
+    out, seen = [], {}
+    for row in stories:
+        w = words(row[2])
+        ws, joined = set(w), ' '.join(w)
+        same = None
+        for k in seen.get(row[0], ()):
+            o_ws, o_joined, o_n = out[k][1], out[k][2], out[k][3]
+            if joined == o_joined or (ws and o_ws and (
+                    (min(len(w), o_n) >= 12 and (joined in o_joined or o_joined in joined))
+                    or len(ws & o_ws) / len(ws | o_ws) >= .8)):
+                same = k
+                break
+        if same is None:
+            seen.setdefault(row[0], []).append(len(out))
+            out.append([row, ws, joined, len(w)])
+        elif len(joined) > len(out[same][2]):
+            out[same] = [row, ws, joined, len(w)]
+    return [o[0] for o in out]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--db', default='bapas.db')
@@ -174,6 +200,7 @@ def main():
           for posted, date, place, text in db.execute(
               "SELECT posted, date, place, text FROM tg_posts "
               "WHERE trim(coalesce(text, '')) != '' ORDER BY coalesce(date, posted)")]
+    tg = one_of_each(tg)
     write(os.path.join(a.out, 'data', 'stories.json'), tg)
 
     # BAPS calendar days (table `calendar`, when the database has it): one row per date, nothing cut out

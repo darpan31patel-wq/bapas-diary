@@ -8,35 +8,51 @@
   /* above the tab bar on phones */
   .bd-off-note { bottom: calc(env(safe-area-inset-bottom, 0px) + 76px); }
   .bd-off-right { display: flex; align-items: center; gap: 8px; }
-  .bd-off-btn { position: relative; width: 40px; height: 40px; padding: 0; border-radius: 50%; display: grid; place-items: center; cursor: pointer;
-    color: #ffe296; border: 1px solid rgba(217, 164, 65, .45); background: rgba(18, 4, 8, .45); }
-  .bd-off-btn svg { width: 20px; height: 20px; }
-  .bd-off-btn i { position: absolute; right: 1px; top: 1px; width: 10px; height: 10px; border-radius: 50%; background: #ffe296; border: 2px solid #42101c; display: none; }
-  .bd-off-btn.saved i { display: block; }
+}
+/* the Save for travelling button and sheet: phones, and iPads (Darpan, 26 Oct 2026) */
+.bd-off-btn { position: relative; width: 40px; height: 40px; padding: 0; border-radius: 50%; display: grid; place-items: center; cursor: pointer;
+  color: #ffe296; border: 1px solid rgba(217, 164, 65, .45); background: rgba(18, 4, 8, .45); }
+.bd-off-btn svg { width: 20px; height: 20px; }
+.bd-off-btn i { position: absolute; right: 1px; top: 1px; width: 10px; height: 10px; border-radius: 50%; background: #ffe296; border: 2px solid #42101c; display: none; }
+.bd-off-btn.saved i { display: block; }
 
-  .bd-off-back { position: fixed; inset: 0; z-index: 95; background: rgba(10, 2, 4, .6); opacity: 0; transition: opacity .3s; }
-  .bd-off-back.on { opacity: 1; }
-  .bd-off-sheet { position: fixed; z-index: 96; left: 0; right: 0; bottom: 0; max-height: 88dvh; overflow: auto;
-    padding: 10px max(20px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 22px) max(20px, env(safe-area-inset-left, 0px));
-    border-radius: 22px 22px 0 0; border-top: 1px solid rgba(217, 164, 65, .5); color: #faf1de;
-    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(255, 196, 110, .14), transparent 70%), linear-gradient(#4a1320, #1d070c);
-    font: 400 17px/1.5 "EB Garamond", Lora, Georgia, serif; transform: translateY(100%); transition: transform .3s ease; }
-  .bd-off-sheet.on { transform: none; }
-  .bd-off-grip { width: 44px; height: 5px; border-radius: 3px; background: rgba(250, 241, 222, .3); margin: 0 auto 14px; }
-  .bd-off-sheet h2 { margin: 0 0 8px; font: 700 27px/1.1 "EB Garamond", Georgia, serif; color: #ffe296; }
-  .bd-off-sheet p { margin: 0 0 10px; color: rgba(250, 241, 222, .88); }
-  .bd-off-state { min-height: 1.5em; margin: 12px 0 10px; font-size: 17px; }
-  .bd-off-state b { color: #ffe296; }
-  .bd-off-bar { height: 8px; border-radius: 4px; background: rgba(250, 241, 222, .15); overflow: hidden; margin-bottom: 14px; }
-  .bd-off-bar b { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ce9840, #ffe296); transition: width .2s; }
-  .bd-off-go { display: block; width: 100%; min-height: 54px; border: 0; border-radius: 999px; cursor: pointer;
-    font: 700 14px Arimo, Arial, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #3b1219; background: linear-gradient(#ffe296, #ce9840); }
-  .bd-off-go:disabled { opacity: .55; }
-  .bd-off-tip { margin-top: 14px !important; font-size: 15px; font-style: italic; }
-  .bd-off-row { display: flex; justify-content: space-between; gap: 12px; margin-top: 16px; }
-  .bd-off-row button { min-height: 46px; padding: 0 18px; border-radius: 999px; cursor: pointer; background: none;
-    font: 700 12px Arimo, Arial, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #ffe296; border: 1px solid rgba(217, 164, 65, .55); }
-  .bd-off-row .bd-off-close { margin-left: auto; }
-  .bd-off-sheet button:focus-visible { outline: 2px solid #ffe296; outline-offset: 3px; }
+.bd-off-back { position: fixed; inset: 0; z-index: 95; background: rgba(10, 2, 4, .6); opacity: 0; transition: opacity .3s; }
+.bd-off-back.on { opacity: 1; }
+.bd-off-sheet { position: fixed; z-index: 96; left: 0; right: 0; bottom: 0; max-height: 88dvh; overflow: auto;
+  padding: 10px max(20px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 22px) max(20px, env(safe-area-inset-left, 0px));
+  border-radius: 22px 22px 0 0; border-top: 1px solid rgba(217, 164, 65, .5); color: #faf1de;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(255, 196, 110, .14), transparent 70%), linear-gradient(#4a1320, #1d070c);
+  font: 400 17px/1.5 "EB Garamond", Lora, Georgia, serif; transform: translateY(100%); transition: transform .3s ease; }
+.bd-off-sheet.on { transform: none; }
+.bd-off-grip { width: 44px; height: 5px; border-radius: 3px; background: rgba(250, 241, 222, .3); margin: 0 auto 14px; }
+.bd-off-sheet h2 { margin: 0 0 8px; font: 700 27px/1.1 "EB Garamond", Georgia, serif; color: #ffe296; }
+.bd-off-sheet p { margin: 0 0 10px; color: rgba(250, 241, 222, .88); }
+.bd-off-state { min-height: 1.5em; margin: 12px 0 10px; font-size: 17px; }
+.bd-off-state b { color: #ffe296; }
+.bd-off-bar { height: 8px; border-radius: 4px; background: rgba(250, 241, 222, .15); overflow: hidden; margin-bottom: 14px; }
+.bd-off-bar b { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ce9840, #ffe296); transition: width .2s; }
+.bd-off-go { display: block; width: 100%; min-height: 54px; border: 0; border-radius: 999px; cursor: pointer;
+  font: 700 14px Arimo, Arial, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #3b1219; background: linear-gradient(#ffe296, #ce9840); }
+.bd-off-go:disabled { opacity: .55; }
+.bd-off-tip { margin-top: 14px !important; font-size: 15px; font-style: italic; }
+.bd-off-row { display: flex; justify-content: space-between; gap: 12px; margin-top: 16px; }
+.bd-off-row button { min-height: 46px; padding: 0 18px; border-radius: 999px; cursor: pointer; background: none;
+  font: 700 12px Arimo, Arial, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #ffe296; border: 1px solid rgba(217, 164, 65, .55); }
+.bd-off-row .bd-off-close { margin-left: auto; }
+.bd-off-sheet button:focus-visible { outline: 2px solid #ffe296; outline-offset: 3px; }
+/* iPads: the button in the top right corner of the menu, the sheet a card in the middle of the bottom edge */
+@media (min-width: 761px) {
+  nav.site-menu .bd-off-btn { position: absolute; top: 7px; right: 124px; margin: 0; width: 32px; height: 32px; }
+  nav.site-menu .bd-off-btn svg { width: 17px; height: 17px; }
+  nav.site-menu:has(.bd-aa) .bd-off-btn { right: 176px; }
+  nav.site-menu:has(.bd-off-btn) { padding-right: 290px; }
+}
+/* iPads standing up: the tabs a little closer, so all six still fit beside the three buttons */
+@media (min-width: 761px) and (max-width: 1100px) {
+  nav.site-menu:has(.bd-off-btn) { gap: 0 10px; padding-left: 12px; }
+  nav.site-menu:has(.bd-off-btn) a { letter-spacing: .06em; }
+  nav.site-menu:has(.bd-off-btn) a.on { padding: 6px 10px 5px; }
+  .bd-off-sheet { left: 50%; right: auto; width: min(560px, 100%); transform: translate(-50%, 100%); }
+  .bd-off-sheet.on { transform: translate(-50%, 0); }
 }
 @media (prefers-reduced-motion: reduce) { .bd-off-note, .bd-off-back, .bd-off-sheet { transition: none; } }

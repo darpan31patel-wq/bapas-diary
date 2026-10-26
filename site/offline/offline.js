@@ -16,6 +16,7 @@
   const el = (t, c, h) => { const e = document.createElement(t); if (c) e.className = c; if (h != null) e.innerHTML = h; return e; };
   const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const pad = n => String(n).padStart(2, '0');
+  const DEVICE = /iPad/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ? 'iPad' : 'phone';
   const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const installed = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
 
@@ -112,15 +113,20 @@
   let btn = null;
   function mark() { if (btn) btn.classList.toggle('saved', !!store.get()); }
 
+  // iPads too (Darpan: go live on ipad fix, 26 Oct 2026): there the button sits in the top right corner beside Aa and the
+  // language switch. Computers with a mouse don't get it.
+  const tablet = ios || matchMedia('(pointer: coarse) and (hover: none)').matches;
   ready(() => setTimeout(() => {
-    if (!narrow.matches) return;
-    const top = document.querySelector('.ph-top');
+    const top = narrow.matches ? document.querySelector('.ph-top') : tablet && document.querySelector('nav.site-menu');
     if (!top) return;
     btn = el('button', 'bd-off-btn', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></svg><i></i>');
     btn.type = 'button';
     btn.setAttribute('aria-label', 'Save for travelling, to open with no internet');
-    const right = el('span', 'bd-off-right'), about = top.querySelector('.ph-about');
-    if (about) { about.before(right); right.append(btn, about); } else { top.append(right); right.append(btn); }
+    if (!narrow.matches) top.append(btn);
+    else {
+      const right = el('span', 'bd-off-right'), about = top.querySelector('.ph-about');
+      if (about) { about.before(right); right.append(btn, about); } else { top.append(right); right.append(btn); }
+    }
     btn.onclick = openSheet;
     mark();
   }, 0));
@@ -133,13 +139,13 @@
     sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true'); sheet.setAttribute('aria-labelledby', 'bd-off-h');
     sheet.innerHTML = `<div class="bd-off-grip"></div>
       <h2 id="bd-off-h">Save for travelling</h2>
-      <p>Every page you open is kept on this phone, so Bapa's Diary opens even with no internet.</p>
+      <p>Every page you open is kept on this ${DEVICE}, so Bapa's Diary opens even with no internet.</p>
       <p>Tap below to also keep the next ${DAYS} days of darshan with their photos, all of Search, Travels and
         Bapa through the years. It needs about ${F.packMB + 10} MB, so WiFi is best.</p>
       <div class="bd-off-state" aria-live="polite"></div>
       <div class="bd-off-bar" hidden><b></b></div>
       <button type="button" class="bd-off-go">Save for travelling</button>
-      ${ios && !installed ? `<p class="bd-off-tip">On iPhone, also add Bapa's Diary to your Home Screen (tap Share, then Add to Home Screen) so the saved pages always stay.</p>` : ''}
+      ${ios && !installed ? `<p class="bd-off-tip">On iPhone and iPad, also add Bapa's Diary to your Home Screen (tap Share, then Add to Home Screen) so the saved pages always stay.</p>` : ''}
       <div class="bd-off-row"><button type="button" class="bd-off-del">Remove saved photos</button><button type="button" class="bd-off-close">Close</button></div>`;
     document.body.append(back, sheet);
     requestAnimationFrame(() => { back.classList.add('on'); sheet.classList.add('on'); });
@@ -152,7 +158,7 @@
       const s = store.get(), mb = await used();
       $('.bd-off-del').hidden = !s;
       if (s) {
-        state.innerHTML = `<b>✓ Saved on this phone</b> on ${when(s.at)}. It tops itself up each day you have internet.` +
+        state.innerHTML = `<b>✓ Saved on this ${DEVICE}</b> on ${when(s.at)}. It tops itself up each day you have internet.` +
           (mb ? ` Using about ${mb} MB.` : '');
         go.textContent = 'Save again now';
       } else {
