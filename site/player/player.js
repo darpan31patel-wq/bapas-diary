@@ -36,7 +36,7 @@
     const both = `<span class="pl-gurus"><img src="${ART}psm.jpg" alt="Pramukh Swami Maharaj"><img src="${ART}msm.jpg" alt="Mahant Swami Maharaj"></span>`;
     box.innerHTML = `<div class="pl-slides"></div>
       <div class="pl-badge">${both}<span><b>Bapa's Diary</b><i class="pl-day"></i></span></div>
-      <div class="pl-words" aria-live="polite"><div class="pl-y"></div><div class="pl-p"></div><div class="pl-t"></div><div class="pl-c"></div></div>
+      <div class="pl-words" aria-live="polite"></div>
       <div class="pl-bar"><button type="button" data-a="prev" aria-label="Back">‹</button><button type="button" data-a="play">Pause</button>
         <button type="button" data-a="next" aria-label="Next">›</button><button type="button" data-a="speed"></button>
         <span class="pl-grow"><i></i></span><button type="button" data-a="close">Close</button></div>
@@ -97,11 +97,13 @@
       const words = $('.pl-words');
       words.classList.remove('on');
       setTimeout(() => {
-        $('.pl-y').textContent = it.y;
-        $('.pl-p').textContent = it.where || '';
+        // one centred line across the whole screen: the year, the place, the Indian date and what Bapa does (the day is in the corner)
+        // (Darpan, 26 Oct 2026: "center all the text ... in one line you can get year, location, caption")
         const fest = it.cal ? (it.cal[1] || '').split(/;\s*/)[0] : '';
-        $('.pl-t').textContent = [it.trip ? 'From the same trip' : `${dayName(D.date)} ${it.y}`, it.cal && it.cal[0], fest].filter(Boolean).join(' · ');
-        $('.pl-c').textContent = it.p[5] || it.p[2] || '';
+        const parts = [it.where, it.trip && 'From the same trip', it.cal && it.cal[0], fest].filter(Boolean).map(t => `<span>${txt(t)}</span>`);
+        const cap = it.p[5] || it.p[2] || '';
+        if (cap) parts.push(`<i>${txt(cap)}</i>`);
+        words.innerHTML = `<b>${it.y}</b>` + parts.join('');
         words.classList.add('on');
       }, old ? 1200 : 0);
       t0 = performance.now(); held = 0;
