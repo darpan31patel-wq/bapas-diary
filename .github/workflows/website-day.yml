@@ -4,7 +4,7 @@
 name: website-day
 on:
   push:
-    branches: ['claude/**']
+    branches: ['claude/project-thread-2nuqbl']   # its own mockups only, never on the website branch (baps.org fetches)
     paths: ['.github/workflows/website-day.yml', 'tools/web_day.py']
   workflow_dispatch:
 permissions:
