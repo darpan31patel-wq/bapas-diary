@@ -174,6 +174,22 @@ def other_guru(db):
             if not mine and (theirs or albums[al][1] > albums[al][0])}
 
 
+# Darpan, 26 Oct 2026 ("LEAVE THEM OUT, you know the rules"): Bapa pages show Bapa himself, never a murti, portrait or
+# photo of him. The website calls a murti of him "Pragat Brahmaswarup Pramukh Swami Maharaj" with nothing else, and
+# years whose faces haven't been looked at yet would otherwise keep it by its caption (2015 Sarangpur, 26 October).
+# A caption where Bapa himself does something to a murti or photo ("Swamishri performs pujan of ... murti") stays.
+LIKENESS = re.compile(r"^\s*Pragat Brahmaswarup\b[^,.]*$|^(?:The )?Murtis? (?:in|of) Swamishri'?s (?:morning )?puja|"
+                      r"\b(?:murti|portrait|statue|painting|image|photo)s? of (?:the )?(?:HH |Param Pujya |Pragat |Brahmaswarup )*"
+                      r"(?:Pramukh Swami|Mahant Swami|Swamishri|Bapa)|"
+                      r"(?:Swamishri|Bapa|Swami Maharaj)(?:'|’)s (?:murti|portrait|statue|painting|image|photo)", re.I)
+DOES = re.compile(r"^\s*(?:Swamishri|(?:HH |Param Pujya )?(?:Pramukh|Mahant) Swami(?: Maharaj)?) [a-z]")
+
+
+def likeness(c):
+    """A murti, portrait or photo of Bapa rather than Bapa himself."""
+    return bool(LIKENESS.search(c)) and not DOES.match(c)
+
+
 def pick(a):
     faces = load_faces(a.faces)
     scanned = {int(f[len(PREFIX):].split('-')[0]) for f in os.listdir(a.faces) if f.startswith(PREFIX)}
@@ -209,6 +225,8 @@ def pick(a):
             if R.JUNK.search(c) and not pinned:   # website link text, not a photo of the day
                 continue
             if (al, fi) in other and not pinned:
+                continue
+            if likeness(c) and not pinned:
                 continue
             if seen(al, fi):
                 sc, sd, nice, special, close_ok = judge(c, rec)
