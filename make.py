@@ -1918,8 +1918,10 @@ def ekadashi(c):
 
 
 def cal_title(day):
-    """The title is only ever the date (Darpan, 25 Oct 2026): the festival goes in the bottom line."""
-    return None
+    """The title is the date (Darpan, 25 Oct 2026), except on a birthday or anniversary, whose English date is fixed:
+    'Pramukh Swami Maharaj Jayanti, 7 December' (Darpan, 26 Oct 2026)."""
+    fixed = FIXED.get(f'{day:%m-%d}')
+    return f'{fixed}, {day.day} {day:%B}' if fixed else None
 
 
 def cal_parts(day):
@@ -1927,7 +1929,7 @@ def cal_parts(day):
     c = cal_day(day)
     if not c:
         return []
-    fs = [f for f in festivals(day) if 'Ekadashi' not in f or not ekadashi(c)]
+    fs = [f for f in festivals(day) if ('Ekadashi' not in f or not ekadashi(c)) and f != FIXED.get(str(day)[5:10])]   # a birthday is in the title
     ek = [f for f in festivals(day) if 'Ekadashi' in f][:1] or ([ekadashi(c)] if ekadashi(c) else [])
     return ek + fs + [tithi(c)] + ([] if ek or fs else [f'Vikram Samvat {c["vikram_samvat"]}'])
 
@@ -1938,13 +1940,42 @@ def cal_footer(day):
     return (', '.join(parts), '') if parts else None
 
 
+# The festivals a year's card may be tagged with (Darpan, 26 Oct 2026), and the caption words that show a photo is
+# really from it: a tag only goes on a photo from the festival, never on any photo that happens to share the date.
+TAGS = {'Diwali': BIG['Diwali'], 'Annakut': r'annakut', 'New Year': r'new year|bestu|nutan varsh',
+        'Janmashtami': BIG['Janmashtami'], 'Guru Purnima': BIG['Guru Purnima'], 'Swaminarayan Jayanti': BIG['Swaminarayan Jayanti'],
+        'Vasant Panchami': r'vasant|shikshapatri jayanti|shastriji maharaj.{0,20}(jayanti|birthday)',
+        'Holi': r'\bholi|fuldol|pushpadol|dhuleti|colou?rs?\b|\brang', 'Pushpadolotsav': r'pushpadol|fuldol|dhuleti|colou?rs?\b|\brang|\bholi'}
+
+
+def festival_of(x):
+    """The tagged festival this photo is from: its own date is that festival and its caption says so, else ''."""
+    d = str(x.get('d') or '')[:10]
+    if not re.fullmatch(r'\d{4}-\d\d-\d\d', d):
+        return ''
+    return next((f for f in festivals(d) if f in TAGS and re.search(TAGS[f], x.get('c') or '', re.I)), '')
+
+
+def prefer_festival(items, photos, seed, aspect, day):
+    """A year whose date was a tagged festival shows a photo from the festival when one of Bapa can be found."""
+    for k, x in enumerate(photos):
+        if festival_of(x):
+            continue
+        fest = [i for i in items if i['y'] == x['y'] and festival_of(i)]
+        if fest:
+            got = pick_one_per_year(fest, seed=seed, aspect=aspect, day=day)
+            if got:
+                photos[k] = got[0]
+                print(f'  {x["y"]}: the {festival_of(got[0])} photo instead ({caption(got[0])})')
+    return photos
+
+
 def tag_festivals(photos):
-    """Each card taken on one of the kept days carries it (the photo's own date, not the picture's)."""
+    """Each card whose photo is from a tagged festival carries it."""
     for x in photos:
-        d = str(x.get('d') or '')[:10]
-        fs = [f for f in festivals(d) if f != 'Eclipse'] if re.fullmatch(r'\d{4}-\d\d-\d\d', d) else []
-        if fs:
-            x['fest'] = fs[0]
+        f = festival_of(x)
+        if f:
+            x['fest'] = f
 
 
 def fest_tag(d, text, B, PW):
@@ -2142,6 +2173,10 @@ def main():
     photos = pick_one_per_year(items, seed=mmdd, aspect=FRAME_ASPECT.get(LIVE_STYLE, tall), day=day)
     if not photos:
         raise SystemExit('No photos could be downloaded for ' + mmdd)
+    try:
+        photos = prefer_festival(items, photos, mmdd, FRAME_ASPECT.get(LIVE_STYLE, tall), day)
+    except Exception as e:
+        print('  festival photos not checked:', e)
     remember(day, photos)
     full_size(photos)
     tag_festivals(photos)
