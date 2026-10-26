@@ -126,6 +126,10 @@
 
     fetch(DATA).then(r => r.json()).then(D => {
       const keys = Object.keys(D.m).sort();
+      // the FUTURE CALENDAR: the days after today, and where Bapa is going (FUTURE VICHARAN), as on the computer
+      const FUT = D.fut || null, V = D.v || {};
+      let TODAY = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+      if (FUT) { const t = new Date(FUT + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() - 1); TODAY = t.toISOString().slice(0, 10); }
       // where Bapa was each day: a day with no place takes the place of the days around it when both agree (as on the computer)
       const placeCache = {};
       const places = k => placeCache[k] || (placeCache[k] = (() => {
@@ -144,17 +148,19 @@
       bar.append(yrs, jrow, note);
       wrap.append(bar);
       const years = [...new Set(keys.map(k => k.slice(0, 4)))];
-      years.forEach(y => { const b = el('button', '', y); b.type = 'button'; b.dataset.y = y; b.onclick = () => { unpick(); go(keys.find(k => k.startsWith(y))); const m = jrow.querySelector(`.ph-ymark[data-y="${y}"]`); if (m) jrow.scrollTo({left: m.offsetLeft - 16, behavior: 'smooth'}); browsed = Date.now(); }; yrs.append(b); });
+      years.forEach(y => { const b = el('button', FUT && y > FUT.slice(0, 4) ? 'ph-fy' : '', y); b.type = 'button'; b.dataset.y = y; b.onclick = () => { unpick(); go(keys.find(k => k.startsWith(y))); const m = jrow.querySelector(`.ph-ymark[data-y="${y}"]`); if (m) jrow.scrollTo({left: m.offsetLeft - 16, behavior: 'smooth'}); browsed = Date.now(); }; yrs.append(b); });
       const MN = MONTHS.map(x => x.slice(0, 3)), pad2 = n => String(n).padStart(2, '0');
       const stays = [], monthStays = {};
-      { let lastP = null, cur = null, lastY = null, gap = 0;   // a stay carries on over up to 3 days with no place (as on the computer)
+      { let lastP = null, cur = null, lastY = null, gap = 0, futMark = false;   // a stay carries on over up to 3 days with no place (as on the computer)
         keys.forEach(k => { const y = k.slice(0, 4); places(k).forEach((p, i) => {
           if (!p) { if (++gap > 3) lastP = null; return; }
-          if (cur && p === lastP) { cur.k1 = k; cur.d1 = i + 1; gap = 0; }
+          const fut = !!FUT && `${k}-${pad2(i + 1)}` >= FUT;   // the coming stays start afresh after today
+          if (cur && p === lastP && cur.fut === fut) { cur.k1 = k; cur.d1 = i + 1; gap = 0; }
           else {
-            if (y !== lastY) { const m = el('span', 'ph-ymark', y); m.dataset.y = y; jrow.append(m); lastY = y; }
-            cur = {p, k0: k, d0: i + 1, k1: k, d1: i + 1, i: stays.length}; stays.push(cur); gap = 0;
-            cur.el = el('button', 'ph-stay'); cur.el.type = 'button'; cur.el.dataset.i = cur.i; jrow.append(cur.el);
+            if (fut && !futMark) { jrow.append(el('span', 'ph-fmark', 'Future vicharan')); futMark = true; lastY = y; }
+            else if (y !== lastY) { const m = el('span', 'ph-ymark', y); m.dataset.y = y; jrow.append(m); lastY = y; }
+            cur = {p, k0: k, d0: i + 1, k1: k, d1: i + 1, i: stays.length, fut}; stays.push(cur); gap = 0;
+            cur.el = el('button', 'ph-stay' + (fut ? ' future' : '')); cur.el.type = 'button'; cur.el.dataset.i = cur.i; jrow.append(cur.el);
           }
           lastP = p; (monthStays[k] = monthStays[k] || new Set()).add(cur.i);
         }); });
@@ -165,7 +171,7 @@
         x.from = `${x.k0}-${pad2(x.d0)}`; x.to = `${x.k1}-${pad2(x.d1)}`; x.y1 = y1;
         x.days = Math.round((new Date(x.to) - new Date(x.from)) / 864e5) + 1;
         x.el.innerHTML = `<b>${esc(x.p)}</b><small>${x.when}</small>`;
-        x.el.setAttribute('aria-label', `Bapa was in ${x.p}, ${x.when} ${y0}. Light up these days`);
+        x.el.setAttribute('aria-label', x.fut ? `Future vicharan: Bapa is going to ${x.p}, ${x.when} ${y0}. Light up these days` : `Bapa was in ${x.p}, ${x.when} ${y0}. Light up these days`);
       });
       let browsed = 0, pickI = null, curStays = new Set();
       ['touchstart', 'wheel', 'pointerdown'].forEach(ev => jrow.addEventListener(ev, () => browsed = Date.now(), {passive: true}));
@@ -182,7 +188,7 @@
         if (pickI != null) stays[pickI].el.classList.remove('on');
         pickI = i; x.el.classList.add('on'); centre(x.el);
         wrap.classList.add('ph-picking'); wrap.querySelectorAll('.ph-day').forEach(lit);
-        note.innerHTML = `<b>${esc(x.p)}</b> ${x.when} ${x.y1} · ${x.days} ${x.days === 1 ? 'day' : 'days'} <a href="${SR}#place=${encodeURIComponent(x.p)}&from=${x.from}&to=${x.to}">Photos</a><button type="button" aria-label="Clear">✕</button>`;
+        note.innerHTML = (x.fut ? '<i>Future vicharan</i> ' : '') + `<b>${esc(x.p)}</b> ${x.when} ${x.y1} · ${x.days} ${x.days === 1 ? 'day' : 'days'} ` + (x.fut ? '' : `<a href="${SR}#place=${encodeURIComponent(x.p)}&from=${x.from}&to=${x.to}">Photos</a>`) + `<button type="button" aria-label="Clear">✕</button>`;
         note.querySelector('button').onclick = unpick;
         go(x.k0, x.d0);
       }
@@ -201,7 +207,7 @@
         const s = el('section', 'ph-month');
         s.dataset.k = k;
         s._rows = rows;
-        s.innerHTML = `<div class="ph-mt"><b>${MONTHS[m - 1]}</b><span>${y}</span></div>`;
+        s.innerHTML = `<div class="ph-mt"><b>${MONTHS[m - 1]}</b><span>${y}</span>${FUT && k + '-01' >= FUT ? '<em class="ph-ftag">Future calendar</em>' : ''}</div>`;
         wrap.append(s);
         return s;
       });
@@ -218,29 +224,43 @@
         for (let i = 0; i < first; i++) g.append(el('span'));
         days.forEach((d, i) => {
           const day = i + 1, b = el('button', 'ph-day'); b.type = 'button';
+          const date = `${k}-${pad2(day)}`, fut = !!FUT && date >= FUT;
+          if (fut) b.classList.add('ph-future');
+          if (fut && V[date]) b.classList.add('ph-vev');
+          if (date === TODAY) b.classList.add('ph-today');
           const fest = [d[1], d[2]].filter(Boolean).join('; ').split('; ').filter(n => n && !/^(Fast|Sud|Vad) ?\w*$/.test(n));
           if (fest.length) b.classList.add('fest');
           b.setAttribute('aria-label', `${WDL[new Date(y, m - 1, day).getDay()]} ${day} ${MONTHS[m - 1]} ${y}${pl[i] ? ', ' + pl[i] : ''}${fest.length ? ', ' + fest.join(', ') : ''}`);
           b.setAttribute('aria-pressed', 'false');
-          if (d[4]) {
+          if (d[4] && !fut) {
             const im = new Image(); im.alt = ''; im.loading = 'lazy'; im.decoding = 'async';
             im.onerror = () => { im.remove(); b.querySelector('i') && b.querySelector('i').remove(); b.prepend(String(day)); };
             im.src = `${PH}s/${d[4]}/${encodeURIComponent(d[5])}`;
             b.append(im, el('i', '', day));
           } else b.textContent = day;
           b._date = `${k}-${pad2(day)}`; if (pickI != null) lit(b);
-          b.onclick = () => pick(s, b, k, day, d, pl[i], fest);
+          b.onclick = () => pick(s, b, k, day, d, pl[i], fest, fut);
           g.append(b);
         });
         s.append(g);
       }
-      function pick(s, b, k, day, d, place, fest) {
+      function pick(s, b, k, day, d, place, fest, fut) {
         if (sel) sel.setAttribute('aria-pressed', 'false');
         sel = b; b.setAttribute('aria-pressed', 'true');
         const [y, m] = k.split('-').map(Number), date = `${k}-${String(day).padStart(2, '0')}`;
         const im = b.querySelector('img');
         card.href = `${SR}#date=${date}`;
         card.setAttribute('aria-label', `Open the photos of ${day} ${MONTHS[m - 1]} ${y}`);
+        if (fut) {   // a FUTURE CALENDAR day: where Bapa is going and what is planned, nothing to open yet
+          card.removeAttribute('href'); card.classList.add('ph-fcard');
+          card.setAttribute('aria-label', `${day} ${MONTHS[m - 1]} ${y}, future calendar`);
+          card.innerHTML = `<span class="t"><span class="k">Future calendar · ${WDL[new Date(y, m - 1, day).getDay()]} ${day} ${MONTHS[m - 1]} ${y}</span>` +
+            `<span class="p">${place ? 'Future vicharan: ' + esc(place) : esc(d[0] || 'This day')}</span>` +
+            `<span class="c">${esc([V[date], place && d[0], fest.join(' · ')].filter(Boolean).join(' · ') || d[0] || '')}</span></span>`;
+          card.hidden = false; wrap.classList.add('has-card');
+          return;
+        }
+        card.classList.remove('ph-fcard');
         card.innerHTML = (im ? `<img alt="" src="${esc(im.src)}">` : '') +
           `<span class="t"><span class="k">${WDL[new Date(y, m - 1, day).getDay()]} ${day} ${MONTHS[m - 1]} ${y}</span>` +
           `<span class="p">${place ? 'Bapa was in ' + esc(place) : esc(d[0] || 'This day')}</span>` +
@@ -261,6 +281,7 @@
           curStays.forEach(i => stays[i].el.classList.remove('cur')); curStays = monthStays[curK] || new Set();
           curStays.forEach(i => stays[i].el.classList.add('cur'));
           if (pickI == null && Date.now() - browsed > 6000 && curStays.size) { const a = [...curStays]; centre(stays[a[Math.floor(a.length / 2)]].el); }
+          else if (pickI == null && Date.now() - browsed > 6000) { let j = -1; stays.forEach((x, i) => { if (x.k0 <= curK) j = i; }); if (j >= 0) centre(stays[j].el); }
         }
         if (y !== curY) {
           curY = y;

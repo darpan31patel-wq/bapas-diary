@@ -22,14 +22,62 @@ FONTS = {'G5': 'eb-garamond-latin-500-normal.woff2', 'G6': 'eb-garamond-latin-60
          'A7': 'arimo-latin-700-normal.woff2'}
 
 
-def months(today):
+def months(last):
     y, m = FIRST
-    while (y, m) <= (today.year, today.month):
+    while (y, m) <= (last.year, last.month):
         yield y, m
         y, m = (y, m + 1) if m < 12 else (y + 1, 1)
 
 
-def build(db, today, photo_years, vary=None):
+# ---------------------------------------------------------------- the future (Darpan, 26 Oct 2026)
+# "Carry the calendar on past today": the coming months show the BAPS calendar for each day, and where Bapa is going
+# (his upcoming vicharan), clearly marked FUTURE CALENDAR and FUTURE VICHARAN. The vicharan comes from the baps.org
+# schedule page his Chrome helper saves daily (crawl/schedule/latest.json on the database branch); nothing here
+# fetches baps.org. Only that page's text is used: its list of stays, then each place's days and what happens.
+FUTURE_MONTHS = 18          # at most this far ahead (the BAPS calendar table is usually filled to the end of next year)
+EVERY_DAY = re.compile(r'^(No Events|Puja Darshan|Evening Sabha|Morning Sabha|-+|Date & Day|Morning|Evening)$', re.I)
+DAY_LINE = re.compile(r'^(\d{1,2} [A-Z][a-z]{2} \d{4}), [A-Z][a-z]+day$')
+STAY_LINE = re.compile(r'^(\d{1,2} [A-Z][a-z]{2} \d{4}) to (\d{1,2} [A-Z][a-z]{2} \d{4})$')
+
+
+def _date(s):
+    return datetime.datetime.strptime(s, '%d %b %Y').date()
+
+
+def schedule(path, today):
+    """{date: [place, what happens]} for the days after today, from the saved vicharan schedule page."""
+    try:
+        lines = [x.strip() for x in json.load(open(path, encoding='utf-8'))['text'].splitlines() if x.strip()]
+    except Exception as e:
+        print(f'vicharan: no schedule ({e})')
+        return {}
+    out, events = {}, {}
+    for i, x in enumerate(lines):          # the stays: a place, then "20 Oct 2026 to 4 Nov 2026"
+        m = STAY_LINE.match(x)
+        if m and i:
+            d, b = _date(m[1]), _date(m[2])
+            while d <= b:
+                out[d.isoformat()] = [lines[i - 1], '']   # a later stay's first day wins (he arrives that day)
+                d += datetime.timedelta(1)
+    place, day = None, None
+    for i, x in enumerate(lines):          # each place's days: "Schedule of Swamishri's Vicharan", the place, the days
+        if x.startswith('Schedule of Swamishri') and i + 1 < len(lines):
+            place, day = lines[i + 1], None
+        elif x.startswith('\u00a9') or x.startswith('©'):
+            place, day = None, None
+        elif place and DAY_LINE.match(x):
+            day = _date(DAY_LINE.match(x)[1]).isoformat()
+        elif place and day and not EVERY_DAY.match(x) and not re.match(r'^(Morning|Evening)\s*:', x):
+            events.setdefault(day, {}).setdefault(place, []).append(x)
+    for d, by in events.items():
+        if d in out:
+            out[d][1] = ' · '.join(x for e in by.values() for x in e)   # a moving day: "Viday · Aagman"
+    out = {d: v for d, v in out.items() if d > today.isoformat()}
+    print(f'vicharan: {len(out)} days ahead, {sum(1 for v in out.values() if v[1])} with something happening')
+    return out
+
+
+def build(db, today, photo_years, vary=None, ahead=None):
     place, photo = {}, {}
     rows = db.execute("SELECT date, place, album, file, caption, is_bapa FROM photos WHERE date IS NOT NULL "
                       "ORDER BY date, is_bapa DESC, album, file")
@@ -61,18 +109,30 @@ def build(db, today, photo_years, vary=None):
     cal = {d: [i or '', f or '', n or ''] for d, i, f, n in
            db.execute("SELECT date, indian_date, festivals, notes FROM calendar")}
 
-    out = {}
-    for y, m in months(today):
+    # the future: every day the BAPS calendar has, up to FUTURE_MONTHS ahead; a day after today has no photo, and
+    # where Bapa is going (ahead) instead of where he was
+    last = today
+    if ahead is not None and cal:
+        cap = datetime.date(today.year + (today.month + FUTURE_MONTHS - 1) // 12, (today.month + FUTURE_MONTHS - 1) % 12 + 1, 1)
+        last = max(today, min(datetime.date.fromisoformat(max(cal)), cap - datetime.timedelta(1)))
+    out, vich = {}, {}
+    for y, m in months(last):
         days = []
         d = datetime.date(y, m, 1)
-        while d.month == m and d <= today:
+        while d.month == m and d <= last:
             k = d.isoformat()
-            pl = place.get(k) or (trip.get(k) or [''])[0]
-            ph = photo.get(k) or (trip.get(k) or [None, None])[1]
-            row = cal.get(k, ['', '', '']) + [pl]
-            if ph and y in photo_years:
-                row += ph
-            days.append(row)
+            if d > today:
+                pl, what = (ahead or {}).get(k, ['', ''])
+                days.append(cal.get(k, ['', '', '']) + [pl])
+                if what:
+                    vich[k] = what
+            else:
+                pl = place.get(k) or (trip.get(k) or [''])[0]
+                ph = photo.get(k) or (trip.get(k) or [None, None])[1]
+                row = cal.get(k, ['', '', '']) + [pl]
+                if ph and y in photo_years:
+                    row += ph
+                days.append(row)
             d += datetime.timedelta(1)
         if days:
             out[f'{y}-{m:02d}'] = days
@@ -81,7 +141,11 @@ def build(db, today, photo_years, vary=None):
     if today.year not in photo_years and photo_years:
         y = max(photo_years)
         start = f'{y}-{today.month:02d}' if f'{y}-{today.month:02d}' in out else start
-    return {'start': start, 'm': out}
+    data = {'start': start, 'm': out}
+    if last > today:
+        data['fut'] = (today + datetime.timedelta(1)).isoformat()   # the first day of the FUTURE CALENDAR
+        data['v'] = vich                                           # what happens on a FUTURE VICHARAN day
+    return data
 
 
 # ---------------------------------------------------------------- variety from day to day
@@ -220,6 +284,8 @@ def main():
     ap.add_argument('--pool', help='the Bapa only database to choose each day from, for variety (bapa.db)')
     ap.add_argument('--sigs', help='where to keep each photo\'s look between runs (json)')
     ap.add_argument('--faces', help='folder of face2-*.json.gz: where Bapa\'s face is in each photo')
+    ap.add_argument('--schedule', help='the saved baps.org vicharan schedule (crawl/schedule/latest.json); '
+                    'with it the calendar carries on into the coming months')
     ap.add_argument('--sig-dir', help='read photos from this folder (ALBUM/FILE) instead of --photos-url')
     a = ap.parse_args()
     today = datetime.date.fromisoformat(a.today) if a.today else datetime.date.today()
@@ -229,7 +295,8 @@ def main():
         years = set(range(FIRST[0], today.year + 1))
     page(a.site, a.photos_url, a.search_url)
     vary = Variety(sqlite3.connect(a.pool), a.sigs, a.photos_url, a.sig_dir, a.faces) if a.pool else None
-    data = build(sqlite3.connect(a.db), today, years, vary)
+    ahead = schedule(a.schedule, today) if a.schedule else None
+    data = build(sqlite3.connect(a.db), today, years, vary, ahead)
     os.makedirs(os.path.join(a.site, 'data'), exist_ok=True)
     with open(os.path.join(a.site, 'data', 'calendar.json'), 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, separators=(',', ':'))

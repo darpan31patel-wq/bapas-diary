@@ -1,7 +1,7 @@
 /* bapas-diary.com on phones (Darpan typed yes to the phone design, 24 Oct 2026).
    Website only: nothing here touches the daily 2pm picture. tools/web_phone.py adds this file and phone.js to every
    page at deploy time. Everything is inside one media query, so computers and tablets keep the pages exactly as they are.
-   On a phone: the shared menu becomes a tab bar at the bottom for the thumb (Today, Calendar, Search, Travels, Years),
+   On a phone: the shared menu becomes a tab bar at the bottom for the thumb (Today, Calendar, Search, Travels, Years, Then & now),
    About moves to a round "i" at the top right, buttons are at least 44px, and photos open full screen on black. */
 @media (max-width: 760px) {
   :root { --ph-bar: calc(62px + env(safe-area-inset-bottom, 0px)); }
@@ -34,6 +34,10 @@
   nav.site-menu a[href^="/search/"] { --ph-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='m15.5 15.5 5 5'/%3E%3C/svg%3E"); }
   nav.site-menu a[href="/travels/"] { --ph-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z'/%3E%3C/svg%3E"); }
   nav.site-menu a[href="/through-the-years/"] { --ph-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Crect x='4' y='3' width='16' height='18' rx='2.5'/%3E%3Ccircle cx='12' cy='10' r='3.2'/%3E%3Cpath d='M7 18c1-2.6 2.8-4 5-4s4 1.4 5 4'/%3E%3C/svg%3E"); }
+
+  /* Then and now, the 6th tab (Darpan, 26 Oct 2026: "yes then and now tab"): two frames side by side */
+  nav.site-menu a[href="/then-and-now/"] { font-size: 0; --ph-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Crect x='2.5' y='5' width='8' height='14' rx='1.8'/%3E%3Crect x='13.5' y='5' width='8' height='14' rx='1.8'/%3E%3Cpath d='M12 3v18' stroke-dasharray='1.5 2'/%3E%3C/svg%3E"); }
+  nav.site-menu a[href="/then-and-now/"]::after { content: "Then & now"; font-size: 11px; white-space: nowrap; }
 
   /* the top strip, in the 46px every page already keeps free for the old menu */
   .ph-top { position: absolute; z-index: 55; top: env(safe-area-inset-top, 0px); left: 0; right: 0; height: 46px; display: flex; align-items: center; justify-content: space-between;
@@ -144,6 +148,19 @@
   .ph-card .c { font: italic 400 15px/1.25 "EB Garamond", Garamond, serif; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .ph-card::after { content: "›"; position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font: 400 30px/1 "EB Garamond", serif; color: #d9a441; }
   .ph-card[hidden] { display: none; }
+  /* the FUTURE CALENDAR and FUTURE VICHARAN (Darpan, 26 Oct 2026: "make it obvious"): dashed gold days after today,
+     a gold dot on a day with something planned, a label on each future month and before the coming stays */
+  .ph-day.ph-future { background: rgba(255, 226, 150, .03); border: 1.5px dashed rgba(255, 226, 150, .5); color: #d9a441; font-weight: 500; }
+  .ph-day.ph-vev::before { content: ""; position: absolute; left: 50%; bottom: 5px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: #ffe296; }
+  .ph-day.ph-future.fest::after { background: none; box-shadow: 0 0 0 1.5px #ffe296; }
+  .ph-day.ph-today { outline: 2px solid #ffe296; outline-offset: 1px; }
+  .ph-ftag { align-self: center; font: 700 10px/1 Arimo, Arial, sans-serif; font-style: normal; letter-spacing: .16em; text-transform: uppercase; color: #3a0d17; background: linear-gradient(#ffe296, #ce9840); border-radius: 12px; padding: 5px 9px; }
+  .ph-fmark { flex: none; font: 700 11px/1 Arimo, Arial, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #3a0d17; background: linear-gradient(#ffe296, #ce9840); border-radius: 12px; padding: 6px 10px; margin-left: 10px; white-space: nowrap; }
+  .ph-stay.future { border-style: dashed; border-color: rgba(255, 226, 150, .7); }
+  .ph-years .ph-fy { font-style: italic; }
+  .ph-jnote i { font: 700 10px/1 Arimo, Arial, sans-serif; font-style: normal; letter-spacing: .14em; text-transform: uppercase; color: #ffe296; }
+  .ph-card.ph-fcard { border-style: dashed; }
+  .ph-card.ph-fcard::after { content: none; }
   .ph-cal-wrap.has-card { padding-bottom: 120px; }
 
   /* Travels and Through the years: their bottom controls sit above the tab bar */

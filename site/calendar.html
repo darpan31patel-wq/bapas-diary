@@ -93,6 +93,32 @@ footer{padding-block:4px 10px;padding-left:max(16px,env(safe-area-inset-left,0px
 .ribbon.picking .card.lit .win{border-radius:7px}
 @media (prefers-reduced-motion:no-preference){.ribbon.picking .card.lit{animation:glow 3.2s ease-in-out infinite alternate}}
 @keyframes glow{to{box-shadow:0 0 0 1px rgba(255,214,120,.55),0 0 18px 3px rgba(240,190,90,.5),0 0 46px 11px rgba(226,170,70,.36),0 0 90px 26px rgba(206,152,64,.22)}}
+/* the FUTURE CALENDAR (Darpan, 26 Oct: "make it obvious its FUTURE VICHARAN and FUTURE CALENDER"): the days after
+   today are the same cream squares as a day with no photo, in a dashed gold frame, with where Bapa is going;
+   the month title says Future calendar; in the bar, FUTURE VICHARAN before the coming stays, which are dashed too */
+.card.future{background:none;border:1.5px dashed rgba(255,226,150,.6);padding:3px;box-shadow:none;cursor:default}
+.card.future .win{background:radial-gradient(circle at 50% 40%,#fdf9f0,#efe4cc);opacity:.92;border-radius:2px}
+.card.future .bnum{color:#a0702c}
+.card.future .bind{color:#5a3a26}
+.vpl{font-family:var(--caps);font-weight:700;font-size:min(10cqh,9cqw);letter-spacing:.08em;text-transform:uppercase;color:var(--maroon);line-height:1.1}
+.vev{font-family:var(--serif);font-style:italic;font-weight:600;font-size:min(12cqh,10cqw);line-height:1.1;color:var(--maroon);background:rgba(206,152,64,.28);border-radius:.5em;padding:.1em .45em .15em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-wrap:balance}
+.card.future .fest{-webkit-line-clamp:2}
+/* a full day steps its words down until they all fit in the square */
+.card.blank .win>*{flex:none;max-width:100%}
+.card.blank.t1 .bnum{font-size:min(34cqh,32cqw)}
+.card.blank.t2 .bnum{font-size:min(26cqh,26cqw)}
+.card.blank.t2 .bind,.card.blank.t2 .vev{font-size:min(10.5cqh,9cqw)}
+.card.blank.t3 .fest,.card.blank.t3 .vev{-webkit-line-clamp:1}
+.card.today{box-shadow:0 0 0 2px var(--gold-hi),0 6px 16px rgba(0,0,0,.42)}
+.tday{position:absolute;right:3px;top:3px;z-index:1;font-family:var(--caps);font-weight:700;font-size:calc(clamp(7px,1.05vh,9px) * var(--z));letter-spacing:.14em;color:var(--maroon-deep);background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));border-radius:.6em;padding:.3em .55em}
+.ftag{font-style:normal;-webkit-text-fill-color:var(--maroon-deep);color:var(--maroon-deep);background:none;font-family:var(--caps);font-weight:700;font-size:clamp(9px,1.25vh,12px);letter-spacing:.2em;text-transform:uppercase;border:1.5px dashed var(--gold-hi);border-radius:20px;padding:.45em .9em .4em;margin-left:.9em;align-self:center;position:relative}
+.ftag:before{content:'';position:absolute;inset:0;border-radius:20px;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));opacity:.95;z-index:-1}
+.mtitle span{isolation:isolate}
+.fmark{flex:none;font-family:var(--caps);font-weight:700;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--maroon-deep);background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));border-radius:12px;padding:5px 11px;margin:0 10px 0 16px;box-shadow:0 0 14px rgba(255,214,120,.35)}
+.place.future{border-style:dashed;border-color:rgba(255,226,150,.75)}
+.place.future small{color:var(--gold-hi)}
+.place.future.sel small{color:var(--maroon)}
+.yr.fy{font-style:italic}
 .ctrl{display:flex;justify-content:center;align-items:center;gap:14px;margin-top:2px;flex-wrap:wrap}
 .zm{display:inline-flex;align-items:center;border:1px solid rgba(206,152,64,.5);border-radius:18px;overflow:hidden}
 .zm button{border:0;background:none;color:var(--gold-hi);font:600 20px/1 var(--serif);width:34px;height:30px;cursor:pointer}
@@ -147,7 +173,9 @@ const ord=n=>n+(n%10==1&&n!=11?'ST':n%10==2&&n!=12?'ND':n%10==3&&n!=13?'RD':'TH'
 /* zoom: smaller days so more months fit on the screen (Darpan, 24 Oct) */
 const ZOOMS=[1,.8,.65,.5], ZMIN=.4; let Z=1;
 try{const z=+localStorage.getItem('calendarZoom'); if(z>=ZMIN&&z<=1) Z=z}catch(e){}
-let D, keys=[], monthEls=[], shown=new Set(), MW=0, GAP=0, PAD=0;
+let D, keys=[], monthEls=[], shown=new Set(), MW=0, GAP=0, PAD=0, FUT=null;
+/* today on the calendar: the day before the FUTURE CALENDAR (else the visitor's own date) */
+let TODAY=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
 
 /* sizes: five rows of days fill the height; every month is the same width */
 function sizeCols(){
@@ -176,6 +204,16 @@ function blank(win,d,y,m,day){
   c.classList.add('blank');
 }
 
+/* a FUTURE CALENDAR day: the date, the Indian date, the festivals, and on the day he arrives somewhere, the place;
+   on a day with something planned there (a sabha, Bal Din), what it is */
+function future(win,d,day,date,place,arrive){
+  win.append(el('div','bnum',day));
+  if(d[0]) win.appendChild(el('div','bind',esc(d[0])));
+  const c=win.parentNode; if(c._all&&c._all.length) win.appendChild(el('div','fest',esc(c._all.join(' · '))));
+  if(arrive) win.appendChild(el('div','vpl',esc(arrive)));
+  const v=D.v&&D.v[date]; if(v) win.appendChild(el('div','vev',esc(v)));
+  c.classList.add('blank'); fitLater.push(win);
+}
 function render(mo){
   if(mo._done)return; mo._done=true; mo.innerHTML='';
   const k=mo.dataset.k, [y,m]=k.split('-').map(Number), days=D.m[k], pl=places(k), mn=MONTHS[m-1].slice(0,3);
@@ -187,26 +225,31 @@ function render(mo){
   days.forEach((d,i)=>{let p=first+i, wr=false; if(p>=35){p-=35;wr=true} grid[p]={d,day:i+1,wr,pl:pl[i]}});
   mo._cards=[];
   for(let r=0;r<5;r++) for(let c=0;c<7;c++){
-    const x=grid[r*7+c]; let b;
+    const x=grid[r*7+c]; let b;   // x.pl: where Bapa was (or is going)
     if(!x) b=el('div','empty');
     else{
-      const {d,day}=x, date=`${k}-${String(day).padStart(2,'0')}`;
-      b=el('a','card'); b.href=`${SEARCH}#date=${date}`; b.draggable=false;
-      b.setAttribute('aria-label',`${WDL[new Date(y,m-1,day).getDay()]} ${day} ${MONTHS[m-1]} ${y}${d[0]?', '+d[0]:''}. Open this day's photos`);
+      const {d,day}=x, date=`${k}-${String(day).padStart(2,'0')}`, fut=FUT&&date>=FUT;
+      if(fut){b=el('div','card future');b.tabIndex=0}
+      else{b=el('a','card'); b.href=`${SEARCH}#date=${date}`; b.draggable=false}
+      b.setAttribute('aria-label',`${WDL[new Date(y,m-1,day).getDay()]} ${day} ${MONTHS[m-1]} ${y}${d[0]?', '+d[0]:''}`+
+        (fut?`. Future calendar${x.pl?'. Future vicharan: '+x.pl:''}${D.v&&D.v[date]?', '+D.v[date]:''}`:`. Open this day's photos`));
       const win=el('div','win'); b.appendChild(win);
       /* no Indian date (Darpan, 26 Oct: too much text); a day's festival goes small in the white strip, and when a day
          has two, the birthday, anniversary or festival goes on the photo and the other in the strip */
       const f=[...new Set([d[1],d[2]].filter(Boolean).join('; ').split('; ').filter(n=>n&&!/^(Fast|Sud|Vad) ?\w*$/.test(n)))];
       let rest=f; b._on=null; b._all=f;
       if(f.length>1){const i=f.reduce((bi,n,j)=>rank(n)<rank(f[bi])?j:bi,0); b._on=f[i]; rest=f.filter((_,j)=>j!==i)}
-      if(d[4]){
+      if(fut){future(win,d,day,date,x.pl,(x.pl&&(date===FUT||x.pl!==(day>1?pl[day-2]:prevPl)))?x.pl:'')}
+      else if(d[4]){
         const im=new Image(); im.alt=d[6]||''; im.loading='lazy'; im.decoding='async'; im.draggable=false;
         im.onerror=()=>blank(win,d,y,m,day); im.src=`${PHOTOS}s/${d[4]}/${encodeURIComponent(d[5])}`;
         win.append(im,el('div','num',day));
         if(b._on) win.appendChild(el('div','fest',esc(b._on)));
       } else blank(win,d,y,m,day);
-      const st=el('div','strip'+(rest.length?' has':''),esc(rest.join(' · '))); b.appendChild(st);
-      if(rest.length) fitLater.push(st);
+      if(date===TODAY) b.appendChild(el('span','tday','Today'));
+      if(date===TODAY) b.classList.add('today');
+      const st=el('div','strip'+(rest.length&&!fut?' has':''),esc(rest.join(' · '))); b.appendChild(st);
+      if(rest.length&&!fut) fitLater.push(st);
       b.addEventListener('click',e=>{if(dragMoved)e.preventDefault()});
       b.addEventListener('mouseenter',()=>light(k,day));
       b.addEventListener('focus',()=>light(k,day));
@@ -221,7 +264,10 @@ function render(mo){
 let fitLater=[];
 function fitStrips(){
   const l=fitLater; fitLater=[];
-  for(const st of l){ if(!st.isConnected)continue; st.style.fontSize='';
+  for(const st of l){ if(!st.isConnected)continue;
+    if(st.classList.contains('win')){const c=st.parentNode; c.classList.remove('t1','t2','t3');
+      for(const t of ['t1','t2','t3']){if(st.scrollHeight<=st.clientHeight+1)break; c.classList.add(t)} continue}
+    st.style.fontSize='';
     st.classList.remove('two'); let fs=parseFloat(getComputedStyle(st).fontSize), min=fs*.78;
     while(st.scrollWidth>st.clientWidth+1&&fs>min){fs-=.25;st.style.fontSize=fs+'px'}
     if(st.scrollWidth>st.clientWidth+1) st.classList.add('two') }   // still too long: two lines at that size
@@ -229,25 +275,29 @@ function fitStrips(){
 /* which of a day's two goes on the photo: birthdays and anniversaries, then festivals, then the everyday ones */
 const EVERYDAY=/^(Ekadashi|Punam|Amas|Shraddh|Eclipse|Hindola|Dhanurmas|Holashtak|Republic Day|Independence Day)/;
 const rank=n=>/Jayanti|Smrutiparva|Diksha|Varni Din|Birthday/i.test(n)?0:EVERYDAY.test(n)?2:1;
+/* the squares' words are measured again once the fonts are in and after a zoom */
+function refit(){ribbon.querySelectorAll('.card.blank .win').forEach(w=>fitLater.push(w)); requestAnimationFrame(fitStrips)}
 function unrender(mo){if(!mo._done)return; mo._done=false; mo._cards=[]; mo.innerHTML=''}
 /* where Bapa was: every stay from 1999 to today in one row under the years; dayStay maps "YYYY-MM day" to its stay */
 const jrow=document.getElementById('jrow'), jscroll=document.getElementById('jscroll'), jnote=document.getElementById('jnote');
 let stays=[], dayStay={}, monthStays={}, hoverStay=null, browsed=0, sel=null;
 const pad2=n=>String(n).padStart(2,'0');
 function buildJourney(){
-  const MN=MONTHS.map(x=>x.slice(0,3)); let lastP=null, cur=null, lastY=null, gap=0;   // a stay carries on over up to 3 days with no place
+  const MN=MONTHS.map(x=>x.slice(0,3)); let lastP=null, cur=null, lastY=null, gap=0, futMark=null;   // a stay carries on over up to 3 days with no place
   const frag=document.createDocumentFragment();
   keys.forEach(k=>{
     const y=+k.slice(0,4);
     places(k).forEach((p,i)=>{
       const day=i+1;
       if(!p){if(++gap>3)lastP=null;return}
-      if(cur&&p===lastP){cur.k1=k;cur.d1=day;gap=0}
+      const fut=!!FUT&&`${k}-${pad2(day)}`>=FUT;   // the coming stays start afresh after today, marked FUTURE VICHARAN
+      if(cur&&p===lastP&&cur.fut===fut){cur.k1=k;cur.d1=day;gap=0}
       else{
-        if(y!==lastY){const ym=el('span','ymark',String(y)); ym.dataset.y=y; frag.appendChild(ym); lastY=y}
+        if(fut&&!futMark){futMark=el('span','fmark','Future vicharan'); frag.appendChild(futMark); lastY=y}
+        else if(y!==lastY){const ym=el('span','ymark',String(y)); ym.dataset.y=y; frag.appendChild(ym); lastY=y}
         else if(stays.length) frag.appendChild(el('span','hop'));
-        cur={p,k0:k,d0:day,k1:k,d1:day,i:stays.length}; stays.push(cur); gap=0;
-        cur.el=el('button','place'); cur.el.type='button'; cur.el.dataset.i=cur.i; frag.appendChild(cur.el);
+        cur={p,k0:k,d0:day,k1:k,d1:day,i:stays.length,fut}; stays.push(cur); gap=0;
+        cur.el=el('button','place'+(fut?' future':'')); cur.el.type='button'; cur.el.dataset.i=cur.i; frag.appendChild(cur.el);
       }
       lastP=p; dayStay[k+' '+day]=cur.i; (monthStays[k]=monthStays[k]||new Set()).add(cur.i);
     });
@@ -258,7 +308,7 @@ function buildJourney(){
     s.y=y0; s.from=`${s.k0}-${pad2(s.d0)}`; s.to=`${s.k1}-${pad2(s.d1)}`;
     s.days=Math.round((new Date(s.to)-new Date(s.from))/864e5)+1;
     s.el.innerHTML=`${esc(s.p)} <small>${s.when}</small>`;
-    s.el.setAttribute('aria-label',`Bapa was in ${s.p}, ${s.when} ${y0}. Light up these days`);
+    s.el.setAttribute('aria-label',s.fut?`Future vicharan: Bapa is going to ${s.p}, ${s.when} ${y0}. Light up these days`:`Bapa was in ${s.p}, ${s.when} ${y0}. Light up these days`);
   });
   jrow.appendChild(frag);
 }
@@ -272,6 +322,8 @@ function journeyMonth(k){
   curStays.forEach(i=>stays[i].el.classList.remove('cur')); curStays=monthStays[k]||new Set();
   curStays.forEach(i=>stays[i].el.classList.add('cur'));
   if(hoverStay==null&&sel==null&&curStays.size){const a=[...curStays]; centreJourney(a[Math.floor(a.length/2)])}
+  /* a month with no place (after the last planned stay): the row shows the last stay before it */
+  else if(hoverStay==null&&sel==null){let j=-1; stays.forEach((x,i)=>{if(x.k0<=k)j=i}); if(j>=0)centreJourney(j)}
 }
 function light(k,day){
   if(hoverStay!=null&&stays[hoverStay]) stays[hoverStay].el.classList.remove('on');
@@ -284,6 +336,7 @@ function markYear(y){yearsEl.querySelectorAll('.yr').forEach(b=>{const on=+b.dat
 function rowYear(){
   const mid=jscroll.scrollLeft+jscroll.clientWidth/2; let y=null;
   for(const m of jrow.querySelectorAll('.ymark')){if(m.offsetLeft<=mid)y=+m.dataset.y;else break}
+  if(cur&&!(monthStays[cur]&&monthStays[cur].size)&&Date.now()-browsed>6000) y=+cur.slice(0,4);   // a month with no place keeps its own year
   if(y!=null)markYear(y);
 }
 let rowTick=false;
@@ -319,8 +372,8 @@ function pick(i){
   const left=PAD+(i0*(MW+GAP)+i1*(MW+GAP)+MW)/2-W/2;
   track.scrollTo({left,behavior:reduce||Math.abs(left-track.scrollLeft)>W*3?'auto':'smooth'});
   centreJourney(i,true);
-  jnote.innerHTML=`<b>${esc(s.p)}</b><span>${s.when} ${+s.k1.slice(0,4)} · ${s.days} ${s.days===1?'day':'days'}</span>`+
-    `<a href="${SEARCH}#place=${encodeURIComponent(s.p)}&from=${s.from}&to=${s.to}" style="color:var(--gold-hi)">See these photos</a><button type="button" id="jclear">Clear</button>`;
+  jnote.innerHTML=(s.fut?'<span>Future vicharan</span>':'')+`<b>${esc(s.p)}</b><span>${s.when} ${+s.k1.slice(0,4)} · ${s.days} ${s.days===1?'day':'days'}</span>`+
+    (s.fut?'':`<a href="${SEARCH}#place=${encodeURIComponent(s.p)}&from=${s.from}&to=${s.to}" style="color:var(--gold-hi)">See these photos</a>`)+`<button type="button" id="jclear">Clear</button>`;
   document.getElementById('jclear').onclick=unpick;
 }
 function unpick(){
@@ -345,7 +398,8 @@ let cur=null, flip=0;
 const t=[document.getElementById('t0'),document.getElementById('t1')];
 function setMonth(k){
   if(k===cur)return; cur=k; const [y,m]=k.split('-').map(Number);
-  const nxt=t[1-flip], old=t[flip]; nxt.textContent=`${MONTHS[m-1]} ${y}`; nxt.classList.remove('out'); old.classList.add('out'); flip=1-flip;
+  const nxt=t[1-flip], old=t[flip]; nxt.textContent=`${MONTHS[m-1]} ${y}`;
+  if(FUT&&`${k}-01`>=FUT) nxt.appendChild(el('em','ftag','Future calendar')); nxt.classList.remove('out'); old.classList.add('out'); flip=1-flip;
   if(sel==null&&Date.now()-browsed>6000) markYear(y);
   journeyMonth(k);
   try{history.replaceState(null,'','#'+k)}catch(e){}
@@ -423,7 +477,7 @@ function setZoom(z,at,forPlace){
   if(!forPlace) try{localStorage.setItem('calendarZoom',z)}catch(e){}
   if(!D)return; sizeCols();
   if(u!=null) track.scrollLeft=PAD+u*(MW+GAP)-x;
-  kick();
+  kick(); refit();
 }
 zout.onclick=()=>setZoom(ZOOMS.find(s=>s<Z-.01)??ZMIN);
 zin.onclick=()=>setZoom([...ZOOMS].reverse().find(s=>s>Z+.01)??1);
@@ -449,12 +503,13 @@ track.addEventListener('touchend',e=>{if(e.touches.length<2)pz=null});
 setZoom(Z);
 
 fetch(DATA_URL).then(r=>r.json()).then(data=>{
-  D=data; keys=Object.keys(D.m).sort();
+  D=data; keys=Object.keys(D.m).sort(); FUT=D.fut||null;
+  if(FUT){const t=new Date(FUT+'T12:00:00Z');t.setUTCDate(t.getUTCDate()-1);TODAY=t.toISOString().slice(0,10)}
   ribbon.innerHTML='';
   keys.forEach(k=>{const mo=el('div','month');mo.dataset.k=k;ribbon.appendChild(mo);monthEls.push(mo)});
   const y0=+keys[0].slice(0,4), y1=+keys[keys.length-1].slice(0,4);
   for(let y=y0;y<=y1;y++){
-    const b=el('button','yr',String(y)); b.type='button'; b.dataset.y=y; b.title=`Go to ${y}`;
+    const b=el('button','yr'+(FUT&&y>+FUT.slice(0,4)?' fy':''),String(y)); b.type='button'; b.dataset.y=y; b.title=`Go to ${y}`;
     b.onclick=()=>{setPlay(false);unpick();browsed=0;const k=`${y}-${(cur||'-01').slice(5)}`;goTo(D.m[k]?k:keys.find(x=>x.startsWith(y))||keys[0],true);
       const m=jrow.querySelector(`.ymark[data-y="${y}"]`); markYear(y); if(m) jscroll.scrollTo({left:m.offsetLeft-12,behavior:reduce?'auto':'smooth'}); browsed=Date.now()};
     yearsEl.appendChild(b);
@@ -464,6 +519,6 @@ fetch(DATA_URL).then(r=>r.json()).then(data=>{
   const h=location.hash.slice(1);
   requestAnimationFrame(()=>{goTo(D.m[h]?h:D.start,false);kick()});
   addEventListener('resize',()=>{const k=cur;sizeCols();if(k)goTo(k,false);kick()});
-  document.fonts&&document.fonts.ready.then(()=>{if(cur)journeyMonth(cur)});
+  document.fonts&&document.fonts.ready.then(()=>{if(cur)journeyMonth(cur);refit()});
 }).catch(()=>{ribbon.innerHTML='<div class="loading">The calendar could not load. Please refresh the page.</div>'});
 </script>
