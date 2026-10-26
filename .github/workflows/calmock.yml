@@ -20,10 +20,10 @@ jobs:
           python-version: '3.12'
           cache: pip
       - run: pip install -q -r requirements.txt
-      - name: Make the daily picture for a few festival days (run 4)
+      - name: Make the daily picture for a few festival days (run 5)
         run: |
           mkdir -p preview/cal3
-          for d in 2026-10-24 2026-11-03 2026-11-13; do
+          for d in 2026-10-24 2026-11-13 2026-12-07; do
             python make.py --date "$d" --out "out/$d" | tee "preview/cal3/$d-log.txt"
             cp "out/$d/bapas-diary.jpg" "preview/cal3/$d.jpg"
             [ -e "out/$d/caption.txt" ] && cp "out/$d/caption.txt" "preview/cal3/$d-caption.txt" || true

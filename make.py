@@ -1918,8 +1918,10 @@ def ekadashi(c):
 
 
 def cal_title(day):
-    """The title is only ever the date (Darpan, 25 Oct 2026): the festival goes in the bottom line."""
-    return None
+    """The title is the date (Darpan, 25 Oct 2026), except on a birthday or anniversary, whose English date is fixed:
+    'Pramukh Swami Maharaj Jayanti, 7 December' (Darpan, 26 Oct 2026)."""
+    fixed = FIXED.get(f'{day:%m-%d}')
+    return f'{fixed}, {day.day} {day:%B}' if fixed else None
 
 
 def cal_parts(day):
@@ -1927,7 +1929,7 @@ def cal_parts(day):
     c = cal_day(day)
     if not c:
         return []
-    fs = [f for f in festivals(day) if 'Ekadashi' not in f or not ekadashi(c)]
+    fs = [f for f in festivals(day) if ('Ekadashi' not in f or not ekadashi(c)) and f != FIXED.get(str(day)[5:10])]   # a birthday is in the title
     ek = [f for f in festivals(day) if 'Ekadashi' in f][:1] or ([ekadashi(c)] if ekadashi(c) else [])
     return ek + fs + [tithi(c)] + ([] if ek or fs else [f'Vikram Samvat {c["vikram_samvat"]}'])
 
