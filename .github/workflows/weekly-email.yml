@@ -54,7 +54,10 @@ jobs:
           pip install -q pillow
           gh release download database -p bapas.db.gz && gunzip bapas.db.gz
           id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
-          { echo "AWS_ACCESS_KEY_ID=$id"; echo "AWS_SECRET_ACCESS_KEY=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1)"
+          key=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1)
+          echo "::add-mask::$id"; echo "::add-mask::$key"   # never show the R2 key in the log
+          echo "Years in R2 so far: $(curl -fs https://photos.bapas-diary.com/years.txt | tr '\n' ' ')"
+          { echo "AWS_ACCESS_KEY_ID=$id"; echo "AWS_SECRET_ACCESS_KEY=$key"
             echo "AWS_DEFAULT_REGION=auto"; echo "R2=https://$CF_ACCOUNT.r2.cloudflarestorage.com"; } >> "$GITHUB_ENV"
       - name: Make the email and send it
         env:

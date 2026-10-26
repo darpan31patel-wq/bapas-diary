@@ -29,6 +29,7 @@ SEGMENT = 'Weekly darshan'
 DAILY_SEGMENT = 'Daily darshan'   # the morning On this day reminder (Darpan, 26 Oct 2026)
 DAILY_HOUR = 7                    # 7 am UK time
 UK = ZoneInfo('Europe/London')
+UA = 'Mozilla/5.0 (bapas-diary.com weekly email)'
 PSM_LAST, MSM_FIRST = '2016-08-13', '2016-08-20'
 NAMES = ('Pramukh Swami Maharaj', 'Mahant Swami Maharaj')
 
@@ -70,7 +71,7 @@ def in_r2(album, file, cache={}):
     k = f'm/{album}/{file}'
     if k not in cache:
         try:
-            req = urllib.request.Request(PHOTOS + urllib.request.quote(k), method='HEAD')
+            req = urllib.request.Request(PHOTOS + urllib.request.quote(k), method='HEAD', headers={'User-Agent': UA})
             cache[k] = urllib.request.urlopen(req, timeout=20).status == 200
         except Exception:
             cache[k] = False
@@ -146,7 +147,8 @@ def week_data(db, sunday, length=7):
 def cut(album, file, out_path, width):
     """The R2 photo cut to 4:3, a little above the middle where Bapa's face usually is."""
     from PIL import Image, ImageOps
-    body = urllib.request.urlopen(PHOTOS + urllib.request.quote(f'm/{album}/{file}'), timeout=60).read()
+    req = urllib.request.Request(PHOTOS + urllib.request.quote(f'm/{album}/{file}'), headers={'User-Agent': UA})
+    body = urllib.request.urlopen(req, timeout=60).read()
     im = ImageOps.exif_transpose(Image.open(io.BytesIO(body))).convert('RGB')
     w, h = im.size
     tw, th = (w, round(w * 3 / 4)) if w * 3 / 4 <= h else (round(h * 4 / 3), h)
@@ -328,6 +330,9 @@ def main():
     if a.daily:
         subject = f"Today's darshan · {nice(first, '%A %-d %B')}"
     have = sum(1 for d in data['days'] if d['psm'] and d['msm'])
+    for d in data['days']:
+        print(f"  {d['date']}: Pramukh Swami Maharaj {d['psm'][0] if d['psm'] else 'no photo in R2 yet'}, "
+              f"Mahant Swami Maharaj {d['msm'][0] if d['msm'] else 'no photo in R2 yet'}", flush=True)
     print(f'{subject}: {have} of {len(data["days"])} days with both Bapas, {len(data["special"])} special', flush=True)
     if have < (1 if a.daily or a.test else 4):   # a test copy goes out with whatever R2 has so far
         sys.exit('Not enough photos of both Bapas in R2 for this yet, nothing sent.')
