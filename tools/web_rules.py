@@ -22,7 +22,7 @@ picture chain. Like web_bapa_rules.py, the parts of make.py used here are copies
 6, 7  A story is not told again when a card of that year already shows that day in that town (the UK and Europe diary
    included); its 2008 to 2016 years are already left out where the stories are read in (tools/satpurush.py).
 """
-import argparse, datetime, glob, gzip, io, json, os, re, sqlite3, sys
+import argparse, datetime, glob, gzip, hashlib, io, json, os, re, sqlite3, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import web_bapa_rules as R
@@ -32,6 +32,7 @@ CARD_CHARS = 40   # a Today card's caption fits two lines in about this many let
 NEAR_DAYS = 3     # make.py: a day up to 3 days away may fill a year that has no photos on the date
 TG_SAME_PERSON = .38   # make.py: the channel's photos are often old video stills of a younger Bapa
 TG_FROM = 1950    # make.py: channel darshans of Bapa from this year (earlier ones are of the gurus before him)
+EARLY = 'early'    # R2 folder of the darshan photos before 1999 (public name: never the source's)
 BAPS_FROM = 1999  # baps.org's own photos start here
 
 
@@ -191,13 +192,13 @@ def unframe(im):
 
 def tg(a):
     """5: every channel story before 1999 with a darshan card, its photos (copied from the Drive archive into --drive by
-    the workflow), Bapa's face checked. Writes --out/s/tg/KEY and m/tg/KEY for R2, and --out/tg-cards.json:
-    {"MM-DD": [[year, place, "tg", KEY, caption, [cx, cy, x, y, w, h, aspect, close], card caption], ...]}."""
+    the workflow), Bapa's face checked. Writes --out/s/early/KEY and m/early/KEY for R2, and --out/tg-cards.json:
+    {"MM-DD": [[year, place, "early", KEY, caption, [cx, cy, x, y, w, h, aspect, close], card caption], ...]}."""
     from PIL import Image, ImageOps
     db = sqlite3.connect(a.db)
     folder = {(ch, i): f for ch, i, f in db.execute('SELECT channel, id, local_folder FROM tg_posts')}
     cards, seen, tried = {}, 0, 0
-    for os_dir in ('s/tg', 'm/tg'):
+    for os_dir in ('s/' + EARLY, 'm/' + EARLY):
         os.makedirs(os.path.join(a.out, os_dir), exist_ok=True)
     for ch, date, place, posts, data, guru in db.execute(
             'SELECT channel, date, place, posts, data, guru FROM tg_events ORDER BY date'):
@@ -224,18 +225,20 @@ def tg(a):
                 face, sim, front, _, other = R.bapa_face(im, date)
                 if not face or sim < TG_SAME_PERSON:
                     continue
-                key = f'{ch}-{n}-{re.sub(r"[^0-9]", "", os.path.basename(path)) or 1}.jpg'
+                # a plain number for the public photo name: no channel or source name anywhere on the site
+                src = f'{ch}-{n}-{re.sub(r"[^0-9]", "", os.path.basename(path)) or 1}'
+                key = hashlib.sha1(src.encode()).hexdigest()[:12] + '.jpg'
                 for tier, size in (('m', 1200), ('s', 480)):
                     c = im.copy()
                     c.thumbnail((size, size * 2), Image.LANCZOS)
-                    c.save(os.path.join(a.out, tier, 'tg', key), 'JPEG', quality=86, optimize=True, progressive=True)
+                    c.save(os.path.join(a.out, tier, EARLY, key), 'JPEG', quality=86, optimize=True, progressive=True)
                 x, yy, w, h = face
                 W, H = im.size
                 sharp, bright = R.face_quality(im, face)
                 close = h >= R.CLOSE_MIN_FACE and front >= .35 and sharp >= R.SHARP_MIN and bright >= R.BRIGHT_MIN
                 cap = website_caption(own.get('card') or e['card'])
                 cards.setdefault(date[5:], []).append(
-                    [y, own.get('place') or e.get('place') or place or '', 'tg', key, cap,
+                    [y, own.get('place') or e.get('place') or place or '', EARLY, key, cap,
                      [round((x + w / 2) / W, 3), round((yy + h / 2) / H, 3), round(x / W, 4), round(yy / H, 4), round(w / W, 4),
                       round(h / H, 4), round(W / H, 4), int(close)], round(sim, 3), card_caption(cap)])
                 seen += 1

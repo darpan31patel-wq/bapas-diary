@@ -2,7 +2,7 @@
 # from baps.org. Darpan, 25 Oct 2026: bring the On this day picture's rules to the website ("want all of them apart
 # from 8"), tools/web_rules.py.
 #   tg      (only when the commit says [tg], or run by hand) the darshan cards before 1999: the two On this day channels' photos from the Drive archive ("Bapa's Archive"),
-#           only those where Bapa (Pramukh Swami Maharaj) is recognised, copied to R2 as s/tg/ and m/tg/, and the list of
+#           only those where Bapa (Pramukh Swami Maharaj) is recognised, copied to R2 as s/early/ and m/early/ (numbered names), and the list of
 #           them (tg-cards.json) kept in release website-rules for the website build
 #   mockup  the Today page and the share a day pictures of a few days, before and after, packed into release
 #           website-rules (mockup-rules.tgz) so Claude can show Darpan the real page before anything goes live
@@ -76,8 +76,8 @@ jobs:
       - name: Bapa's face in each, and the cards
         run: |
           python3 tools/web_rules.py tg --db bapas.db --drive tgsrc --out tg
-          aws s3 sync tg/s/tg "s3://$BUCKET/s/tg" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000, immutable" --content-type image/jpeg
-          aws s3 sync tg/m/tg "s3://$BUCKET/m/tg" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000, immutable" --content-type image/jpeg
+          aws s3 sync tg/s/early "s3://$BUCKET/s/early" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000, immutable" --content-type image/jpeg
+          aws s3 sync tg/m/early "s3://$BUCKET/m/early" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000, immutable" --content-type image/jpeg
           gh release upload website-rules tg/tg-cards.json --clobber
   mockup:
     needs: tg
