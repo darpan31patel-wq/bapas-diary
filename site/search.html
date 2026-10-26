@@ -172,6 +172,14 @@ body { background: linear-gradient(#efdcd2, #f3e5d8) fixed; }
 @media (max-width: 860px) { #c-try { grid-template-columns: repeat(4, auto); } #c-ask { grid-template-columns: repeat(2, auto); } }
 @media (max-width: 600px) { #c-try { grid-template-columns: repeat(3, minmax(0, auto)); gap: 7px 6px; } #c-try button { padding: 6px 10px; font-size: 12.5px; }
   #c-ask { grid-template-columns: 1fr; justify-items: center; } }
+/* Using the whole width on big screens (Darpan, 26 Oct 2026: "use the full space"): the words in one row, the questions wider */
+@media (min-width: 1300px) {
+  .can { width: calc(100vw - 64px); max-width: 2000px; position: relative; left: 50%; transform: translateX(-50%); }
+  #c-try { grid-template-columns: repeat(12, auto); gap: 10px; }
+  #c-ask { gap: 10px 12px; }
+  .can .lead { max-width: none; }
+}
+@media (min-width: 1900px) { #c-ask { grid-template-columns: repeat(6, auto); } }
 </style>
 
 <nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a class="on" href="/search/" aria-current="page">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/calendar/">Calendar</a><a href="/about/">About</a></nav>
