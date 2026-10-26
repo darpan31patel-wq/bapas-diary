@@ -29,7 +29,7 @@ import web_bapa_rules as R
 
 HERE = R.HERE
 CARD_CHARS = 40   # a Today card's caption fits two lines in about this many letters (cards are 150 to 200 px wide)
-NEAR_DAYS = 3     # make.py: a day up to 3 days away may fill a year that has no photos on the date
+NEAR_DAYS = 7     # a day up to 7 days away may fill a year that has no photos on the date (make.py: 3; Darpan, 26 Oct 2026: "yes nearest day")
 TG_SAME_PERSON = .38   # make.py: the channel's photos are often old video stills of a younger Bapa
 TG_FROM = 1950    # make.py: channel darshans of Bapa from this year (earlier ones are of the gurus before him)
 EARLY = 'early'    # R2 folder of the darshan photos before 1999 (public name: never the source's)
@@ -204,7 +204,9 @@ def tg(a):
             'SELECT channel, date, place, posts, data, guru FROM tg_events ORDER BY date'):
         e = json.loads(data)
         y = int(date[:4])
-        if guru or not e.get('card') or not TG_FROM <= y < BAPS_FROM:
+        # every year, not only before 1999: the 2pm picture also takes the channel's photo of the very day when baps.org
+        # has none that day (Darpan, 26 Oct 2026: 26 October 2006 showed in the picture but not on the website)
+        if guru or not e.get('card') or y < TG_FROM:
             continue
         sat = ch == 'satpurush'
         for n in json.loads(posts or '[]'):
@@ -244,7 +246,7 @@ def tg(a):
                 seen += 1
     with open(os.path.join(a.out, 'tg-cards.json'), 'w', encoding='utf-8') as fh:
         json.dump(cards, fh, ensure_ascii=False, separators=(',', ':'))
-    print(f'{seen} of {tried} channel photos before {BAPS_FROM} show Bapa, on {len(cards)} days')
+    print(f'{seen} of {tried} channel photos show Bapa, on {len(cards)} days')
 
 
 # ---------------------------------------------------------------- 3 4 5 6 7 the Today page's data
@@ -291,7 +293,7 @@ def day(a):
             if Y['p'] and Y.get('t'):   # 4: the date has photos of its own, so nothing is borrowed from other days
                 stats['trip_dropped'] += 1
                 Y.pop('t'); Y.pop('trip', None)
-        # 4: a year with no photos on the date or its trip: the nearest day up to 3 days away
+        # 4: a year with no photos on the date or its trip: the nearest day up to NEAR_DAYS away
         have = set(years)
         for k in range(1, NEAR_DAYS + 1):
             for s in (-1, 1):
@@ -302,15 +304,24 @@ def day(a):
                         continue
                     rows = dated.get((y, d.isoformat()))
                     if rows:
+                        # each day that borrows from this day takes its own share, so no photo shows on two days
+                        i = s * k + NEAR_DAYS - (s > 0)   # 0 to 2 * NEAR_DAYS - 1
                         rows = sorted(rows, key=rank)
+                        n = 2 * NEAR_DAYS
+                        rows = rows[i * len(rows) // n:(i + 1) * len(rows) // n] or rows[i % len(rows):i % len(rows) + 1]
                         years[y] = {'y': y, 'place': (rows[0][4] or '').split(',')[0].strip(), 'p': [],
                                     'trip': [d.isoformat(), d.isoformat()], 't': [r[:4] for r in rows]}
                         have.add(y)
                         stats['near_added'] += 1
-        # 5: before 1999, the channels' darshan of Bapa on this very day
+        # 5: the channels' darshan of Bapa on this very day (every year since 26 Oct 2026, as the 2pm picture)
         for y, place, al, key, cap, box, sim, short in tgc.get(mmdd, []):
             if y in years and not years[y].get('tg'):   # baps.org has this year already
-                continue
+                B = years[y]
+                # make.py: baps.org's own photos of the very day stay; when it only has a nearby day or a trip, the
+                # channel's photo of the very day wins, but only when both put Bapa in the same town
+                if B['p'] or town(B['place']) != town(place):
+                    continue
+                B.pop('t', None); B.pop('trip', None); B['tg'] = 1
             if y not in years:
                 stats['tg_years'] += 1
             Y = years.setdefault(y, {'y': y, 'place': (place or '').split(',')[0].strip(), 'p': [], 'tg': 1})

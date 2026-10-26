@@ -55,14 +55,14 @@ jobs:
           echo "::add-mask::$id"; echo "::add-mask::$key"   # keep both out of the run logs
           { echo "AWS_ACCESS_KEY_ID=$id"; echo "AWS_SECRET_ACCESS_KEY=$key"
             echo "AWS_DEFAULT_REGION=auto"; echo "R2=https://$CF_ACCOUNT.r2.cloudflarestorage.com"; } >> "$GITHUB_ENV"
-      - name: The channels' photos before 1999, from the Drive archive
+      - name: The channels' photos (every year), from the Drive archive
         run: |
           python3 - > want.txt <<'EOF'
           import json, sqlite3
           db = sqlite3.connect('bapas.db')
           post = {(c, i): (f, n) for c, i, f, n in db.execute('SELECT channel, id, local_folder, photos FROM tg_posts')}
           for ch, date, posts, data, guru in db.execute('SELECT channel, date, posts, data, guru FROM tg_events'):
-              if not guru and json.loads(data).get('card') and 1950 <= int(date[:4]) < 1999:
+              if not guru and json.loads(data).get('card') and 1950 <= int(date[:4]):
                   for n in json.loads(posts or '[]'):
                       f, k = post.get((ch, n), (None, 0))
                       for i in range(1, (k or 0) + 1):
