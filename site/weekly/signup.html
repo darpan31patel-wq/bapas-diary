@@ -48,7 +48,7 @@
       var btn = form.querySelector('button'), email = form.email.value.trim();
       btn.disabled = true; err.textContent = '';
       fetch('/api/weekly', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email, website: form.website.value }) })
+        body: JSON.stringify({ email: email, lists: ['weekly'], website: form.website.value }) })
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (res) {
           if (!res.ok) throw new Error(res.j.error || 'Sorry, something went wrong. Please try again.');

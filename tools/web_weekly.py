@@ -26,6 +26,8 @@ PHOTOS = 'https://photos.bapas-diary.com/'
 SITE = 'https://bapas-diary.com/'
 FROM = "Bapa's Diary <hello@bapas-diary.com>"
 SEGMENT = 'Weekly darshan'
+DAILY_SEGMENT = 'Daily darshan'   # the morning On this day reminder (Darpan, 26 Oct 2026)
+DAILY_HOUR = 7                    # 7 am UK time
 UK = ZoneInfo('Europe/London')
 PSM_LAST, MSM_FIRST = '2016-08-13', '2016-08-20'
 NAMES = ('Pramukh Swami Maharaj', 'Mahant Swami Maharaj')
@@ -109,10 +111,10 @@ def guru_rows(db, where, args):
     return db.execute(f"SELECT date, place, album, file, caption FROM photos WHERE is_bapa = 1 AND date IS NOT NULL AND {where}", args).fetchall()
 
 
-def week_data(db, sunday):
+def week_data(db, sunday, length=7):
     used, shown_p, shown_m = set(), set(), set()
     days = []
-    for i in range(7):
+    for i in range(length):
         d = sunday + datetime.timedelta(days=i)
         md = f'{d:%m-%d}'
         seed = f'{d.isoformat()}'
@@ -185,6 +187,9 @@ def render(data, img):
     days = data['days']
     first, last = days[0]['date'], days[-1]['date']
     span = f"{nice(first, '%A %-d')} to {nice(last, '%A %-d %B')}" if first[5:7] == last[5:7] else f"{nice(first)} to {nice(last)}"
+    daily = len(days) == 1   # the morning reminder: just today's pair
+    if daily:
+        span = nice(first)
 
     def cal_line(d):
         bits = [esc(d['indian'])] if d['indian'] else []
@@ -203,7 +208,7 @@ def render(data, img):
     today = days[0]
     if today['psm'] and today['msm']:
         parts.append(f'''<tr><td style="padding:0 17px 22px;border-bottom:1px solid {C["line"]}">
-<div style="font:700 11px {SANS};letter-spacing:2px;text-transform:uppercase;color:{C["maroon"]};padding:0 5px">Today · {nice(today["date"])}</div>
+{'' if daily else f'<div style="font:700 11px {SANS};letter-spacing:2px;text-transform:uppercase;color:{C["maroon"]};padding:0 5px">Today · {nice(today["date"])}</div>'}
 <div style="padding:0 5px">{cal_line(today)}</div>{pair(today, True)}
 <div style="text-align:center;padding-top:16px"><a href="{SITE}day/{today["date"][5:]}/" style="display:inline-block;font:700 13px {SANS};color:#3d0e19;background:{C["gold"]};padding:11px 20px;border-radius:999px;text-decoration:none">Open {nice(today["date"], "%-d %B")} in Bapa's Diary</a></div></td></tr>''')
 
@@ -229,18 +234,22 @@ def render(data, img):
 <div style="padding:0 5px">{cal_line(d)}</div>{pair(d, False)}</td></tr>''')
 
     pre = f"This week's darshan of Pramukh Swami Maharaj and Mahant Swami Maharaj, {span}."
+    title, hello = "This week's darshan", 'Here is this week in years gone by, with one darshan of Pramukh Swami Maharaj and one of Mahant Swami Maharaj for every day.'
+    if daily:
+        pre = f"Today's darshan of Pramukh Swami Maharaj and Mahant Swami Maharaj, {span}."
+        title, hello = "Today's darshan", 'Here is today in years gone by, with Pramukh Swami Maharaj and Mahant Swami Maharaj.'
     return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
-<meta name="color-scheme" content="light"><title>This week's darshan</title></head>
+<meta name="color-scheme" content="light"><title>{title}</title></head>
 <body style="margin:0;padding:0;background:{C["cream"]}">
 <div style="display:none;max-height:0;overflow:hidden">{pre}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{C["cream"]}"><tr><td align="center" style="padding:22px 8px 30px">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:{C["paper"]}">
 <tr><td align="center" style="background:{C["maroon"]};padding:26px 20px 22px">
 <div style="font:700 11px {SANS};letter-spacing:4px;text-transform:uppercase;color:{C["gold"]}">Bapa's Diary</div>
-<div style="font:600 32px/1.1 {SERIF};color:{C["pale"]};padding:8px 0 6px">This week's darshan</div>
+<div style="font:600 32px/1.1 {SERIF};color:{C["pale"]};padding:8px 0 6px">{title}</div>
 <div style="font:italic 17px {SERIF};color:#f3e4c6">{span}</div></td></tr>
 <tr><td style="padding:22px 22px 18px;font:18px/1.45 {SERIF};color:{C["ink"]}"><b style="color:{C["maroon"]};font-weight:600">Jay Swaminarayan 🙏🏽</b><br>
-Here is this week in years gone by, with one darshan of Pramukh Swami Maharaj and one of Mahant Swami Maharaj for every day.</td></tr>
+{hello}</td></tr>
 {"".join(parts)}
 <tr><td align="center" style="padding:20px 22px 26px;font:12px/1.6 {SANS};color:{C["muted"]}">
 <div style="font:italic 600 20px {SERIF};color:{C["maroon"]};padding-bottom:6px">Jay Swaminarayan</div>
@@ -258,15 +267,15 @@ def resend(path, body=None, method='POST'):
         return json.loads(r.read() or b'{}')
 
 
-def segment_id():
+def segment_id(name=SEGMENT):
     for s in resend('/segments', method='GET').get('data', []):
-        if s.get('name') == SEGMENT:
+        if s.get('name') == name:
             return s['id']
-    return resend('/segments', {'name': SEGMENT})['id']
+    return resend('/segments', {'name': name})['id']
 
 
-def ten_am(sunday):
-    return datetime.datetime.combine(sunday, datetime.time(10), UK).astimezone(datetime.timezone.utc)
+def uk_time(day, hour):
+    return datetime.datetime.combine(day, datetime.time(hour), UK).astimezone(datetime.timezone.utc)
 
 
 def main():
@@ -274,6 +283,7 @@ def main():
     ap.add_argument('--db', default='bapas.db')
     ap.add_argument('--out', default='weekly')
     ap.add_argument('--week', help='the Sunday that starts the week (default: this coming Sunday, or today on a Sunday)')
+    ap.add_argument('--daily', nargs='?', const='today', help="the morning reminder: just today's pair (or this date's)")
     ap.add_argument('--test', help='send only to this address')
     ap.add_argument('--broadcast', action='store_true', help='send to everyone signed up, at 10 am UK time')
     ap.add_argument('--upload', help='command that sends --out/e/ to R2, run before anything is sent')
@@ -282,7 +292,11 @@ def main():
 
     today = datetime.datetime.now(UK).date()
     sunday = datetime.date.fromisoformat(a.week) if a.week else today + datetime.timedelta(days=(6 - today.weekday()) % 7)
-    data = week_data(sqlite3.connect(a.db), sunday)
+    if a.daily:
+        sunday = today if a.daily == 'today' else datetime.date.fromisoformat(a.daily)
+    data = week_data(sqlite3.connect(a.db), sunday, 1 if a.daily else 7)
+    if a.daily:
+        data['special'] = []
     week = sunday.isoformat()
 
     img = {}
@@ -304,16 +318,19 @@ def main():
 
     html = render(data, img)
     os.makedirs(a.out, exist_ok=True)
-    open(os.path.join(a.out, 'email.html'), 'w', encoding='utf-8').write(html)
-    json.dump(data, open(os.path.join(a.out, 'week.json'), 'w'), indent=1, ensure_ascii=False)
+    stem = 'daily' if a.daily else 'email'
+    open(os.path.join(a.out, stem + '.html'), 'w', encoding='utf-8').write(html)
+    json.dump(data, open(os.path.join(a.out, stem + '.json'), 'w'), indent=1, ensure_ascii=False)
     first, last = data['days'][0]['date'], data['days'][-1]['date']
     subject = f"This week's darshan · {nice(first, '%-d %B')} to {nice(last, '%-d %B')}"
     if first[5:7] == last[5:7]:
         subject = f"This week's darshan · {nice(first, '%-d')} to {nice(last, '%-d %B')}"
+    if a.daily:
+        subject = f"Today's darshan · {nice(first, '%A %-d %B')}"
     have = sum(1 for d in data['days'] if d['psm'] and d['msm'])
-    print(f'{subject}: {have} of 7 days with both Bapas, {len(data["special"])} special', flush=True)
-    if have < 4:
-        sys.exit('Not enough photos of both Bapas in R2 for this week yet, nothing sent.')
+    print(f'{subject}: {have} of {len(data["days"])} days with both Bapas, {len(data["special"])} special', flush=True)
+    if have < (1 if a.daily else 4):
+        sys.exit('Not enough photos of both Bapas in R2 for this yet, nothing sent.')
 
     if a.upload and not a.no_photos:
         import subprocess
@@ -323,12 +340,12 @@ def main():
                                'html': html.replace('{{{RESEND_UNSUBSCRIBE_URL}}}', SITE)})
         print('Test email sent to', a.test, r.get('id'))
     if a.broadcast:
-        name = 'Weekly darshan ' + week
+        name = (DAILY_SEGMENT if a.daily else SEGMENT) + ' ' + week
         if any(b.get('name') == name for b in resend('/broadcasts', method='GET').get('data', [])):
-            print('This week\'s email is already on its way, nothing more to do.')
+            print('This email is already on its way, nothing more to do.')
             return
-        when = max(ten_am(sunday), datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=2))
-        r = resend('/broadcasts', {'segment_id': segment_id(), 'from': FROM, 'reply_to': 'hello@bapas-diary.com',
+        when = max(uk_time(sunday, DAILY_HOUR if a.daily else 10), datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=2))
+        r = resend('/broadcasts', {'segment_id': segment_id(DAILY_SEGMENT if a.daily else SEGMENT), 'from': FROM, 'reply_to': 'hello@bapas-diary.com',
                                    'subject': subject, 'html': html, 'name': name, 'send': True,
                                    'scheduled_at': when.isoformat().replace('+00:00', 'Z')})
         print('Sent to everyone signed up, arriving', when.astimezone(UK).strftime('%A %-d %B %H:%M UK'), r.get('id'))
