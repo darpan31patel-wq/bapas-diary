@@ -23,6 +23,8 @@ PAGES = {
                  'A smruti of every journey. Follow Bapa across the world, year by year.'),
     'through-the-years/': ("Bapa Through the Years · Bapa's Diary",
                            "A smruti of every month. See Bapa's smile through the years."),
+    'travels/places/': ("Bapa's Places · Bapa's Diary",
+                        'A smruti of every place. See every place Bapa visited, on the globe.'),
     'about/': ("About Bapa's Diary",
                'Why Bapa\'s Diary was made, with love and thanks to BAPS.'),
 }
@@ -82,7 +84,7 @@ def main():
         if 'index.html' in files:
             rel = os.path.relpath(root, a.out).replace(os.sep, '/')
             path = '' if rel == '.' else rel + '/'
-            if path.count('/') <= 1:   # top pages only, not photo folders inside them
+            if path.count('/') <= 1 or path in PAGES:   # top pages (and Places), not photo folders inside them
                 print(path or '/', 'tagged' if fix(os.path.join(root, 'index.html'), path) else 'already has a preview')
     json.dump({
         'name': NAME, 'short_name': NAME, 'start_url': '/', 'scope': '/', 'display': 'standalone',

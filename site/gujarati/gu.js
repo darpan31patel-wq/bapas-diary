@@ -71,6 +71,7 @@
     [/^(\d+) darshans?, kept on this phone or computer\.$/, m => `${m[1]} દર્શન, આ ફોન કે કમ્પ્યુટરમાં સચવાયાં.`],
     [/^Every vicharan photo on baps\.org from (\d+) to (\d+) \(([\d,]+) photos\), ([\d,]+) On this day stories and the BAPS calendar for ([\d,]+) days, all mixed together by date\.$/,
       m => `baps.org પરના ${m[1]} થી ${m[2]} સુધીના વિચરણના બધા ફોટા (${m[3]} ફોટા), આ દિવસના ${m[4]} પ્રસંગો અને ${m[5]} દિવસનું બી.એ.પી.એસ. કેલેન્ડર, બધું તારીખ પ્રમાણે સાથે.`],
+    [/^Every vicharan photo on baps\.org from (\d+) to (\d+)$/, m => `baps.org પરના ${m[1]} થી ${m[2]} સુધીના વિચરણના બધા ફોટા`],   // Search intro (25 Oct, calmer look)
     [/^(Every vicharan photo .+ all mixed together by date\.) Search for words, or pick a year, month, day or range of dates\.$/,
       m => tr(m[1]) !== m[1] && `${tr(m[1])} શબ્દો શોધો, કે વર્ષ, મહિનો, દિવસ કે તારીખો પસંદ કરો.`],
     [/^(.+) \((.+)\)$/, m => N(m[1]) && N(m[2]) && `${N(m[1])} (${N(m[2])})`],
