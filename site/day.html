@@ -223,7 +223,17 @@ function shift(m, n) {
   return pad(d.getMonth() + 1) + '-' + pad(d.getDate());
 }
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
-const festOf = c => c ? (c[1] || '').split(/;\s*/)[0] : '';
+// Today only tags these 12 festivals, matched across the calendar's spellings (Darpan, 26 Oct 2026: "just these 12")
+const KEEP = [['Diwali', /^diwali\b/i], ['Annakut', /annakut/i], ['New Year', /bestu|nutan varsh|^new year$/i],
+  ['Janmashtami', /janmashtami/i], ['Guru Purnima', /guru purnima/i], ['Swaminarayan Jayanti', /hari-?nom|swaminarayan jayanti|swaminarayan's birthday/i],
+  ['Vasant Panchami', /vasant panch/i], ['Holi', /^holi\b/i], ['Rathyatra', /rath ?yatra/i], ['Raksha Bandhan', /raksha ?bandhan/i],
+  ['Ekadashi', /^(?!.*(smart|shra?d?dh|vruddhi|sabha)).*ek[aãp]dashi/i], ['Pushpadolotsav', /pushpadol|fuldol/i]];
+const festsOf = c => {
+  if (!c) return [];
+  const parts = [c[1], c[2]].filter(Boolean).join(';').split(/[;,\/]/).map(x => x.trim()).filter(Boolean);
+  return KEEP.filter(([, re]) => parts.some(x => re.test(x))).map(([name]) => name);
+};
+const festOf = c => festsOf(c).join(' · ');
 const tithiOf = c => c ? c[0] : '';
 
 let DAY = null, cards = [], everyPhoto = [], timers = [], paused = false, showing = null;
@@ -472,7 +482,7 @@ document.fonts && document.fonts.ready.then(cords);
 function group(y, Y, where, cal, stories) {
   if (!Y) return;
   const g = document.createElement('section'); g.className = 'yeargroup'; g.id = 'y' + y;
-  const fest = [cal && cal[1], cal && cal[2]].filter(Boolean).join('; ');
+  const fest = festOf(cal);
   g.innerHTML = `<div class="yhead"><h3>${y}</h3><span class="caps">${esc(where || '')}</span>` +
     (cal ? `<span class="it">${esc(cal[0])}</span>` : '') + (fest ? `<span class="fest">${esc(fest)}</span>` : '') +
     `<a href="${esc(SRC.search(y + '-' + DAY.date))}" target="_blank" rel="noopener">Search this day</a></div>` +
