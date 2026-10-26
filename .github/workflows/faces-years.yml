@@ -89,5 +89,5 @@ jobs:
         run: |
           gh release view faces-mockup >/dev/null 2>&1 || \
             gh release create faces-mockup --prerelease --title "Bapa Through The Years" --notes "Website only: the lined up close ups. Not used by the daily picture."
-          mv faces.tgz "faces$T.tgz"; mv faces-site.tgz "faces-site$T.tgz"
+          if [ -n "$T" ]; then mv faces.tgz "faces$T.tgz"; mv faces-site.tgz "faces-site$T.tgz"; fi
           gh release upload faces-mockup "faces$T.tgz" "faces-site$T.tgz" --clobber
