@@ -143,7 +143,7 @@ BIG_KEEP = {
     'bus': [('bus', -3.2)],
     'train': [('train', -3.3)],
     'boat': [('boat', -5.7), ('ship', -7.2)],
-    'football': [('football', -7.3), ('football match', -6.6)],
+    'football': [('football', -7.3), ('football match', -6.0)],
     'bicycle': [('bicycle', -7.0)],
     'motorbike': [('motorbike', -5.5)],
     'golf cart': [('golf cart', -3.2)],
