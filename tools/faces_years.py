@@ -34,12 +34,16 @@ MIN_GAP = 9                # pixels between the eyes (span) in the photo: anythi
 # shows his face about 100 to 200 px across, so a face must already be close in the photo, sharp and light, and must be
 # Bapa himself: never a murti, portrait, painting or framed photo of him (the Bapa pages' rule).
 MIN_SPAN = 45              # face size (span) in the R2 m/ copy, which is at most 1200 px
-SHARP_MIN, BRIGHT_MIN = 40, 60
+FRONT_MIN = .45           # a side profile or the back of his head can't line its eyes up with the others
+SHARP_MIN, BRIGHT_MIN = 80, 60   # sharpness as score() measures it: below 80 a face looks soft at the page's size
 LIKENESS = re.compile(r"^\s*Pragat Brahmaswarup\b[^,.]*$|^(?:The )?Murtis? (?:in|of) Swamishri'?s (?:morning )?puja|"
                       r"\b(?:murti|portrait|statue|painting|image|photo)s? of (?:the )?(?:HH |Param Pujya |Pragat |Brahmaswarup )*"
                       r"(?:Pramukh Swami|Mahant Swami|Swamishri|Bapa)|"
                       r"(?:Swamishri|Bapa|Swami Maharaj)(?:'|’)s (?:murti|portrait|statue|painting|image|photo)", re.I)
 DOES = re.compile(r"^\s*(?:Swamishri|(?:HH |Param Pujya )?(?:Pramukh|Mahant) Swami(?: Maharaj)?) [a-z]")   # as tools/web_faces.py
+OTHER = {'psm': (re.compile(r'Mahant Swami'), re.compile(r'Pramukh Swami|Swamishri|\bBapa\b|\bHDH\b')),   # a caption naming
+         'msm': (re.compile(r'Pramukh Swami'), re.compile(r'Mahant Swami|Swamishri|\bBapa\b|\bHDH\b'))}  # the other guru only
+ABOUT = re.compile(r'Swamishri|\bBapa\b|Pramukh Swami|Mahant Swami|\bHDH\b|^[a-z]')   # a caption about Bapa: not murtis
 LIKENESS_MAX = .5          # the picture check's chance that a face is a picture of him rather than him (see Likeness)
 
 DETECT = cv2.FaceDetectorYN.create(os.path.join(MODELS, 'face_detection_yunet_2023mar.onnx'), '', (320, 320), .6, .3, 5000)
@@ -240,8 +244,9 @@ def auto(a):
         f, sim = bapa(bgr, x['guru']) if bgr is not None else (None, 0)
         facts = score(bgr, f, sim)[1] if f is not None else {}
         fake = like(bgr, f) if f is not None and like else 0
-        if f is None or facts['gap'] < MIN_SPAN or facts['sharp'] < SHARP_MIN or facts['bright'] < BRIGHT_MIN or fake > LIKENESS_MAX \
-                or (LIKENESS.search(x['caption']) and not DOES.match(x['caption'])):
+        if f is None or facts['gap'] < MIN_SPAN or facts['front'] < FRONT_MIN or facts['sharp'] < SHARP_MIN or facts['bright'] < BRIGHT_MIN or fake > LIKENESS_MAX \
+                or (LIKENESS.search(x['caption']) and not DOES.match(x['caption'])) \
+                or not ABOUT.search(x['caption']) or (OTHER[x['guru']][0].search(x['caption']) and not OTHER[x['guru']][1].search(x['caption'])):
             print(f'  {day}: left out ({facts or "no face"}, picture {fake:.2f})', flush=True)
             if a.sheet and f is not None:
                 cv2.imwrite(os.path.join(a.sheet, f'out-{day}-old.jpg'), align(bgr, f), [cv2.IMWRITE_JPEG_QUALITY, 80])
@@ -265,8 +270,13 @@ def auto(a):
             guru = 'psm' if day < PSM_UNTIL else 'msm'
             cands = []
             for r in xs:
-                if LIKENESS.search(r[5] or '') and not DOES.match(r[5] or ''):
+                c = r[5] or ''
+                if LIKENESS.search(c) and not DOES.match(c):
                     continue   # its caption says it is a murti, portrait or photo of him
+                if not ABOUT.search(c):
+                    continue   # its caption is about murtis or someone else ('Shri Harikrishna Maharaj and ...')
+                if OTHER[guru][0].search(c) and not OTHER[guru][1].search(c):
+                    continue   # its caption is about the other guru (the face check can mix them up in 1999)
                 rec = hints.get(f'{r[3]}/{r[4]}')
                 if rec is None:
                     cands.append((9, r))   # not scanned yet: a new photo
@@ -281,7 +291,7 @@ def auto(a):
                 if f is None:
                     continue
                 s, facts = score(bgr, f, sim)
-                if facts['gap'] >= MIN_SPAN and facts['sharp'] >= SHARP_MIN and facts['bright'] >= BRIGHT_MIN:
+                if facts['gap'] >= MIN_SPAN and facts['front'] >= FRONT_MIN and facts['sharp'] >= SHARP_MIN and facts['bright'] >= BRIGHT_MIN:
                     good.append((s, bgr, f, r, sim, facts))
             best = None
             for g in sorted(good, key=lambda g: -g[0]):
