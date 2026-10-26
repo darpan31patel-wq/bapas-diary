@@ -48,3 +48,12 @@ nav.site-menu a.on { color: #fff3cf; background: rgba(255, 211, 107, .16); borde
 }
 @media (min-width: 761px) and (max-width: 1199px) { nav.site-menu { gap: 0 14px; } nav.site-menu a { letter-spacing: .14em; } }
 @media (min-width: 1200px) { nav.site-menu { padding-left: 236px; } }   /* same room both sides, so the tabs stay in the middle */
+/* Darpan, 26 Oct 2026: "these always stay at the top of the screen. If someone scrolls down, they just go very faint, but
+   still keep them there so you can click on it whenever you want to." Computers and tablets only: phones keep the tab bar
+   at the bottom. tools/site_menu.py adds the few lines that switch on .faint once the page has moved 40px. */
+@media (min-width: 761px) {
+  nav.site-menu, nav.site-menu.stay { position: fixed; background: linear-gradient(rgba(34, 12, 16, .92), rgba(34, 12, 16, .78));
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); transition: opacity .6s ease; }
+  nav.site-menu.faint { opacity: .28; }
+  nav.site-menu.faint:hover, nav.site-menu.faint:focus-within { opacity: 1; transition-duration: .25s; }
+}

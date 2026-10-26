@@ -34,6 +34,7 @@ h1 { font: 700 clamp(40px, 7vw, 76px)/1 var(--serif); margin: 0; text-wrap: bala
 .sub { color: rgba(250, 241, 222, .72); margin: 14px auto 0; max-width: 62ch; font: italic 500 18px/1.45 var(--serif); }
 .bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: rgba(243, 234, 217, .94); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); box-shadow: 0 6px 14px rgba(59, 18, 25, .06); }
 @media (max-width: 760px), (max-height: 700px) { .bar { position: static; } }
+@media (min-width: 761px) and (min-height: 701px) { .bar { top: calc(env(safe-area-inset-top, 0px) + 46px); } }   /* sits just under the menu, which now stays at the top (26 Oct) */
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--maroon-out); }
 .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding-block: 16px 10px; align-items: center; max-width: 920px; margin-inline: auto; }
 #q { flex: 1 1 260px; min-width: 0; font: 500 20px var(--serif); padding: 9px 14px; border: 1.5px solid var(--maroon); border-radius: 8px; background: var(--paper-hi); color: var(--ink); }
