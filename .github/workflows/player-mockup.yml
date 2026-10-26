@@ -1,0 +1,44 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, and never fetches
+# from baps.org. For the full screen player mockup: takes one day's data from the live site and a few of its big (m/)
+# photos from the website's own photo copy (photos.bapas-diary.com, R2), and puts them in the release `player-mockup`
+# so Claude can show the player with real photos. Runs only when this file changes on its own branch.
+name: player-mockup
+on:
+  push:
+    branches: ['claude/project-thread-8yuzc1']
+    paths: ['.github/workflows/player-mockup.yml']
+permissions:
+  contents: write
+jobs:
+  photos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      DAY: '10-26'
+    steps:
+      - name: The day and its big photos
+        run: |
+          mkdir -p pack/m
+          curl -fsSL "https://bapas-diary.com/data/day/$DAY.json" -o "pack/$DAY.json"
+          # up to four photos a year, the day's own first, so the mockup goes through the years like the player
+          python3 - <<'EOF' > list.txt
+          import json, os
+          d = json.load(open(f"pack/{os.environ['DAY']}.json"))
+          for Y in d['years']:
+              for p in (Y['p'] or Y.get('t') or [])[:4]:
+                  print(p[0] + '/' + p[1])
+          EOF
+          wc -l list.txt
+          while read k; do
+            mkdir -p "pack/m/$(dirname "$k")"
+            curl -fsSL "https://photos.bapas-diary.com/m/$k" -o "pack/m/$k" || echo "missing $k"
+            sleep 0.2
+          done < list.txt
+          du -sh pack
+          tar czf player-$DAY.tgz -C pack .
+      - name: Into the release
+        run: |
+          gh release view player-mockup -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create player-mockup -R "$GITHUB_REPOSITORY" --prerelease --title "Full screen player mockup photos" --notes "A few big photos of one day for the full screen player mockup. Not used by the daily picture."
+          gh release upload player-mockup player-$DAY.tgz --clobber -R "$GITHUB_REPOSITORY"
