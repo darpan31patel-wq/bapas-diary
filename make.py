@@ -1969,9 +1969,7 @@ def cal_caption(day, every=None):
     c = cal_day(day)
     if not parts[-1].startswith('Vikram'):
         parts.append(f'Vikram Samvat {c["vikram_samvat"]}')
-    lines = []
-    if ekadashi(c) or festivals(day):   # an ordinary day's tithi is not in the caption (Darpan, 26 Oct 2026), only a special day
-        lines.append(f'{PRAY if parts[0] == "Ekadashi" else chr(0x1F5D3) + chr(0xFE0F)} Today is {", ".join(parts)}')
+    lines = []   # no 'Today is' line, not even on a festival (Darpan, 26 Oct 2026): what's coming, then the stories
     nd = day + datetime.timedelta(days=1)
     n, nf = cal_day(nd), festivals(nd)
     when = f'{nd:%A} {nd.day} {nd:%B}'
