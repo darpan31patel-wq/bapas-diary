@@ -6,7 +6,7 @@ name: website-deploy
 on:
   push:
     branches: ['claude/**']
-    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'tools/web_offline.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', '.github/workflows/website-deploy.yml']
+    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'tools/web_offline.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', '.github/workflows/website-deploy.yml']
   workflow_call:   # website-hires (on main) rebuilds the site when a year of full size photos is in R2
 concurrency: website-deploy
 jobs:
@@ -70,6 +70,7 @@ jobs:
           # favourites, share a day and the TV slideshow (Darpan: 3 yes, 4 yes, 1 yes)
           python3 tools/web_dayshare.py --db bapa-top.db --out out --tags tags.json --photo-years photo-years.txt
           python3 tools/web_extras.py --out out
+          python3 tools/web_player.py --out out   # full screen player for a TV on Today (Darpan: yes go live, 26 Oct)
           python3 tools/web_phone.py --out out   # phone design: bottom tab bar, phone Today and Calendar (Darpan: yes)
           python3 tools/web_rules.py look --out out   # the On this day picture's finish, look D, on the photos (Darpan: 2)
           python3 tools/web_gujarati.py --out out   # English / Gujarati switch (Darpan: yes Gujarati)
