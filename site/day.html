@@ -306,8 +306,7 @@ function card(y, {Y, place, stories}) {
   const fest = festOf(cal);
   const lab = document.createElement('div'); lab.className = 'label';
   lab.innerHTML = `<div class="yr">${y}</div><div class="pl">${esc(where || '')}</div>` +
-    (cal ? `<div class="ti">${esc(tithiOf(cal))}</div>` : '') + (fest ? `<div class="fest">${esc(fest)}</div>` : '') +
-    (photos.length > 1 ? `<div class="of"></div>` : '');
+    (cal ? `<div class="ti">${esc(tithiOf(cal))}</div>` : '') + (fest ? `<div class="fest">${esc(fest)}</div>` : '');   // no "4 of 4" counter (Darpan, 26 Oct 2026)
   el.append(lab);
   const cap = document.createElement('div'); cap.className = 'cap';
   cap.textContent = photos.length ? '' : 'On this day';
