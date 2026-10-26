@@ -21,7 +21,9 @@ jobs:
       - name: Small photos from R2 into the release
         run: |
           id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
-          export AWS_ACCESS_KEY_ID=$id AWS_SECRET_ACCESS_KEY=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1) AWS_DEFAULT_REGION=auto
+          key=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1)
+          echo "::add-mask::$id"; echo "::add-mask::$key"   # keep both out of the run logs
+          export AWS_ACCESS_KEY_ID=$id AWS_SECRET_ACCESS_KEY=$key AWS_DEFAULT_REGION=auto
           aws s3 sync "s3://$BUCKET/s" small --endpoint-url "https://$CF_ACCOUNT.r2.cloudflarestorage.com" --only-show-errors
           echo "$(find small -type f | wc -l) small photos"
           tar czf small-photos.tgz small
