@@ -26,7 +26,9 @@ import argparse, datetime, io, json, os, sqlite3, sys, time
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path[:0] = [HERE, os.path.join(HERE, 'tools')]
 
-TRIP_DAYS = 7   # photos dated "24 to 27 Oct" show on each of those days; a longer range only on its first day
+TRIP_DAYS = 14   # photos dated "24 to 27 Oct" show on those days; a longer range only on its first day (Darpan, 26 Oct
+                 # 2026: 14 days, not 7). Each day of a trip gets its own share of the trip's photos, in the album's order,
+                 # so no photo is shown on two days of the same trip
 SMALL = 320
 
 
@@ -44,7 +46,10 @@ def day_data(db, mmdd):
 
     rows = db.execute("SELECT year, place, album, file, caption, is_bapa, date_from, date_to FROM photos "
                       "WHERE date IS NULL ORDER BY date_from, album, file")
+    trips = {}
     for y, place, album, file, cap, bapa, d0, d1 in rows:
+        trips.setdefault((y, d0, d1), []).append((place, album, file, cap, bapa))
+    for (y, d0, d1), photos in trips.items():
         a, b = datetime.date.fromisoformat(d0), datetime.date.fromisoformat(d1 or d0)
         here = None
         for yr in {a.year, b.year}:   # a trip can run over New Year
@@ -56,9 +61,15 @@ def day_data(db, mmdd):
                 here = d
         if not here or ((b - a).days > TRIP_DAYS and here != a):
             continue
-        Y = year(y, place)
+        days = (b - a).days + 1
+        if days <= TRIP_DAYS + 1:   # this day's share: the k-th of as many equal parts as the trip has days
+            k = (here - a).days
+            photos = photos[k * len(photos) // days:(k + 1) * len(photos) // days]
+        if not photos:
+            continue
+        Y = year(y, photos[0][0])
         Y.setdefault('trip', [d0, d1 or d0])
-        Y.setdefault('t', []).append([album, file, cap or '', bapa])
+        Y.setdefault('t', []).extend([album, file, cap or '', bapa] for _, album, file, cap, bapa in photos)
 
     # the photo the 2pm picture showed that year goes first on its card
     for date, y, url in db.execute("SELECT date, year, photo_url FROM diary WHERE substr(date, 6) = ?", (mmdd,)):
