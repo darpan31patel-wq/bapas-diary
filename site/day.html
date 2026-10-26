@@ -39,14 +39,14 @@ button{font:inherit;color:inherit}
 .pill.solid{background:var(--gold-soft);color:var(--maroon-out);border-color:var(--gold-soft)}
 .pill[hidden]{display:none}
 
-header{text-align:center;margin:22px 0 4px}
+header{text-align:center;margin:clamp(22px,3vw,40px) 0 clamp(4px,1.5vw,18px)}   /* a little more room between the lines on wider screens (Darpan, 26 Oct 2026: "spread this out a bit") */
 h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-gradient(var(--gold-hi),var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 2px rgba(0,0,0,.45));text-wrap:balance}
-.sub{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:12px;font:700 clamp(11px,1.4vw,14px)/1 var(--sans);letter-spacing:.42em;color:var(--gold-soft);padding-left:.42em}
-.sub::before,.sub::after{content:"";width:48px;height:1px;background:linear-gradient(90deg,transparent,var(--gold-soft))}
+.sub{display:flex;align-items:center;justify-content:center;gap:clamp(14px,1.6vw,24px);margin-top:clamp(12px,2vw,26px);font:700 clamp(11px,1.4vw,14px)/1 var(--sans);letter-spacing:.42em;color:var(--gold-soft);padding-left:.42em}
+.sub::before,.sub::after{content:"";width:clamp(48px,7vw,120px);height:1px;background:linear-gradient(90deg,transparent,var(--gold-soft))}
 .sub::after{transform:scaleX(-1)}
-.tithi{margin:16px auto 0;font:500 clamp(17px,2vw,21px)/1.4 var(--serif);color:var(--cream);text-wrap:balance;max-width:44ch}
+.tithi{margin:clamp(16px,2.4vw,32px) auto 0;font:500 clamp(17px,2vw,21px)/1.4 var(--serif);color:var(--cream);text-wrap:balance;max-width:44ch}
 .tithi b{font-weight:700;color:var(--gold-hi)}
-.count{margin:10px auto 0;font:500 16.5px/1.45 var(--serif);color:var(--cream);max-width:60ch;text-wrap:balance}
+.count{margin:clamp(10px,1.4vw,18px) auto 0;font:500 16.5px/1.45 var(--serif);color:var(--cream);max-width:60ch;text-wrap:balance}
 @media (min-width:1000px){.count{max-width:none}}   /* one line across on computers, brighter (Darpan, 26 Oct 2026: too faint) */
 
 /* board */
