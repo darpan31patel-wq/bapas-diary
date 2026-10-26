@@ -58,13 +58,13 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 .peg{position:absolute;left:50%;top:-17px;width:12px;height:30px;margin-left:-6px;border-radius:6px 6px 3px 3px;background:linear-gradient(90deg,#6b4022,#b07a4a 30%,#9a6538 55%,#5d361c);box-shadow:1px 3px 4px rgba(0,0,0,.45);z-index:2}
 .peg::after{content:"";position:absolute;left:1px;right:1px;top:12px;height:3px;background:#3a2210;opacity:.7}
 .photo{position:relative;aspect-ratio:3/4;max-width:100%;overflow:hidden;background:var(--maroon-deep)}
-.photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 3.2s ease-in-out}
+.photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 7.2s ease-in-out}
 .photo img.on{opacity:1}
 /* Darpan, 25 Oct 2026 (the On this day picture's rules): Bapa's whole head stays in the frame; any space left when it
    has to zoom out is filled with the photo's own colours, softened (make.fill) */
 .photo img.placed{inset:auto;max-width:none;object-fit:fill}
 .photo img.bg{inset:-8%;width:116%;height:116%;object-fit:cover;filter:blur(12px) brightness(.72)}
-.photo .words{position:absolute;inset:0;display:grid;place-items:center;padding:12%;background:radial-gradient(circle at 50% 40%,#5a1626,var(--maroon-deep));transition:opacity 3.2s ease-in-out}
+.photo .words{position:absolute;inset:0;display:grid;place-items:center;padding:12%;background:radial-gradient(circle at 50% 40%,#5a1626,var(--maroon-deep));transition:opacity 7.2s ease-in-out}
 .photo .words p{margin:0;font:500 clamp(14px,1.3vw,16px)/1.35 var(--serif);font-style:italic;color:var(--gold-hi);text-align:center;text-wrap:balance;overflow-wrap:anywhere;transition:opacity 1.5s ease-in-out}
 .photo .words.off{opacity:0}
 .photo.story{display:grid;place-items:center;padding:12%;background:radial-gradient(circle at 50% 40%,#5a1626,var(--maroon-deep))}
@@ -165,7 +165,7 @@ footer{text-align:center;margin-top:52px;font:600 19px var(--serif);color:var(--
   <div class="controls" id="controls" hidden>
     <button class="pill" id="pause" type="button">Pause</button>
     <label for="speed">Speed</label>
-    <select id="speed"><option value="12000">Slow</option><option value="8000" selected>Gentle</option><option value="5000">Quick</option></select>
+    <select id="speed"><option value="22000">Slow</option><option value="18000" selected>Gentle</option><option value="15000">Quick</option></select>
     <button class="pill" id="slideshow" type="button">Slideshow</button>
     <a class="pill" id="search-day" target="_blank" rel="noopener">Search this date</a>
   </div>
@@ -292,7 +292,7 @@ function card(y, {Y, place, stories}) {
   el.setAttribute('aria-label', photos.length ? `${y}, ${where}: see all ${photos.length} photos` : `${y}, ${where}`);
   const ph = document.createElement('div'); ph.className = 'photo';
   const c = {y, el, slot, photos, k: -1, imgs: [], cur: 0, rest: hang(y)};
-  el.style.transform = `rotate(${c.rest}deg)`;
+  lean(c, c.rest);
   if (photos.length) {
     const a = new Image(), b = new Image(); a.alt = b.alt = '';
     c.bgs = [new Image(), new Image()]; c.bgs.forEach(g => { g.alt = ''; g.className = 'bg'; g.setAttribute('aria-hidden', 'true'); });
@@ -312,6 +312,7 @@ function card(y, {Y, place, stories}) {
   cap.textContent = photos.length ? '' : 'On this day';
   slot.append(el, cap); $('cards').append(slot);
   Object.assign(c, {cap, of: lab.querySelector('.of'), ph});
+  requestAnimationFrame(() => lean(c, c.rest));
   el.addEventListener('pointermove', e => nudge(c, e));
   el.addEventListener('pointerleave', () => c.lastX = null);
   el.addEventListener('pointerdown', e => { c.lastX = e.clientX - 30 * (Math.random() < .5 ? 1 : -1); nudge(c, e); });
@@ -330,18 +331,26 @@ function nudge(c, e) {   // only ever moves when someone brushes it, so it stays
   const dx = c.lastX == null ? 0 : e.clientX - c.lastX;
   c.lastX = e.clientX;
   const low = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
-  c.v = Math.max(-.22, Math.min(.22, (c.v || 0) + Math.max(-1, Math.min(1, dx / 30)) * (.3 + low) * .07));
+  // a clockwise turn swings the bottom to the left, so a push to the right turns it the other way: it goes where it was hit
+  c.v = Math.max(-.22, Math.min(.22, (c.v || 0) - Math.max(-1, Math.min(1, dx / 30)) * (.3 + low) * .07));
   c.a = c.a || 0;
   if (!swinging.size) requestAnimationFrame(swing);
   swinging.add(c);
 }
+// the caption under a card leans with it, from the same peg, so it always sits centred under the card (Darpan, 26 Oct 2026)
+function lean(c, deg) {
+  const r = `rotate(${deg}deg)`;
+  c.el.style.transform = r;
+  if (c.cap && c.el.offsetHeight) { c.cap.style.transformOrigin = `50% ${-(c.el.offsetHeight + 23)}px`; c.cap.style.transform = r; }
+}
+addEventListener('resize', () => cards.forEach(c => lean(c, c.rest + (c.a || 0))));
 function swing() {
   swinging.forEach(c => {
     c.v += -c.a * .0033;   // the peg pulls it back towards hanging (one swing there and back takes about two seconds)
     c.v *= .992;           // and each swing is a little smaller than the last
     c.a = Math.max(-4, Math.min(4, c.a + c.v));
-    c.el.style.transform = `rotate(${(c.rest + c.a).toFixed(3)}deg)`;
-    if (Math.abs(c.a) < .01 && Math.abs(c.v) < .002) { c.a = c.v = 0; c.el.style.transform = `rotate(${c.rest}deg)`; swinging.delete(c); }
+    lean(c, (c.rest + c.a).toFixed(3));
+    if (Math.abs(c.a) < .01 && Math.abs(c.v) < .002) { c.a = c.v = 0; lean(c, c.rest); swinging.delete(c); }
   });
   if (swinging.size) requestAnimationFrame(swing);
 }
