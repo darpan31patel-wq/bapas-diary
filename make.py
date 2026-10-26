@@ -1969,7 +1969,9 @@ def cal_caption(day, every=None):
     c = cal_day(day)
     if not parts[-1].startswith('Vikram'):
         parts.append(f'Vikram Samvat {c["vikram_samvat"]}')
-    lines = [f'{PRAY if parts[0] == "Ekadashi" else chr(0x1F5D3) + chr(0xFE0F)} Today is {", ".join(parts)}']
+    lines = []
+    if ekadashi(c) or festivals(day):   # an ordinary day's tithi is not in the caption (Darpan, 26 Oct 2026), only a special day
+        lines.append(f'{PRAY if parts[0] == "Ekadashi" else chr(0x1F5D3) + chr(0xFE0F)} Today is {", ".join(parts)}')
     nd = day + datetime.timedelta(days=1)
     n, nf = cal_day(nd), festivals(nd)
     when = f'{nd:%A} {nd.day} {nd:%B}'
@@ -1981,7 +1983,7 @@ def cal_caption(day, every=None):
     if every:
         name, first, last = every
         lines.append(f"\U0001FA94 {name} through the years: one darshan from each {name}, {first} to {last}")
-    return '\n'.join(lines) + '\n'
+    return '\n'.join(lines) + '\n' if lines else ''
 
 
 def every_festival(day, cache):
@@ -2239,7 +2241,8 @@ def main():
                 sp.save(os.path.join(a.out, 'bapas-diary-special.jpg'), quality=95, optimize=True)
         except Exception as e:
             print('  no festival picture:', e)
-    text = cal_caption(day, every) + (('\n' if cal_day(day) else '') + tg_caption(told, left) if told else '')
+    cal = cal_caption(day, every)
+    text = cal + (('\n' if cal else '') + tg_caption(told, left) if told else '')
     if text.strip():
         open(os.path.join(a.out, 'caption.txt'), 'w', encoding='utf-8').write(text)
     if told:
