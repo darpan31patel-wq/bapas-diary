@@ -1,0 +1,83 @@
+# Website only (bapas-diary.com): the weekly darshan email (Darpan, 25 Oct 2026) and the morning On this day
+# reminder (Darpan, 26 Oct 2026). Separate from the daily 2pm
+# picture: touches nothing in that chain and fetches nothing from baps.org (photos come from R2).
+# Every Sunday it makes the week's email (tools/web_weekly.py), puts its pictures in R2 under e/WEEK/, and hands it to
+# Resend to arrive at 10 am UK time for everyone who signed up. The second run is only a safety net: it sees the
+# week's email is already on its way and stops.
+# Run it by hand (Actions, weekly-email, Run workflow) to send a test copy to one address.
+# Timed runs only happen from main, so this file goes on main with Darpan's yes; everything it runs comes from the
+# weekly email branch.
+name: weekly-email
+on:
+  schedule:
+    - cron: '20 8 * * 0'   # Sunday 08:20 UTC (09:20 UK in summer); the email waits in Resend until 10 am UK
+    - cron: '50 8 * * 0'   # safety net
+    - cron: '30 3 * * *'   # every day 03:30 UTC: the morning reminder, waiting in Resend until 7 am UK
+    - cron: '0 4 * * *'    # safety net (both stay clear of 04:30 to 07:30 UTC, the daily picture's time)
+  push:   # a test copy to hello@bapas-diary.com whenever site/weekly/send-test.txt changes (it holds the week's Sunday)
+    branches: [claude/project-thread-e6fvpc]
+    paths: [site/weekly/send-test.txt]
+  workflow_dispatch:
+    inputs:
+      test:
+        description: 'Send a test copy only to this address'
+        default: 'hello@bapas-diary.com'
+      week:
+        description: 'Sunday that starts the week (empty: this coming Sunday)'
+        default: ''
+      daily:
+        description: 'Send the morning reminder instead (yes or no)'
+        default: 'no'
+permissions:
+  contents: read
+concurrency:
+  group: weekly-email
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      BUCKET: bapas-diary-photos
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/project-thread-e6fvpc
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Get ready (database, R2 access)
+        run: |
+          pip install -q pillow
+          gh release download database -p bapas.db.gz && gunzip bapas.db.gz
+          id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
+          key=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1)
+          echo "::add-mask::$id"; echo "::add-mask::$key"   # never show the R2 key in the log
+          echo "Years in R2 so far: $(curl -fs https://photos.bapas-diary.com/years.txt | tr '\n' ' ')"
+          { echo "AWS_ACCESS_KEY_ID=$id"; echo "AWS_SECRET_ACCESS_KEY=$key"
+            echo "AWS_DEFAULT_REGION=auto"; echo "R2=https://$CF_ACCOUNT.r2.cloudflarestorage.com"; } >> "$GITHUB_ENV"
+      - name: Make the email and send it
+        env:
+          TEST: ${{ github.event.inputs.test || 'hello@bapas-diary.com' }}
+          WEEK: ${{ github.event.inputs.week }}
+        run: |
+          how=(--broadcast)
+          if [ "${{ github.event_name }}" != schedule ]; then how=(--test "$TEST"); fi
+          # the 03:30 and 04:00 runs are the morning reminder; the Sunday 08:xx runs are the weekly email
+          if [ "${{ github.event.schedule }}" = '30 3 * * *' ] || [ "${{ github.event.schedule }}" = '0 4 * * *' ] || [ "${{ github.event.inputs.daily }}" = yes ]; then how+=(--daily); fi
+          if [ "${{ github.event_name }}" = push ]; then WEEK=$(tr -d ' \n' < site/weekly/send-test.txt); fi
+          python3 tools/web_weekly.py --db bapas.db --out weekly ${WEEK:+--week "$WEEK"} "${how[@]}" \
+            --upload 'aws s3 sync weekly/e "s3://$BUCKET/e/" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000" --content-type image/jpeg'
+          # a push test sends the morning reminder too
+          if [ "${{ github.event_name }}" = push ]; then
+            python3 tools/web_weekly.py --db bapas.db --out weekly --daily --test "$TEST" \
+              --upload 'aws s3 sync weekly/e "s3://$BUCKET/e/" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000" --content-type image/jpeg'
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: weekly-email
+          path: weekly/*.html
