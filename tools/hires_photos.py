@@ -100,6 +100,10 @@ def main():
     ap.add_argument('--minutes', type=float, default=320)
     ap.add_argument('--shard', type=int, default=0, help='this machine, counted from 0 (Darpan, 25 Oct: 6 machines at once)')
     ap.add_argument('--shards', type=int, default=1, help='how many machines share the years')
+    ap.add_argument('--years', default='', help='only these years, comma separated (website-hires-boost.yml)')
+    ap.add_argument('--part', type=int, default=0, help='this machine when many share the same years photo by photo')
+    ap.add_argument('--parts', type=int, default=1, help='how many machines share each year photo by photo')
+    ap.add_argument('--reverse', action='store_true', help='last photos first, so a helper meets the main run halfway')
     a = ap.parse_args()
     end = time.time() + a.minutes * 60
     done = {int(l) for l in open(a.done).read().split() if l.isdigit()} if os.path.exists(a.done) else set()
@@ -118,13 +122,17 @@ def main():
             if k == a.shard:
                 mine.append(y)
         todo = [y for y in todo if y in mine]
+    if a.years:
+        todo = [y for y in todo if str(y) in a.years.split(',')]
     print(f'Drive archive finished: {sorted(ready)}; already in R2 at full size: {sorted(done)}; to do now: {todo}', flush=True)
     inbox, out = os.path.join(a.work, 'in'), os.path.join(a.work, 'out')
     with ProcessPoolExecutor() as pool:
         for year in todo:
             rows = [(al, f, rel) for al, f, rel in db.execute(
                 'SELECT album, file, local_path FROM photos WHERE year = ? ORDER BY album, file', (year,))
-                if f'o/{al}/{f}' not in have]
+                if f'o/{al}/{f}' not in have][a.part::a.parts]
+            if a.reverse:
+                rows.reverse()
             print(f'{year}: {len(rows):,} photos to copy', flush=True)
             lost = 0
             for i in range(0, len(rows), a.chunk):

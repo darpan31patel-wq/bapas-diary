@@ -1,0 +1,117 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, fetches nothing
+# from baps.org. A one off helper for website-hires.yml (Darpan, 26 Oct 2026: "need it done today, work harder"):
+# 16 more machines share the years still being copied photo by photo, last photos first so they meet the main run
+# halfway. Copying the same photo twice is harmless (same file). When every photo of a year is in R2, the year goes
+# into years.txt, its faces are checked and the website is rebuilt, the same as website-hires does.
+# Runs when this file is pushed; keeps 04:30 to 07:30 UTC free like the main copy.
+name: website-hires-boost
+on:
+  push:
+    branches: ['claude/project-thread-eawr12']
+    paths: ['.github/workflows/website-hires-boost.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: website-hires-boost
+env:
+  BUCKET: bapas-diary-photos
+  GH_TOKEN: ${{ github.token }}
+  CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+jobs:
+  boost:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    timeout-minutes: 345
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Get ready (database, the Drive archive's check.txt, Drive and R2 access)
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          CLIENT_ID: ${{ secrets.RCLONE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.RCLONE_CLIENT_SECRET }}
+        run: |
+          pip install -q pillow
+          gh release download database -p bapas.db.gz -p check.txt && gunzip bapas.db.gz
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          mkdir -p ~/.config/rclone && python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
+          if [ -n "$CLIENT_ID" ] && ! grep -q '^client_id' ~/.config/rclone/rclone.conf; then   # Darpan's own Google login
+            sed -i 's/^scope = .*/scope = drive/' ~/.config/rclone/rclone.conf
+            printf 'client_id = %s\nclient_secret = %s\n' "$CLIENT_ID" "$CLIENT_SECRET" >> ~/.config/rclone/rclone.conf
+          fi
+          id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
+          key=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1)
+          echo "::add-mask::$id"; echo "::add-mask::$key"   # keep both out of the run logs
+          { echo "AWS_ACCESS_KEY_ID=$id"; echo "AWS_SECRET_ACCESS_KEY=$key"
+            echo "AWS_DEFAULT_REGION=auto"; echo "R2=https://$CF_ACCOUNT.r2.cloudflarestorage.com"; } >> "$GITHUB_ENV"
+          aws s3 cp "s3://$BUCKET/years.txt" done.txt --endpoint-url "$R2" || : > done.txt
+          aws s3 ls "s3://$BUCKET/o/" --recursive --endpoint-url "$R2" | awk '{ $1=$2=$3=""; sub(/^ +/, ""); print }' > have.txt || true
+          echo "$(wc -l < have.txt) photos already in R2 at full size; years finished: $(tr '\n' ' ' < done.txt)"
+      - name: Highest resolution photos into R2 (this machine's share, last photos first)
+        run: |
+          python3 tools/hires_photos.py --db bapas.db --check check.txt --done done.txt --have have.txt \
+            --part ${{ matrix.part }} --parts 16 --reverse \
+            --send 'aws s3 sync "$OUT" "s3://$BUCKET/" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000, immutable" --content-type image/jpeg' \
+            --year-done 'echo "$YEAR: this machine has done its share"'
+  # every year whose photos are now all in R2 goes into years.txt
+  finish:
+    needs: boost
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    outputs:
+      finished: ${{ steps.mark.outputs.finished }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get ready
+        run: |
+          gh release download database -p bapas.db.gz -p check.txt && gunzip bapas.db.gz
+          id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
+          key=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1)
+          echo "::add-mask::$id"; echo "::add-mask::$key"
+          { echo "AWS_ACCESS_KEY_ID=$id"; echo "AWS_SECRET_ACCESS_KEY=$key"
+            echo "AWS_DEFAULT_REGION=auto"; echo "R2=https://$CF_ACCOUNT.r2.cloudflarestorage.com"; } >> "$GITHUB_ENV"
+      - id: mark
+        run: |
+          aws s3 cp "s3://$BUCKET/years.txt" done.txt --endpoint-url "$R2" || : > done.txt
+          aws s3 ls "s3://$BUCKET/o/" --recursive --endpoint-url "$R2" | awk '{ $1=$2=$3=""; sub(/^ +/, ""); print }' > have.txt
+          echo "$(wc -l < have.txt) photos in R2 at full size"
+          python3 - <<'PY' > newly.txt
+          import re, sqlite3
+          have = set(open('have.txt').read().split('\n'))
+          done = {int(l) for l in open('done.txt').read().split() if l.isdigit()}
+          ready = [int(m.group(1)) for m in (re.match(r'(\d{4})\s+[\d,]+\s+[\d,]+\s+[\d,]+\s+([\d,]+)\s*$', l) for l in open('check.txt')) if m and m.group(2).replace(',', '') == '0']
+          db = sqlite3.connect('bapas.db')
+          for y in sorted(set(ready) - done):
+              rows = db.execute('SELECT album, file FROM photos WHERE year = ?', (y,)).fetchall()
+              missing = sum(f'o/{a}/{f}' not in have for a, f in rows)
+              print(f'{y}: {len(rows) - missing:,} of {len(rows):,} in R2', file=__import__('sys').stderr)
+              if missing <= max(20, len(rows) // 50):   # the rest are not in Drive, same allowance as hires_photos.py
+                  print(y)
+          PY
+          if [ -s newly.txt ]; then
+            echo "finished now: $(tr '\n' ' ' < newly.txt)"
+            aws s3 cp "s3://$BUCKET/years.txt" done.txt --endpoint-url "$R2" --only-show-errors || true
+            cat newly.txt >> done.txt && sort -un done.txt -o done.txt
+            aws s3 cp done.txt "s3://$BUCKET/years.txt" --endpoint-url "$R2" --content-type text/plain --cache-control "max-age=300"
+            echo finished=yes >> "$GITHUB_OUTPUT"
+          fi
+  faces:
+    needs: finish
+    if: ${{ !cancelled() && needs.finish.outputs.finished == 'yes' }}
+    permissions:
+      contents: write
+    uses: darpan31patel-wq/bapas-diary/.github/workflows/website-faces.yml@claude/project-thread-9isen0
+  site:
+    needs: [finish, faces]
+    if: ${{ !cancelled() && needs.finish.outputs.finished == 'yes' }}
+    permissions:
+      contents: write
+    uses: darpan31patel-wq/bapas-diary/.github/workflows/website-deploy.yml@claude/project-thread-eawr12
+    secrets: inherit
