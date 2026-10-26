@@ -31,6 +31,8 @@ HERE = R.HERE
 CARD_CHARS = 40   # a Today card's caption fits two lines in about this many letters (cards are 150 to 200 px wide)
 NEAR_DAYS = 3     # make.py: a day up to 3 days away may fill a year that has no photos on the date
 TG_SAME_PERSON = .38   # make.py: the channel's photos are often old video stills of a younger Bapa
+TG_TODAY_SAME = .45   # Today shows a channel photo only when Bapa is surely recognised in it (Darpan, 26 Oct 2026)
+TG_TODAY_FACE = 80    # and his face is at least this many pixels tall in the 1200 px copy
 TG_FROM = 1950    # make.py: channel darshans of Bapa from this year (earlier ones are of the gurus before him)
 EARLY = 'early'    # R2 folder of the darshan photos before 1999 (public name: never the source's)
 BAPS_FROM = 1999  # baps.org's own photos start here
@@ -310,6 +312,11 @@ def day(a):
         # 5: before 1999, the channels' darshan of Bapa on this very day
         for y, place, al, key, cap, box, sim, short in tgc.get(mmdd, []):
             if y in years and not years[y].get('tg'):   # baps.org has this year already
+                continue
+            # only a clear darshan: Bapa surely recognised and his face not tiny (Darpan, 26 Oct 2026: a photo of a framed
+            # picture on a screen and Bapa far away at a podium had reached Today)
+            if sim < TG_TODAY_SAME or box[5] * 1200 / box[6] < TG_TODAY_FACE:
+                stats['tg_unclear'] = stats.get('tg_unclear', 0) + 1
                 continue
             if y not in years:
                 stats['tg_years'] += 1

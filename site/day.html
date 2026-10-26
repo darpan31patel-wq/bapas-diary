@@ -76,7 +76,7 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 .ti{margin-top:4px;font:500 12.5px/1.25 var(--serif);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fest{display:inline-block;margin-top:5px;max-width:100%;font:700 8.5px/1.25 var(--sans);letter-spacing:.14em;text-transform:uppercase;background:var(--maroon-ink);color:var(--gold-hi);padding:3px 7px;border-radius:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .of{margin-top:5px;font:700 8.5px/1 var(--sans);letter-spacing:.16em;color:rgba(110,20,36,.6);font-variant-numeric:tabular-nums}
-.cap{margin-top:11px;min-height:2.8em;text-align:center;font:500 15px/1.35 var(--serif);color:var(--cream);transition:opacity 1.5s ease-in-out;text-wrap:balance;max-width:100%;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.cap{margin-top:11px;min-height:2.8em;width:100%;text-align:center;font:500 15px/1.35 var(--serif);color:var(--cream);transition:opacity 1.5s ease-in-out;text-wrap:balance;max-width:100%;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .cap.fade{opacity:0}
 
 .controls{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:28px;align-items:center}
@@ -277,12 +277,18 @@ function render() {
   const years = Object.keys(byYear).map(Number).sort((a, b) => a - b);
   everyPhoto = [];
   const n = D.years.reduce((s, Y) => s + Y.p.length + (Y.t || []).length, 0);
-  $('count').textContent = n ? `${years.length} years and ${n.toLocaleString()} photos from this day. Each card fades through all of its year's photos. Tap a card to see them all.`
+  const shown = D.years.filter(Y => Y.p.length || (Y.t || []).length).length;
+  $('count').textContent = n ? `${shown} years and ${n.toLocaleString()} photos from this day. Each card fades through all of its year's photos. Tap a card to see them all.`
                              : `${years.length} years remembered on this day.`;
   if (window.MOCK && MOCK.note && MOCK.note(D.date)) $('mocknote').innerHTML = `<p class="mocknote">${MOCK.note(D.date)}</p>`;
 
   $('cards').innerHTML = ''; $('groups').innerHTML = '';
-  cards = years.map(y => card(y, byYear[y]));
+  // a card only for a year with photos of Bapa; a year with only its On this day lines lists them below, with no empty
+  // card on the rope (Darpan, 26 Oct 2026)
+  const hasPhotos = b => b.Y && (b.Y.p.length || (b.Y.t || []).length);
+  cards = years.filter(y => hasPhotos(byYear[y])).map((y, i) => card(y, byYear[y], i));
+  years.filter(y => !hasPhotos(byYear[y])).forEach(y => group(y, null, byYear[y].place, DAY.cal && DAY.cal[y], byYear[y].stories));
+  [...$('groups').children].sort((a, b) => a.id.slice(1) - b.id.slice(1)).forEach(g => $('groups').append(g));
   $('board').hidden = $('controls').hidden = false;
   $('search-day').href = SRC.search(D.date);
   $('all-title').textContent = `Every photo from ${D.title}`;
@@ -292,7 +298,7 @@ function render() {
   start();
 }
 
-function card(y, {Y, place, stories}) {
+function card(y, {Y, place, stories}, i = 0) {
   const photos = Y ? (Y.p.length ? Y.p : Y.t || []) : [];
   const where = Y ? Y.place : place;
   const cal = DAY.cal && DAY.cal[y];
@@ -326,7 +332,10 @@ function card(y, {Y, place, stories}) {
   el.addEventListener('pointermove', e => nudge(c, e));
   el.addEventListener('pointerleave', () => c.lastX = null);
   el.addEventListener('pointerdown', e => { c.lastX = e.clientX - 30 * (Math.random() < .5 ? 1 : -1); nudge(c, e); });
-  if (photos.length) show(c, Math.max(0, photos.findIndex(p => p[3])), true);   // open on a darshan of Bapa
+  // the first photos seen take turns, a close up then an activity photo, card by card (Darpan, 26 Oct 2026)
+  const close = p => !!(p[4] && p[4][7]), want = i % 2 === 0;
+  const first = photos.findIndex(p => p[3] && close(p) === want);
+  if (photos.length) show(c, first >= 0 ? first : Math.max(0, photos.findIndex(p => p[3])), true);   // open on a darshan of Bapa
   group(y, Y, where, cal, stories);
   return c;
 }
@@ -348,10 +357,9 @@ function nudge(c, e) {   // only ever moves when someone brushes it, so it stays
   swinging.add(c);
 }
 // the caption under a card leans with it, from the same peg, so it always sits centred under the card (Darpan, 26 Oct 2026)
-function lean(c, deg) {
-  const r = `rotate(${deg}deg)`;
-  c.el.style.transform = r;
-  if (c.cap && c.el.offsetHeight) { c.cap.style.transformOrigin = `50% ${-(c.el.offsetHeight + 23)}px`; c.cap.style.transform = r; }
+function lean(c, deg) {   // the card and its caption turn together on the peg, so the caption can never drift off centre
+  c.slot.style.transformOrigin = '50% -12px';
+  c.slot.style.transform = `rotate(${deg}deg)`;
 }
 addEventListener('resize', () => cards.forEach(c => lean(c, c.rest + (c.a || 0))));
 function swing() {
@@ -462,6 +470,7 @@ function cords() {
     const left = n => cards.length % n || n, n = Math.min(fit, left(7) > left(8) ? 7 : 8);
     grid.style.gridTemplateColumns = `repeat(${n},minmax(0,1fr))`;
   } else grid.style.gridTemplateColumns = '';
+  cards.forEach(c => lean(c, c.rest + (c.a || 0)));   // the cards changed size: each caption swings from the new peg height
   const b = board.getBoundingClientRect(), D = wide ? Math.min(64, vw * .032) : 0;
   svg.style.left = -b.left + 'px'; svg.style.width = vw + 'px';
   $('cards').style.paddingTop = (16 + D / 2) + 'px';
@@ -487,7 +496,7 @@ document.fonts && document.fonts.ready.then(cords);
 
 // every photo of the day, year by year
 function group(y, Y, where, cal, stories) {
-  if (!Y) return;
+  if (!Y && !stories.length) return;
   const g = document.createElement('section'); g.className = 'yeargroup'; g.id = 'y' + y;
   const fest = festOf(cal);
   g.innerHTML = `<div class="yhead"><h3>${y}</h3><span class="caps">${esc(where || '')}</span>` +
@@ -511,8 +520,8 @@ function group(y, Y, where, cal, stories) {
     });
     g.append(grid);
   };
-  add(Y.p);
-  if (Y.trip) add(Y.t, `${Y.p.length ? 'From the same trip' : 'From these days'}, ${tripText(Y.trip)}`);
+  if (Y) add(Y.p);
+  if (Y && Y.trip) add(Y.t, `${Y.p.length ? 'From the same trip' : 'From these days'}, ${tripText(Y.trip)}`);
   $('groups').append(g);
 }
 function tripText([a, b]) {
