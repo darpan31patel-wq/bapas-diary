@@ -81,16 +81,23 @@ def tags(a):
     import glob, numpy as np
     sys.path.insert(0, os.path.dirname(__file__))
     from deep_words import KEEP
-    w = np.load(a.words)
-    names = list(w['words'])
+    sets = [(np.load(a.words), KEEP)]
+    if a.big:   # the wide words too (tools/deep_words_big.py), only once Darpan has said yes to them
+        from deep_words_big import BIG_KEEP
+        sets.append((np.load(a.big), BIG_KEEP))
     out = {}
     for f in sorted(glob.glob(os.path.join(a.emb, 'emb-*.npz'))):
         z = np.load(f)
-        L = z['emb'].astype('float32') @ w['emb'].T * float(w['scale']) + float(w['bias'])
-        for k, row in zip(z['keys'], L):
-            got = [t for t, ws in KEEP.items() if any(row[names.index(n)] > b for n, b in ws)]
-            if got:
-                out[str(k)] = ', '.join(got)
+        E = z['emb'].astype('float32')
+        got = [[] for _ in z['keys']]
+        for w, keep in sets:
+            names = list(w['words'])
+            L = E @ w['emb'].T * float(w['scale']) + float(w['bias'])
+            for i, row in enumerate(L):
+                got[i] += [t for t, ws in keep.items() if t not in got[i] and any(row[names.index(n)] > b for n, b in ws)]
+        for k, g in zip(z['keys'], got):
+            if g:
+                out[str(k)] = ', '.join(g)
     json.dump(out, open(a.out, 'w'), separators=(',', ':'), ensure_ascii=False)
     print(len(out), 'photos tagged')
 
@@ -240,6 +247,7 @@ def main():
     t = sub.add_parser('tags')
     t.add_argument('--emb', required=True, help='folder of emb-*.npz')
     t.add_argument('--words', default='words.npz')
+    t.add_argument('--big', help='words-big.npz: also tag with the wide words (BIG_KEEP)')
     t.add_argument('--out', default='deep-tags.json')
     a = ap.parse_args()
     {'sample': sample, 'embed': embed, 'sheets': sheets, 'words': words, 'plan': plan, 'shard': shard, 'tags': tags}[a.cmd](a)

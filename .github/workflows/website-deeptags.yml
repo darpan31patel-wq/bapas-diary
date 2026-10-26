@@ -8,7 +8,7 @@ name: website-deeptags
 on:
   push:
     branches: ['claude/project-thread-vcys74']
-    paths: ['.github/workflows/website-deeptags.yml', 'tools/deep_tags.py', 'tools/deep_words.py']
+    paths: ['.github/workflows/website-deeptags.yml', 'tools/deep_tags.py', 'tools/deep_words.py', 'tools/deep_words_big.py', 'tools/deep_big.py']
   workflow_dispatch:
   workflow_call:   # the timer on main (website-deeptags-timer.yml) runs this every few hours
 permissions:
@@ -80,6 +80,11 @@ jobs:
           python3 tools/deep_tags.py words --out words.npz
           python3 tools/deep_tags.py tags --emb emb --words words.npz --out deep-tags.json
           gh release upload deep-tags deep-tags.json words.npz --clobber
+      - name: Preview with the wide words (not live; kept in deep-tags-test until Darpan says yes)
+        run: |
+          python3 tools/deep_big.py words --out words-big.npz
+          python3 tools/deep_tags.py tags --emb emb --words words.npz --big words-big.npz --out deep-tags-wide.json
+          gh release upload deep-tags-test deep-tags-wide.json words-big.npz --clobber
   # new photos were tagged: rebuild the website (the same build as every deploy) so Search finds them
   site:
     needs: [plan, tags]
