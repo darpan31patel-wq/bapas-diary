@@ -55,9 +55,11 @@ input[type=checkbox] { accent-color: var(--gold); width: 16px; height: 16px }
 .chips button { font: 600 12px var(--sans); font-variant-numeric: tabular-nums; padding: 4px 7px; border-radius: 6px; background: var(--panel-2); color: var(--muted); border: 1px solid var(--line); cursor: pointer }
 .chips button[aria-pressed="true"] { color: #2a0d14; background: var(--fg); border-color: var(--fg) }
 .chips button.sel { outline: 2px solid var(--gold); outline-offset: 1px }
-.thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px }
-.thumbs button { padding: 0; border: 2px solid transparent; border-radius: 6px; overflow: hidden; background: #000; cursor: pointer; aspect-ratio: 4 / 3; position: relative }
-.thumbs button img { width: 100%; height: 100%; object-fit: cover; display: block }
+.thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; max-height: 420px; overflow-y: auto; padding-right: 2px }
+.thumbs button { padding: 0; border: 2px solid transparent; border-radius: 6px; overflow: hidden; background: #000; cursor: pointer; aspect-ratio: 1; position: relative }
+.thumbs button img { width: 100%; height: 100%; object-fit: contain; display: block }
+.thumbs button i { position: absolute; inset: 0; background-repeat: no-repeat }
+[hidden] { display: none !important }
 .thumbs button[aria-pressed="true"] { border-color: var(--gold) }
 .thumbs button span { position: absolute; left: 3px; top: 3px; font: 700 10px var(--sans); background: rgba(20,6,10,.8); color: var(--gold); padding: 1px 4px; border-radius: 3px }
 .capedit { width: 100%; min-height: 54px; font: 15px/1.3 var(--serif); background: var(--panel-2); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; resize: vertical }
@@ -181,11 +183,37 @@ async function loadPack(kind, key) {
   const base = `${ROOT}${kind}/${key}/`;
   const pack = await (await fetch(base + 'pack.json')).json();
   pack.base = base;
-  const list = kind === 'day' ? pack.years.flatMap(y => y.cands) : pack.days.flatMap(d => d.cands);
-  await Promise.all(list.map(c => new Promise(res => {
-    const im = new Image(); im.onload = () => res(); im.onerror = () => res(); im.src = base + c.img; IMG[base + c.img] = im;
-  })));
+  const groups = kind === 'day' ? pack.years : pack.days;
+  groups.forEach(g => g.cands.forEach((c, i) => { c.key = `${base}${g.year || g.day}-${i}` }));
+  const first = groups.flatMap(g => [...g.cands.slice(0, 6), ...[g.pickA, g.pickB, g.pickM].filter(i => i != null).map(i => g.cands[i])]);
+  await Promise.all(first.filter(Boolean).map(c => photoOf(pack, c, true)));
   return pack;
+}
+// the photos of a year (or day) are joined in two files, the best six and the rest; each file is fetched once,
+// the rest only when one of them is wanted
+const BINS = {};
+function photoOf(pack, c, wait) {
+  if (!c) return null;
+  const have = IMG[c.key];
+  if (have) return wait ? have.ready : have.im;
+  const im = new Image(), rec = { im: null };
+  rec.ready = new Promise(res => {
+    im.onload = () => { rec.im = im; res(); if (!wait) render() }; im.onerror = () => res();
+    if (c.img) im.src = pack.base + c.img;
+    else {
+      BINS[pack.base + c.f] ??= fetch(pack.base + c.f).then(r => r.blob());
+      BINS[pack.base + c.f].then(b => { im.src = URL.createObjectURL(b.slice(c.at[0], c.at[0] + c.at[1], 'image/jpeg')) }).catch(res);
+    }
+  });
+  IMG[c.key] = rec;
+  return wait ? rec.ready : null;
+}
+const allReady = () => Promise.all((S.mode === 'day' ? dayCards(P.day, S.day) : monthCards(P.month, S.month)).map(x => x.c && photoOf(P[S.mode], x.c, true)));
+// a sheet of small thumbnails a year or day: cell i of a grid `cols` wide
+function thumb(pack, g, i) {
+  if (!g.thumbs) return `<img src="${pack.base + g.cands[i].img}" alt="">`;
+  const n = g.cands.length, cols = Math.min(pack.cols || 10, n), rows = Math.ceil(n / cols);
+  return `<i style="background-image:url('${pack.base + g.thumbs}');background-size:${cols * 100}% ${rows * 100}%;background-position:${cols > 1 ? (i % cols) / (cols - 1) * 100 : 0}% ${rows > 1 ? Math.floor(i / cols) / (rows - 1) * 100 : 0}%"></i>`;
 }
 
 // ------------------------------------------------------------ crops (the daily run's own rules: never cut Bapa's head)
@@ -321,7 +349,7 @@ function defaultPick(y, style) {
     if (style === 'close') return (c.face ? 1 : -5) + fr * 4;
     return (c.face ? 1 : -5) + (c.special ? 2 : 0) + (c.nice ? 1.5 : 0) - fr * 2;
   };
-  return y.cands.map((c, i) => [score(c) - i * .05, i]).sort((a, b) => b[0] - a[0])[0][1];
+  return y.cands.slice(0, 6).map((c, i) => [score(c) - i * .05, i]).sort((a, b) => b[0] - a[0])[0][1];
 }
 function autoCrop(c, style) {
   if (style === 'close') return c.face ? 'close' : 'frame';
@@ -425,7 +453,7 @@ function drawPolaroid(ctx, x, left, top, PW, PH, B, BB, o) {
   const g = ctx.createLinearGradient(0, top, 0, top + CH); g.addColorStop(0, IVORY_TOP); g.addColorStop(1, IVORY_BOT);
   ctx.fillStyle = g; ctx.fillRect(left, top, CW, CH); ctx.restore();
   ctx.strokeStyle = IVORY_EDGE; ctx.lineWidth = 1.5; ctx.strokeRect(left + .5, top + .5, CW - 1, CH - 1);
-  const im = IMG[P[S.mode].base + x.c.img];
+  const im = photoOf(P.day, x.c);
   if (im) {
     const [sx, sy, sw, sh] = cropBox(x.c, PW / PH, x.mode, x.zoom, x.dx, x.dy);
     ctx.save(); ctx.filter = photoFilter(o); ctx.drawImage(im, sx, sy, sw, sh, left + B, top + B, PW, PH); ctx.restore();
@@ -451,12 +479,13 @@ function drawPolaroid(ctx, x, left, top, PW, PH, B, BB, o) {
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296 } }
 
 // ------------------------------------------------------------ the month poster (m7, options A and B)
+const optPick = (d, opt) => opt === 'A' ? d.pickA : opt === 'B' ? d.pickB : d.pickM ?? d.pickA;
 function monthCards(pack, o) {
   return pack.days.map(d => {
     const st = o.days[d.day] || {};
-    const pick = st.pick ?? (o.option === 'A' ? d.pickA : d.pickB);
+    const pick = st.pick ?? optPick(d, o.option);
     const c = d.cands[pick];
-    let mode = st.crop && st.crop !== 'auto' ? st.crop : (o.option === 'A' ? d.modeA : d.modeB);
+    let mode = st.crop && st.crop !== 'auto' ? st.crop : (o.option === 'A' ? d.modeA : o.option === 'B' ? d.modeB : d.modeM ?? d.modeA);
     if (mode === 'snug' || mode === 'top') mode = 'frame';
     return { d, c, mode, zoom: st.zoom || 1, dx: st.dx || 0, dy: st.dy || 0, caption: st.caption ?? (c ? c.caption : ''), place: c ? c.place : '' };
   });
@@ -485,7 +514,7 @@ function drawMonth(ctx, pack, o, hits) {
       bx += ws[i] + 24;
     });
   }
-  const showCap = o.captions === 'on' || (o.captions === 'auto' && o.option === 'B');
+  const showCap = o.captions === 'on' || (o.captions === 'auto' && o.option !== 'A');
   const aspect = showCap ? 1 : .86;
   const nrows = o.rows, per = Array.from({ length: nrows }, (_, i) => Math.floor(nd / nrows) + (i < nd % nrows ? 1 : 0));
   const cols = per[0], M = 56, gap = 22;
@@ -506,7 +535,7 @@ function drawMonth(ctx, pack, o, hits) {
       const g = ctx.createLinearGradient(0, 0, 0, card_h); g.addColorStop(0, IVORY_TOP); g.addColorStop(1, IVORY_BOT);
       ctx.fillStyle = g; ctx.fillRect(left, 0, card_w, card_h); ctx.restore();
       ctx.strokeStyle = IVORY_EDGE; ctx.lineWidth = 2; ctx.strokeRect(left + 1, 1, card_w - 2, card_h - 2);
-      const im = x.c && IMG[P.month.base + x.c.img];
+      const im = photoOf(P.month, x.c);
       if (im) { const [sx, sy, sw, sh] = cropBox(x.c, pw / ph, x.mode, x.zoom, x.dx, x.dy); ctx.save(); ctx.filter = photoFilter(o); ctx.drawImage(im, sx, sy, sw, sh, left + border, border, pw, ph); ctx.restore() }
       else { ctx.fillStyle = 'rgb(232,220,198)'; ctx.fillRect(left + border, border, pw, ph); diamond(ctx, 0, border + ph / 2, 10, 'rgb(200,176,136)') }
       ctx.strokeStyle = 'rgb(150,130,100)'; ctx.lineWidth = 2; ctx.strokeRect(left + border - 1, border - 1, pw + 1, ph + 1);
@@ -650,6 +679,7 @@ function fillSizes() { $('#exp-size').innerHTML = SIZES[S.mode].map(([k, l]) => 
 $('#exp-go').addEventListener('click', async () => {
   const [, , k, ext] = SIZES[S.mode].find(s => s[0] === $('#exp-size').value) || SIZES[S.mode][0];
   const btn = $('#exp-go'), st = $('#status'); btn.disabled = true; st.className = 'status'; st.textContent = 'Drawing the full size picture…';
+  await allReady();
   if (EXPMODE === 'replace') {
     try {
       if (!driveCode()) { $('#drive').dataset.open = '1'; fillMode(); throw new Error('Connect to Google Drive first (the box below), then press Replace again.') }
@@ -668,7 +698,7 @@ $('#exp-go').addEventListener('click', async () => {
     S.mode === 'day' ? drawDay(ctx, P.day, S.day, []) : drawMonth(ctx, P.month, S.month, []);
     const blob = await new Promise(r => c.toBlob(r, ext === 'png' ? 'image/png' : 'image/jpeg', .93));
     const d = new Date(S.mode === 'day' ? S.day.date + 'T12:00' : S.month.month + '-01T12:00');
-    const name = S.mode === 'day' ? `${d.getDate()} ${d.toLocaleString('en-GB', { month: 'long' })} ${d.getFullYear()} Bapa's Diary.${ext}` : `${d.toLocaleString('en-GB', { month: 'long' })} ${d.getFullYear()} Bapa's Diary option ${S.month.option}.${ext}`;
+    const name = S.mode === 'day' ? `${d.getDate()} ${d.toLocaleString('en-GB', { month: 'long' })} ${d.getFullYear()} Bapa's Diary.${ext}` : `${d.toLocaleString('en-GB', { month: 'long' })} ${d.getFullYear()} Bapa's Diary ${{ A: 'close ups', B: 'activity', M: 'mixed' }[S.month.option]}.${ext}`;
     const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
     if (dl) await dl.save({ filename: name, data: blob });
     else { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000) }
@@ -726,7 +756,10 @@ function paneDay() {
       ${check('d-story', 'History story (On this day in…)', o.showStory)} ${check('d-cal', 'BAPS calendar line (Indian date)', o.showCal)}
       ${check('d-tom', 'Tomorrow’s festival in the corner', o.showTomorrow)} ${check('d-foot', 'Project name', o.showFooter)}
       ${o.showFooter ? text('d-footer', 'Name', o.footer) : ''}
-      <p class="hint">Today: ${pack.story ? `story from ${pack.story.year}` : 'no story'}, calendar “${pack.cal_line || 'none'}”.</p></div>`;
+      <p class="hint">Today: ${pack.story ? `story from ${pack.story.year}` : 'no story'}, calendar “${pack.cal_line || 'none'}”.</p></div>
+    <div class="group"><h3>Caption for every year</h3>
+      ${dayCards(pack, o).map(x => `<div class="row"><label for="cap-${x.y}">${x.y}</label><textarea class="capedit capall" id="cap-${x.y}" data-y="${x.y}" rows="2">${(x.caption || '').replace(/&/g, '&amp;').replace(/</g, '&lt;')}</textarea></div>`).join('')}
+      <p class="hint">Change any year’s caption here; empty it to show none. Reset on the Photos tab brings the website caption back.</p></div>`;
   if (S.tab === 'layout') return `
     <div class="group"><h3>Cords and cards</h3>
       ${seg('d-rows', o.rows, [[2, '2 cords'], [3, '3 cords'], [4, '4 cords']])}
@@ -750,7 +783,8 @@ function paneDay() {
       <div class="chips" id="d-sel">${pack.years.filter(v => o.years[v.year]?.on ?? true).map(v => `<button data-y="${v.year}" class="${v.year === y.year ? 'sel' : ''}" aria-pressed="${o.years[v.year]?.pick != null || o.years[v.year]?.crop || o.years[v.year]?.caption != null ? 'true' : 'false'}">${v.year}</button>`).join('')}</div>
       <p class="hint">A white year has your own changes. Or click a card in the picture.</p></div>
     <div class="group"><h3>${y.year} · choose the photo</h3>
-      <div class="thumbs" id="d-thumbs">${y.cands.map((c2, i) => `<button data-i="${i}" aria-pressed="${i === pick}" title="${c2.caption.replace(/"/g, '&quot;')}"><img src="${P.day.base + c2.img}" alt="${c2.caption.replace(/"/g, '&quot;')}">${i === 0 ? '<span>DAILY PICK</span>' : c2.special ? '<span>SPECIAL</span>' : ''}</button>`).join('')}</div>
+      <p class="hint">${y.cands.length} photo${y.cands.length > 1 ? 's' : ''} of Bapa this year, the best first.</p>
+      <div class="thumbs" id="d-thumbs">${y.cands.map((c2, i) => `<button data-i="${i}" aria-pressed="${i === pick}" title="${c2.caption.replace(/"/g, '&quot;')}" aria-label="${c2.caption.replace(/"/g, '&quot;')}">${thumb(P.day, y, i)}${i === 0 ? '<span>DAILY PICK</span>' : c2.special ? '<span>SPECIAL</span>' : ''}</button>`).join('')}</div>
       <p class="hint">${c.place} · ${c.date || y.year}${c.festival ? ' · ' + c.festival : ''}</p></div>
     <div class="group"><h3>Crop</h3>
       ${seg('d-crop', st.crop || 'auto', [['auto', 'Automatic'], ['close', 'Close up'], ['frame', 'Wider'], ['whole', 'Fill frame']])}
@@ -785,8 +819,11 @@ function paneMonth() {
     <div class="group"><h3>On and under each card</h3>
       ${check('m-tithi', 'Indian date (tithi) beside the day', o.tithi)} ${check('m-sun', 'Sundays in red', o.sundayRed)}
       ${check('m-fest', 'Festival tag', o.fest)} ${check('m-story', 'History story of that exact day', o.stories)}
-      ${seg('m-caps', o.captions, [['auto', 'Captions with option B'], ['on', 'Always'], ['off', 'Never']])}
-      ${range('m-capsize', 'Caption size', o.capSize, 16, 30, 1)}</div>`;
+      ${seg('m-caps', o.captions, [['auto', 'With Activity and Mixed'], ['on', 'Always'], ['off', 'Never']])}
+      ${range('m-capsize', 'Caption size', o.capSize, 16, 30, 1)}</div>
+    <div class="group"><h3>Caption for every day</h3>
+      ${monthCards(pack, o).map(x => `<div class="row"><label for="cap-${x.d.day}">${x.d.day} ${pack.title.split(' ')[0]}</label><textarea class="capedit capall" id="cap-${x.d.day}" data-d="${x.d.day}" rows="2">${(x.caption || '').replace(/&/g, '&amp;').replace(/</g, '&lt;')}</textarea></div>`).join('')}
+      <p class="hint">Captions show with Activity and Mixed (or Always, above). Change any day’s caption here.</p></div>`;
   if (S.tab === 'layout') return `
     <div class="group"><h3>Cords and cards</h3>
       ${seg('m-rows', o.rows, [[3, '3 cords'], [4, '4 cords']])}
@@ -795,15 +832,15 @@ function paneMonth() {
       ${check('m-pegs', 'Wooden pegs', o.pegs)}</div>`;
   if (S.tab === 'look') return lookPane('m', o);
   const sel = o.sel ?? 1, d = pack.days[sel - 1], st = o.days[d.day] || {};
-  const pick = st.pick ?? (o.option === 'A' ? d.pickA : d.pickB), c = d.cands[pick];
+  const pick = st.pick ?? optPick(d, o.option), c = d.cands[pick];
   return `
     <div class="group"><h3>Month</h3>
       ${select('m-month', 'Month', o.month, INDEX.months.map(k => [k, longMonth(k)]))}
-      ${seg('m-opt', o.option, [['A', 'Option A, close ups'], ['B', 'Option B, activities']])}</div>
+      ${seg('m-opt', o.option, [['A', 'Close-up images'], ['B', 'Activity'], ['M', 'Mixed']])}</div>
     <div class="group"><h3>Day</h3>
       <div class="chips" id="m-sel">${pack.days.map(v => `<button data-d="${v.day}" class="${v.day === d.day ? 'sel' : ''}" aria-pressed="${o.days[v.day] && Object.keys(o.days[v.day]).length ? 'true' : 'false'}">${v.day}</button>`).join('')}</div></div>
     <div class="group"><h3>${d.day} ${pack.title} · choose the photo</h3>
-      ${d.cands.length ? `<div class="thumbs" id="m-thumbs">${d.cands.map((c2, i) => `<button data-i="${i}" aria-pressed="${i === pick}" title="${c2.caption.replace(/"/g, '&quot;')}"><img src="${P.month.base + c2.img}" alt="${c2.caption.replace(/"/g, '&quot;')}">${i === d.pickA ? '<span>A</span>' : i === d.pickB ? '<span>B</span>' : ''}</button>`).join('')}</div>` : '<p class="hint">No photo for this day yet.</p>'}
+      ${d.cands.length ? `<p class="hint">${d.cands.length} photo${d.cands.length > 1 ? 's' : ''} of Bapa this day, the best first.</p><div class="thumbs" id="m-thumbs">${d.cands.map((c2, i) => `<button data-i="${i}" aria-pressed="${i === pick}" title="${c2.caption.replace(/"/g, '&quot;')}" aria-label="${c2.caption.replace(/"/g, '&quot;')}">${thumb(P.month, d, i)}${[['A', 'CLOSE'], ['B', 'ACTIVITY'], ['M', 'MIXED']].filter(([k]) => optPick(d, k) === i && (k !== 'M' || d.pickM != null)).map(([, l]) => `<span>${l}</span>`).join('').replace(/<\/span><span>/g, ' · ')}</button>`).join('')}</div>` : '<p class="hint">No photo for this day yet.</p>'}
       <p class="hint">${c ? c.place : ''} · ${d.tithi}${d.fest.length ? ' · ' + d.fest.join(', ') : ''}</p></div>
     <div class="group"><h3>Crop</h3>
       ${seg('m-crop', st.crop || 'auto', [['auto', 'Automatic'], ['close', 'Close up'], ['frame', 'Wider'], ['whole', 'Fill frame']])}
@@ -825,7 +862,7 @@ function build() {
   if (pack && S.mode === 'day') $('#real').src = pack.base + 'real.jpg';
   if (pack) {
     if (S.mode === 'day') { const n = dayCards(pack, S.day).length; $('#meta').innerHTML = `<b>${pack.title}</b> · ${n} years · photos chosen on GitHub ${pack.made.slice(0, 10)}` }
-    else $('#meta').innerHTML = `<b>${pack.title}</b> · ${pack.days.length} days · option ${S.month.option}`;
+    else $('#meta').innerHTML = `<b>${pack.title}</b> · ${pack.days.length} days · ${{ A: 'close-up images', B: 'activity', M: 'mixed' }[S.month.option]}`;
   }
   fillSizes(); fillMode(); wire(); render();
 }
@@ -837,6 +874,10 @@ function wire() {
   document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => { S.tab = b.dataset.t; build() }));
   // shared look
   segOn(p + '-look', 'look'); bind(p + '-glow', 'glow', 1); bind(p + '-jali', 'jali', 1); bind(p + '-polish', 'polish'); bind(p + '-bright', 'bright', 1); bind(p + '-warm', 'warmth', 1);
+  document.querySelectorAll('.capall').forEach(t => t.addEventListener('input', () => {
+    const k = t.dataset.y ?? t.dataset.d, bag = t.dataset.y ? o.years : o.days;
+    (bag[k] = bag[k] || {}).caption = t.value; render();
+  }));
   on(p + '-resetall', 'click', () => { S[S.mode] = structuredClone(S.mode === 'day' ? DAY_DEFAULT : MONTH_DEFAULT); build() });
   if (S.mode === 'day') {
     const yr = () => { const k = o.sel ?? P.day.years[0].year; return (o.years[k] = o.years[k] || {}) };

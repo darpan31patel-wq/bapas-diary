@@ -6,14 +6,47 @@ calendar line, so the dashboard can swap photos, crops and text and draw the pic
 
     python tools/dashboard_pack.py 2026-10-25 dashboard/packs
 writes dashboard/packs/2026-10-25/pack.json, the photos beside it and real.jpg (the daily run's own picture).
+Every photo of the year where Bapa is recognised is kept too (Darpan, 26 Oct 2026: 'let me browse ALL the photos'):
+the best six in <year>-best.jpg, the rest smaller in <year>-more.jpg (photos joined end to end; pack.json gives each
+one's place), with a sheet of small thumbnails per year (<year>-thumbs.jpg), so the pack stays light.
 Read only: nothing here changes the daily picture, shown.json or the release."""
 import datetime, json, os, sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import make
 from make import Image
+from PIL import ImageOps
 
-LONG = 1000   # the long side of each saved photo
+LONG = 1000   # the long side of each of the best six photos
+MORE = 800    # the long side of every other photo of Bapa
+CELL = 160    # thumbnail sheet: square cells, COLS a row
+COLS = 10
+FACES = {}    # path -> Bapa's face box, as the daily pick found it
+
+
+def watch_faces():
+    """Note every face the daily pick finds, so the photos it doesn't keep in its short list can be offered too."""
+    from PIL import Image as PIL
+    opened, find, last = PIL.open, make.bapa_face, [None]
+    def open_(fp, *a, **k):
+        last[0] = fp
+        return opened(fp, *a, **k)
+    def face(im, *a, **k):
+        r = find(im, *a, **k)
+        FACES[last[0]] = r[0]
+        return r
+    PIL.open, make.bapa_face = open_, face
+    return lambda: (setattr(PIL, 'open', opened), setattr(make, 'bapa_face', find))
+
+
+def thumbs(ims, faces, path):
+    """One sheet of square thumbnails, COLS a row, each cut square around Bapa's face (or the middle)."""
+    rows = -(-len(ims) // COLS)
+    sheet = Image.new('RGB', (CELL * min(COLS, len(ims)), CELL * rows))
+    for i, (im, f) in enumerate(zip(ims, faces)):
+        mid = ((f[0] + f[2] / 2) / im.width, (f[1] + f[3] / 2) / im.height) if f else (.5, .4)
+        sheet.paste(ImageOps.fit(im, (CELL, CELL), Image.LANCZOS, centering=mid), ((i % COLS) * CELL, (i // COLS) * CELL))
+    sheet.save(path, quality=72)
 
 
 def items_for(day, cache):
@@ -49,7 +82,9 @@ def main():
     seen = make.shown
     make.shown = lambda: {d: v for d, v in seen().items() if d < str(day)}   # only the days before it, as its own morning run sees them
     items, tg_evs = items_for(day, os.path.join(make.HERE, '.cache'))
+    unwatch = watch_faces()
     photos = make.pick_one_per_year(items, seed=f'{day:%m-%d}', aspect=make.FRAME_ASPECT[make.LIVE_STYLE], day=day)
+    unwatch()
     make.tag_festivals(photos)
     story = make.tg_story(tg_evs, photos)
     make.compose(photos, day, seed=f'{day:%m-%d}', style=make.LIVE_STYLE, history=story).convert('RGB') \
@@ -60,24 +95,43 @@ def main():
         if w['pick'] is None:
             continue
         rows = [w['pick']] + [x for _, x, _ in w['rows'] if x is not w['pick']]
-        cands = []
-        for k, x in enumerate(rows[:6]):
-            im = x['im'].copy(); s = min(1, LONG / max(im.size)); im = im.resize((round(im.width * s), round(im.height * s)), Image.LANCZOS)
-            name = f'{w["year"]}-{k}.jpg'
-            im.save(os.path.join(out, name), quality=82)
+        have = {x['i'] for x in rows}
+        more = []   # every other photo of the year where Bapa is recognised, biggest face first
+        for x in items:
+            if x['y'] != w['year'] or x['i'] in have or 'path' not in x or not FACES.get(x['path']) or make.JUNK.search(x.get('c') or ''):
+                continue
+            try:
+                im = Image.open(x['path']).convert('RGB')
+            except Exception:
+                continue
+            have.add(x['i'])
+            more.append(dict(x, im=im, face=FACES[x['path']], crop='frame', special=make.is_special(x.get('c') or '')))
+        more.sort(key=lambda x: -x['face'][3] / x['im'].height)
+        cands, ims = [], []
+        blobs = {f: open(os.path.join(out, f'{w["year"]}-{f}.jpg'), 'wb') for f in ('best', 'more')}
+        for k, x in enumerate(rows[:6] + more):
+            im = x['im'].copy(); s = min(1, (LONG if k < 6 else MORE) / max(im.size)); im = im.resize((round(im.width * s), round(im.height * s)), Image.LANCZOS)
+            f = 'best' if k < 6 else 'more'
+            at = blobs[f].tell(); im.save(blobs[f], 'JPEG', quality=82 if k < 6 else 76)
+            ims.append(im)
             d = str(x.get('d') or '')[:10]
             fs = make.festivals(make.cal_day(d)) if len(d) == 10 else []
-            cands.append(dict(img=name, w=im.width, h=im.height,
+            cands.append(dict(f=f'{w["year"]}-{f}.jpg', at=[at, blobs[f].tell() - at], w=im.width, h=im.height,
                               face=[round(v * s, 1) for v in x['face']] if x['face'] else None,
                               crop=x.get('crop', 'frame'), caption=make.caption(x), original=x.get('c') or '',
                               place=make.place(x), date=d, special=bool(x.get('special')), nice=bool(x.get('nice')),
                               festival=fs[0] if fs else ''))
-        years.append(dict(year=w['year'], mode=w['mode'], cands=cands))
+        for f, b in blobs.items():
+            b.close()
+            if os.path.getsize(b.name) == 0:
+                os.remove(b.name)
+        thumbs(ims, [c['face'] for c in cands], os.path.join(out, f'{w["year"]}-thumbs.jpg'))
+        years.append(dict(year=w['year'], mode=w['mode'], cands=cands, thumbs=f'{w["year"]}-thumbs.jpg'))
     cal = make.cal_footer(day)
     pack = dict(date=str(day), title=make.cal_title(day) or f'{day.day} {day:%B}', subtitle='in Bapa’s Diary',
                 footer=make.FOOTER, cal_line=cal[0] if cal else '', tomorrow=cal[1] if cal else '',
                 story=dict(year=story['date'][:4], line=story.get('line', '')) if story else None,
-                years=years, made=datetime.datetime.utcnow().isoformat(timespec='minutes') + 'Z')
+                years=years, cell=CELL, cols=COLS, made=datetime.datetime.utcnow().isoformat(timespec='minutes') + 'Z')
     json.dump(pack, open(os.path.join(out, 'pack.json'), 'w'), indent=1, ensure_ascii=False)
     print(f'{day}: {len(years)} years, {sum(len(y["cands"]) for y in years)} photos -> {out}')
 
