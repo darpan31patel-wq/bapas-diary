@@ -1,0 +1,29 @@
+# One off check (Darpan's own Google Drive key, 26 Oct 2026): can rclone open "Bapa's Archive" with the
+# RCLONE_CLIENT_ID / RCLONE_CLIENT_SECRET / RCLONE_DRIVE_TOKEN secrets? Prints only a count, never names or keys.
+# Lives on this branch only; touches nothing in the daily picture chain.
+name: drive-key-check
+on:
+  push:
+    branches: ['claude/project-thread-ttpzxb']
+    paths: ['.github/workflows/drive-key-check.yml']
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Open the Drive archive with Darpan's own key
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          CLIENT_ID: ${{ secrets.RCLONE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.RCLONE_CLIENT_SECRET }}
+        run: |
+          [ -n "$CLIENT_ID" ] && echo "own key secret is set" || echo "::warning::RCLONE_CLIENT_ID is not set"
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          mkdir -p ~/.config/rclone && python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
+          grep -q '^client_id' ~/.config/rclone/rclone.conf && echo "using his own Google login"
+          n=$(rclone lsf --max-depth 1 "gdrive:Bapa's Archive" | wc -l)
+          echo "Drive opened: $n items at the top of Bapa's Archive"
+          n=$(rclone lsf --dirs-only "gdrive:Bapa's Archive/photos/baps.org" | wc -l)
+          echo "$n year folders in photos/baps.org"
