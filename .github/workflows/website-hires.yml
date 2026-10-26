@@ -45,11 +45,13 @@ jobs:
           pip install -q pillow
           gh release download database -p bapas.db.gz -p check.txt && gunzip bapas.db.gz
           curl -s https://rclone.org/install.sh | sudo bash >/dev/null
-          mkdir -p ~/.config/rclone && python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
-          if [ -n "$CLIENT_ID" ] && ! grep -q '^client_id' ~/.config/rclone/rclone.conf; then   # Darpan's own Google login (the website branch's copy of rclone_conf.py may not know it yet)
-            sed -i 's/^scope = .*/scope = drive/' ~/.config/rclone/rclone.conf
-            printf 'client_id = %s\nclient_secret = %s\n' "$CLIENT_ID" "$CLIENT_SECRET" >> ~/.config/rclone/rclone.conf
-          fi
+          # Drive with Darpan's own Google key (26 Oct 2026: rclone's shared key is retired during 2026), using main's
+          # rclone_conf.py, which knows that key (the website branch's older copy does not); never the shared key
+          [ -n "$CLIENT_ID" ] && [ -n "$CLIENT_SECRET" ] || { echo "::error::The RCLONE_CLIENT_ID and RCLONE_CLIENT_SECRET secrets are needed"; exit 1; }
+          git fetch -q --depth 1 origin main && git show FETCH_HEAD:tools/rclone_conf.py > "$RUNNER_TEMP/rclone_conf.py"
+          mkdir -p ~/.config/rclone && python3 "$RUNNER_TEMP/rclone_conf.py" > ~/.config/rclone/rclone.conf
+          rclone lsf --max-depth 1 "gdrive:Bapa's Archive" > /dev/null || { echo "::error::Drive would not open with Darpan's own key"; exit 1; }
+          echo "Drive opened with Darpan's own Google key"
           id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
           key=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1)
           echo "::add-mask::$id"; echo "::add-mask::$key"   # keep both out of the run logs
