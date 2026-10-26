@@ -82,9 +82,10 @@ jobs:
           # the wide words too (grass, blue flowers, plane, football...; Darpan: yes wide tags, 26 Oct)
           python3 tools/deep_tags.py tags --emb emb --words words.npz --big words-big.npz --out deep-tags.json
           gh release upload deep-tags deep-tags.json words.npz words-big.npz --clobber
-  # new photos were tagged, or the words changed (a push here): rebuild the website (the same build as every deploy) so Search finds them
+  # new photos were tagged, or the words changed (run by hand): rebuild the website (the same build as every deploy) so Search finds them.
+  # Never from a push here: website-deploy then builds this branch's own files, which are not the website.
   site:
     needs: [plan, tags]
-    if: always() && needs.tags.result == 'success' && (needs.plan.outputs.shards != '[]' || github.event_name == 'push')
+    if: always() && needs.tags.result == 'success' && github.event_name != 'push' && (needs.plan.outputs.shards != '[]' || github.event_name == 'workflow_dispatch')
     uses: darpan31patel-wq/bapas-diary/.github/workflows/website-deploy.yml@claude/project-thread-eawr12
     secrets: inherit
