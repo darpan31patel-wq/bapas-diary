@@ -442,7 +442,7 @@ function cords() {
   // ride on it, the side ones a little higher (Darpan, 26 Oct 2026)
   const svg = $('cords'), board = $('board'), vw = document.documentElement.clientWidth, wide = vw > 760, rows = {};
   if (wide) {
-    const w = board.parentElement.getBoundingClientRect(), g = Math.max(24, vw * .02);
+    const w = board.parentElement.getBoundingClientRect(), g = Math.max(40, vw * .035);   // a safe gap from the window edge (Darpan, 26 Oct 2026: "a tiny bit more breathing space")
     board.style.marginLeft = Math.round(g - w.left) + 'px'; board.style.marginRight = Math.round(g - (vw - w.right)) + 'px';
   } else board.style.marginLeft = board.style.marginRight = '';
   const b = board.getBoundingClientRect(), D = wide ? Math.min(64, vw * .032) : 0;
