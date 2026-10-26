@@ -45,13 +45,12 @@ header{padding-block:6px 4px;padding-left:max(16px,env(safe-area-inset-left,0px)
 .card.blank .wrapmark{background:var(--maroon)}
 .fest{position:absolute;left:0;right:0;bottom:0;padding:12px 5px 4px;text-align:center;font-family:var(--caps);font-weight:700;font-size:calc(clamp(7.5px,1.15vh,10px) * var(--z));letter-spacing:.06em;color:var(--gold-hi);
   background:linear-gradient(0deg,rgba(22,5,9,.92),rgba(22,5,9,0));line-height:1.2;text-wrap:balance}
-.card.blank .fest{position:static;background:none;color:#9a5a20;padding:2px 0 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.tithi{font-family:var(--caps);font-weight:700;font-size:calc(clamp(7px,1.05vh,9.5px) * var(--z));letter-spacing:.1em;text-transform:uppercase;color:#7a4e36;padding:3px 1px 4px;white-space:nowrap;overflow:hidden;text-align:center;min-height:1.6em}
+.strip.two{white-space:normal;text-wrap:balance;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.card.blank .fest{position:static;background:none;color:#9a5a20;padding:2px 2px 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.strip{font-family:var(--caps);font-weight:700;font-size:calc(clamp(7px,1.05vh,9.5px) * var(--z));letter-spacing:.06em;color:#7a4e36;padding:3px 2px 4px;white-space:nowrap;overflow:hidden;text-overflow:clip;text-align:center;min-height:1.6em;line-height:1.2}
 .card.blank .win{background:radial-gradient(circle at 50% 40%,#fbf6ea,#e9dcc0);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:4px;gap:2px;container-type:size}
-.card.blank .tithi{visibility:hidden}
 .bnum{font-size:min(46cqh,40cqw);font-weight:600;line-height:.9;color:var(--maroon)}
 .bwd{font-family:var(--caps);font-weight:700;font-size:min(9cqh,7.5cqw);letter-spacing:.2em;text-transform:uppercase;color:#9a6a40}
-.bind{font-size:min(15cqh,11.5cqw);font-weight:500;line-height:1.05;color:var(--ink);text-wrap:balance}
 /* years and places in one bar at the bottom (Darpan, 25 Oct: put them together, easier to understand, select and scroll):
    a row of years, and under it every stay from 1999 to today, a gold year label where each year starts.
    Scroll the places freely; tap a year to jump; tap a place to light up its days on the calendar. */
@@ -170,8 +169,8 @@ function places(k){
 function blank(win,d,y,m,day){
   win.innerHTML='';
   win.append(el('div','bnum',day),el('div','bwd',WDL[new Date(y,m-1,day).getDay()]));
-  if(d[0]) win.appendChild(el('div','bind',esc(d[0])));
-  win.parentNode.classList.add('blank');
+  const c=win.parentNode; if(c._on) win.appendChild(el('div','fest',esc(c._on)));
+  c.classList.add('blank');
 }
 
 function render(mo){
@@ -192,15 +191,20 @@ function render(mo){
       b=el('a','card'); b.href=`${SEARCH}#date=${date}`; b.draggable=false;
       b.setAttribute('aria-label',`${WDL[new Date(y,m-1,day).getDay()]} ${day} ${MONTHS[m-1]} ${y}${d[0]?', '+d[0]:''}. Open this day's photos`);
       const win=el('div','win'); b.appendChild(win);
+      /* no Indian date (Darpan, 26 Oct: too much text); a day's festival goes small in the white strip, and when a day
+         has two, the birthday, anniversary or festival goes on the photo and the other in the strip */
+      const f=[...new Set([d[1],d[2]].filter(Boolean).join('; ').split('; ').filter(n=>n&&!/^(Fast|Sud|Vad) ?\w*$/.test(n)))];
+      let rest=f; b._on=null;
+      if(f.length>1){const i=f.reduce((bi,n,j)=>rank(n)<rank(f[bi])?j:bi,0); b._on=f[i]; rest=f.filter((_,j)=>j!==i)}
       if(d[4]){
         const im=new Image(); im.alt=d[6]||''; im.loading='lazy'; im.decoding='async'; im.draggable=false;
         im.onerror=()=>blank(win,d,y,m,day); im.src=`${PHOTOS}s/${d[4]}/${encodeURIComponent(d[5])}`;
         win.append(im,el('div','num',day));
+        if(b._on) win.appendChild(el('div','fest',esc(b._on)));
       } else blank(win,d,y,m,day);
       if(x.wr) win.appendChild(el('div','wrapmark',ord(day)));
-      const f=[d[1],d[2]].filter(Boolean).join('; ').split('; ').filter(n=>n&&!/^(Fast|Sud|Vad) ?\w*$/.test(n));
-      if(f.length) win.appendChild(el('div','fest',esc(f.join(' · '))));
-      b.appendChild(el('div','tithi',esc(d[0]||'')));
+      const st=el('div','strip'+(rest.length?' has':''),esc(rest.join(' · '))); b.appendChild(st);
+      if(rest.length) fitLater.push(st);
       b.addEventListener('click',e=>{if(dragMoved)e.preventDefault()});
       b.addEventListener('mouseenter',()=>light(k,day));
       b.addEventListener('focus',()=>light(k,day));
@@ -209,7 +213,20 @@ function render(mo){
     b.style.gridArea=`${r+2}/${c+1}`; mo.appendChild(b);
   }
   mo.addEventListener('mouseleave',()=>light(null));
+  requestAnimationFrame(fitStrips);
 }
+/* the strip's words shrink a little to fit on one line, else take two lines */
+let fitLater=[];
+function fitStrips(){
+  const l=fitLater; fitLater=[];
+  for(const st of l){ if(!st.isConnected)continue; st.style.fontSize='';
+    st.classList.remove('two'); let fs=parseFloat(getComputedStyle(st).fontSize), min=fs*.78;
+    while(st.scrollWidth>st.clientWidth+1&&fs>min){fs-=.25;st.style.fontSize=fs+'px'}
+    if(st.scrollWidth>st.clientWidth+1) st.classList.add('two') }   // still too long: two lines at that size
+}
+/* which of a day's two goes on the photo: birthdays and anniversaries, then festivals, then the everyday ones */
+const EVERYDAY=/^(Ekadashi|Punam|Amas|Shraddh|Eclipse|Hindola|Dhanurmas|Holashtak|Republic Day|Independence Day)/;
+const rank=n=>/Jayanti|Smrutiparva|Diksha|Varni Din|Birthday/i.test(n)?0:EVERYDAY.test(n)?2:1;
 function unrender(mo){if(!mo._done)return; mo._done=false; mo._cards=[]; mo.innerHTML=''}
 /* where Bapa was: every stay from 1999 to today in one row under the years; dayStay maps "YYYY-MM day" to its stay */
 const jrow=document.getElementById('jrow'), jscroll=document.getElementById('jscroll'), jnote=document.getElementById('jnote');
