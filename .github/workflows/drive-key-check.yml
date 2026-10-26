@@ -13,6 +13,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: claude/project-thread-eawr12
       - name: Open the Drive archive with Darpan's own key
         env:
           TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
@@ -21,9 +23,9 @@ jobs:
         run: |
           [ -n "$CLIENT_ID" ] && echo "own key secret is set" || echo "::warning::RCLONE_CLIENT_ID is not set"
           curl -s https://rclone.org/install.sh | sudo bash >/dev/null
-          mkdir -p ~/.config/rclone && python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
+          [ -n "$CLIENT_ID" ] && [ -n "$CLIENT_SECRET" ] || { echo "::error::The RCLONE_CLIENT_ID and RCLONE_CLIENT_SECRET secrets are needed"; exit 1; }
+          git fetch -q --depth 1 origin main && git show FETCH_HEAD:tools/rclone_conf.py > "$RUNNER_TEMP/rclone_conf.py"
+          mkdir -p ~/.config/rclone && python3 "$RUNNER_TEMP/rclone_conf.py" > ~/.config/rclone/rclone.conf
           grep -q '^client_id' ~/.config/rclone/rclone.conf && echo "using his own Google login"
-          n=$(rclone lsf --max-depth 1 "gdrive:Bapa's Archive" | wc -l)
-          echo "Drive opened: $n items at the top of Bapa's Archive"
-          n=$(rclone lsf --dirs-only "gdrive:Bapa's Archive/photos/baps.org" | wc -l)
-          echo "$n year folders in photos/baps.org"
+          rclone lsf --max-depth 1 "gdrive:Bapa's Archive" > /dev/null || { echo "::error::Drive would not open with Darpan's own key"; exit 1; }
+          echo "Drive opened with Darpan's own Google key"
