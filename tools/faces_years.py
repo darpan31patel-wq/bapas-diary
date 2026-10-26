@@ -34,7 +34,8 @@ MIN_GAP = 9                # pixels between the eyes (span) in the photo: anythi
 # shows his face about 100 to 200 px across, so a face must already be close in the photo, sharp and light, and must be
 # Bapa himself: never a murti, portrait, painting or framed photo of him (the Bapa pages' rule).
 MIN_SPAN = 45              # face size (span) in the R2 m/ copy, which is at most 1200 px
-FRONT_MIN = .45           # a side profile or the back of his head can't line its eyes up with the others
+FRONT_MIN = .55           # a side profile or the back of his head can't line its eyes up with the others
+RULES = 2                 # bump when the choice rules change: every day is chosen again (2: looking straight at the camera, Darpan 26 Oct 2026)
 SHARP_MIN, BRIGHT_MIN = 80, 60   # sharpness as score() measures it: below 80 a face looks soft at the page's size
 LIKENESS = re.compile(r"^\s*Pragat Brahmaswarup\b[^,.]*$|^(?:The )?Murtis? (?:in|of) Swamishri'?s (?:morning )?puja|"
                       r"\b(?:murti|portrait|statue|painting|image|photo)s? of (?:the )?(?:HH |Param Pujya |Pragat |Brahmaswarup )*"
@@ -105,7 +106,7 @@ def score(bgr, f, sim):
     front = front_view(f)
     sharp, bright = quality(bgr, f)
     s = min(close, .6) * 3 + min(gap, 120) / 120 + sim
-    s -= 3 * max(0, .6 - front)                          # a side profile can't line its eyes up with the others
+    s += 1.5 * front - 3 * max(0, .75 - front)           # looking straight down the camera wins (Darpan, 26 Oct 2026)
     s -= .8 * max(0, 1 - sharp / 40) + .8 * max(0, 1 - bright / 70)
     s -= 1.5 if gap < MIN_GAP * 2 else 0
     return float(s), dict(close=round(float(close), 3), gap=round(gap, 1), front=round(front, 2), sharp=round(sharp), bright=round(bright))
@@ -195,7 +196,7 @@ def hint(rec):
     sim, x, y, w, h, front, sharp, bright, W_, H_ = rec[:10]
     close = h * H_ / max(1, min(W_, H_))
     return (min(close, .6) * 3 + min(w * W_ * .4, 120) / 120 + sim - 3 * max(0, .6 - front)
-            - .8 * max(0, 1 - sharp / 40) - .8 * max(0, 1 - bright / 70))
+            - .8 * max(0, 1 - sharp / 40) - .8 * max(0, 1 - bright / 70) + 1.5 * front)
 
 
 def auto(a):
@@ -260,8 +261,8 @@ def auto(a):
             del out[day]
         elif a.sheet:
             cv2.imwrite(os.path.join(a.sheet, f'{day}.jpg'), align(bgr, f), [cv2.IMWRITE_JPEG_QUALITY, 80])
-    if a.redo:
-        seen = {}
+    if a.redo or seen.get('_rules') != RULES:
+        seen = {'_rules': RULES}
     todo = []
     for y in years:
         if y not in scanned:
@@ -366,7 +367,7 @@ def main():
         ap.add_argument('--years', required=True, help='the years in R2, one a line (photos.bapas-diary.com/years.txt)')
         ap.add_argument('--hints', help="folder of website-faces' face2-*.json.gz")
         ap.add_argument('--url', default='https://photos.bapas-diary.com/m/')
-        ap.add_argument('--keep', type=int, default=8)
+        ap.add_argument('--keep', type=int, default=10)
         ap.add_argument('--sheet', help='also keep every frame (and every one left out as a picture) here, to look over')
         ap.add_argument('--out', default='faces')
         ap.add_argument('--redo', action='store_true', help='look at every day again (after a rule changes)')
