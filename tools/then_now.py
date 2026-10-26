@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import faces_years as fy   # noqa: E402  (bapa(), score(), PSM_UNTIL; copied in from the faces branch by the workflow)
 
 PHOTO = 1200      # the kept photo's longest side
-TRY = 14          # photos of each guru tried for each place and moment
+TRY = 20          # photos of each guru tried for each place and moment
 KEEP = 4          # kept for the contact sheet
 MOMENTS = {       # what the caption says -> the moment's name on the page
     'puja': ('Morning puja', r'\bpuja\b'),
