@@ -137,6 +137,12 @@ function show(n) {
   history.replaceState(null, '', '#' + slug(p.place));
 }
 $('next').onclick = () => show(i + 1); $('prev').onclick = () => show(i - 1);
+// Darpan, 26 Oct 2026: after 10 seconds with nobody touching the page, the next pair comes by itself
+const IDLE = 10000; let idle = null;
+const rest = () => { clearTimeout(idle); idle = setTimeout(() => { show(i + 1); rest(); }, IDLE + fadeMs); };
+['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(t => addEventListener(t, rest, { passive: true }));
+document.addEventListener('visibilitychange', () => document.hidden ? clearTimeout(idle) : rest());
+rest();
 // a swipe on a phone: left for the next pair, right to go back
 let sx = null; $('pair').addEventListener('touchstart', e => sx = e.touches[0].clientX, { passive: true });
 $('pair').addEventListener('touchend', e => { if (sx == null) return; const d = e.changedTouches[0].clientX - sx; sx = null; if (Math.abs(d) > 50) show(i + (d < 0 ? 1 : -1)); });
