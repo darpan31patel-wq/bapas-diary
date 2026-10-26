@@ -91,6 +91,20 @@ canvas.drag { cursor: grabbing; }
   canvas { height: 56px; }
   .tab .yrs { font-size: 12px; }
 }
+/* both Bapas side by side, each on the chosen date of every year he is here (Darpan, 26 Oct 2026: 'A both Bapas side by side on the same date each year') */
+.both { font: inherit; font-size: 14px; color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 3px 14px; cursor: pointer; }
+.both[aria-pressed="true"] { border-color: var(--saffron); color: var(--saffron); }
+.pairs { display: none; flex: 1; min-height: 0; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px clamp(12px, 3vw, 40px); }
+body.pair .pairs { display: grid; }
+body.pair .stage, body.pair #tl, body.pair .zoom, body.pair #eyeBtn { display: none; }
+.side { margin: 0; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.side .pslot { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+.side figcaption { text-align: center; display: flex; flex-direction: column; gap: 0; }
+.side .who { font-family: var(--display); font-size: clamp(15px, 1.8vw, 20px); color: var(--saffron); }
+.side .pd { font-family: var(--display); font-size: clamp(18px, 2.4vw, 28px); line-height: 1.15; }
+.side .pp { font-size: 14px; color: var(--muted); }
+.pickday { display: none; gap: 6px; }
+body.pair .pickday { display: inline-flex; }
 @media (prefers-reduced-motion: reduce) { :root { --fade: 0ms; } .frame img.rest { transition: none; } }
 </style>
 
@@ -100,6 +114,7 @@ canvas.drag { cursor: grabbing; }
   <div class="top" role="tablist" aria-label="Guru">
     <header role="presentation">
       <h1>Bapa Through The Years</h1>
+      <button class="both" id="bothBtn" type="button" aria-pressed="false">Both side by side</button>
     </header>
     <button class="tab" role="tab" id="tab-psm" data-era="psm" aria-selected="true"><span class="who">Pramukh Swami Maharaj</span><span class="yrs">1999 to 13 August 2016</span></button>
     <button class="tab" role="tab" id="tab-msm" data-era="msm" aria-selected="false"><span class="who">Mahant Swami Maharaj</span><span class="yrs">13 August 2016 to today</span></button>
@@ -126,6 +141,13 @@ canvas.drag { cursor: grabbing; }
     </div>
   </section>
 
+  <section class="pairs" id="pairs" aria-live="polite">
+    <figure class="side"><div class="pslot"><div class="frame" id="frP"><img alt=""><img alt=""></div></div>
+      <figcaption><span class="who">Pramukh Swami Maharaj</span><span class="pd" id="pdP"></span><span class="pp" id="ppP"></span></figcaption></figure>
+    <figure class="side"><div class="pslot"><div class="frame" id="frM"><img alt=""><img alt=""></div></div>
+      <figcaption><span class="who">Mahant Swami Maharaj</span><span class="pd" id="pdM"></span><span class="pp" id="ppM"></span></figcaption></figure>
+  </section>
+
   <div class="scrub">
       <div class="bar">
         <button class="btn play" id="play" type="button">▶ Play</button>
@@ -138,6 +160,7 @@ canvas.drag { cursor: grabbing; }
         <button class="btn" id="zOut" type="button" aria-label="Zoom out">−</button>
         <button class="btn" id="zIn" type="button" aria-label="Zoom in">+</button>
         </span>
+        <span class="pickday"><select class="btn" id="pDay" aria-label="Day"></select><select class="btn" id="pMonth" aria-label="Month"></select></span>
         <button class="btn" id="eyeBtn" type="button" aria-pressed="false">Eye line</button>
       </div>
       <canvas id="tl" tabindex="0" aria-label="Timeline: drag left or right to move through the days" title="Drag the strip, scroll over the photo, or use the arrow keys. Pinch or use + and − to zoom; tap a year or month to jump to it."></canvas>
@@ -177,8 +200,8 @@ function ageOn(d) { const b = BORN[era]; let a = +d.slice(0, 4) - +b.slice(0, 4)
 // shape keeps changing ... keep the picture as a square box'): the photo turned and sized so his eyes sit at
 // (EYE_X, EYE_Y) every day, made a little bigger when needed so it always fills the square. Once the days stop moving
 // it eases back to the whole photo as it was taken, straight and uncut (Darpan, 23 and 26 Oct 2026).
-function place(img, x, rest) {
-  const fr = $('frame'), W = fr.clientWidth, H = fr.clientHeight, ex = EYE_X * W, ey = EYE_Y * H;
+function place(img, x, rest, fr) {
+  fr = fr || $('frame'); const W = fr.clientWidth, H = fr.clientHeight, ex = EYE_X * W, ey = EYE_Y * H;
   img.style.width = x.w + 'px'; img.style.height = x.h + 'px';
   const [rx, ry, lx, ly] = x.eyes, mx = (rx + lx) / 2, my = (ry + ly) / 2;
   if (rest) {
@@ -195,12 +218,14 @@ function place(img, x, rest) {
   }
   const A = k * c, B = -k * s, C = k * s, D = k * c;
   img.style.transform = `matrix(${A},${B},${C},${D},${ex - (A * mx + C * my)},${ey - (B * mx + D * my)})`;
+  if (fr.id !== 'frame') return;
   fr.style.setProperty('--eye-y', EYE_Y * 100 + '%');
   const g = Math.hypot(lx - rx, ly - ry) * k / 2;
   $('eyeR').style.left = (ex - g) + 'px'; $('eyeL').style.left = (ex + g) + 'px';
 }
 
 function show(i, fast) {
+  if (pairOn) return pshow(i, fast);
   if (!list.length) return;
   idx = Math.max(0, Math.min(list.length - 1, i));
   const x = list[idx], my = ++token;
@@ -398,8 +423,8 @@ document.addEventListener('keydown', e => {
 // playing through the days like a flip book
 function toggle() { playing ? stop() : start(); }
 function start() {
-  if (idx >= list.length - 1) show(0);
-  const tick = () => { if (idx >= list.length - 1) return stop(); show(idx + 1, true); follow(); draw(); };
+  if (idx >= len() - 1) show(0);
+  const tick = () => { if (idx >= len() - 1) return stop(); show(idx + 1, true); follow(); draw(); };
   playing = setInterval(tick, 1000 / +$('speed').value);
   $('play').setAttribute('aria-pressed', 'true');
   $('play').textContent = '❚❚ Pause';
@@ -409,10 +434,11 @@ function stop() {
   clearInterval(playing); playing = null; $('play').textContent = '▶ Play';
   clearTimeout(settle);
   settle = setTimeout(() => { if (!playing && list[idx]) { front.classList.add('rest'); place(front, list[idx], true); } }, 900);
+  if (pairOn) prest();
 }
 $('play').onclick = toggle;
 $('speed').oninput = () => { $('speedVal').textContent = `${$('speed').value} a second`; if (playing) { stop(); start(); } };
-$('days').oninput = () => { stop(); show(+$('days').value, true); follow(); draw(); };
+$('days').oninput = () => { stop(); show(+$('days').value, true); if (!pairOn) { follow(); draw(); } };
 let roll = 0;   // scrolling over the photo moves a day for every notch, as fast or slow as the wheel turns
 $('frame').addEventListener('wheel', e => {
   e.preventDefault(); stop();
@@ -434,5 +460,87 @@ function fit() {
 }
 fit();
 const ro = new ResizeObserver(() => { fit(); clampView(); draw(); if (list[idx]) place(front, list[idx], front.classList.contains('rest')); }); ro.observe($('slot')); ro.observe($('tl'));
-setEra(location.hash === '#msm' ? 'msm' : 'psm');
+// both side by side: for the chosen day and month, each Bapa's photo nearest that date in every year he is here
+let pairOn = false, pairN = 0, pairs = { psm: [], msm: [] }, psettle = 0;
+const len = () => pairOn ? pairN : list.length;
+const pf = { psm: { fr: $('frP'), imgs: [...$('frP').querySelectorAll('img')], d: $('pdP'), p: $('ppP') },
+             msm: { fr: $('frM'), imgs: [...$('frM').querySelectorAll('img')], d: $('pdM'), p: $('ppM') } };
+function doy(d) { return Math.round((Date.UTC(2001, +d.slice(5, 7) - 1, +d.slice(8, 10)) - Date.UTC(2001, 0, 1)) / DAYMS); }
+function pickPairs() {
+  const want = doy(`2001-${String(+$('pMonth').value + 1).padStart(2, '0')}-${String($('pDay').value).padStart(2, '0')}`);
+  for (const e of ['psm', 'msm']) {
+    const best = {};
+    for (const x of eras[e]) {
+      let g = Math.abs(doy(x.day) - want); g = Math.min(g, 365 - g);
+      const y = x.day.slice(0, 4);
+      if (g <= 15 && (!best[y] || g < best[y][0])) best[y] = [g, x];
+    }
+    pairs[e] = Object.keys(best).sort().map(y => best[y][1]);
+  }
+  pairN = Math.max(pairs.psm.length, pairs.msm.length, 1);
+  $('days').max = pairN - 1;
+}
+function pshow(i, fast) {
+  idx = Math.max(0, Math.min(pairN - 1, i)); $('days').value = idx;
+  const fade = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : playing ? Math.max(90, Math.round(900 / +$('speed').value)) : fast ? 90 : 160;
+  document.documentElement.style.setProperty('--fade', fade + 'ms');
+  clearTimeout(psettle);
+  for (const e of ['psm', 'msm']) {
+    const P = pf[e], L = pairs[e], x = L[Math.min(idx, L.length - 1)];
+    if (!x) { P.d.textContent = 'No close darshan near this date yet'; P.p.textContent = ''; P.imgs.forEach(im => im.classList.remove('on')); continue; }
+    P.d.textContent = longDate(x.day); P.p.textContent = `${x.place} · aged ${ageFor(e, x.day)}`;
+    if (P.cur === x.day) continue;
+    P.cur = x.day;
+    const [a, b] = P.imgs[0].classList.contains('on') ? P.imgs : [P.imgs[1], P.imgs[0]];
+    b.classList.remove('on', 'rest'); place(b, x, false, P.fr); b.src = photo(x);
+    (b.decode ? b.decode() : Promise.resolve()).catch(() => {}).then(() => {
+      if (P.cur !== x.day) return;
+      b.style.zIndex = 2; a.style.zIndex = 1; b.classList.add('on');
+      setTimeout(() => { if (P.cur === x.day) a.classList.remove('on'); }, fade);
+    });
+  }
+  psettle = setTimeout(() => { if (!playing) prest(); }, 900);
+}
+function prest() {
+  for (const e of ['psm', 'msm']) {
+    const P = pf[e], L = pairs[e], x = L[Math.min(idx, L.length - 1)], im = P.imgs.find(i => i.classList.contains('on'));
+    if (x && im) { im.classList.add('rest'); place(im, x, true, P.fr); }
+  }
+}
+function ageFor(e, d) { const b = BORN[e]; let a = +d.slice(0, 4) - +b.slice(0, 4); if (d.slice(5) < b.slice(5)) a--; return a; }
+function pfit() {
+  for (const e of ['psm', 'msm']) {
+    const sl = pf[e].fr.parentNode, s = Math.floor(Math.min(sl.clientWidth, sl.clientHeight));
+    pf[e].fr.style.width = s + 'px'; pf[e].fr.style.height = s + 'px';
+  }
+}
+(() => {
+  const t = new Date();
+  $('pMonth').innerHTML = MONTHS.map((m, i) => `<option value="${i}">${m}</option>`).join('');
+  $('pDay').innerHTML = Array.from({ length: 31 }, (_, i) => `<option>${i + 1}</option>`).join('');
+  $('pMonth').value = t.getMonth(); $('pDay').value = t.getDate();
+  const again = () => { stop(); for (const e of ['psm', 'msm']) pf[e].cur = null; pickPairs(); pshow(0); };
+  $('pMonth').onchange = again; $('pDay').onchange = again;
+  $('bothBtn').onclick = () => {
+    stop(); pairOn = !pairOn;
+    document.body.classList.toggle('pair', pairOn); $('bothBtn').setAttribute('aria-pressed', pairOn);
+    for (const b of document.querySelectorAll('.tab')) b.disabled = pairOn;
+    for (const b of document.querySelectorAll('.tab')) b.setAttribute('aria-selected', pairOn || b.dataset.era === era);
+    if (pairOn && !$('pairs').dataset.opened) {   // first time: today, or the nearest date both Bapas have a close darshan
+      $('pairs').dataset.opened = 1;
+      const t = new Date();
+      for (let k = 0; k < 183; k++) for (const sgn of [1, -1]) {
+        const d = new Date(Date.UTC(2001, t.getMonth(), t.getDate()) + sgn * k * DAYMS);
+        $('pMonth').value = d.getUTCMonth(); $('pDay').value = d.getUTCDate(); pickPairs();
+        if (pairs.psm.length && pairs.msm.length) { k = 999; break; }
+      }
+    }
+    if (pairOn) { pfit(); again(); try { history.replaceState(null, '', '#both'); } catch (_) {} }
+    else setEra(era);
+  };
+  new ResizeObserver(() => { if (pairOn) { pfit(); for (const e of ['psm', 'msm']) pf[e].cur = null; pshow(idx); } }).observe($('pairs'));
+})();
+const startHash = location.hash;
+setEra(startHash === '#msm' ? 'msm' : 'psm');
+if (startHash === '#both') $('bothBtn').click();
 </script>
