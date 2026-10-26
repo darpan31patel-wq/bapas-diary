@@ -206,7 +206,11 @@ class Variety:
         x, h = rec[1] + rec[3] / 2, rec[4]
         if h > .42 or not .1 < x < .9:
             return .6   # so close or so near the edge that the square would cut his head
-        return .7 if h < .1 else .3 if h < .16 else 0
+        # Darpan, 26 Oct 2026: the best darshan looks straight down the camera, sharp and well lit; a side face,
+        # a soft face or a dark one costs more (front, sharp, bright from tools/web_faces.py scan)
+        front, sharp, bright = (rec[5:8] + [1, 999, 999])[:3]
+        look = .6 * max(0, .75 - front) / .75 + .35 * max(0, 1 - sharp / 80) + .2 * max(0, 1 - bright / 105)
+        return look + (.7 if h < .1 else .3 if h < .16 else 0)
 
     def fetch(self, keys):
         errors = []
@@ -225,7 +229,7 @@ class Variety:
             except Exception as e:
                 errors.append(f'{k}: {e}')
                 return k, ''
-        with concurrent.futures.ThreadPoolExecutor(8) as ex:
+        with concurrent.futures.ThreadPoolExecutor(16) as ex:   # every year's photos once, then kept
             for k, sig in ex.map(one, keys):
                 self.sigs[k] = sig
         print(f'looks: {len(keys) - len(errors)} of {len(keys)} photos read' + (f', first miss {errors[0]}' if errors else ''))
