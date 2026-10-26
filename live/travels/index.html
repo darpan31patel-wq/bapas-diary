@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="stylesheet" href="/menu.css">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}
+
 /* then and now */
 .tn { display: inline-block; margin-top: 10px; padding: 7px 14px; border: 1px solid var(--gold); border-radius: 999px; color: var(--gold); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; -webkit-user-select: none; user-select: none; }
 .tn:hover, .tn:focus-visible { background: var(--gold); color: var(--night); outline: none; }
@@ -388,7 +389,7 @@ body.dragging { -webkit-user-select: none; user-select: none; }
       }, reduce ? 0 : 180);
     }
     // then and now
-    const TN = {"Bharuch": "bharuch", "Bochasan": "bochasan", "Nairobi": "nairobi", "Surat": "surat"}, tn = TN[tgt.name];
+    const TN = {"Ahmedabad": "ahmedabad", "Atladara (Vadodara)": "atladara-vadodara", "Bharuch": "bharuch", "Bhuj": "bhuj", "Bochasan": "bochasan", "Gandhinagar": "gandhinagar", "Gondal": "gondal", "Lenasia": "lenasia", "Limbdi": "limbdi", "Mahelav": "mahelav", "Nadiad": "nadiad", "Nairobi": "nairobi", "Navsari": "navsari", "Sankari": "sankari", "Sarangpur": "sarangpur", "Surat": "surat", "Tithal": "tithal", "Vallabh Vidyanagar": "vallabh-vidyanagar"}, tn = TN[tgt.name];
     $('tn').hidden = st.flying || !tn; if (tn) $('tn').href = '/then-and-now/#' + tn;
     // end then and now
     $('cap').textContent = st.flying ? 'From ' + s.name + ', ' + Math.round(d3.geoDistance(s.ll, n.ll) * 6371).toLocaleString('en-GB') + ' km' : (s.cap || '');
