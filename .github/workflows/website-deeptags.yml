@@ -41,7 +41,7 @@ jobs:
     timeout-minutes: 300
     strategy:
       fail-fast: false
-      max-parallel: 10   # the high res photo copy uses up to 6 of the 20 machines at once
+      max-parallel: 16   # the high res photo copy is nearly done, so most of the 20 machines are free (Darpan, 26 Oct: done today)
       matrix:
         shard: ${{ fromJSON(needs.plan.outputs.shards) }}
     steps:
