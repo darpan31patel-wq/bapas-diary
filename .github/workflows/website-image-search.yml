@@ -1,0 +1,37 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, fetches nothing
+# from baps.org. Search by image (Darpan, 26 Oct 2026: "upload an image, or paste an image or a part of the image ...
+# try and find the same image"): an open DINOv2 model (no Claude, no paid service) turns each photo into numbers;
+# the same small model then runs in the visitor's own browser, so nothing costs anything to run.
+name: website-image-search
+on:
+  push:
+    branches: ['claude/project-thread-hi1iz6']
+    paths: ['.github/workflows/website-image-search.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+env:
+  GH_TOKEN: ${{ github.token }}
+jobs:
+  model:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Model as a file the browser can run
+        run: |
+          pip install -q --index-url https://download.pytorch.org/whl/cpu torch
+          pip install -q 'optimum[exporters]' 'transformers<4.50' onnx onnxruntime
+          optimum-cli export onnx --model facebook/dinov2-small --task feature-extraction dino-s
+          ls -la dino-s
+          python3 - <<'PY'
+          from onnxruntime.quantization import quantize_dynamic, QuantType
+          quantize_dynamic('dino-s/model.onnx', 'dino-s/model-q8.onnx', weight_type=QuantType.QUInt8)
+          PY
+          ls -la dino-s
+          gh release view image-search >/dev/null 2>&1 || \
+            gh release create image-search --prerelease --title "Search by image" --notes "Website search by image. Not used by the daily picture."
+          cp dino-s/model.onnx dinov2-small.onnx; cp dino-s/model-q8.onnx dinov2-small-q8.onnx
+          gh release upload image-search dinov2-small.onnx dinov2-small-q8.onnx --clobber
