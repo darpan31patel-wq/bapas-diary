@@ -78,16 +78,13 @@ jobs:
           pip install -q 'open_clip_torch>=2.31' 'timm>=1.0.15' transformers sentencepiece numpy
           mkdir emb && gh release download deep-tags -p 'emb-*.npz' -D emb
           python3 tools/deep_tags.py words --out words.npz
-          python3 tools/deep_tags.py tags --emb emb --words words.npz --out deep-tags.json
-          gh release upload deep-tags deep-tags.json words.npz --clobber
-      - name: Preview with the wide words (not live; kept in deep-tags-test until Darpan says yes)
-        run: |
           python3 tools/deep_big.py words --out words-big.npz
-          python3 tools/deep_tags.py tags --emb emb --words words.npz --big words-big.npz --out deep-tags-wide.json
-          gh release upload deep-tags-test deep-tags-wide.json words-big.npz --clobber
-  # new photos were tagged: rebuild the website (the same build as every deploy) so Search finds them
+          # the wide words too (grass, blue flowers, plane, football...; Darpan: yes wide tags, 26 Oct)
+          python3 tools/deep_tags.py tags --emb emb --words words.npz --big words-big.npz --out deep-tags.json
+          gh release upload deep-tags deep-tags.json words.npz words-big.npz --clobber
+  # new photos were tagged, or the words changed (a push here): rebuild the website (the same build as every deploy) so Search finds them
   site:
     needs: [plan, tags]
-    if: always() && needs.tags.result == 'success' && needs.plan.outputs.shards != '[]'
+    if: always() && needs.tags.result == 'success' && (needs.plan.outputs.shards != '[]' || github.event_name == 'push')
     uses: darpan31patel-wq/bapas-diary/.github/workflows/website-deploy.yml@claude/project-thread-eawr12
     secrets: inherit
