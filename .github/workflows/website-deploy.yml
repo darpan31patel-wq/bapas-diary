@@ -17,7 +17,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PROJECT: bapas-diary
       DOMAIN: bapas-diary.com
-      CAL_COMMIT: 88aa1d76722c36642de4b4ef672f557eb60ba422   # claude/project-thread-69b2ir, as Darpan approved it
+      CAL_COMMIT: dac9f50144e47d0d8645c2763181bad602bd4e4c   # claude/project-thread-69b2ir, as Darpan approved it
     steps:
       - uses: actions/checkout@v4
         with:
