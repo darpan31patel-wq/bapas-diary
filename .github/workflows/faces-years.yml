@@ -38,14 +38,14 @@ jobs:
           python-version: '3.12'
       - name: Get ready
         run: |
-          pip install -q opencv-python-headless numpy
+          pip install -q opencv-python-headless numpy pillow open_clip_torch torch --extra-index-url https://download.pytorch.org/whl/cpu
           gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
           curl -sf https://photos.bapas-diary.com/years.txt -o years.txt; echo "years in R2: $(tr '\n' ' ' < years.txt)"
           mkdir hints && gh release download website-faces -p 'face2-*.json.gz' -D hints
-          gh release download faces-mockup -p "faces$T.tgz" -O faces.tgz || gh release download faces-mockup -p faces.tgz
+          gh release download faces-mockup -p faces.tgz   # a test copy starts from the live one too
           tar xzf faces.tgz
       - name: Close ups
-        run: python3 tools/faces_years.py --db bapas.db --years years.txt --hints hints --out faces
+        run: python3 tools/faces_years.py --db bapas.db --years years.txt --hints hints --out faces --sheet sheet 2>&1 | grep -v WARN | tee faces-log.txt
       - name: The page
         run: |
           python3 tools/build_faces.py --faces faces --db bapas.db --out through-the-years --site
@@ -55,7 +55,8 @@ jobs:
         if: env.T != ''
         run: |
           pip install -q playwright && python3 -m playwright install --with-deps chromium >/dev/null
-          mkdir shots && (cd through-the-years && python3 -m http.server 8000 >/dev/null 2>&1 &) && sleep 2
+          python3 tools/faces_years.py --sheets sheet --db bapas.db --out shots
+          mkdir -p shots && (cd through-the-years && python3 -m http.server 8000 >/dev/null 2>&1 &) && sleep 2
           python3 - <<'EOF'
           from playwright.sync_api import sync_playwright
           with sync_playwright() as p:
@@ -69,7 +70,7 @@ jobs:
               b.close()
           EOF
           cd shots && for f in *; do mv "$f" "faces-shot-$f"; done
-          gh release upload faces-mockup faces-shot-* --clobber
+          gh release upload faces-mockup faces-shot-* ../faces-log.txt --clobber
       - name: Into the release
         run: |
           gh release view faces-mockup >/dev/null 2>&1 || \

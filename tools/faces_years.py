@@ -16,7 +16,7 @@ to cut the picture at all'), turned and sized in the browser so his eyes land on
 writes faces/p/DAY.jpg (the photo itself, at most PHOTO px), faces/f/DAY.jpg (a small lined up close up for the
 timeline strip) and faces/faces.json (day, place, caption, album, file, his two eyes and the face size in p/DAY.jpg).
 """
-import argparse, collections, json, math, os, sqlite3, sys, time
+import argparse, collections, json, math, os, re, sqlite3, sys, time
 
 import cv2
 import numpy as np
@@ -30,6 +30,17 @@ PHOTO = 1200               # the shown photo's longest side
 EYE_Y = .42                # the eyes' height in the frame
 EYE_GAP = .17              # the distance between the eyes, as a share of the frame's width
 MIN_GAP = 9                # pixels between the eyes (span) in the photo: anything smaller is too far away to blow up
+# Darpan, 26 Oct 2026, of a tiny blurry face of a framed picture blown up to fill the frame: "what is this?". The page
+# shows his face about 100 to 200 px across, so a face must already be close in the photo, sharp and light, and must be
+# Bapa himself: never a murti, portrait, painting or framed photo of him (the Bapa pages' rule).
+MIN_SPAN = 45              # face size (span) in the R2 m/ copy, which is at most 1200 px
+SHARP_MIN, BRIGHT_MIN = 40, 60
+LIKENESS = re.compile(r"^\s*Pragat Brahmaswarup\b[^,.]*$|^(?:The )?Murtis? (?:in|of) Swamishri'?s (?:morning )?puja|"
+                      r"\b(?:murti|portrait|statue|painting|image|photo)s? of (?:the )?(?:HH |Param Pujya |Pragat |Brahmaswarup )*"
+                      r"(?:Pramukh Swami|Mahant Swami|Swamishri|Bapa)|"
+                      r"(?:Swamishri|Bapa|Swami Maharaj)(?:'|’)s (?:murti|portrait|statue|painting|image|photo)", re.I)
+DOES = re.compile(r"^\s*(?:Swamishri|(?:HH |Param Pujya )?(?:Pramukh|Mahant) Swami(?: Maharaj)?) [a-z]")   # as tools/web_faces.py
+LIKENESS_MAX = .5          # the picture check's chance that a face is a picture of him rather than him (see Likeness)
 
 DETECT = cv2.FaceDetectorYN.create(os.path.join(MODELS, 'face_detection_yunet_2023mar.onnx'), '', (320, 320), .6, .3, 5000)
 RECOGNISE = cv2.FaceRecognizerSF.create(os.path.join(MODELS, 'face_recognition_sface_2021dec.onnx'), '')
@@ -118,6 +129,36 @@ def align(bgr, f):
     return (sharp * a + soft * (1 - a)).astype(np.uint8)
 
 
+class Likeness:
+    """The chance (0 to 1) that a photo shows a painting, framed photo, poster, murti or screen of Bapa rather than Bapa
+    himself, by CLIP (the same model as the Search tags), looking at the face and what is round it."""
+    REAL = ['a candid photograph of an elderly Indian monk in person', 'a photograph of a Hindu swami at a ceremony, in person']
+    FAKE = ['a painting of an Indian monk', 'a framed portrait photograph of a monk with a garland',
+            'a printed poster of a monk on a wall', 'a statue of a monk', 'a decorated murti idol of a guru',
+            'a photo of a television screen showing a monk', 'a blurry old video still of a monk']
+
+    def __init__(self):
+        import torch, open_clip
+        self.torch = torch
+        self.model, _, self.prep = open_clip.create_model_and_transforms('ViT-B-32', pretrained='laion2b_s34b_b79k')
+        self.model.eval()
+        with torch.no_grad():
+            t = self.model.encode_text(open_clip.get_tokenizer('ViT-B-32')(self.REAL + self.FAKE))
+        self.text = t / t.norm(dim=-1, keepdim=True)
+
+    def __call__(self, bgr, f):
+        from PIL import Image
+        x, y, w, h = [float(v) for v in f[:4]]
+        cx, cy, r = x + w / 2, y + h / 2, max(w, h) * 1.6   # his head and shoulders, with the frame round a picture
+        H, W = bgr.shape[:2]
+        crop = bgr[int(max(0, cy - r)):int(min(H, cy + r * 1.2)), int(max(0, cx - r)):int(min(W, cx + r))]
+        im = self.prep(Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))).unsqueeze(0)
+        with self.torch.no_grad():
+            e = self.model.encode_image(im)
+            p = (100 * (e / e.norm(dim=-1, keepdim=True)) @ self.text.T).softmax(-1)[0]
+        return float(p[len(self.REAL):].sum())
+
+
 def fetch(album, file, dest):
     sys.path.insert(0, os.path.join(HERE, 'tools'))
     from archive_download import SITE, get   # the Drive archive's polite fetch: one at a time, stops at a check page
@@ -185,6 +226,30 @@ def auto(a):
             time.sleep(wait)
         return None
 
+    like = None
+    if not a.no_likeness:
+        like = Likeness()
+    if a.sheet:
+        os.makedirs(a.sheet, exist_ok=True)
+    # the first days made (their own p/ copies, before R2): the same checks, until their year is in R2 and done again
+    for day, x in sorted(out.items()):
+        if x.get('src') == 'm':
+            continue
+        path = os.path.join(a.out, 'p', day + '.jpg')
+        bgr = cv2.imread(path) if os.path.exists(path) else None
+        f, sim = bapa(bgr, x['guru']) if bgr is not None else (None, 0)
+        facts = score(bgr, f, sim)[1] if f is not None else {}
+        fake = like(bgr, f) if f is not None and like else 0
+        if f is None or facts['gap'] < MIN_SPAN or facts['sharp'] < SHARP_MIN or facts['bright'] < BRIGHT_MIN or fake > LIKENESS_MAX \
+                or (LIKENESS.search(x['caption']) and not DOES.match(x['caption'])):
+            print(f'  {day}: left out ({facts or "no face"}, picture {fake:.2f})', flush=True)
+            if a.sheet and f is not None:
+                cv2.imwrite(os.path.join(a.sheet, f'out-{day}-old.jpg'), align(bgr, f), [cv2.IMWRITE_JPEG_QUALITY, 80])
+            del out[day]
+        elif a.sheet:
+            cv2.imwrite(os.path.join(a.sheet, f'{day}.jpg'), align(bgr, f), [cv2.IMWRITE_JPEG_QUALITY, 80])
+    if a.redo:
+        seen = {}
     todo = []
     for y in years:
         if y not in scanned:
@@ -200,13 +265,15 @@ def auto(a):
             guru = 'psm' if day < PSM_UNTIL else 'msm'
             cands = []
             for r in xs:
+                if LIKENESS.search(r[5] or '') and not DOES.match(r[5] or ''):
+                    continue   # its caption says it is a murti, portrait or photo of him
                 rec = hints.get(f'{r[3]}/{r[4]}')
                 if rec is None:
                     cands.append((9, r))   # not scanned yet: a new photo
                 elif rec[0] >= SAME_PERSON and rec[0] > rec[11]:
                     cands.append((hint(rec), r))
             cands = [r for _, r in sorted(cands, key=lambda c: -c[0])[:a.keep]]
-            best = None
+            good = []
             for r, bgr in zip(cands, net.map(lambda r: get(f'{r[3]}/{r[4]}'), cands)):
                 if bgr is None:
                     continue
@@ -214,8 +281,16 @@ def auto(a):
                 if f is None:
                     continue
                 s, facts = score(bgr, f, sim)
-                if facts['gap'] >= MIN_GAP and (best is None or s > best[0]):
-                    best = (s, bgr, f, r, sim, facts)
+                if facts['gap'] >= MIN_SPAN and facts['sharp'] >= SHARP_MIN and facts['bright'] >= BRIGHT_MIN:
+                    good.append((s, bgr, f, r, sim, facts))
+            best = None
+            for g in sorted(good, key=lambda g: -g[0]):
+                fake = like(g[1], g[2]) if like else 0
+                g[5]['fake'] = round(fake, 2)
+                if fake <= LIKENESS_MAX:
+                    best = g
+                    break
+                print(f'    {day}: {g[3][3]}/{g[3][4]} looks like a picture of him ({fake:.2f}), left out', flush=True)
             out.pop(day, None)
             if best:
                 s, bgr, f, (_, to, place, album, file, cap), sim, facts = best
@@ -226,6 +301,11 @@ def auto(a):
                                 album=album, file=file, guru=guru, sim=round(sim, 2), score=round(s, 2), **facts,
                                 photos=len(xs), w=bgr.shape[1], h=bgr.shape[0], src='m',
                                 eyes=[round(v, 1) for v in (rx, ry, lx, ly)], span=round(span(f), 1))
+                if a.sheet:
+                    cv2.imwrite(os.path.join(a.sheet, f'{day}.jpg'), align(bgr, f), [cv2.IMWRITE_JPEG_QUALITY, 80])
+            for g in good if a.sheet else []:
+                if g[5].get('fake', 0) > LIKENESS_MAX:
+                    cv2.imwrite(os.path.join(a.sheet, f'out-{day}-{g[3][4]}.jpg'), align(g[1], g[2]), [cv2.IMWRITE_JPEG_QUALITY, 80])
             seen[day] = len(xs)
             if n % 50 == 0 or n == len(todo) - 1:
                 print(f'  {n + 1}/{len(todo)} {day}: {len(cands)} looked at, {"close " + str(best[5]["close"]) if best else "no face"}, '
@@ -237,15 +317,41 @@ def auto(a):
     print(f'{len(out)} days with a close up, {len(todo)} looked at this time')
 
 
+def sheets(src, dest):
+    """Contact sheets to look over every frame: one a year (each day's lined up close up, its date under it) and one of
+    every face left out as a picture of him."""
+    os.makedirs(dest, exist_ok=True)
+    groups = collections.defaultdict(list)
+    for f in sorted(os.listdir(src)):
+        groups['out' if f.startswith('out-') else f[:4]].append(f)
+    for g, fs in groups.items():
+        cols, w, h = 12, 120, 168
+        sheet = np.full((-(-len(fs) // cols) * h, cols * w, 3), 30, np.uint8)
+        for i, f in enumerate(fs):
+            im = cv2.resize(cv2.imread(os.path.join(src, f)), (w, 150), interpolation=cv2.INTER_AREA)
+            y, x = i // cols * h, i % cols * w
+            sheet[y:y + 150, x:x + w] = im
+            cv2.putText(sheet, f[4:-4] if g == 'out' else f[5:10], (x + 3, y + 163), cv2.FONT_HERSHEY_SIMPLEX, .3 if g == 'out' else .45, (230, 230, 230), 1)
+        cv2.imwrite(os.path.join(dest, f'sheet-{g}.jpg'), sheet, [cv2.IMWRITE_JPEG_QUALITY, 82])
+
+
 def main():
+    if '--sheets' in sys.argv:
+        ap = argparse.ArgumentParser()
+        ap.add_argument('--sheets', required=True); ap.add_argument('--out', required=True); ap.add_argument('--db')
+        a = ap.parse_args()
+        return sheets(a.sheets, a.out)
     if '--years' in sys.argv:
         ap = argparse.ArgumentParser()
         ap.add_argument('--db', default='bapas.db')
         ap.add_argument('--years', required=True, help='the years in R2, one a line (photos.bapas-diary.com/years.txt)')
         ap.add_argument('--hints', help="folder of website-faces' face2-*.json.gz")
         ap.add_argument('--url', default='https://photos.bapas-diary.com/m/')
-        ap.add_argument('--keep', type=int, default=5)
+        ap.add_argument('--keep', type=int, default=8)
+        ap.add_argument('--sheet', help='also keep every frame (and every one left out as a picture) here, to look over')
         ap.add_argument('--out', default='faces')
+        ap.add_argument('--redo', action='store_true', help='look at every day again (after a rule changes)')
+        ap.add_argument('--no-likeness', action='store_true', help='skip the picture check (needs torch and open_clip)')
         return auto(ap.parse_args())
     ap = argparse.ArgumentParser()
     ap.add_argument('--db', default='bapas.db')
