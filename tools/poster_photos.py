@@ -89,6 +89,8 @@ def main():
         print(f'  {len(got)} of {len(items)} photos found in the archive', flush=True)
     else:
         got = month.full_size(items, a.cache)
+    if not got:
+        sys.exit('No photos found for the month, so the photos saved before are kept')
     photos = month.analyse(got)
     mo = month.Month(photos, y, m)
     meta, done = dict(month=a.month, places=mo.places, count=mo.count, close={}, act={}, highlights=[], extra={}), {}
