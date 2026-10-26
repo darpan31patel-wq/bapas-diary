@@ -13,7 +13,7 @@ A day's photo is the one the 2pm picture showed that year, else the first photo 
 else a photo from a short trip around that day. Photos come from R2 (s/ALBUM/FILE, made by tools/web_photos.py), so
 only years listed in site/photo-years.txt get one; the others show the date in big letters until they are copied.
 """
-import argparse, datetime, json, os, shutil, sqlite3
+import argparse, base64, concurrent.futures, datetime, glob, gzip, io, json, os, re, shutil, sqlite3, urllib.parse, urllib.request
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FIRST = (1999, 1)
@@ -29,7 +29,7 @@ def months(today):
         y, m = (y, m + 1) if m < 12 else (y + 1, 1)
 
 
-def build(db, today, photo_years):
+def build(db, today, photo_years, vary=None):
     place, photo = {}, {}
     rows = db.execute("SELECT date, place, album, file, caption, is_bapa FROM photos WHERE date IS NOT NULL "
                       "ORDER BY date, is_bapa DESC, album, file")
@@ -56,6 +56,8 @@ def build(db, today, photo_years):
         while d <= b:
             trip.setdefault(d.isoformat(), [pl, [album, file, cap or '']])
             d += datetime.timedelta(1)
+    if vary:
+        vary(photo, photo_years)
     cal = {d: [i or '', f or '', n or ''] for d, i, f, n in
            db.execute("SELECT date, indian_date, festivals, notes FROM calendar")}
 
@@ -80,6 +82,107 @@ def build(db, today, photo_years):
         y = max(photo_years)
         start = f'{y}-{today.month:02d}' if f'{y}-{today.month:02d}' in out else start
     return {'start': start, 'm': out}
+
+
+# ---------------------------------------------------------------- variety from day to day
+# Darpan, 26 Oct 2026: "all these images are all the same, have some variety so the calendar doesn't look so similar".
+# Each day takes one of its best few photos of Bapa (from --pool, the Bapa only database), choosing the one that looks
+# least like the days around it: the day before, two days before, and the days above it in the calendar (a week
+# earlier). "Looks like" = a tiny 8 x 6 colour picture of each photo (the backdrop, the light, how close the shot is),
+# kept in --sigs between runs so each photo is only fetched once; the same event (album) the day before counts too.
+# Variety never wins over a good darshan: where Bapa's face has been looked at (--faces), a photo where his face is
+# small (a wide hall, a corridor) or not recognised costs more than one where he is close and clear.
+NOT_BAPA = re.compile(r'murti|portrait|framed|photo of|painting|statue|image of', re.I)
+CANDIDATES = 10
+NEIGHBOURS = ((1, 1.0), (2, .5), (7, .7), (6, .3), (8, .3))
+
+
+def signature(data):
+    from PIL import Image
+    im = Image.open(io.BytesIO(data)).convert('RGB').resize((8, 6), Image.BILINEAR)
+    return base64.b64encode(im.tobytes()).decode()
+
+
+def likeness(a, b):
+    """1 = the same look, 0 = clearly different."""
+    if not a or not b:
+        return 0
+    x, y = base64.b64decode(a), base64.b64decode(b)
+    d = sum(abs(p - q) for p, q in zip(x, y)) / (len(x) * 255)
+    return max(0.0, 1 - d / .22)
+
+
+class Variety:
+    def __init__(self, pool, sigs, photos_url, local=None, faces=None):
+        self.pool, self.sigs_path, self.url, self.local = pool, sigs, photos_url, local
+        self.faces, self.face_years = {}, set()
+        for f in sorted(glob.glob(os.path.join(faces or '-', 'face2-*.json.gz'))):
+            self.faces.update(json.load(gzip.open(f, 'rt')))
+            self.face_years.add(os.path.basename(f).split('-')[1])   # face2-YEAR-part-parts.json.gz
+        self.sigs = json.load(open(sigs)) if sigs and os.path.exists(sigs) else {}
+
+    def candidates(self, date, first):
+        out = [first] if first else []
+        for album, file, cap in self.pool.execute(
+                'SELECT album, file, caption FROM photos WHERE date = ? AND is_bapa = 1 ORDER BY rowid', (date,)):
+            if NOT_BAPA.search(cap or '') or any(o[0] == album and o[1] == file for o in out):
+                continue
+            out.append([album, file, cap or ''])
+            if len(out) >= CANDIDATES:
+                break
+        return out
+
+    def darshan(self, c, date):
+        """0 = Bapa close and clear; more for a small or unrecognised face (only in years whose faces are looked at)."""
+        if not self.faces or date[:4] not in self.face_years:
+            return 0
+        rec = self.faces.get(f'{c[0]}/{c[1]}')
+        if not rec or rec[0] < .38:
+            return .45
+        x, h = rec[1] + rec[3] / 2, rec[4]
+        if h > .42 or not .1 < x < .9:
+            return .6   # so close or so near the edge that the square would cut his head
+        return .7 if h < .1 else .3 if h < .16 else 0
+
+    def fetch(self, keys):
+        def one(k):
+            try:
+                if self.local:
+                    data = open(os.path.join(self.local, k), 'rb').read()
+                else:
+                    a, f = k.split('/', 1)
+                    data = urllib.request.urlopen(f'{self.url}s/{a}/{urllib.parse.quote(f)}', timeout=20).read()
+                return k, signature(data)
+            except Exception:
+                return k, ''
+        with concurrent.futures.ThreadPoolExecutor(8) as ex:
+            for k, sig in ex.map(one, keys):
+                self.sigs[k] = sig
+
+    def __call__(self, photo, photo_years):
+        days = sorted(d for d in photo if int(d[:4]) in photo_years)
+        cands = {d: self.candidates(d, photo[d]) for d in days}
+        self.fetch(sorted({f'{c[0]}/{c[1]}' for L in cands.values() for c in L} - set(self.sigs)))
+        changed = 0
+        for d in days:
+            day = datetime.date.fromisoformat(d)
+            near = [(w, photo.get((day - datetime.timedelta(k)).isoformat())) for k, w in NEIGHBOURS]
+            best, cost = None, None
+            for r, c in enumerate(cands[d]):
+                sig = self.sigs.get(f'{c[0]}/{c[1]}', '')
+                if not sig and r:
+                    continue   # couldn't be looked at (not copied yet?): keep to the photos we know are there
+                x = .08 * r + self.darshan(c, d) + sum(w * likeness(sig, self.sigs.get(f'{n[0]}/{n[1]}', '')) for w, n in near if n)
+                if near[0][1] and near[0][1][0] == c[0]:
+                    x += .3   # the same event as yesterday: likely the same stage
+                if cost is None or x < cost:
+                    best, cost = c, x
+            if best and best != photo[d]:
+                photo[d] = best
+                changed += 1
+        if self.sigs_path:
+            json.dump(self.sigs, open(self.sigs_path, 'w'), separators=(',', ':'))
+        print(f'variety: {changed} of {len(days)} days took a different photo, {len(self.sigs)} looks kept')
 
 
 def page(site, photos, search):
@@ -107,6 +210,10 @@ def main():
     ap.add_argument('--photo-years', default=os.path.join(HERE, 'site', 'photo-years.txt'),
                     help='years whose photos are on R2 (one per line); missing file = every year')
     ap.add_argument('--today', help='YYYY-MM-DD, for testing')
+    ap.add_argument('--pool', help='the Bapa only database to choose each day from, for variety (bapa.db)')
+    ap.add_argument('--sigs', help='where to keep each photo\'s look between runs (json)')
+    ap.add_argument('--faces', help='folder of face2-*.json.gz: where Bapa\'s face is in each photo')
+    ap.add_argument('--sig-dir', help='read photos from this folder (ALBUM/FILE) instead of --photos-url')
     a = ap.parse_args()
     today = datetime.date.fromisoformat(a.today) if a.today else datetime.date.today()
     if os.path.exists(a.photo_years):
@@ -114,7 +221,8 @@ def main():
     else:
         years = set(range(FIRST[0], today.year + 1))
     page(a.site, a.photos_url, a.search_url)
-    data = build(sqlite3.connect(a.db), today, years)
+    vary = Variety(sqlite3.connect(a.pool), a.sigs, a.photos_url, a.sig_dir, a.faces) if a.pool else None
+    data = build(sqlite3.connect(a.db), today, years, vary)
     os.makedirs(os.path.join(a.site, 'data'), exist_ok=True)
     with open(os.path.join(a.site, 'data', 'calendar.json'), 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
