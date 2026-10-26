@@ -1,26 +1,24 @@
 # Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, fetches nothing
 # from baps.org. Fetches a few small photos from R2 (photos.bapas-diary.com, public) so a Search preview can be made
-# and the deep photo tags checked by eye. Keeps them as preview-photos.zip in the release deep-tags-test.
+# and the deep photo tags checked by eye (the list is tools/deep_preview_keys.txt). Keeps them as preview-photos.zip in the release deep-tags-test.
 name: website-deeptags-fetch
 on:
-  workflow_dispatch:
-    inputs:
-      keys:
-        description: 'ALBUM/FILE|ALBUM/FILE|...'
-        required: true
+  push:
+    branches: ['claude/project-thread-vcys74']
+    paths: ['tools/deep_preview_keys.txt']
 permissions:
   contents: write
 env:
   GH_TOKEN: ${{ github.token }}
-  KEYS: ${{ inputs.keys }}
 jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Small photos from R2
         run: |
           mkdir -p p && cd p
-          echo "$KEYS" | tr '|' '\n' | while read -r k; do
+          tr '|' '\n' < ../tools/deep_preview_keys.txt | while read -r k; do
             [ -n "$k" ] || continue
             mkdir -p "$(dirname "$k")"
             curl -sf --retry 3 -A bapas-diary-tags "https://photos.bapas-diary.com/s/$k" -o "$k" || echo "missing $k"
