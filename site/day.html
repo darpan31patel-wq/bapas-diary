@@ -286,7 +286,11 @@ function render() {
   // a card only for a year with photos of Bapa; a year with only its On this day lines lists them below, with no empty
   // card on the rope (Darpan, 26 Oct 2026)
   const hasPhotos = b => b.Y && (b.Y.p.length || (b.Y.t || []).length);
-  cards = years.filter(y => hasPhotos(byYear[y])).map((y, i) => card(y, byYear[y], i));
+  // the first impression is a mix: about half the cards open on a close up, half on an activity photo, shuffled at
+  // each visit (Darpan, 26 Oct 2026)
+  const withPhotos = years.filter(y => hasPhotos(byYear[y]));
+  const order = withPhotos.map((_, i) => i).sort(() => Math.random() - .5), closeUp = new Set(order.slice(0, Math.ceil(order.length / 2)));
+  cards = withPhotos.map((y, i) => card(y, byYear[y], closeUp.has(i)));
   years.filter(y => !hasPhotos(byYear[y])).forEach(y => group(y, null, byYear[y].place, DAY.cal && DAY.cal[y], byYear[y].stories));
   [...$('groups').children].sort((a, b) => a.id.slice(1) - b.id.slice(1)).forEach(g => $('groups').append(g));
   $('board').hidden = $('controls').hidden = false;
@@ -298,7 +302,7 @@ function render() {
   start();
 }
 
-function card(y, {Y, place, stories}, i = 0) {
+function card(y, {Y, place, stories}, want = true) {
   const photos = Y ? (Y.p.length ? Y.p : Y.t || []) : [];
   const where = Y ? Y.place : place;
   const cal = DAY.cal && DAY.cal[y];
@@ -332,8 +336,7 @@ function card(y, {Y, place, stories}, i = 0) {
   el.addEventListener('pointermove', e => nudge(c, e));
   el.addEventListener('pointerleave', () => c.lastX = null);
   el.addEventListener('pointerdown', e => { c.lastX = e.clientX - 30 * (Math.random() < .5 ? 1 : -1); nudge(c, e); });
-  // the first photos seen take turns, a close up then an activity photo, card by card (Darpan, 26 Oct 2026)
-  const close = p => !!(p[4] && p[4][7]), want = i % 2 === 0;
+  const close = p => !!(p[4] && p[4][7]);   // want: this card opens on a close up (true) or an activity photo (false)
   const first = photos.findIndex(p => p[3] && close(p) === want);
   if (photos.length) show(c, first >= 0 ? first : Math.max(0, photos.findIndex(p => p[3])), true);   // open on a darshan of Bapa
   group(y, Y, where, cal, stories);
