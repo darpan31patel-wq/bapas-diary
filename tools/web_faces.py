@@ -238,10 +238,9 @@ def pick(a):
                 ranked.append(dict(k=(al, fi), c=c, sc=sc - 1, sd=sd - 1, nice=False, special=special, close=False, rec=rec, pin=False, why='unique moment'))
             elif pinned:
                 ranked.append(dict(k=(al, fi), c=c, sc=-5, sd=-5, nice=False, special=False, close=False, rec=rec, pin=True, why='pin'))
-            elif bapa == 1 and (y not in scanned or rec is None):
-                ranked.append(dict(k=(al, fi), c=c, sc=-9, sd=-9, nice=False, special=False, close=False, rec=None, pin=False, why='caption only (year not in R2 yet)'))
-            elif bapa == 1 and mmdd and len(by_day.get(mmdd, ())) < THIN_DAY:
-                ranked.append(dict(k=(al, fi), c=c, sc=-9, sd=-9, nice=False, special=False, close=False, rec=None, pin=False, why='caption only (thin day)'))
+            # no caption only photos any more: a caption saying Swamishri let a book on flowers, an empty room and children
+            # without him onto Today once those years were in R2 (Darpan, 26 Oct 2026: only photos with Bapa in them).
+            # A year whose faces are not looked at yet shows nothing until website-faces has scanned it.
         if any(v['why'] == 'recognised' for v in ranked):   # recognised photos come first: then nothing unrecognised but pins
             ranked = [v for v in ranked if v['why'] in ('recognised', 'pin', 'unique moment')]
         if not ranked:
