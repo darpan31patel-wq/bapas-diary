@@ -1,0 +1,29 @@
+# Website only: checks the live darshan emails sign up on bapas-diary.com end to end (the cloud session that built it
+# can't reach the site). Runs when site/weekly/signup-test.txt changes on the email branch; that file holds the
+# address to sign up (hello@bapas-diary.com, Darpan's own forwarding address), which then gets the confirm email.
+name: weekly-signup-test
+on:
+  push:
+    branches: [claude/project-thread-e6fvpc]
+    paths: [site/weekly/signup-test.txt]
+permissions:
+  contents: read
+jobs:
+  signup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sign up through the live website
+        run: |
+          to=$(tr -d ' \n' < site/weekly/signup-test.txt)
+          curl -sS -o page.txt -w 'Today page: %{http_code}\n' https://bapas-diary.com/
+          grep -q 'remind-email' page.txt && echo 'Sign up pill is on the Today page' || { echo 'Sign up pill missing on Today'; exit 1; }
+          curl -sS -o about.txt -w 'About page: %{http_code}\n' https://bapas-diary.com/about/
+          grep -q 'weekly-email' about.txt && echo 'Sign up box is on About' || { echo 'Sign up box missing on About'; exit 1; }
+          code=$(curl -sS -o reply.txt -w '%{http_code}' -X POST https://bapas-diary.com/api/weekly \
+            -H 'Content-Type: application/json' -d "{\"email\":\"$to\",\"lists\":[\"daily\",\"weekly\"]}")
+          echo "Sign up answered $code: $(cat reply.txt)"
+          [ "$code" = 200 ]
+          code=$(curl -sS -o bad.txt -w '%{http_code}' 'https://bapas-diary.com/api/weekly?e=x%40y.com&l=daily&t=1&s=bad')
+          grep -q 'run out' bad.txt && echo "A wrong confirm link is refused ($code)" || { echo 'Wrong confirm link was not refused'; cat bad.txt; exit 1; }
