@@ -154,10 +154,16 @@ def build(db, today, photo_years, vary=None, ahead=None):
 # least like the days around it: the day before, two days before, and the days above it in the calendar (a week
 # earlier). "Looks like" = a tiny 8 x 6 colour picture of each photo (the backdrop, the light, how close the shot is),
 # kept in --sigs between runs so each photo is only fetched once; the same event (album) the day before counts too.
-# Variety never wins over a good darshan: where Bapa's face has been looked at (--faces), a photo where his face is
-# small (a wide hall, a corridor) or not recognised costs more than one where he is close and clear.
+# Darpan, 26 Oct 2026 (late): "choose the best picture for the day, the same as On this day, a mix of close ups and
+# activity pictures". So the day's candidates are On this day's own ranking (bapa_pick in --pool: a close darshan
+# first, unless a special action shot), only its best few, and the best one wins unless it looks much like the days
+# around it; a close up the day after a close up (or an activity after an activity) costs a little, so the two mix.
+# No rule of his own about faces: only a photo the square would cut his head off in costs more.
 NOT_BAPA = re.compile(r'murti|portrait|framed|photo of|painting|statue|image of', re.I)
-CANDIDATES = 10
+CANDIDATES = 4
+RANK = .3        # each step down On this day's ranking
+LOOK = .6        # how much looking like the days around it counts
+SAME_KIND = .45  # close up after close up, activity after activity
 NEIGHBOURS = ((1, 1.0), (2, .5), (7, .7), (6, .3), (8, .3))
 
 
@@ -184,33 +190,34 @@ class Variety:
             self.faces.update(json.load(gzip.open(f, 'rt')))
             self.face_years.add(os.path.basename(f).split('-')[1])   # face2-YEAR-part-parts.json.gz
         self.sigs = json.load(open(sigs)) if sigs and os.path.exists(sigs) else {}
+        self.kind = {}   # 'ALBUM/FILE': 1 a close up, 0 an activity (On this day's own word for it)
+        try:
+            self.kind = {f'{a}/{f}': c for a, f, c in pool.execute('SELECT album, file, close FROM bapa_pick')}
+            self.order = ('SELECT p.album, p.file, p.caption FROM photos p JOIN bapa_pick b USING (album, file) '
+                          'WHERE p.date = ? ORDER BY b.rank, p.rowid')
+        except sqlite3.Error:   # an older pool without On this day's ranking
+            self.order = 'SELECT album, file, caption FROM photos WHERE date = ? AND is_bapa = 1 ORDER BY rowid'
 
     def candidates(self, date, first):
         out = [first] if first else []
-        for album, file, cap in self.pool.execute(
-                'SELECT album, file, caption FROM photos WHERE date = ? AND is_bapa = 1 ORDER BY rowid', (date,)):
+        for album, file, cap in self.pool.execute(self.order, (date,)):
             if NOT_BAPA.search(cap or '') or any(o[0] == album and o[1] == file for o in out):
                 continue
             out.append([album, file, cap or ''])
-            if len(out) >= CANDIDATES:
-                break
-        return out
+        # On this day's best few, and its best activity picture when those are all close ups (or the other way round)
+        best = out[:CANDIDATES - 1]
+        other = [c for c in out[CANDIDATES - 1:] if {self.kind.get(f'{c[0]}/{c[1]}')} - {self.kind.get(f'{b[0]}/{b[1]}') for b in best}]
+        return best[:1] + other[:1] + best[1:] if other else out[:CANDIDATES]
 
     def darshan(self, c, date):
-        """0 = Bapa close and clear; more for a small or unrecognised face (only in years whose faces are looked at)."""
+        """0 = fine in a square; more where the square would cut his head (only in years whose faces are looked at)."""
         if not self.faces or date[:4] not in self.face_years:
             return 0
         rec = self.faces.get(f'{c[0]}/{c[1]}')
-        if not rec or rec[0] < .38:
-            return .45
+        if not rec or not rec[0]:
+            return 0
         x, h = rec[1] + rec[3] / 2, rec[4]
-        if h > .42 or not .1 < x < .9:
-            return .6   # so close or so near the edge that the square would cut his head
-        # Darpan, 26 Oct 2026: the best darshan looks straight down the camera, sharp and well lit; a side face,
-        # a soft face or a dark one costs more (front, sharp, bright from tools/web_faces.py scan)
-        front, sharp, bright = (rec[5:8] + [1, 999, 999])[:3]
-        look = .6 * max(0, .75 - front) / .75 + .35 * max(0, 1 - sharp / 80) + .2 * max(0, 1 - bright / 105)
-        return look + (.7 if h < .1 else .3 if h < .16 else 0)
+        return .6 if h > .42 or not .1 < x < .9 else 0
 
     def fetch(self, keys):
         errors = []
@@ -247,9 +254,12 @@ class Variety:
                 sig = self.sigs.get(f'{c[0]}/{c[1]}', '')
                 if not sig and r:
                     continue   # couldn't be looked at (not copied yet?): keep to the photos we know are there
-                x = .08 * r + self.darshan(c, d) + sum(w * likeness(sig, self.sigs.get(f'{n[0]}/{n[1]}', '')) for w, n in near if n)
+                x = RANK * r + self.darshan(c, d) + LOOK * sum(w * likeness(sig, self.sigs.get(f'{n[0]}/{n[1]}', '')) for w, n in near if n)
                 if near[0][1] and near[0][1][0] == c[0]:
                     x += .3   # the same event as yesterday: likely the same stage
+                kind, before = self.kind.get(f'{c[0]}/{c[1]}'), near[0][1] and self.kind.get(f'{near[0][1][0]}/{near[0][1][1]}')
+                if kind is not None and kind == before:
+                    x += SAME_KIND
                 if cost is None or x < cost:
                     best, cost = c, x
             if best and best != photo[d]:
