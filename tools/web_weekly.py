@@ -349,8 +349,13 @@ def main():
         if any(b.get('name') == name for b in resend('/broadcasts', method='GET').get('data', [])):
             print('This email is already on its way, nothing more to do.')
             return
+        seg = segment_id(DAILY_SEGMENT if a.daily else SEGMENT)
+        people = [c for c in resend(f'/segments/{seg}/contacts?limit=100', method='GET').get('data', []) if not c.get('unsubscribed')]
+        if not people:
+            print('Nobody has signed up for this one yet, so nothing to send.')
+            return
         when = max(uk_time(sunday, DAILY_HOUR if a.daily else 10), datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=2))
-        r = resend('/broadcasts', {'segment_id': segment_id(DAILY_SEGMENT if a.daily else SEGMENT), 'from': FROM, 'reply_to': 'hello@bapas-diary.com',
+        r = resend('/broadcasts', {'segment_id': seg, 'from': FROM, 'reply_to': 'hello@bapas-diary.com',
                                    'subject': subject, 'html': html, 'name': name, 'send': True,
                                    'scheduled_at': when.isoformat().replace('+00:00', 'Z')})
         print('Sent to everyone signed up, arriving', when.astimezone(UK).strftime('%A %-d %B %H:%M UK'), r.get('id'))
