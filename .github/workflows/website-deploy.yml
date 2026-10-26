@@ -17,11 +17,16 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PROJECT: bapas-diary
       DOMAIN: bapas-diary.com
-      CAL_COMMIT: 0ca220875a0c052e49910863a34e836b81beaaeb   # claude/project-thread-69b2ir, as Darpan approved it
+      CAL_COMMIT: 88aa1d76722c36642de4b4ef672f557eb60ba422   # claude/project-thread-69b2ir, as Darpan approved it
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'push' && github.sha || 'claude/project-thread-eawr12' }}
+      - uses: actions/cache@v4   # the Calendar's tiny looks of each photo, kept between runs
+        with:
+          path: calendar-looks.json
+          key: calendar-looks-${{ github.run_id }}
+          restore-keys: calendar-looks-
       - name: Photo search (database from release database, photo tags from release website-mockup)
         env:
           GH_TOKEN: ${{ github.token }}
@@ -55,7 +60,7 @@ jobs:
           echo "photo years: $(tr '\n' ' ' < photo-years.txt)"
           # The scrolling years calendar (its own thread, branch pinned to the approved commit; Darpan: "perfect go live")
           git fetch -q --depth 1 origin "$CAL_COMMIT" && mkdir calsrc && git archive "$CAL_COMMIT" tools/web_calendar.py site/calendar.html fonts | tar -x -C calsrc
-          python3 calsrc/tools/web_calendar.py --db bapa-top.db --site cal --photos-url https://photos.bapas-diary.com/ --search-url /search/ --photo-years photo-years.txt
+          python3 calsrc/tools/web_calendar.py --db bapa-top.db --site cal --photos-url https://photos.bapas-diary.com/ --search-url /search/ --photo-years photo-years.txt --pool bapa.db --sigs calendar-looks.json --faces faces   # a different looking photo each day (Darpan: yes perfect go live, 26 Oct)
           python3 tools/web_rules.py calfaces --site cal --faces faces   # Bapa's whole head in each Calendar photo (Darpan, 25 Oct 2026)
           rsync -a cal/ out/ && test -f out/calendar/index.html
           sqlite3 bapas.db 'SELECT count(*) FROM calendar'
