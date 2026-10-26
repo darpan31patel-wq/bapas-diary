@@ -68,7 +68,7 @@ jobs:
           echo "photo years: $(tr '\n' ' ' < photo-years.txt)"
           # The scrolling years calendar (its own thread, branch pinned to the approved commit; Darpan: "perfect go live")
           git fetch -q --depth 1 origin "$CAL_COMMIT" && mkdir calsrc && git archive "$CAL_COMMIT" tools/web_calendar.py site/calendar.html fonts | tar -x -C calsrc
-          git fetch -q --depth 1 origin database && git show FETCH_HEAD:crawl/schedule/latest.json > schedule.json || echo '{}' > schedule.json   # where Bapa will be (Future Vicharan)
+          git fetch -q --depth 1 origin refs/heads/database && git show FETCH_HEAD:crawl/schedule/latest.json > schedule.json || echo '{}' > schedule.json   # where Bapa will be (Future Vicharan)
           python3 calsrc/tools/web_calendar.py --db bapa-top.db --site cal --photos-url https://photos.bapas-diary.com/ --search-url /search/ --photo-years photo-years.txt --pool bapa.db --sigs calendar-looks.json --faces faces --schedule schedule.json   # a different looking photo each day, and the days ahead (Darpan: yes perfect go live, 26 Oct)
           python3 tools/web_rules.py calfaces --site cal --faces faces   # Bapa's whole head in each Calendar photo (Darpan, 25 Oct 2026)
           rsync -a cal/ out/ && test -f out/calendar/index.html
