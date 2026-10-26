@@ -145,24 +145,31 @@ class Variety:
         return .7 if h < .1 else .3 if h < .16 else 0
 
     def fetch(self, keys):
+        errors = []
+
         def one(k):
             try:
                 if self.local:
                     data = open(os.path.join(self.local, k), 'rb').read()
                 else:
                     a, f = k.split('/', 1)
-                    data = urllib.request.urlopen(f'{self.url}s/{a}/{urllib.parse.quote(f)}', timeout=20).read()
+                    # a browser's name: Cloudflare turns away Python's own (the first live run read no photo at all)
+                    req = urllib.request.Request(f'{self.url}s/{a}/{urllib.parse.quote(f)}',
+                                                 headers={'User-Agent': 'Mozilla/5.0 (bapas-diary calendar)'})
+                    data = urllib.request.urlopen(req, timeout=20).read()
                 return k, signature(data)
-            except Exception:
+            except Exception as e:
+                errors.append(f'{k}: {e}')
                 return k, ''
         with concurrent.futures.ThreadPoolExecutor(8) as ex:
             for k, sig in ex.map(one, keys):
                 self.sigs[k] = sig
+        print(f'looks: {len(keys) - len(errors)} of {len(keys)} photos read' + (f', first miss {errors[0]}' if errors else ''))
 
     def __call__(self, photo, photo_years):
         days = sorted(d for d in photo if int(d[:4]) in photo_years)
         cands = {d: self.candidates(d, photo[d]) for d in days}
-        self.fetch(sorted({f'{c[0]}/{c[1]}' for L in cands.values() for c in L} - set(self.sigs)))
+        self.fetch(sorted({f'{c[0]}/{c[1]}' for L in cands.values() for c in L} - {k for k, v in self.sigs.items() if v}))   # misses are tried again
         changed = 0
         for d in days:
             day = datetime.date.fromisoformat(d)
