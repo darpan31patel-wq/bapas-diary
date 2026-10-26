@@ -69,10 +69,12 @@ def bapa(bgr, guru):
     DETECT.setInputSize((bgr.shape[1], bgr.shape[0]))
     faces = DETECT.detect(bgr)[1]
     best, best_sim = None, 0
+    other = 'msm' if guru == 'psm' else 'psm'
     for f in faces if faces is not None else []:
         e = RECOGNISE.feature(RECOGNISE.alignCrop(bgr, f))[0]
-        sim = float(BAPA[guru] @ (e / np.linalg.norm(e)))
-        if sim > best_sim:
+        e = e / np.linalg.norm(e)
+        sim = float(BAPA[guru] @ e)
+        if sim > best_sim and sim > float(BAPA[other] @ e):   # never the other guru (2015-11-22 was Mahant Swami Maharaj)
             best, best_sim = f.copy(), sim
     if best is not None:
         best[:14] /= k
