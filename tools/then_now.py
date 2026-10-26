@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import faces_years as fy   # noqa: E402  (bapa(), score(), PSM_UNTIL; copied in from the faces branch by the workflow)
 
 PHOTO = 1200      # the kept photo's longest side
-TRY = 20          # photos of each guru tried for each place and moment
+TRY = 24          # photos of each guru tried for each place and moment
 KEEP = 4          # kept for the contact sheet
 MOMENTS = {       # what the caption says -> the moment's name on the page
     'puja': ('Morning puja', r'\bpuja\b'),
@@ -31,7 +31,13 @@ MOMENTS = {       # what the caption says -> the moment's name on the page
     'arti': ('Arti', r'\barti\b'),
     'abhishek': ('Abhishek', r'abhishek'),
     'blesses': ('Blessing the assembly', r'bless|assembly'),
+    'pradakshina': ('Pradakshina', r'pradakshina'),
+    'arrives': ('Arriving at the mandir', r'arrives at|arrival at|welcome'),
+    'pratishtha': ('Murti pratishtha', r'pratishtha'),
 }
+# Darpan, 26 Oct 2026: "its more about activity and location rather than close up". So a photo scores best when Bapa
+# fills about a sixth of the frame's height (the mandir and what he is doing are in the picture too), never a close up.
+WIDE = .16
 
 
 def slug(s):
@@ -65,7 +71,10 @@ def look(path, guru):
     f, sim = fy.bapa(bgr, guru)
     if f is None:
         return None
-    s, info = fy.score(bgr, f, sim)
+    _, info = fy.score(bgr, f, sim)
+    c = info['close']
+    s = sim - 8 * abs(c - WIDE) - (3 if c > .35 else 0) - (2 if c < .05 else 0)
+    s -= .8 * max(0, 1 - info['sharp'] / 40) + .8 * max(0, 1 - info['bright'] / 70)
     h, w = bgr.shape[:2]
     info.update(cx=round(float(f[0] + f[2] / 2) / w, 3), cy=round(float(f[1] + f[3] / 2) / h, 3), w=w, h=h)
     return s, info, bgr
