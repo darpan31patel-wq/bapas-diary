@@ -69,6 +69,20 @@ jobs:
                       pg.screenshot(path=f'shots/{name}-{era}.png')
               b.close()
           EOF
+          python3 - <<'EOF'   # small copies of the shown photos, for a private mockup page that can't reach R2
+          import cv2, json, numpy as np, os, urllib.parse, urllib.request
+          from concurrent.futures import ThreadPoolExecutor
+          def one(x):
+              key = f"{x['album']}/{x['file']}"
+              body = urllib.request.urlopen(urllib.request.Request('https://photos.bapas-diary.com/m/' + urllib.parse.quote(key), headers={'User-Agent': 'bapas-diary-years'}), timeout=60).read()
+              im = cv2.imdecode(np.frombuffer(body, np.uint8), cv2.IMREAD_COLOR)
+              k = 720 / max(im.shape[:2])
+              os.makedirs(f"mock/m/{x['album']}", exist_ok=True)
+              cv2.imwrite(f'mock/m/{key}', cv2.resize(im, None, fx=k, fy=k, interpolation=cv2.INTER_AREA), [cv2.IMWRITE_JPEG_QUALITY, 72])
+          with ThreadPoolExecutor(16) as ex:
+              list(ex.map(one, [x for x in json.load(open('faces/faces.json')) if x.get('src') == 'm']))
+          EOF
+          tar czf shots/mock-photos.tgz -C mock m
           cd shots && for f in *; do mv "$f" "faces-shot-$f"; done
           gh release upload faces-mockup faces-shot-* ../faces-log.txt --clobber
       - name: Into the release

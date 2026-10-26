@@ -230,6 +230,9 @@ def auto(a):
             time.sleep(wait)
         return None
 
+    skip = set()   # photos looked over by hand and left out (site/faces-skip.txt)
+    if os.path.exists(os.path.join(HERE, 'site', 'faces-skip.txt')):
+        skip = {l.split()[0] for l in open(os.path.join(HERE, 'site', 'faces-skip.txt')) if l.strip() and not l.startswith('#')}
     like = None
     if not a.no_likeness:
         like = Likeness()
@@ -237,7 +240,11 @@ def auto(a):
         os.makedirs(a.sheet, exist_ok=True)
     # the first days made (their own p/ copies, before R2): the same checks, until their year is in R2 and done again
     for day, x in sorted(out.items()):
-        if x.get('src') == 'm':
+        if x.get('src') == 'm' and f"{x['album']}/{x['file']}" not in skip:
+            continue
+        if f"{x['album']}/{x['file']}" in skip:
+            seen.pop(day, None)   # done again without it
+            del out[day]
             continue
         path = os.path.join(a.out, 'p', day + '.jpg')
         bgr = cv2.imread(path) if os.path.exists(path) else None
@@ -271,6 +278,8 @@ def auto(a):
             cands = []
             for r in xs:
                 c = r[5] or ''
+                if f'{r[3]}/{r[4]}' in skip:
+                    continue
                 if LIKENESS.search(c) and not DOES.match(c):
                     continue   # its caption says it is a murti, portrait or photo of him
                 if not ABOUT.search(c):
