@@ -261,7 +261,7 @@ def auto(a):
             del out[day]
         elif a.sheet:
             cv2.imwrite(os.path.join(a.sheet, f'{day}.jpg'), align(bgr, f), [cv2.IMWRITE_JPEG_QUALITY, 80])
-    if a.redo or seen.get('_rules') != RULES:
+    if a.redo:   # after a rule change, once it has been looked over (the workflow's redo input)
         seen = {'_rules': RULES}
     todo = []
     for y in years:

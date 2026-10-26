@@ -14,6 +14,10 @@ on:
         description: 'Update the live page (off: a test copy with screenshots)'
         type: boolean
         default: false
+      redo:
+        description: 'Choose every day again (after a rule change)'
+        type: boolean
+        default: false
   workflow_call:
 permissions:
   contents: write
@@ -45,7 +49,7 @@ jobs:
           gh release download faces-mockup -p faces.tgz   # a test copy starts from the live one too
           tar xzf faces.tgz
       - name: Close ups
-        run: python3 tools/faces_years.py --db bapas.db --years years.txt --hints hints --out faces --sheet sheet 2>&1 | grep -v WARN | tee faces-log.txt
+        run: python3 tools/faces_years.py --db bapas.db --years years.txt --hints hints --out faces --sheet sheet ${{ inputs.redo && '--redo' || '' }} 2>&1 | grep -v WARN | tee faces-log.txt
       - name: The page
         run: |
           python3 tools/build_faces.py --faces faces --db bapas.db --out through-the-years --site
