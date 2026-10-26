@@ -23,11 +23,18 @@ jobs:
       - name: Model as a file the browser can run
         run: |
           pip install -q --index-url https://download.pytorch.org/whl/cpu torch
-          pip install -q 'optimum[exporters]' 'transformers<4.50' onnx onnxruntime
-          optimum-cli export onnx --model facebook/dinov2-small --task feature-extraction dino-s
-          ls -la dino-s
+          pip install -q 'transformers<4.50' onnx onnxruntime
+          mkdir -p dino-s
           python3 - <<'PY'
+          import torch
+          from transformers import Dinov2Model
           from onnxruntime.quantization import quantize_dynamic, QuantType
+          m = Dinov2Model.from_pretrained('facebook/dinov2-small').eval()
+          class Out(torch.nn.Module):   # every token (CLS first, then 16x16 patches) so pooling can be chosen later
+              def __init__(s, m): super().__init__(); s.m = m
+              def forward(s, x): return s.m(pixel_values=x).last_hidden_state
+          torch.onnx.export(Out(m), torch.randn(1, 3, 224, 224), 'dino-s/model.onnx', input_names=['x'], output_names=['t'],
+                            dynamic_axes={'x': {0: 'n'}, 't': {0: 'n'}}, opset_version=17, dynamo=False)
           quantize_dynamic('dino-s/model.onnx', 'dino-s/model-q8.onnx', weight_type=QuantType.QUInt8)
           PY
           ls -la dino-s
