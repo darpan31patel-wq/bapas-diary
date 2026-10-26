@@ -10,7 +10,15 @@ on:
   workflow_call:   # website-hires (on main) rebuilds the site when a year of full size photos is in R2
 concurrency: website-deploy
 jobs:
+  # Bapa Through The Years updates itself first: only new years and new days, from R2 and website-faces, never baps.org
+  # (Darpan, 26 Oct 2026: "this should always auto update"). A failure here never stops the deploy.
+  through-the-years:
+    permissions:
+      contents: write
+    uses: darpan31patel-wq/bapas-diary/.github/workflows/faces-years.yml@claude/project-thread-lfiln1
   deploy:
+    needs: through-the-years
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
