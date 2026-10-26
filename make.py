@@ -99,7 +99,7 @@ def album_towns(items):
     for xs in albums.values():
         said = ' '.join(x.get('c') or '' for x in xs)
         named = [t for t in towns[xs[0]['y']] if len(towns[xs[0]['y']]) > 1 and re.search(rf'\b{re.escape(t)}\b', said, re.I)]
-        if len(named) == 1:
+        if len(named) == 1 and is_town(named[0]):   # never a country ('Vavli, India' in a caption made an Ahmedabad card INDIA)
             for x in xs:
                 if place(x).lower() != named[0].lower():
                     x['p'] = named[0]
@@ -1146,11 +1146,70 @@ def caption(x):
     return c
 
 
+# Darpan, 26 Oct 2026: a card said INDIA (a 2012 Ahmedabad album whose caption named 'Vavli, India'). A card's place is
+# always a town, never a country, a region, a date or a page heading; when a photo has no town, the nearest day of the
+# same year that has one says where Bapa was.
+COUNTRIES = {'india', 'uk', 'usa', 'us', 'united kingdom', 'united states', 'england', 'europe', 'uk & europe', 'africa',
+             'east africa', 'kenya', 'tanzania', 'uganda', 'south africa', 'zambia', 'malawi', 'zimbabwe', 'botswana',
+             'canada', 'australia', 'new zealand', 'uae', 'france', 'china', 'thailand', 'indonesia', 'israel', 'gujarat',
+             'north america', 'fiji', 'mauritius', 'belgium', 'germany', 'portugal', 'italy', 'switzerland', 'netherlands'}
+
+
+def is_town(t):
+    t = re.sub(r'\s*\(.*?\)', '', t or '').strip()
+    return bool(t) and t.lower() not in COUNTRIES and not re.fullmatch(r'[A-Z]{2}', t) and not re.search(r'\d|Vicharan|Maharaj', t)
+
+
+def town_of(p):
+    """'Ahmedabad, India' -> 'Ahmedabad', '2004, London' -> 'London', 'India' -> ''."""
+    return next((re.sub(r'\s*\(.*?\)', '', t).strip() for t in (p or '').split(',') if is_town(t)), '')
+
+
 def place(x):
     where = range_title(x.get('c'))
-    if where:   # the album's heading says which of the day's places the photo is from ('Mumbai, Gondal' -> Gondal)
+    if where and is_town(where):   # the album's heading says which of the day's places the photo is from ('Mumbai, Gondal' -> Gondal)
         return where
-    return re.sub(r'\s*\(.*?\)', '', (x.get('p') or '').split(',')[0]).strip()
+    return town_of(x.get('p'))
+
+
+def nearby_town(y, when, reach=10):
+    """Where Bapa was on the nearest day of year y to `when` (a date) that names a town: the vicharan pages, then the
+    day lists, a day before and a day after, then two, and so on."""
+    for k in range(1, reach + 1):
+        for d in (when - datetime.timedelta(days=k), when + datetime.timedelta(days=k)):
+            if d.year != y:
+                continue
+            mmdd = f'{d:%m-%d}'
+            path = os.path.join(HERE, 'archive', 'vicharan', mmdd + '.txt')
+            if os.path.exists(path):
+                for line in open(path, encoding='utf-8'):
+                    if line.startswith(f'#{y} '):
+                        where, _, on = line.rstrip('\n').partition('|')[2].partition('|')
+                        if not on and town_of(where):   # a nearby day's own album, not a photo borrowed from another day
+                            return town_of(where)
+            path = os.path.join(LISTS, mmdd + '.json')
+            if os.path.exists(path):
+                for x in json.load(open(path, encoding='utf-8')):
+                    if x.get('y') == y and town_of(x.get('p')):
+                        return town_of(x.get('p'))
+    return ''
+
+
+def settle_places(items, mmdd):
+    """A photo whose place is only a country (or nothing) takes the town of the nearest day that has one."""
+    found = {}
+    for x in items:
+        if place(x):
+            continue
+        try:
+            when = datetime.date.fromisoformat((x.get('d') or '')[:10])
+        except ValueError:
+            when = datetime.date(x['y'], *map(int, mmdd.split('-')))
+        key = (x['y'], when)
+        if key not in found:
+            found[key] = nearby_town(x['y'], when)
+        if found[key]:
+            x['p'] = found[key] + ', ' + (x.get('p') or '')
 
 
 def wrap(d, text, f, maxw, lines, shorten=True, min_words=0):
@@ -2163,10 +2222,12 @@ def main():
         items += [x for x in extra if x['i'] not in have]
         print(f'  + {len(items) - len(have)} more captioned photos from the vicharan pages')
     album_towns(items)
+    settle_places(items, mmdd)
     print(f'{day}: {len(items)} photos across {len({x["y"] for x in items})} years')
 
     tg_extra, tg_evs, special = tg_day(day, items)
     items += tg_extra
+    settle_places(tg_extra, mmdd)
     download_all(items, a.cache)
     unframe(items)
     tall = 1 / 1.45 if len({x['y'] for x in items}) > 10 else 1 / 1.08
