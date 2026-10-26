@@ -3,7 +3,7 @@
 # 16 more machines share the years still being copied photo by photo, last photos first so they meet the main run
 # halfway. Copying the same photo twice is harmless (same file). When every photo of a year is in R2, the year goes
 # into years.txt, its faces are checked and the website is rebuilt, the same as website-hires does.
-# Runs when this file is pushed; keeps 04:30 to 07:30 UTC free like the main copy.
+# Runs when this file is pushed (second try 26 Oct: the first read R2 before its keys were set); keeps 04:30 to 07:30 UTC free like the main copy.
 name: website-hires-boost
 on:
   push:
@@ -51,9 +51,12 @@ jobs:
           echo "::add-mask::$id"; echo "::add-mask::$key"   # keep both out of the run logs
           { echo "AWS_ACCESS_KEY_ID=$id"; echo "AWS_SECRET_ACCESS_KEY=$key"
             echo "AWS_DEFAULT_REGION=auto"; echo "R2=https://$CF_ACCOUNT.r2.cloudflarestorage.com"; } >> "$GITHUB_ENV"
+      - name: What R2 has already
+        run: |
           aws s3 cp "s3://$BUCKET/years.txt" done.txt --endpoint-url "$R2" || : > done.txt
           aws s3 ls "s3://$BUCKET/o/" --recursive --endpoint-url "$R2" | awk '{ $1=$2=$3=""; sub(/^ +/, ""); print }' > have.txt || true
           echo "$(wc -l < have.txt) photos already in R2 at full size; years finished: $(tr '\n' ' ' < done.txt)"
+          [ -s done.txt ] && [ "$(wc -l < have.txt)" -gt 200000 ]   # never start without the list, or every photo is copied again
       - name: Highest resolution photos into R2 (this machine's share, last photos first)
         run: |
           python3 tools/hires_photos.py --db bapas.db --check check.txt --done done.txt --have have.txt \
