@@ -46,8 +46,8 @@ jobs:
         run: |
           python3 tools/deep_big.py words --out words-big.npz
           gh release upload deep-tags-test words-big.npz --clobber
-      - name: Photos to check by eye (the list check-keys.txt is put in the release by hand)
+      - name: Sheets to set each wide word's bar by eye (from every photo already kept in the release deep-tags)
         run: |
-          gh release download deep-tags-test -p check-keys.txt || exit 0
-          python3 tools/deep_big.py fetch --keys check-keys.txt --out check
-          (cd check && zip -qr ../check-photos.zip .) && gh release upload deep-tags-test check-photos.zip --clobber
+          mkdir emb && gh release download deep-tags -p 'emb-*.npz' -D emb
+          python3 tools/deep_big.py ladder --emb emb --words words-big.npz --out ladder
+          zip -qr ladder.zip ladder && gh release upload deep-tags-test ladder.zip --clobber
