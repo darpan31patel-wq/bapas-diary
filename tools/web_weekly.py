@@ -329,7 +329,7 @@ def main():
         subject = f"Today's darshan · {nice(first, '%A %-d %B')}"
     have = sum(1 for d in data['days'] if d['psm'] and d['msm'])
     print(f'{subject}: {have} of {len(data["days"])} days with both Bapas, {len(data["special"])} special', flush=True)
-    if have < (1 if a.daily else 4):
+    if have < (1 if a.daily or a.test else 4):   # a test copy goes out with whatever R2 has so far
         sys.exit('Not enough photos of both Bapas in R2 for this yet, nothing sent.')
 
     if a.upload and not a.no_photos:

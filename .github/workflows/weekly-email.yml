@@ -68,6 +68,11 @@ jobs:
           if [ "${{ github.event_name }}" = push ]; then WEEK=$(tr -d ' \n' < site/weekly/send-test.txt); fi
           python3 tools/web_weekly.py --db bapas.db --out weekly ${WEEK:+--week "$WEEK"} "${how[@]}" \
             --upload 'aws s3 sync weekly/e "s3://$BUCKET/e/" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000" --content-type image/jpeg'
+          # a push test sends the morning reminder too
+          if [ "${{ github.event_name }}" = push ]; then
+            python3 tools/web_weekly.py --db bapas.db --out weekly --daily --test "$TEST" \
+              --upload 'aws s3 sync weekly/e "s3://$BUCKET/e/" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000" --content-type image/jpeg'
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
