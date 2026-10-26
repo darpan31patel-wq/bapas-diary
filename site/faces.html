@@ -154,7 +154,7 @@ const tOf = d => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) /
 const dOf = t => new Date(t * DAYMS);
 
 const eras = { psm: [], msm: [] };
-for (const r of DAYS) eras[r[5]].push({ day: r[0], to: r[1], place: r[2], cap: r[3], photos: r[4], tithi: r[6], fest: r[7], eyes: r.slice(8, 12), span: r[12], w: r[13], h: r[14], t: tOf(r[0]) });
+for (const r of DAYS) eras[r[5]].push({ day: r[0], to: r[1], place: r[2], cap: r[3], photos: r[4], tithi: r[6], fest: r[7], eyes: r.slice(8, 12), span: r[12], w: r[13], h: r[14], path: r[15] || '', t: tOf(r[0]) });
 const EYE_X = .5, EYE_Y = .4, GAP = .15;    // where his eyes sit in the frame, and how big his face is (eyes to mouth, share of the frame's width)
 
 const $ = id => document.getElementById(id);
@@ -198,7 +198,7 @@ function show(i, fast) {
   place(back, x);
   clearTimeout(settle);
   settle = setTimeout(() => { if (!playing && my === token) { front.classList.add('rest'); place(front, x, true); } }, 900);
-  back.src = `p/${x.day}.jpg`;
+  back.src = photo(x);
   back.alt = `${era === 'psm' ? 'Pramukh Swami Maharaj' : 'Mahant Swami Maharaj'} on ${longDate(x.day)}`;
   (back.decode ? back.decode() : Promise.resolve()).catch(() => {}).then(() => {
     if (my !== token) return;
@@ -213,7 +213,7 @@ function show(i, fast) {
   $('more').href = `/search/#date=${x.day}`;
   $('count').textContent = `Day ${idx + 1} of ${list.length} with a close darshan`;
   $('days').value = idx;
-  for (const k of [1, 2, 3, -1, -2]) { const y = list[idx + k]; if (y) new Image().src = `p/${y.day}.jpg`; }
+  for (const k of [1, 2, 3, -1, -2]) { const y = list[idx + k]; if (y) new Image().src = photo(y); }
   draw();
 }
 function esc(s) { return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
@@ -253,6 +253,7 @@ function draw() {
     cx.fillStyle = line; cx.fillRect(Math.round(a), 0, 1, h);
     cx.fillStyle = ink; const lx = Math.max(a + 6, 6);
     if (lx < b - 36) cx.fillText(String(y), lx, 10);
+    else if (lx < b - 22) cx.fillText(`'${String(y).slice(2)}`, lx, 10);   // many years on a narrow screen: still every year, to tap
   }
   // months
   const mw = 30 * ppd;
@@ -274,7 +275,7 @@ function draw() {
   for (let i = i0; i <= i1; i++) {
     const x = X(list[i].t);
     if (room && i !== idx) {
-      const im = thumb(list[i].day), ww = Math.min(tw, ppd - 3);
+      const im = thumb(list[i]), ww = Math.min(tw, ppd - 3);
       if (im.complete && im.naturalWidth) { cx.globalAlpha = .7; cx.drawImage(im, 0, 0, im.naturalWidth, im.naturalHeight, x - tw / 2 + (tw - ww) / 2, top, ww, th); cx.globalAlpha = 1; }
       else { cx.fillStyle = line; cx.fillRect(x - ww / 2, top, ww, th); }
     } else if (!room) {
@@ -283,14 +284,32 @@ function draw() {
   }
   // the chosen day
   const sx = X(list[idx].t);
-  if (room) { const im = thumb(list[idx].day); if (im.complete && im.naturalWidth) cx.drawImage(im, sx - tw / 2, top, tw, th); }
+  if (room) { const im = thumb(list[idx]); if (im.complete && im.naturalWidth) cx.drawImage(im, sx - tw / 2, top, tw, th); }
   cx.fillStyle = saf; cx.fillRect(Math.round(sx) - 1, top - 6, 3, th + 12);
   cx.beginPath(); cx.moveTo(sx - 6, top - 8); cx.lineTo(sx + 7, top - 8); cx.lineTo(sx + .5, top - 1); cx.fill();
 }
-function thumb(day) {
+// the day's photo: R2's own copy (photos.bapas-diary.com m/, the size its eyes were measured on), or for the first
+// days made, a copy next to this page
+const R2 = 'https://photos.bapas-diary.com/';
+const r2 = (tier, x) => R2 + tier + '/' + x.path.split('/').map(encodeURIComponent).join('/');
+function photo(x) { return x.path ? r2('m', x) : `p/${x.day}.jpg`; }
+// a small close up for the strip, his eyes lined up as in the big frame: R2's small copy (s/) turned and cut here
+function thumb(x) {
+  const day = x.day;
   let im = thumbs.get(day);
-  if (!im) { im = new Image(); im.onload = () => requestAnimationFrame(draw); im.src = `f/${day}.jpg`; thumbs.set(day, im); }
-  return im;
+  if (im) return im;
+  if (!x.path) { im = new Image(); im.onload = () => requestAnimationFrame(draw); im.src = `f/${day}.jpg`; thumbs.set(day, im); return im; }
+  const c = document.createElement('canvas'), s = new Image();
+  c.width = 240; c.height = 300; c.complete = false; c.naturalWidth = 0;
+  s.onload = () => {
+    const g = c.getContext('2d'), k = s.naturalWidth / x.w, [rx, ry, lx, ly] = x.eyes.map(v => v * k);
+    g.fillStyle = css('--line'); g.fillRect(0, 0, 240, 300);
+    g.translate(120, 126); g.rotate(-Math.atan2(ly - ry, lx - rx)); g.scale(.17 * 240 / (x.span * k), .17 * 240 / (x.span * k));
+    g.translate(-(rx + lx) / 2, -(ry + ly) / 2); g.drawImage(s, 0, 0);
+    c.complete = true; c.naturalWidth = 240; c.naturalHeight = 300; requestAnimationFrame(draw);
+  };
+  s.src = r2('s', x); thumbs.set(day, c);
+  return c;
 }
 
 function setEra(e) {

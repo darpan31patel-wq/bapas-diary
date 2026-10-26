@@ -129,7 +129,124 @@ def fetch(album, file, dest):
     return bool(body)
 
 
+def day_groups(db, start, end):
+    """{day: [(day, to, place, album, file, caption)]}, a range album counting as its first day, and only when no photo
+    of a day inside its range has its own date."""
+    rows = db.execute('SELECT coalesce(date, date_from) AS day, date_to, place, album, file, caption FROM photos '
+                      'WHERE coalesce(date, date_from) BETWEEN ? AND ? ORDER BY day, album, file', (start, end)).fetchall()
+    days = collections.defaultdict(list)
+    dated = sorted({r[0] for r in rows if not r[1] or r[1] == r[0]})
+    for r in rows:
+        if r[1] and r[1] != r[0] and any(r[0] <= d <= r[1] for d in dated):
+            continue   # a range album, and the range has days with their own dated photos: those come first
+        days[r[0]].append(r)
+    return days
+
+
+def hint(rec):
+    """How good a close up a photo looks from website-faces' scan (tools/web_faces.py on the face picker branch: [sim,
+    x, y, w, h, front, sharp, bright, W, H, faces, other], box as parts of the photo), by score()'s rules, so only the
+    best few of each day need looking at again for his eyes."""
+    sim, x, y, w, h, front, sharp, bright, W_, H_ = rec[:10]
+    close = h * H_ / max(1, min(W_, H_))
+    return (min(close, .6) * 3 + min(w * W_ * .4, 120) / 120 + sim - 3 * max(0, .6 - front)
+            - .8 * max(0, 1 - sharp / 40) - .8 * max(0, 1 - bright / 70))
+
+
+def auto(a):
+    """Every year in R2 (years.txt), straight from its m/ copies at --url: no photos are kept, the page shows the m/ copy
+    itself with the eyes measured on it. Days already done with the same number of photos are skipped, so each run
+    only does new years and the current year's new days. website-faces' scan (--hints) narrows each day to its best
+    --keep photos of Bapa; a photo it hasn't looked at yet is always looked at; a year it hasn't scanned waits."""
+    import gzip, urllib.parse, urllib.request
+    from concurrent.futures import ThreadPoolExecutor
+    years = sorted(int(l) for l in open(a.years) if l.strip().isdigit())
+    hints, scanned = {}, set()
+    for f in sorted(os.listdir(a.hints)) if a.hints and os.path.isdir(a.hints) else []:
+        if f.startswith('face2-') and f.endswith('.json.gz'):
+            hints.update(json.load(gzip.open(os.path.join(a.hints, f), 'rt')))
+            scanned.add(int(f[6:10]))
+    db = sqlite3.connect(a.db)
+    jp, sp = os.path.join(a.out, 'faces.json'), os.path.join(a.out, 'seen.json')
+    os.makedirs(a.out, exist_ok=True)
+    out = {x['day']: x for x in json.load(open(jp))} if os.path.exists(jp) else {}
+    seen = json.load(open(sp)) if os.path.exists(sp) else {}
+
+    def get(key):
+        for wait in (2, 10, 30, 0):
+            try:
+                req = urllib.request.Request(a.url + urllib.parse.quote(key), headers={'User-Agent': 'bapas-diary-years'})
+                return cv2.imdecode(np.frombuffer(urllib.request.urlopen(req, timeout=30).read(), np.uint8), cv2.IMREAD_COLOR)
+            except urllib.error.HTTPError as e:
+                if e.code == 404:
+                    return None
+            except Exception:
+                pass
+            time.sleep(wait)
+        return None
+
+    todo = []
+    for y in years:
+        if y not in scanned:
+            print(f'{y}: waiting for its face scan', flush=True)
+            continue
+        days = day_groups(db, f'{y}-01-01', f'{y}-12-31')
+        new = [(d, xs) for d, xs in sorted(days.items()) if seen.get(d) != len(xs)]
+        print(f'{y}: {len(days)} days, {len(new)} to do', flush=True)
+        todo += new
+    t0 = time.time()
+    with ThreadPoolExecutor(16) as net:
+        for n, (day, xs) in enumerate(todo):
+            guru = 'psm' if day < PSM_UNTIL else 'msm'
+            cands = []
+            for r in xs:
+                rec = hints.get(f'{r[3]}/{r[4]}')
+                if rec is None:
+                    cands.append((9, r))   # not scanned yet: a new photo
+                elif rec[0] >= SAME_PERSON and rec[0] > rec[11]:
+                    cands.append((hint(rec), r))
+            cands = [r for _, r in sorted(cands, key=lambda c: -c[0])[:a.keep]]
+            best = None
+            for r, bgr in zip(cands, net.map(lambda r: get(f'{r[3]}/{r[4]}'), cands)):
+                if bgr is None:
+                    continue
+                f, sim = bapa(bgr, guru)
+                if f is None:
+                    continue
+                s, facts = score(bgr, f, sim)
+                if facts['gap'] >= MIN_GAP and (best is None or s > best[0]):
+                    best = (s, bgr, f, r, sim, facts)
+            out.pop(day, None)
+            if best:
+                s, bgr, f, (_, to, place, album, file, cap), sim, facts = best
+                rx, ry, lx, ly = [float(v) for v in f[4:8]]
+                if rx > lx:
+                    rx, ry, lx, ly = lx, ly, rx, ry
+                out[day] = dict(day=day, to=to if to and to != day else None, place=place or '', caption=cap or '',
+                                album=album, file=file, guru=guru, sim=round(sim, 2), score=round(s, 2), **facts,
+                                photos=len(xs), w=bgr.shape[1], h=bgr.shape[0], src='m',
+                                eyes=[round(v, 1) for v in (rx, ry, lx, ly)], span=round(span(f), 1))
+            seen[day] = len(xs)
+            if n % 50 == 0 or n == len(todo) - 1:
+                print(f'  {n + 1}/{len(todo)} {day}: {len(cands)} looked at, {"close " + str(best[5]["close"]) if best else "no face"}, '
+                      f'{time.time() - t0:.0f}s', flush=True)
+                json.dump(sorted(out.values(), key=lambda x: x['day']), open(jp, 'w'), indent=0, ensure_ascii=False)
+                json.dump(seen, open(sp, 'w'), sort_keys=True)
+    json.dump(sorted(out.values(), key=lambda x: x['day']), open(jp, 'w'), indent=0, ensure_ascii=False)
+    json.dump(seen, open(sp, 'w'), sort_keys=True)
+    print(f'{len(out)} days with a close up, {len(todo)} looked at this time')
+
+
 def main():
+    if '--years' in sys.argv:
+        ap = argparse.ArgumentParser()
+        ap.add_argument('--db', default='bapas.db')
+        ap.add_argument('--years', required=True, help='the years in R2, one a line (photos.bapas-diary.com/years.txt)')
+        ap.add_argument('--hints', help="folder of website-faces' face2-*.json.gz")
+        ap.add_argument('--url', default='https://photos.bapas-diary.com/m/')
+        ap.add_argument('--keep', type=int, default=5)
+        ap.add_argument('--out', default='faces')
+        return auto(ap.parse_args())
     ap = argparse.ArgumentParser()
     ap.add_argument('--db', default='bapas.db')
     ap.add_argument('--photos', required=True)
@@ -139,15 +256,8 @@ def main():
     ap.add_argument('--fetch', action='store_true', help='download missing photos from baps.org first')
     a = ap.parse_args()
     db = sqlite3.connect(a.db)
-    rows = db.execute('SELECT coalesce(date, date_from) AS day, date_to, place, album, file, caption FROM photos '
-                      'WHERE coalesce(date, date_from) BETWEEN ? AND ? ORDER BY day, album, file', (a.start, a.end)).fetchall()
-    days = collections.defaultdict(list)
-    dated = {r[0] for r in rows if not r[1] or r[1] == r[0]}
-    for r in rows:
-        if r[1] and r[1] != r[0] and any(d for d in dated if r[0] <= d <= r[1]):
-            continue   # a range album, and the range has days with their own dated photos: those come first
-        days[r[0]].append(r)
-    print(f'{len(rows)} photos over {len(days)} days', flush=True)
+    days = day_groups(db, a.start, a.end)
+    print(f'{sum(map(len, days.values()))} photos over {len(days)} days', flush=True)
     os.makedirs(os.path.join(a.out, 'f'), exist_ok=True)
     os.makedirs(os.path.join(a.out, 'p'), exist_ok=True)
     jp = os.path.join(a.out, 'faces.json')

@@ -3,8 +3,10 @@
 
     python3 tools/build_faces.py --faces faces --db bapas.db --out site-faces
 
-Writes OUT/index.html (site/faces.html with every day's facts and its BAPS calendar line filled in) and OUT/f/
-(small lined up close ups for the strip) and OUT/p/ (each day's whole photo; the page lines up his eyes).
+Writes OUT/index.html (site/faces.html with every day's facts and its BAPS calendar line filled in). A day found by
+faces_years.py --years shows R2's own copies (photos.bapas-diary.com m/ for the photo, s/ for the strip), so thousands
+of days add no files to the website; older days bring OUT/f/ (small lined up close ups for the strip) and OUT/p/ (the
+day's whole photo). The page lines up his eyes.
 Each day's link goes to the search page for that date, so a tap shows all its photos.
 """
 import argparse, json, os, shutil, sqlite3
@@ -24,15 +26,17 @@ def main():
     cal = {r[0]: r[1:] for r in db.execute('SELECT date, indian_date, festivals FROM calendar')}
     rows = []
     for x in days:
-        if 'eyes' not in x or not os.path.exists(os.path.join(a.faces, 'p', x['day'] + '.jpg')):
+        m = x.get('src') == 'm'   # measured on R2's m/ copy, which the page shows itself; older days have their own p/ and f/
+        if 'eyes' not in x or not (m or os.path.exists(os.path.join(a.faces, 'p', x['day'] + '.jpg'))):
             continue
         tithi, fest = cal.get(x['day'], ('', ''))
         rows.append([x['day'], x.get('to') or '', x['place'].replace(', India', ''), x['caption'], x['photos'],
-                     x['guru'], tithi or '', fest or ''] + x['eyes'] + [x['span'], x['w'], x['h']])
+                     x['guru'], tithi or '', fest or ''] + x['eyes'] + [x['span'], x['w'], x['h'], f"{x['album']}/{x['file']}" if m else ''])
     for d in 'fp':
         os.makedirs(os.path.join(a.out, d), exist_ok=True)
         for r in rows:
-            shutil.copy(os.path.join(a.faces, d, r[0] + '.jpg'), os.path.join(a.out, d, r[0] + '.jpg'))
+            if not r[15]:
+                shutil.copy(os.path.join(a.faces, d, r[0] + '.jpg'), os.path.join(a.out, d, r[0] + '.jpg'))
     page = open(os.path.join(HERE, 'site', 'faces.html'), encoding='utf-8').read()
     page = page.replace('/*DAYS*/[]', json.dumps(rows, ensure_ascii=False, separators=(',', ':')))
     if a.site:
