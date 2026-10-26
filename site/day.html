@@ -106,7 +106,7 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 footer{text-align:center;margin-top:52px;font:600 19px var(--serif);color:var(--gold-soft);letter-spacing:.04em}
 
 /* the wide view and the slideshow */
-.viewer{position:fixed;inset:0;z-index:30;background:rgba(14,3,6,.96);display:grid;grid-template-rows:auto minmax(0,1fr) auto;padding:calc(10px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.viewer{position:fixed;inset:0;z-index:60;background:rgba(14,3,6,.96);display:grid;grid-template-rows:auto minmax(0,1fr) auto;padding:calc(10px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .vtop{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .vtop .caps{color:var(--gold-soft)}
 .vstage{position:relative;display:grid;place-items:center;min-height:0;padding:12px 0}
@@ -534,6 +534,8 @@ function shut() {
   lastFocus && lastFocus.focus();
 }
 $('vclose').onclick = shut;
+// a click on the dark around the photo closes it, back to the page underneath (Darpan, 26 Oct)
+$('viewer').addEventListener('click', e => { if (!e.target.closest('.vframe, button, a')) shut(); });
 $('vprev').onclick = () => view(vi - 1);
 $('vnext').onclick = () => view(vi + 1);
 $('vplay').onclick = () => setPlay(!vtimer);
@@ -563,6 +565,7 @@ $('choose').onclick = () => { month(+showing.slice(0, 2) - 1); $('picker').hidde
 $('pm-prev').onclick = () => month(pm - 1);
 $('pm-next').onclick = () => month(pm + 1);
 $('pclose').onclick = () => { $('picker').hidden = true; $('choose').focus(); };
+$('picker').addEventListener('click', e => { if (e.target === $('picker')) $('pclose').click(); });
 $('prev').onclick = () => open(shift(showing, -1), true);
 $('next').onclick = () => open(shift(showing, 1), true);
 $('back-today').onclick = () => open(TODAY, true);
