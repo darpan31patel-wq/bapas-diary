@@ -57,3 +57,11 @@ nav.site-menu a.on { color: #fff3cf; background: rgba(255, 211, 107, .16); borde
   nav.site-menu.faint { opacity: .28; }
   nav.site-menu.faint:hover, nav.site-menu.faint:focus-within { opacity: 1; transition-duration: .25s; }
 }
+/* iPads held upright (761 to 959px) with seven tabs: a little tighter, and "Through the years" says "Years" as on phones,
+   so every tab fits beside the Aa and language buttons (Then and now tab, 26 Oct 2026) */
+@media (min-width: 761px) and (max-width: 959px) {
+  nav.site-menu { gap: 0 12px; }
+  nav.site-menu a { letter-spacing: .08em; }
+  nav.site-menu a[href="/through-the-years/"] { font-size: 0; }
+  nav.site-menu a[href="/through-the-years/"]::after { content: "Years"; font-size: 11px; }
+}

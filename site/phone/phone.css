@@ -1,7 +1,7 @@
 /* bapas-diary.com on phones (Darpan typed yes to the phone design, 24 Oct 2026).
    Website only: nothing here touches the daily 2pm picture. tools/web_phone.py adds this file and phone.js to every
    page at deploy time. Everything is inside one media query, so computers and tablets keep the pages exactly as they are.
-   On a phone: the shared menu becomes a tab bar at the bottom for the thumb (Today, Calendar, Search, Travels, Years),
+   On a phone: the shared menu becomes a tab bar at the bottom for the thumb (Today, Calendar, Search, Travels, Years, Then & now),
    About moves to a round "i" at the top right, buttons are at least 44px, and photos open full screen on black. */
 @media (max-width: 760px) {
   :root { --ph-bar: calc(62px + env(safe-area-inset-bottom, 0px)); }
@@ -34,6 +34,10 @@
   nav.site-menu a[href^="/search/"] { --ph-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='m15.5 15.5 5 5'/%3E%3C/svg%3E"); }
   nav.site-menu a[href="/travels/"] { --ph-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z'/%3E%3C/svg%3E"); }
   nav.site-menu a[href="/through-the-years/"] { --ph-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Crect x='4' y='3' width='16' height='18' rx='2.5'/%3E%3Ccircle cx='12' cy='10' r='3.2'/%3E%3Cpath d='M7 18c1-2.6 2.8-4 5-4s4 1.4 5 4'/%3E%3C/svg%3E"); }
+
+  /* Then and now, the 6th tab (Darpan, 26 Oct 2026: "yes then and now tab"): two frames side by side */
+  nav.site-menu a[href="/then-and-now/"] { font-size: 0; --ph-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Crect x='2.5' y='5' width='8' height='14' rx='1.8'/%3E%3Crect x='13.5' y='5' width='8' height='14' rx='1.8'/%3E%3Cpath d='M12 3v18' stroke-dasharray='1.5 2'/%3E%3C/svg%3E"); }
+  nav.site-menu a[href="/then-and-now/"]::after { content: "Then & now"; font-size: 11px; white-space: nowrap; }
 
   /* the top strip, in the 46px every page already keeps free for the old menu */
   .ph-top { position: absolute; z-index: 55; top: env(safe-area-inset-top, 0px); left: 0; right: 0; height: 46px; display: flex; align-items: center; justify-content: space-between;
