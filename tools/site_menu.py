@@ -3,7 +3,7 @@ built by different threads always match. Website only; run by .github/workflows/
 
     python3 tools/site_menu.py out
 """
-import os, re, sys
+import hashlib, os, re, sys
 
 # Darpan, 24 Oct 2026: Calendar is the second tab.
 ORDER = ['/', '/calendar/', '/search/', '/travels/', '/through-the-years/', '/about/']
@@ -18,12 +18,18 @@ def reorder(m):
 
 
 def main(root):
+    # /menu.css?v=its own fingerprint, so a browser never keeps showing an old menu after a change (Darpan, 26 Oct 2026:
+    # still saw the dark edge after it was removed)
+    css = os.path.join(root, 'menu.css')
+    v = hashlib.sha1(open(css, 'rb').read()).hexdigest()[:10] if os.path.isfile(css) else ''
     for d, _, files in os.walk(root):
         for f in files:
             if f.endswith('.html'):
                 p = os.path.join(d, f)
                 s = open(p, encoding='utf-8').read()
                 t = NAV.sub(reorder, s)
+                if v:
+                    t = re.sub(r'href="/menu\.css(\?v=[0-9a-f]+)?"', f'href="/menu.css?v={v}"', t)
                 if t != s:
                     open(p, 'w', encoding='utf-8').write(t)
                     print('menu order:', os.path.relpath(p, root))
