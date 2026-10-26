@@ -42,3 +42,12 @@ jobs:
         run: |
           python3 tools/deep_tags.py words --out words.npz
           gh release upload deep-tags-test words.npz --clobber
+      - name: Wide word numbers (Darpan, 26 Oct, "type in anything")
+        run: |
+          python3 tools/deep_big.py words --out words-big.npz
+          gh release upload deep-tags-test words-big.npz --clobber
+      - name: Photos to check by eye (the list check-keys.txt is put in the release by hand)
+        run: |
+          gh release download deep-tags-test -p check-keys.txt || exit 0
+          python3 tools/deep_big.py fetch --keys check-keys.txt --out check
+          (cd check && zip -qr ../check-photos.zip .) && gh release upload deep-tags-test check-photos.zip --clobber
