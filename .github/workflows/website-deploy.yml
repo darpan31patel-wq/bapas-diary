@@ -6,7 +6,7 @@ name: website-deploy
 on:
   push:
     branches: ['claude/**']
-    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'tools/web_offline.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', '.github/workflows/website-deploy.yml']
+    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'tools/web_offline.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', 'functions/**', 'site/weekly/**', '.github/workflows/website-deploy.yml']
   workflow_call:   # website-hires (on main) rebuilds the site when a year of full size photos is in R2
 concurrency: website-deploy
 jobs:
@@ -93,7 +93,11 @@ jobs:
           du -sh out/*
           if grep -rli 'telegram\|t\.me/' out --include='*.html'; then echo 'Telegram found: not deploying'; exit 1; fi   # never on the public site
       - name: Deploy to Pages
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
         run: |
+          # the email sign up (/api/weekly, functions/ next to out/) needs the Resend key as a Pages secret (Darpan: ALL GOOD, 26 Oct)
+          if [ -n "$RESEND_API_KEY" ]; then printf %s "$RESEND_API_KEY" | npx --yes wrangler@3.114.0 pages secret put RESEND_API_KEY --project-name "$PROJECT" > /dev/null && echo "Resend key: set"; fi
           npx --yes wrangler@3.114.0 pages deploy out --project-name "$PROJECT" --branch main --commit-dirty=true
       - name: bapas-diary.com and www point at the site
         run: |

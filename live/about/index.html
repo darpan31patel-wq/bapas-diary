@@ -96,7 +96,82 @@ a { color: var(--maroon); }
 <div class="orn">❖</div>
 <h2>Get in touch</h2>
 <p>Spotted a mistake, or have a memory to share? Email <a class="mail" href="mailto:hello@bapas-diary.com">hello@bapas-diary.com</a></p>
-</div></main>
+</div>
+<!-- The weekly darshan sign up box (Darpan, 25 Oct 2026). Website only. Put this block under the photos on the
+     Today page and on the About page; it needs nothing else from the page. It posts to /api/weekly
+     (functions/api/weekly.js), which sends the "please confirm" email. Both Bapas side by side, always. -->
+<section class="weekly-signup" aria-labelledby="weekly-signup-h">
+  <style>
+    .weekly-signup { box-sizing: border-box; max-width: 680px; margin: 48px auto; padding: 30px 28px; border-radius: 14px; text-align: center;
+      background: radial-gradient(120% 140% at 50% 0%, #5a1626 0%, #3d0e19 100%); color: #faf1de; display: grid; gap: 14px; justify-items: center;
+      font: 17px/1.5 "EB Garamond", Georgia, serif; }
+    .weekly-signup .ws-gurus { display: flex; gap: 14px; }
+    .weekly-signup .ws-gurus img { width: 74px; height: 74px; border-radius: 50%; object-fit: cover; border: 2px solid #d9a441; }
+    .weekly-signup h2 { font: 600 28px/1.15 "EB Garamond", Georgia, serif; color: #ffe296; margin: 0; text-wrap: balance; }
+    .weekly-signup p { margin: 0; max-width: 46ch; color: #f3e4c6; }
+    .weekly-signup form { display: flex; gap: 8px; width: 100%; max-width: 440px; flex-wrap: wrap; }
+    .weekly-signup input[type=email] { flex: 1 1 200px; min-width: 0; font: 16px Arimo, Arial, sans-serif; padding: 12px 14px; border-radius: 8px;
+      border: 1px solid #d9a441; background: #faf1de; color: #2e1a14; }
+    .weekly-signup .ws-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+    .weekly-signup button { flex: 0 0 auto; font: 700 13px Arimo, Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase; padding: 12px 18px;
+      border-radius: 8px; border: 0; background: #d9a441; color: #3d0e19; cursor: pointer; }
+    .weekly-signup button:hover { background: #ffe296; }
+    .weekly-signup button[disabled] { opacity: .6; cursor: wait; }
+    .weekly-signup :focus-visible { outline: 2px solid #ffe296; outline-offset: 2px; }
+    .weekly-signup .ws-choices { flex: 1 1 100%; display: flex; gap: 6px 18px; flex-wrap: wrap; justify-content: center; font: 14px Arimo, Arial, sans-serif; }
+    .weekly-signup .ws-choices label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+    .weekly-signup .ws-choices input { accent-color: #d9a441; width: 16px; height: 16px; }
+    .weekly-signup small { font: 12px Arimo, Arial, sans-serif; color: #d9c3a0; }
+    .weekly-signup .ws-done { font: 500 19px/1.4 "EB Garamond", Georgia, serif; color: #ffe296; max-width: 34ch; }
+    .weekly-signup .ws-err { font: 13px Arimo, Arial, sans-serif; color: #ffb4a8; min-height: 1em; }
+    @media (max-width: 600px) {
+      .weekly-signup { margin: 32px 12px; padding: 24px 18px; }
+      .weekly-signup h2 { font-size: 23px; }
+      .weekly-signup .ws-gurus img { width: 60px; height: 60px; }
+      .weekly-signup form { flex-direction: column; }
+      .weekly-signup input[type=email], .weekly-signup button { flex: none; width: 100%; }
+    }
+  </style>
+  <div class="ws-gurus"><img src="/about/img/psm.jpg" alt="Pramukh Swami Maharaj"><img src="/about/img/msm.jpg" alt="Mahant Swami Maharaj"></div>
+  <h2 id="weekly-signup-h">Weekly darshan in your inbox</h2>
+  <p>Loving photos of Pramukh Swami Maharaj and Mahant Swami Maharaj from this same week in years gone by, every Sunday morning, or each morning if you like.</p>
+  <form>
+    <label class="ws-hp" aria-hidden="true">Leave this empty <input name="website" tabindex="-1" autocomplete="off"></label>
+    <input id="weekly-email" name="email" type="email" placeholder="Your email" autocomplete="email" required aria-label="Your email">
+    <button type="submit">Sign me up</button>
+    <div class="ws-choices">
+      <label><input type="checkbox" name="weekly" checked> Every Sunday, the week's darshan</label>
+      <label><input type="checkbox" name="daily"> Each morning, today's darshan</label>
+    </div>
+  </form>
+  <div class="ws-err" role="status"></div>
+  <small>Both Bapas, every time. Leave any time with one tap.</small>
+  <script>
+  (function () {
+    var box = document.currentScript.parentNode, form = box.querySelector('form'), err = box.querySelector('.ws-err');
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var lists = [];
+      if (form.weekly.checked) lists.push('weekly');
+      if (form.daily.checked) lists.push('daily');
+      if (!lists.length) { err.textContent = 'Please tick at least one.'; return; }
+      var btn = form.querySelector('button'), email = form.email.value.trim();
+      btn.disabled = true; err.textContent = '';
+      fetch('/api/weekly', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, lists: lists, website: form.website.value }) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (!res.ok) throw new Error(res.j.error || 'Sorry, something went wrong. Please try again.');
+          var p = document.createElement('p'); p.className = 'ws-done';
+          p.textContent = 'Thank you 🙏🏽 Please open the email we just sent to ' + email + ' and tap the button in it.';
+          form.replaceWith(p); box.querySelector('small').hidden = true;
+        })
+        .catch(function (x) { err.textContent = x.message || 'Sorry, something went wrong. Please try again.'; btn.disabled = false; });
+    });
+  })();
+  </script>
+</section>
+</main>
 </div>
 </body>
 </html>

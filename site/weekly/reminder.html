@@ -1,0 +1,67 @@
+<!-- The small "On this day" email sign up on the Today page (Darpan, 26 Oct 2026: "a small sign up so people get
+     today's darshan link each morning"). Website only. Goes inside the Today page's <header>, after #count.
+     Closed it is one quiet line; tapped, it opens a little form with the two choices: each morning, every Sunday.
+     It posts to /api/weekly (functions/api/weekly.js), which sends the "please confirm" email. -->
+<div class="remind" id="remind">
+  <style>
+    .remind { margin: 14px auto 0; max-width: 560px; font: 15px/1.4 Arimo, Arial, sans-serif; color: #f3e4c6; }
+    .remind .rm-open { font: 700 12px Arimo, Arial, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #d9a441; background: none;
+      border: 1px solid rgba(217, 164, 65, .55); border-radius: 999px; padding: 8px 16px; cursor: pointer; }
+    .remind .rm-open:hover { color: #ffe296; border-color: #ffe296; }
+    .remind form { display: grid; gap: 10px; justify-items: center; margin-top: 4px; }
+    .remind .rm-row { display: flex; gap: 8px; width: 100%; flex-wrap: wrap; }
+    .remind input[type=email] { flex: 1 1 220px; min-width: 0; font: 16px Arimo, Arial, sans-serif; padding: 10px 14px; border-radius: 8px;
+      border: 1px solid #d9a441; background: #faf1de; color: #2e1a14; }
+    .remind button[type=submit] { flex: 0 0 auto; font: 700 12px Arimo, Arial, sans-serif; letter-spacing: .1em; text-transform: uppercase;
+      padding: 10px 16px; border-radius: 8px; border: 0; background: #d9a441; color: #3d0e19; cursor: pointer; }
+    .remind button[type=submit]:hover { background: #ffe296; }
+    .remind .rm-choices { display: flex; gap: 8px 18px; flex-wrap: wrap; justify-content: center; font-size: 14px; }
+    .remind .rm-choices label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+    .remind .rm-choices input { accent-color: #d9a441; width: 16px; height: 16px; }
+    .remind .rm-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+    .remind small { font-size: 12px; color: #d9c3a0; }
+    .remind .rm-err { color: #ffb4a8; font-size: 13px; min-height: 1em; }
+    .remind .rm-done { font: 500 18px/1.4 "EB Garamond", Georgia, serif; color: #ffe296; margin: 0; }
+    .remind :focus-visible { outline: 2px solid #ffe296; outline-offset: 2px; }
+    @media (max-width: 600px) { .remind { padding: 0 16px; } .remind .rm-row { flex-direction: column; } .remind input[type=email], .remind button[type=submit] { flex: none; width: 100%; } }
+  </style>
+  <button class="rm-open" type="button" aria-expanded="false">✉ Today's darshan by email</button>
+  <form hidden>
+    <div class="rm-row">
+      <label class="rm-hp" aria-hidden="true">Leave this empty <input name="website" tabindex="-1" autocomplete="off"></label>
+      <input id="remind-email" name="email" type="email" placeholder="Your email" autocomplete="email" required aria-label="Your email">
+      <button type="submit">Remind me</button>
+    </div>
+    <div class="rm-choices">
+      <label><input type="checkbox" name="daily" checked> Each morning, today's darshan</label>
+      <label><input type="checkbox" name="weekly"> Every Sunday, the week's darshan</label>
+    </div>
+    <div class="rm-err" role="status"></div>
+    <small>Both Bapas, every time. Leave any time with one tap.</small>
+  </form>
+  <script>
+  (function () {
+    var box = document.currentScript.parentNode, open = box.querySelector('.rm-open'), form = box.querySelector('form'), err = box.querySelector('.rm-err');
+    open.addEventListener('click', function () { open.hidden = true; form.hidden = false; open.setAttribute('aria-expanded', 'true'); form.email.focus(); });
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var lists = [];
+      if (form.daily.checked) lists.push('daily');
+      if (form.weekly.checked) lists.push('weekly');
+      if (!lists.length) { err.textContent = 'Please tick at least one.'; return; }
+      var btn = form.querySelector('button'), email = form.email.value.trim();
+      btn.disabled = true; err.textContent = '';
+      fetch('/api/weekly', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, lists: lists, website: form.website.value }) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (!res.ok) throw new Error(res.j.error || 'Sorry, something went wrong. Please try again.');
+          var p = document.createElement('p'); p.className = 'rm-done';
+          p.textContent = 'Thank you 🙏🏽 Please open the email we just sent to ' + email + ' and tap the button in it.';
+          form.replaceWith(p);
+        })
+        .catch(function (x) { err.textContent = x.message || 'Sorry, something went wrong. Please try again.'; btn.disabled = false; });
+    });
+  })();
+  </script>
+</div>
