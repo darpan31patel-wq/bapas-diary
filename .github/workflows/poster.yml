@@ -61,7 +61,7 @@ jobs:
         env:
           MONTH: ${{ inputs.month || '2012-01' }}
         run: |
-          if [ -d archive ]; then python tools/poster_photos.py --month "$MONTH" --db bapas.db --drive archive
+          if [ -d archive/photos ]; then python tools/poster_photos.py --month "$MONTH" --db bapas.db --drive archive
           else python tools/poster_photos.py --month "$MONTH"; fi
 
       - name: Save them on this branch
