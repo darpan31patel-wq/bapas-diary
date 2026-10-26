@@ -22,14 +22,14 @@ import make    # noqa: E402
 import month   # noqa: E402
 
 
-def save(x, out, name):
+def save(x, out, name, long=1600):
     im = month.load(x)
-    k = 1600 / max(im.size)
+    k = long / max(im.size)
     if k < 1:
         im = im.resize((round(im.width * k), round(im.height * k)), Image.LANCZOS)
     else:
         k = 1
-    im.save(os.path.join(out, name), quality=90)
+    im.save(os.path.join(out, name), quality=90 if long >= 1600 else 82)
     fx, fy, fw, fh = x['face']
     return dict(file=name, day=int(x['d'][8:10]), date=x['d'][:10], caption=make.caption(x), place=make.place(x) or '',
                 face=[round(v * k) for v in (fx, fy, fw, fh)], size=list(im.size), close_ok=x['close_ok'],
@@ -93,9 +93,9 @@ def main():
     mo = month.Month(photos, y, m)
     meta, done = dict(month=a.month, places=mo.places, count=mo.count, close={}, act={}, highlights=[], extra={}), {}
 
-    def keep(x, tag):
+    def keep(x, tag, long=1600):
         if x['i'] not in done:
-            done[x['i']] = save(x, out, f'{tag}.jpg')
+            done[x['i']] = save(x, out, f'{tag}.jpg', long)
         return done[x['i']]
     for d, x in mo.close.items():
         meta['close'][d] = keep(x, f'{d:02d}-close')
@@ -103,12 +103,13 @@ def main():
         meta['act'][d] = keep(x, f'{d:02d}-act')
     for i, x in enumerate(mo.highlights[:16]):
         meta['highlights'].append(keep(x, f'hl{i:02d}'))
-    # every day's best few photos, so the poster can pick without repeats and fall back when a crop won't fit
-    # (Darpan's design brief, 23 Oct 2026)
+    # every photo of the day where Bapa is recognised, best first, so the poster can pick without repeats and fall
+    # back when a crop won't fit (design brief, 23 Oct 2026), and the Studio can offer them all (Darpan, 26 Oct 2026);
+    # past the best six they are kept smaller
     meta['cands'] = {}
     for d, xs in mo.by.items():
-        best = sorted(xs, key=lambda x: -max(x['s_close'], x['s_act']))[:6]
-        meta['cands'][d] = [keep(x, f'{d:02d}-c{n}') for n, x in enumerate(best)]
+        best = sorted(xs, key=lambda x: -max(x['s_close'], x['s_act']))
+        meta['cands'][d] = [keep(x, f'{d:02d}-c{n}', 1600 if n < 6 else 1000) for n, x in enumerate(best)]
     # a day where Bapa was recognised in no photo still gets one (something for every day), marked unsure
     for d in range(1, month.calendar.monthrange(y, m)[1] + 1):
         if d in mo.by:
