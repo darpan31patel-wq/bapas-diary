@@ -36,13 +36,15 @@ jobs:
           export AWS_ACCESS_KEY_ID=$id AWS_SECRET_ACCESS_KEY=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1) AWS_DEFAULT_REGION=auto
           aws s3 ls "s3://$BUCKET/m/" --recursive --endpoint-url "https://$CF_ACCOUNT.r2.cloudflarestorage.com" | awk '{print $4}' > keys.txt
           echo "$(wc -l < keys.txt) web photos in R2"
-          python3 -c "import sqlite3,collections;db=sqlite3.connect('bapas.db');a=dict(((r[0],r[1]),r[2]) for r in db.execute('select album,file,year from photos'));c=collections.Counter(a.get(tuple(k.strip().split('/',2)[1:]),0) for k in open('keys.txt'));print(sorted(c.items()))"
+          aws s3 ls "s3://$BUCKET/l/" --recursive --endpoint-url "https://$CF_ACCOUNT.r2.cloudflarestorage.com" | awk '{print $4}' > large-keys.txt
+          echo "$(wc -l < large-keys.txt) full screen (l/) photos in R2"
+          for f in keys.txt large-keys.txt; do python3 -c "import sqlite3,collections,sys;db=sqlite3.connect('bapas.db');a=dict(((r[0],r[1]),r[2]) for r in db.execute('select album,file,year from photos'));c=collections.Counter(a.get(tuple(k.strip().split('/',2)[1:]),0) for k in open(sys.argv[1]));print(sys.argv[1],sorted(c.items()))" $f; done
       - name: Pairs
         run: python3 tools/then_now.py --db bapas.db --keys keys.txt --out then-now
       - name: Into the release
         if: success()
         run: |
-          tar czf then-now.tgz then-now
+          cp large-keys.txt then-now/ && tar czf then-now.tgz then-now
           gh release view then-now-mockup -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
             gh release create then-now-mockup -R "$GITHUB_REPOSITORY" --prerelease --title "Then and now mockup" --notes "Both Bapas at the same place, years apart, for the website mockup. Not used by the daily picture."
           gh release upload then-now-mockup then-now.tgz --clobber -R "$GITHUB_REPOSITORY"

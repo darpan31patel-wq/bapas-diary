@@ -102,8 +102,8 @@ button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 3px; }
 <script>
 const short = p => p.split(',')[0];
 const PAIRS = __DATA__;
-const R2 = 'https://photos.bapas-diary.com/m/';
-PAIRS.forEach(p => ['psm', 'msm'].forEach(g => p[g].src = R2 + p[g].album + '/' + encodeURIComponent(p[g].file)));
+const R2 = 'https://photos.bapas-diary.com/';
+PAIRS.forEach(p => ['psm', 'msm'].forEach(g => p[g].src = R2 + (p[g].t || 'm') + '/' + p[g].album + '/' + encodeURIComponent(p[g].file)));
 const slug = p => short(p).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const fmt = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 const clean = c => c.replace(/^(Swamishri|Param Pujya (Pramukh|Mahant) Swami Maharaj) /, '').replace(/,? \d{1,2} [A-Z][a-z]{2,8} \d{4}$/, '').replace(/^./, s => s.toUpperCase());
