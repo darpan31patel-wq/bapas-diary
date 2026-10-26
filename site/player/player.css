@@ -1,0 +1,71 @@
+/* The full screen player (site/player/player.js), in the site's own look: deep maroon, gold Garamond, ivory words.
+   Website only (bapas-diary.com). Every class starts with pl- so it never clashes with a page. */
+.pl-showing, .pl-showing body { overflow: hidden; }
+.pl-show { position: fixed; inset: 0; z-index: 3000; zoom: calc(1 / var(--bd-zoom, 1)); container-type: size; background: #0c0204; color: #faf1de;
+  cursor: none; outline: 0; overflow: hidden; -webkit-tap-highlight-color: transparent;
+  --pl-gold: #d9a441; --pl-gold-hi: #ffe296; --pl-serif: "EB Garamond", "Diary Garamond", Garamond, "Times New Roman", serif; --pl-sans: Arimo, "Diary Arimo", Arial, sans-serif; }
+.pl-show.awake, .pl-show.paused, .pl-show.waiting { cursor: default; }
+
+/* each photo as big as the screen allows, never cut; around it the same photo, soft and dark */
+.pl-slide { position: absolute; inset: 0; opacity: 0; transition: opacity 3s ease; }
+.pl-slide.on { opacity: 1; }
+.pl-bg { position: absolute; inset: -6%; width: 112%; height: 112%; object-fit: cover; filter: blur(40px) brightness(.35) saturate(1.2); }
+.pl-drift { position: absolute; inset: 0; display: grid; place-items: center; }
+.pl-slide.on .pl-drift { animation: pl-drift var(--pl-time, 16s) ease-out both; }
+@keyframes pl-drift { from { transform: scale(1); } to { transform: scale(1.06); } }
+.pl-im { display: block; width: 100cqw; height: 100cqh; object-fit: contain; filter: drop-shadow(0 0 5cqh rgba(0, 0, 0, .6)); }
+.pl-none { position: absolute; inset: 0; display: grid; place-items: center; font: italic 500 4cqh var(--pl-serif); color: var(--pl-gold-hi); }
+
+/* both Bapas and the day, softly in the corner */
+.pl-badge { position: absolute; top: calc(3cqh + env(safe-area-inset-top, 0px)); left: 2.5cqw; display: flex; align-items: center; gap: 1.4cqh;
+  padding: .9cqh 2.2cqh .9cqh .9cqh; border-radius: 99px; background: rgba(12, 2, 4, .45); backdrop-filter: blur(6px); opacity: .85; }
+.pl-gurus { display: flex; }
+.pl-gurus img { width: 5.4cqh; height: 5.4cqh; border-radius: 50%; border: .3cqh solid var(--pl-gold); object-fit: cover; background: #42101c; }
+.pl-gurus img + img { margin-left: -1.2cqh; }
+.pl-badge span:last-child { display: grid; line-height: 1.15; }
+.pl-badge b { font: 700 1.5cqh var(--pl-sans); letter-spacing: .28em; text-transform: uppercase; color: var(--pl-gold); }
+.pl-badge i { font: 600 2.5cqh var(--pl-serif); font-style: normal; color: var(--pl-gold-hi); }
+
+/* the year, the place and what Bapa does, low on the left over a soft shade */
+.pl-words { position: absolute; left: 0; right: 0; bottom: 0; padding: 16cqh 3cqw calc(5cqh + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(transparent, rgba(8, 1, 3, .55) 45%, rgba(8, 1, 3, .8)); display: grid; gap: .5cqh; justify-items: start;
+  opacity: 0; transition: opacity 1.2s ease; pointer-events: none; text-shadow: 0 .2cqh 1cqh rgba(0, 0, 0, .7); }
+.pl-words.on { opacity: 1; }
+.pl-y { font: 700 9cqh/0.95 var(--pl-serif); color: var(--pl-gold-hi); letter-spacing: .01em; }
+.pl-p { font: 600 4.4cqh/1.1 var(--pl-serif); }
+.pl-t { font: 700 1.7cqh var(--pl-sans); letter-spacing: .2em; text-transform: uppercase; color: var(--pl-gold); }
+.pl-c { margin-top: .6cqh; max-width: 60cqw; font: italic 500 2.9cqh/1.3 var(--pl-serif); color: rgba(250, 241, 222, .85); text-wrap: balance; }
+.pl-y:empty, .pl-p:empty, .pl-t:empty, .pl-c:empty { display: none; }
+
+/* the buttons only show when the mouse moves or a key is pressed */
+.pl-bar { position: absolute; right: 2.5cqw; top: calc(3cqh + env(safe-area-inset-top, 0px)); display: flex; align-items: center; gap: 10px;
+  opacity: 0; transition: opacity .4s; pointer-events: none; }
+.pl-show.awake .pl-bar, .pl-show.paused .pl-bar { opacity: 1; pointer-events: auto; }
+.pl-bar button { min-width: 48px; min-height: 48px; font: 700 13px var(--pl-sans); letter-spacing: .14em; text-transform: uppercase; color: var(--pl-gold-hi);
+  background: rgba(12, 2, 4, .6); border: 1px solid rgba(217, 164, 65, .45); border-radius: 999px; padding: 0 18px; cursor: pointer; }
+.pl-bar button[aria-label] { font: 500 28px/1 var(--pl-serif); padding: 0 14px 4px; letter-spacing: 0; }
+.pl-bar button:focus-visible, .pl-start button:focus-visible { outline: 3px solid var(--pl-gold-hi); outline-offset: 3px; }
+.pl-grow { width: 90px; height: 3px; background: rgba(255, 255, 255, .18); border-radius: 2px; overflow: hidden; }
+.pl-grow i { display: block; height: 100%; width: 0; background: var(--pl-gold); }
+
+/* opened from the address (?play): one tap, or OK on the remote, to begin */
+.pl-start { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 2cqh; text-align: center; padding: 24px;
+  background: radial-gradient(circle at 50% 40%, #4a1220, #160509 70%); }
+.pl-start .pl-gurus img { width: 16cqh; height: 16cqh; border-width: .5cqh; }
+.pl-start .pl-gurus img + img { margin-left: 2cqh; }
+.pl-start h2 { margin: 1cqh 0 0; font: 600 7cqh/1 var(--pl-serif); color: var(--pl-gold-hi); }
+.pl-start p { margin: 0; font: 500 3.6cqh var(--pl-serif); }
+.pl-start button { margin-top: 2cqh; font: italic 600 3.6cqh var(--pl-serif); color: #2a0a10; background: linear-gradient(#ffe296, #d9a441); border: 0;
+  border-radius: 999px; padding: 1.4cqh 6cqh; cursor: pointer; box-shadow: 0 1cqh 3cqh rgba(0, 0, 0, .45); }
+.pl-start small { font: 600 1.7cqh var(--pl-sans); letter-spacing: .2em; text-transform: uppercase; color: var(--pl-gold); }
+.pl-show.waiting .pl-badge, .pl-show.waiting .pl-words, .pl-show.waiting .pl-bar { display: none; }
+
+/* a phone held upright: the words in the middle, the buttons at the bottom */
+@container (max-aspect-ratio: 1/1) {
+  .pl-words { justify-items: center; text-align: center; padding-inline: 6cqw; }
+  .pl-y { font-size: 7cqh; } .pl-p { font-size: 3.4cqh; } .pl-c { max-width: none; font-size: 2.4cqh; }
+  .pl-bar { top: auto; bottom: calc(2cqh + env(safe-area-inset-bottom, 0px)); left: 0; right: 0; justify-content: center; flex-wrap: wrap; }
+  .pl-grow { display: none; }
+  .pl-show.awake .pl-words { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .pl-slide { transition-duration: 1.2s; } .pl-slide.on .pl-drift { animation: none; } }
