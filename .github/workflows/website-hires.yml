@@ -83,5 +83,7 @@ jobs:
   site:
     needs: [hires, faces]
     if: ${{ !cancelled() && needs.hires.outputs.finished == 'yes' }}   # even if one machine had trouble
+    permissions:
+      contents: write   # the deploy first updates Bapa Through The Years in release faces-mockup (Darpan: yes main years, 26 Oct)
     uses: darpan31patel-wq/bapas-diary/.github/workflows/website-deploy.yml@claude/project-thread-eawr12
     secrets: inherit
