@@ -155,7 +155,7 @@ const dOf = t => new Date(t * DAYMS);
 
 const eras = { psm: [], msm: [] };
 for (const r of DAYS) eras[r[5]].push({ day: r[0], to: r[1], place: r[2], cap: r[3], photos: r[4], tithi: r[6], fest: r[7], eyes: r.slice(8, 12), span: r[12], w: r[13], h: r[14], path: r[15] || '', t: tOf(r[0]) });
-const EYE_X = .5, EYE_Y = .4, GAP = .15;    // where his eyes sit in the frame, and how big his face is (eyes to mouth, share of the frame's width)
+const EYE_X = .5, EYE_Y = .45, GAP = .21;   // where his eyes sit in the square frame, and how big his face is (eyes to mouth, share of the frame's width)
 
 const $ = id => document.getElementById(id);
 const cv = $('tl'), cx = cv.getContext('2d');
@@ -173,15 +173,26 @@ function rangeDate(a, b) {
 }
 function ageOn(d) { const b = BORN[era]; let a = +d.slice(0, 4) - +b.slice(0, 4); if (d.slice(5) < b.slice(5)) a--; return a; }
 
-// a close up framed on his face: the photo turned and sized so his eyes sit at (EYE_X, EYE_Y) every day, with the
-// empty space around him left outside the frame (Darpan, 24 Oct 2026: 'the closest face picture ... and cropped the
-// deadspace'); once the days stop moving it eases to lying straight (Darpan, 23 Oct 2026)
+// a close up framed on his face in a square that never changes shape (Darpan, 26 Oct 2026: 'very jarring that the
+// shape keeps changing ... keep the picture as a square box'): the photo turned and sized so his eyes sit at
+// (EYE_X, EYE_Y) every day, made a little bigger when needed so it always fills the square. Once the days stop moving
+// it eases back to the whole photo as it was taken, straight and uncut (Darpan, 23 and 26 Oct 2026).
 function place(img, x, rest) {
   const fr = $('frame'), W = fr.clientWidth, H = fr.clientHeight, ex = EYE_X * W, ey = EYE_Y * H;
   img.style.width = x.w + 'px'; img.style.height = x.h + 'px';
   const [rx, ry, lx, ly] = x.eyes, mx = (rx + lx) / 2, my = (ry + ly) / 2;
-  const a = rest ? 0 : Math.atan2(ly - ry, lx - rx), c = Math.cos(a), s = Math.sin(a);
-  const k = GAP * W / x.span;
+  if (rest) {
+    const k = Math.min(W / x.w, H / x.h);
+    img.style.transform = `matrix(${k},0,0,${k},${(W - k * x.w) / 2},${(H - k * x.h) / 2})`;
+    return;
+  }
+  const a = Math.atan2(ly - ry, lx - rx), c = Math.cos(a), s = Math.sin(a);
+  let k = GAP * W / x.span;
+  for (const [px, py] of [[0, 0], [W, 0], [0, H], [W, H]]) {   // each corner of the square must land on the photo
+    const vx = px - ex, vy = py - ey, dx = c * vx - s * vy, dy = s * vx + c * vy;
+    if (dx > 0) k = Math.max(k, dx / Math.max(1, x.w - mx)); else if (dx < 0) k = Math.max(k, -dx / Math.max(1, mx));
+    if (dy > 0) k = Math.max(k, dy / Math.max(1, x.h - my)); else if (dy < 0) k = Math.max(k, -dy / Math.max(1, my));
+  }
   const A = k * c, B = -k * s, C = k * s, D = k * c;
   img.style.transform = `matrix(${A},${B},${C},${D},${ex - (A * mx + C * my)},${ey - (B * mx + D * my)})`;
   fr.style.setProperty('--eye-y', EYE_Y * 100 + '%');
@@ -193,7 +204,10 @@ function show(i, fast) {
   if (!list.length) return;
   idx = Math.max(0, Math.min(list.length - 1, i));
   const x = list[idx], my = ++token;
-  document.documentElement.style.setProperty('--fade', matchMedia('(prefers-reduced-motion: reduce)').matches ? '0ms' : (fast ? '90ms' : '160ms'));
+  // playing, each day blends slowly into the next like a time lapse (Darpan, 26 Oct 2026: 'C smooth time lapse
+  // blending while playing, YES DO IT'); scrolling by hand stays quick
+  const fade = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : playing ? Math.max(90, Math.round(900 / +$('speed').value)) : fast ? 90 : 160;
+  document.documentElement.style.setProperty('--fade', fade + 'ms');
   back.classList.remove('on', 'rest');
   place(back, x);
   clearTimeout(settle);
@@ -202,7 +216,11 @@ function show(i, fast) {
   back.alt = `${era === 'psm' ? 'Pramukh Swami Maharaj' : 'Mahant Swami Maharaj'} on ${longDate(x.day)}`;
   (back.decode ? back.decode() : Promise.resolve()).catch(() => {}).then(() => {
     if (my !== token) return;
-    back.classList.add('on'); front.classList.remove('on'); [front, back] = [back, front];
+    // the new day fades in on top of the old one, which stays until it is covered, so the blend never dims
+    const old = front;
+    back.style.zIndex = 2; old.style.zIndex = 1;
+    back.classList.add('on'); [front, back] = [back, front];
+    setTimeout(() => { if (old !== front) old.classList.remove('on'); }, fade);
   });
   $('age').textContent = `Bapa aged ${ageOn(x.day)}`;
   $('date').textContent = x.to ? rangeDate(x.day, x.to) : longDate(x.day);
@@ -269,14 +287,14 @@ function draw() {
     }
   }
   // days: thumbnails when there is room, otherwise a tick for each day with a close darshan
-  const top = 36, th = h - top - 6, tw = th * .8;
+  const top = 36, th = h - top - 6, tw = th;
   const i0 = Math.max(0, nearest(t0) - 1), i1 = Math.min(list.length - 1, nearest(t1) + 1);
   const room = ppd >= tw * .55;
   for (let i = i0; i <= i1; i++) {
     const x = X(list[i].t);
     if (room && i !== idx) {
       const im = thumb(list[i]), ww = Math.min(tw, ppd - 3);
-      if (im.complete && im.naturalWidth) { cx.globalAlpha = .7; cx.drawImage(im, 0, 0, im.naturalWidth, im.naturalHeight, x - tw / 2 + (tw - ww) / 2, top, ww, th); cx.globalAlpha = 1; }
+      if (im.complete && im.naturalWidth) { cx.globalAlpha = .7; cx.drawImage(im, 0, (im.naturalHeight - im.naturalWidth) / 2, im.naturalWidth, im.naturalWidth, x - tw / 2 + (tw - ww) / 2, top, ww, th); cx.globalAlpha = 1; }
       else { cx.fillStyle = line; cx.fillRect(x - ww / 2, top, ww, th); }
     } else if (!room) {
       cx.fillStyle = muted; cx.globalAlpha = .75; cx.fillRect(x - .5, top + 10, Math.max(1, Math.min(2, ppd * .6)), th - 20); cx.globalAlpha = 1;
@@ -284,7 +302,7 @@ function draw() {
   }
   // the chosen day
   const sx = X(list[idx].t);
-  if (room) { const im = thumb(list[idx]); if (im.complete && im.naturalWidth) cx.drawImage(im, sx - tw / 2, top, tw, th); }
+  if (room) { const im = thumb(list[idx]); if (im.complete && im.naturalWidth) cx.drawImage(im, 0, (im.naturalHeight - im.naturalWidth) / 2, im.naturalWidth, im.naturalWidth, sx - tw / 2, top, tw, th); }
   cx.fillStyle = saf; cx.fillRect(Math.round(sx) - 1, top - 6, 3, th + 12);
   cx.beginPath(); cx.moveTo(sx - 6, top - 8); cx.lineTo(sx + 7, top - 8); cx.lineTo(sx + .5, top - 1); cx.fill();
 }
@@ -300,13 +318,13 @@ function thumb(x) {
   if (im) return im;
   if (!x.path) { im = new Image(); im.onload = () => requestAnimationFrame(draw); im.src = `f/${day}.jpg`; thumbs.set(day, im); return im; }
   const c = document.createElement('canvas'), s = new Image();
-  c.width = 240; c.height = 300; c.complete = false; c.naturalWidth = 0;
+  c.width = 240; c.height = 240; c.complete = false; c.naturalWidth = 0;
   s.onload = () => {
     const g = c.getContext('2d'), k = s.naturalWidth / x.w, [rx, ry, lx, ly] = x.eyes.map(v => v * k);
-    g.fillStyle = css('--line'); g.fillRect(0, 0, 240, 300);
-    g.translate(120, 126); g.rotate(-Math.atan2(ly - ry, lx - rx)); g.scale(.17 * 240 / (x.span * k), .17 * 240 / (x.span * k));
+    g.fillStyle = css('--line'); g.fillRect(0, 0, 240, 240);
+    g.translate(120, 240 * EYE_Y); g.rotate(-Math.atan2(ly - ry, lx - rx)); g.scale(GAP * 240 / (x.span * k), GAP * 240 / (x.span * k));
     g.translate(-(rx + lx) / 2, -(ry + ly) / 2); g.drawImage(s, 0, 0);
-    c.complete = true; c.naturalWidth = 240; c.naturalHeight = 300; requestAnimationFrame(draw);
+    c.complete = true; c.naturalWidth = 240; c.naturalHeight = 240; requestAnimationFrame(draw);
   };
   s.src = r2('s', x); thumbs.set(day, c);
   return c;
@@ -409,10 +427,10 @@ $('zIn').onclick = () => zoomBy(1.8);
 $('zOut').onclick = () => zoomBy(1 / 1.8);
 $('eyeBtn').onclick = () => { const on = $('eyes').hidden; $('eyes').hidden = !on; $('eyeBtn').setAttribute('aria-pressed', on); };
 for (const b of document.querySelectorAll('.tab')) b.onclick = () => setEra(b.dataset.era);
-// the photo takes the largest 4:5 frame that fits the space left between the title row and the controls
+// the photo takes the largest square that fits the space left between the title row and the controls
 function fit() {
-  const sl = $('slot'), fw = Math.floor(Math.min(sl.clientWidth, sl.clientHeight * .8));
-  $('frame').style.width = fw + 'px'; $('frame').style.height = Math.floor(fw / .8) + 'px';
+  const sl = $('slot'), fw = Math.floor(Math.min(sl.clientWidth, sl.clientHeight));
+  $('frame').style.width = fw + 'px'; $('frame').style.height = fw + 'px';
 }
 fit();
 const ro = new ResizeObserver(() => { fit(); clampView(); draw(); if (list[idx]) place(front, list[idx], front.classList.contains('rest')); }); ro.observe($('slot')); ro.observe($('tl'));
