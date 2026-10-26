@@ -46,11 +46,12 @@ header{padding-block:6px 4px;padding-left:max(16px,env(safe-area-inset-left,0px)
   background:linear-gradient(0deg,rgba(22,5,9,.92),rgba(22,5,9,0));line-height:1.2;text-wrap:balance}
 .strip:not(.has){display:none}   /* no words: the photo fills the frame (Darpan, 26 Oct) */
 .strip.two{white-space:normal;text-wrap:balance;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.card.blank .fest{position:static;background:none;color:#9a5a20;padding:2px 2px 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card.blank .strip{display:none}
+.bind{font-size:min(14cqh,11cqw);font-weight:500;line-height:1.05;color:var(--ink);text-wrap:balance}
+.card.blank .fest{position:static;background:none;color:#9a5a20;padding:2px 2px 0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .strip{font-family:var(--caps);font-weight:700;font-size:calc(clamp(7px,1.05vh,9.5px) * var(--z));letter-spacing:.06em;color:#7a4e36;padding:4px 2px 0;white-space:nowrap;overflow:hidden;text-overflow:clip;text-align:center;min-height:1.6em;line-height:1.2}
 .card.blank .win{background:radial-gradient(circle at 50% 40%,#fbf6ea,#e9dcc0);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:4px;gap:2px;container-type:size}
 .bnum{font-size:min(46cqh,40cqw);font-weight:600;line-height:.9;color:var(--maroon)}
-.bwd{font-family:var(--caps);font-weight:700;font-size:min(9cqh,7.5cqw);letter-spacing:.2em;text-transform:uppercase;color:#9a6a40}
 /* years and places in one bar at the bottom (Darpan, 25 Oct: put them together, easier to understand, select and scroll):
    a row of years, and under it every stay from 1999 to today, a gold year label where each year starts.
    Scroll the places freely; tap a year to jump; tap a place to light up its days on the calendar. */
@@ -168,8 +169,10 @@ function places(k){
 
 function blank(win,d,y,m,day){
   win.innerHTML='';
-  win.append(el('div','bnum',day),el('div','bwd',WDL[new Date(y,m-1,day).getDay()]));
-  const c=win.parentNode; if(c._on) win.appendChild(el('div','fest',esc(c._on)));
+  /* a day with no photo: the date, the Indian date and every festival in the cream square (the weekday is in the header) */
+  win.append(el('div','bnum',day));
+  if(d[0]) win.appendChild(el('div','bind',esc(d[0])));
+  const c=win.parentNode; if(c._all&&c._all.length) win.appendChild(el('div','fest',esc(c._all.join(' · '))));
   c.classList.add('blank');
 }
 
@@ -194,7 +197,7 @@ function render(mo){
       /* no Indian date (Darpan, 26 Oct: too much text); a day's festival goes small in the white strip, and when a day
          has two, the birthday, anniversary or festival goes on the photo and the other in the strip */
       const f=[...new Set([d[1],d[2]].filter(Boolean).join('; ').split('; ').filter(n=>n&&!/^(Fast|Sud|Vad) ?\w*$/.test(n)))];
-      let rest=f; b._on=null;
+      let rest=f; b._on=null; b._all=f;
       if(f.length>1){const i=f.reduce((bi,n,j)=>rank(n)<rank(f[bi])?j:bi,0); b._on=f[i]; rest=f.filter((_,j)=>j!==i)}
       if(d[4]){
         const im=new Image(); im.alt=d[6]||''; im.loading='lazy'; im.decoding='async'; im.draggable=false;
