@@ -72,15 +72,48 @@ jobs:
           echo "$(wc -l < want.txt) photos wanted"
           mkdir tgsrc
           rclone copy "gdrive:Bapa's Archive" tgsrc --files-from-raw want.txt --transfers 16 --checkers 16 || true
-          echo "$(find tgsrc -name '*.jpg' | wc -l) photos copied"
+          n=$(find tgsrc -name '*.jpg' | wc -l); echo "$n photos copied"
+          [ "$n" -gt 0 ] || { echo "Nothing came from Drive, so the list in the release is left as it is"; exit 1; }
       - name: Bapa's face in each, and the cards
         run: |
           python3 tools/web_rules.py tg --db bapas.db --drive tgsrc --out tg
           aws s3 sync tg/s/early "s3://$BUCKET/s/early" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000, immutable" --content-type image/jpeg
           aws s3 sync tg/m/early "s3://$BUCKET/m/early" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000, immutable" --content-type image/jpeg
           gh release upload website-rules tg/tg-cards.json --clobber
+  early:
+    # one off (commit says [early]): the photos copied on 25 Oct under s/tg get their plain numbered names in s/early
+    # inside R2 itself (no Drive needed), and early-cards.json (the same list with those names) goes to the release
+    if: contains(github.event.head_commit.message, '[early]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BUCKET: bapas-diary-photos
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copy to the numbered names
+        run: |
+          id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
+          key=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1)
+          echo "::add-mask::$id"; echo "::add-mask::$key"
+          export AWS_ACCESS_KEY_ID=$id AWS_SECRET_ACCESS_KEY=$key AWS_DEFAULT_REGION=auto R2=https://$CF_ACCOUNT.r2.cloudflarestorage.com
+          python3 -c "
+          import hashlib, json
+          for d in json.load(open('early-cards.json')).values():
+              for x in d: print(x[3])" | sort -u > want.txt
+          for tier in s m; do
+            aws s3 ls "s3://$BUCKET/$tier/tg/" --endpoint-url "$R2" | awk '{print $4}' | python3 -c "
+          import hashlib, sys
+          for k in sys.stdin.read().split(): print(k, hashlib.sha1(k[:-4].encode()).hexdigest()[:12] + '.jpg')" > pairs-$tier.txt
+            awk 'NR==FNR{w[$1];next} $2 in w' want.txt pairs-$tier.txt > go-$tier.txt
+            echo "$tier: $(wc -l < go-$tier.txt) of $(wc -l < want.txt)"
+            xargs -P 16 -L 1 sh -c 'aws s3 cp "s3://$BUCKET/'$tier'/tg/$0" "s3://$BUCKET/'$tier'/early/$1" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000, immutable" --content-type image/jpeg --metadata-directive REPLACE' < go-$tier.txt
+            [ "$(wc -l < go-$tier.txt)" -eq "$(wc -l < want.txt)" ]
+          done
+          cp early-cards.json tg-cards.json && gh release upload website-rules tg-cards.json --clobber
   mockup:
-    needs: tg
+    needs: [tg, early]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 60
