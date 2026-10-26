@@ -148,6 +148,19 @@
   .ph-card .c { font: italic 400 15px/1.25 "EB Garamond", Garamond, serif; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .ph-card::after { content: "›"; position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font: 400 30px/1 "EB Garamond", serif; color: #d9a441; }
   .ph-card[hidden] { display: none; }
+  /* the FUTURE CALENDAR and FUTURE VICHARAN (Darpan, 26 Oct 2026: "make it obvious"): dashed gold days after today,
+     a gold dot on a day with something planned, a label on each future month and before the coming stays */
+  .ph-day.ph-future { background: rgba(255, 226, 150, .03); border: 1.5px dashed rgba(255, 226, 150, .5); color: #d9a441; font-weight: 500; }
+  .ph-day.ph-vev::before { content: ""; position: absolute; left: 50%; bottom: 5px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: #ffe296; }
+  .ph-day.ph-future.fest::after { background: none; box-shadow: 0 0 0 1.5px #ffe296; }
+  .ph-day.ph-today { outline: 2px solid #ffe296; outline-offset: 1px; }
+  .ph-ftag { align-self: center; font: 700 10px/1 Arimo, Arial, sans-serif; font-style: normal; letter-spacing: .16em; text-transform: uppercase; color: #3a0d17; background: linear-gradient(#ffe296, #ce9840); border-radius: 12px; padding: 5px 9px; }
+  .ph-fmark { flex: none; font: 700 11px/1 Arimo, Arial, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #3a0d17; background: linear-gradient(#ffe296, #ce9840); border-radius: 12px; padding: 6px 10px; margin-left: 10px; white-space: nowrap; }
+  .ph-stay.future { border-style: dashed; border-color: rgba(255, 226, 150, .7); }
+  .ph-years .ph-fy { font-style: italic; }
+  .ph-jnote i { font: 700 10px/1 Arimo, Arial, sans-serif; font-style: normal; letter-spacing: .14em; text-transform: uppercase; color: #ffe296; }
+  .ph-card.ph-fcard { border-style: dashed; }
+  .ph-card.ph-fcard::after { content: none; }
   .ph-cal-wrap.has-card { padding-bottom: 120px; }
 
   /* Travels and Through the years: their bottom controls sit above the tab bar */
