@@ -19,6 +19,9 @@
     .weekly-signup button:hover { background: #ffe296; }
     .weekly-signup button[disabled] { opacity: .6; cursor: wait; }
     .weekly-signup :focus-visible { outline: 2px solid #ffe296; outline-offset: 2px; }
+    .weekly-signup .ws-choices { flex: 1 1 100%; display: flex; gap: 6px 18px; flex-wrap: wrap; justify-content: center; font: 14px Arimo, Arial, sans-serif; }
+    .weekly-signup .ws-choices label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+    .weekly-signup .ws-choices input { accent-color: #d9a441; width: 16px; height: 16px; }
     .weekly-signup small { font: 12px Arimo, Arial, sans-serif; color: #d9c3a0; }
     .weekly-signup .ws-done { font: 500 19px/1.4 "EB Garamond", Georgia, serif; color: #ffe296; max-width: 34ch; }
     .weekly-signup .ws-err { font: 13px Arimo, Arial, sans-serif; color: #ffb4a8; min-height: 1em; }
@@ -32,23 +35,31 @@
   </style>
   <div class="ws-gurus"><img src="/about/img/psm.jpg" alt="Pramukh Swami Maharaj"><img src="/about/img/msm.jpg" alt="Mahant Swami Maharaj"></div>
   <h2 id="weekly-signup-h">Weekly darshan in your inbox</h2>
-  <p>Every Sunday morning, a few loving photos of Pramukh Swami Maharaj and Mahant Swami Maharaj from this same week in years gone by.</p>
+  <p>Loving photos of Pramukh Swami Maharaj and Mahant Swami Maharaj from this same week in years gone by, every Sunday morning, or each morning if you like.</p>
   <form>
     <label class="ws-hp" aria-hidden="true">Leave this empty <input name="website" tabindex="-1" autocomplete="off"></label>
     <input id="weekly-email" name="email" type="email" placeholder="Your email" autocomplete="email" required aria-label="Your email">
     <button type="submit">Sign me up</button>
+    <div class="ws-choices">
+      <label><input type="checkbox" name="weekly" checked> Every Sunday, the week's darshan</label>
+      <label><input type="checkbox" name="daily"> Each morning, today's darshan</label>
+    </div>
   </form>
   <div class="ws-err" role="status"></div>
-  <small>One email a week. Leave any time with one tap.</small>
+  <small>Both Bapas, every time. Leave any time with one tap.</small>
   <script>
   (function () {
     var box = document.currentScript.parentNode, form = box.querySelector('form'), err = box.querySelector('.ws-err');
     form.addEventListener('submit', function (e) {
       e.preventDefault();
+      var lists = [];
+      if (form.weekly.checked) lists.push('weekly');
+      if (form.daily.checked) lists.push('daily');
+      if (!lists.length) { err.textContent = 'Please tick at least one.'; return; }
       var btn = form.querySelector('button'), email = form.email.value.trim();
       btn.disabled = true; err.textContent = '';
       fetch('/api/weekly', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email, lists: ['weekly'], website: form.website.value }) })
+        body: JSON.stringify({ email: email, lists: lists, website: form.website.value }) })
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (res) {
           if (!res.ok) throw new Error(res.j.error || 'Sorry, something went wrong. Please try again.');
