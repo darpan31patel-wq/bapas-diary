@@ -1,0 +1,38 @@
+name: Calendar test (test branch only, never ship)
+
+on:
+  push:
+    branches: [claude/project-thread-r58sg0]
+    paths: ['.github/workflows/calmock.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -q -r requirements.txt
+      - name: Make the daily picture for a few festival days (run 4)
+        run: |
+          mkdir -p preview/cal3
+          for d in 2026-10-24 2026-11-03 2026-11-13; do
+            python make.py --date "$d" --out "out/$d" | tee "preview/cal3/$d-log.txt"
+            cp "out/$d/bapas-diary.jpg" "preview/cal3/$d.jpg"
+            [ -e "out/$d/caption.txt" ] && cp "out/$d/caption.txt" "preview/cal3/$d-caption.txt" || true
+          done
+      - name: Save to the branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add preview/cal3
+          git commit -q -m "Calendar test pictures"
+          git checkout -- . && git clean -fdq
+          git pull -q --rebase origin "${GITHUB_REF_NAME}" && git push -q
