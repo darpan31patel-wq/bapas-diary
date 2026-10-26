@@ -66,7 +66,10 @@ def ladder(a):
                     sh.paste(im, (x, y))
                 except Exception:
                     pass
-                d.text((x + 1, y + T + 2), f'#{rk} {v:.1f}', fill='#333', font=small)
+                # the score sits on its own photo, so it cannot be read against the row above or below
+                d.rectangle((x, y, x + 62, y + 14), fill='white')
+                d.text((x + 2, y + 1), f'{v:.1f} #{rk}', fill='black', font=small)
+            d.line((0, y + T + 9, sh.width, y + T + 9), fill='#999', width=2)
         sh.save(os.path.join(a.out, f'ladder-{p // PER + 1:03d}.jpg'), quality=75)
     print(len(names), 'words,', len(keys), 'photos')
 
