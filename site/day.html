@@ -55,7 +55,7 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 .cards{position:relative;display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));column-gap:clamp(12px,1.6vw,26px);row-gap:clamp(30px,3.4vw,46px);padding-top:16px}
 @media (max-width:520px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .slot{display:flex;flex-direction:column;align-items:center;min-width:0}
-.card{position:relative;display:block;width:100%;background:linear-gradient(var(--ivory-top),var(--ivory-bot));border:1px solid var(--ivory-edge);padding:7% 7% 0;box-shadow:0 10px 18px rgba(0,0,0,.42),0 2px 4px rgba(0,0,0,.3);cursor:pointer;text-align:center;text-decoration:none;transform-origin:50% -12px;will-change:transform}
+.card{position:relative;display:block;width:100%;background:linear-gradient(var(--ivory-top),var(--ivory-bot));border:1px solid var(--ivory-edge);padding:3.5% 3.5% 0;box-shadow:0 10px 18px rgba(0,0,0,.42),0 2px 4px rgba(0,0,0,.3);cursor:pointer;text-align:center;text-decoration:none;transform-origin:50% -12px;will-change:transform}
 .peg{position:absolute;left:50%;top:-17px;width:12px;height:30px;margin-left:-6px;border-radius:6px 6px 3px 3px;background:linear-gradient(90deg,#6b4022,#b07a4a 30%,#9a6538 55%,#5d361c);box-shadow:1px 3px 4px rgba(0,0,0,.45);z-index:2}
 .peg::after{content:"";position:absolute;left:1px;right:1px;top:12px;height:3px;background:#3a2210;opacity:.7}
 .photo{position:relative;aspect-ratio:3/4;max-width:100%;overflow:hidden;background:var(--maroon-deep)}
@@ -455,6 +455,13 @@ function cords() {
     const w = board.parentElement.getBoundingClientRect(), g = Math.max(40, vw * .035);   // a safe gap from the window edge (Darpan, 26 Oct 2026: "a tiny bit more breathing space")
     board.style.marginLeft = Math.round(g - w.left) + 'px'; board.style.marginRight = Math.round(g - (vw - w.right)) + 'px';
   } else board.style.marginLeft = board.style.marginRight = '';
+  // bigger cards, 7 or 8 to a rope, whichever leaves the last rope fuller, and more ropes as needed (Darpan, 26 Oct 2026)
+  const grid = $('cards');
+  if (wide) {
+    const gw = grid.clientWidth, gap = parseFloat(getComputedStyle(grid).columnGap) || 20, fit = Math.max(1, Math.floor((gw + gap) / (168 + gap)));
+    const left = n => cards.length % n || n, n = Math.min(fit, left(7) > left(8) ? 7 : 8);
+    grid.style.gridTemplateColumns = `repeat(${n},minmax(0,1fr))`;
+  } else grid.style.gridTemplateColumns = '';
   const b = board.getBoundingClientRect(), D = wide ? Math.min(64, vw * .032) : 0;
   svg.style.left = -b.left + 'px'; svg.style.width = vw + 'px';
   $('cards').style.paddingTop = (16 + D / 2) + 'px';
