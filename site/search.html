@@ -153,7 +153,7 @@ body { background: linear-gradient(#efdcd2, #f3e5d8) fixed; }
    only as wide as its photos, so small days sit side by side. A thin gold line marks each new month. */
 .days { --cw: 190px; --cg: 18px; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 18px 16px; padding-block: 14px 24px; }
 /* a big day leaves room for a small one beside it, so a day with one photo never sits alone on a line */
-.days .day { --w: calc(var(--n) * var(--cw) + (var(--n) - 1) * var(--cg) + 24px); flex: 1 1 min(var(--w), calc(100% - var(--cw) - 42px)); min-width: 0;
+.days .day { --w: calc(var(--n) * var(--cw) + (var(--n) - 1) * var(--cg) + 24px); flex: 1 1 min(var(--w), calc(100% - var(--cw) - 80px)); min-width: 0;
   max-width: min(100%, calc(var(--w) + var(--cw) * .5)); background: rgba(255, 250, 242, .42); border: 1px solid rgba(110, 20, 36, .12); border-radius: 12px; }
 .days .pics { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--cw), 1fr)); gap: var(--cg); padding: 14px 12px 16px; align-items: start; }
 .days .day-head { margin: 0; padding: 7px 12px; border-radius: 11px 11px 0 0; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 3px 12px; box-shadow: none; }
