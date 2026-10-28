@@ -71,28 +71,36 @@ def embed(a):
     import numpy as np, onnxruntime as ort
     from PIL import Image, ImageFile
     ImageFile.LOAD_TRUNCATED_IMAGES = True
-    s = ort.InferenceSession(a.model, providers=['CPUExecutionProvider'])
+    # one photo at a time, as in the browser: the model's 8 bit steps are scaled to everything run together, so a
+    # photo run in a batch of 64 comes out slightly different (about 0.985 alike) from the same photo run alone
+    opt = ort.SessionOptions()
+    opt.intra_op_num_threads = 1
+    sess = [ort.InferenceSession(a.model, opt, providers=['CPUExecutionProvider']) for _ in range(os.cpu_count() or 4)]
     files = sorted(glob.glob(os.path.join(a.photos, '*', '*')))
 
-    def prep(f):
+    def one(i):
+        f = files[i]
         try:
             im = Image.open(f).convert('RGB').resize((SIDE, SIDE), Image.BILINEAR)
-            return ((np.asarray(im, 'f4') / 255 - np.array(MEAN, 'f4')) / np.array(STD, 'f4')).transpose(2, 0, 1)
         except Exception as e:
             print(f, e)
+            return None
+        x = ((np.asarray(im, 'f4') / 255 - np.array(MEAN, 'f4')) / np.array(STD, 'f4')).transpose(2, 0, 1)[None]
+        t = sess[i % len(sess)].run(None, {'x': x})[0][0]
+        p = t[1:].reshape(16, 16, -1)
+        win = np.stack([p[y:y + 8, x:x + 8].mean((0, 1)) for y in (0, 4, 8) for x in (0, 4, 8)])
+        return os.path.relpath(f, a.photos), t[0], p.mean((0, 1)), win
     keys, out = [], {'cls': [], 'mean': [], 'win': []}
-    with ThreadPoolExecutor(4) as ex:
-        for i in range(0, len(files), 64):
-            batch = [(f, x) for f, x in zip(files[i:i + 64], ex.map(prep, files[i:i + 64])) if x is not None]
-            t = s.run(None, {'x': np.stack([x for _, x in batch])})[0]
-            p = t[:, 1:].reshape(len(t), 16, 16, -1)
-            out['cls'].append(t[:, 0].astype('f2'))
-            out['mean'].append(p.mean((1, 2)).astype('f2'))
-            out['win'].append(np.stack([p[:, y:y + 8, x:x + 8].mean((1, 2)) for y in (0, 4, 8) for x in (0, 4, 8)], 1).astype('f2'))
-            keys += [os.path.relpath(f, a.photos) for f, _ in batch]
-            if i % 1280 == 0:
+    with ThreadPoolExecutor(len(sess)) as ex:
+        for i, r in enumerate(ex.map(one, range(len(files)))):
+            if r:
+                keys.append(r[0])
+                for k, v in zip(out, r[1:]):
+                    out[k].append(v.astype('f2'))
+            if i % 1000 == 0:
                 print(i, 'of', len(files), flush=True)
-    np.savez(a.out, keys=np.array(keys), **{k: np.concatenate(v) for k, v in out.items()})
+    out = {k: np.stack(v) for k, v in out.items()}
+    np.savez(a.out, keys=np.array(keys), **out)
 
 
 def build(a):
