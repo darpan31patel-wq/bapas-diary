@@ -1,0 +1,40 @@
+# Website only: contact sheets of the Today page's photos (the list in .github/today-check.txt), so Claude can look at
+# every card by eye before telling Darpan it is right (Darpan, 26 Oct 2026: "i only want bapa"). Touches nothing live.
+name: today-check
+on:
+  push:
+    branches: ['claude/project-thread-1yl8ki']
+    paths: ['.github/workflows/today-check.yml', '.github/today-check.txt']
+jobs:
+  sheets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -q pillow
+      - name: Small photos and contact sheets
+        run: |
+          mkdir -p s sheets
+          cut -f3 .github/today-check.txt | sort -u > keys.txt
+          cd s && xargs -P 16 -I{} sh -c 'mkdir -p "$(dirname "{}")" && curl -sf -o "{}" "https://photos.bapas-diary.com/s/{}" || true' < ../keys.txt && cd ..
+          echo "$(find s -type f | wc -l) of $(wc -l < keys.txt) photos fetched"
+          python3 - <<'PY'
+          from PIL import Image, ImageDraw
+          rows = [l.rstrip('\n').split('\t') for l in open('.github/today-check.txt')]
+          C, R, W, H = 6, 5, 300, 260
+          for part in ('A', 'B'):
+              got = [r for r in rows if r[0] == part]
+              for n in range(0, len(got), C * R):
+                  sheet = Image.new('RGB', (C * W, R * H), 'white'); d = ImageDraw.Draw(sheet)
+                  for i, (_, label, key) in enumerate(got[n:n + C * R]):
+                      x, y = i % C * W, i // C * H
+                      try:
+                          im = Image.open('s/' + key).convert('RGB'); im.thumbnail((W - 8, H - 30)); sheet.paste(im, (x + 4, y + 4))
+                      except Exception:
+                          d.text((x + 10, y + 100), 'MISSING', fill='red')
+                      d.text((x + 4, y + H - 24), f'{label} {key.split("/")[-1][:30]}', fill='black')
+                  sheet.save(f'sheets/{part}-{n // (C * R) + 1:02d}.jpg', quality=80)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: today-check
+          path: sheets
