@@ -131,7 +131,8 @@ function show(n) {
       $(k + 'date').textContent = fmt(s.date); $(k + 'cap').textContent = clean(s.cap);
       $(k + 'link').href = '/search/#date=' + s.date; $(k + 'y').textContent = s.date.slice(0, 4);
     }
-    $('gap').textContent = +p.msm.date.slice(0, 4) - +p.psm.date.slice(0, 4);
+    const gap = +p.msm.date.slice(0, 4) - +p.psm.date.slice(0, 4);
+    $('gap').textContent = gap; $('gap').nextElementSibling.textContent = gap === 1 ? 'year' : 'years';
     soft.forEach(e => e.classList.remove('out'));
   };
   clearTimeout(words);
