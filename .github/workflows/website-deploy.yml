@@ -25,7 +25,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PROJECT: bapas-diary
       DOMAIN: bapas-diary.com
-      CAL_COMMIT: 6cc14d0655ab1fe87132f77a9b4ea23cbd3f0457   # claude/project-thread-tbkjl3: 2c07c88 (as Darpan approved it) plus opening from Search's Calendar button
+      CAL_COMMIT: bf30042fd89d4c98814dab99302b9dfd7e9d91ea   # claude/project-thread-tbkjl3: 2c07c88 (as Darpan approved it) plus opening from Search's Calendar button, days open the photo grid
     steps:
       - uses: actions/checkout@v4
         with:
