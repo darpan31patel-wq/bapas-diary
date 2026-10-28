@@ -13,8 +13,11 @@ on:
         description: 'Make the model file again'
         type: boolean
         default: false
+  workflow_call:   # the daily timer on main (website-image-search-timer.yml): new photos only
 permissions:
   contents: write
+concurrency:
+  group: website-image-search
 env:
   GH_TOKEN: ${{ github.token }}
 jobs:
@@ -23,6 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: claude/project-thread-hi1iz6   # also when the timer on main calls this file
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -57,12 +62,16 @@ jobs:
       shards: ${{ steps.plan.outputs.shards }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: claude/project-thread-hi1iz6   # also when the timer on main calls this file
       - id: plan
         run: |
           gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
           curl -sf https://photos.bapas-diary.com/years.txt -o years.txt; echo "years in R2: $(tr '\n' ' ' < years.txt)"
           gh release view image-search --json assets -q '.assets[].name' > have.txt
-          shards=$(python3 tools/image_index.py plan --years years.txt --have have.txt)
+          # after the first build, only the photos with no numbers yet (keys.json lists every photo that has them)
+          if grep -qx image-search.tgz have.txt; then gh release download image-search -p image-search.tgz && tar -xzf image-search.tgz image/keys.json; fi
+          shards=$(python3 tools/image_index.py plan --years years.txt --have have.txt --keys image/keys.json --stamp $(date -u +%Y%m%d%H))
           echo "shards=$shards" | tee -a "$GITHUB_OUTPUT"
   shard:
     needs: plan
@@ -76,6 +85,8 @@ jobs:
         shard: ${{ fromJSON(needs.plan.outputs.shards) }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: claude/project-thread-hi1iz6   # also when the timer on main calls this file
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -84,15 +95,19 @@ jobs:
           pip install -q onnxruntime pillow numpy
           gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
           gh release download image-search -p dinov2-small-q8.onnx
-          python3 tools/image_index.py shard --shard ${{ matrix.shard }} --out photos
+          curl -sf https://photos.bapas-diary.com/years.txt -o years.txt
+          gh release download image-search -p image-search.tgz && tar -xzf image-search.tgz image/keys.json
+          python3 tools/image_index.py shard --shard ${{ matrix.shard }} --out photos --years years.txt --keys image/keys.json
           python3 tools/image_index.py embed --model dinov2-small-q8.onnx --photos photos --out pic-${{ matrix.shard }}.npz
           gh release upload image-search pic-${{ matrix.shard }}.npz --clobber
   build:
     needs: [plan, shard]
-    if: always() && needs.plan.result == 'success'
+    if: always() && needs.plan.result == 'success' && (needs.plan.outputs.shards != '[]' || github.event_name == 'push')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: claude/project-thread-hi1iz6   # also when the timer on main calls this file
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -115,6 +130,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: claude/project-thread-hi1iz6   # also when the timer on main calls this file
       - run: |
           mkdir -p mock
           while read -r k; do mkdir -p "mock/$(dirname "$k")"; curl -sf "https://photos.bapas-diary.com/s/$k" -o "mock/$k" || echo "missing $k"; sleep 0.2; done < tools/image_mockup_keys.txt

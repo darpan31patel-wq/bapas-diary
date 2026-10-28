@@ -9,6 +9,7 @@ GitHub. The same model file runs in the visitor's browser for their picture, so 
     python3 tools/image_index.py shard --db bapas.db --shard 2026-0-11 --out photos
     python3 tools/image_index.py embed --model dinov2-small-q8.onnx --photos photos --out pic-2026-0-11.npz
     python3 tools/image_index.py build --emb emb --out image
+    python3 tools/image_index.py plan --db bapas.db --years years.txt --keys image/keys.json --stamp 2026102902   (daily: new photos only)
 
 build writes what the search page reads (site/search-image.js), all in one folder:
   meta.json     sizes, the model file name, and the usual value of each number (mc, mm)
@@ -26,7 +27,23 @@ STD = (0.229, 0.224, 0.225)
 SIZE = 6000   # photos per shard
 
 
+def missing(a):
+    """Photos of the years in R2 that have no numbers yet (not in --keys, the keys.json of the last build), in order."""
+    years = sorted(int(l) for l in open(a.years) if l.strip().isdigit())
+    have = set(json.load(open(a.keys)))
+    db = sqlite3.connect(a.db)
+    rows = db.execute(f'SELECT album, file FROM photos WHERE year IN ({",".join("?" * len(years))}) ORDER BY year, album, file', years).fetchall()
+    return [r for r in rows if f'{r[0]}/{r[1]}' not in have]
+
+
 def plan(a):
+    """The shards still to do. With --keys (the daily timer): only photos added since the last build, as new-STAMP-I-N
+    slices. Without: every year in R2 cut into slices of about SIZE photos, minus those already kept."""
+    if a.keys and os.path.exists(a.keys):
+        n = len(missing(a))
+        parts = -(-n // SIZE)
+        print(json.dumps([f'new-{a.stamp}-{i}-{parts}' for i in range(parts)]))
+        return
     years = sorted(int(l) for l in open(a.years) if l.strip().isdigit())
     have = set(open(a.have).read().split()) if a.have and os.path.exists(a.have) else set()
     db = sqlite3.connect(a.db)
@@ -39,10 +56,16 @@ def plan(a):
 
 
 def shard(a):
-    """Download one shard's small photos from R2: YEAR-I-N is the I-th of N slices of that year."""
+    """Download one shard's small photos from R2: YEAR-I-N is the I-th of N slices of that year, new-STAMP-I-N the I-th
+    of N slices of the photos with no numbers yet (same --keys and --years as plan)."""
     import urllib.request, time
-    y, i, n = map(int, a.shard.split('-'))
-    rows = sqlite3.connect(a.db).execute('SELECT album, file FROM photos WHERE year = ? ORDER BY album, file', (y,)).fetchall()
+    if a.shard.startswith('new-'):
+        _, _, i, n = a.shard.split('-')
+        i, n = int(i), int(n)
+        rows = missing(a)
+    else:
+        y, i, n = map(int, a.shard.split('-'))
+        rows = sqlite3.connect(a.db).execute('SELECT album, file FROM photos WHERE year = ? ORDER BY album, file', (y,)).fetchall()
     k = -(-len(rows) // n)
     rows = rows[i * k:(i + 1) * k]
 
@@ -109,12 +132,14 @@ def build(a):
     18,000 photos (26 Oct 2026): as good as the full numbers for whole photos, screenshots and big crops, at a 16th of
     the size, so the whole diary is about 25 MB."""
     import numpy as np
-    keys, cls, mean = [], [], []
+    keys, cls, mean, seen = [], [], [], set()
     for f in sorted(glob.glob(os.path.join(a.emb, 'pic-*.npz'))):
         z = np.load(f)
-        keys += [str(k) for k in z['keys']]
-        cls.append(z['cls'].astype('f4'))
-        mean.append(z['mean'].astype('f4'))
+        keep = [i for i, k in enumerate(z['keys']) if str(k) not in seen]   # a photo kept twice counts once
+        seen.update(str(z['keys'][i]) for i in keep)
+        keys += [str(z['keys'][i]) for i in keep]
+        cls.append(z['cls'][keep].astype('f4'))
+        mean.append(z['mean'][keep].astype('f4'))
     unit = lambda x: x / np.linalg.norm(x, axis=1, keepdims=True)
     cls, mean = unit(np.concatenate(cls)), unit(np.concatenate(mean))
     mc, mm = cls.mean(0), mean.mean(0)
@@ -139,7 +164,9 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest='cmd', required=True)
     s = sub.add_parser('plan'); s.add_argument('--db', default='bapas.db'); s.add_argument('--years'); s.add_argument('--have')
+    s.add_argument('--keys', help='keys.json of the last build: plan only the photos added since'); s.add_argument('--stamp', default='0')
     s = sub.add_parser('shard'); s.add_argument('--db', default='bapas.db'); s.add_argument('--shard'); s.add_argument('--out', default='photos')
+    s.add_argument('--years'); s.add_argument('--keys')
     s = sub.add_parser('embed'); s.add_argument('--model'); s.add_argument('--photos'); s.add_argument('--out')
     s = sub.add_parser('build'); s.add_argument('--emb'); s.add_argument('--out'); s.add_argument('--model', default='dinov2-small-q8.onnx')
     a = ap.parse_args()
