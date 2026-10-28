@@ -264,7 +264,7 @@
         if (!box.length) { sp.classList.remove('on'); return; }
         const L = Math.min(...box.map(x => x.offsetLeft)), T = Math.min(...box.map(x => x.offsetTop)),
           R = Math.max(...box.map(x => x.offsetLeft + x.offsetWidth)), B = Math.max(...box.map(x => x.offsetTop + x.offsetHeight));
-        Object.assign(sp.style, {left: L + 'px', top: T + 'px', width: R - L + 'px', height: B - T + 'px'}); sp.style.setProperty('--f', box[0].offsetHeight + 'px'); sp.classList.add('on');
+        Object.assign(sp.style, {left: L + 'px', top: T + 'px', width: R - L + 'px', height: B - T + 'px'}); sp.style.setProperty('--f', box[0].offsetHeight + 'px'); sp.style.setProperty('--w', (R - L) / 2 + 'px'); sp.style.setProperty('--h', (B - T) / 2 + 'px'); sp.classList.add('on');
       }
       function pick(s, b, k, day, d, place, fest, fut) {
         if (sel) sel.setAttribute('aria-pressed', 'false');
