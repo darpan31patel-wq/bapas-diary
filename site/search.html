@@ -357,11 +357,13 @@ function search() {
   // a picture chosen with "Search by photo" (site/search-image.js): the closest photos, best first, and the filters still work
   const pic = window.picSearch ? picSearch() : null;
   picMode = !!pic;
-  const asked = !pic && window.askDiary ? askDiary($('q').value) : null;
-  const { want, not } = asked ? { want: [], not: [] } : parse($('q').value), year = $('year').value, month = $('month').value, day = $('day').value;
+  // a friend's name, however it is spelt, is every 16 April (Darpan, 28 Oct 2026); said nowhere on the page
+  const egg = !pic && /^k+h?u+s+h?b+h?(u+|o+)$/.test($('q').value.trim().toLowerCase());
+  const asked = !pic && !egg && window.askDiary ? askDiary($('q').value) : null;
+  const { want, not } = asked || egg ? { want: [], not: [] } : parse($('q').value), year = $('year').value, month = egg ? '04' : $('month').value, day = egg ? '16' : $('day').value;
   // each word also finds its other spellings (Diwali, Divali; site/search-ask.js)
   const spell = want.length && window.spellWords ? spellWords(want) : { alts: want.map(w => [w]), flat: want, note: '' };
-  const from = $('from').value, to = $('to').value, fest = $('fest').value, place = $('place').value || linkPlace, act = $('act').value.startsWith('@') ? '' : $('act').value, mandir = mandirPicked();
+  const from = egg ? '' : $('from').value, to = egg ? '' : $('to').value, fest = $('fest').value, place = $('place').value || linkPlace, act = $('act').value.startsWith('@') ? '' : $('act').value, mandir = mandirPicked();
   const lp = linkPlace.toLowerCase();   // a place from a map link also finds albums named after two places, or 'Washington DC'
   const byYear = {};
   hits = [];
