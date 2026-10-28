@@ -1,6 +1,6 @@
 # Website only (bapas-diary.com), mockup only: never deploys and touches nothing in the daily 2pm picture chain.
 # Screenshots of the live pages now and with the new Lora and Poppins lettering (tools/type_mockup.js), into the
-# release `type-mockup`. Runs when this file changes on a claude/** branch.
+# release `type-mockup`. Runs when this file changes on a claude/** branch (second run: phone tabs, iPad size).
 name: type-mockup
 on:
   push:
