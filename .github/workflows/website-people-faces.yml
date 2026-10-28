@@ -1,0 +1,50 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, fetches nothing
+# from baps.org (the photos come from R2, photos.bapas-diary.com, which is public, so no secrets are needed).
+# Who was with Bapa by face (Darpan, 28 Oct 2026): every face in every photo gets a face number (tools/people_faces.py),
+# kept in the release people-faces, one file per shard. Carries on where it stopped: shards already kept are skipped.
+# Nothing here changes the website; what it finds goes live only after Darpan's typed yes.
+name: website-people-faces
+on:
+  push:
+    branches: ['claude/project-thread-docu5h']
+    paths: ['.github/workflows/website-people-faces.yml', 'tools/people_faces.py']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: website-people-faces
+env:
+  GH_TOKEN: ${{ github.token }}
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.plan.outputs.shards }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: plan
+        run: |
+          gh release view people-faces >/dev/null 2>&1 || \
+            gh release create people-faces --prerelease --title "Faces for Who was with Bapa" --notes "Website search: a face number for every face. Not used by the daily picture."
+          gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
+          curl -sf https://photos.bapas-diary.com/years.txt -o years.txt; echo "years in R2: $(tr '\n' ' ' < years.txt)"
+          gh release view people-faces --json assets -q '.assets[].name' > have.txt
+          echo "shards=$(python3 tools/people_faces.py plan --years years.txt --have have.txt)" | tee -a "$GITHUB_OUTPUT"
+  shard:
+    needs: plan
+    if: needs.plan.outputs.shards != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Faces
+        run: |
+          pip install -q opencv-python-headless numpy
+          gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
+          python3 tools/people_faces.py index --shard ${{ matrix.shard }} --out faces-${{ matrix.shard }}.npz
+          gh release upload people-faces faces-${{ matrix.shard }}.npz --clobber
