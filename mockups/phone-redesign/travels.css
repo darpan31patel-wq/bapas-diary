@@ -1,0 +1,70 @@
+/* ===== Travels on a phone: shared by all three looks ===== */
+@media (max-width: 760px) {
+  html.ph-travels { --pr-cy: .4; }
+  /* Journey | Places, small and quiet under the top strip */
+  html.ph-travels .views { top: calc(50px + env(safe-area-inset-top, 0px)); padding: 3px; gap: 2px; }
+  html.ph-travels .views a { padding: 4px 16px; font-size: 13px; }
+  /* both gurus in one calm switch, side by side, equal */
+  html.ph-travels .eras { position: fixed; z-index: 6; top: calc(88px + env(safe-area-inset-top, 0px)); left: 16px; right: 16px; display: flex; padding: 3px; border-radius: 999px; background: rgba(13,19,48,.82); border: 1px solid rgba(169,177,214,.22); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  html.ph-travels .era { position: static; flex: 1 1 0; width: auto; min-height: 0; max-width: none; border: 0; border-radius: 999px; padding: 7px 4px; background: none; align-items: center !important; text-align: center !important; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  html.ph-travels .era .who { font-size: 13.5px; white-space: nowrap; }
+  html.ph-travels .era .yrs { display: none; }
+  html.ph-travels .era[aria-selected="true"] { background: var(--gold); color: var(--night); }
+  /* the stop: close up photo, then the year and place biggest, the dates, and the gold See more */
+  html.ph-travels .story { bottom: calc(108px + var(--ph-bar)); padding: 12px; border-radius: 16px;
+    display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "pic yp yp" "pic sub more"; row-gap: 4px; column-gap: 12px; align-items: center; }
+  html.ph-travels .story .head { display: contents; }
+  html.ph-travels .pic { grid-area: pic; width: 68px; height: 68px; border-radius: 12px; margin: 0; box-shadow: 0 0 0 2px var(--gold); }
+  html.ph-travels .pic[hidden] { display: block !important; background: radial-gradient(circle at 50% 40%, #2a3770, #141c44); }
+  html.ph-travels .pr-yp { grid-area: yp; align-self: end; display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+  html.ph-travels .year { font-size: 26px; line-height: 1.1; }
+  html.ph-travels .place { margin: 0; font-size: 22px; line-height: 1.2; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  html.ph-travels .pr-sub { grid-area: sub; font-size: 13.5px; align-self: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  html.ph-travels .status { display: inline; margin: 0 6px 0 0; font-size: 10.5px; letter-spacing: .12em; }
+  html.ph-travels .cap, html.ph-travels .stats, html.ph-travels .next { display: none; }
+  html.ph-travels .tn { grid-area: more; align-self: center; margin: 0; padding: 7px 14px; border: 0; border-radius: 999px; background: linear-gradient(#ffe08f, var(--gold)); color: var(--night); font-weight: 600; letter-spacing: 0; text-transform: none; font-size: 13.5px; }
+  /* the controls: the years as one bar, then Play beside the months */
+  html.ph-travels .rail { padding: 10px 16px 8px; gap: 6px; background: linear-gradient(rgba(13,19,48,0), var(--night) 22%); }
+  html.ph-travels .yrs { gap: 1px; height: 30px; }
+  html.ph-travels .yr, html.ph-travels .yr.other:not(.on), html.ph-travels .yr.on { height: 30px; font: 500 11px var(--body); color: var(--mist); }
+  html.ph-travels .yr::after { left: 0; right: 0; width: auto; margin: 0; bottom: auto; top: 4px; height: 6px; border-radius: 0; background: rgba(169,177,214,.28); opacity: 1; }
+  html.ph-travels .yr:first-child::after { border-radius: 3px 0 0 3px; } html.ph-travels .yr:last-child::after { border-radius: 0 3px 3px 0; }
+  html.ph-travels .yr.other::after { background: rgba(169,177,214,.12); }
+  html.ph-travels .yr.done::after { background: var(--saffron); }
+  html.ph-travels .yr.on::after { height: 6px; background: linear-gradient(90deg, var(--saffron) 0 var(--fill), rgba(169,177,214,.28) var(--fill) 100%); }
+  html.ph-travels .yr .full, html.ph-travels .yr.lab .full { display: none; top: 13px; }
+  html.ph-travels .yr:first-child .full, html.ph-travels .yr:last-child .full { display: block; color: var(--mist); font-weight: 400; }
+  html.ph-travels .yr.on .full { display: block; border: 0; background: var(--night); padding: 0 4px; color: var(--ink); font-weight: 600; font-size: 12.5px; }
+  html.ph-travels .row { flex-wrap: nowrap; gap: 10px; }
+  html.ph-travels .ctrls { gap: 6px; }
+  html.ph-travels .play { width: 46px; height: 46px; }
+  html.ph-travels .speed { height: 32px; min-width: 40px; font-size: 13px; }
+  html.ph-travels .track { order: 0; flex: 1 1 auto; height: 44px; }
+  html.ph-travels .bar, html.ph-travels .fill { top: 9px; height: 6px; }
+  html.ph-travels .pins i { top: 9px; width: 4px; height: 6px; margin-left: -2px; border-radius: 1px; opacity: .45; }
+  html.ph-travels .dot { top: 3px; width: 18px; height: 18px; margin-left: -9px; border-width: 3px; box-shadow: 0 0 0 4px rgba(242,181,68,.25); }
+  html.ph-travels .mo, html.ph-travels .mo.jan { top: 22px; font-size: 11px; color: var(--mist); border-left: 1px solid var(--line); height: 14px; line-height: 14px; }
+  html.ph-travels .mo.jan { border-left: 2px solid var(--gold); color: var(--gold); }
+  html.ph-travels .mo.jan b { display: none; }
+}
+/* ===== Look B, full screen: the globe fills the screen, the words float over it with no box ===== */
+@media (max-width: 760px) {
+  html.pr-b { --pr-cy: .38; }
+  html.pr-b .story { background: none; border: 0; -webkit-backdrop-filter: none; backdrop-filter: none; padding: 0 16px; left: 0; right: 0; }
+  html.pr-b .rail { padding-top: 150px; background: linear-gradient(rgba(13,19,48,0), rgba(13,19,48,.85) 45%, var(--night) 70%); }
+  html.pr-b .story { bottom: calc(112px + var(--ph-bar)); z-index: 6; text-shadow: 0 1px 8px rgba(0,0,0,.6); }
+  html.pr-b .year { font-size: 32px; } html.pr-b .place { font-size: 26px; }
+  html.pr-b .pic { width: 72px; height: 72px; border-radius: 50%; }
+  html.pr-b .eras, html.pr-b .views { background: rgba(13,19,48,.5); }
+}
+/* ===== Look C, card: the globe on top, the stop and the controls together in one sheet at the bottom ===== */
+@media (max-width: 760px) {
+  html.pr-c { --pr-cy: .33; }
+  html.pr-c .rail { padding-top: 12px; background: #111a3e; border-top: 0; }
+  html.pr-c .story { left: 0; right: 0; bottom: calc(100px + var(--ph-bar)); border: 0; border-top: 1px solid rgba(242,181,68,.35); border-radius: 22px 22px 0 0; background: #111a3e; padding: 16px 16px 6px; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 -18px 40px rgba(0,0,0,.35); }
+  html.pr-c .story::before { content: ""; position: absolute; left: 50%; top: 6px; width: 36px; height: 4px; margin-left: -18px; border-radius: 2px; background: rgba(169,177,214,.3); }
+  html.pr-c .pic { width: 76px; height: 76px; }
+  html.pr-c .eras { background: none; border: 0; border-bottom: 1px solid rgba(169,177,214,.3); border-radius: 0; padding: 0; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  html.pr-c .era { border-radius: 0; padding: 8px 4px 9px; color: var(--mist); }
+  html.pr-c .era[aria-selected="true"] { background: none; color: var(--ink); box-shadow: inset 0 -3px 0 var(--gold); }
+}

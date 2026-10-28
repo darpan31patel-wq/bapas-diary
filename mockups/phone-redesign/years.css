@@ -1,0 +1,96 @@
+/* ===== Through the years on a phone: shared by all three looks ===== */
+@media (max-width: 760px) {
+  html.ph-years-page body { padding-top: 50px; padding-left: 0; padding-right: 0; }
+  .wrap { gap: 0; }
+  header { display: none; }
+  /* both gurus in one calm switch, side by side, equal */
+  .top { display: flex; gap: 0; margin: 2px 16px 10px; padding: 3px; border-radius: 999px; background: #201814; border: 1px solid #3b2d25; }
+  .tab { flex: 1 1 0; min-width: 0; align-items: center !important; text-align: center !important; border: 0; border-radius: 999px; padding: 7px 4px; background: none; }
+  .tab .who { font-size: 13.5px; white-space: nowrap; }
+  .tab .yrs { display: none; }
+  .tab[aria-selected="true"] { background: #ec8a2d; color: #15100d; }
+  .stage { display: flex; flex-direction: column; gap: 0; }
+  .slot { flex: 1; min-height: 0; width: 100%; }
+  .frame { background: #0c0907; }
+  .frame img { box-shadow: none; }
+  /* the words: year and place first and biggest, then the day, then what is happening */
+  .info { gap: 0; }
+  .info.l, .info.r { padding: 0 16px; text-align: left; align-items: stretch; }
+  .pr-yp { display: flex; align-items: baseline; gap: 10px; font-family: 'Diary Lora', Lora, Georgia, serif; color: #f4e9dc; line-height: 1.1; }
+  .pr-y { font-size: 30px; font-weight: 600; color: #ec8a2d; font-variant-numeric: tabular-nums; }
+  .pr-p { font-size: 22px; font-weight: 500; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .place { display: none; }
+  .age { order: 3; font-size: 11px !important; letter-spacing: .12em; }
+  .date { order: 2; font: 400 13.5px/1.4 'Diary Poppins', Poppins, sans-serif !important; color: #b8a28c; margin-top: 2px; }
+  .info.l { display: flex; flex-direction: row; flex-wrap: wrap; align-items: baseline; column-gap: 10px; }
+  .pr-yp { flex: 1 0 100%; }
+  .cap { font-size: 14.5px !important; line-height: 1.35; margin-top: 6px; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+  .cal { font-size: 12.5px !important; margin-top: 2px; }
+  .info.r { position: relative; padding-right: 128px; }
+  /* the gold See more, the only button here */
+  .more { position: absolute; right: 16px; top: 6px; align-self: auto; color: #15100d !important; background: linear-gradient(#ffd68a, #ec8a2d) !important; border: 0 !important; border-radius: 999px !important; font-size: 13.5px !important; padding: 9px 16px !important; box-shadow: 0 4px 14px rgba(236,138,45,.3); }
+  /* the controls: Play, and the years as one bar you slide along */
+  .scrub { padding: 10px 16px 6px; }
+  .bar { flex-wrap: nowrap; gap: 12px; align-items: flex-end; }
+  .btn.play { flex: none; min-width: 0; width: 46px; height: 46px; padding: 0; border-radius: 50%; display: grid; place-items: center; background: #ec8a2d; border: 0; color: #15100d; }
+  .btn.play svg { margin-left: 2px; }
+  .pr-track { flex: 1; min-width: 0; position: relative; height: 46px; touch-action: none; cursor: pointer; }
+  .pr-track .years { position: absolute; inset: 0; pointer-events: none; }
+  .years .list { gap: 3px !important; padding: 0; height: 100%; align-items: stretch; }
+  .yr { flex: 1 1 0 !important; position: relative; border: 0 !important; background: none !important; border-radius: 0 !important; padding: 0 !important; overflow: visible !important; color: #b8a28c; font-size: 11px !important; }
+  .yr::before { content: ""; position: absolute; left: 0; right: 0; top: 13px; height: 6px; border-radius: 3px; background: #3b2d25; }
+  .yr.past::before { background: #ec8a2d; }
+  .yr[aria-pressed="true"]::before { background: linear-gradient(90deg, #ec8a2d 0 var(--p), #3b2d25 var(--p) 100%); }
+  .yr > span { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); white-space: nowrap; }
+  .yr .s { display: none !important; } .yr .f { display: inline !important; }
+  .yr:not(:first-child):not(:last-child):not([aria-pressed="true"]) > span { opacity: 0; }
+  .yr:first-child > span { left: 0; transform: none; } .yr:last-child > span { left: auto; right: 0; transform: none; }
+  .yr[aria-pressed="true"] { color: #f4e9dc; font-weight: 600; z-index: 2; font-size: 12.5px !important; }
+  .yr[aria-pressed="true"] > span { background: #15100d; padding: 0 4px; }
+  .pr-knob { position: absolute; top: 5px; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%; border: 3px solid #f4e9dc; background: #ec8a2d; box-shadow: 0 2px 8px rgba(0,0,0,.6); pointer-events: none; z-index: 3; transition: left .12s linear; }
+  .frame::before { content: ""; position: absolute; inset: -30px; background: var(--pr-photo) center / cover; filter: blur(22px) brightness(.4); }
+}
+/* ===== Look B, full screen: the photo fills the screen, the words float over it ===== */
+@media (max-width: 760px) {
+  html.pr-b body { padding-top: 0; }
+  html.pr-b .ph-top { background: linear-gradient(rgba(12,9,7,.75), rgba(12,9,7,0)); }
+  html.pr-b .wrap { position: relative; }
+  html.pr-b .top { position: absolute; z-index: 5; top: 52px; left: 0; right: 0; background: rgba(21,16,13,.55); border-color: rgba(244,233,220,.18); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+  html.pr-b .stage { position: absolute; inset: 0; }
+  html.pr-b .slot { position: absolute; inset: 0; }
+  html.pr-b .info { position: absolute; left: 0; right: 0; z-index: 4; }
+  html.pr-b .stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 300px; z-index: 3; background: linear-gradient(rgba(12,9,7,0), rgba(12,9,7,.78) 45%, rgba(12,9,7,.94)); pointer-events: none; }
+  html.pr-b .info.l { bottom: 136px; }
+  html.pr-b .info.r { bottom: 66px; }
+  html.pr-b .pr-y { font-size: 40px; } html.pr-b .pr-p { font-size: 26px; }
+  html.pr-b .date, html.pr-b .cal { color: #d8c6b2; }
+  html.pr-b .cap { color: #f4e9dc; }
+  html.pr-b .scrub { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; }
+  html.pr-b .yr[aria-pressed="true"] > span { background: none; }
+}
+/* ===== Look C, darshan card: the photo in a rounded frame with the year and place on it, every year as a button ===== */
+@media (max-width: 760px) {
+  html.pr-c .top { background: none; border: 0; border-bottom: 1px solid #3b2d25; border-radius: 0; padding: 0; margin: 0 16px 12px; }
+  html.pr-c .tab { border-radius: 0; padding: 8px 4px 9px; color: #b8a28c; }
+  html.pr-c .tab[aria-selected="true"] { background: none; color: #f4e9dc; box-shadow: inset 0 -3px 0 #ec8a2d; }
+  html.pr-c .slot { padding: 0 16px; position: relative; justify-content: flex-start; }
+  html.pr-c .frame { border-radius: 18px; box-shadow: 0 0 0 1px #3b2d25, 0 18px 40px -12px rgba(0,0,0,.8); }
+  html.pr-c .frame::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 42%; background: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,.75)); pointer-events: none; z-index: 2; }
+  html.pr-c .info.l { position: absolute; z-index: 3; left: 16px; right: 16px; bottom: 0; padding: 0 16px 12px; pointer-events: none; }
+  html.pr-c .pr-y { font-size: 34px; color: #ffc27a; } html.pr-c .pr-p { font-size: 24px; }
+  html.pr-c .date { color: #ecdcc8; } html.pr-c .age { color: #ffc27a; }
+  html.pr-c .info.r { padding-top: 10px; }
+  html.pr-c .cap { margin-top: 0; }
+  html.pr-c .bar { margin-bottom: 10px; align-items: center; }
+  html.pr-c .pr-track { height: 32px; }
+  html.pr-c .pr-line { position: absolute; left: 0; right: 0; top: 13px; height: 6px; border-radius: 3px; background: #3b2d25; overflow: hidden; }
+  html.pr-c .pr-line s { position: absolute; left: 0; top: 0; bottom: 0; width: var(--pos); background: #ec8a2d; }
+  html.pr-c .pr-knob { top: 5px; }
+  /* every year a button, all of them showing, in two rows that never slide */
+  html.pr-c .pr-grid .list { display: grid !important; grid-template-columns: repeat(9, 1fr); gap: 5px !important; height: auto; }
+  html.pr-c .pr-grid .yr { height: 32px; border-radius: 9px !important; border: 1px solid #3b2d25 !important; background: #201814 !important; color: #f4e9dc; font-size: 12.5px !important; font-weight: 500; }
+  html.pr-c .pr-grid .yr::before { content: none; }
+  html.pr-c .pr-grid .yr > span.f { position: static; transform: none; opacity: 1 !important; background: none; padding: 0; }
+  html.pr-c .pr-grid .yr.past { background: rgba(236,138,45,.18) !important; border-color: rgba(236,138,45,.45) !important; }
+  html.pr-c .pr-grid .yr[aria-pressed="true"] { background: #ec8a2d !important; border-color: #ec8a2d !important; color: #15100d; }
+}

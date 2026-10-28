@@ -1,0 +1,1 @@
+[["cy = wide ? H * 0.5 : H * 0.36", "cy = wide ? H * 0.5 : H * (+getComputedStyle(document.documentElement).getPropertyValue('--pr-cy') || .36)"]]
