@@ -10,5 +10,5 @@
 .frow .flabel, .txt .badge, .bd-share span, .bd-favlink span { font-size: 12px !important }
 #years button span, #years button .n { font-size: 12px !important }
 .seam { width: clamp(48px, 7vw, 92px) !important }
-.years { width: clamp(46px, 6.4vw, 78px) !important }
-.years small { font-size: 9.5px !important; letter-spacing: .05em !important }
+.seam .years { width: clamp(46px, 6.4vw, 78px) !important }
+.seam .years small { font-size: 9.5px !important; letter-spacing: .05em !important }
