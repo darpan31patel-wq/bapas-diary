@@ -19,15 +19,16 @@ calendar, so those photos are found through the calendar's dates for the festiva
 The email's pictures are cut to 4:3 and saved to weekly/e/WEEK/ for R2 (the workflow uploads them), so every email
 app shows them the same size. weekly/email.html is the email; weekly/week.json says what was picked.
 """
-import argparse, datetime, hashlib, io, json, os, re, sqlite3, sys, urllib.request
+import argparse, datetime, hashlib, io, json, os, re, sqlite3, sys, urllib.error, urllib.request
 from zoneinfo import ZoneInfo
 
 PHOTOS = 'https://photos.bapas-diary.com/'
 SITE = 'https://bapas-diary.com/'
+RELEASES = 'https://github.com/darpan31patel-wq/bapas-diary/releases/download/'
 FROM = "Bapa's Diary <hello@bapas-diary.com>"
 SEGMENT = 'Weekly darshan'
 DAILY_SEGMENT = 'Daily darshan'   # the morning On this day reminder (Darpan, 26 Oct 2026)
-DAILY_HOUR = 7                    # 7 am UK time
+DAILY_HOUR = 8                    # 8 am UK time, once the 2pm picture is made (Darpan, 28 Oct 2026)
 UK = ZoneInfo('Europe/London')
 UA = 'Mozilla/5.0 (bapas-diary.com weekly email)'
 PSM_LAST, MSM_FIRST = '2016-08-13', '2016-08-20'
@@ -297,7 +298,7 @@ def render_picture(day, cal, pic, full, special=None):
 <div style="font:600 30px/1.1 {SERIF};color:{C["pale"]};padding:8px 0 6px">Today's darshan</div>
 <div style="font:italic 17px {SERIF};color:#f3e4c6">{nice(day.isoformat())}</div></td></tr>
 <tr><td style="padding:20px 18px 6px;font:18px/1.45 {SERIF};color:{C["ink"]}"><b style="color:{C["maroon"]};font-weight:600">Jay Swaminarayan 🙏🏽</b><br>
-Here is today in Bapa's Diary.{line and ''}</td></tr>
+Here is today in Bapa's Diary.</td></tr>
 <tr><td style="padding:0 18px">{line}</td></tr>
 <tr><td style="padding:0 14px 6px"><a href="{full}"><img src="{pic}" width="572" alt="Today in Bapa's Diary: Pramukh Swami Maharaj and Mahant Swami Maharaj on this day over the years" style="display:block;width:100%;height:auto;border:0;border-radius:6px"></a>
 <div style="font:12px {SANS};color:{C["muted"]};text-align:center;padding:6px 0 0">Tap the picture to see it full size</div></td></tr>
@@ -308,6 +309,54 @@ Here is today in Bapa's Diary.{line and ''}</td></tr>
 You get this because you signed up on <a href="{SITE}" style="color:{C["maroon"]}">bapas-diary.com</a>.<br>
 Reply to this email to write to us. <a href="{{{{{{RESEND_UNSUBSCRIBE_URL}}}}}}" style="color:{C["maroon"]}">Stop these emails</a> with one tap.</td></tr>
 </table></td></tr></table></body></html>'''
+
+
+def todays_picture(day, folder):
+    """The day's finished Bapa's Diary picture, only read, never changed: release today (when its date.txt is this
+    day), else that day's backup in release bank, the same way Darpan's Google script falls back. Returns the
+    picture's path and the special picture's path (big days only, else None)."""
+    from PIL import Image
+    os.makedirs(folder, exist_ok=True)
+
+    def get(tag, name):   # the repo is public, so its release files can be read straight from github.com
+        try:
+            with urllib.request.urlopen(urllib.request.Request(f'{RELEASES}{tag}/{name}', headers={'User-Agent': UA}), timeout=120) as r:
+                open(os.path.join(folder, name), 'wb').write(r.read())
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                raise
+    get('today', 'date.txt')
+    dated = os.path.join(folder, 'date.txt')
+    if os.path.exists(dated) and open(dated).read().strip() == day.isoformat():
+        get('today', 'bapas-diary.jpg')
+        get('today', 'bapas-diary-special.jpg')   # only there on big days (yesterday's is taken down)
+        pic, special = os.path.join(folder, 'bapas-diary.jpg'), os.path.join(folder, 'bapas-diary-special.jpg')
+        print("Using today's finished picture", flush=True)
+    else:
+        d = day.isoformat()
+        get('bank', d + '.jpg')
+        get('bank', d + '-special.png')
+        pic, special = os.path.join(folder, d + '.jpg'), os.path.join(folder, d + '-special.png')
+        print("Today's picture is not ready, using the backup picture for", d, flush=True)
+    if not os.path.exists(pic):
+        return None, None
+    if not os.path.exists(special):
+        special = None
+    elif special.endswith('.png'):
+        Image.open(special).convert('RGB').save(special[:-4] + '.jpg', quality=88)
+        special = special[:-4] + '.jpg'
+    return pic, special
+
+
+def picture_files(src, out, name):
+    """A 1200 px copy for the email itself (quick to open) and the full size one for tapping, both under out/e/daily/."""
+    from PIL import Image
+    folder = os.path.join(out, 'e', 'daily')
+    os.makedirs(folder, exist_ok=True)
+    im = Image.open(src).convert('RGB')
+    im.save(os.path.join(folder, name + '-full.jpg'), quality=88)
+    im.resize((1200, round(im.height * 1200 / im.width)), Image.LANCZOS).save(os.path.join(folder, name + '.jpg'), quality=86)
+    return f'{PHOTOS}e/daily/{name}.jpg', f'{PHOTOS}e/daily/{name}-full.jpg'
 
 
 def resend(path, body=None, method='POST'):
@@ -346,6 +395,8 @@ def main():
     sunday = datetime.date.fromisoformat(a.week) if a.week else today + datetime.timedelta(days=(6 - today.weekday()) % 7)
     if a.daily:
         sunday = today if a.daily == 'today' else datetime.date.fromisoformat(a.daily)
+    if a.daily:   # the morning email is the day's 2pm picture itself (Darpan, 28 Oct 2026: "yes picture email")
+        return send_picture(a, sunday)
     data = week_data(sqlite3.connect(a.db), sunday, 1 if a.daily else 7)
     if a.daily:
         data['special'] = []
@@ -387,6 +438,27 @@ def main():
     if have < (1 if a.daily or a.test else 4):   # a test copy goes out with whatever R2 has so far
         sys.exit('Not enough photos of both Bapas in R2 for this yet, nothing sent.')
 
+    send(a, subject, html, sunday, week)
+
+
+def send_picture(a, day):
+    cal = sqlite3.connect(a.db).execute('SELECT indian_date, festivals FROM calendar WHERE date = ?', (day.isoformat(),)).fetchone() or ('', '')
+    cal = ((cal[0] or '').split('/')[0], cal[1] or '')
+    pic, special = todays_picture(day, os.path.join(a.out, 'picture'))
+    if not pic:
+        sys.exit("No Bapa's Diary picture for this day yet (nor a backup), nothing sent.")
+    name = day.isoformat() + ('' if os.path.basename(pic).startswith('bapas-diary') else '-backup')   # a backup never takes the real one's name
+    img, full = picture_files(pic, a.out, name)
+    extra = picture_files(special, a.out, name + '-special') if special else None
+    html = render_picture(day, cal, img, full, extra)
+    os.makedirs(a.out, exist_ok=True)
+    open(os.path.join(a.out, 'daily.html'), 'w', encoding='utf-8').write(html)
+    subject = f"Today's darshan · {nice(day.isoformat(), '%A %-d %B')}"
+    print(f'{subject}: the day\'s picture{", and the special picture" if special else ""}', flush=True)
+    send(a, subject, html, day, day.isoformat())
+
+
+def send(a, subject, html, day, week):
     if a.upload and not a.no_photos:
         import subprocess
         subprocess.run(a.upload, shell=True, check=True)
@@ -404,7 +476,7 @@ def main():
         if not people:
             print('Nobody has signed up for this one yet, so nothing to send.')
             return
-        when = max(uk_time(sunday, DAILY_HOUR if a.daily else 10), datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=2))
+        when = max(uk_time(day, DAILY_HOUR if a.daily else 10), datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=2))
         r = resend('/broadcasts', {'segment_id': seg, 'from': FROM, 'reply_to': 'hello@bapas-diary.com',
                                    'subject': subject, 'html': html, 'name': name, 'send': True,
                                    'scheduled_at': when.isoformat().replace('+00:00', 'Z')})
