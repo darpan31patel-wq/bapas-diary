@@ -130,6 +130,7 @@ a { color: var(--maroon); }
       .weekly-signup .ws-gurus img { width: 60px; height: 60px; }
       .weekly-signup form { flex-direction: column; }
       .weekly-signup input[type=email], .weekly-signup button { flex: none; width: 100%; }
+      .weekly-signup .ws-choices { flex: none; width: 100%; }   /* the ticks stayed off the side of phones */
     }
   </style>
   <div class="ws-gurus"><img src="/about/img/psm.jpg" alt="Pramukh Swami Maharaj"><img src="/about/img/msm.jpg" alt="Mahant Swami Maharaj"></div>
@@ -145,7 +146,7 @@ a { color: var(--maroon); }
     </div>
   </form>
   <div class="ws-err" role="status"></div>
-  <small>Both Bapas, every time. Leave any time with one tap.</small>
+  <small>A page from Bapa’s Diary, straight into your inbox for your Smruti. Free, and you can stop any time with one tap.</small>
   <script>
   (function () {
     var box = document.currentScript.parentNode, form = box.querySelector('form'), err = box.querySelector('.ws-err');
