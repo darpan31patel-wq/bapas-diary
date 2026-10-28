@@ -112,6 +112,7 @@
 
   /* ---------- Calendar ---------- */
   function calendar() {
+    const H0 = location.hash.slice(1);   // the address as it came, before the computer calendar rewrites it to its month
     const DATA = typeof DATA_URL !== 'undefined' ? DATA_URL : '/data/calendar.json';
     const PH = typeof PHOTOS !== 'undefined' ? PHOTOS : 'https://photos.bapas-diary.com/';
     const SR = typeof SEARCH !== 'undefined' ? SEARCH : '/search/';
@@ -173,7 +174,7 @@
         x.el.innerHTML = `<b>${esc(x.p)}</b><small>${x.when}</small>`;
         x.el.setAttribute('aria-label', x.fut ? `Future vicharan: Bapa is going to ${x.p}, ${x.when} ${y0}. Light up these days` : `Bapa was in ${x.p}, ${x.when} ${y0}. Light up these days`);
       });
-      let browsed = 0, pickI = null, curStays = new Set();
+      let browsed = 0, pickI = null, curStays = new Set(), wantDate = '';
       ['touchstart', 'wheel', 'pointerdown'].forEach(ev => jrow.addEventListener(ev, () => browsed = Date.now(), {passive: true}));
       jrow.addEventListener('click', e => { const b = e.target.closest('.ph-stay'); if (b) { const i = +b.dataset.i; pickI === i ? unpick() : pickStay(i); } });
       // a tap anywhere else puts everything back to normal (Darpan, 25 Oct); a glowing day still shows its card
@@ -188,7 +189,7 @@
         if (pickI != null) stays[pickI].el.classList.remove('on');
         pickI = i; x.el.classList.add('on'); centre(x.el);
         wrap.classList.add('ph-picking'); wrap.querySelectorAll('.ph-day').forEach(lit);
-        note.innerHTML = (x.fut ? '<i>Future vicharan</i> ' : '') + `<b>${esc(x.p)}</b> ${x.when} ${x.y1} · ${x.days} ${x.days === 1 ? 'day' : 'days'} ` + (x.fut ? '' : `<a href="${SR}#place=${encodeURIComponent(x.p)}&from=${x.from}&to=${x.to}">Photos</a>`) + `<button type="button" aria-label="Clear">✕</button>`;
+        note.innerHTML = (x.fut ? '<i>Future vicharan</i> ' : '') + `<b>${esc(x.p)}</b> ${x.when} ${x.y1} · ${x.days} ${x.days === 1 ? 'day' : 'days'} ` + `<button type="button" aria-label="Clear">✕</button>`;
         note.querySelector('button').onclick = unpick;
         go(x.k0, x.d0);
       }
@@ -239,7 +240,7 @@
             im.src = `${PH}t/${d[4]}/${encodeURIComponent(d[5])}`;
             b.append(im, el('i', '', day));
           } else b.textContent = day;
-          b._date = `${k}-${pad2(day)}`; if (pickI != null) lit(b);
+          b._date = `${k}-${pad2(day)}`; if (pickI != null) lit(b); if (b._date === wantDate) b.classList.add('want');
           b.onclick = () => pick(s, b, k, day, d, pl[i], fest, fut);
           g.append(b);
         });
@@ -250,7 +251,7 @@
         sel = b; b.setAttribute('aria-pressed', 'true');
         const [y, m] = k.split('-').map(Number), date = `${k}-${String(day).padStart(2, '0')}`;
         const im = b.querySelector('img');
-        card.href = `${SR}#date=${date}`;
+        card.href = `/photos/#date=${date}${place ? '&place=' + encodeURIComponent(place) : ''}`;   // all that day's photos in a grid (28 Oct 2026)
         card.setAttribute('aria-label', `Open the photos of ${day} ${MONTHS[m - 1]} ${y}`);
         if (fut) {   // a FUTURE CALENDAR day: where Bapa is going and what is planned, nothing to open yet
           card.removeAttribute('href'); card.classList.add('ph-fcard');
@@ -298,8 +299,22 @@
         if (day) { draw(s); const b = s.querySelectorAll('.ph-day')[day - 1]; if (b) wrap.scrollTop = Math.max(wrap.scrollTop, b.offsetTop - bar.offsetHeight - 70); }
         mark();
       }
-      const h = location.hash.slice(1);
-      go(D.m[h] ? h : D.start);
+      // Search's Calendar button, as on the computer (Darpan, 28 Oct 2026): #2014-10-24 lights up the stay that day was
+      // part of, rings the day and shows its card
+      function fromLink(date) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !D.m[date.slice(0, 7)]) return false;
+        const i = stays.findIndex(x => !x.fut && x.from <= date && x.to >= date);
+        wantDate = date;
+        wrap.querySelectorAll('.ph-day.want').forEach(x => x.classList.remove('want'));
+        if (i >= 0) { unpick(); pickStay(i); }
+        const k = date.slice(0, 7), day = +date.slice(8);
+        go(k, day);
+        const s = sections[keys.indexOf(k)], btn = s && s.querySelectorAll('.ph-day')[day - 1];
+        if (btn) { btn.classList.add('want'); btn.click(); }
+        return true;
+      }
+      if (!fromLink(H0)) go(D.m[H0] ? H0 : D.start);
+      addEventListener('hashchange', () => { if (location.hash.slice(1) !== curK) fromLink(location.hash.slice(1)); });
     }).catch(() => { wrap.innerHTML = '<p style="text-align:center;font-style:italic;color:#c9a98a;margin-top:40px">The calendar could not load. Please refresh the page.</p>'; });
   }
 })();

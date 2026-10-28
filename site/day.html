@@ -103,7 +103,12 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 .yhead .caps{color:var(--gold-soft)}
 .yhead .it{font:500 16px var(--serif);font-style:italic;color:var(--cream)}
 .yhead .fest{margin:0;background:var(--gold-soft);color:var(--maroon-out)}
-.yhead a{margin-left:auto;font:700 10px var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--gold-soft)}
+.yhead a{margin-left:auto}
+/* the gold Photos button: that day's photos in Search (Darpan, 28 Oct 2026) */
+.go{display:inline-block;padding:6px 13px;border:1px solid var(--go,var(--gold-soft));border-radius:999px;color:var(--go,var(--gold-soft));font:600 11.5px/1.2 var(--sans);letter-spacing:.08em;text-transform:uppercase;text-decoration:none;white-space:nowrap}
+.go:hover,.go:focus-visible{background:var(--go,var(--gold-soft));color:var(--go-on,var(--maroon-out));outline:none}
+.vcap{--go:var(--maroon-ink);--go-on:var(--gold-hi)}
+.vcap .go{margin-top:9px}
 .story-line{margin:12px 0 0;font:500 16px/1.45 var(--serif);font-style:italic;color:var(--cream);max-width:70ch}
 .story-line b{font-style:normal;font:700 10px var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--gold-soft);margin-right:8px}
 .tripnote{margin:18px 0 0;font:700 10px var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--gold-soft)}
@@ -629,7 +634,7 @@ function group(y, Y, where, cal, stories) {
   const fest = festOf(cal);
   g.innerHTML = `<div class="yhead"><h3>${y}</h3><span class="caps">${esc(where || '')}</span>` +
     (cal ? `<span class="it">${esc(cal[0])}</span>` : '') + (fest ? `<span class="fest">${esc(fest)}</span>` : '') +
-    `<a href="${esc(SRC.search(y + '-' + DAY.date))}" target="_blank" rel="noopener">Search this day</a></div>` +
+    `<a class="go" href="${esc(SRC.search(y + '-' + DAY.date))}">See more &rsaquo;</a></div>` +
     stories.map(s => `<p class="story-line"><b>On this day</b>${esc(s)}</p>`).join('');
   const add = (list, note) => {
     if (!list || !list.length) return;
@@ -668,7 +673,8 @@ function view(i, play) {
   const when = trip ? tripText(trip) + ' ' + y : `${DAY.title} ${y}`;
   const none = `<div class="none">${esc(p[2] || 'Darshan')}</div>`;
   $('vstage').innerHTML = `<figure class="vframe" style="margin:0">${url ? `<img alt="${esc(p[2])}" src="${esc(url)}">` : none}` +
-    `<figcaption class="vcap"><p>${esc(p[2] || 'Darshan')}</p><div>${esc([when, where, cal && cal[0], festOf(cal)].filter(Boolean).join(' · '))}</div></figcaption></figure>`;
+    `<figcaption class="vcap"><p>${esc(p[2] || 'Darshan')}</p><div>${esc([when, where, cal && cal[0], festOf(cal)].filter(Boolean).join(' · '))}</div>` +
+    `<a class="go" href="${esc(trip && trip[0] !== trip[1] ? `{{SEARCH}}#place=${encodeURIComponent(String(where || '').split(',')[0])}&from=${trip[0]}&to=${trip[1]}` : SRC.search(trip ? trip[0] : y + '-' + DAY.date))}">See more &rsaquo;</a></figcaption></figure>`;
   const img = $('vstage').querySelector('img');
   if (img) img.onerror = () => img.outerHTML = none;
   $('vpos').textContent = `${vi + 1} of ${everyPhoto.length}`;
