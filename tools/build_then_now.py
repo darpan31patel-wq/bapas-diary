@@ -20,5 +20,5 @@ if len(sys.argv) > 4:
             p[g]['t'] = 'l' if f"l/{p[g]['album']}/{p[g]['file']}" in large else 'm'
 page = open(sys.argv[2]).read().replace('__DATA__', json.dumps(picks, ensure_ascii=False, separators=(',', ':')))
 open(sys.argv[3], 'w').write(page)
-names = sorted({p['place'].split(',')[0] for p in picks})
+names = sorted({p['place'].split(',')[0] for p in picks if p['place']})
 print(json.dumps({n: re.sub(r'[^a-z0-9]+', '-', n.lower()).strip('-') for n in names}))
