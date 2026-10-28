@@ -53,6 +53,7 @@ jobs:
           python3 tools/web_rules.py calendar --db bapas.db --db bapa.db --db bapa-top.db   # the calendar days the picture shows
           gh release download website-mockup -p tags.json
           gh release download deep-tags -p deep-tags.json   # what is in each photo (Darpan: yes deep tags)
+          gh release download people-faces -p people-faces.json || echo '{}' > people-faces.json   # Who was with Bapa, by face
           # Bapa through the years (its own thread builds it into release faces-mockup; Darpan: "okay go live")
           gh release download faces-mockup -p faces-site.tgz && tar -xzf faces-site.tgz -C out
           test -f out/through-the-years/index.html
@@ -76,7 +77,7 @@ jobs:
           # opens on 1999 while only 1999 photos are copied to R2 (site/photo-years.txt)
           # Search by photo (Darpan: yes search by photo, 28 Oct 2026): the model, the code that runs it and the photo numbers, made by website-image-search
           gh release download image-search -p image-search.tgz && tar -xzf image-search.tgz   # -> image/
-          python3 tools/build_search.py --db bapas.db --out out/search --tags tags.json --deep-tags deep-tags.json --start-year 1999 --image image
+          python3 tools/build_search.py --db bapas.db --out out/search --tags tags.json --deep-tags deep-tags.json --people-faces people-faces.json --start-year 1999 --image image
           python3 tools/site_menu.py out   # every page's tabs in the same order
           # share look (Darpan: yes share look): WhatsApp preview picture, icons, per page titles and lines, home screen manifest
           pip install -q pillow
