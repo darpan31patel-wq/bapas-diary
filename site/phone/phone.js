@@ -124,6 +124,8 @@
     wrap.innerHTML = '<p style="text-align:center;font-style:italic;color:#c9a98a;margin-top:40px">Opening the calendar…</p>';
     document.body.append(wrap);
     const card = el('a', 'ph-card'); card.hidden = true; document.body.append(card);
+    // the tapped day's card opens its photos in a box over the Calendar (calendar.html, Darpan, 28 Oct 2026)
+    card.addEventListener('click', e => { if (window.openDayBox && card.getAttribute('href')) { e.preventDefault(); openDayBox(card.getAttribute('href')); } });
 
     fetch(DATA).then(r => r.json()).then(D => {
       const keys = Object.keys(D.m).sort();
