@@ -37,10 +37,18 @@ h1 { font-family: var(--display); font-weight: 400; font-size: clamp(24px, 3.6vw
 .note { font-size: 12.5px; color: var(--muted); text-align: center; margin: 0; }
 .stage { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); grid-template-areas: "left slot right"; gap: 8px 28px; align-items: center; }
 .slot { grid-area: slot; height: 100%; min-height: 0; min-width: 0; display: flex; align-items: center; justify-content: center; }
-.frame { position: relative; flex: none; overflow: hidden; background: radial-gradient(closest-side, var(--glow), transparent); }
+.frame { position: relative; flex: none; overflow: hidden; background: radial-gradient(closest-side, var(--glow), transparent); touch-action: none; }
 .frame img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; opacity: 0; transition: opacity var(--fade) linear; box-shadow: 0 12px 40px -10px rgba(0,0,0,.7); }
 .frame img.on { opacity: 1; }
-.frame img.rest { transition: opacity var(--fade) linear, transform 1.4s ease-in-out; }
+.frame img.rest { transition: opacity var(--fade) linear, transform 1.4s ease-in-out, width 1.4s ease-in-out, height 1.4s ease-in-out; }
+/* a year opens with its own card for a moment: the year, his age, how many days, where he was most */
+.intro { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px; text-align: center; background: radial-gradient(closest-side, rgba(21,16,13,.86), rgba(21,16,13,.62)); opacity: 0; transition: opacity .7s ease; pointer-events: none; }
+.intro.on { opacity: 1; }
+.intro .iy { font-family: var(--display); font-size: clamp(56px, 13vmin, 128px); line-height: 1; }
+.intro .ia { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--saffron); }
+.intro .in { font-size: clamp(15px, 2vmin, 19px); }
+.intro .ip { font-size: clamp(14px, 1.8vmin, 17px); color: var(--muted); max-width: 24em; }
+
 .eyes { position: absolute; inset: 0; pointer-events: none; }
 .eyes i { position: absolute; top: var(--eye-y); width: 24px; height: 24px; margin: -12px 0 0 -12px; border: 1.5px solid rgba(255,255,255,.8); border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,.4); }
 .eyes::after { content: ""; position: absolute; left: 0; right: 0; top: var(--eye-y); border-top: 1px dashed rgba(255,255,255,.35); }
@@ -56,7 +64,17 @@ h1 { font-family: var(--display); font-weight: 400; font-size: clamp(24px, 3.6vw
 .more { align-self: start; text-decoration: none; font: inherit; font-weight: 600; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 16px; cursor: pointer; }
 .more:hover { border-color: var(--saffron); }
 .count { font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.scrub { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.scrub { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+/* every year as a button, with a step either side (Darpan, 28 Oct 2026: moving between years should be smoother) */
+.years { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.years .list { flex: 1; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+.years .list::-webkit-scrollbar { display: none; }
+.yr { flex: none; font: inherit; font-size: 15px; font-variant-numeric: tabular-nums; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 13px; cursor: pointer; }
+.yr:hover, .step:hover { border-color: var(--saffron); }
+.yr[aria-pressed="true"] { color: var(--bg); background: var(--saffron); border-color: var(--saffron); font-weight: 600; }
+.step { flex: none; font: inherit; font-size: 14px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; cursor: pointer; white-space: nowrap; }
+.step:disabled { opacity: .35; cursor: default; border-color: var(--line); }
+.yr:focus-visible, .step:focus-visible { outline: 2px solid var(--saffron); outline-offset: 2px; }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .bar .days { flex: 1 1 240px; min-width: 0; }
 .zoom { display: inline-flex; gap: 8px; }
@@ -90,6 +108,23 @@ canvas.drag { cursor: grabbing; }
   .bar .days { order: 3; flex-basis: 100%; }
   canvas { height: 56px; }
   .tab .yrs { font-size: 12px; }
+  .step .w { display: none; }
+}
+/* a phone on its side: the photo on the left, the day's facts beside it, the controls kept small underneath */
+@media (orientation: landscape) and (max-height: 560px) {
+  body { padding-block: 48px 6px; }
+  .wrap { gap: 6px; }
+  .top { grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "title psm msm"; gap: 8px 12px; }
+  h1 { font-size: 20px; }
+  .tab { padding: 3px 12px; border-radius: 10px; } .tab .who { font-size: 15px; } .tab .yrs { display: none; }
+  #tab-msm { text-align: right; align-items: flex-end; }
+  .stage { grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "slot left" "slot right"; gap: 4px 16px; align-items: start; }
+  .slot { width: calc(100dvh - 186px); max-width: 52vw; }
+  .info.l { text-align: left; align-items: flex-start; }
+  .sub, .note, .zoom, .speed, .count, #eyeBtn { display: none; }
+  .bar .days { order: 0; flex-basis: 160px; height: 36px; }
+  canvas { height: 40px; }
+  .yr, .step { font-size: 13px; padding: 2px 10px; }
 }
 @media (prefers-reduced-motion: reduce) { :root { --fade: 0ms; } .frame img.rest { transition: none; } }
 </style>
@@ -110,6 +145,7 @@ canvas.drag { cursor: grabbing; }
       <div class="frame" id="frame" aria-live="polite">
         <img id="imgA" alt=""><img id="imgB" alt="">
         <div class="eyes" id="eyes" hidden><i id="eyeR"></i><i id="eyeL"></i></div>
+        <div class="intro" id="intro" aria-hidden="true"><span class="ia" id="ia"></span><span class="iy" id="iy"></span><span class="in" id="in"></span><span class="ip" id="ip"></span></div>
       </div>
     </div>
 
@@ -127,6 +163,11 @@ canvas.drag { cursor: grabbing; }
   </section>
 
   <div class="scrub">
+      <div class="years" role="group" aria-label="Years">
+        <button class="step" id="yPrev" type="button" aria-label="Year before">‹ <span class="w">Year before</span></button>
+        <div class="list" id="years"></div>
+        <button class="step" id="yNext" type="button" aria-label="Next year"><span class="w">Next year</span> ›</button>
+      </div>
       <div class="bar">
         <button class="btn play" id="play" type="button">▶ Play</button>
         <label class="speed" for="speed">Speed <input type="range" id="speed" min="1" max="30" value="8"> <span id="speedVal">8 a second</span></label>
@@ -154,14 +195,15 @@ const tOf = d => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) /
 const dOf = t => new Date(t * DAYMS);
 
 const eras = { psm: [], msm: [] };
-for (const r of DAYS) eras[r[5]].push({ day: r[0], to: r[1], place: r[2], cap: r[3], photos: r[4], tithi: r[6], fest: r[7], eyes: r.slice(8, 12), span: r[12], w: r[13], h: r[14], path: r[15] || '', t: tOf(r[0]) });
+for (const r of DAYS) eras[r[5]].push({ day: r[0], to: r[1] > r[0] ? r[1] : '', place: r[2], cap: r[3], photos: r[4], tithi: r[6], fest: r[7], eyes: r.slice(8, 12), span: r[12], w: r[13], h: r[14], path: r[15] || '', rank: r[16] || 0, y: +r[0].slice(0, 4), t: tOf(r[0]) });
 const EYE_X = .5, EYE_Y = .45, GAP = .21;   // where his eyes sit in the square frame, and how big his face is (eyes to mouth, share of the frame's width)
+const BLOW = 1.8;   // never shown more than this many screen pixels for each pixel of the photo, so a small old photo is never blown up blurry
 
 const $ = id => document.getElementById(id);
 const cv = $('tl'), cx = cv.getContext('2d');
-let era = 'psm', list = eras.psm, idx = 0, center = 0, ppd = 1, playing = null, front = $('imgA'), back = $('imgB'), token = 0;
+let era = 'psm', list = eras.psm, idx = 0, center = 0, ppd = 1, playing = null, front = $('imgA'), back = $('imgB'), token = 0, years = new Map(), shownYear = 0;
+const still = matchMedia('(prefers-reduced-motion: reduce)');
 const thumbs = new Map();
-let settle = 0;
 
 function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 function longDate(d) { const x = dOf(tOf(d)); return `${WEEK[x.getUTCDay()]} ${x.getUTCDate()} ${MONTHS[x.getUTCMonth()]} ${x.getUTCFullYear()}`; }
@@ -177,51 +219,111 @@ function ageOn(d) { const b = BORN[era]; let a = +d.slice(0, 4) - +b.slice(0, 4)
 // shape keeps changing ... keep the picture as a square box'): the photo turned and sized so his eyes sit at
 // (EYE_X, EYE_Y) every day, made a little bigger when needed so it always fills the square. Once the days stop moving
 // it eases back to the whole photo as it was taken, straight and uncut (Darpan, 23 and 26 Oct 2026).
+// The photo is laid out at the size it is shown (not shown small and stretched), so the browser draws it sharp, and
+// always keeps its own shape, whichever copy (m/ or the bigger l/) is in it (Darpan, 28 Oct 2026: 'some pictures
+// don't stretch, resize or scale correctly').
 function place(img, x, rest) {
   const fr = $('frame'), W = fr.clientWidth, H = fr.clientHeight, ex = EYE_X * W, ey = EYE_Y * H;
-  img.style.width = x.w + 'px'; img.style.height = x.h + 'px';
-  const [rx, ry, lx, ly] = x.eyes, mx = (rx + lx) / 2, my = (ry + ly) / 2;
-  if (rest) {
-    const k = Math.min(W / x.w, H / x.h);
-    img.style.transform = `matrix(${k},0,0,${k},${(W - k * x.w) / 2},${(H - k * x.h) / 2})`;
+  const [nw, nh] = img.nat || [x.w, x.h], w = x.w, h = x.w * nh / nw;   // in the units its eyes were measured in
+  const size = (k, e, f, c = 1, s = 0) => {
+    img.style.width = k * w + 'px'; img.style.height = k * h + 'px';
+    img.style.transform = `matrix(${c},${-s},${s},${c},${e},${f})`;
+  };
+  if (rest || Math.abs(h - x.h) > x.h * .03) {   // a copy of another shape than the one measured: never guess where his eyes are
+    const k = Math.min(W / w, H / h);
+    size(k, (W - k * w) / 2, (H - k * h) / 2);
     return;
   }
+  const [rx, ry, lx, ly] = x.eyes, mx = (rx + lx) / 2, my = (ry + ly) / 2;
   const a = Math.atan2(ly - ry, lx - rx), c = Math.cos(a), s = Math.sin(a);
-  let k = GAP * W / x.span;
+  let k = Math.min(GAP * W / x.span, BLOW * nw / w);
   for (const [px, py] of [[0, 0], [W, 0], [0, H], [W, H]]) {   // each corner of the square must land on the photo
     const vx = px - ex, vy = py - ey, dx = c * vx - s * vy, dy = s * vx + c * vy;
     if (dx > 0) k = Math.max(k, dx / Math.max(1, x.w - mx)); else if (dx < 0) k = Math.max(k, -dx / Math.max(1, mx));
     if (dy > 0) k = Math.max(k, dy / Math.max(1, x.h - my)); else if (dy < 0) k = Math.max(k, -dy / Math.max(1, my));
   }
-  const A = k * c, B = -k * s, C = k * s, D = k * c;
-  img.style.transform = `matrix(${A},${B},${C},${D},${ex - (A * mx + C * my)},${ey - (B * mx + D * my)})`;
+  size(k, ex - k * (c * mx + s * my), ey - k * (-s * mx + c * my), c, s);
   fr.style.setProperty('--eye-y', EYE_Y * 100 + '%');
   const g = Math.hypot(lx - rx, ly - ry) * k / 2;
   $('eyeR').style.left = (ex - g) + 'px'; $('eyeL').style.left = (ex + g) + 'px';
 }
 
-function show(i, fast) {
+// Photos are fetched one at a time, newest wish first (Darpan, 28 Oct 2026: 'sometimes the page gets stuck when
+// scrolling through different years'). Before, every day passed on the way started its own big download and five
+// more besides, and the photo only changed once the newest of them had arrived, so a quick scroll across a year
+// queued hundreds of photos and the picture froze. Now the photo keeps up with whatever has arrived, the day's words
+// always change with their own photo, and the strip and slider move at once.
+const pics = new Map();   // the last photos fetched, ready to show at once
+function pic(url) {
+  let im = pics.get(url);
+  if (im) { pics.delete(url); pics.set(url, im); return im; }
+  im = new Image(); im.decoding = 'async'; im.src = url;
+  im.ready = (im.decode ? im.decode() : new Promise((ok, no) => { im.onload = ok; im.onerror = no; })).then(() => true, () => false);
+  pics.set(url, im);
+  if (pics.size > 90) pics.delete(pics.keys().next().value);
+  return im;
+}
+let busy = false, want = null, settle = 0, introOn = false;
+function show(i, fast, calm) {
   if (!list.length) return;
   idx = Math.max(0, Math.min(list.length - 1, i));
-  const x = list[idx], my = ++token;
-  // playing, each day blends slowly into the next like a time lapse (Darpan, 26 Oct 2026: 'C smooth time lapse
-  // blending while playing, YES DO IT'); scrolling by hand stays quick
-  const fade = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : playing ? Math.max(90, Math.round(900 / +$('speed').value)) : fast ? 90 : 160;
-  document.documentElement.style.setProperty('--fade', fade + 'ms');
-  back.classList.remove('on', 'rest');
-  place(back, x);
+  const x = list[idx];
+  if (!calm && introOn) hideIntro();
+  want = { x, fast, calm };
+  $('days').value = idx;
+  markYear(x.y);
   clearTimeout(settle);
-  settle = setTimeout(() => { if (!playing && my === token) { front.classList.add('rest'); place(front, x, true); } }, 900);
-  back.src = photo(x);
-  back.alt = `${era === 'psm' ? 'Pramukh Swami Maharaj' : 'Mahant Swami Maharaj'} on ${longDate(x.day)}`;
-  (back.decode ? back.decode() : Promise.resolve()).catch(() => {}).then(() => {
-    if (my !== token) return;
-    // the new day fades in on top of the old one, which stays until it is covered, so the blend never dims
-    const old = front;
-    back.style.zIndex = 2; old.style.zIndex = 1;
-    back.classList.add('on'); [front, back] = [back, front];
-    setTimeout(() => { if (old !== front) old.classList.remove('on'); }, fade);
+  paint();
+  if (playing || !fast) for (const k of playing ? [1, 2, 3, 4] : [1, -1]) { const y = list[idx + k]; if (y) pic(photo(y)); }
+  draw();
+}
+function paint() {
+  if (busy || !want) return;
+  const { x, fast, calm } = want; want = null; busy = true;
+  const im = pic(photo(x)), my = ++token;
+  im.ready.then(ok => {
+    // playing, each day blends slowly into the next like a time lapse (Darpan, 26 Oct 2026: 'C smooth time lapse
+    // blending while playing, YES DO IT'); scrolling by hand stays quick
+    const fade = still.matches ? 0 : calm ? 500 : playing ? Math.max(90, Math.round(900 / +$('speed').value)) : fast ? 90 : 160;
+    document.documentElement.style.setProperty('--fade', fade + 'ms');
+    facts(x);
+    back.classList.remove('on', 'rest');
+    back.nat = ok ? [im.naturalWidth, im.naturalHeight] : null; back.day = x;
+    back.style.visibility = ok ? '' : 'hidden';
+    back.src = im.src;
+    back.alt = `${era === 'psm' ? 'Pramukh Swami Maharaj' : 'Mahant Swami Maharaj'} on ${longDate(x.day)}`;
+    place(back, x, calm);
+    return (back.decode ? back.decode() : Promise.resolve()).catch(() => {}).then(() => {
+      if (my !== token) return;
+      // the new day fades in on top of the old one, which stays until it is covered, so the blend never dims
+      const old = front;
+      back.style.zIndex = 2; old.style.zIndex = 1;
+      back.classList.add('on'); [front, back] = [back, front];
+      setTimeout(() => { if (old !== front) old.classList.remove('on'); }, fade);
+      if (calm) { front.classList.add('rest'); sharpen(front, x); }
+    });
+  }).finally(() => {
+    busy = false;
+    if (want) return paint();
+    clearTimeout(settle);
+    settle = setTimeout(() => {
+      if (playing || want || front.day !== list[idx]) return;
+      front.classList.add('rest'); place(front, list[idx], true); sharpen(front, list[idx]);
+    }, 900);
   });
+}
+// resting on a day, a big screen gets R2's bigger copy (l/, up to 2560 px) when the web copy is too small for it
+function sharpen(img, x) {
+  if (!x.path || Math.max(x.w, x.h) < 1199 || !img.nat) return;
+  const fr = $('frame'), k = Math.min(fr.clientWidth / x.w, fr.clientHeight / x.h);
+  if (k * x.w * (devicePixelRatio || 1) <= img.nat[0] * 1.15) return;
+  const big = pic(r2('l', x));
+  big.ready.then(ok => {
+    if (!ok || img.day !== x || !img.classList.contains('rest') || img !== front) return;
+    img.nat = [big.naturalWidth, big.naturalHeight]; img.src = big.src; place(img, x, true);
+  });
+}
+function facts(x) {
   $('age').textContent = `Bapa aged ${ageOn(x.day)}`;
   $('date').textContent = x.to ? rangeDate(x.day, x.to) : longDate(x.day);
   $('place').textContent = x.place;
@@ -229,10 +331,52 @@ function show(i, fast) {
   $('cal').innerHTML = x.tithi ? `<b>${esc(x.tithi)}</b>${x.fest ? ' · ' + esc(x.fest) : ''}` : '';
   $('more').textContent = x.photos > 1 ? `See all ${x.photos} photos from this day` : 'See this day in Search';
   $('more').href = `/search/#date=${x.day}`;
-  $('count').textContent = `Day ${idx + 1} of ${list.length} with a close darshan`;
-  $('days').value = idx;
-  for (const k of [1, 2, 3, -1, -2]) { const y = list[idx + k]; if (y) new Image().src = photo(y); }
-  draw();
+  $('count').textContent = `Day ${list.indexOf(x) + 1} of ${list.length} with a close darshan`;
+}
+
+// Each year opens on its clearest close up of him looking straight at the camera (the day scored best by the same
+// rules that chose every day's photo), not on its first day, with a short card saying what the year holds
+// (Darpan, 28 Oct 2026: 'I don't like the first picture that appears when I select a year').
+function yearsOf(l) {
+  const m = new Map();
+  l.forEach((x, i) => { const b = m.get(x.y); if (b === undefined || x.rank > l[b].rank) m.set(x.y, i); });
+  return m;
+}
+function goYear(y) {
+  const i = years.get(y);
+  if (i === undefined) return;
+  stop();
+  const a = Date.UTC(y, 0, 1) / DAYMS;
+  zoomTo(368, a + 182);
+  intro(y);
+  show(i, false, true);
+}
+function stepYear(d) {
+  const ys = [...years.keys()], at = ys.indexOf(list[idx].y);
+  if (ys[at + d] !== undefined) goYear(ys[at + d]);
+}
+function intro(y) {
+  const xs = list.filter(x => x.y === y), n = new Map();
+  for (const x of xs) if (x.place) n.set(x.place, (n.get(x.place) || 0) + 1);
+  const a0 = ageOn(xs[0].day), a1 = ageOn(xs[xs.length - 1].day);
+  $('iy').textContent = y;
+  $('ia').textContent = a0 === a1 ? `Bapa aged ${a0}` : `Bapa aged ${a0} to ${a1}`;
+  $('in').textContent = `${xs.length} ${xs.length === 1 ? 'day' : 'days'} of close darshan`;
+  $('ip').textContent = [...n].sort((a, b) => b[1] - a[1]).slice(0, 3).map(p => p[0]).join(' · ');
+  $('intro').classList.add('on'); introOn = true;
+  clearTimeout(intro.t); intro.t = setTimeout(hideIntro, 1900);
+}
+function hideIntro() { clearTimeout(intro.t); $('intro').classList.remove('on'); introOn = false; }
+function markYear(y) {
+  if (y === shownYear) return;
+  shownYear = y;
+  for (const b of $('years').children) {
+    const on = +b.dataset.y === y;
+    b.setAttribute('aria-pressed', on);
+    if (on) { const l = $('years'), r = b.offsetLeft - l.offsetLeft; if (r < l.scrollLeft || r + b.offsetWidth > l.scrollLeft + l.clientWidth) l.scrollTo({ left: r - (l.clientWidth - b.offsetWidth) / 2, behavior: still.matches ? 'auto' : 'smooth' }); }
+  }
+  const ys = [...years.keys()];
+  $('yPrev').disabled = ys[0] === y; $('yNext').disabled = ys[ys.length - 1] === y;
 }
 function esc(s) { return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
 
@@ -336,7 +480,13 @@ function setEra(e) {
   ppd = 0; clampView(); center = list.length ? list[0].t : 0; clampView();
   front.classList.remove('on'); back.classList.remove('on');
   $('days').max = Math.max(0, list.length - 1);
-  show(0);
+  years = yearsOf(list); shownYear = 0;
+  $('years').replaceChildren(...[...years.keys()].map(y => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'yr'; b.dataset.y = y; b.textContent = y; b.onclick = () => goYear(y);
+    return b;
+  }));
+  if (list.length) goYear(list[0].y);
   try { history.replaceState(null, '', '#' + e); } catch (_) {}
 }
 
@@ -351,6 +501,7 @@ function zoomBy(k, at) {
 // dragging, scrolling and pinching the strip
 const ptrs = new Map(); let dragged = 0, pinch = 0, downX = 0;
 cv.addEventListener('pointerdown', e => {
+  if (e.isPrimary) ptrs.clear();   // a finger lifted off the edge of the screen never says so: never let it count as a second finger
   cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, e.clientX); dragged = 0; downX = e.clientX;
   if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.abs(a - b); }
   stop(); cv.classList.add('drag');
@@ -372,6 +523,7 @@ function up(e) {
   if (dragged < 5 && Math.abs(e.clientX - downX) < 5 && e.type === 'pointerup') tap(e);
 }
 cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+cv.addEventListener('lostpointercapture', e => { if (ptrs.has(e.pointerId)) up(e); });
 cv.addEventListener('wheel', e => {
   e.preventDefault(); stop();
   const r = cv.getBoundingClientRect();
@@ -382,17 +534,19 @@ cv.addEventListener('wheel', e => {
 function tap(e) {
   const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
   const t = center + (x - W() / 2) / ppd, d = dOf(t), Y = d.getUTCFullYear(), M = d.getUTCMonth();
-  if (y < 18) { const a = Date.UTC(Y, 0, 1) / DAYMS; zoomTo(368, a + 182); show(nearest(Math.max(a, list[0].t))); return; }
+  if (y < 18) { if (years.has(Y)) goYear(Y); else { zoomTo(368, Date.UTC(Y, 0, 1) / DAYMS + 182); show(nearest(t)); } return; }
   if (y < 33 && 30 * ppd > 14) { const a = Date.UTC(Y, M, 1) / DAYMS; zoomTo(33, a + 15); show(nearest(a + .5)); return; }
   show(nearest(t)); follow(); draw();
 }
 cv.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); stop(); show(idx + (e.key === 'ArrowRight' ? 1 : -1)); follow(); draw(); }
   if (e.key === ' ') { e.preventDefault(); toggle(); }
+  if (e.key === 'PageUp' || e.key === 'PageDown') { e.preventDefault(); stepYear(e.key === 'PageDown' ? 1 : -1); }
 });
 document.addEventListener('keydown', e => {
   if (e.target === cv || e.target.closest('button,select')) return;
   if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { stop(); show(idx + (e.key === 'ArrowRight' ? 1 : -1)); follow(); draw(); }
+  if (e.key === 'PageUp' || e.key === 'PageDown') { e.preventDefault(); stepYear(e.key === 'PageDown' ? 1 : -1); }
 });
 
 // playing through the days like a flip book
@@ -406,9 +560,9 @@ function start() {
 }
 function stop() {
   if (!playing) return;
-  clearInterval(playing); playing = null; $('play').textContent = '▶ Play';
+  clearInterval(playing); playing = null; $('play').textContent = '▶ Play'; $('play').setAttribute('aria-pressed', 'false');
   clearTimeout(settle);
-  settle = setTimeout(() => { if (!playing && list[idx]) { front.classList.add('rest'); place(front, list[idx], true); } }, 900);
+  settle = setTimeout(() => { if (!playing && !busy && front.day === list[idx]) { front.classList.add('rest'); place(front, list[idx], true); sharpen(front, list[idx]); } }, 900);
 }
 $('play').onclick = toggle;
 $('speed').oninput = () => { $('speedVal').textContent = `${$('speed').value} a second`; if (playing) { stop(); start(); } };
@@ -420,6 +574,17 @@ $('frame').addEventListener('wheel', e => {
   const n = Math.trunc(roll / 40);
   if (n) { roll -= n * 40; show(idx + n, true); follow(); draw(); }
 }, { passive: false });
+// on a phone, sliding a finger across the photo moves through the days too
+let swipe = null;
+$('frame').addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; stop(); swipe = { x: e.clientX, n: 0 }; $('frame').setPointerCapture(e.pointerId); });
+$('frame').addEventListener('pointermove', e => {
+  if (!swipe) return;
+  const n = Math.trunc((swipe.x - e.clientX) / 24);
+  if (n !== swipe.n) { show(idx + n - swipe.n, true); swipe.n = n; follow(); draw(); }
+});
+for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) $('frame').addEventListener(t, () => { swipe = null; });
+$('yPrev').onclick = () => stepYear(-1);
+$('yNext').onclick = () => stepYear(1);
 $('zAll').onclick = () => { ppd = 0; clampView(); draw(); };
 $('zYear').onclick = () => zoomTo(368, list[idx].t);
 $('zMonth').onclick = () => zoomTo(33, list[idx].t);
@@ -433,6 +598,6 @@ function fit() {
   $('frame').style.width = fw + 'px'; $('frame').style.height = fw + 'px';
 }
 fit();
-const ro = new ResizeObserver(() => { fit(); clampView(); draw(); if (list[idx]) place(front, list[idx], front.classList.contains('rest')); }); ro.observe($('slot')); ro.observe($('tl'));
+const ro = new ResizeObserver(() => { fit(); clampView(); draw(); if (front.day) place(front, front.day, front.classList.contains('rest')); }); ro.observe($('slot')); ro.observe($('tl'));
 setEra(location.hash === '#msm' ? 'msm' : 'psm');
 </script>

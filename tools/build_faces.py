@@ -14,6 +14,12 @@ import argparse, json, os, shutil, sqlite3
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+def opener(x):
+    """How good this day is to open its year with (Darpan, 28 Oct 2026: not the year's first day): the same score that
+    chose the day's photo (close, straight at the camera, sharp), plus a little for a big, sharp face."""
+    return round(x.get('score', 0) + .5 * min(x.get('span', 0), 200) / 200 + .3 * min(x.get('sharp', 0), 600) / 600, 3)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--faces', default='faces')
@@ -31,7 +37,8 @@ def main():
             continue
         tithi, fest = cal.get(x['day'], ('', ''))
         rows.append([x['day'], x.get('to') or '', x['place'].replace(', India', ''), x['caption'], x['photos'],
-                     x['guru'], tithi or '', fest or ''] + x['eyes'] + [x['span'], x['w'], x['h'], f"{x['album']}/{x['file']}" if m else ''])
+                     x['guru'], tithi or '', fest or ''] + x['eyes'] + [x['span'], x['w'], x['h'], f"{x['album']}/{x['file']}" if m else '',
+                     opener(x)])
     for d in 'fp':
         os.makedirs(os.path.join(a.out, d), exist_ok=True)
         for r in rows:
