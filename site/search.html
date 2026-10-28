@@ -148,6 +148,35 @@ body { background: linear-gradient(#efdcd2, #f3e5d8) fixed; }
 .day-head .tithi { color: #d9a441; }
 .day-head .about, .day-head .only { color: rgba(250, 241, 222, .75); }
 .grid { row-gap: 22px; }
+/* Compact results (Darpan, 28 Oct 2026: "the red box shouldn't be so large", and a day with one or two photos should
+   not take a whole line). Each day is its own soft box: a slim maroon ribbon on top, its photos under it, and the box
+   only as wide as its photos, so small days sit side by side. A thin gold line marks each new month. */
+.days { --cw: 190px; --cg: 18px; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 18px 16px; padding-block: 14px 24px; }
+.days .day { --w: calc(var(--n) * var(--cw) + (var(--n) - 1) * var(--cg) + 24px); flex: 1 1 var(--w); min-width: 0;
+  max-width: min(100%, calc(var(--w) + var(--cw) * .8)); background: rgba(255, 250, 242, .42); border: 1px solid rgba(110, 20, 36, .12); border-radius: 12px; }
+.days .pics { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--cw), 1fr)); gap: var(--cg); padding: 14px 12px 16px; align-items: start; }
+.days .day-head { margin: 0; padding: 7px 12px; border-radius: 11px 11px 0 0; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 3px 12px; box-shadow: none; }
+.days .day-head .when { font-size: clamp(17px, 1.5vw, 20px); }
+.days .day-head .when::before, .days .day-head .when::after { margin: 0 .55em; }
+.days .day-head .fest { font-size: 15px; }
+.days .day-head .mandir { padding: 3px 10px 2px; }
+.days .day-head .about { flex-basis: 100%; font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.days .day-head .about { order: 6; }
+.days .day-head .only { order: 7; font-size: 14px; }
+.days .day-head .bd-share { margin: 0; padding: 3px 9px; }
+.days .day-head .bd-share span { font-size: 10.5px; }
+.month-line { flex-basis: 100%; display: flex; align-items: center; gap: 14px; margin-top: 8px; font: 700 12px var(--sans); letter-spacing: .26em; text-transform: uppercase; color: var(--maroon); }
+.month-line::before, .month-line::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--gold)); }
+.month-line::after { background: linear-gradient(90deg, var(--gold), transparent); }
+@media (max-width: 520px) {
+  .days { gap: 12px 10px; }
+  .days .day { flex: 1 1 100%; max-width: 100%; }
+  .days .day.one { flex: 1 1 calc(50% - 5px); max-width: calc(50% - 5px); }
+  .days .pics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 10px; padding: 10px 8px 12px; }
+  .days .day.one .pics { grid-template-columns: minmax(0, 1fr); }
+  .days .day-head { padding: 6px 8px; }
+  .days .day.one .day-head .when::before, .days .day.one .day-head .when::after { display: none; }
+}
 /* Calmer search (Darpan picked look 3, 25 Oct 2026): every filter, word and question stays on show, but each group has
    its own gentle look. Filters are underlined fields, the words are soft gold pills in two even rows, the questions are
    soft rose boxes. The intro is upright and short, the photo count in gold, and no "Darshan through the years" line. */
@@ -279,6 +308,7 @@ const $ = id => document.getElementById(id);
 // and BAPS calendar days that have a festival or note (kind 'day'). Every item also carries its date's calendar
 // words, so "Diwali" finds every photo taken on a Diwali day. Results are shown grouped by date under the calendar.
 let items = [], cal = {}, mandirDay = {}, loaded = 0, total = 0, hits = [], shown = 0, lastDate = '';
+let perDay = new Map(), monthLines = false;   // photos and stories on each date; a line for each month when a month has more than one date
 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 function niceDate(d) {
@@ -378,8 +408,10 @@ function render(byYear, want) {
   const nDates = new Set(hits.map(h => h.d)).size;
   $('count').innerHTML = picMode ? `<b>${nPhotos.toLocaleString()}</b> photos most like your picture, closest first` + (loaded < total ? ' (still loading)' : '') : `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'} and <b>${nPosts.toLocaleString()}</b> On this day stor${nPosts === 1 ? 'y' : 'ies'} on <b>${nDates.toLocaleString()}</b> date${nDates === 1 ? '' : 's'}`
     + (loaded < total ? ' (still loading)' : '');
-  $('results').innerHTML = '<div class="grid" id="cards"></div>';
+  $('results').innerHTML = `<div class="${picMode ? 'grid' : 'days'}" id="cards"></div>`;
   shown = 0; lastDate = '';
+  perDay = new Map(); hits.forEach(h => { if (h.kind !== 'day') perDay.set(h.d, (perDay.get(h.d) || 0) + 1); });
+  monthLines = nDates > new Set(hits.map(h => h.d.slice(0, 7))).size;
   more(want);
 }
 
@@ -419,16 +451,21 @@ function postCard(p, want, i) {
 var lastWant = [];
 function more(want = lastWant) {
   const box = $('cards'), next = hits.slice(shown, shown + PAGE);
-  let html = '';
+  let html = '', carry = '', open = false;   // carry: more photos of the day the last batch ended on, for its own box
   next.forEach((p, i) => {
-    if (p.d !== lastDate && !picMode) {
-      lastDate = p.d;
-      const at = shown + i, onlyCal = p.kind === 'day' && !hits.slice(Math.max(0, at - 50), at + 50).some(h => h.d === p.d && h.kind !== 'day');
-      html += dayHead(p.d, want, onlyCal);
+    const card = p.kind === 'photo' ? photoCard(p, want, shown + i) : p.kind === 'post' ? postCard(p, want, shown + i) : '';
+    if (picMode) { html += card; return; }
+    if (p.d !== lastDate) {
+      if (open) html += '</div></section>';
+      if (monthLines && p.d.slice(0, 7) !== lastDate.slice(0, 7)) html += `<div class="month-line">${p.d.length >= 7 ? MONTHS[+p.d.slice(5, 7) - 1] + ' ' : ''}${p.d.slice(0, 4)}</div>`;
+      lastDate = p.d; open = true;
+      const n = perDay.get(p.d) || 0;
+      html += `<section class="day${n === 1 ? ' one' : ''}" style="--n:${Math.max(1, n)}">${dayHead(p.d, want, !n)}<div class="pics">`;
     }
-    if (p.kind === 'photo') html += photoCard(p, want, shown + i);
-    else if (p.kind === 'post') html += postCard(p, want, shown + i);
+    if (open) html += card; else carry += card;
   });
+  if (open) html += '</div></section>';
+  if (carry) box.lastElementChild.querySelector('.pics').insertAdjacentHTML('beforeend', carry);
   box.insertAdjacentHTML('beforeend', html);
   shown += next.length;
   $('more').hidden = shown >= hits.length;
