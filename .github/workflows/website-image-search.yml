@@ -6,7 +6,7 @@ name: website-image-search
 on:
   push:
     branches: ['claude/project-thread-hi1iz6']
-    paths: ['.github/workflows/website-image-search.yml', 'tools/image_index.py']
+    paths: ['.github/workflows/website-image-search.yml', 'tools/image_index.py', 'tools/image_mockup_keys.txt']
   workflow_dispatch:
     inputs:
       model:
@@ -109,3 +109,13 @@ jobs:
           ls -la image
           tar -czf image-search.tgz image
           gh release upload image-search image-search.tgz --clobber
+  # the small photos a mockup of Search by photo shows (tools/image_mockup_keys.txt, ALBUM/FILE per line), from R2
+  mockup:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p mock
+          while read -r k; do mkdir -p "mock/$(dirname "$k")"; curl -sf "https://photos.bapas-diary.com/s/$k" -o "mock/$k" || echo "missing $k"; sleep 0.2; done < tools/image_mockup_keys.txt
+          tar -czf mockup-photos.tgz -C mock . && gh release upload image-search mockup-photos.tgz --clobber
