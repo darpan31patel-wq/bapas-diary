@@ -183,3 +183,113 @@
     box-shadow: 0 0 calc(18px * var(--q)) calc(3px * var(--q)) rgba(255, 206, 110, calc(.38 * var(--q))); transition: filter .5s ease, box-shadow .5s ease; }
   .ph-picking .ph-day.lit, .ph-day.want { filter: none; }
 }
+
+/* Through the years and Travels, full screen on phones (Darpan, 28 Oct 2026: "B, Full screen"). Goes with yearsPage()
+   and travelsPage() in phone.js: the photo or the globe fills the screen, the words float over a soft shadow at the
+   bottom, both gurus side by side in one slim switch, the year and place the biggest words, the gold See more the only
+   extra button. */
+@media (max-width: 760px) {
+  html.ph-years-page body { padding: 0 0 var(--ph-bar); }
+  html.ph-years-page .ph-top { background: linear-gradient(rgba(12,9,7,.75), rgba(12,9,7,0)); }
+  html.ph-years-page .wrap { position: relative; gap: 0; }
+  html.ph-years-page header { display: none; }   /* the Years tab already says it */
+  /* both gurus in one switch, side by side, equal, floating over the top of the photo */
+  html.ph-years-page .top { position: absolute; z-index: 5; top: calc(52px + env(safe-area-inset-top, 0px)); left: 16px; right: 16px; display: flex; gap: 0; padding: 3px; border-radius: 999px;
+    background: rgba(21,16,13,.55); border: 1px solid rgba(244,233,220,.18); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+  html.ph-years-page .tab { flex: 1 1 0; min-width: 0; align-items: center; text-align: center; border: 0; border-radius: 999px; padding: 7px 4px; background: none; }
+  html.ph-years-page #tab-msm { align-items: center; text-align: center; }
+  html.ph-years-page .tab .who { font-size: 13.5px; white-space: nowrap; }
+  html.ph-years-page .tab .yrs { display: none; }
+  html.ph-years-page .tab[aria-selected="true"] { background: var(--saffron); color: var(--bg); }
+  /* the photo fills the screen, a soft blur of itself behind it when the whole photo is shown */
+  html.ph-years-page .stage, html.ph-years-page .slot { position: absolute; inset: 0; display: block; }
+  html.ph-years-page .frame { background: #0c0907; }
+  html.ph-years-page .frame::before { content: ""; position: absolute; inset: -30px; background: var(--pr-photo) center / cover; filter: blur(22px) brightness(.4); }
+  html.ph-years-page .frame img { box-shadow: none; }
+  html.ph-years-page .stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 300px; z-index: 3; pointer-events: none;
+    background: linear-gradient(rgba(12,9,7,0), rgba(12,9,7,.78) 45%, rgba(12,9,7,.94)); }
+  /* the words: year and place first and biggest, then the day and his age, then what is happening */
+  html.ph-years-page .info { position: absolute; z-index: 4; left: 0; right: 0; gap: 0; padding: 0 16px; text-align: left; align-items: stretch; }
+  html.ph-years-page .info.l { bottom: 136px; display: flex; flex-direction: row; flex-wrap: wrap; align-items: baseline; column-gap: 10px; }
+  html.ph-years-page .info.r { bottom: 66px; padding-right: 128px; }
+  html.ph-years-page .pr-yp { flex: 1 0 100%; display: flex; align-items: baseline; gap: 10px; min-width: 0; font-family: 'Diary Lora', Lora, Georgia, serif; color: var(--ink); line-height: 1.1; }
+  html.ph-years-page .pr-y { font-size: 40px; font-weight: 600; color: var(--saffron); font-variant-numeric: tabular-nums; }
+  html.ph-years-page .pr-p { font-size: 26px; font-weight: 500; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  html.ph-years-page .place, html.ph-years-page .count { display: none; }
+  html.ph-years-page .date { order: 2; margin: 2px 0 0; font: 400 13.5px/1.4 'Diary Poppins', Poppins, sans-serif !important; color: #d8c6b2; }
+  html.ph-years-page .age { order: 3; font-size: 11px; letter-spacing: .12em; }
+  html.ph-years-page .cap { font-size: 14.5px; line-height: 1.35; margin-top: 6px; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+  html.ph-years-page .cal { font-size: 12.5px; margin-top: 2px; color: #d8c6b2; }
+  html.ph-years-page .more { position: absolute; right: 16px; top: 6px; color: var(--bg); background: linear-gradient(#ffd68a, var(--saffron)); border: 0; border-radius: 999px; font-size: 13.5px; padding: 9px 16px; box-shadow: 0 4px 14px rgba(236,138,45,.3); }
+  /* the controls: Play, and the years as one bar you slide along, the knob moving through the days of its year */
+  html.ph-years-page .scrub { position: absolute; z-index: 4; left: 0; right: 0; bottom: 0; padding: 10px 16px 6px; }
+  html.ph-years-page .bar { flex-wrap: nowrap; gap: 12px; align-items: flex-end; }
+  html.ph-years-page .btn.play { flex: none; min-width: 0; width: 46px; height: 46px; padding: 0 0 0 2px; border-radius: 50%; display: grid; place-items: center; background: var(--saffron); border: 0; color: var(--bg); }
+  html.ph-years-page .pr-track { flex: 1; min-width: 0; position: relative; height: 46px; touch-action: none; cursor: pointer; }
+  html.ph-years-page .pr-track:focus-visible { outline: 2px solid var(--saffron); outline-offset: 2px; border-radius: 8px; }
+  html.ph-years-page .pr-track .years { position: absolute; inset: 0; pointer-events: none; }
+  html.ph-years-page .years .list { gap: 3px; padding: 0; height: 100%; align-items: stretch; }
+  html.ph-years-page .yr { flex: 1 1 0; position: relative; border: 0; background: none; border-radius: 0; padding: 0; overflow: visible; color: var(--muted); font-size: 11px; }
+  html.ph-years-page .yr::before { content: ""; position: absolute; left: 0; right: 0; top: 13px; height: 6px; border-radius: 3px; background: var(--line); }
+  html.ph-years-page .yr.past { background: none; }
+  html.ph-years-page .yr.past::before { background: var(--saffron); }
+  html.ph-years-page .yr[aria-pressed="true"] { background: none; color: var(--ink); font-weight: 600; font-size: 12.5px; z-index: 2; text-shadow: none; }
+  html.ph-years-page .yr[aria-pressed="true"]::before { background: linear-gradient(90deg, var(--saffron) 0 var(--p), var(--line) var(--p) 100%); }
+  html.ph-years-page .yr > span { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); white-space: nowrap; }
+  html.ph-years-page .yr .s { display: none; }
+  html.ph-years-page .yr .f { display: inline; }
+  html.ph-years-page .yr:not(:first-child):not(:last-child):not([aria-pressed="true"]) > span { opacity: 0; }
+  html.ph-years-page .yr:first-child > span { left: 0; transform: none; }
+  html.ph-years-page .yr:last-child > span { left: auto; right: 0; transform: none; }
+  html.ph-years-page .pr-knob { position: absolute; z-index: 3; top: 5px; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%; border: 3px solid var(--ink); background: var(--saffron); box-shadow: 0 2px 8px rgba(0,0,0,.6); pointer-events: none; transition: left .12s linear; }
+
+  /* Travels: Journey | Places small and quiet, both gurus in one slim switch under it */
+  html.ph-travels .views { top: calc(50px + env(safe-area-inset-top, 0px)); padding: 3px; gap: 2px; background: rgba(13,19,48,.5); }
+  html.ph-travels .views a { padding: 4px 16px; font-size: 13px; }
+  html.ph-travels .eras { position: fixed; z-index: 6; top: calc(88px + env(safe-area-inset-top, 0px)); left: 16px; right: 16px; display: flex; padding: 3px; border-radius: 999px;
+    background: rgba(13,19,48,.5); border: 1px solid rgba(169,177,214,.22); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  html.ph-travels .era { position: static; flex: 1 1 0; width: auto; min-height: 0; max-width: none; border: 0; border-radius: 999px; padding: 7px 4px; background: none; align-items: center; text-align: center; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  html.ph-travels #era-msm { align-items: center; text-align: center; }
+  html.ph-travels .era .who { font-size: 13.5px; white-space: nowrap; }
+  html.ph-travels .era .yrs { display: none; }
+  html.ph-travels .era[aria-selected="true"] { background: var(--gold); color: var(--night); }
+  /* the stop floats over the globe with no box: close up, the year and place biggest, In or Flying to with the dates, See more */
+  html.ph-travels .story { left: 0; right: 0; bottom: calc(112px + var(--ph-bar)); z-index: 6; width: auto; padding: 0 16px; transform: none;
+    background: none; border: 0; border-radius: 0; -webkit-backdrop-filter: none; backdrop-filter: none; text-shadow: 0 1px 8px rgba(0,0,0,.6);
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "pic yp yp" "pic sub more"; row-gap: 4px; column-gap: 12px; align-items: center; }
+  html.ph-travels .story .head, html.ph-travels .story .where, html.ph-travels .story .cap, html.ph-travels .story .stats, html.ph-travels .story .next { display: none; }
+  html.ph-travels .pic { grid-area: pic; float: none; width: 72px; height: 72px; margin: 0; border-radius: 50%; box-shadow: 0 0 0 2px var(--gold), 0 6px 18px rgba(0,0,0,.45); }
+  html.ph-travels .pic[hidden] { display: block !important; background: radial-gradient(circle at 50% 40%, #2a3770, #141c44); }
+  html.ph-travels .pr-yp { grid-area: yp; align-self: end; display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+  html.ph-travels .year { font-size: 32px; line-height: 1.1; }
+  html.ph-travels .place { margin: 0; font-size: 26px; line-height: 1.2; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  html.ph-travels .pr-sub { grid-area: sub; align-self: start; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  html.ph-travels .status { display: inline; margin: 0 6px 0 0; font-size: 10.5px; letter-spacing: .12em; }
+  html.ph-travels .story .tn { grid-area: more; align-self: center; margin: 0; padding: 7px 14px; border: 0; border-radius: 999px; background: linear-gradient(#ffe08f, var(--gold)); color: var(--night);
+    font-weight: 600; letter-spacing: 0; text-transform: none; font-size: 13.5px; text-shadow: none; }
+  /* the controls: the years as one bar, then Play beside the months, the month names under the line so the knob never hides them */
+  html.ph-travels .rail { padding: 150px 16px 8px; gap: 6px; background: linear-gradient(rgba(13,19,48,0), rgba(13,19,48,.85) 45%, var(--night) 70%); pointer-events: none; }
+  html.ph-travels .rail > * { pointer-events: auto; }
+  html.ph-travels .yrs { gap: 1px; height: 30px; }
+  html.ph-travels .yr, html.ph-travels .yr.other:not(.on), html.ph-travels .yr.on { height: 30px; font: 500 11px var(--body); color: var(--mist); }
+  html.ph-travels .yr::after { left: 0; right: 0; width: auto; margin: 0; bottom: auto; top: 4px; height: 6px; border-radius: 0; background: rgba(169,177,214,.28); opacity: 1; }
+  html.ph-travels .yr:first-child::after { border-radius: 3px 0 0 3px; }
+  html.ph-travels .yr:last-child::after { border-radius: 0 3px 3px 0; }
+  html.ph-travels .yr.other::after { background: rgba(169,177,214,.12); }
+  html.ph-travels .yr.done::after { background: var(--saffron); }
+  html.ph-travels .yr.on::after { height: 6px; background: linear-gradient(90deg, var(--saffron) 0 var(--fill), rgba(169,177,214,.28) var(--fill) 100%); }
+  html.ph-travels .yr .full, html.ph-travels .yr.lab .full { display: none; top: 13px; }
+  html.ph-travels .yr:first-child .full, html.ph-travels .yr:last-child .full { display: block; color: var(--mist); font-weight: 400; }
+  html.ph-travels .yr.on .full { display: block; border: 0; background: var(--night); padding: 0 4px; color: var(--ink); font-weight: 600; font-size: 12.5px; }
+  html.ph-travels .row { flex-wrap: nowrap; gap: 10px; }
+  html.ph-travels .ctrls { gap: 6px; }
+  html.ph-travels .play { width: 46px; height: 46px; }
+  html.ph-travels .speed { height: 32px; min-width: 40px; font-size: 13px; }
+  html.ph-travels .track { order: 0; flex: 1 1 auto; height: 44px; }
+  html.ph-travels .bar, html.ph-travels .fill { top: 9px; height: 6px; }
+  html.ph-travels .pins i { top: 9px; width: 4px; height: 6px; margin-left: -2px; border-radius: 1px; opacity: .45; }
+  html.ph-travels .dot { top: 3px; width: 18px; height: 18px; margin-left: -9px; border-width: 3px; box-shadow: 0 0 0 4px rgba(242,181,68,.25); }
+  html.ph-travels .mo, html.ph-travels .mo.jan { top: 22px; height: 14px; line-height: 14px; font-size: 11px; color: var(--mist); border-left: 1px solid var(--line); }
+  html.ph-travels .mo.jan { border-left: 2px solid var(--gold); color: var(--gold); }
+  html.ph-travels .mo.jan b { display: none; }
+}
