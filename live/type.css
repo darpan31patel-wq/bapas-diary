@@ -33,3 +33,6 @@ nav.site-menu a, .gu-switch .e,                                                 
 figcaption, p.rubric, .page h2, .weekly-signup button,
 .kicker, a.main, a.soft
 { font-family: var(--poppins) !important; }
+/* Poppins is a little wider than Arimo: on phones the bottom tabs lose their spacing so all seven still fit */
+@media (max-width: 760px) { nav.site-menu a { letter-spacing: 0 !important; } }
+@media (min-width: 761px) and (max-width: 1199px) { nav.site-menu a { letter-spacing: .1em; } }
