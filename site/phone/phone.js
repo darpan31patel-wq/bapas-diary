@@ -34,7 +34,86 @@
     if (path.startsWith('/through-the-years')) root.classList.add('ph-years-page');
     if (document.getElementById('cards') && document.getElementById('board')) today();
     if (path.startsWith('/calendar')) calendar();
+    if (path.startsWith('/through-the-years') && document.getElementById('frame')) yearsPage();
+    if (path === '/travels/' && document.querySelector('.story')) travelsPage();
   });
+
+  /* ---------- Through the years, full screen (Darpan, 28 Oct 2026: "B, Full screen") ----------
+     The photo fills the screen, blurred copy of itself behind it, the words float over a soft shadow at the bottom.
+     Both gurus in one slim switch. The years row is the day scroller itself: every year the same width, the knob
+     moves through the days of the year it is in, a tap on a year opens it on its best darshan like before.
+     Uses the page's own functions (show, facts, setEra, goYear, place, fit) and wraps them. */
+  function yearsPage() {
+    const $ = id => document.getElementById(id);
+    const yp = el('div', 'pr-yp', '<span class="pr-y"></span><span class="pr-p"></span>');
+    document.querySelector('.info.l').prepend(yp);
+    const days = $('days'), yrs = document.querySelector('.years');
+    const track = el('div', 'pr-track'), knob = el('i', 'pr-knob');
+    days.before(track); days.hidden = true; track.append(yrs, knob);
+    track.setAttribute('role', 'slider'); track.setAttribute('aria-label', 'Move through the days'); track.tabIndex = 0;
+    let spans = [];
+    const ys = () => [...years.keys()];
+    function where() {
+      const x = list[idx]; if (!x) return;
+      const k = ys().indexOf(x.y), sp = spans[k]; if (!sp) return;
+      const f = sp[1] > sp[0] ? (idx - sp[0]) / (sp[1] - sp[0]) : .5;
+      knob.style.left = (k + f * .999) / spans.length * 100 + '%';
+      track.setAttribute('aria-valuetext', $('date').textContent);
+    }
+    function at(e) {
+      const r = track.getBoundingClientRect(), u = Math.max(0, Math.min(.9999, (e.clientX - r.left) / r.width));
+      const k = Math.floor(u * spans.length), f = u * spans.length - k, sp = spans[k];
+      stop(); show(Math.round(sp[0] + f * (sp[1] - sp[0])), true);
+    }
+    let down = null;   // a tap opens that year on its best darshan; sliding moves through the days
+    track.addEventListener('pointerdown', e => { down = { x: e.clientX, moved: false }; track.setPointerCapture(e.pointerId); });
+    track.addEventListener('pointermove', e => { if (!down) return; if (Math.abs(e.clientX - down.x) > 6) down.moved = true; if (down.moved) at(e); });
+    track.addEventListener('pointerup', e => {
+      if (down && !down.moved) { const r = track.getBoundingClientRect(); goYear(ys()[Math.min(spans.length - 1, Math.floor((e.clientX - r.left) / r.width * spans.length))]); }
+      down = null;
+    });
+    track.addEventListener('pointercancel', () => { down = null; });
+    track.addEventListener('keydown', e => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); stop(); show(idx + (e.key === 'ArrowRight' ? 1 : -1)); } });
+    const show0 = show;
+    window.show = function (i, fast, calm) { show0(i, fast, calm); where(); };
+    const facts0 = facts;
+    window.facts = function (x) {
+      facts0(x);
+      root.style.setProperty('--pr-photo', `url("${photo(x)}")`);
+      yp.firstChild.textContent = x.y; yp.lastChild.textContent = x.place;
+      $('date').textContent = (x.to ? rangeDate(x.day, x.to) : longDate(x.day)).replace(/^\w+day /, '');
+    };
+    const setEra0 = setEra;
+    window.setEra = function (e) {
+      setEra0(e);
+      spans = ys().map(y => { let a = -1, b = -1; list.forEach((x, i) => { if (x.y === y) { if (a < 0) a = i; b = i; } }); return [a, b]; });
+      where();
+    };
+    for (const b of document.querySelectorAll('.tab')) b.onclick = () => setEra(b.dataset.era);
+    const PLAY = '<svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true"><path d="M4 2l12 7-12 7z" fill="currentColor"/></svg>';
+    const PAUSE = '<svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true"><path d="M3 2h4v14H3zM11 2h4v14h-4z" fill="currentColor"/></svg>';
+    const pb = $('play'); pb.innerHTML = PLAY; pb.setAttribute('aria-label', 'Play');
+    const start0 = start, stop0 = stop;
+    window.start = function () { start0(); pb.innerHTML = PAUSE; pb.setAttribute('aria-label', 'Pause'); };
+    window.stop = function () { const was = playing; stop0(); if (was) { pb.innerHTML = PLAY; pb.setAttribute('aria-label', 'Play'); } };
+    pb.onclick = () => playing ? stop() : start();
+    // the photo takes the whole screen between the top strip and the tab bar, not a square with gaps either side
+    window.fit = function () { const sl = $('slot'); $('frame').style.width = sl.clientWidth + 'px'; $('frame').style.height = sl.clientHeight + 'px'; };
+    setEra(era);
+    requestAnimationFrame(() => { fit(); if (front.day) place(front, front.day, front.classList.contains('rest')); });
+  }
+
+  /* ---------- Travels, full screen (Darpan, 28 Oct 2026: "B, Full screen") ----------
+     The globe fills the screen; the stop floats over it with no box: close up, the year and place on one line,
+     In or Flying to with the dates, and the gold See more. */
+  function travelsPage() {
+    const $ = id => document.getElementById(id);
+    const story = document.querySelector('.story');
+    const yp = el('div', 'pr-yp'); yp.append($('year'), $('place'));
+    const sub = $('country').parentNode; sub.classList.add('pr-sub'); sub.prepend($('status'));
+    story.prepend($('pic'));
+    story.append(yp, sub, $('more'));
+  }
 
   /* ---------- Today ---------- */
   function today() {
