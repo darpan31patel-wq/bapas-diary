@@ -88,6 +88,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 @property --fill { syntax: '<percentage>'; inherits: true; initial-value: 0%; }
 .yr.on, .yr.on .full { transition: --fill .35s ease-out; }
 .yr.on { background: linear-gradient(90deg, var(--saffron) 0 var(--fill), rgba(13,19,48,.7) var(--fill) 100%); border-color: var(--saffron); color: var(--ink); font-weight: 600; text-shadow: 0 1px 3px rgba(0,0,0,.65); }
+.yr.done { background: var(--saffron); border-color: var(--saffron); color: var(--ink); text-shadow: 0 1px 3px rgba(0,0,0,.65); }
 .yr.other:not(.on) { color: var(--mist); background: rgba(13,19,48,.4); border-style: dashed; }   /* the other guru's journey */
 .yr .short { display: none; }
 @media (max-width: 1280px) { .yr { font-size: 16px; border-radius: 8px; } }
@@ -142,6 +143,8 @@ body.dragging { -webkit-user-select: none; user-select: none; }
   .yr, .yr.other:not(.on), .yr.on { position: relative; height: 40px; border: 0; border-radius: 0; background: none; overflow: visible; font: 600 12px var(--body); color: var(--ink); }
   .yr::after { content: ""; position: absolute; left: 50%; bottom: 8px; width: 2px; height: 10px; margin-left: -1px; border-radius: 1px; background: var(--ink); opacity: .7; }
   .yr.other::after { background: var(--mist); opacity: .45; }
+  .yr.done, .yr.done:hover { background: none; text-shadow: none; }
+  .yr.done::after { background: var(--saffron); opacity: 1; }
   .yr .short, .yr .full { display: none; position: absolute; left: 50%; top: 2px; transform: translateX(-50%); white-space: nowrap; }
   .yr.lab .full { display: block; color: var(--mist); font-weight: 400; }
   .yr.on .full { display: block; z-index: 1; padding: 0 7px; border-radius: 6px; border: 1px solid var(--saffron); color: var(--ink); font-weight: 600;
@@ -516,7 +519,7 @@ body.dragging { -webkit-user-select: none; user-select: none; }
     if (!st.flying) {
       $('goPhotos').href = `/search/#place=${encodeURIComponent(s.p)}&from=${s.a}&to=${s.b}`;
       $('goPhotos').setAttribute('aria-label', `Photos from ${s.name}, ${fmtRange(s.a, s.b)} ${s.year}`);
-      $('goCal').href = '/calendar/#' + s.a.slice(0, 7);
+      $('goCal').href = `/calendar/#place=${encodeURIComponent(s.p)}&from=${s.a}&to=${s.b}`;   // the Calendar glows the whole stay
       $('goCal').setAttribute('aria-label', `${s.name} on the Calendar, ${MONTHS[+s.a.slice(5, 7) - 1]} ${s.year}`);
       $('picLink').href = $('goPhotos').href;
     }
@@ -573,7 +576,9 @@ body.dragging { -webkit-user-select: none; user-select: none; }
     const y = new Date(d).getUTCFullYear();
     if (y !== railYear) {
       railYear = y;
-      yearsEl.querySelectorAll('.yr').forEach(b => { const on = +b.dataset.y === y; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); if (!on) b.style.removeProperty('--fill'); });
+      // years of this journey already passed are full saffron, so the row reads as one progress bar (Darpan, 28 Oct 2026)
+      yearsEl.querySelectorAll('.yr').forEach(b => { const by = +b.dataset.y, on = by === y; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
+        b.classList.toggle('done', by < y && YEARS.includes(b.dataset.y)); if (!on) b.style.removeProperty('--fill'); });
       $('track').setAttribute('aria-valuetext', MONTHS[new Date(d).getUTCMonth()] + ' ' + y);
       railFill = -1;
     }
@@ -716,9 +721,24 @@ body.dragging { -webkit-user-select: none; user-select: none; }
   }
   let touched2 = false;   // a touch during the handover keeps the new journey paused
   ['pointerdown', 'wheel', 'keydown'].forEach(ev => addEventListener(ev, () => { if (handing) touched2 = true; }, { passive: true }));
-  addEventListener('hashchange', () => { const e = location.hash === '#msm' ? 'msm' : 'psm'; if (e !== era) setEra(e, true); });
-  setEra(location.hash === '#msm' ? 'msm' : 'psm');
-  resize(); tNow = target(); requestAnimationFrame(frame);
+  // /travels/#YYYY-MM-DD opens the journey on that day: the stop Bapa was at, or the next one after it (links from the other tabs)
+  const isDay = h => /^#\d{4}-\d{2}-\d{2}$/.test(h);
+  function goDay(d) {
+    const e = d < SPLIT ? 'psm' : 'msm';
+    if (e !== era) setEra(e, false);
+    let k = stops.findIndex(s => s.b >= d); if (k < 0) k = stops.length - 1;
+    goStop(k, false); tNow = target(); touched = true;
+    history.replaceState(null, '', '#' + d);
+  }
+  addEventListener('hashchange', () => {
+    if (isDay(location.hash)) { stopPlay(); return goDay(location.hash.slice(1)); }
+    const e = location.hash === '#msm' ? 'msm' : 'psm'; if (e !== era) setEra(e, true);
+  });
+  const startHash = location.hash;
+  setEra(startHash === '#msm' ? 'msm' : 'psm');
+  resize(); tNow = target();
+  if (isDay(startHash)) goDay(startHash.slice(1));
+  requestAnimationFrame(frame);
   // Auto play: the journey starts by itself a moment after the page opens; any touch, scroll or button pauses it
   if (!reduce) setTimeout(() => { if (!touched) startPlay(); }, 1500);
 })();
