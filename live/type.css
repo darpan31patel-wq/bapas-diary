@@ -1,0 +1,35 @@
+/* The website's two lettering choices, the same on every page (Darpan, 28 Oct 2026: "Lora can be your heading font,
+   Poppins for subtitle things, leave the other bits as they are"). Our own copies in /fonts/ (no Google link).
+   Added last in every page's <head> by tools/web_type.py, so it wins over each page's own fonts; only the font
+   changes here, never sizes, colours or places. Body text, captions and story lines keep their own fonts. */
+@font-face { font-family: "Diary Lora"; font-weight: 500; font-display: swap; src: url(/fonts/lora-latin-500-normal.woff2) format("woff2"); }
+@font-face { font-family: "Diary Lora"; font-weight: 600; font-display: swap; src: url(/fonts/lora-latin-600-normal.woff2) format("woff2"); }
+@font-face { font-family: "Diary Lora"; font-weight: 700; font-display: swap; src: url(/fonts/lora-latin-700-normal.woff2) format("woff2"); }
+@font-face { font-family: "Diary Poppins"; font-weight: 400; font-display: swap; src: url(/fonts/poppins-latin-400-normal.woff2) format("woff2"); }
+@font-face { font-family: "Diary Poppins"; font-weight: 500; font-display: swap; src: url(/fonts/poppins-latin-500-normal.woff2) format("woff2"); }
+@font-face { font-family: "Diary Poppins"; font-weight: 600; font-display: swap; src: url(/fonts/poppins-latin-600-normal.woff2) format("woff2"); }
+:root { --lora: "Diary Lora", "Diary Garamond", "EB Garamond", Georgia, serif;   /* Gujarati letters come from the families after */
+  --poppins: "Diary Poppins", "Diary Arimo", Arimo, Arial, sans-serif; }
+
+/* ---------- headings: Lora ---------- */
+h1, h2, h3,
+#title, #all-title, #picker-title, .yhead h3, #cards .yr,                               /* Today, favourites */
+#t1, .mlab, .bnum, .ph-mt b,                                                              /* Calendar */
+button.when,                                                                              /* Search */
+.who, #year, div#place, .ho-line, #tape b, .nm,                                         /* Travels, Places */
+.iy, h2.date,                                                                             /* Through the years */
+#crumb, span#place, .moment, .guru, #gap b,                                              /* Then and now */
+p.jay, #weekly-signup-h                                                                   /* About */
+{ font-family: var(--lora) !important; }
+
+/* ---------- subtitles, labels, menu and buttons: Poppins ---------- */
+nav.site-menu a, .gu-switch .e,                                                           /* the menu on every page */
+.sub, #subtitle, .pill, .caps, .yhead a, .tripnote, .pl, .fest, .rm-open, #remind button, #controls label, #all-count, .ph-hint-one,
+.wkd, #years button.yr, .ymark, .fmark, #jrow small, #play, #zl, .ph-years button, .ph-mt span, .ph-grid .wk, .ph-ymark, .ph-fmark, .ph-ftag,
+#sub, .flabel, .badge, .mandir, #cards .place, #big-prev, #big-next, #c-try button, #c-ask button,
+.yrs, .status, .ho-date, a.tn, #lead,
+.ia, .age, a.more, .btn, .step .w,
+.tagline, span.date, #gapbox small, button.next,
+figcaption, p.rubric, .page h2, .weekly-signup button,
+.kicker, a.main, a.soft
+{ font-family: var(--poppins) !important; }
