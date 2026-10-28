@@ -23,11 +23,6 @@
       const rx = new RegExp('(?:^|[^a-z])(?:' + spell.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).sort((a, b) => b.length - a.length).join('|') + ')');
       return { name, kind, spell, photos, days, first, last, keys: [...keys], rx };
     });
-    const dl = document.createElement('datalist');   // names offered as you type
-    dl.id = 'people-list';
-    dl.innerHTML = PEOPLE.map(p => `<option value="${p.name}">`).join('');
-    document.body.appendChild(dl);
-    $('q').setAttribute('list', 'people-list');
     if (window.search && $('q').value.trim()) search();
   }).catch(e => console.error(e));
 
