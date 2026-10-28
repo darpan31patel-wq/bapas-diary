@@ -84,6 +84,10 @@ button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 3px; }
   border-top: 1px solid rgba(217,164,65,.25); padding-top: 16px; }
 @media (max-width: 560px) { .cap { font-size: 12px; } }
 @media (prefers-reduced-motion: reduce) { :root { --fade: 0s; } }
+/* Easier to read on a phone: the smallest words a little bigger (website review, 28 Oct 2026) */
+.seam { width: clamp(48px, 7vw, 92px); }
+.seam .years { width: clamp(46px, 6.4vw, 78px); }
+.seam .years small { font-size: 9.5px; letter-spacing: .05em; }
 </style>
 </head>
 <body>
