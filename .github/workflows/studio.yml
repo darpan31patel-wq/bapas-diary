@@ -1,7 +1,8 @@
 name: Studio photo packs
 
 # The photos Bapa's Diary Studio (the dashboard) offers for each date: today and the next six days, made after
-# the morning picture, kept on the branch 'studio'. Reads the day lists and shown.json, changes nothing else:
+# the morning picture, kept on the branch 'studio'. The photos come from Darpan's archive in Drive (Bapa's Archive),
+# baps.org only for anything it lacks. Reads the day lists and shown.json, changes nothing else:
 # not the daily picture, the release, Drive or main. Run it by hand with dates to add any other day.
 on:
   schedule:
@@ -33,6 +34,20 @@ jobs:
         run: |
           mkdir -p site
           if git fetch -q --depth 1 origin studio; then git archive origin/studio | tar -x -C site; fi
+      - name: Open Darpan's downloaded archive in Drive (the photos come from there, baps.org only for anything it lacks)
+        continue-on-error: true
+        timeout-minutes: 8
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          CLIENT_ID: ${{ secrets.RCLONE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.RCLONE_CLIENT_SECRET }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -n "$TOKEN" ] || { echo "The RCLONE_DRIVE_TOKEN secret isn't set, so the photos come from baps.org"; exit 0; }
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          mkdir -p ~/.config/rclone && python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
+          gh release download database -p bapas.db.gz --clobber && gunzip -f bapas.db.gz
+          echo "ARCHIVE=gdrive:Bapa's Archive" >> "$GITHUB_ENV"
       - name: Make the new packs
         env:
           DATES: ${{ inputs.dates }}

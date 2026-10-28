@@ -1,0 +1,58 @@
+name: Studio preview packs
+
+# Mockup only (Darpan, 26 Oct 2026: every photo of Bapa in the Studio): makes the day packs asked for with this
+# branch's tools into the branch 'studio-preview'. Never touches 'studio', main, the daily picture or Drive.
+# Runs on a push to this thread's branch that changes the dates file .github/studio-preview-dates.
+on:
+  push:
+    branches: [claude/project-thread-n8iufy]
+    paths: [.github/studio-preview-dates]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: studio-preview
+
+jobs:
+  packs:
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -q -r requirements.txt
+      - name: Open Darpan's downloaded archive in Drive (the photos come from there, baps.org only for anything it lacks)
+        continue-on-error: true
+        timeout-minutes: 8
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          CLIENT_ID: ${{ secrets.RCLONE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.RCLONE_CLIENT_SECRET }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -n "$TOKEN" ] || { echo "The RCLONE_DRIVE_TOKEN secret isn't set, so the photos come from baps.org"; exit 0; }
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          mkdir -p ~/.config/rclone && python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
+          gh release download database -p bapas.db.gz --clobber && gunzip -f bapas.db.gz
+          echo "ARCHIVE=gdrive:Bapa's Archive" >> "$GITHUB_ENV"
+      - name: Make the packs
+        run: |
+          DATES=$(cat .github/studio-preview-dates)
+          mkdir -p site/packs/day
+          for d in ${DATES//,/ }; do python tools/dashboard_pack.py "$d" site/packs/day; done
+          du -sh site/packs/day/*; find site -type f | wc -l
+      - name: Save them on the studio-preview branch
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          cp dashboard/index.html site/index.html
+          cd site
+          git init -q -b studio-preview
+          git config user.name "Bapa's Diary bot"; git config user.email "actions@github.com"
+          git add -A && git commit -qm "Studio preview packs $(date -u +%F)"
+          git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" studio-preview
