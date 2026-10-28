@@ -35,6 +35,16 @@ async function segmentId(env, name) {
   if (found) return found.id;
   return (await resend(env, '/segments', { name })).data.id;
 }
+// A few sign ups per visitor and per address, so nobody can use the box to send a flood of emails to strangers
+// (whole website review, 28 Oct 2026). Counted in Cloudflare's cache: no storage to set up, nothing about people kept.
+async function tooMany(key, max, seconds) {
+  const url = SITE + '/api/weekly/limit/' + encodeURIComponent(key);
+  const hit = await caches.default.match(url);
+  const n = hit ? Number(await hit.text()) || 0 : 0;
+  if (n >= max) return true;
+  await caches.default.put(url, new Response(String(n + 1), { headers: { 'Cache-Control': `max-age=${seconds}` } }));
+  return false;
+}
 const pickLists = (v) => [...new Set(String(v || '').split(/[ ,]+/))].filter((k) => k in SEGMENTS).sort();
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -72,6 +82,9 @@ export async function onRequestPost({ request, env }) {
   if (!good(email)) return json({ error: 'That email does not look right. Please check it.' }, 400);
   const lists = pickLists(Array.isArray(body.lists) ? body.lists.join(',') : body.lists || 'weekly');
   if (!lists.length) return json({ error: 'Please tick at least one.' }, 400);
+  const ip = request.headers.get('CF-Connecting-IP') || '';
+  if (await tooMany('ip:' + ip, 3, 3600) || await tooMany('to:' + email, 3, 86400))
+    return json({ error: 'We have already sent you a few emails. Please look in your inbox (and spam), or try again in an hour.' }, 429);
   const l = lists.join(','), t = String(Math.floor(Date.now() / 1000));
   const s = await sign(env, email + '|' + l + '|' + t);
   const link = `${SITE}/api/weekly?e=${encodeURIComponent(email)}&l=${l}&t=${t}&s=${s}`;
