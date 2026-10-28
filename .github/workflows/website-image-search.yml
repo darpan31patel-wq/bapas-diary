@@ -62,7 +62,8 @@ jobs:
           gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
           curl -sf https://photos.bapas-diary.com/years.txt -o years.txt; echo "years in R2: $(tr '\n' ' ' < years.txt)"
           gh release view image-search --json assets -q '.assets[].name' > have.txt
-          echo "shards=$(python3 tools/image_index.py plan --years years.txt --have have.txt)" | tee -a "$GITHUB_OUTPUT"
+          shards=$(python3 tools/image_index.py plan --years years.txt --have have.txt)
+          echo "shards=$shards" | tee -a "$GITHUB_OUTPUT"
   shard:
     needs: plan
     if: always() && needs.plan.result == 'success' && needs.plan.outputs.shards != '[]'

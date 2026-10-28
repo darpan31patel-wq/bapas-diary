@@ -17,13 +17,12 @@ build writes what the search page reads (site/search-image.js), all in one folde
 """
 import argparse, glob, json, os, sqlite3, sys
 from concurrent.futures import ThreadPoolExecutor
-import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 SIDE = 224
-MEAN = np.array([0.485, 0.456, 0.406], 'f4')
-STD = np.array([0.229, 0.224, 0.225], 'f4')
+MEAN = (0.485, 0.456, 0.406)
+STD = (0.229, 0.224, 0.225)
 SIZE = 6000   # photos per shard
 
 
@@ -69,7 +68,7 @@ def shard(a):
 
 def embed(a):
     """Every photo -> the model's whole picture numbers (cls), the average of its parts (mean), and 9 half size windows."""
-    import onnxruntime as ort
+    import numpy as np, onnxruntime as ort
     from PIL import Image, ImageFile
     ImageFile.LOAD_TRUNCATED_IMAGES = True
     s = ort.InferenceSession(a.model, providers=['CPUExecutionProvider'])
@@ -78,7 +77,7 @@ def embed(a):
     def prep(f):
         try:
             im = Image.open(f).convert('RGB').resize((SIDE, SIDE), Image.BILINEAR)
-            return ((np.asarray(im, 'f4') / 255 - MEAN) / STD).transpose(2, 0, 1)
+            return ((np.asarray(im, 'f4') / 255 - np.array(MEAN, 'f4')) / np.array(STD, 'f4')).transpose(2, 0, 1)
         except Exception as e:
             print(f, e)
     keys, out = [], {'cls': [], 'mean': [], 'win': []}
@@ -101,6 +100,7 @@ def build(a):
     model's 384 whole picture numbers, and each of its 384 average-of-parts numbers, above the usual value? Tested on
     18,000 photos (26 Oct 2026): as good as the full numbers for whole photos, screenshots and big crops, at a 16th of
     the size, so the whole diary is about 25 MB."""
+    import numpy as np
     keys, cls, mean = [], [], []
     for f in sorted(glob.glob(os.path.join(a.emb, 'pic-*.npz'))):
         z = np.load(f)
