@@ -163,6 +163,9 @@ body { background: linear-gradient(#efdcd2, #f3e5d8) fixed; }
 .days .day-head .mandir { padding: 3px 10px 2px; }
 .days .day-head .about { flex-basis: 100%; font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .days .day-head .about { order: 6; }
+.days .day-head .stay { order: 3; font: 700 11px var(--sans); letter-spacing: .2em; text-transform: uppercase; color: #d9a441; }
+.card .said { display: none; }   /* already on the day's ribbon */
+.card .said + .place:not(.said) { margin-top: 6px; padding-top: 7px; border-top: 1px solid rgba(110, 20, 36, .18); }
 .days .day-head .only { order: 7; font-size: 14px; }
 .days .day-head .bd-share { margin: 0; padding: 3px 9px; }
 .days .day-head .bd-share span { font-size: 10.5px; }
@@ -310,6 +313,7 @@ const $ = id => document.getElementById(id);
 // words, so "Diwali" finds every photo taken on a Diwali day. Results are shown grouped by date under the calendar.
 let items = [], cal = {}, mandirDay = {}, loaded = 0, total = 0, hits = [], shown = 0, lastDate = '';
 let perDay = new Map(), monthLines = false;   // photos and stories on each date; a line for each month when a month has more than one date
+let sameDay = new Map();   // per date: the place and the date span every photo of it shares, said once on its ribbon, not on each card
 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 function niceDate(d) {
@@ -412,6 +416,14 @@ function render(byYear, want) {
   $('results').innerHTML = `<div class="${picMode ? 'grid' : 'days'}" id="cards"></div>`;
   shown = 0; lastDate = '';
   perDay = new Map(); hits.forEach(h => { if (h.kind !== 'day') perDay.set(h.d, (perDay.get(h.d) || 0) + 1); });
+  sameDay = new Map();
+  hits.forEach(h => {
+    if (h.kind === 'day') return;
+    const place = h.kind === 'photo' ? h.g[2] : h.place || '', span = h.kind === 'photo' ? h.g[0] + '|' + (h.g[1] || '') : h.d + '|';
+    const s = sameDay.get(h.d);
+    if (!s) sameDay.set(h.d, { place, span });
+    else { if (s.place !== place) s.place = null; if (s.span !== span) s.span = null; }
+  });
   monthLines = nDates > new Set(hits.map(h => h.d.slice(0, 7))).size;
   more(want);
 }
@@ -427,7 +439,20 @@ function dayHead(d, want, onlyCal) {
     + (!c && window.festOn && festOn(d).length ? `<span class="fest">${highlight(festOn(d).join(', '), want)}</span>` : '')
     + (c && (c.about || c.notes) ? `<span class="about">${highlight([c.about, c.notes].filter(Boolean).join('. '), want)}</span>` : '')
     + (onlyCal ? '<span class="only">No photos or stories saved for this day yet.</span>' : '')
+    + (!picMode && sameDay.get(d) ? stayLine(sameDay.get(d), want) : '')
     + '</div>';
+}
+function stayLine(s, want) {
+  const [a, b] = (s.span || '|').split('|');
+  const bits = [s.place ? highlight(s.place, want) : '', b ? `${niceDate(a)} to ${niceDate(b)}` : ''].filter(Boolean);
+  return bits.length ? `<span class="stay">${bits.join(' · ')}</span>` : '';
+}
+// on a card, only what its day's ribbon does not already say
+function said(p, what) {
+  if (picMode) return '';
+  const s = sameDay.get(p.d); if (!s) return '';
+  if (what === 'place') return s.place != null ? ' said' : '';
+  return s.span != null || (p.kind === 'photo' ? !p.g[1] && p.g[0] === p.d : true) ? ' said' : '';
 }
 function photoCard(p, want, i) {
   const g = p.g, small = `${PHOTOS}s/${g[3]}/${p.file}`, medium = `${PHOTOS}m/${g[3]}/${p.file}`;
@@ -435,9 +460,9 @@ function photoCard(p, want, i) {
   return `<article class="card" data-i="${i}" tabindex="0">
     <div class="pic"><img loading="lazy" src="${small}" alt="${esc(p.cap)}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'none',textContent:'Photo coming soon'}))"></div>
     <div class="txt">
-      ${window.picSame && picSame(p) ? '<span class="same">Closest match</span>' : ''}<p class="cap${p.cap ? '' : ' empty'}">${p.cap ? highlight(p.cap, want) : 'Darshan'}</p>
-      <div class="date">${when}</div>
-      <div class="place">${highlight(g[2], want)}</div>
+      ${window.picSame && picSame(p) ? '<span class="same">Closest match</span>' : ''}<p class="cap${p.cap ? '' : ' empty'}${!picMode && p.cap && hits[i - 1] && hits[i - 1].d === p.d && hits[i - 1].cap === p.cap ? ' said' : ''}">${p.cap ? highlight(p.cap, want) : 'Darshan'}</p>
+      <div class="date${said(p, 'date')}">${when}</div>
+      <div class="place${said(p, 'place')}">${highlight(g[2], want)}</div>
     </div></article>`;
 }
 function postCard(p, want, i) {
@@ -445,8 +470,8 @@ function postCard(p, want, i) {
   return `<article class="card post" data-i="${i}" tabindex="0"><div class="txt">
     <span class="badge">On this day</span>
     <p class="cap">${highlight(text, want)}</p>
-    <div class="date">${niceDate(p.d)}</div>
-    ${p.place ? `<div class="place">${highlight(p.place, want)}</div>` : ''}
+    <div class="date${said(p, 'date')}">${niceDate(p.d)}</div>
+    ${p.place ? `<div class="place${said(p, 'place')}">${highlight(p.place, want)}</div>` : ''}
     </div></article>`;
 }
 var lastWant = [];
