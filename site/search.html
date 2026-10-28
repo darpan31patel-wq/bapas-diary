@@ -223,7 +223,7 @@ body { background: linear-gradient(#efdcd2, #f3e5d8) fixed; }
 
 <main class="wrap">
   <section class="can" aria-label="Things you can search">
-    <p class="lead">Search for anything: a word, a place, a festival, a mandir opening, a date, or what is in a photo.</p>
+    <p class="lead">Search for anything: a word, a place, a person, a festival, a mandir opening, a date, or what is in a photo.</p>
     <div class="chips" id="c-try"></div>
     <p class="lead ask-lead">Or ask the diary any question in your own words. Examples:</p>
     <div class="chips ask-chips" id="c-ask"></div>
@@ -256,9 +256,9 @@ const PHOTOS = '{{PHOTOS}}';
 // the year the page opens on when no link says otherwise (empty: everything); also from tools/build_search.py
 const START_YEAR = '{{START_YEAR}}';
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-// twelve suggestions, a mix of every kind: a festival, a place, an Indian date, what is in a photo, a word, a year
+// twelve suggestions, a mix of every kind: a festival, a place, a person, an Indian date, what is in a photo, a word, a year
 const TRY = [['Diwali', 'fest'], ['smiling', 'q'], ['Sarangpur', 'q'], ['Ekadashi', 'fest'], ['Mandir openings', 'mandir'], ['London', 'q'],
-             ['blessing', 'q'], ['annakut', 'q'], ['children', 'q'], ['Guru Purnima', 'fest'], ['garland', 'q'], ['Mumbai', 'q']];
+             ['blessing', 'q'], ['annakut', 'q'], ['children', 'q'], ['Guru Purnima', 'fest'], ['garland', 'q'], ['Doctor Swami', 'q']];
 // Mandir days (tools/build_search.py, MANDIR): the list's names, the gold ribbon on the date heading, and the
 // words that find them, so "murti pratishtha" (any spelling) or "mandir opening" finds every photo of those days
 const MANDIR = {

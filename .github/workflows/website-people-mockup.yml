@@ -1,0 +1,33 @@
+# Mockup photos for Who was with Bapa (Darpan, 26 Oct 2026): copies the small photos listed in
+# .github/people-mockup-photos.txt from the website's own photo storage (photos.bapas-diary.com, never baps.org) into
+# the release people-mockup, so the mockup of the real Search page can show them. Read only for the website.
+name: website-people-mockup
+on:
+  push:
+    branches: [claude/project-thread-docu5h]
+    paths: ['.github/people-mockup-photos.txt', '.github/workflows/website-people-mockup.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  photos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copy the photos
+        run: |
+          mkdir -p s
+          while read -r k; do
+            [ -z "$k" ] && continue
+            mkdir -p "s/$(dirname "$k")"
+            curl -sfL --retry 3 -o "s/$k" "https://photos.bapas-diary.com/s/$k" || echo "missing $k"
+            sleep 0.2
+          done < .github/people-mockup-photos.txt
+          find s -type f | wc -l
+          tar czf people-photos.tgz s
+      - name: Put them in the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view people-mockup >/dev/null 2>&1 || gh release create people-mockup --title "Who was with Bapa mockup" --notes "Mockup photos only" --target "$GITHUB_SHA"
+          gh release upload people-mockup people-photos.tgz --clobber

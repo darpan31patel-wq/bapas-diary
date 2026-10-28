@@ -13,6 +13,7 @@ Writes a folder that works as it is on any web host (Cloudflare Pages, or opened
   data/calendar.json  every BAPS calendar day, when the database has the calendar table:
                         [[date, weekday, vikram_samvat, indian_date, festivals, festival_about, notes, source], ...]
   data/about.json     years, counts and when it was built
+  data/people.json    the people the captions name, for Who was with Bapa (tools/search_people.py, site/search-people.js)
   data/stops.json     Bapa's travels for Ask the diary, from the live Travels page (live/travels/index.html):
                         {"stops": [[year, place, from, to, photos, caption, close up or 0], ...], "country": {place: country}}
 The questions people type into the search bar ("When did Bapa go to London?") are read by site/search-ask.js, which
@@ -20,9 +21,12 @@ is put inside index.html, so it works offline too.
 """
 import argparse, json, os, re, sqlite3
 
+import search_people
+
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PAGE = os.path.join(HERE, 'site', 'search.html')
 ASK = os.path.join(HERE, 'site', 'search-ask.js')
+PEOPLE = os.path.join(HERE, 'site', 'search-people.js')
 TRAVELS = os.path.join(HERE, 'live', 'travels', 'index.html')
 
 
@@ -223,17 +227,22 @@ def main():
     write(os.path.join(a.out, 'data', 'stops.json'),
           {'stops': stops, 'country': {v['name']: v['country'] for v in trips['places'].values()}})
 
+    # Who was with Bapa: the swamis, leaders and devotees the captions name (Darpan, 26 Oct 2026)
+    people = search_people.people(db)
+    write(os.path.join(a.out, 'data', 'people.json'), people)
+
     built = dict(db.execute("SELECT key, value FROM about"))
     write(os.path.join(a.out, 'data', 'about.json'),
           {'built': built.get('built'), 'years': sorted(counts), 'photos': counts, 'stories': len(tg), 'calendar': len(cal)})
 
     body = open(PAGE, encoding='utf-8').read().replace('{{PHOTOS}}', a.photos).replace('{{START_YEAR}}', a.start_year)
     body += '\n<script>\n' + open(ASK, encoding='utf-8').read() + '</script>'
+    body += '\n<script>\n' + open(PEOPLE, encoding='utf-8').read() + '</script>'
     with open(os.path.join(a.out, 'index.html'), 'w', encoding='utf-8') as f:
         f.write('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
                 '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
                 '</head>\n<body>\n' + body + '\n</body>\n</html>\n')
-    print(sum(counts.values()), 'photos in', len(counts), 'years,', len(tg), 'Telegram posts ->', a.out)
+    print(sum(counts.values()), 'photos in', len(counts), 'years,', len(tg), 'Telegram posts,', len(people), 'people ->', a.out)
 
 
 if __name__ == '__main__':
