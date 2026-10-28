@@ -1,6 +1,6 @@
 # Website only: pictures of the gold "every tab linked together" buttons on the real pages, built from this branch with
 # the website's own build steps and the real photos, for Darpan to see before anything goes live (28 Oct 2026).
-# Deploys nothing. Pictures go to release links-mockup (second round: phone fixes).
+# Deploys nothing. Pictures go to release links-mockup (third round: only Photos and Calendar buttons).
 name: links-mockup
 on:
   push:
@@ -42,7 +42,6 @@ jobs:
           gh release download image-search -p image-search.tgz && tar -xzf image-search.tgz
           python3 tools/build_search.py --db bapas.db --out out/search --tags tags.json --deep-tags deep-tags.json --people-faces people-faces.json --start-year 1999 --image image
           python3 tools/site_menu.py out
-          python3 tools/web_links.py --out out
           pip install -q pillow
           python3 tools/web_share.py --out out
           python3 tools/web_head.py --out out
@@ -71,21 +70,20 @@ jobs:
               const errs = []; p.on('pageerror', e => errs.push(e.message));
               const go = async (u, wait = 5000) => { await p.goto(S + u, { waitUntil: 'networkidle', timeout: 90000 }).catch(() => {}); await p.waitForTimeout(wait); };
               const shot = async n => { await p.screenshot({ path: `${n}-${sz}.jpg`, type: 'jpeg', quality: 82 }); console.log(n, sz); };
-              // Today, opened from a link on another tab: 28 October, at its 2010 card
-              await go('/#2010-10-28', 7000); await shot('1-today-card');
-              await p.evaluate(() => { const g = document.getElementById('y2010'); if (g) g.scrollIntoView({ block: 'start' }); scrollBy(0, -70); }); await p.waitForTimeout(2500); await shot('2-today-year');
-              await p.locator('#y2010 .thumb').first().click().catch(() => {}); await p.waitForTimeout(3500); await shot('3-today-photo');
-              // Search, a photo of that day
+              // Today: the Photos button under a year, and on a photo opened big
+              await go('/#10-28', 7000);
+              await p.evaluate(() => { const g = document.getElementById('y2010'); if (g) g.scrollIntoView({ block: 'start' }); scrollBy(0, -70); }); await p.waitForTimeout(2500); await shot('1-today-year');
+              await p.locator('#y2010 .thumb').first().click().catch(() => {}); await p.waitForTimeout(3500); await shot('2-today-photo');
+              // Search: the Calendar button on a photo opened big, then what it opens
               await go('/search/#date=2010-10-26', 6000);
-              await p.locator('[data-i]').first().click().catch(() => {}); await p.waitForTimeout(3500); await shot('4-search-photo');
-              // Calendar, opened from "Calendar" on a photo of 28 October 2010: the stay glows, the day has a ring
-              await go('/calendar/#2010-10-28', 7000); await shot('5-calendar-day');
-              // Calendar, opened from a Travels stop: London, 2 May to 8 June 2023
-              await go('/calendar/#place=London&from=2023-05-02&to=2023-06-08', 7000); await shot('6-calendar-stay');
-              // Then and now
+              await p.locator('[data-i]').first().click().catch(() => {}); await p.waitForTimeout(3000);
+              if (mob) await p.evaluate(() => document.querySelector('#big .go').scrollIntoView({ block: 'center' }));
+              await p.waitForTimeout(800); await shot('3-search-photo');
+              await p.locator('#big .go').first().click().catch(() => {}); await p.waitForTimeout(7000); await shot('4-calendar');
+              // Then and now: the Photos button under each photo
               await go('/then-and-now/#london', 6000);
               if (mob) await p.evaluate(() => document.getElementById('pgo').scrollIntoView({ block: 'center' }));
-              await p.waitForTimeout(800); await shot('7-then-and-now');
+              await p.waitForTimeout(800); await shot('5-then-and-now');
               console.log(sz, 'page errors:', JSON.stringify(errs));
               await ctx.close();
             }
@@ -98,4 +96,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view links-mockup -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || gh release create links-mockup -R "$GITHUB_REPOSITORY" --prerelease --title "Every tab linked together, mockup pictures" --notes "Pictures of the gold buttons linking every tab, for Darpan to see before anything changes (28 Oct 2026). Website only."
+          for a in $(gh release view links-mockup -R "$GITHUB_REPOSITORY" --json assets -q '.assets[].name'); do gh release delete-asset links-mockup "$a" -R "$GITHUB_REPOSITORY" -y; done
           gh release upload links-mockup -R "$GITHUB_REPOSITORY" --clobber *.jpg
