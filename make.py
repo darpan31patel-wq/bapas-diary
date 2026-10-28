@@ -1052,6 +1052,29 @@ SHORT_WORDS = [   # a few long phrases said shorter in the website's own words, 
 
 def tidy(c):
     """Small clean ups of the website's caption: the date (it is always this day), 'the the', Mr and Mrs."""
+    # Darpan, 28 Oct 2026 ('Chopda Puja28 October 2008 - Bapa blesses the bhaktas': why does it keep happening?): the
+    # website's captions carry album headings, dates, file names, links and loose marks; none of it goes on a card
+    full = rf'\d{{1,2}}(?:st|nd|rd|th)?(?: {MONTH})?,? (?:to|-|\u2013) \d{{1,2}}(?:st|nd|rd|th)? {MONTH},? \d{{4}}|\d{{1,2}}(?:st|nd|rd|th)? {MONTH},? \d{{4}}|{MONTH},? \d{{4}}'
+    c = re.sub(r'\.?[a-z]?\d+-\d+[a-z]*\.jpe?g\b|\s*(?-i:For more \w+|See gallery here).*$', '', c, flags=re.I)        # '...flower of Thakorji138-17af.jpg'
+    c = re.sub(r"\s*\(?['\"]?(?:https?://|www\.)[^\s'\")]+['\"]?\)?|\s*\((?:https?://)?[\w.-]+\.\w+/[^)\s]*\)", '', c)   # 'New Delhi www.akshardham.com', '(instagram.com/baps)'
+    head = re.match(rf'^\s*[A-Za-z]*\s*(?:{full}|\d{{1,2}} (?:to|-|\u2013) \d{{1,2}} {MONTH})\s*(?:,\s*[A-Za-z]+(?:-\d+)?)?\s*,?\s*', c)    # 'Amdavad15 September to 1 October 2008Divine Moods -'
+    if head:
+        c = c[head.end():] if re.search(r'[a-z]', c[head.end():]) else ''
+    c = re.sub(rf'(?<=[a-z])\s*(?:{full})\s*[-\u2013\u2014:]\s*', ': ', c)   # 'Chopda Puja28 October 2008 - Bapa blesses the bhaktas'
+    c = re.sub(rf'\s*\((?:{full})\)(?=\w)', ': ', c)                                              # '...Swaminarayan (3 April 2004)Bhagwan...'
+    c = re.sub(rf'\s*\((?:{full})\)|,\s*(?:{full})\s*(?=,|$)', '', c)                           # a date as an aside; 'on 21 June 1970' in a sentence stays
+    c = re.sub(r'(?:,|(?<=\bUK)|(?<=\bUSA)|(?<=\bIndia))\s*(?:19|20)\d\d\s*$', '', c)                                                  # 'In Varkheda, 1982'
+    c = re.sub(r',\s*(?:19|20)\d\d\s*,', ',', c)                                                 # 'during a home-visit, 1976, Mohadi'
+    c = re.sub(r'^\s*(?:[A-Za-z]\)|[-\u2013\u2014.,;:\u2026]+|\.\.\.)\s*', '', c)                              # 'c) Bhagwan...', '. pujan of...', '... performs arti'
+    c = re.sub(r'\s*(?:\.\.\.+|\u2026)\s*(?=["\'\u2019\u201d]?\s*$)|\s*(?:\.\.\.+|\u2026)\s*(?=["\'\u2019\u201d])', '', c)   # a trailing '...'
+    c = re.sub(r'\s*(?:\.\.\.+|\u2026)\s*', ', ', c)                                          # '... in dhyan, ...' in the middle
+    c = re.sub(r'[\[\]|]', '', c)                                                              # '[At the time of your passing away,]'
+    while c.count('(') > c.count(')'):
+        c = c[:c.rfind('(')]                                                                   # 'To mark the Hindu New Year (Kartik sud 1'
+    for q in ('"', '\u201c'):
+        if c.count(q) % 2 if q == '"' else c.count('\u201c') != c.count('\u201d'):
+            c = c.replace('\u201c', '').replace('\u201d', '') if q != '"' else c.replace('"', '')   # 'Greets bhaktas with "Jai Swaminarayan'
+    c = re.sub(r'(?:\s*[-\u2013\u2014,;:]\s*)+$', '', c)                                       # 'Divine Moods -'
     c = re.sub(rf'[\s,]*(?:on |dated )?\b\d{{1,2}}(?:st|nd|rd|th)? {MONTH}(?: \d{{4}})?\s*$', '', c)   # 'Doing mala, 18 Oct 2016'
     c = re.sub(rf'[\s,]*(?:on |dated )?\b{MONTH} \d{{1,2}}(?:st|nd|rd|th)?(?:,? \d{{4}})?\s*$', '', c)   # 'on October 18, 2016'
     c = re.sub(r'\b(the|a|an|of|to|in|on|and) \1\b', r'\1', c, flags=re.I)
@@ -1149,7 +1172,8 @@ def caption(x):
     w = c.split(' ', 1)
     if w[0].lower() in ING and len(w) > 1:   # 'Performing sanctifying rituals' reads like the other cards: 'Performs sanctifying rituals'
         c = ING[w[0].lower()] + ' ' + w[1]
-    return c
+    c = re.sub(r'^(?:\(?[A-Za-z]\)|[-\u2013\u2014,;:]+)\s*', '', c.rstrip(' ,;:-\u2013\u2014'))   # 'Swamishri - forever relaxed', 'c) Bhagwan...'
+    return c[:1].upper() + c[1:]
 
 
 # Darpan, 26 Oct 2026: a card said INDIA (a 2012 Ahmedabad album whose caption named 'Vavli, India'). A card's place is
