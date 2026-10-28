@@ -13,6 +13,7 @@ to 5472 px), the web size otherwise. For each photo, named by album and file lik
   l/ALBUM/FILE   up to 2560 px, sharp full screen that still opens fast
   m/ALBUM/FILE   up to 1200 px, the big view
   s/ALBUM/FILE   480 px wide, search results and thumbnails
+  t/ALBUM/FILE   short side 240 px, the Calendar's day squares
 1999 is done first (it is on the site already, from the smaller baps.org copies), then the newest years.
 When a year is finished it is added to years.txt in R2, which the website build reads.
 """
@@ -64,6 +65,13 @@ def make(job):
         if c.width > SMALL:
             c = c.resize((SMALL, round(c.height * SMALL / c.width)), Image.LANCZOS)
         files['s'] = jpeg(c, 78)
+        # t/: the tiny copy for the Calendar's day squares, short side 240 px (website review, 28 Oct 2026). JPEG here,
+        # because the send command marks everything image/jpeg; the first 264,608 were made as WebP by website-tiny.yml
+        c = c.copy()
+        k = 240 / min(c.size)
+        if k < 1:
+            c = c.resize((max(1, round(c.width * k)), max(1, round(c.height * k))), Image.LANCZOS)
+        files['t'] = jpeg(c, 72)
         for tier, data in files.items():
             path = os.path.join(out, tier, key)
             os.makedirs(os.path.dirname(path), exist_ok=True)
