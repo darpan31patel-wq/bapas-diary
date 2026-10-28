@@ -340,7 +340,10 @@ function render() {
   // one card per year: its photos, or, for the older years, the On this day story
   const byYear = {};
   D.years.forEach(Y => byYear[Y.y] = {Y, stories: []});
-  D.stories.forEach(([y, place, line]) => (byYear[y] = byYear[y] || {Y: null, place, stories: []}).stories.push(line));
+  D.stories.forEach(([y, place, line]) => {   // the same story can come from two sources: show it once
+    const b = byYear[y] = byYear[y] || {Y: null, place, stories: []};
+    if (!b.stories.includes(line)) b.stories.push(line);
+  });
   const years = Object.keys(byYear).map(Number).sort((a, b) => a - b);
   everyPhoto = [];
   const n = D.years.reduce((s, Y) => s + Y.p.length + (Y.t || []).length, 0);
