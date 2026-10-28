@@ -1,3 +1,4 @@
+// live since 28 Oct 18:2x UTC; rerun shows the live page as "before"
 // Mockup only: Search opens on this day in every year instead of 1999 (Darpan, 28 Oct 2026). website-search-mockup.yml
 // makes these swaps inside the test browser; nothing on the site changes.
 module.exports = [

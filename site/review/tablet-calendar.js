@@ -1,3 +1,4 @@
+// live since 28 Oct 18:2x UTC; rerun shows the live page as "before"
 // Mockup only: the Calendar's sizes with all seven days across the screen on an upright tablet (tablet check, 28 Oct 2026).
 // website-tablet-mockup.yml swaps OLD for NEW inside the test browser; nothing on the site changes.
 module.exports = {
