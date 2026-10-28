@@ -33,7 +33,7 @@ h1 { font-family: var(--display); font-weight: 400; font-size: clamp(24px, 3.6vw
 .tab:hover { border-color: var(--saffron); }
 .tab[aria-selected="true"] { color: var(--bg); background: var(--saffron); border-color: var(--saffron); }
 .tab[aria-selected="true"] .yrs { color: var(--bg); opacity: .8; }
-.tab:focus-visible, button:focus-visible, canvas:focus-visible, select:focus-visible { outline: 2px solid var(--saffron); outline-offset: 2px; }
+.tab:focus-visible, button:focus-visible, select:focus-visible { outline: 2px solid var(--saffron); outline-offset: 2px; }
 .note { font-size: 12.5px; color: var(--muted); text-align: center; margin: 0; }
 .stage { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); grid-template-areas: "left slot right"; gap: 8px 28px; align-items: center; }
 .slot { grid-area: slot; height: 100%; min-height: 0; min-width: 0; display: flex; align-items: center; justify-content: center; }
@@ -67,29 +67,30 @@ h1 { font-family: var(--display); font-weight: 400; font-size: clamp(24px, 3.6vw
 .scrub { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 /* every year as a button, with a step either side (Darpan, 28 Oct 2026: moving between years should be smoother) */
 .years { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.years .list { flex: 1; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
-.years .list::-webkit-scrollbar { display: none; }
-.yr { flex: none; font: inherit; font-size: 15px; font-variant-numeric: tabular-nums; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 13px; cursor: pointer; }
+/* all the years side by side in one row that never slides (Darpan, 28 Oct 2026: 'want all the years in one row static') */
+.years .list { flex: 1; min-width: 0; display: flex; gap: 4px; padding: 2px; }
+.yr { flex: 1 1 0; min-width: 0; font: inherit; font-size: clamp(11px, 1.05vw, 15px); font-variant-numeric: tabular-nums; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 0; cursor: pointer; text-align: center; white-space: nowrap; overflow: hidden; }
+.yr .s { display: none; }
+@media (max-width: 1100px) { .yr .f { display: none; } .yr .s { display: inline; } }   /* narrow screens: '99, '00 ... so every year still fits */
 .yr:hover, .step:hover { border-color: var(--saffron); }
-.yr[aria-pressed="true"] { color: var(--bg); background: var(--saffron); border-color: var(--saffron); font-weight: 600; }
+.yr[aria-pressed="true"] { border-color: var(--saffron); font-weight: 600; background: linear-gradient(90deg, var(--saffron) 0 var(--p), var(--panel) var(--p) 100%); text-shadow: 0 1px 3px rgba(0,0,0,.65); transition: --p .35s ease-out; }
+@property --p { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
 .step { flex: none; font: inherit; font-size: 14px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; cursor: pointer; white-space: nowrap; }
 .step:disabled { opacity: .35; cursor: default; border-color: var(--line); }
 .yr:focus-visible, .step:focus-visible { outline: 2px solid var(--saffron); outline-offset: 2px; }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .bar .days { flex: 1 1 240px; min-width: 0; }   /* the scroller takes all the room the buttons leave (Darpan, 28 Oct 2026: 'get rid of year month eye line button, extend the scroller bar') */
-.zoom { display: inline-flex; gap: 8px; }
 .btn { font: inherit; font-size: 14px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
 .btn[aria-pressed="true"] { border-color: var(--saffron); color: var(--saffron); }
 .btn.play { min-width: 84px; font-weight: 600; }
 select.btn { padding-right: 8px; }
-canvas { display: block; width: 100%; height: 68px; border-radius: 8px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); touch-action: none; cursor: grab; }
-canvas.drag { cursor: grabbing; }
-.days { -webkit-appearance: none; appearance: none; width: 100%; height: 50px; margin: 0; background: transparent; cursor: pointer; touch-action: none; }
-.days::-webkit-slider-runnable-track { height: 22px; border-radius: 11px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); }
-.days::-moz-range-track { height: 22px; border-radius: 11px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); }
-.days::-moz-range-progress { height: 22px; border-radius: 11px; background: var(--saffron); opacity: .55; }
-.days::-webkit-slider-thumb { -webkit-appearance: none; width: 46px; height: 46px; margin-top: -13px; border-radius: 50%; background: var(--saffron); border: 4px solid var(--ink); box-shadow: 0 4px 14px rgba(0,0,0,.5); }
-.days::-moz-range-thumb { width: 46px; height: 46px; border-radius: 50%; background: var(--saffron); border: 4px solid var(--ink); box-shadow: 0 4px 14px rgba(0,0,0,.5); }
+
+.days { -webkit-appearance: none; appearance: none; width: 100%; height: 60px; margin: 0; background: transparent; cursor: pointer; touch-action: none; }
+.days::-webkit-slider-runnable-track { height: 30px; border-radius: 15px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); }
+.days::-moz-range-track { height: 30px; border-radius: 15px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); }
+.days::-moz-range-progress { height: 30px; border-radius: 15px; background: var(--saffron); opacity: .55; }
+.days::-webkit-slider-thumb { -webkit-appearance: none; width: 54px; height: 54px; margin-top: -12px; border-radius: 50%; background: var(--saffron); border: 4px solid var(--ink); box-shadow: 0 4px 14px rgba(0,0,0,.5); }
+.days::-moz-range-thumb { width: 54px; height: 54px; border-radius: 50%; background: var(--saffron); border: 4px solid var(--ink); box-shadow: 0 4px 14px rgba(0,0,0,.5); }
 .days:focus-visible { outline: 2px solid var(--saffron); outline-offset: 4px; border-radius: 12px; }
 .speed { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
 .speed input { width: 120px; accent-color: var(--saffron); }
@@ -104,11 +105,11 @@ canvas.drag { cursor: grabbing; }
 }
 @media (max-height: 640px) { .sub, .note { display: none; } }
 @media (max-width: 600px) {
-  .sub, .note, .zoom, .speed { display: none; }
-  .bar .days { order: 3; flex-basis: 100%; }
-  canvas { height: 56px; }
+  .sub, .note, .speed { display: none; }
+  .bar { flex-wrap: nowrap; } .bar .days { flex: 1 1 0; }   /* Play and the scroller side by side */
   .tab .yrs { font-size: 12px; }
-  .step .w { display: none; }
+  .step { display: none; }   /* a phone needs the room for every year; swiping and the years themselves move between them */
+  .years .list { gap: 2px; } .yr { font-size: 12px; border-radius: 6px; padding: 6px 0; } .yr .q { display: none; }
 }
 /* a phone on its side: the photo on the left, the day's facts beside it, the controls kept small underneath */
 @media (orientation: landscape) and (max-height: 560px) {
@@ -121,10 +122,9 @@ canvas.drag { cursor: grabbing; }
   .stage { grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "slot left" "slot right"; gap: 4px 16px; align-items: start; }
   .slot { width: calc(100dvh - 186px); max-width: 52vw; }
   .info.l { text-align: left; align-items: flex-start; }
-  .sub, .note, .zoom, .speed, .count { display: none; }
+  .sub, .note, .speed, .count { display: none; }
   .bar .days { order: 0; flex-basis: 160px; height: 36px; }
-  canvas { height: 40px; }
-  .yr, .step { font-size: 13px; padding: 2px 10px; }
+  .yr { padding: 2px 0; } .step { font-size: 13px; padding: 2px 10px; }
 }
 @media (prefers-reduced-motion: reduce) { :root { --fade: 0ms; } .frame img.rest { transition: none; } }
 </style>
@@ -163,22 +163,16 @@ canvas.drag { cursor: grabbing; }
   </section>
 
   <div class="scrub">
+      <div class="bar">
+        <button class="btn play" id="play" type="button">▶ Play</button>
+        <label class="speed" for="speed">Speed <input type="range" id="speed" min="1" max="30" value="8"> <span id="speedVal">8 a second</span></label>
+        <input class="days" type="range" id="days" min="0" max="0" value="0" aria-label="Move through the days">
+      </div>
       <div class="years" role="group" aria-label="Years">
         <button class="step" id="yPrev" type="button" aria-label="Year before">‹ <span class="w">Year before</span></button>
         <div class="list" id="years"></div>
         <button class="step" id="yNext" type="button" aria-label="Next year"><span class="w">Next year</span> ›</button>
       </div>
-      <div class="bar">
-        <button class="btn play" id="play" type="button">▶ Play</button>
-        <label class="speed" for="speed">Speed <input type="range" id="speed" min="1" max="30" value="8"> <span id="speedVal">8 a second</span></label>
-        <input class="days" type="range" id="days" min="0" max="0" value="0" aria-label="Move through the days">
-        <span class="zoom">
-        <button class="btn" id="zAll" type="button">All years</button>
-        <button class="btn" id="zOut" type="button" aria-label="Zoom out">−</button>
-        <button class="btn" id="zIn" type="button" aria-label="Zoom in">+</button>
-        </span>
-      </div>
-      <canvas id="tl" tabindex="0" aria-label="Timeline: drag left or right to move through the days" title="Drag the strip, scroll over the photo, or use the arrow keys. Pinch or use + and − to zoom; tap a year or month to jump to it."></canvas>
   </div>
 </div>
 
@@ -197,10 +191,8 @@ const EYE_X = .5, EYE_Y = .45, GAP = .21;   // where his eyes sit in the square 
 const BLOW = 1.8;   // never shown more than this many screen pixels for each pixel of the photo, so a small old photo is never blown up blurry
 
 const $ = id => document.getElementById(id);
-const cv = $('tl'), cx = cv.getContext('2d');
-let era = 'psm', list = eras.psm, idx = 0, center = 0, ppd = 1, playing = null, front = $('imgA'), back = $('imgB'), token = 0, years = new Map(), shownYear = 0;
+let era = 'psm', list = eras.psm, idx = 0, playing = null, front = $('imgA'), back = $('imgB'), token = 0, years = new Map(), shownYear = 0;
 const still = matchMedia('(prefers-reduced-motion: reduce)');
-const thumbs = new Map();
 
 function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 function longDate(d) { const x = dOf(tOf(d)); return `${WEEK[x.getUTCDay()]} ${x.getUTCDate()} ${MONTHS[x.getUTCMonth()]} ${x.getUTCFullYear()}`; }
@@ -272,7 +264,7 @@ function show(i, fast, calm) {
   clearTimeout(settle);
   paint();
   if (playing || !fast) for (const k of playing ? [1, 2, 3, 4] : [1, -1]) { const y = list[idx + k]; if (y) pic(photo(y)); }
-  draw();
+  fill();
 }
 function paint() {
   if (busy || !want) return;
@@ -343,8 +335,8 @@ function goYear(y) {
   const i = years.get(y);
   if (i === undefined) return;
   stop();
-  intro(y);   // the strip stays as it is, all the years in view unless zoomed in by hand (Darpan, 28 Oct 2026)
-  show(i, false, true); follow(); draw();
+  intro(y);
+  show(i, false, true);
 }
 function stepYear(d) {
   const ys = [...years.keys()], at = ys.indexOf(list[idx].y);
@@ -361,6 +353,15 @@ function intro(y) {
   $('intro').classList.add('on'); introOn = true;
   clearTimeout(intro.t); intro.t = setTimeout(hideIntro, 1900);
 }
+// the chosen year's bubble fills with saffron from the left as the days move through that year (Darpan, 28 Oct
+// 2026): half way through the year, half the bubble. A year cut short by the change of guru (2016) or by today
+// counts only its own days.
+function fill() {
+  const x = list[idx], b = $('years').querySelector(`[data-y="${x.y}"]`);
+  if (!b) return;
+  const a = Math.max(Date.UTC(x.y, 0, 1) / DAYMS, list[0].t), z = Math.min(Date.UTC(x.y + 1, 0, 1) / DAYMS - 1, list[list.length - 1].t);
+  b.style.setProperty('--p', (z > a ? Math.max(.04, Math.min(1, (x.t - a + 1) / (z - a + 1))) * 100 : 100).toFixed(1) + '%');
+}
 function hideIntro() { clearTimeout(intro.t); $('intro').classList.remove('on'); introOn = false; }
 function markYear(y) {
   if (y === shownYear) return;
@@ -368,179 +369,38 @@ function markYear(y) {
   for (const b of $('years').children) {
     const on = +b.dataset.y === y;
     b.setAttribute('aria-pressed', on);
-    if (on) { const l = $('years'), r = b.offsetLeft - l.offsetLeft; if (r < l.scrollLeft || r + b.offsetWidth > l.scrollLeft + l.clientWidth) l.scrollTo({ left: r - (l.clientWidth - b.offsetWidth) / 2, behavior: still.matches ? 'auto' : 'smooth' }); }
+    if (!on) b.style.removeProperty('--p');
   }
   const ys = [...years.keys()];
   $('yPrev').disabled = ys[0] === y; $('yNext').disabled = ys[ys.length - 1] === y;
 }
 function esc(s) { return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
 
-function nearest(t) {
-  let lo = 0, hi = list.length - 1;
-  while (lo < hi) { const m = (lo + hi) >> 1; if (list[m].t < t) lo = m + 1; else hi = m; }
-  return lo > 0 && t - list[lo - 1].t < list[lo].t - t ? lo - 1 : lo;
-}
-function span() { return [list[0].t - 3, list[list.length - 1].t + 3]; }
-function W() { return cv.clientWidth; }
-function minPpd() { const [a, b] = span(); return W() / (b - a); }
-function clampView() {
-  ppd = Math.max(minPpd(), Math.min(140, ppd));
-  const [a, b] = span(), half = W() / 2 / ppd;
-  center = b - a <= 2 * half ? (a + b) / 2 : Math.max(a + half, Math.min(b - half, center));
-}
-function follow() { // keep the chosen day in view without jumping the strip about
-  const t = list[idx].t, half = W() / 2 / ppd;
-  if (t < center - half * .8 || t > center + half * .8) center = t;
-  clampView();
-}
-
-function draw() {
-  const w = W(), h = cv.clientHeight, dpr = devicePixelRatio || 1;
-  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
-  cx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  cx.clearRect(0, 0, w, h);
-  if (!list.length) return;
-  const ink = css('--ink'), muted = css('--muted'), line = css('--line'), saf = css('--saffron');
-  const X = t => w / 2 + (t + .5 - center) * ppd, t0 = center - w / 2 / ppd, t1 = center + w / 2 / ppd;
-  const y0 = dOf(t0).getUTCFullYear(), y1 = dOf(t1).getUTCFullYear();
-  cx.font = `600 12px ${css('--body')}`; cx.textBaseline = 'middle';
-  // years
-  for (let y = y0; y <= y1; y++) {
-    const a = X(Date.UTC(y, 0, 1) / DAYMS - .5), b = X(Date.UTC(y + 1, 0, 1) / DAYMS - .5);
-    cx.fillStyle = line; cx.fillRect(Math.round(a), 0, 1, h);
-    cx.fillStyle = ink; const lx = Math.max(a + 6, 6);
-    if (lx < b - 36) cx.fillText(String(y), lx, 10);
-    else if (lx < b - 22) cx.fillText(`'${String(y).slice(2)}`, lx, 10);   // many years on a narrow screen: still every year, to tap
-  }
-  // months
-  const mw = 30 * ppd;
-  if (mw > 14) {
-    cx.font = `400 11px ${css('--body')}`;
-    for (let y = y0; y <= y1; y++) for (let m = 0; m < 12; m++) {
-      const a = X(Date.UTC(y, m, 1) / DAYMS - .5), b = X(Date.UTC(y, m + 1, 1) / DAYMS - .5);
-      if (b < 0 || a > w) continue;
-      if (m) { cx.fillStyle = line; cx.fillRect(Math.round(a), 19, 1, h - 19); }
-      const name = mw > 80 ? MONTHS[m] : mw > 32 ? MONTHS[m].slice(0, 3) : MONTHS[m][0];
-      cx.fillStyle = muted; const lx = Math.max(a + 5, 5);
-      if (lx + cx.measureText(name).width < b - 2) cx.fillText(name, lx, 26);
-    }
-  }
-  // days: thumbnails when there is room, otherwise a tick for each day with a close darshan
-  const top = 36, th = h - top - 6, tw = th;
-  const i0 = Math.max(0, nearest(t0) - 1), i1 = Math.min(list.length - 1, nearest(t1) + 1);
-  const room = ppd >= tw * .55;
-  for (let i = i0; i <= i1; i++) {
-    const x = X(list[i].t);
-    if (room && i !== idx) {
-      const im = thumb(list[i]), ww = Math.min(tw, ppd - 3);
-      if (im.complete && im.naturalWidth) { cx.globalAlpha = .7; cx.drawImage(im, 0, (im.naturalHeight - im.naturalWidth) / 2, im.naturalWidth, im.naturalWidth, x - tw / 2 + (tw - ww) / 2, top, ww, th); cx.globalAlpha = 1; }
-      else { cx.fillStyle = line; cx.fillRect(x - ww / 2, top, ww, th); }
-    } else if (!room) {
-      cx.fillStyle = muted; cx.globalAlpha = .75; cx.fillRect(x - .5, top + 10, Math.max(1, Math.min(2, ppd * .6)), th - 20); cx.globalAlpha = 1;
-    }
-  }
-  // the chosen day
-  const sx = X(list[idx].t);
-  if (room) { const im = thumb(list[idx]); if (im.complete && im.naturalWidth) cx.drawImage(im, 0, (im.naturalHeight - im.naturalWidth) / 2, im.naturalWidth, im.naturalWidth, sx - tw / 2, top, tw, th); }
-  cx.fillStyle = saf; cx.fillRect(Math.round(sx) - 1, top - 6, 3, th + 12);
-  cx.beginPath(); cx.moveTo(sx - 6, top - 8); cx.lineTo(sx + 7, top - 8); cx.lineTo(sx + .5, top - 1); cx.fill();
-}
 // the day's photo: R2's own copy (photos.bapas-diary.com m/, the size its eyes were measured on), or for the first
 // days made, a copy next to this page
 const R2 = 'https://photos.bapas-diary.com/';
 const r2 = (tier, x) => R2 + tier + '/' + x.path.split('/').map(encodeURIComponent).join('/');
 function photo(x) { return x.path ? r2('m', x) : `p/${x.day}.jpg`; }
-// a small close up for the strip, his eyes lined up as in the big frame: R2's small copy (s/) turned and cut here
-function thumb(x) {
-  const day = x.day;
-  let im = thumbs.get(day);
-  if (im) return im;
-  if (!x.path) { im = new Image(); im.onload = () => requestAnimationFrame(draw); im.src = `f/${day}.jpg`; thumbs.set(day, im); return im; }
-  const c = document.createElement('canvas'), s = new Image();
-  c.width = 240; c.height = 240; c.complete = false; c.naturalWidth = 0;
-  s.onload = () => {
-    const g = c.getContext('2d'), k = s.naturalWidth / x.w, [rx, ry, lx, ly] = x.eyes.map(v => v * k);
-    g.fillStyle = css('--line'); g.fillRect(0, 0, 240, 240);
-    g.translate(120, 240 * EYE_Y); g.rotate(-Math.atan2(ly - ry, lx - rx)); g.scale(GAP * 240 / (x.span * k), GAP * 240 / (x.span * k));
-    g.translate(-(rx + lx) / 2, -(ry + ly) / 2); g.drawImage(s, 0, 0);
-    c.complete = true; c.naturalWidth = 240; c.naturalHeight = 240; requestAnimationFrame(draw);
-  };
-  s.src = r2('s', x); thumbs.set(day, c);
-  return c;
-}
-
 function setEra(e) {
   stop(); era = e; list = eras[e];
   for (const b of document.querySelectorAll('.tab')) b.setAttribute('aria-selected', b.dataset.era === e);
-  ppd = 0; clampView(); center = list.length ? list[0].t : 0; clampView();
   front.classList.remove('on'); back.classList.remove('on');
   $('days').max = Math.max(0, list.length - 1);
   years = yearsOf(list); shownYear = 0;
   $('years').replaceChildren(...[...years.keys()].map(y => {
     const b = document.createElement('button');
-    b.type = 'button'; b.className = 'yr'; b.dataset.y = y; b.textContent = y; b.onclick = () => goYear(y);
+    b.type = 'button'; b.className = 'yr'; b.dataset.y = y; b.setAttribute('aria-label', y); b.onclick = () => goYear(y);
+    b.innerHTML = `<span class="f">${y}</span><span class="s"><span class="q">'</span>${String(y).slice(2)}</span>`;
     return b;
   }));
   if (list.length) goYear(list[0].y);
   try { history.replaceState(null, '', '#' + e); } catch (_) {}
 }
 
-function zoomTo(days, t) { ppd = W() / days; if (t !== undefined) center = t; clampView(); draw(); }
-function zoomBy(k, at) {
-  const t = at === undefined ? center : center + (at - W() / 2) / ppd;
-  ppd *= k; clampView();
-  if (at !== undefined) { center = t - (at - W() / 2) / ppd; clampView(); }
-  draw();
-}
-
-// dragging, scrolling and pinching the strip
-const ptrs = new Map(); let dragged = 0, pinch = 0, downX = 0;
-cv.addEventListener('pointerdown', e => {
-  if (e.isPrimary) ptrs.clear();   // a finger lifted off the edge of the screen never says so: never let it count as a second finger
-  cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, e.clientX); dragged = 0; downX = e.clientX;
-  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.abs(a - b); }
-  stop(); cv.classList.add('drag');
-});
-cv.addEventListener('pointermove', e => {
-  if (!ptrs.has(e.pointerId)) return;
-  const last = ptrs.get(e.pointerId); ptrs.set(e.pointerId, e.clientX);
-  if (ptrs.size === 2) {
-    const [a, b] = [...ptrs.values()], d = Math.abs(a - b);
-    if (pinch) zoomBy(d / pinch, (a + b) / 2 - cv.getBoundingClientRect().left);
-    pinch = d; dragged = 99; return;
-  }
-  const dx = e.clientX - last; dragged += Math.abs(dx);
-  center -= dx / ppd; clampView();
-  const i = nearest(center); if (i !== idx) show(i, true); else draw();
-});
-function up(e) {
-  ptrs.delete(e.pointerId); cv.classList.remove('drag'); if (ptrs.size < 2) pinch = 0;
-  if (dragged < 5 && Math.abs(e.clientX - downX) < 5 && e.type === 'pointerup') tap(e);
-}
-cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
-cv.addEventListener('lostpointercapture', e => { if (ptrs.has(e.pointerId)) up(e); });
-cv.addEventListener('wheel', e => {
-  e.preventDefault(); stop();
-  const r = cv.getBoundingClientRect();
-  if (e.ctrlKey) { zoomBy(Math.exp(-e.deltaY * .01), e.clientX - r.left); return; }
-  center += (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) / ppd; clampView();
-  const i = nearest(center); if (i !== idx) show(i, true); else draw();
-}, { passive: false });
-function tap(e) {
-  const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-  const t = center + (x - W() / 2) / ppd, d = dOf(t), Y = d.getUTCFullYear(), M = d.getUTCMonth();
-  if (y < 18) { if (years.has(Y)) goYear(Y); else { show(nearest(t)); follow(); draw(); } return; }
-  if (y < 33 && 30 * ppd > 14) { const a = Date.UTC(Y, M, 1) / DAYMS; zoomTo(33, a + 15); show(nearest(a + .5)); return; }
-  show(nearest(t)); follow(); draw();
-}
-cv.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); stop(); show(idx + (e.key === 'ArrowRight' ? 1 : -1)); follow(); draw(); }
-  if (e.key === ' ') { e.preventDefault(); toggle(); }
-  if (e.key === 'PageUp' || e.key === 'PageDown') { e.preventDefault(); stepYear(e.key === 'PageDown' ? 1 : -1); }
-});
 document.addEventListener('keydown', e => {
-  if (e.target === cv || e.target.closest('button,select')) return;
-  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { stop(); show(idx + (e.key === 'ArrowRight' ? 1 : -1)); follow(); draw(); }
+  if (e.target.closest('button,select,input')) return;
+  if (e.key === ' ') { e.preventDefault(); toggle(); }
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { stop(); show(idx + (e.key === 'ArrowRight' ? 1 : -1)); }
   if (e.key === 'PageUp' || e.key === 'PageDown') { e.preventDefault(); stepYear(e.key === 'PageDown' ? 1 : -1); }
 });
 
@@ -548,7 +408,7 @@ document.addEventListener('keydown', e => {
 function toggle() { playing ? stop() : start(); }
 function start() {
   if (idx >= list.length - 1) show(0);
-  const tick = () => { if (idx >= list.length - 1) return stop(); show(idx + 1, true); follow(); draw(); };
+  const tick = () => { if (idx >= list.length - 1) return stop(); show(idx + 1, true); };
   playing = setInterval(tick, 1000 / +$('speed').value);
   $('play').setAttribute('aria-pressed', 'true');
   $('play').textContent = '❚❚ Pause';
@@ -561,13 +421,13 @@ function stop() {
 }
 $('play').onclick = toggle;
 $('speed').oninput = () => { $('speedVal').textContent = `${$('speed').value} a second`; if (playing) { stop(); start(); } };
-$('days').oninput = () => { stop(); show(+$('days').value, true); follow(); draw(); };
+$('days').oninput = () => { stop(); show(+$('days').value, true); };
 let roll = 0;   // scrolling over the photo moves a day for every notch, as fast or slow as the wheel turns
 $('frame').addEventListener('wheel', e => {
   e.preventDefault(); stop();
   roll += Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
   const n = Math.trunc(roll / 40);
-  if (n) { roll -= n * 40; show(idx + n, true); follow(); draw(); }
+  if (n) { roll -= n * 40; show(idx + n, true); }
 }, { passive: false });
 // on a phone, sliding a finger across the photo moves through the days too
 let swipe = null;
@@ -575,14 +435,11 @@ $('frame').addEventListener('pointerdown', e => { if (e.pointerType === 'mouse')
 $('frame').addEventListener('pointermove', e => {
   if (!swipe) return;
   const n = Math.trunc((swipe.x - e.clientX) / 24);
-  if (n !== swipe.n) { show(idx + n - swipe.n, true); swipe.n = n; follow(); draw(); }
+  if (n !== swipe.n) { show(idx + n - swipe.n, true); swipe.n = n; }
 });
 for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) $('frame').addEventListener(t, () => { swipe = null; });
 $('yPrev').onclick = () => stepYear(-1);
 $('yNext').onclick = () => stepYear(1);
-$('zAll').onclick = () => { ppd = 0; clampView(); draw(); };
-$('zIn').onclick = () => zoomBy(1.8);
-$('zOut').onclick = () => zoomBy(1 / 1.8);
 for (const b of document.querySelectorAll('.tab')) b.onclick = () => setEra(b.dataset.era);
 // the photo takes the largest square that fits the space left between the title row and the controls
 function fit() {
@@ -590,6 +447,6 @@ function fit() {
   $('frame').style.width = fw + 'px'; $('frame').style.height = fw + 'px';
 }
 fit();
-const ro = new ResizeObserver(() => { fit(); clampView(); draw(); if (front.day) place(front, front.day, front.classList.contains('rest')); }); ro.observe($('slot')); ro.observe($('tl'));
+const ro = new ResizeObserver(() => { fit(); if (front.day) place(front, front.day, front.classList.contains('rest')); }); ro.observe($('slot'));
 setEra(location.hash === '#msm' ? 'msm' : 'psm');
 </script>
