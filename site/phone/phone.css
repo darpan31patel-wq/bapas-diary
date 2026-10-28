@@ -90,8 +90,8 @@
   .viewer { z-index: 70; background: #000; padding-inline: 0; }
   .viewer .vtop { padding-inline: 14px; }
   .viewer .vframe { background: none; padding: 0; box-shadow: none; }
-  .viewer .vframe img { max-width: 100vw; max-height: calc(100dvh - 250px); }
-  .viewer .vcap { color: #f3e6cc; padding-inline: 18px; max-width: 100vw; }
+  .viewer .vframe img { max-width: 100vw; max-height: calc(100dvh - 340px); }   /* room for the gold buttons to the other tabs */
+  .viewer .vcap { color: #f3e6cc; padding-inline: 18px; max-width: 100vw; --go: #d9a441; --go-on: #2a0d14; }
   .viewer .vcap p { font-size: 21px; }
   .viewer .vcap div { color: #d9a441; font-size: 11px; }
   .viewer .vnav { padding-inline: 12px; }
