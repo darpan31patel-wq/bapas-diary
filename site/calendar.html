@@ -232,7 +232,7 @@ function render(mo){
     else{
       const {d,day}=x, date=`${k}-${String(day).padStart(2,'0')}`, fut=FUT&&date>=FUT;
       if(fut){b=el('div','card future');b.tabIndex=0}
-      else{b=el('a','card'); b.href=`${SEARCH}#date=${date}`; b.draggable=false}
+      else{b=el('a','card'); b.href=`/photos/#date=${date}${x.pl?'&place='+encodeURIComponent(x.pl):''}`; b.draggable=false}   // all that day's photos in a grid (Darpan, 28 Oct 2026)
       b.setAttribute('aria-label',`${WDL[new Date(y,m-1,day).getDay()]} ${day} ${MONTHS[m-1]} ${y}${d[0]?', '+d[0]:''}`+
         (fut?`. Future calendar${x.pl?'. Future vicharan: '+x.pl:''}${D.v&&D.v[date]?', '+D.v[date]:''}`:`. Open this day's photos`));
       const win=el('div','win'); b.appendChild(win);
@@ -375,7 +375,7 @@ function pick(i){
   track.scrollTo({left,behavior:reduce||Math.abs(left-track.scrollLeft)>W*3?'auto':'smooth'});
   centreJourney(i,true);
   jnote.innerHTML=(s.fut?'<span>Future vicharan</span>':'')+`<b>${esc(s.p)}</b><span>${s.when} ${+s.k1.slice(0,4)} · ${s.days} ${s.days===1?'day':'days'}</span>`+
-    (s.fut?'':`<a href="${SEARCH}#place=${encodeURIComponent(s.p)}&from=${s.from}&to=${s.to}" style="color:var(--gold-hi)">See these photos</a>`)+`<button type="button" id="jclear">Clear</button>`;
+    `<button type="button" id="jclear">Clear</button>`;
   document.getElementById('jclear').onclick=unpick;
 }
 function unpick(){

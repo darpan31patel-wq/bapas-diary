@@ -626,7 +626,7 @@ function group(y, Y, where, cal, stories) {
   const fest = festOf(cal);
   g.innerHTML = `<div class="yhead"><h3>${y}</h3><span class="caps">${esc(where || '')}</span>` +
     (cal ? `<span class="it">${esc(cal[0])}</span>` : '') + (fest ? `<span class="fest">${esc(fest)}</span>` : '') +
-    `<a class="go" href="${esc(SRC.search(y + '-' + DAY.date))}">Photos &rsaquo;</a></div>` +
+    `<a class="go" href="${esc(SRC.search(y + '-' + DAY.date))}">See more &rsaquo;</a></div>` +
     stories.map(s => `<p class="story-line"><b>On this day</b>${esc(s)}</p>`).join('');
   const add = (list, note) => {
     if (!list || !list.length) return;
@@ -666,7 +666,7 @@ function view(i, play) {
   const none = `<div class="none">${esc(p[2] || 'Darshan')}</div>`;
   $('vstage').innerHTML = `<figure class="vframe" style="margin:0">${url ? `<img alt="${esc(p[2])}" src="${esc(url)}">` : none}` +
     `<figcaption class="vcap"><p>${esc(p[2] || 'Darshan')}</p><div>${esc([when, where, cal && cal[0], festOf(cal)].filter(Boolean).join(' · '))}</div>` +
-    `<a class="go" href="${esc(trip && trip[0] !== trip[1] ? `{{SEARCH}}#place=${encodeURIComponent(String(where || '').split(',')[0])}&from=${trip[0]}&to=${trip[1]}` : SRC.search(trip ? trip[0] : y + '-' + DAY.date))}">Photos &rsaquo;</a></figcaption></figure>`;
+    `<a class="go" href="${esc(trip && trip[0] !== trip[1] ? `{{SEARCH}}#place=${encodeURIComponent(String(where || '').split(',')[0])}&from=${trip[0]}&to=${trip[1]}` : SRC.search(trip ? trip[0] : y + '-' + DAY.date))}">See more &rsaquo;</a></figcaption></figure>`;
   const img = $('vstage').querySelector('img');
   if (img) img.onerror = () => img.outerHTML = none;
   $('vpos').textContent = `${vi + 1} of ${everyPhoto.length}`;

@@ -189,7 +189,7 @@
         if (pickI != null) stays[pickI].el.classList.remove('on');
         pickI = i; x.el.classList.add('on'); centre(x.el);
         wrap.classList.add('ph-picking'); wrap.querySelectorAll('.ph-day').forEach(lit);
-        note.innerHTML = (x.fut ? '<i>Future vicharan</i> ' : '') + `<b>${esc(x.p)}</b> ${x.when} ${x.y1} · ${x.days} ${x.days === 1 ? 'day' : 'days'} ` + (x.fut ? '' : `<a href="${SR}#place=${encodeURIComponent(x.p)}&from=${x.from}&to=${x.to}">Photos</a>`) + `<button type="button" aria-label="Clear">✕</button>`;
+        note.innerHTML = (x.fut ? '<i>Future vicharan</i> ' : '') + `<b>${esc(x.p)}</b> ${x.when} ${x.y1} · ${x.days} ${x.days === 1 ? 'day' : 'days'} ` + `<button type="button" aria-label="Clear">✕</button>`;
         note.querySelector('button').onclick = unpick;
         go(x.k0, x.d0);
       }
@@ -251,7 +251,7 @@
         sel = b; b.setAttribute('aria-pressed', 'true');
         const [y, m] = k.split('-').map(Number), date = `${k}-${String(day).padStart(2, '0')}`;
         const im = b.querySelector('img');
-        card.href = `${SR}#date=${date}`;
+        card.href = `/photos/#date=${date}${place ? '&place=' + encodeURIComponent(place) : ''}`;   // all that day's photos in a grid (28 Oct 2026)
         card.setAttribute('aria-label', `Open the photos of ${day} ${MONTHS[m - 1]} ${y}`);
         if (fut) {   // a FUTURE CALENDAR day: where Bapa is going and what is planned, nothing to open yet
           card.removeAttribute('href'); card.classList.add('ph-fcard');
