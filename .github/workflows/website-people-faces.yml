@@ -48,3 +48,21 @@ jobs:
           gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
           python3 tools/people_faces.py index --shard ${{ matrix.shard }} --out faces-${{ matrix.shard }}.npz
           gh release upload people-faces faces-${{ matrix.shard }}.npz --clobber
+  # each person's face learnt from the captions and looked for in every photo with Bapa: people-faces.json is what the
+  # website's search reads (once Darpan says yes), people-sheets.zip the faces to check by eye
+  match:
+    needs: [plan, shard]
+    if: ${{ !cancelled() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Match
+        run: |
+          pip install -q opencv-python-headless numpy
+          gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
+          mkdir faces && gh release download people-faces -p 'faces-*.npz' -D faces
+          python3 tools/people_faces.py match --db bapas.db --faces faces --out people-faces.json | tee match.log
+          python3 tools/people_faces.py sheets --sheets people-faces-sheets.json --out sheets
+          zip -qr people-sheets.zip sheets
+          gh release upload people-faces people-faces.json match.log people-sheets.zip --clobber
