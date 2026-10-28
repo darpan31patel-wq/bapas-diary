@@ -14,6 +14,7 @@ Writes a folder that works as it is on any web host (Cloudflare Pages, or opened
                         [[date, weekday, vikram_samvat, indian_date, festivals, festival_about, notes, source], ...]
   data/about.json     years, counts and when it was built
   data/people.json    the people the captions name, for Who was with Bapa (tools/search_people.py, site/search-people.js)
+  data/people-faces.json  more photos of each of them, found by their face (tools/people_faces.py)
   data/stops.json     Bapa's travels for Ask the diary, from the live Travels page (live/travels/index.html):
                         {"stops": [[year, place, from, to, photos, caption, close up or 0], ...], "country": {place: country}}
 The questions people type into the search bar ("When did Bapa go to London?") are read by site/search-ask.js, which
@@ -169,6 +170,7 @@ def main():
     ap.add_argument('--out', default='search')
     ap.add_argument('--tags', help='tags.json from tools/photo_tags.py (what is happening in each photo)')
     ap.add_argument('--deep-tags', help='deep-tags.json from release deep-tags (red flowers, food, crowd...)')
+    ap.add_argument('--people-faces', help='people-faces.json from release people-faces (tools/people_faces.py match)')
     ap.add_argument('--photos', default='https://photos.bapas-diary.com/', help='where the s/ and m/ photos are (R2)')
     ap.add_argument('--start-year', default='', help='the year the page opens on, e.g. while only that year has photos')
     ap.add_argument('--image', help='folder with the Search by photo model and photo numbers (release image-search)')
@@ -232,6 +234,11 @@ def main():
     # Who was with Bapa: the swamis, leaders and devotees the captions name (Darpan, 26 Oct 2026)
     people = search_people.people(db)
     write(os.path.join(a.out, 'data', 'people.json'), people)
+    # and the photos with Bapa where their face was found though the caption does not name them (Darpan, 28 Oct 2026)
+    faces = json.load(open(a.people_faces)) if a.people_faces and os.path.exists(a.people_faces) else {}
+    names = {p[0] for p in people}
+    write(os.path.join(a.out, 'data', 'people-faces.json'),
+          {n: [k for k, _ in f['more']] for n, f in faces.items() if n in names and f['more']})
 
     built = dict(db.execute("SELECT key, value FROM about"))
     write(os.path.join(a.out, 'data', 'about.json'),

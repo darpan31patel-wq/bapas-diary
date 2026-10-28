@@ -3,11 +3,17 @@
 // become the photos of Bapa with them. The names are the swamis, leaders and devotees the baps.org captions name
 // (data/people.json, from tools/search_people.py), with every spelling the captions use. A name typed a little
 // differently still finds them (Tyagvallabh or Tyagavallabh, Bharwad or Bharvad, Narendrabhai or Narendra).
+// Photos whose caption does not name them, but where their face was found (data/people-faces.json, from
+// tools/people_faces.py, which learns each face from the captioned photos), join them, marked "found by face".
 // No AI and nothing to pay for. Put inside the search page by tools/build_search.py, after site/search-ask.js, whose
 // helpers (window.askKit) it uses; Ask the diary calls window.askPerson first.
 (() => {
   const $ = id => document.getElementById(id);
-  let PEOPLE = [];
+  let PEOPLE = [], FACES = {};
+  fetch('data/people-faces.json').then(r => r.json()).then(f => {
+    for (const n in f) FACES[n] = new Set(f[n]);
+    cache.p = null;
+  }).catch(() => {});
   fetch('data/people.json').then(r => r.json()).then(list => {
     PEOPLE = list.map(([name, kind, spell, photos, days, first, last]) => {
       const stem = kind === 's' ? name.replace(/ Swami$/, '') : '';
@@ -65,7 +71,9 @@
   let cache = { p: null, n: -1, list: [] };
   function together(p) {   // every photo of Bapa with this person, and every On this day story that names them
     if (cache.p === p && cache.n === items.length) return cache.list;
-    const list = items.filter(r => (r.kind === 'photo' ? r.b : r.kind === 'post') && p.rx.test(r.kind === 'photo' ? r.cap.toLowerCase() : r.hay));
+    const face = FACES[p.name] || new Set();
+    const list = items.filter(r => r.kind === 'photo' ? r.b && (p.rx.test(r.cap.toLowerCase()) || face.has(`${r.g[3]}/${r.file}`))
+      : r.kind === 'post' && p.rx.test(r.hay));
     cache = { p, n: items.length, list };
     return list;
   }
@@ -78,14 +86,17 @@
     const inYears = r => !years.length || years.includes(+r.d.slice(0, 4));
     const all = together(p).filter(inYears), photos = all.filter(r => r.kind === 'photo');
     const keep = r => all.includes(r);
+    const byFace = r => !p.rx.test(r.cap.toLowerCase()), nFace = photos.filter(byFace).length;
     const when = years.length ? ' in ' + years.join(', ') : '';
     if (!photos.length) return { html: card({ raw }, `The diary has no photos of Bapa with ${esc(p.name)}${when}.`, '',
       [years.length ? 'Try without the year.' : 'Try another spelling of the name.', '']), keep: () => false };
     // one row a day: where, what the caption says, and that day's first photo of them together
     const days = new Map();
     for (const r of photos) {
-      const d = days.get(r.d) || { d: r.d, n: 0, r };
+      const d = days.get(r.d) || { d: r.d, n: 0, face: 0, r };
       d.n++;
+      if (byFace(r)) d.face++;
+      else if (byFace(d.r)) d.r = r;   // the row shows a photo that names them, when the day has one
       days.set(r.d, d);
     }
     let list = [...days.values()];
@@ -99,7 +110,7 @@
     const row = x => {
       const r = x.r, small = `${PHOTOS}s/${r.g[3]}/${r.file}`;
       return `<div class="ask-row"><span class="yr">${x.d.slice(0, 4)}</span><span class="ask-cu who-cu" style="background-image:url('${small}')" role="img" aria-label="${esc(r.cap)}"></span>`
-        + `<span class="tx"><b>${esc(where(r))}</b> <span class="when">${fmt(x.d)}</span><span class="c">${esc(r.cap)}</span></span>`
+        + `<span class="tx"><b>${esc(where(r))}</b> <span class="when">${fmt(x.d)}</span>${x.face === x.n ? `<span class="who-face">${t('Found by face', 'ચહેરા પરથી મળ્યા')}</span>` : ''}<span class="c">${esc(r.cap)}</span></span>`
         + `<span class="who">${GURU[guruOf(x.d)]}<br><button type="button" class="ask-see who-see" data-day="${x.d}">${t(`See ${plural(x.n, 'photo')}`, gd(`${num(x.n)} ફોટા જુઓ`))}</button></span></div>`;
     };
     const limit = 8, first = list[0];
@@ -108,7 +119,9 @@
       : `Bapa was with ${esc(p.name)} on ${plural(list.length, 'day')}${list.length > 1 ? ', ' + span : ', ' + fmt(first.d)}${when}.`;
     const headGu = `બાપા સાથે ${esc(p.name)}: ${gd(`${list.length}`)} દિવસ${when ? gd(when.replace(' in ', ', ')) : ''}.`;
     const html = card({ raw }, head, headGu,
-      [`Found by name in the photo captions. The ${plural(photos.length, 'photo')} of Bapa with ${esc(p.name)} are below.`,
+      nFace ? [`${plural(photos.length - nFace, 'photo')} name ${esc(p.name)} in the caption, and ${num(nFace)} more were found by their face. All ${num(photos.length)} are below.`,
+        `${gd(num(photos.length - nFace))} ફોટાનાં વર્ણનમાં નામ છે, અને ${gd(num(nFace))} વધુ ચહેરા પરથી મળ્યા. બધા ${gd(num(photos.length))} ફોટા નીચે છે.`]
+      : [`Found by name in the photo captions. The ${plural(photos.length, 'photo')} of Bapa with ${esc(p.name)} are below.`,
         `ફોટાનાં વર્ણનમાં નામ પરથી. બાપા સાથેના ${gd(num(photos.length))} ફોટા નીચે છે.`],
       gurus({ P: say(per.P), M: say(per.M) }, { P: sayGu(per.P), M: sayGu(per.M) })
       + `<h3 class="ask-h">${t(list.length === 1 ? 'The day together' : 'Every day together', 'સાથેના દિવસો')}</h3><div class="ask-rows">${list.slice(0, limit).map(row).join('')}`
@@ -128,6 +141,7 @@
 
   const css = document.createElement('style');
   css.textContent = `.ask-cu.who-cu { background-size: cover; background-position: center 30%; }
+.who-face { display: inline-block; margin-left: 8px; font: 700 10px var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--gold-deep); border: 1px solid var(--gold-soft); border-radius: 10px; padding: 1px 7px; }
 #q::-webkit-calendar-picker-indicator { display: none !important; }`;   // no dropdown arrow from the name list
   document.head.appendChild(css);
 })();
