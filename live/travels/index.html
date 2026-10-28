@@ -76,12 +76,16 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   background: linear-gradient(rgba(13,19,48,0), var(--night) 30%); display: flex; flex-direction: column; gap: 10px; }
 /* every year as a big button; the strip scrolls sideways on small screens */
-.yrs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+.yrs { display: flex; gap: 4px; overflow: hidden; padding: 2px; }   /* every year in one fixed row */
 .yrs::-webkit-scrollbar { display: none; }
-.yr { flex: 1 0 auto; min-width: 56px; height: 40px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line); background: rgba(13,19,48,.7);
+.yr { flex: 1 1 0; min-width: 0; height: 40px; padding: 0; border-radius: 10px; border: 1px solid var(--line); background: rgba(13,19,48,.7);
   color: var(--ink); font-family: var(--display); font-size: 18px; cursor: pointer; font-variant-numeric: tabular-nums; }
 .yr:hover { border-color: var(--gold); }
 .yr.on { background: var(--gold); border-color: var(--gold); color: var(--night); }
+.yr.other:not(.on) { color: var(--mist); background: rgba(13,19,48,.4); border-style: dashed; }   /* the other guru's journey */
+.yr .short { display: none; }
+@media (max-width: 1280px) { .yr { font-size: 16px; border-radius: 8px; } }
+@media (max-width: 1100px) { .yr .full { display: none; } .yr .short { display: inline; } .yr .short::before { content: "\2019"; } }
 .row { display: flex; align-items: center; gap: 16px; }
 .play { flex: none; width: 60px; height: 60px; border-radius: 50%; border: 0; background: var(--gold); color: var(--night); cursor: pointer; display: grid; place-items: center; }
 .step { flex: none; width: 48px; height: 48px; border-radius: 50%; border: 1.5px solid var(--gold); background: transparent; color: var(--gold); cursor: pointer; display: grid; place-items: center; }
@@ -127,7 +131,17 @@ body.dragging { -webkit-user-select: none; user-select: none; }
   .step { width: 42px; height: 42px; }
   .play { width: 52px; height: 52px; }
   .speed { height: 36px; min-width: 44px; font-size: 14px; }
-  .yr { min-width: 60px; }
+  /* phones: every year is a tick on one ruler, a few are named, the year you are in shows in gold */
+  .yrs { gap: 0; padding: 0; overflow: visible; }
+  .yr, .yr.other:not(.on), .yr.on { position: relative; height: 40px; border: 0; border-radius: 0; background: none; overflow: visible; font: 600 12px var(--body); color: var(--ink); }
+  .yr::after { content: ""; position: absolute; left: 50%; bottom: 8px; width: 2px; height: 10px; margin-left: -1px; border-radius: 1px; background: var(--ink); opacity: .7; }
+  .yr.other::after { background: var(--mist); opacity: .45; }
+  .yr .short, .yr .full { display: none; position: absolute; left: 50%; top: 2px; transform: translateX(-50%); white-space: nowrap; }
+  .yr.lab .full { display: block; color: var(--mist); font-weight: 400; }
+  .yr.on .full { display: block; z-index: 1; padding: 0 7px; border-radius: 6px; background: var(--gold); color: var(--night); font-weight: 600; }
+  .yr.on::after { background: var(--gold); opacity: 1; height: 14px; }
+  .yr:first-child .full { left: 0; transform: none; } .yr:last-child .full { left: auto; right: 0; transform: none; }
+  .yr .short::before { content: none; }
   .row { flex-wrap: wrap; justify-content: center; }
   .track { order: -1; flex: 1 0 100%; height: 64px; }
   .stats { display: none; }
@@ -170,6 +184,16 @@ body.dragging { -webkit-user-select: none; user-select: none; }
 .handover.on .ho-from .yrs { color: var(--mist); opacity: 1; }
 .handover.on .ho-to { background: var(--gold); border-color: var(--gold); color: var(--night); }
 .ho-arrow { flex: none; color: var(--gold); }
+/* going back: the gold starts on Mahant Swami Maharaj and moves back to Pramukh Swami Maharaj */
+.handover.back .ho-arrow { transform: scaleX(-1); }
+.handover.back:not(.on) .ho-from { background: transparent; border-color: var(--line); color: var(--ink); }
+.handover.back:not(.on) .ho-from .yrs { color: var(--mist); opacity: 1; }
+.handover.back:not(.on) .ho-to { background: var(--gold); border-color: var(--gold); color: var(--night); }
+.handover.back:not(.on) .ho-to .yrs { color: var(--night); opacity: .8; }
+.handover.back.on .ho-from { background: var(--gold); border-color: var(--gold); color: var(--night); }
+.handover.back.on .ho-from .yrs { color: var(--night); opacity: .8; }
+.handover.back.on .ho-to { background: transparent; border-color: var(--line); color: var(--ink); }
+.handover.back.on .ho-to .yrs { color: var(--mist); opacity: 1; }
 .ho-line { margin-top: 14px; font-family: var(--display); font-size: clamp(18px, 2.6vw, 26px); color: var(--gold); text-wrap: balance; }
 @media (max-width: 760px) { .handover { top: 40%; padding: 16px; } .ho-row { gap: 8px; } .ho-who { padding: 6px 8px; } .ho-arrow { width: 28px; } }
 @media (prefers-reduced-motion: reduce) { .handover, .ho-who { transition: none; } }
@@ -222,7 +246,7 @@ body.dragging { -webkit-user-select: none; user-select: none; }
     <svg class="ho-arrow" width="44" height="20" viewBox="0 0 44 20" aria-hidden="true"><path d="M2 10h36M30 3l8 7-8 7" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>
     <div class="ho-who ho-to"><span class="who">Mahant Swami Maharaj</span><span class="yrs">13 August 2016 to today</span></div>
   </div>
-  <div class="ho-line">The journey continues with Mahant Swami Maharaj</div>
+  <div class="ho-line" id="hoLine">The journey continues with Mahant Swami Maharaj</div>
 </div>
 <div class="hint" id="hint">The journey plays by itself.<br>Tap a year, slide the months or scroll to explore.</div>
 
@@ -268,7 +292,7 @@ body.dragging { -webkit-user-select: none; user-select: none; }
   // Two journeys, switched like Through the years (Darpan, 28 Oct 2026): Pramukh Swami Maharaj's up to 13 August 2016,
   // Mahant Swami Maharaj's from then on. Sarangpur 2016 runs across that day, so it ends with Pramukh Swami Maharaj's
   // last photos there (12 August) and starts again with Mahant Swami Maharaj's first (18 August), without a close up.
-  const SPLIT = '2016-08-13';
+  const SPLIT = '2016-08-13', SPLIT_MS = Date.parse(SPLIT + 'T00:00:00Z');
   const FIRST_MSM = { a: '2016-08-18', cap: 'HH Mahant Swami Maharaj greets Jai Swaminarayan to Pujya Viveksagar Swami during Bhaktachintamani parayan' };
   const journey = era => era === 'psm'
     ? ALL.filter(s => s.a < SPLIT).map(s => s.b < SPLIT ? s : { ...s, b: '2016-08-12' })
@@ -490,13 +514,21 @@ body.dragging { -webkit-user-select: none; user-select: none; }
   // Year buttons, and one long tape of months: drag it and December rolls straight on into the next January
   const yearsEl = $('years'), tape = $('tape');
   let Y0, NM;
-  function yearButtons() {
-    yearsEl.textContent = '';
-    YEARS.forEach(y => {
-      const b = document.createElement('button'); b.className = 'yr'; b.type = 'button'; b.dataset.y = y; b.textContent = y;
-      b.addEventListener('click', () => { stopPlay(); const k = stops.findIndex(s => s.year === +y); if (k >= 0) goStop(k, false); });
-      yearsEl.appendChild(b);
+  // Every year of both journeys in one fixed row (Darpan, 28 Oct 2026: "all the years in one row static"). A year of the
+  // other guru's journey takes you across to it, with the same handover as at Sarangpur.
+  [...new Set(ALL.map(s => s.year))].forEach(y => {
+    const b = document.createElement('button'); b.className = 'yr'; b.type = 'button'; b.dataset.y = y;
+    b.innerHTML = `<span class="full">${y}</span><span class="short">${String(y).slice(2)}</span>`; b.setAttribute('aria-label', y);
+    if ([1999, 2005, 2010, 2016, 2021, 2026].includes(y)) b.classList.add('lab');   // named on the phone ruler
+    b.addEventListener('click', () => {
+      stopPlay(); if (handing) return;
+      const k = stops.findIndex(s => s.year === y);
+      if (k >= 0) goStop(k, false); else handover(era === 'psm' ? 'msm' : 'psm', y);
     });
+    yearsEl.appendChild(b);
+  });
+  function yearButtons() {
+    yearsEl.querySelectorAll('.yr').forEach(b => b.classList.toggle('other', !YEARS.includes(b.dataset.y)));
     Y0 = +YEARS[0]; NM = YEARS.length * 12;
   }
   let PX = 80;   // pixels per month
@@ -524,8 +556,7 @@ body.dragging { -webkit-user-select: none; user-select: none; }
     const y = new Date(d).getUTCFullYear();
     if (y !== railYear) {
       railYear = y;
-      yearsEl.querySelectorAll('.yr').forEach(b => { const on = +b.dataset.y === y; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
-        if (on) yearsEl.scrollTo({ left: b.offsetLeft - (yearsEl.clientWidth - b.offsetWidth) / 2, behavior: reduce ? 'auto' : 'smooth' }); });
+      yearsEl.querySelectorAll('.yr').forEach(b => { const on = +b.dataset.y === y; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
       $('track').setAttribute('aria-valuetext', MONTHS[new Date(d).getUTCMonth()] + ' ' + y);
     }
   }
@@ -548,12 +579,15 @@ body.dragging { -webkit-user-select: none; user-select: none; }
   const stayT = k => segs.find(g => g.kind === 'stay' && g.i === k).t0 + 0.05;
   const goStop = (k, smooth) => { k = Math.max(0, Math.min(stops.length - 1, k)); scrollTo({ top: stayT(k) * UNIT, behavior: smooth && !reduce ? 'smooth' : 'auto' }); };
   const here = () => stateAt(target());
-  $('goPrev').addEventListener('click', () => { stopPlay(); const st = here(); goStop(st.flying ? st.i : st.i - 1, true); });
-  $('goNext').addEventListener('click', () => { stopPlay(); goStop(here().i + 1, true); });
+  // back from the first stop of Mahant Swami Maharaj's journey, or on from the last of Pramukh Swami Maharaj's, goes across
+  const goBack = () => { stopPlay(); const st = here(); if (era === 'msm' && !st.flying && st.i === 0) handover('psm', 'end'); else goStop(st.flying ? st.i : st.i - 1, true); };
+  const goOn = () => { stopPlay(); const st = here(); if (era === 'psm' && st.i >= stops.length - 1) handover('msm', 'start'); else goStop(st.i + 1, true); };
+  $('goPrev').addEventListener('click', goBack);
+  $('goNext').addEventListener('click', goOn);
   addEventListener('keydown', e => {
     if (e.target.closest && e.target.closest('button')) return;
-    if (e.key === 'ArrowRight') { e.preventDefault(); stopPlay(); goStop(here().i + 1, true); }
-    if (e.key === 'ArrowLeft') { e.preventDefault(); stopPlay(); const st = here(); goStop(st.flying ? st.i : st.i - 1, true); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); goOn(); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); goBack(); }
     if (e.key === ' ') { e.preventDefault(); $('play').click(); }
   });
   const track = $('track');
@@ -567,20 +601,39 @@ body.dragging { -webkit-user-select: none; user-select: none; }
   let drag = null;
   track.addEventListener('pointerdown', e => { e.preventDefault(); getSelection && getSelection().removeAllRanges(); stopPlay(); drag = { x: e.clientX, m: railM, moved: false }; track.setPointerCapture(e.pointerId); track.classList.add('drag'); document.body.classList.add('dragging'); });
   track.addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX - drag.x;
-    if (Math.abs(dx) > 4) drag.moved = true; if (drag.moved) goMonth(drag.m + 1.6 * dx / PX); });   // drag right to go forward in time (Darpan, 24 Oct)
+    if (Math.abs(dx) > 4) drag.moved = true; if (!drag.moved) return;
+    const mf = drag.m + 1.6 * dx / PX, d = dateOf(mf);   // drag right to go forward in time (Darpan, 24 Oct)
+    if (era === 'psm' && d >= SPLIT_MS + 5 * 864e5) { endDrag(e); return handover('msm', 'start'); }   // dragged across the day itself
+    if (era === 'msm' && d < SPLIT_MS - 5 * 864e5) { endDrag(e); return handover('psm', 'end'); }
+    goMonth(mf); });
   const endDrag = e => { if (!drag) return;
     if (!drag.moved && e.type === 'pointerup') { const r = track.getBoundingClientRect(); goMonth(drag.m + (e.clientX - r.left - r.width / 2) / PX); }
     drag = null; track.classList.remove('drag'); document.body.classList.remove('dragging'); };
   track.addEventListener('pointerup', endDrag); track.addEventListener('pointercancel', endDrag);
   track.addEventListener('keydown', e => { if (e.key === 'PageDown' || e.key === 'PageUp') { e.preventDefault(); stopPlay(); goMonth(railM + (e.key === 'PageDown' ? 1 : -1)); } });
-  addEventListener('wheel', stopPlay, { passive: true }); addEventListener('touchstart', e => { if (!e.target.closest('.rail')) stopPlay(); }, { passive: true });
+  addEventListener('wheel', stopPlay, { passive: true });
+  // Scrolling on past either end of a journey goes across too: a firm push at the very end, so it never happens by accident
+  let push = 0, touchY = null;
+  const maxY = () => document.documentElement.scrollHeight - innerHeight;
+  function edge(dy) {   // dy > 0 is on in time, dy < 0 is back
+    const atEnd = era === 'psm' && dy > 0 && scrollY >= maxY() - 2, atStart = era === 'msm' && dy < 0 && scrollY <= 0;
+    if (!atEnd && !atStart) { push = 0; return false; }
+    push += Math.abs(dy);
+    if (push > 260) { push = 0; handover(atEnd ? 'msm' : 'psm', atEnd ? 'start' : 'end'); }
+    return true;
+  }
+  addEventListener('wheel', e => { if (!handing) edge(e.deltaY); }, { passive: true });
+  addEventListener('touchstart', e => { touchY = e.touches[0].clientY; push = 0; }, { passive: true });
+  addEventListener('touchmove', e => { if (touchY === null || handing || e.target.closest('.rail')) return;
+    const y = e.touches[0].clientY; edge((touchY - y) * 1.5); touchY = y; }, { passive: true });
+  addEventListener('touchend', () => { touchY = null; }, { passive: true }); addEventListener('touchstart', e => { if (!e.target.closest('.rail')) stopPlay(); }, { passive: true });
   addEventListener('scroll', () => { if (scrollY > 40) $('hint').style.opacity = 0; }, { passive: true });
   addEventListener('resize', () => { resize(); });
 
   let last = performance.now();
   function frame(now) {
     const dt = Math.min(64, now - last); last = now;
-    if (playing) { scrollBy(0, dt * 0.09 * SPEEDS[speedI] * UNIT / 260); if (target() >= T - 0.01) { stopPlay(); if (era === 'psm') handover(); } }
+    if (playing) { scrollBy(0, dt * 0.09 * SPEEDS[speedI] * UNIT / 260); if (target() >= T - 0.01) { stopPlay(); if (era === 'psm') handover('msm', 'start', true); } }
     const goal = target();
     tNow = reduce ? goal : tNow + (goal - tNow) * Math.min(1, dt / 140);
     if (Math.abs(goal - tNow) < 1e-4) tNow = goal;
@@ -611,24 +664,30 @@ body.dragging { -webkit-user-select: none; user-select: none; }
     if (handing) { clearTimeout(handing); handing = 0; $('handover').classList.remove('show', 'on'); $('handover').hidden = true; }
     if (b.dataset.era !== era) setEra(b.dataset.era, true);
   }));
-  $('next').addEventListener('click', e => { if (e.target.closest('#cont')) handover(); });
+  $('next').addEventListener('click', e => { if (e.target.closest('#cont')) handover('msm', 'start', true); });
   // Pramukh Swami Maharaj's journey flows straight on into Mahant Swami Maharaj's (Darpan, 28 Oct 2026: "seamless, but
   // obvious that it's jumped across"). Both journeys meet in Sarangpur, so the globe stays still while the card shows the
   // handover, the gold moves across from one guru to the other, and the second journey plays on.
+  // It works both ways (Darpan, 28 Oct 2026): going back from Mahant Swami Maharaj's first stop the gold moves back to
+  // Pramukh Swami Maharaj and you land on his last stop. land: 'start', 'end' or a year; play: carry on playing after.
   let handing = 0;
-  function handover() {
-    if (handing) return;
-    const ho = $('handover'); ho.hidden = false; ho.classList.remove('on');
-    const wait = reduce ? 0 : 1;
+  function handover(to, land, play) {
+    if (handing || to === era) return;
+    const ho = $('handover'), back = to === 'psm', wait = reduce ? 0 : 1, slow = play ? 1 : .55;
+    ho.hidden = false; ho.classList.remove('on'); ho.classList.toggle('back', back);
+    $('hoLine').textContent = back ? 'Back to Pramukh Swami Maharaj\u2019s journey' : 'The journey continues with Mahant Swami Maharaj';
     handing = setTimeout(() => {
       ho.classList.add('show');
       handing = setTimeout(() => {
-        ho.classList.add('on'); setEra('msm', false);
+        ho.classList.add('on'); setEra(to, false);
+        if (land === 'end') goStop(stops.length - 1, false);
+        else if (typeof land === 'number') goStop(Math.max(0, stops.findIndex(s => s.year === land)), false);
+        tNow = target();   // straight there, no sweep across the whole journey
         handing = setTimeout(() => {
           ho.classList.remove('show');
-          handing = setTimeout(() => { ho.hidden = true; handing = 0; if (era === 'msm' && !touched2) startPlay(); }, wait * 600);
-        }, 2400);
-      }, 1600);
+          handing = setTimeout(() => { ho.hidden = true; handing = 0; if (play && !touched2) startPlay(); }, wait * 600);
+        }, 2400 * slow);
+      }, 1600 * slow);
     }, wait * 30);
     touched2 = false;
   }
