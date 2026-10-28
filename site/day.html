@@ -325,6 +325,15 @@ const tithiOf = c => c ? c[0] : '';
 
 let DAY = null, cards = [], everyPhoto = [], timers = [], paused = false, showing = null;
 
+// On this day means the years gone by: today, and the days still to come this year, never show this year's own card or
+// story, only on the days already past (Darpan, 28 Oct 2026: "no 2026 pictures on the present day, doesn't make sense").
+// Worked out in the browser from its own clock, so it turns over by itself at New Year.
+function pastOnly(D) {
+  if (D.date < TODAY) return D;
+  const y = now.getFullYear();
+  return Object.assign({}, D, {years: D.years.filter(Y => Y.y < y), stories: (D.stories || []).filter(s => s[0] < y)});
+}
+
 // the date in the address (#10-24) opens that day; no date opens today
 function wanted() { const h = location.hash.slice(1); return /^\d\d-\d\d$/.test(h) && +h.slice(3) <= LEN[+h.slice(0, 2) - 1] ? h : TODAY; }
 
@@ -343,7 +352,7 @@ async function open(mmdd, push) {
   let data;
   try { data = await SRC.day(mmdd); } catch (e) { $('loading').textContent = 'This day could not be opened. Please try again in a moment.'; return; }
   if (showing !== mmdd) return;
-  DAY = data;
+  DAY = pastOnly(data);
   $('loading').hidden = true;
   render();
 }

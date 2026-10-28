@@ -201,6 +201,8 @@ def main():
             continue
         rows = db.execute('SELECT year, place, album, file, is_bapa FROM photos WHERE substr(date, 6) = ? AND date IS NOT NULL',
                           (mmdd,)).fetchall()
+        if mmdd >= datetime.date.today().strftime('%m-%d'):   # never this year's own photos on today or a day still to come (Darpan, 28 Oct 2026)
+            rows = [r for r in rows if r[0] < this_year]
         nyears = len({r[0] for r in rows})
         best = {}
         for y, place, album, file, bapa in rows:

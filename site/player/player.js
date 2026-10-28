@@ -20,7 +20,9 @@
   // the day's photos, one year after another: 1999, 2000, ... then each year's second photo, and so on. A year with no
   // photo on the day itself uses the photos of its trip around the day, as the cards do.
   function order(D) {
-    const years = D.years.map(Y => ({ Y, list: Y.p.length ? Y.p : (Y.t || []) })).filter(x => x.list.length).sort((a, b) => a.Y.y - b.Y.y);
+    // never this year's own photos on today or a day still to come this year (Darpan, 28 Oct 2026), as on the Today page
+    const cut = D.date >= today() ? new Date().getFullYear() : Infinity;
+    const years = D.years.filter(Y => Y.y < cut).map(Y => ({ Y, list: Y.p.length ? Y.p : (Y.t || []) })).filter(x => x.list.length).sort((a, b) => a.Y.y - b.Y.y);
     const out = [];
     for (let k = 0; years.some(x => x.list[k]); k++)
       years.forEach(({ Y, list }) => { const p = list[k]; if (p) out.push({ p, y: Y.y, where: Y.place, cal: D.cal && D.cal[Y.y], trip: !Y.p.length && Y.trip }); });
