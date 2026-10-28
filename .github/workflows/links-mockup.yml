@@ -1,0 +1,96 @@
+# Website only: pictures of the gold "every tab linked together" buttons on the real pages, built from this branch with
+# the website's own build steps and the real photos, for Darpan to see before anything goes live (28 Oct 2026).
+# Deploys nothing. Pictures go to release links-mockup (day photo box over the Calendar).
+name: links-mockup
+on:
+  push:
+    branches: ['claude/project-thread-tbkjl3']
+    paths: ['.github/workflows/links-mockup.yml']
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the website as the deploy does (no upload)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir out && rsync -a --exclude README.md live/ out/
+          gh release download legacy-auto -p more.json -D out/then-and-now 2>/dev/null || echo '[]' > out/then-and-now/more.json
+          gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
+          pip install -q -r requirements.txt
+          mkdir faces && gh release download website-faces -p 'face2-*.json.gz' -D faces
+          python3 tools/web_faces.py pick --db bapas.db --faces faces --out bapa.db --top bapa-top.db
+          python3 tools/web_rules.py captions --db bapa.db --db bapa-top.db
+          python3 tools/web_rules.py calendar --db bapas.db --db bapa.db --db bapa-top.db
+          gh release download website-mockup -p tags.json
+          gh release download deep-tags -p deep-tags.json
+          gh release download people-faces -p people-faces.json || echo '{}' > people-faces.json
+          gh release download faces-mockup -p faces-site.tgz && tar -xzf faces-site.tgz -C out
+          python3 tools/web_day.py --db bapa.db --site day --photos-url https://photos.bapas-diary.com/ --search-url /search/ > /dev/null
+          python3 tools/web_faces.py order --db bapa.db --day day/data/day
+          gh release download website-rules -p tg-cards.json || echo '{}' > tg-cards.json
+          python3 tools/web_rules.py day --day day/data/day --db bapa.db --faces faces --tg tg-cards.json
+          rsync -a day/ out/
+          { cat site/photo-years.txt; curl -fs https://photos.bapas-diary.com/years.txt || true; } | grep -E '^[0-9]{4}$' | sort -un > photo-years.txt
+          git fetch -q --depth 1 origin refs/heads/database && git show FETCH_HEAD:crawl/schedule/latest.json > schedule.json || echo '{}' > schedule.json
+          python3 tools/web_calendar.py --db bapa-top.db --site cal --photos-url https://photos.bapas-diary.com/ --search-url /search/ --photo-years photo-years.txt --schedule schedule.json
+          python3 tools/web_rules.py calfaces --site cal --faces faces
+          rsync -a cal/ out/
+          gh release download image-search -p image-search.tgz && tar -xzf image-search.tgz
+          python3 tools/build_search.py --db bapas.db --out out/search --tags tags.json --deep-tags deep-tags.json --people-faces people-faces.json --start-year 1999 --image image
+          python3 tools/site_menu.py out
+          pip install -q pillow
+          python3 tools/web_share.py --out out
+          python3 tools/web_head.py --out out
+          python3 tools/web_seo.py --out out
+          python3 tools/web_extras.py --out out
+          python3 tools/web_player.py --out out
+          python3 tools/web_phone.py --out out
+          python3 tools/web_rules.py look --out out
+          python3 tools/web_gujarati.py --out out
+          python3 tools/web_tiny.py --out out
+          python3 tools/web_secure.py --out out
+          python3 tools/web_type.py --out out
+      - name: Pictures on a computer and a phone
+        run: |
+          (cd out && python3 -m http.server 8765 > /dev/null 2>&1 &)
+          npm i -s playwright@1.49.1 > /dev/null && npx playwright install --with-deps chromium > /dev/null
+          cat > shots.js <<'JS'
+          const { chromium } = require('playwright');
+          const S = 'http://localhost:8765';
+          const sizes = [['computer', 1440, 900, 1, false], ['phone', 390, 844, 2, true]];
+          (async () => {
+            const b = await chromium.launch();
+            for (const [sz, w, h, dpr, mob] of sizes) {
+              const ctx = await b.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: dpr, isMobile: mob, hasTouch: mob, serviceWorkers: 'block' });
+              const p = await ctx.newPage();
+              const errs = []; p.on('pageerror', e => errs.push(e.message));
+              const go = async (u, wait = 5000) => { await p.goto(S + u, { waitUntil: 'networkidle', timeout: 90000 }).catch(() => {}); await p.waitForTimeout(wait); };
+              const shot = async n => { await p.screenshot({ path: `${n}-${sz}.jpg`, type: 'jpeg', quality: 82 }); console.log(n, sz); };
+              // Calendar: tap a day (on a phone, the day then its card) and its photos open in a box over the Calendar
+              await go('/calendar/#2023-05-16', 8000); await shot('1-calendar');
+              if (mob) await p.locator('.ph-card').click().catch(() => {}); else await p.locator('a.card[href*="2023-05-16"]').click().catch(() => {});
+              await p.waitForTimeout(8000); await shot('2-day-box');
+              await p.frameLocator('.daybox iframe').locator('.grid button').nth(4).click().catch(() => {}); await p.waitForTimeout(5000); await shot('3-box-photo');
+              await p.frameLocator('.daybox iframe').locator('#close').click().catch(() => {}); await p.waitForTimeout(500);
+              await p.mouse.click(mob ? 195 : 20, mob ? 20 : 450); await p.waitForTimeout(1500); await shot('4-back-to-calendar');
+              await go('/calendar/#2010-10-26', 8000);
+              if (mob) await p.locator('.ph-card').click().catch(() => {}); else await p.locator('a.card[href*="2010-10-26"]').click().catch(() => {});
+              await p.waitForTimeout(7000); await shot('5-day-box-small');
+              console.log(sz, 'page errors:', JSON.stringify(errs));
+              await ctx.close();
+            }
+            await b.close();
+          })();
+          JS
+          node shots.js
+      - name: Keep them in release links-mockup
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view links-mockup -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || gh release create links-mockup -R "$GITHUB_REPOSITORY" --prerelease --title "Every tab linked together, mockup pictures" --notes "Pictures of the gold buttons linking every tab, for Darpan to see before anything changes (28 Oct 2026). Website only."
+          for a in $(gh release view links-mockup -R "$GITHUB_REPOSITORY" --json assets -q '.assets[].name'); do gh release delete-asset links-mockup "$a" -R "$GITHUB_REPOSITORY" -y; done
+          gh release upload links-mockup -R "$GITHUB_REPOSITORY" --clobber *.jpg
