@@ -6,6 +6,7 @@
 <title>Photos · Bapa's Diary</title>
 <meta name="description" content="Every photo of Bapa from these days, in one grid.">
 <meta name="robots" content="noindex">
+<script>if (/(^#|&)box=1/.test(location.hash)) document.documentElement.classList.add('inbox');   // shown in the Calendar's box</script>
 <link rel="stylesheet" href="/menu.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Lora:ital,wght@0,400;0,500;1,400&family=Arimo:wght@400;700&display=swap">
@@ -13,6 +14,10 @@
 :root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
 body { margin: 0; }
 [hidden] { display: none !important; }
+/* inside the Calendar's box: no menu, tabs or top strip, less room above */
+html.inbox nav, html.inbox .ph-top, html.inbox .ph-tabs, html.inbox .gu-switch, html.inbox .bd-aa, html.inbox .bd-save, html.inbox .off-save { display: none !important; }
+html.inbox main { padding-top: 22px !important; }
+html.inbox, html.inbox body { background: #1d070c; }
 /* Every photo of a stay or a day in one grid (bapas-diary.com/photos/#from=2010-10-18&to=2010-11-06&place=Gondal), opened by
    "See these photos" on the Calendar (Darpan, 28 Oct 2026: "it just opens up a webpage with all the pictures from the day in
    a grid"). No search boxes: the days in order, a heading for each day, tap a photo to see it big. Photos and captions come
@@ -145,13 +150,13 @@ $('prev').onclick = () => show(at - 1);
 $('next').onclick = () => show(at + 1);
 $('big').addEventListener('click', e => { if (e.target === $('big') || e.target === $('stage')) shut(); });
 addEventListener('keydown', e => {
-  if ($('big').hidden) return;
+  if ($('big').hidden) { if (e.key === 'Escape' && parent !== window) parent.postMessage('daybox-close', location.origin); return; }
   if (e.key === 'Escape') shut(); else if (e.key === 'ArrowRight') show(at + 1); else if (e.key === 'ArrowLeft') show(at - 1);
 });
 let sx = null;
 $('stage').addEventListener('touchstart', e => sx = e.touches[0].clientX, { passive: true });
 $('stage').addEventListener('touchend', e => { if (sx == null) return; const d = e.changedTouches[0].clientX - sx; sx = null; if (Math.abs(d) > 40) show(at + (d < 0 ? 1 : -1)); });
-addEventListener('hashchange', () => location.reload());
+addEventListener('hashchange', () => { if (!document.documentElement.classList.contains('inbox')) location.reload(); });
 load().catch(() => { $('count').textContent = 'The photos could not load. Please refresh the page.'; });
 </script>
 </body>
