@@ -47,9 +47,16 @@
   nav.site-menu:has(.bd-aa) .bd-off-btn { right: 176px; }
   nav.site-menu:has(.bd-off-btn) { padding-right: 290px; }
 }
+/* tablets: Save for travelling and Aa in the top left corner, the language switch top right, the tabs in the middle
+   (Darpan, 28 Oct 2026: the tabs were not centred on his mum's tablet; see live/menu.css) */
+@media (min-width: 761px) and (max-width: 1199px) {
+  nav.site-menu .bd-off-btn, nav.site-menu:has(.bd-aa) .bd-off-btn { right: auto; left: 16px; }
+  nav.site-menu:has(.bd-off-btn) .bd-aa { left: 58px; }
+  nav.site-menu:has(.bd-off-btn) { padding-left: 128px; padding-right: 128px; }
+}
 /* iPads standing up: the tabs a little closer, so all six still fit beside the three buttons */
 @media (min-width: 761px) and (max-width: 1100px) {
-  nav.site-menu:has(.bd-off-btn) { gap: 0 10px; padding-left: 12px; }
+  nav.site-menu:has(.bd-off-btn) { gap: 0 10px; }
   nav.site-menu:has(.bd-off-btn) a { letter-spacing: .06em; }
   nav.site-menu:has(.bd-off-btn) a.on { padding: 6px 10px 5px; }
   .bd-off-sheet { left: 50%; right: auto; width: min(560px, 100%); transform: translate(-50%, 100%); }

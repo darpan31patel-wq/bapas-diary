@@ -48,6 +48,14 @@ nav.site-menu a.on { color: #fff3cf; background: rgba(255, 211, 107, .16); borde
 }
 @media (min-width: 761px) and (max-width: 1199px) { nav.site-menu { gap: 0 14px; } nav.site-menu a { letter-spacing: .14em; } }
 @media (min-width: 1200px) { nav.site-menu { padding-left: 236px; } }   /* same room both sides, so the tabs stay in the middle */
+/* Tablets (761 to 1199px), Darpan, 28 Oct 2026: on his mum's tablet the tabs sat to the left of the middle, because all the
+   buttons took room on the right only. There is not enough width for the same room both sides with all of them on the
+   right, so on tablets Aa moves to the top left corner (with Save for travelling on iPads, site/offline/offline.css) and
+   the language switch stays top right: the same room each side, the tabs in the middle of the screen */
+@media (min-width: 761px) and (max-width: 1199px) {
+  nav.site-menu { padding-left: 128px; padding-right: 128px; }
+  nav.site-menu .bd-aa { right: auto; left: 16px; }
+}
 /* Darpan, 26 Oct 2026: "these always stay at the top of the screen. If someone scrolls down, they just go very faint, but
    still keep them there so you can click on it whenever you want to." Computers and tablets only: phones keep the tab bar
    at the bottom. tools/site_menu.py adds the few lines that switch on .faint once the page has moved 40px. */
