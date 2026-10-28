@@ -32,13 +32,16 @@ jobs:
           echo "== the globe's own helper files (28 Oct safety fixes)"
           for u in https://bapas-diary.com/travels/lib/d3-7.8.5.min.js https://bapas-diary.com/travels/lib/topojson-3.0.2.min.js; do echo "$u -> $(curl -s -o /dev/null -w '%{http_code} %{size_download}B' "$u")"; done
           curl -s https://bapas-diary.com/travels/ | grep -o '<script src="[^"]*"' | head -3
+          echo "== tiny Calendar photos and the browser icon (28 Oct)"
+          echo "favicon.ico -> $(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' https://bapas-diary.com/favicon.ico)"
+          echo "calendar uses t/: $(curl -s https://bapas-diary.com/calendar/ | grep -c 'PHOTOS}t/')   phone.js uses t/: $(curl -s https://bapas-diary.com/phone.js | grep -c 'PH}t/')"
           echo "== sizes as a phone downloads them (compressed)"
           for u in https://bapas-diary.com/ https://bapas-diary.com/search/ https://bapas-diary.com/through-the-years/ https://bapas-diary.com/calendar/ https://bapas-diary.com/travels/; do
             echo "$u $(curl -s -o /dev/null --compressed -w '%{size_download}B in %{time_total}s' "$u")"
           done
       - name: Lighthouse on a phone
         run: |
-          for p in /search/ /travels/; do
+          for p in /calendar/ /search/; do
             n=$(echo "$p" | tr -dc 'a-z-'); n=${n:-today}
             npx --yes lighthouse@12.2.1 "https://bapas-diary.com$p" --quiet --chrome-flags='--headless=new --no-sandbox' \
               --only-categories=performance,accessibility,best-practices,seo --output=json --output-path="lh-$n.json" > /dev/null 2>&1 || { echo "$p: lighthouse failed"; continue; }
