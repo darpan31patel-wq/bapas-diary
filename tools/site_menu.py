@@ -8,7 +8,7 @@ import hashlib, os, re, sys
 # Darpan, 24 Oct 2026: Calendar is the second tab. 26 Oct 2026: Then and now is its own tab ("make it its own thing",
 # "yes then and now tab"), after Through the years; added here to every page's menu, so no page can miss it.
 ORDER = ['/', '/calendar/', '/search/', '/travels/', '/through-the-years/', '/then-and-now/', '/about/']
-ADD = {'/then-and-now/': 'Then and now'}
+ADD = {'/then-and-now/': 'Legacy'}   # Darpan, 28 Oct 2026: "change 'then and now' to 'legacy'"
 NAV = re.compile(r'(<nav class="site-menu[^"]*"[^>]*>)(.*?)(</nav>)', re.S)
 TAB = re.compile(r'<a\b[^>]*\bhref="([^"]+)"[^>]*>.*?</a>', re.S)
 # Darpan, 26 Oct 2026: the tabs always stay at the top of the screen; scrolled down they go very faint but can still be
@@ -20,6 +20,9 @@ FAINT = ('<script id="menu-faint">(function(){var n=document.querySelector("nav.
 
 def reorder(m):
     tabs = {href: a.group(0) for a in TAB.finditer(m.group(2)) for href in [a.group(1)]}
+    for href, name in ADD.items():   # every page's tab says the same, whatever the page was built with
+        if href in tabs:
+            tabs[href] = re.sub(r'>.*?</a>$', f'>{name}</a>', tabs[href], flags=re.S)
     for href, name in ADD.items():
         tabs.setdefault(href, f'<a href="{href}">{name}</a>')
     rest = [tabs[h] for h in tabs if h not in ORDER]

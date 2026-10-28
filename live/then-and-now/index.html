@@ -35,7 +35,8 @@ header { text-align: center; display: grid; gap: 6px; }
 .crumb a { color: var(--muted); text-decoration: none; } .crumb a:hover { color: var(--gold-hi); }
 .crumb b { color: var(--gold); font-weight: 700; }
 /* Darpan, 26 Oct 2026: the page is called Legacy, "Years apart, the same blessings" under it (the menu tab stays Then and now) */
-h1 { margin: 0; font: 600 clamp(30px, 5.4vw, 52px)/1.05 var(--title); letter-spacing: .1em; color: var(--gold-hi); text-wrap: balance; }
+/* Darpan, 28 Oct 2026: the title is "The same blessings, through the years" (his pick), smaller, in the same lettering as the other pages' headings */
+h1 { margin: 0; font: 600 clamp(22px, 2.9vw, 32px)/1.2 var(--title); letter-spacing: .03em; color: var(--gold-hi); text-wrap: balance; }
 .tagline { font: italic 500 clamp(20px, 2.8vw, 27px)/1.2 var(--script); color: var(--paper); }
 .where { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 4px 14px; margin-top: 8px; padding-top: 10px;
   border-top: 1px solid rgba(217,164,65,.3); max-width: 36rem; margin-inline: auto; width: 100%; }
@@ -94,11 +95,10 @@ button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 3px; }
 </style>
 </head>
 <body>
-<nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a href="/calendar/">Calendar</a><a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a class="on" href="/then-and-now/" aria-current="page">Then and now</a><a href="/about/">About</a></nav>
+<nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a href="/calendar/">Calendar</a><a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a class="on" href="/then-and-now/" aria-current="page">Legacy</a><a href="/about/">About</a></nav>
 <main>
   <header>
-    <h1>Legacy<span id="crumb" hidden></span></h1>
-    <div class="tagline">Years apart, the same blessings</div>
+    <h1>The same blessings, through the years<span id="crumb" hidden></span></h1>
     <div class="where"><span class="soft" id="place">Surat</span><span class="moment soft" id="moment">Darshan of Thakorji</span></div>
   </header>
   <section class="pair" id="pair" aria-live="polite">
