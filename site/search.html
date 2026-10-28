@@ -314,7 +314,10 @@ function search() {
   $('day-view')?.remove();
   // a question ("When did Bapa go to London?", site/search-ask.js): its answer goes above the results, and the
   // results are the photos (with Bapa) and stories that answer it, instead of photos that have every word
-  const asked = window.askDiary ? askDiary($('q').value) : null;
+  // a picture chosen with "Search by photo" (site/search-image.js): the closest photos, best first, and the filters still work
+  const pic = window.picSearch ? picSearch() : null;
+  picMode = !!pic;
+  const asked = !pic && window.askDiary ? askDiary($('q').value) : null;
   const { want, not } = asked ? { want: [], not: [] } : parse($('q').value), year = $('year').value, month = $('month').value, day = $('day').value;
   // each word also finds its other spellings (Diwali, Divali; site/search-ask.js)
   const spell = want.length && window.spellWords ? spellWords(want) : { alts: want.map(w => [w]), flat: want, note: '' };
@@ -322,7 +325,7 @@ function search() {
   const lp = linkPlace.toLowerCase();   // a place from a map link also finds albums named after two places, or 'Washington DC'
   const byYear = {};
   hits = [];
-  if (!asked && !want.length && !not.length && !year && !month && !day && !from && !to && !fest && !place && !act && !mandir) { render(byYear, want); return; }
+  if (!pic && !asked && !want.length && !not.length && !year && !month && !day && !from && !to && !fest && !place && !act && !mandir) { render(byYear, want); return; }
   for (const r of items) {
     if (month && r.d.slice(5, 7) !== month) continue;
     if (day && r.d.slice(8, 10) !== day) continue;
@@ -332,6 +335,7 @@ function search() {
     if (place && !(r.kind === 'photo' ? r.city === place || (place === linkPlace && r.g[2].split(',').some(c => c.trim().toLowerCase().startsWith(lp))) : (r.place || '').includes(place))) continue;
     if (act && !(r.tags && r.tags.split(', ').includes(act))) continue;
     if (mandir && !(r.m || '').includes(mandir)) continue;
+    if (pic && !pic.has(r)) continue;
     if (asked && !asked.keep(r)) continue;
     if (want.length || not.length) {
       const hay = r.hay + ' ' + calWords(r.d);
@@ -342,7 +346,8 @@ function search() {
     if (year && k !== year) continue;
     hits.push(r);
   }
-  if ($('order').value === 'new') hits.reverse();
+  if (pic) hits.sort((a, b) => pic.get(b) - pic.get(a));
+  else if ($('order').value === 'new') hits.reverse();
   lastWant = spell.flat;
   render(byYear, spell.flat);
   if (spell.note) $('count').insertAdjacentHTML('beforeend', `<span class="spelt">${spell.note}</span>`);
@@ -366,7 +371,7 @@ function render(byYear, want) {
   }
   const nPhotos = hits.filter(h => h.kind === 'photo').length, nPosts = hits.filter(h => h.kind === 'post').length;
   const nDates = new Set(hits.map(h => h.d)).size;
-  $('count').innerHTML = `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'} and <b>${nPosts.toLocaleString()}</b> On this day stor${nPosts === 1 ? 'y' : 'ies'} on <b>${nDates.toLocaleString()}</b> date${nDates === 1 ? '' : 's'}`
+  $('count').innerHTML = picMode ? `<b>${nPhotos.toLocaleString()}</b> photos most like your picture, closest first` + (loaded < total ? ' (still loading)' : '') : `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'} and <b>${nPosts.toLocaleString()}</b> On this day stor${nPosts === 1 ? 'y' : 'ies'} on <b>${nDates.toLocaleString()}</b> date${nDates === 1 ? '' : 's'}`
     + (loaded < total ? ' (still loading)' : '');
   $('results').innerHTML = '<div class="grid" id="cards"></div>';
   shown = 0; lastDate = '';
@@ -392,7 +397,7 @@ function photoCard(p, want, i) {
   return `<article class="card" data-i="${i}" tabindex="0">
     <div class="pic"><img loading="lazy" src="${small}" alt="${esc(p.cap)}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'none',textContent:'Photo coming soon'}))"></div>
     <div class="txt">
-      <p class="cap${p.cap ? '' : ' empty'}">${p.cap ? highlight(p.cap, want) : 'Darshan'}</p>
+      ${window.picSame && picSame(p) ? '<span class="same">Closest match</span>' : ''}<p class="cap${p.cap ? '' : ' empty'}">${p.cap ? highlight(p.cap, want) : 'Darshan'}</p>
       <div class="date">${when}</div>
       <div class="place">${highlight(g[2], want)}</div>
     </div></article>`;
@@ -411,7 +416,7 @@ function more(want = lastWant) {
   const box = $('cards'), next = hits.slice(shown, shown + PAGE);
   let html = '';
   next.forEach((p, i) => {
-    if (p.d !== lastDate) {
+    if (p.d !== lastDate && !picMode) {
       lastDate = p.d;
       const at = shown + i, onlyCal = p.kind === 'day' && !hits.slice(Math.max(0, at - 50), at + 50).some(h => h.d === p.d && h.kind !== 'day');
       html += dayHead(p.d, want, onlyCal);
@@ -425,9 +430,9 @@ function more(want = lastWant) {
   $('more').textContent = 'Loading more…';
 }
 
-let timer;
+let timer, picMode = false;   // picMode: the results are the photos most like a picture, best first, so no date headings
 function soon() { clearTimeout(timer); timer = setTimeout(search, 180); }
-$('q').addEventListener('input', soon);
+$('q').addEventListener('input', () => { if (window.picClose && $('q').value) picClose(); soon(); });
 $('place').addEventListener('change', () => { linkPlace = ''; });   // first, so the search below sees the new choice
 ['fest', 'place', 'act', 'mandir', 'year', 'month', 'day', 'order', 'from', 'to'].forEach(id => $(id).addEventListener('change', search));
 $('more').addEventListener('click', () => more());
@@ -502,7 +507,7 @@ $('years').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   $('year').value = $('year').value === b.dataset.y ? '' : b.dataset.y; search();
 });
-$('clear').addEventListener('click', () => { linkPlace = ''; ['q', 'fest', 'place', 'act', 'mandir', 'year', 'month', 'day', 'from', 'to'].forEach(id => $(id).value = ''); search(); });
+$('clear').addEventListener('click', () => { linkPlace = ''; window.picClose && picClose(); ['q', 'fest', 'place', 'act', 'mandir', 'year', 'month', 'day', 'from', 'to'].forEach(id => $(id).value = ''); search(); });
 
 function fillFestivals() {
   const when = {};   // festival -> the month-days it falls on, to order the list through the year

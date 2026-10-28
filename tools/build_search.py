@@ -19,7 +19,7 @@ Writes a folder that works as it is on any web host (Cloudflare Pages, or opened
 The questions people type into the search bar ("When did Bapa go to London?") are read by site/search-ask.js, which
 is put inside index.html, so it works offline too.
 """
-import argparse, json, os, re, sqlite3
+import argparse, json, os, re, shutil, sqlite3
 
 import search_people
 
@@ -27,6 +27,7 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PAGE = os.path.join(HERE, 'site', 'search.html')
 ASK = os.path.join(HERE, 'site', 'search-ask.js')
 PEOPLE = os.path.join(HERE, 'site', 'search-people.js')
+PIC = os.path.join(HERE, 'site', 'search-image.js')
 TRAVELS = os.path.join(HERE, 'live', 'travels', 'index.html')
 
 
@@ -170,6 +171,7 @@ def main():
     ap.add_argument('--deep-tags', help='deep-tags.json from release deep-tags (red flowers, food, crowd...)')
     ap.add_argument('--photos', default='https://photos.bapas-diary.com/', help='where the s/ and m/ photos are (R2)')
     ap.add_argument('--start-year', default='', help='the year the page opens on, e.g. while only that year has photos')
+    ap.add_argument('--image', help='folder with the Search by photo model and photo numbers (release image-search)')
     a = ap.parse_args()
     os.makedirs(os.path.join(a.out, 'data'), exist_ok=True)
     db = sqlite3.connect(a.db)
@@ -238,6 +240,11 @@ def main():
     body = open(PAGE, encoding='utf-8').read().replace('{{PHOTOS}}', a.photos).replace('{{START_YEAR}}', a.start_year)
     body += '\n<script>\n' + open(ASK, encoding='utf-8').read() + '</script>'
     body += '\n<script>\n' + open(PEOPLE, encoding='utf-8').read() + '</script>'
+    if a.image:   # Search by photo: the model and the photo numbers from the release image-search go in image/
+        os.makedirs(os.path.join(a.out, 'image'), exist_ok=True)
+        for f in os.listdir(a.image):
+            shutil.copy(os.path.join(a.image, f), os.path.join(a.out, 'image', f))
+        body += '\n<script>\n' + open(PIC, encoding='utf-8').read() + '</script>'
     with open(os.path.join(a.out, 'index.html'), 'w', encoding='utf-8') as f:
         f.write('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
                 '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'

@@ -6,7 +6,7 @@ name: website-deploy
 on:
   push:
     branches: ['claude/**']
-    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/search-people.js', 'tools/search_people.py', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'tools/web_offline.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', 'functions/**', 'site/weekly/**', '.github/workflows/website-deploy.yml']
+    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/search-people.js', 'site/search-image.js', 'tools/search_people.py', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'tools/web_offline.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', 'functions/**', 'site/weekly/**', '.github/workflows/website-deploy.yml']
   workflow_call:   # website-hires (on main) rebuilds the site when a year of full size photos is in R2
 concurrency: website-deploy
 jobs:
@@ -74,7 +74,9 @@ jobs:
           rsync -a cal/ out/ && test -f out/calendar/index.html
           sqlite3 bapas.db 'SELECT count(*) FROM calendar'
           # opens on 1999 while only 1999 photos are copied to R2 (site/photo-years.txt)
-          python3 tools/build_search.py --db bapas.db --out out/search --tags tags.json --deep-tags deep-tags.json --start-year 1999
+          # Search by photo (Darpan: yes search by photo, 28 Oct 2026): the model, the code that runs it and the photo numbers, made by website-image-search
+          gh release download image-search -p image-search.tgz && tar -xzf image-search.tgz   # -> image/
+          python3 tools/build_search.py --db bapas.db --out out/search --tags tags.json --deep-tags deep-tags.json --start-year 1999 --image image
           python3 tools/site_menu.py out   # every page's tabs in the same order
           # share look (Darpan: yes share look): WhatsApp preview picture, icons, per page titles and lines, home screen manifest
           pip install -q pillow
