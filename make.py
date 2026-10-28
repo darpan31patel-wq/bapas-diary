@@ -2216,7 +2216,7 @@ def main():
     collected = os.path.join(HERE, 'archive', mmdd + '.json')      # newer years found by collect.py
     if os.path.exists(collected):
         have = {x['i'] for x in items}
-        items += [x for x in json.load(open(collected)) if x['i'] not in have]
+        items += [x for x in json.load(open(collected)) if x['i'] not in have and x['y'] < day.year]   # past years only: this year's photos join next year's picture (Darpan, 28 Oct 2026: a 2026 card showed)
     combed = os.path.join(HERE, 'archive', 'vicharan', mmdd + '.txt')   # every captioned photo of Bapa from that day's vicharan pages
     if os.path.exists(combed):
         have = {x['i'] for x in items}
