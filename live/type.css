@@ -33,6 +33,9 @@ nav.site-menu a, .gu-switch .e,                                                 
 figcaption, p.rubric, .page h2, .weekly-signup button,
 .kicker, a.main, a.soft
 { font-family: var(--poppins) !important; }
-/* Poppins is a little wider than Arimo: on phones the bottom tabs lose their spacing so all seven still fit */
-@media (max-width: 760px) { nav.site-menu a { letter-spacing: 0 !important; } }
+/* Poppins is a little wider than Arimo: on phones the bottom tabs are a touch smaller and lighter so every word fits */
+@media (max-width: 760px) {
+  nav.site-menu a { letter-spacing: 0 !important; font-weight: 500; }
+  nav.site-menu a:not([href="/through-the-years/"]):not([href="/then-and-now/"]), nav.site-menu a::after { font-size: 10px !important; }
+}
 @media (min-width: 761px) and (max-width: 1199px) { nav.site-menu a { letter-spacing: .1em; } }
