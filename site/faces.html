@@ -76,7 +76,7 @@ h1 { font-family: var(--display); font-weight: 400; font-size: clamp(24px, 3.6vw
 .step:disabled { opacity: .35; cursor: default; border-color: var(--line); }
 .yr:focus-visible, .step:focus-visible { outline: 2px solid var(--saffron); outline-offset: 2px; }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.bar .days { flex: 1 1 240px; min-width: 0; }
+.bar .days { flex: 1 1 240px; min-width: 0; }   /* the scroller takes all the room the buttons leave (Darpan, 28 Oct 2026: 'get rid of year month eye line button, extend the scroller bar') */
 .zoom { display: inline-flex; gap: 8px; }
 .btn { font: inherit; font-size: 14px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
 .btn[aria-pressed="true"] { border-color: var(--saffron); color: var(--saffron); }
@@ -121,7 +121,7 @@ canvas.drag { cursor: grabbing; }
   .stage { grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "slot left" "slot right"; gap: 4px 16px; align-items: start; }
   .slot { width: calc(100dvh - 186px); max-width: 52vw; }
   .info.l { text-align: left; align-items: flex-start; }
-  .sub, .note, .zoom, .speed, .count, #eyeBtn { display: none; }
+  .sub, .note, .zoom, .speed, .count { display: none; }
   .bar .days { order: 0; flex-basis: 160px; height: 36px; }
   canvas { height: 40px; }
   .yr, .step { font-size: 13px; padding: 2px 10px; }
@@ -174,12 +174,9 @@ canvas.drag { cursor: grabbing; }
         <input class="days" type="range" id="days" min="0" max="0" value="0" aria-label="Move through the days">
         <span class="zoom">
         <button class="btn" id="zAll" type="button">All years</button>
-        <button class="btn" id="zYear" type="button">Year</button>
-        <button class="btn" id="zMonth" type="button">Month</button>
         <button class="btn" id="zOut" type="button" aria-label="Zoom out">−</button>
         <button class="btn" id="zIn" type="button" aria-label="Zoom in">+</button>
         </span>
-        <button class="btn" id="eyeBtn" type="button" aria-pressed="false">Eye line</button>
       </div>
       <canvas id="tl" tabindex="0" aria-label="Timeline: drag left or right to move through the days" title="Drag the strip, scroll over the photo, or use the arrow keys. Pinch or use + and − to zoom; tap a year or month to jump to it."></canvas>
   </div>
@@ -586,11 +583,8 @@ for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) $('frame')
 $('yPrev').onclick = () => stepYear(-1);
 $('yNext').onclick = () => stepYear(1);
 $('zAll').onclick = () => { ppd = 0; clampView(); draw(); };
-$('zYear').onclick = () => zoomTo(368, list[idx].t);
-$('zMonth').onclick = () => zoomTo(33, list[idx].t);
 $('zIn').onclick = () => zoomBy(1.8);
 $('zOut').onclick = () => zoomBy(1 / 1.8);
-$('eyeBtn').onclick = () => { const on = $('eyes').hidden; $('eyes').hidden = !on; $('eyeBtn').setAttribute('aria-pressed', on); };
 for (const b of document.querySelectorAll('.tab')) b.onclick = () => setEra(b.dataset.era);
 // the photo takes the largest square that fits the space left between the title row and the controls
 function fit() {
