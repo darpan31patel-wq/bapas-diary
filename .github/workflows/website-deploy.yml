@@ -6,7 +6,7 @@ name: website-deploy
 on:
   push:
     branches: ['claude/**']
-    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/search-people.js', 'site/search-image.js', 'tools/search_people.py', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'tools/web_offline.py', 'tools/web_secure.py', 'tools/web_tiny.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', 'functions/**', 'site/weekly/**', '.github/workflows/website-deploy.yml', 'tools/web_type.py', 'site/links/**', 'tools/web_links.py']
+    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/search-people.js', 'site/search-image.js', 'tools/search_people.py', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'tools/web_offline.py', 'tools/web_secure.py', 'tools/web_tiny.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', 'functions/**', 'site/weekly/**', '.github/workflows/website-deploy.yml', 'tools/web_type.py']
   workflow_call:   # website-hires (on main) rebuilds the site when a year of full size photos is in R2
 concurrency: website-deploy
 jobs:
@@ -25,7 +25,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PROJECT: bapas-diary
       DOMAIN: bapas-diary.com
-      CAL_COMMIT: 2249d293fd45fc1b7dcf8780240fef3b661e1a3a   # claude/project-thread-tbkjl3: 2c07c88 (as Darpan approved it) plus the links from the other tabs
+      CAL_COMMIT: 6cc14d0655ab1fe87132f77a9b4ea23cbd3f0457   # claude/project-thread-tbkjl3: 2c07c88 (as Darpan approved it) plus opening from Search's Calendar button
     steps:
       - uses: actions/checkout@v4
         with:
@@ -80,7 +80,6 @@ jobs:
           gh release download image-search -p image-search.tgz && tar -xzf image-search.tgz   # -> image/
           python3 tools/build_search.py --db bapas.db --out out/search --tags tags.json --deep-tags deep-tags.json --people-faces people-faces.json --start-year 1999 --image image
           python3 tools/site_menu.py out   # every page's tabs in the same order
-          python3 tools/web_links.py --out out   # gold buttons from any photo or day to the same day, stay or place on the other tabs (Darpan, 28 Oct 2026)
           # share look (Darpan: yes share look): WhatsApp preview picture, icons, per page titles and lines, home screen manifest
           pip install -q pillow
           python3 tools/web_share.py --out out
