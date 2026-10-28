@@ -236,7 +236,6 @@ body.dragging { -webkit-user-select: none; user-select: none; }
   <div class="status" id="status">In</div>
   <div class="place" id="place">Ahmedabad</div>
   <div><span class="country" id="country">India</span> <span class="dates" id="dates"></span></div>
-  <div class="cap" id="cap"></div>
   <a class="tn" id="more" href="/search/" hidden>See more &rsaquo;</a>
   <div class="stats">
     <div><b id="sStops">1</b><small>places this year</small></div>
@@ -509,11 +508,15 @@ body.dragging { -webkit-user-select: none; user-select: none; }
     // See more: every photo of this stay in Search, like the See more buttons on Today (Darpan, 28 Oct 2026)
     $('more').hidden = st.flying;
     if (!st.flying) { $('more').href = `/search/#place=${encodeURIComponent(s.p)}&from=${s.a}&to=${s.b}`; $('more').setAttribute('aria-label', `See more photos from ${s.name}, ${fmtRange(s.a, s.b)} ${s.year}`); }
-    $('cap').textContent = st.flying ? 'From ' + s.name + ', ' + Math.round(d3.geoDistance(s.ll, n.ll) * 6371).toLocaleString('en-GB') + ' km' : (s.cap || '');
+    // no caption sentence on the card (Darpan, 28 Oct 2026: "not relevant or needed, get rid")
     const t2 = st.flying ? totals[st.i + 1] : tot;
     $('sStops').textContent = t2.places; $('sCountries').textContent = t2.countries;
     $('sKm').textContent = Math.round(t2.km).toLocaleString('en-GB');
-    const up = stops.slice(st.i + (st.flying ? 2 : 1), st.i + (st.flying ? 5 : 4)).map(x => x.name);
+    // the next three places, each named once (a long stay can be several stops at the same place)
+    const up = [], from = st.flying ? st.i + 1 : st.i;
+    for (let k = from + 1, prev = stops[from].name; k < stops.length && up.length < 3; k++) {
+      const nm = stops[k].name; if (nm !== prev && !up.includes(nm)) up.push(nm); prev = nm;
+    }
     $('next').innerHTML = up.length ? 'Then <strong>' + up.join('</strong>, <strong>') + '</strong>' : era === 'psm' ? 'Then <button class="cont" id="cont" type="button">Mahant Swami Maharaj&rsquo;s journey &rsaquo;</button>' : '';
   }
 
