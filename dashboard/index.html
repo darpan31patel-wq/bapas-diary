@@ -4,7 +4,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600;700&family=Arimo:wght@400;700&display=swap">
 <style>
-/* Layout: a working studio. Settings rail on the left, the live picture on a dark easel on the right; stacks on a phone. */
+/* Layout (Darpan, 28 Oct 2026: easier to use): one bar on top with what to make, which day and Export; the picture
+   large in the middle, where a click on any card opens a small editor right on it; the side panel holds that card's
+   photos and the settings. Stacks on a phone. */
 :root {
   --bg: #1b0a0e;          /* the deep maroon of the picture's edges */
   --panel: #26111a;
@@ -21,123 +23,174 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box }
-html, body { height: 100% }
+html, body { height: 100%; margin: 0 }
 body { background: var(--bg); color: var(--fg); font: 14px/1.45 var(--sans); }
-.wrap { display: grid; grid-template-columns: 380px minmax(0, 1fr); min-height: 100%;
-  padding-left: max(0px, env(safe-area-inset-left, 0px)); padding-right: max(0px, env(safe-area-inset-right, 0px)); }
-.rail { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-width: 0; max-height: 100vh; position: sticky; top: 0 }
-.brand { padding: 18px 20px 12px; border-bottom: 1px solid var(--line) }
-.brand h1 { font: 700 26px/1.1 var(--serif); margin: 0; color: var(--gold); text-wrap: balance }
-.brand p { margin: 4px 0 0; color: var(--muted); font-size: 12.5px }
-.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 12px 20px 0 }
-.modes button, .tabs button, .seg button, .btn { font: inherit; color: var(--fg); background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; cursor: pointer }
-.modes button[aria-pressed="true"] { background: var(--gold); color: #2a0d14; border-color: var(--gold); font-weight: 700 }
-.tabs { display: flex; gap: 2px; padding: 12px 20px 0; flex-wrap: wrap }
-.tabs button { border-radius: 8px 8px 0 0; border-bottom: 0; padding: 7px 11px; font-size: 13px; color: var(--muted) }
-.tabs button[aria-selected="true"] { color: var(--gold); background: var(--bg); }
-.pane { overflow-y: auto; padding: 14px 20px 24px; background: var(--bg); flex: 1; border-top: 1px solid var(--line) }
-.group { display: grid; gap: 10px; padding: 12px 0; border-bottom: 1px dashed var(--line) }
+[hidden] { display: none !important }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px }
+button { font: inherit; color: inherit }
+.top { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px));
+  background: var(--panel); border-bottom: 1px solid var(--line) }
+.top h1 { font: 700 22px/1 var(--serif); color: var(--gold); margin: 0 6px 0 0; white-space: nowrap }
+.top .spacer { flex: 1 }
+.top select { width: auto; min-width: 0; max-width: 100%; font-size: 15px; padding: 7px 10px }
+.modes { display: flex; background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 3px }
+.modes button { border: 0; background: none; padding: 6px 14px; border-radius: 999px; cursor: pointer; color: var(--muted) }
+.modes button[aria-pressed="true"] { background: var(--gold); color: #2a0d14; font-weight: 700 }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--panel-2); border-radius: 999px; padding: 6px 12px; cursor: pointer; font-size: 13px; color: var(--muted) }
+.chip.on { color: var(--ok); border-color: #3f5a46 }
+.chip.on::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--ok) }
+.btn { color: var(--fg); background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; cursor: pointer }
+.btn:hover { border-color: var(--gold-deep) }
+.btn.primary { background: var(--gold); border-color: var(--gold); color: #2a0d14; font-weight: 700; padding: 9px 20px; font-size: 15px }
+.btn.primary:disabled { opacity: .5; cursor: wait }
+.btn.small { padding: 3px 9px; font-size: 12.5px }
+.work { display: grid; grid-template-columns: minmax(0, 1fr) 400px; align-items: start; min-height: calc(100% - 60px) }
+.stage { min-width: 0; padding: 14px max(16px, env(safe-area-inset-left, 0px)) 24px 16px; display: grid; gap: 10px }
+.meta { color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline }
+.meta b { color: var(--fg); font-weight: 600; font-size: 15px }
+.meta span + span::before, .meta b + span::before { content: '·'; margin-right: 12px; color: var(--line) }
+.easel { position: relative; background: #0d0406; border: 1px solid var(--line); border-radius: 10px; padding: 10px; min-width: 0 }
+#view { width: 100%; height: auto; display: block; box-shadow: 0 10px 40px rgba(0,0,0,.6); cursor: pointer }
+.status { font-size: 13.5px; color: var(--muted); min-height: 1.4em; margin: 0 }
+.status.ok { color: var(--ok) }
+.status.warn { color: var(--saffron) }
+.hint { color: var(--muted); font-size: 12.5px; margin: 0 }
+.compare summary { cursor: pointer; color: var(--muted); font-size: 13px }
+.compare img { width: 100%; border-radius: 6px; border: 1px solid var(--line); margin-top: 8px }
+/* the small editor that opens on a card */
+.fe { position: absolute; z-index: 3; width: 290px; max-width: calc(100% - 20px); background: var(--panel); border: 1px solid var(--gold-deep); border-radius: 10px;
+  box-shadow: 0 12px 34px rgba(0,0,0,.6); padding: 10px 12px; display: grid; gap: 7px }
+.fe header { display: flex; align-items: center; gap: 8px }
+.fe header b { font: 700 18px/1 var(--serif); color: var(--gold); flex: 1 }
+.fe label { font-size: 12px; color: var(--muted) }
+.fe .x { border: 0; background: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; padding: 0 4px }
+.fe .row3 { display: flex; gap: 6px; flex-wrap: wrap }
+/* side panel */
+.side { position: sticky; top: 61px; max-height: calc(100vh - 61px); display: flex; flex-direction: column; background: var(--panel); border-left: 1px solid var(--line); min-width: 0 }
+.tabs { display: flex; gap: 2px; padding: 10px 14px 0; border-bottom: 1px solid var(--line) }
+.tabs button { border: 1px solid transparent; border-bottom: 0; background: none; border-radius: 8px 8px 0 0; padding: 8px 12px; cursor: pointer; color: var(--muted); font-size: 13.5px }
+.tabs button[aria-selected="true"] { color: var(--gold); background: var(--bg); border-color: var(--line); margin-bottom: -1px }
+.pane { overflow-y: auto; padding: 6px 16px 24px; background: var(--bg); flex: 1 }
+.group { display: grid; gap: 9px; padding: 12px 0; border-bottom: 1px dashed var(--line) }
 .group:last-child { border-bottom: 0 }
 .group h3 { margin: 0; font: 600 12px/1 var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--gold-deep) }
-.row { display: grid; grid-template-columns: 130px minmax(0, 1fr); align-items: center; gap: 10px }
+.row { display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: 10px }
 .row label { color: var(--muted); font-size: 13px }
 .row output { font-variant-numeric: tabular-nums; color: var(--gold); font-size: 12px; margin-left: 6px }
-input[type=text], select { width: 100%; font: inherit; background: var(--panel-2); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px }
+input[type=text], select, textarea { width: 100%; font: inherit; background: var(--panel-2); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px }
+input.place { text-transform: uppercase; letter-spacing: .08em; font-weight: 700; font-size: 13px }
+textarea.capedit { min-height: 52px; font: 15px/1.3 var(--serif); resize: vertical }
 input[type=range] { width: 100%; accent-color: var(--gold) }
 input[type=checkbox] { accent-color: var(--gold); width: 16px; height: 16px }
 .check { display: flex; gap: 8px; align-items: center; color: var(--fg) }
 .seg { display: flex; flex-wrap: wrap; gap: 4px }
-.seg button { padding: 5px 9px; font-size: 12.5px; border-radius: 999px }
+.seg button { padding: 5px 10px; font-size: 12.5px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); cursor: pointer }
 .seg button[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: #2a0d14; font-weight: 700 }
-:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px }
-.hint { color: var(--muted); font-size: 12px; margin: 0 }
+.seg button:disabled { opacity: .45; cursor: not-allowed }
+.cardhead { display: flex; align-items: center; gap: 8px }
+.cardhead b { font: 700 24px/1 var(--serif); color: var(--gold); flex: 1 }
+.cardhead .btn { padding: 4px 11px; font-size: 16px }
 .chips { display: flex; flex-wrap: wrap; gap: 4px }
 .chips button { font: 600 12px var(--sans); font-variant-numeric: tabular-nums; padding: 4px 7px; border-radius: 6px; background: var(--panel-2); color: var(--muted); border: 1px solid var(--line); cursor: pointer }
 .chips button[aria-pressed="true"] { color: #2a0d14; background: var(--fg); border-color: var(--fg) }
 .chips button.sel { outline: 2px solid var(--gold); outline-offset: 1px }
-.thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; max-height: 420px; overflow-y: auto; padding-right: 2px }
+.thumbs { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: max-content; gap: 5px; max-height: 460px; overflow-y: auto; padding-right: 2px }
+.thumbs button::before { content: ''; display: block; padding-top: 100% }   /* keeps every cell square however many photos there are */
 .thumbs button { padding: 0; border: 2px solid transparent; border-radius: 6px; overflow: hidden; background: #000; cursor: pointer; aspect-ratio: 1; position: relative }
-.thumbs button img { width: 100%; height: 100%; object-fit: contain; display: block }
+.thumbs button img { width: 100%; height: 100%; object-fit: cover; display: block }
 .thumbs button i { position: absolute; inset: 0; background-repeat: no-repeat }
-[hidden] { display: none !important }
 .thumbs button[aria-pressed="true"] { border-color: var(--gold) }
-.thumbs button span { position: absolute; left: 3px; top: 3px; font: 700 10px var(--sans); background: rgba(20,6,10,.8); color: var(--gold); padding: 1px 4px; border-radius: 3px }
-.capedit { width: 100%; min-height: 54px; font: 15px/1.3 var(--serif); background: var(--panel-2); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; resize: vertical }
-.stage { min-width: 0; display: flex; flex-direction: column; padding-block: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); gap: 12px }
-.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between }
-.bar .meta { color: var(--muted); font-size: 13px }
-.bar .meta b { color: var(--fg); font-weight: 600 }
-.easel { background: #0d0406; border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; place-items: center; min-width: 0 }
-#view { width: 100%; height: auto; max-width: 100%; display: block; box-shadow: 0 10px 40px rgba(0,0,0,.6); cursor: crosshair }
-.export { display: flex; gap: 8px; align-items: center; flex-wrap: wrap }
-.btn.primary { background: var(--gold); border-color: var(--gold); color: #2a0d14; font-weight: 700; padding: 10px 18px; font-size: 15px }
-.btn.primary:disabled { opacity: .5; cursor: wait }
-.status { font-size: 13px; color: var(--muted); min-height: 1.4em }
-.status.ok { color: var(--ok) }
-.status.warn { color: var(--saffron) }
-.expmode { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
-.expmode .seg button[data-v="replace"][aria-pressed="true"] { background: var(--saffron); border-color: var(--saffron); color: #fff }
-.drive { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 10px 12px; display: grid; gap: 8px; font-size: 13px; color: var(--muted) }
-.drive b { color: var(--gold) }
-.drive .row2 { display: flex; gap: 8px; flex-wrap: wrap }
-.drive input { flex: 1 1 260px; min-width: 0 }
+.thumbs button span { position: absolute; z-index: 1; left: 3px; top: 3px; font: 700 9.5px var(--sans); background: rgba(20,6,10,.82); color: var(--gold); padding: 1px 4px; border-radius: 3px }
+.thumbs button.nob { opacity: .82 }
+.words { display: grid; gap: 10px }
+.words .w { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 4px 8px; align-items: start }
+.words .w b { font: 700 16px/1.6 var(--serif); color: var(--gold); grid-row: span 2 }
+.words .w.off { opacity: .45 }
+/* export and Drive windows */
+dialog { background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 12px; padding: 0; width: min(560px, calc(100% - 24px)); box-shadow: 0 20px 60px rgba(0,0,0,.7) }
+dialog::backdrop { background: rgba(10,2,5,.6) }
+dialog .in { padding: 18px 20px; display: grid; gap: 12px }
+dialog h2 { margin: 0; font: 700 22px/1.1 var(--serif); color: var(--gold) }
+.opt { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 4px 10px; border: 1px solid var(--line); border-radius: 10px; padding: 12px; cursor: pointer; background: var(--panel-2) }
+.opt input { margin-top: 3px; accent-color: var(--gold) }
+.opt b { font-size: 15px }
+.opt p { grid-column: 2; margin: 0; color: var(--muted); font-size: 13px }
+.opt.dis { opacity: .5; cursor: not-allowed }
+.opt:has(input:checked) { border-color: var(--gold) }
+dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; align-items: center }
 .last { font-size: 13px; color: var(--muted) }
 .last b { color: var(--fg) }
-.note { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 10px 12px; font-size: 13px; color: var(--muted) }
-.note b { color: var(--gold) }
-.compare { display: none }
-.compare.on { display: block }
-.compare img { width: 100%; border-radius: 6px; border: 1px solid var(--line) }
-@media (max-width: 900px) {
-  .wrap { grid-template-columns: minmax(0, 1fr) }
-  .rail { position: static; max-height: none; order: 2; border-right: 0 }
-  .stage { order: 1 }
-  .row { grid-template-columns: 110px minmax(0, 1fr) }
+@media (max-width: 980px) {
+  .work { grid-template-columns: minmax(0, 1fr) }
+  .side { position: static; max-height: none; border-left: 0; border-top: 1px solid var(--line) }
+  .top h1 { font-size: 19px }
+}
+@media (max-width: 640px) {
+  .fe { position: static; width: auto; max-width: none; margin-top: 10px }
+}
+@media (max-width: 560px) {
+  .row { grid-template-columns: 96px minmax(0, 1fr) }
+  .thumbs { grid-template-columns: repeat(3, 1fr) }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important } }
 </style>
 
-<div class="wrap">
-  <aside class="rail">
-    <div class="brand">
-      <h1>Bapa's Diary Studio</h1>
-      <p>Choose every part of the picture, then export.</p>
+<header class="top">
+  <h1>Bapa's Diary Studio</h1>
+  <div class="modes" role="group" aria-label="What to make">
+    <button id="mode-day" aria-pressed="true">Daily picture</button>
+    <button id="mode-month" aria-pressed="false">Month poster</button>
+  </div>
+  <select id="pick" aria-label="Which day"></select>
+  <select id="pick-opt" aria-label="Kind of poster" hidden></select>
+  <span class="spacer"></span>
+  <button class="chip" id="drive-chip">Connect Google Drive</button>
+  <button class="btn primary" id="exp-open">Export…</button>
+</header>
+<div class="work">
+  <main class="stage">
+    <div class="meta" id="meta">Loading photos…</div>
+    <div class="easel" id="easel">
+      <canvas id="view" width="2796" height="1290" aria-label="Live preview of the picture. Click a card to change it."></canvas>
+      <div class="fe" id="fe" hidden></div>
     </div>
-    <div class="modes" role="group" aria-label="What to make">
-      <button id="mode-day" aria-pressed="true">Daily picture</button>
-      <button id="mode-month" aria-pressed="false">Month poster</button>
-    </div>
+    <p class="status" id="status" role="status"></p>
+    <p class="hint" id="tip">Click any card in the picture to change its photo, place or words.</p>
+    <details class="compare" id="compare"><summary>Compare with the picture the morning run made</summary><img id="real" alt="The automatic run's picture for this date"></details>
+  </main>
+  <aside class="side">
     <div class="tabs" role="tablist" id="tabs"></div>
     <div class="pane" id="pane"></div>
   </aside>
-  <main class="stage">
-    <div class="bar">
-      <div class="meta" id="meta">Loading photos…</div>
-      <div class="export">
-        <select id="exp-size" aria-label="Export size"></select>
-        <button class="btn primary" id="exp-go">Export picture</button>
-      </div>
-    </div>
-    <div class="expmode" id="expmode" hidden>
-      <div class="seg" role="group" id="exp-mode" aria-label="What the export does">
-        <button data-v="new" aria-pressed="true">Save as a new export</button>
-        <button data-v="replace" aria-pressed="false">Replace today's picture</button>
-      </div>
-      <span class="hint" id="exp-mode-hint"></span>
-      <span class="hint" id="drive-on" hidden><b style="color:var(--ok)">● Connected to Google Drive</b> · <button class="btn" id="drive-off" style="padding:2px 8px;font-size:12px">Disconnect</button></span>
-    </div>
-    <div class="status" id="status" role="status"></div>
-    <div class="last" id="last"></div>
-    <div class="drive" id="drive" hidden>
-      <div><b>Connect to Google Drive</b> (once on each device). In your “gets 2pm picture ready” script, run <b>studioCode</b> and paste the line it shows here. You can also paste the Web app URL and the code (after the #) one at a time.</div>
-      <div class="row2"><input type="text" id="drive-code" placeholder="https://script.google.com/macros/s/…/exec#…" aria-label="Studio code from your script"><button class="btn" id="drive-save">Connect</button></div>
-    </div>
-    <div class="easel"><canvas id="view" width="2796" height="1290" aria-label="Live preview of the picture"></canvas></div>
-    <div class="note" id="tipnote"><b>Tip:</b> click any card in the picture to jump to its photo, crop and caption.</div>
-    <div class="compare" id="compare"><p class="hint">The picture the automatic morning run makes for this date, for comparison:</p><img id="real" alt="The automatic run's picture for this date"></div>
-  </main>
 </div>
 
+<dialog id="exp" aria-labelledby="exp-h">
+  <form method="dialog" class="in" id="exp-form">
+    <h2 id="exp-h">Export</h2>
+    <label class="opt" id="opt-new"><input type="radio" name="how" value="new" checked><b>Save as a new export</b>
+      <p id="opt-new-p">Downloads the picture to this device, and keeps a copy in “Bapa’s Diary Studio exports” on Drive when Drive is connected. The 2pm picture stays as it is.</p></label>
+    <div class="row" id="exp-size-row"><label for="exp-size">Size</label><select id="exp-size"></select></div>
+    <label class="opt" id="opt-rep"><input type="radio" name="how" value="replace"><b id="opt-rep-b">Use for the 2pm send</b>
+      <p id="opt-rep-p"></p></label>
+    <p class="status" id="exp-status" role="status"></p>
+    <div class="last" id="last"></div>
+    <div class="acts"><button class="btn" value="cancel" formnovalidate>Close</button><button class="btn primary" id="exp-go" type="button">Export</button></div>
+  </form>
+</dialog>
+
+<dialog id="drv" aria-labelledby="drv-h">
+  <form method="dialog" class="in">
+    <h2 id="drv-h">Google Drive</h2>
+    <div id="drv-on" hidden><p class="status ok">● Connected on this device. Exports can go straight into your Drive.</p>
+      <div class="acts" style="justify-content:flex-start"><button class="btn" id="drive-test" type="button">Check the connection</button><button class="btn" id="drive-off" type="button">Disconnect</button></div></div>
+    <div id="drv-off">
+      <p class="hint" style="font-size:13.5px">Once on each device: in your “gets 2pm picture ready” script, choose <b>studioCode</b>, press Run, and paste the line it shows here. You can also paste the Web app URL (it ends /exec) and the code after the # one at a time.</p>
+      <div class="row3" style="display:flex;gap:8px;flex-wrap:wrap"><input type="text" id="drive-code" placeholder="https://script.google.com/macros/s/…/exec#…" aria-label="Studio code from your script" style="flex:1 1 260px;min-width:0"><button class="btn" id="drive-save" type="button">Connect</button></div>
+    </div>
+    <p class="status" id="drv-status" role="status"></p>
+    <div class="acts"><button class="btn" value="cancel">Close</button></div>
+  </form>
+</dialog>
 <script>
 'use strict';
 const $ = s => document.querySelector(s);
@@ -163,7 +216,7 @@ const MONTH_DEFAULT = {
   bubbles: true, tithi: true, sundayRed: true, fest: true, captions: 'auto', stories: true, capSize: 22,
   look: 'classic', glow: .45, jali: .08, bright: 0, warmth: 0, polish: true, days: {}, sel: null,
 };
-let S = { mode: 'day', tab: 'photos', day: structuredClone(DAY_DEFAULT), month: structuredClone(MONTH_DEFAULT) };
+let S = { mode: 'day', tab: 'card', day: structuredClone(DAY_DEFAULT), month: structuredClone(MONTH_DEFAULT) };
 const saved = store.get('studio-settings-v1');
 if (saved) { S.day = Object.assign(structuredClone(DAY_DEFAULT), saved.day || {}); S.month = Object.assign(structuredClone(MONTH_DEFAULT), saved.month || {}); S.mode = saved.mode || 'day'; }
 // the photo packs: beside this page when it carries them (claude.ai), otherwise the studio branch on GitHub (tools/studio_packs.py)
@@ -339,7 +392,7 @@ function dayCards(pack, o) {
     const pick = st.pick ?? defaultPick(y, o.photoStyle);
     const c = y.cands[pick] || y.cands[0];
     let mode = st.crop && st.crop !== 'auto' ? st.crop : autoCrop(c, o.photoStyle);
-    return { y: y.year, c, mode, zoom: st.zoom || 1, dx: st.dx || 0, dy: st.dy || 0, caption: st.caption ?? c.caption, place: c.place, fest: c.festival };
+    return { y: y.year, c, mode, zoom: st.zoom || 1, dx: st.dx || 0, dy: st.dy || 0, caption: st.caption ?? c.caption, place: st.place ?? c.place, fest: c.festival };
   });
 }
 function defaultPick(y, style) {
@@ -487,7 +540,7 @@ function monthCards(pack, o) {
     const c = d.cands[pick];
     let mode = st.crop && st.crop !== 'auto' ? st.crop : (o.option === 'A' ? d.modeA : o.option === 'B' ? d.modeB : d.modeM ?? d.modeA);
     if (mode === 'snug' || mode === 'top') mode = 'frame';
-    return { d, c, mode, zoom: st.zoom || 1, dx: st.dx || 0, dy: st.dy || 0, caption: st.caption ?? (c ? c.caption : ''), place: c ? c.place : '' };
+    return { d, c, mode, zoom: st.zoom || 1, dx: st.dx || 0, dy: st.dy || 0, caption: st.caption ?? (c ? c.caption : ''), place: st.place ?? (c ? c.place : '') };
   });
 }
 function drawMonth(ctx, pack, o, hits) {
@@ -576,9 +629,11 @@ function drawMonth(ctx, pack, o, hits) {
   });
 }
 
-// ------------------------------------------------------------ render + export
-let HITS = [], raf = 0;
+// ------------------------------------------------------------ render, with the chosen card ringed in gold
+let HITS = [], raf = 0, FE = false;
 const view = $('#view');
+const cur = () => S[S.mode];
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 function render() {
   cancelAnimationFrame(raf);
   raf = requestAnimationFrame(() => {
@@ -587,17 +642,274 @@ function render() {
     if (view.width !== W) { view.width = W; view.height = H }
     const ctx = view.getContext('2d'); ctx.setTransform(1, 0, 0, 1, 0, 0); HITS = [];
     S.mode === 'day' ? drawDay(ctx, pack, S.day, HITS) : drawMonth(ctx, pack, S.month, HITS);
+    const h = FE && HITS.find(h => h.key === cur().sel);
+    if (h) { ctx.save(); ctx.strokeStyle = GOLD; ctx.lineWidth = W / 400; ctx.strokeRect(h.x - 9, h.y - 9, h.w + 18, h.h + 18); ctx.restore() }
+    placeEditor();
     store.set('studio-settings-v1', { mode: S.mode, day: S.day, month: S.month });
   });
 }
-const SIZES = {
-  day: [['full', 'Full size PNG, 5592 × 2580', 2, 'png'], ['whatsapp', 'WhatsApp JPG, 4096 wide', 4096 / 2796, 'jpg'], ['small', 'Small JPG, 2048 wide', 2048 / 2796, 'jpg']],
-  month: [['full', 'Full size JPG, 3840 × 2160 (16:9)', 1, 'jpg'], ['big', 'Print PNG, 5760 × 3240', 1.5, 'png'], ['small', 'Small JPG, 1920 wide', .5, 'jpg']],
-};
-// ------------------------------------------------------------ what Export does: a new export, or today's 2pm picture replaced (Darpan, 25 Oct 2026)
-let EXPMODE = 'new';
-const todayLondon = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
-// the Drive connection is kept in this browser twice (storage and a cookie), so a refresh or a cleared storage keeps it
+// one card (a year of the daily picture, a day of the poster): its photos, your changes, and the photo, place and caption shown
+const bag = k => { const o = cur(), b = S.mode === 'day' ? o.years : o.days; return (b[k] = b[k] || {}) };
+function info(k) {
+  const day = S.mode === 'day', pack = P[S.mode], o = cur();
+  const g = day ? pack.years.find(y => y.year == k) : pack.days.find(d => d.day == k);
+  if (!g) return null;
+  const st = (day ? o.years : o.days)[k] || {};
+  const pick = st.pick ?? (day ? defaultPick(g, o.photoStyle) : optPick(g, o.option));
+  const c = g.cands[pick] || (day ? g.cands[0] : null);
+  return { g, st, pick: g.cands[pick] ? pick : 0, c, place: st.place ?? (c ? c.place : ''), caption: st.caption ?? (c ? c.caption : '') };
+}
+const keys = () => S.mode === 'day' ? P.day.years.map(y => y.year) : P.month.days.map(d => d.day);
+const shownKeys = () => S.mode === 'day' ? P.day.years.filter(y => S.day.years[y.year]?.on ?? true).map(y => y.year) : keys();
+const selected = () => { const o = cur(), ks = shownKeys(); if (!ks.includes(o.sel)) o.sel = ks[0] ?? null; return o.sel };
+const label = k => S.mode === 'day' ? String(k) : `${k} ${P.month.title.split(' ')[0]}`;
+
+// ------------------------------------------------------------ the small editor that opens on a clicked card
+const fe = $('#fe');
+function openEditor(k) { cur().sel = k; FE = true; S.tab = 'card'; build() }
+function closeEditor() { FE = false; fe.hidden = true; render() }
+function buildEditor() {
+  if (!FE || !P[S.mode] || cur().sel == null) { fe.hidden = true; return }
+  const k = cur().sel, x = info(k); if (!x) { fe.hidden = true; return }
+  const n = x.g.cands.length;
+  fe.innerHTML = `<header><b>${esc(label(k))}</b><span class="hint">photo ${x.pick + 1} of ${n}</span><button class="x" id="fe-x" aria-label="Close">×</button></header>
+    <label for="fe-place">Place on the card</label><input type="text" class="place" id="fe-place" data-f="place" data-k="${k}" value="${esc(x.place)}">
+    <label for="fe-cap">Caption</label><textarea class="capedit" id="fe-cap" data-f="caption" data-k="${k}" rows="2">${esc(x.caption)}</textarea>
+    <div class="row3"><button class="btn small" id="fe-prev" ${n < 2 ? 'disabled' : ''}>◀ Photo</button><button class="btn small" id="fe-next" ${n < 2 ? 'disabled' : ''}>Photo ▶</button>
+      <button class="btn small" id="fe-all">See all ${n}</button>${S.mode === 'day' ? '<button class="btn small" id="fe-hide">Hide this year</button>' : ''}<button class="btn small" id="fe-reset">Reset</button></div>`;
+  fe.hidden = false;
+  $('#fe-x').onclick = closeEditor;
+  const step = d => { const b = bag(k); b.pick = (x.pick + d + n) % n; delete b.caption; build() };
+  $('#fe-prev').onclick = () => step(-1); $('#fe-next').onclick = () => step(1);
+  $('#fe-all').onclick = () => { S.tab = 'card'; build(); const t = $('#c-thumbs'); if (t) t.scrollIntoView({ block: 'nearest', behavior: 'smooth' }) };
+  if ($('#fe-hide')) $('#fe-hide').onclick = () => { bag(k).on = false; FE = false; build() };
+  $('#fe-reset').onclick = () => { const b = bag(k); Object.keys(b).forEach(f => f !== 'on' && delete b[f]); build() };
+}
+function placeEditor() {
+  if (fe.hidden || getComputedStyle(fe).position === 'static') return;
+  const h = HITS.find(h => h.key === cur().sel); if (!h) return;
+  const k = view.clientWidth / view.width, ox = view.offsetLeft, oy = view.offsetTop, room = $('#easel').clientWidth;
+  let left = ox + (h.x + h.w) * k + 12;
+  if (left + fe.offsetWidth > room - 4) left = ox + h.x * k - fe.offsetWidth - 12;
+  fe.style.left = clamp(left, 4, room - fe.offsetWidth - 4) + 'px';
+  fe.style.top = Math.max(4, oy + h.y * k) + 'px';
+}
+window.addEventListener('resize', placeEditor);
+view.addEventListener('click', ev => {
+  const r = view.getBoundingClientRect(), x = (ev.clientX - r.left) * view.width / r.width, y = (ev.clientY - r.top) * view.height / r.height;
+  const h = HITS.find(h => x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h);
+  if (h) openEditor(h.key); else if (FE) closeEditor();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && FE && !document.querySelector('dialog[open]')) closeEditor() });
+// a place or caption typed anywhere (on the card, the Photo tab or the Words list) changes that card and every other box for it
+document.addEventListener('input', e => {
+  const t = e.target, f = t.dataset && t.dataset.f; if (!f || !P[S.mode]) return;
+  const k = t.dataset.k; bag(k)[f] = t.value;
+  document.querySelectorAll(`[data-f="${f}"][data-k="${k}"]`).forEach(el => { if (el !== t) el.value = t.value });
+  render();
+});
+
+// ------------------------------------------------------------ the side panel
+const TABS = { day: [['card', 'Photo'], ['words', 'Years and words'], ['layout', 'Layout'], ['look', 'Look']], month: [['card', 'Photo'], ['words', 'Days and words'], ['layout', 'Layout'], ['look', 'Look']] };
+function seg(id, value, opts) { return `<div class="seg" role="group" id="${id}">${opts.map(([v, l]) => `<button data-v="${v}" aria-pressed="${String(v) === String(value)}">${l}</button>`).join('')}</div>` }
+function range(id, label, v, min, max, step, fmt = x => x) { return `<div class="row"><label for="${id}">${label}<output id="${id}-o">${fmt(v)}</output></label><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${v}"></div>` }
+function check(id, label, v) { return `<label class="check"><input type="checkbox" id="${id}" ${v ? 'checked' : ''}> ${label}</label>` }
+function text(id, label, v, ph = '') { return `<div class="row"><label for="${id}">${label}</label><input type="text" id="${id}" value="${esc(v)}" placeholder="${esc(ph)}"></div>` }
+
+function paneCard() {
+  const day = S.mode === 'day', pack = P[S.mode], o = cur(), k = selected();
+  if (k == null) return '<p class="hint">Every year is hidden. Show some again on the Years and words tab.</p>';
+  const x = info(k), g = x.g, st = x.st, c = x.c;
+  const tags = i => day ? (i === 0 ? '<span>DAILY PICK</span>' : g.cands[i].special ? '<span>SPECIAL</span>' : '')
+    : [['A', 'CLOSE'], ['B', 'ACTIVITY'], ['M', 'MIXED']].filter(([o2]) => optPick(g, o2) === i && (o2 !== 'M' || g.pickM != null)).map(([, l]) => `<span>${l}</span>`).join('').replace(/<\/span><span>/g, ' · ');
+  const nb = g.cands.filter(c2 => !c2.nobapa).length, rest = g.cands.length - nb;
+  const cell = i => { const c2 = g.cands[i]; return `<button data-i="${i}" class="${c2.nobapa ? 'nob' : ''}" aria-pressed="${i === x.pick}" title="${esc(c2.caption)}" aria-label="${esc(c2.caption)}">${thumb(pack, g, i)}${tags(i)}</button>` };
+  const firstRest = g.cands.findIndex(c2 => c2.nobapa);
+  const grid = g.cands.map((_, i) => (i === firstRest && i > 0 ? `<p class="hint" style="grid-column:1/-1;margin:6px 0 0">The other ${rest} photo${rest > 1 ? 's' : ''} from ${esc(label(k))} (Bapa’s face not found automatically)</p>` : '') + cell(i)).join('');
+  const changed = kk => { const b = (day ? o.years : o.days)[kk]; return b && Object.keys(b).some(f => f !== 'on') };
+  return `
+    <div class="group">
+      <div class="cardhead"><button class="btn" id="c-prev" aria-label="Previous">◀</button><b>${esc(label(k))}</b><button class="btn" id="c-next" aria-label="Next">▶</button></div>
+      <div class="chips" id="c-sel">${shownKeys().map(kk => `<button data-k="${kk}" class="${kk === k ? 'sel' : ''}" aria-pressed="${changed(kk) ? 'true' : 'false'}">${kk}</button>`).join('')}</div>
+      <p class="hint">Click a card in the picture or a ${day ? 'year' : 'day'} here. A white one has your own changes.</p></div>
+    <div class="group"><h3>Choose the photo</h3>
+      ${g.cands.length ? `<p class="hint">All ${g.cands.length} photo${g.cands.length > 1 ? 's' : ''} from ${esc(label(k))} in your archive${rest && nb ? `: the ${nb} where Bapa’s face was found come first` : ''}.</p>
+      <div class="thumbs" id="c-thumbs">${grid}</div>
+      <p class="hint">${c ? esc([c.place, c.date || (day ? g.year : ''), c.festival].filter(Boolean).join(' · ')) : ''}${day ? '' : ' · ' + esc([g.tithi, ...g.fest].join(' · '))}</p>` : '<p class="hint">No photo for this day yet.</p>'}</div>
+    <div class="group"><h3>Place and caption</h3>
+      <div class="row"><label for="c-place">Place${day ? ' on the card' : ' (bubbles)'}</label><input type="text" class="place" id="c-place" data-f="place" data-k="${k}" value="${esc(x.place)}"></div>
+      <textarea class="capedit" id="c-cap" data-f="caption" data-k="${k}" aria-label="Caption" rows="2">${esc(x.caption)}</textarea>
+      ${c && c.original ? `<p class="hint">Website caption: “${esc(c.original)}”</p>` : ''}</div>
+    <div class="group"><h3>Crop</h3>
+      ${seg('c-crop', st.crop || 'auto', [['auto', 'Automatic'], ['close', 'Close up'], ['frame', 'Wider'], ['whole', 'Fill frame']])}
+      ${range('c-zoom', 'Zoom', st.zoom || 1, .6, 2.5, .05, v => Math.round(v * 100) + '%')}
+      ${range('c-dx', 'Left or right', st.dx || 0, -.4, .4, .01, v => Math.round(v * 100))}
+      ${range('c-dy', 'Up or down', st.dy || 0, -.4, .4, .01, v => Math.round(v * 100))}
+      <p class="hint">Automatic and Close up never cut Bapa’s head or pagh. Moving can, so check the picture.</p></div>
+    <div class="group"><button class="btn" id="c-reset">Reset ${esc(label(k))}</button></div>
+    ${day ? `<div class="group"><h3>Kind of photo, every year</h3>
+      ${seg('d-style', o.photoStyle, [['auto', 'As the daily run picks'], ['close', 'Close ups of Bapa'], ['action', 'What Bapa is doing']])}
+      <p class="hint">Changing this resets every year’s photo choice. Places and captions you typed stay.</p></div>` : ''}`;
+}
+function paneWords() {
+  const day = S.mode === 'day', pack = P[S.mode], o = cur();
+  const list = keys().map(k => {
+    const x = info(k), on = day ? (o.years[k]?.on ?? true) : true;
+    return `<div class="w ${on ? '' : 'off'}"><b>${esc(day ? k : k)}${day ? `<br><label class="check" style="font:12px var(--sans)"><input type="checkbox" class="w-on" data-k="${k}" ${on ? 'checked' : ''}> show</label>` : ''}</b>
+      <input type="text" class="place" data-f="place" data-k="${k}" value="${esc(x.place)}" aria-label="Place for ${esc(label(k))}">
+      <textarea class="capedit" data-f="caption" data-k="${k}" rows="2" aria-label="Caption for ${esc(label(k))}">${esc(x.caption)}</textarea></div>`;
+  }).join('');
+  if (day) return `
+    <div class="group"><h3>Every year: show, place and caption</h3>
+      <div class="seg"><button class="btn small" id="d-all">Show every year</button><button class="btn small" id="d-pre">Only Pramukh Swami</button><button class="btn small" id="d-post">Only Mahant Swami</button></div>
+      <div class="words">${list}</div>
+      <p class="hint">Empty a caption to show none. Reset on the Photo tab brings the website’s place and caption back.</p></div>
+    <div class="group"><h3>Title</h3>
+      ${check('d-tauto', 'Use the automatic title', o.titleAuto)}
+      ${o.titleAuto ? '' : text('d-title', 'Title', o.title, pack.title)}
+      ${check('d-festt', 'Put a big festival in the title', o.festTitle)}
+      ${check('d-one', 'Title and “in Bapa’s Diary” on one line', o.oneTitle)}
+      ${text('d-sub', 'Second part', o.subtitle)}</div>
+    <div class="group"><h3>On and under each card</h3>
+      ${seg('d-caps', o.captions, [['all', 'Every caption'], ['special', 'Special moments only'], ['none', 'No captions']])}
+      ${range('d-capsize', 'Caption size', o.capSize, 15, 30, 1)}
+      ${check('d-year', 'Year on the card', o.showYear)} ${check('d-place', 'Place on the card', o.showPlace)} ${check('d-fest', 'Festival tag on cards taken on a festival', o.festTags)}</div>
+    <div class="group"><h3>Bottom line</h3>
+      ${check('d-story', 'History story (On this day in…)', o.showStory)} ${check('d-cal', 'BAPS calendar line', o.showCal)}
+      ${check('d-tom', 'Tomorrow’s festival in the corner', o.showTomorrow)} ${check('d-foot', 'Project name', o.showFooter)}
+      ${o.showFooter ? text('d-footer', 'Name', o.footer) : ''}
+      <p class="hint">This day: ${pack.story ? `story from ${pack.story.year}` : 'no story'}, calendar “${esc(pack.cal_line || 'none')}”.</p></div>`;
+  return `
+    <div class="group"><h3>Every day: place and caption</h3>
+      <div class="words">${list}</div>
+      <p class="hint">Places make the bubbles under the title. Captions show with Activity and Mixed (or Always, below).</p></div>
+    <div class="group"><h3>Title</h3>
+      ${check('m-tauto', 'Use the automatic title', o.titleAuto)}
+      ${o.titleAuto ? '' : text('m-title', 'Title', o.title, `${pack.title} ${o.subtitle}`)}
+      ${check('m-sub', 'Indian months and Vikram Samvat under the title', o.showSub)}
+      ${check('m-bub', 'Where Bapa was (place bubbles)', o.bubbles)}</div>
+    <div class="group"><h3>On and under each card</h3>
+      ${check('m-tithi', 'Indian date (tithi) beside the day', o.tithi)} ${check('m-sun', 'Sundays in red', o.sundayRed)}
+      ${check('m-fest', 'Festival tag', o.fest)} ${check('m-story', 'History story of that exact day', o.stories)}
+      ${seg('m-caps', o.captions, [['auto', 'With Activity and Mixed'], ['on', 'Always'], ['off', 'Never']])}
+      ${range('m-capsize', 'Caption size', o.capSize, 16, 30, 1)}</div>`;
+}
+function paneLayout() {
+  const o = cur();
+  if (S.mode === 'month') return `
+    <div class="group"><h3>Cords and cards</h3>
+      ${seg('m-rows', o.rows, [[3, '3 cords'], [4, '4 cords']])}
+      ${range('m-sag', 'Cord curve', o.sag, 0, 60, 1)}
+      ${range('m-tilt', 'Card tilt', o.tilt, 0, 3, .1, v => v + '°')}
+      ${check('m-pegs', 'Wooden pegs', o.pegs)}</div>`;
+  return `
+    <div class="group"><h3>Cords and cards</h3>
+      ${seg('d-rows', o.rows, [[2, '2 cords'], [3, '3 cords'], [4, '4 cords']])}
+      ${range('d-shape', 'Photo shape', o.shape, .6, 1.3, .05, v => v < .8 ? 'wide' : v > 1.05 ? 'tall' : 'nearly square')}
+      ${range('d-sag', 'Cord curve', o.sag, 0, 120, 2)}
+      ${range('d-cord', 'Cord thickness', o.cord, 0, 14, 1, v => v ? v : 'no cord')}
+      ${range('d-gap', 'Space between cards', o.gap, 0, 60, 2)}</div>
+    <div class="group"><h3>How they hang</h3>
+      ${seg('d-hang', o.hang, [['straight', 'Straight'], ['swing', 'Swinging a little']])}
+      ${o.hang === 'swing' ? range('d-tilt', 'Swing', o.tilt, .5, 4, .1, v => v + '°') : ''}
+      ${seg('d-peg', o.peg, [['gloss', 'Varnished pegs'], ['flat', 'Flat pegs'], ['none', 'No pegs']])}</div>`;
+}
+function lookPane(p, o) {
+  return `<div class="group"><h3>Background</h3>
+    ${seg(p + '-look', o.look, Object.entries(LOOKS).map(([k, v]) => [k, v.name]))}
+    ${range(p + '-glow', 'Lamp glow', o.glow, 0, 1, .05, v => Math.round(v * 100) + '%')}
+    ${range(p + '-jali', 'Jali pattern', o.jali, 0, .4, .01, v => Math.round(v * 100) + '%')}</div>
+  <div class="group"><h3>Photos</h3>
+    ${check(p + '-polish', 'Polish (a little more contrast and colour, as the daily run)', o.polish)}
+    ${range(p + '-bright', 'Brightness', o.bright, -.2, .3, .01, v => (v > 0 ? '+' : '') + Math.round(v * 100))}
+    ${range(p + '-warm', 'Warmth', o.warmth, 0, .5, .01, v => Math.round(v * 100))}
+    <div class="seg"><button class="btn" id="${p}-resetall">Reset every setting to the daily look</button></div></div>`;
+}
+
+function build() {
+  const day = S.mode === 'day', pack = P[S.mode], o = cur();
+  document.querySelectorAll('.modes button').forEach(b => b.setAttribute('aria-pressed', String(b.id === 'mode-' + S.mode)));
+  const list = day ? INDEX.days.map(k => [k, longDate(k)]) : INDEX.months.map(k => [k, longMonth(k)]), now = day ? o.date : o.month;
+  $('#pick').innerHTML = list.map(([k, l]) => `<option value="${k}" ${k === now ? 'selected' : ''}>${l}</option>`).join('');
+  $('#pick').setAttribute('aria-label', day ? 'Which day' : 'Which month');
+  $('#pick-opt').hidden = day;
+  $('#pick-opt').innerHTML = [['A', 'Close-up images'], ['B', 'Activity'], ['M', 'Mixed']].map(([k, l]) => `<option value="${k}" ${k === S.month.option ? 'selected' : ''}>${l}</option>`).join('');
+  const dc = driveCode(); $('#drive-chip').className = 'chip' + (dc ? ' on' : ''); $('#drive-chip').textContent = dc ? 'Drive connected' : 'Connect Google Drive';
+  if (!TABS[S.mode].some(t => t[0] === S.tab)) S.tab = 'card';
+  $('#tabs').innerHTML = TABS[S.mode].map(([k, l]) => `<button role="tab" data-t="${k}" aria-selected="${k === S.tab}">${l}</button>`).join('');
+  $('#compare').hidden = !day;
+  $('#tip').textContent = day ? 'Click any card to change its photo, place or caption right there.' : 'Click any day to change its photo, place or caption right there.';
+  if (!pack) { $('#pane').innerHTML = '<p class="hint">Loading photos…</p>'; $('#meta').textContent = 'Loading photos…'; fe.hidden = true; wire(); return }
+  selected();
+  const total = (day ? pack.years : pack.days).reduce((s, g) => s + g.cands.length, 0);
+  $('#meta').innerHTML = day ? `<b>${esc(pack.title)}</b><span>${dayCards(pack, o).length} of ${pack.years.length} years on the picture</span><span>${total} photos to choose from</span>`
+    : `<b>${esc(pack.title)}</b><span>${pack.days.length} days</span><span>${{ A: 'close-up images', B: 'activity', M: 'mixed' }[o.option]}</span><span>${total} photos to choose from</span>`;
+  $('#pane').innerHTML = S.tab === 'card' ? paneCard() : S.tab === 'words' ? paneWords() : S.tab === 'layout' ? paneLayout() : lookPane(day ? 'd' : 'm', o);
+  if (day && $('#compare').open) $('#real').src = pack.base + 'real.jpg';
+  buildEditor(); wire(); render();
+}
+function wire() {
+  const o = cur(), p = S.mode === 'day' ? 'd' : 'm';
+  const on = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn) };
+  const bind = (id, key, num, rebuild) => on(id, 'input', e => { o[key] = e.target.type === 'checkbox' ? e.target.checked : num ? +e.target.value : e.target.value; rebuild ? build() : (render(), syncOut(id)) });
+  const segOn = (id, key, num) => document.querySelectorAll(`#${id} button`).forEach(b => b.addEventListener('click', () => { o[key] = num ? +b.dataset.v : b.dataset.v; build() }));
+  document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => { S.tab = b.dataset.t; build() }));
+  if (!P[S.mode]) return;
+  // the chosen card
+  const k = o.sel, ks = shownKeys(), go = d => { o.sel = ks[(ks.indexOf(k) + d + ks.length) % ks.length]; build() };
+  on('c-prev', 'click', () => go(-1)); on('c-next', 'click', () => go(1));
+  document.querySelectorAll('#c-sel button').forEach(b => b.addEventListener('click', () => { o.sel = +b.dataset.k; build() }));
+  document.querySelectorAll('#c-thumbs button').forEach(b => b.addEventListener('click', () => { const s = bag(k); s.pick = +b.dataset.i; delete s.caption; build() }));
+  document.querySelectorAll('#c-crop button').forEach(b => b.addEventListener('click', () => { bag(k).crop = b.dataset.v; build() }));
+  ['zoom', 'dx', 'dy'].forEach(f => on('c-' + f, 'input', e => { bag(k)[f] = +e.target.value; syncOut('c-' + f); render() }));
+  on('c-reset', 'click', () => { const s = bag(k); Object.keys(s).forEach(f => f !== 'on' && delete s[f]); build() });
+  // shared look
+  segOn(p + '-look', 'look'); bind(p + '-glow', 'glow', 1); bind(p + '-jali', 'jali', 1); bind(p + '-polish', 'polish'); bind(p + '-bright', 'bright', 1); bind(p + '-warm', 'warmth', 1);
+  on(p + '-resetall', 'click', () => { const keep = S.mode === 'day' ? { date: o.date } : { month: o.month, option: o.option }; S[S.mode] = Object.assign(structuredClone(S.mode === 'day' ? DAY_DEFAULT : MONTH_DEFAULT), keep); FE = false; build() });
+  if (S.mode === 'day') {
+    document.querySelectorAll('#d-style button').forEach(b => b.addEventListener('click', () => { o.photoStyle = b.dataset.v; Object.values(o.years).forEach(y => { delete y.pick; delete y.crop }); build() }));
+    segOn('d-rows', 'rows', 1); segOn('d-hang', 'hang'); segOn('d-peg', 'peg'); segOn('d-caps', 'captions');
+    bind('d-shape', 'shape', 1); bind('d-sag', 'sag', 1); bind('d-cord', 'cord', 1); bind('d-gap', 'gap', 1); bind('d-tilt', 'tilt', 1); bind('d-capsize', 'capSize', 1);
+    bind('d-tauto', 'titleAuto', 0, 1); bind('d-title', 'title'); bind('d-festt', 'festTitle'); bind('d-one', 'oneTitle'); bind('d-sub', 'subtitle');
+    bind('d-year', 'showYear'); bind('d-place', 'showPlace'); bind('d-fest', 'festTags'); bind('d-story', 'showStory'); bind('d-cal', 'showCal'); bind('d-tom', 'showTomorrow'); bind('d-foot', 'showFooter', 0, 1); bind('d-footer', 'footer');
+    document.querySelectorAll('.w-on').forEach(b => b.addEventListener('change', () => { bag(b.dataset.k).on = b.checked; b.closest('.w').classList.toggle('off', !b.checked); render(); $('#meta').querySelector('span').textContent = `${dayCards(P.day, o).length} of ${P.day.years.length} years on the picture` }));
+    const setAll = f => { P.day.years.forEach(y => { bag(y.year).on = f(y.year) }); build() };
+    on('d-all', 'click', () => setAll(() => true)); on('d-pre', 'click', () => setAll(y => y <= 2016)); on('d-post', 'click', () => setAll(y => y >= 2016));
+  } else {
+    segOn('m-rows', 'rows', 1); segOn('m-caps', 'captions');
+    bind('m-sag', 'sag', 1); bind('m-tilt', 'tilt', 1); bind('m-pegs', 'pegs'); bind('m-capsize', 'capSize', 1);
+    bind('m-tauto', 'titleAuto', 0, 1); bind('m-title', 'title'); bind('m-sub', 'showSub'); bind('m-bub', 'bubbles');
+    bind('m-tithi', 'tithi'); bind('m-sun', 'sundayRed'); bind('m-fest', 'fest'); bind('m-story', 'stories');
+  }
+}
+function syncOut(id) {   // keep the little number beside a slider in step
+  const el = document.getElementById(id), out = document.getElementById(id + '-o'); if (!el || !out || el.type !== 'range') return;
+  const v = +el.value, pc = x => Math.round(x * 100) + '%';
+  out.textContent = /zoom|glow|jali/.test(id) ? pc(v) : /tilt/.test(id) ? v + '°' : /dx|dy|warm/.test(id) ? Math.round(v * 100) : /bright/.test(id) ? (v > 0 ? '+' : '') + Math.round(v * 100)
+    : id === 'd-shape' ? (v < .8 ? 'wide' : v > 1.05 ? 'tall' : 'nearly square') : id === 'd-cord' ? (v || 'no cord') : v;
+}
+$('#compare').addEventListener('toggle', () => { if ($('#compare').open && P.day) $('#real').src = P.day.base + 'real.jpg' });
+
+// ------------------------------------------------------------ top bar: what to make and which day
+async function load(kind) {
+  const key = kind === 'day' ? S.day.date : S.month.month;
+  P[kind] = null; build();
+  try { const pk = await loadPack(kind, key); if ((kind === 'day' ? S.day.date : S.month.month) === key) P[kind] = pk }
+  catch (e) { $('#meta').textContent = 'The photos for this ' + (kind === 'day' ? 'day' : 'month') + ' could not be loaded. Pick it again to retry.'; return }
+  if (S.mode === kind) build();
+}
+document.querySelectorAll('.modes button').forEach(b => b.addEventListener('click', () => {
+  S.mode = b.id.slice(5); FE = false; $('#status').textContent = ''; build();
+  if (!P[S.mode]) load(S.mode);
+}));
+$('#pick').addEventListener('change', e => {
+  FE = false;
+  if (S.mode === 'day') { S.day.date = e.target.value; S.day.years = {}; S.day.sel = null } else { S.month.month = e.target.value; S.month.days = {}; S.month.sel = null }
+  load(S.mode);
+});
+$('#pick-opt').addEventListener('change', e => { S.month.option = e.target.value; build() });
+
+// ------------------------------------------------------------ Google Drive: the connection (kept in this browser twice, storage and a cookie)
 const COOKIE = 'studio_drive';
 let DRIVE_NOW = '';   // this visit's connection, for when the browser will not keep it
 function savedDrive() {
@@ -613,30 +925,49 @@ function setDrive(v) {   // true when the browser kept it for next time
   return savedDrive() === v;
 }
 const NOT_KEPT = 'This browser is not letting the Studio save anything, so it will forget the connection when you refresh. In Chrome open Settings, then Privacy and security, then Site settings, then On device site data, and allow sites to save data (or add akshar-kutir-mandir-room.pages.dev to the allowed list). Then connect again.';
-function fillMode() {
-  const isToday = S.mode === 'day' && S.day.date === todayLondon();
-  $('#expmode').hidden = S.mode !== 'day';
-  if (!isToday && EXPMODE === 'replace') EXPMODE = 'new';
-  document.querySelectorAll('#exp-mode button').forEach(b => {
-    b.setAttribute('aria-pressed', String(b.dataset.v === EXPMODE));
-    if (b.dataset.v === 'replace') b.disabled = !isToday;
-  });
-  $('#exp-mode-hint').textContent = EXPMODE === 'replace'
-    ? 'Swaps today’s picture in your Bapa’s Diary folder, so the 2pm send goes out with this one.'
-    : (isToday || S.mode !== 'day' ? 'Downloads it, and keeps a copy in “Bapa’s Diary Studio exports” on Drive. Today’s 2pm picture stays as it is.' : 'Only today’s picture can be replaced; other dates save as a new export.');
-  $('#exp-go').textContent = EXPMODE === 'replace' ? 'Replace today’s 2pm picture' : 'Export picture';
-  $('#exp-size').hidden = EXPMODE === 'replace';
-  $('#drive').hidden = !!driveCode() && !$('#drive').dataset.open;
-  $('#drive-on').hidden = !driveCode() || S.mode !== 'day';
-  const last = store.get('studio-last');
-  $('#last').innerHTML = last ? `Last export: <b>${last.how}</b>, ${last.what}, ${last.when}` : '';
+const REDEPLOY = 'In your “gets 2pm picture ready” script click Deploy, then Manage deployments, then the pencil. Set Version to “New version” and Who has access to “Anyone”, then press Deploy.';
+// what went wrong, said plainly (Darpan, 28 Oct 2026: an export back to the folder failed with no clear reason)
+async function askDrive(payload) {
+  const [url, key] = driveCode().split('#');
+  let r, body;
+  try { r = await fetch(url, { method: 'POST', body: JSON.stringify(Object.assign({ key }, payload)) }); body = await r.text() }
+  catch (e) { throw new Error(`The Studio could not reach your script. This nearly always means the web app is not open to Anyone, or the newest script has not been deployed. ${REDEPLOY} Then press Check the connection.`) }
+  let ans = null; try { ans = JSON.parse(body) } catch (e) {}
+  if (!ans) {
+    if (/doPost/.test(body)) throw new Error(`Your script has no Studio part yet. Paste the newest script, then: ${REDEPLOY}`);
+    if (r.status === 401 || r.status === 403 || /accounts\.google\.com|Sign in/i.test(body)) throw new Error(`Google asked for a sign in, so the web app is not open to Anyone. ${REDEPLOY}`);
+    if (r.status === 413 || /too large|exceeded/i.test(body)) throw new Error('The picture was too big for Google to take in one go. Choose a smaller size and try again.');
+    throw new Error(`Your script answered with something the Studio could not read (code ${r.status}). Check the Bapa’s Diary folder, then: ${REDEPLOY}`);
+  }
+  if (!ans.ok && /code is wrong/.test(ans.error)) { setDrive(''); build(); throw new Error('The Studio code no longer matches your script. Run studioCode in the script and connect again with the line it shows.') }
+  return ans;
 }
-document.querySelectorAll('#exp-mode button').forEach(b => b.addEventListener('click', () => { EXPMODE = b.dataset.v; fillMode() }));
-$('#drive-off').addEventListener('click', () => { setDrive(''); $('#status').className = 'status'; $('#status').textContent = 'Disconnected from Google Drive on this device.'; fillMode() });
+async function checkDrive() {   // true when the script is reachable, the code is right and the script is the newest
+  const ans = await askDrive({ mode: 'ping' });
+  if (ans.ok && ans.version >= 2) return true;
+  throw new Error(`Connected, and your code is right, but the script in Google is an older one, so it can’t put a picture for another day in the folder. Paste the newest script (the file Claude sent you), then: ${REDEPLOY}`);
+}
+async function toBase64(blob) { const buf = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < buf.length; i += 32768) s += String.fromCharCode.apply(null, buf.subarray(i, i + 32768)); return btoa(s) }
+async function sendToDrive(mode, png, jpg) {
+  const ans = await askDrive({ mode, date: S.day.date, png: await toBase64(png), jpg: jpg ? await toBase64(jpg) : null });
+  if (!ans.ok) throw new Error(ans.error);
+  return ans;
+}
+function fillDrive() {
+  const dc = driveCode();
+  $('#drv-on').hidden = !dc; $('#drv-off').hidden = !!dc;
+}
+$('#drive-chip').addEventListener('click', () => { fillDrive(); $('#drv-status').textContent = ''; $('#drv').showModal() });
+$('#drive-off').addEventListener('click', () => { setDrive(''); fillDrive(); build(); const st = $('#drv-status'); st.className = 'status'; st.textContent = 'Disconnected from Google Drive on this device.' });
+$('#drive-test').addEventListener('click', async () => {
+  const st = $('#drv-status'); st.className = 'status'; st.textContent = 'Asking your script…';
+  try { await checkDrive(); st.className = 'status ok'; st.textContent = 'All good: your script answered, the code is right and it is the newest version.' }
+  catch (e) { st.className = 'status warn'; st.textContent = e.message }
+});
 $('#drive-save').addEventListener('click', () => {
   // the line studioCode shows is '<web app address>#<code>'. The address and the code may also come one at a time, in
   // either order; a test address (ending /dev) is not kept, the real one ends /exec
-  const raw = $('#drive-code').value.replace(/\s+/g, ''), st = $('#status');
+  const raw = $('#drive-code').value.replace(/\s+/g, ''), st = $('#drv-status');
   const found = raw.match(/#([A-Za-z0-9]{16,})/) || raw.replace(/https:\/\/\S*/, '').match(/\b([a-f0-9]{32})\b/i);
   const key = (found || [])[1] || store.get('studio-key-pending') || '';
   let url = (raw.match(/https:\/\/script\.google\.com\/[^#]*?\/(exec|dev)\b/) || [])[0] || '';
@@ -650,21 +981,39 @@ $('#drive-save').addEventListener('click', () => {
   if (!url) { st.textContent = (key ? 'Your code is saved. ' : '') + (isDev ? 'That address ends /dev, the test one. ' : '') + 'Now paste the Web app URL: in the script click Deploy, then Manage deployments, and copy the address that ends /exec.'; return }
   if (!key) { st.textContent = 'The address is saved. Now paste the code: run studioCode, and copy the letters and numbers after the # sign.'; return }
   const kept = setDrive(url + '#' + key); store.set('studio-key-pending', ''); store.set('studio-url-pending', '');
-  delete $('#drive').dataset.open; fillMode();
-  if (kept) { st.className = 'status ok'; st.textContent = 'Connected to Google Drive. It stays connected on this device.' }
+  fillDrive(); build();
+  if (kept) { st.className = 'status ok'; st.textContent = 'Connected to Google Drive. It stays connected on this device. Press Check the connection to make sure the script answers.' }
   else st.textContent = 'Connected for now. ' + NOT_KEPT;
 });
-async function toBase64(blob) { const buf = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < buf.length; i += 32768) s += String.fromCharCode.apply(null, buf.subarray(i, i + 32768)); return btoa(s) }
-async function sendToDrive(mode, png, jpg) {
-  const [url, key] = driveCode().split('#');
-  const body = JSON.stringify({ key, mode, date: S.day.date, png: await toBase64(png), jpg: jpg ? await toBase64(jpg) : null });
-  let r;
-  try { r = await fetch(url, { method: 'POST', body }) } catch (e) { throw new Error('Google Drive could not be reached from here. Use the Studio tab on your master dashboard, or check your internet.') }
-  const ans = await r.json().catch(() => null);
-  if (!ans) throw new Error('Google Drive did not answer clearly. Check the Bapa’s Diary folder before trying again.');
-  if (!ans.ok) { if (/code is wrong/.test(ans.error)) { setDrive(''); fillMode() } throw new Error(ans.error) }
-  return ans;
+
+// ------------------------------------------------------------ Export: a new export, or the day's picture in the Bapa's Diary folder (Darpan, 25 and 28 Oct 2026)
+const SIZES = {
+  day: [['full', 'Full size PNG, 5592 × 2580', 2, 'png'], ['whatsapp', 'WhatsApp JPG, 4096 wide', 4096 / 2796, 'jpg'], ['small', 'Small JPG, 2048 wide', 2048 / 2796, 'jpg']],
+  month: [['full', 'Full size JPG, 3840 × 2160 (16:9)', 1, 'jpg'], ['big', 'Print PNG, 5760 × 3240', 1.5, 'png'], ['small', 'Small JPG, 1920 wide', .5, 'jpg']],
+};
+const todayLondon = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+const hourLondon = () => +new Date().toLocaleString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false });
+const how = () => (document.querySelector('#exp-form input[name=how]:checked') || {}).value || 'new';
+function fillExport() {
+  const day = S.mode === 'day', dc = driveCode();
+  $('#exp-size').innerHTML = SIZES[S.mode].map(([k, l]) => `<option value="${k}" ${k === ($('#exp-size').value || '') ? 'selected' : ''}>${l}</option>`).join('');
+  $('#opt-new-p').textContent = `Downloads the picture to this device${day && dc ? ', and keeps a copy in “Bapa’s Diary Studio exports” on Drive' : ''}. Nothing in the Bapa’s Diary folder changes.`;
+  const rep = $('#opt-rep input'), t = todayLondon(), d = S.day.date, when = longDate(d);
+  rep.disabled = !day; $('#opt-rep').classList.toggle('dis', !day);
+  if (!day && rep.checked) document.querySelector('#exp-form input[value=new]').checked = true;
+  $('#opt-rep-b').textContent = day ? `Put it in the Bapa’s Diary folder as ${when}` : 'Put it in the Bapa’s Diary folder';
+  $('#opt-rep-p').textContent = !day ? 'Only the daily picture goes in that folder. Month posters save as a new export.'
+    : (!dc ? 'Connect Google Drive first (the button at the top). ' : '') + (d > t ? `It waits there as ${when}’s picture. The morning delivery leaves it alone, so that day’s 2pm send goes out with yours.`
+    : d === t ? (hourLondon() < 14 ? 'Swaps today’s picture in the folder, so today’s 2pm send goes out with yours.' : 'Today’s 2pm send has already gone, so this only swaps the copy kept in the folder.')
+    : 'That day has gone by, so this only swaps the copy kept in the folder. Nothing is sent.');
+  const rp = how() === 'replace';
+  $('#exp-size-row').hidden = rp;
+  $('#exp-go').textContent = rp ? 'Put it in the folder' : day && dc ? 'Download and copy to Drive' : 'Download';
+  const last = store.get('studio-last');
+  $('#last').innerHTML = last ? `Last export: <b>${esc(last.how)}</b>, ${esc(last.what)}, ${esc(last.when)}` : '';
 }
+$('#exp-open').addEventListener('click', () => { if (!P[S.mode]) return; fillExport(); $('#exp-status').textContent = ''; $('#exp').showModal() });
+document.querySelectorAll('#exp-form input[name=how]').forEach(r => r.addEventListener('change', fillExport));
 function drawAt(width) {
   const [W, H] = S.mode === 'day' ? [2796, 1290] : [3840, 2160], k = width / W;
   const c = document.createElement('canvas'); c.width = Math.round(W * k); c.height = Math.round(H * k);
@@ -673,253 +1022,47 @@ function drawAt(width) {
   return c;
 }
 const blobOf = (c, type, q) => new Promise(r => c.toBlob(r, type, q));
-function remember(how, what) { store.set('studio-last', { how, what, when: new Date().toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }); fillMode() }
-
-function fillSizes() { $('#exp-size').innerHTML = SIZES[S.mode].map(([k, l]) => `<option value="${k}">${l}</option>`).join('') }
+function remember(how, what) { store.set('studio-last', { how, what, when: new Date().toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }) }
+function say(cls, msg) { for (const id of ['#exp-status', '#status']) { $(id).className = 'status ' + cls; $(id).textContent = msg } }
 $('#exp-go').addEventListener('click', async () => {
-  const [, , k, ext] = SIZES[S.mode].find(s => s[0] === $('#exp-size').value) || SIZES[S.mode][0];
-  const btn = $('#exp-go'), st = $('#status'); btn.disabled = true; st.className = 'status'; st.textContent = 'Drawing the full size picture…';
+  const btn = $('#exp-go'); btn.disabled = true; say('', 'Drawing the full size picture…');
   await allReady();
-  if (EXPMODE === 'replace') {
+  if (how() === 'replace') {
     try {
-      if (!driveCode()) { $('#drive').dataset.open = '1'; fillMode(); throw new Error('Connect to Google Drive first (the box below), then press Replace again.') }
+      if (!driveCode()) throw new Error('Connect Google Drive first: press Connect Google Drive at the top.');
+      say('', 'Checking your script…'); await checkDrive();
       const png = await blobOf(drawAt(5635), 'image/png'), jpg = await blobOf(drawAt(4096), 'image/jpeg', .93);
-      st.textContent = 'Sending it to your Bapa’s Diary folder…';
+      say('', `Sending it to your Bapa’s Diary folder (${((png.size + jpg.size) / 1e6).toFixed(0)} MB)…`);
       const ans = await sendToDrive('replace', png, jpg);
-      st.className = 'status ok'; st.textContent = `Replaced today’s 2pm picture: ${ans.name} in ${ans.folder}, at ${ans.time}. The 2pm send will use this one.`;
-      remember('Replace today’s picture', ans.name);
-    } catch (e) { st.className = 'status warn'; st.textContent = `Not replaced: ${(e && e.message) || e}` } finally { btn.disabled = false }
+      const note = { ahead: 'It goes out at 2pm that day.', before: 'Today’s 2pm send will use this one.', after: 'Today’s 2pm send had already gone; the folder copy is updated.', past: 'That day had gone by; the folder copy is updated.' }[ans.when2pm] || '';
+      say('ok', `Done: ${ans.name} is in ${ans.folder} (${ans.time}). ${note}`);
+      remember('Put in the Bapa’s Diary folder', ans.name);
+    } catch (e) { say('warn', `Not put in the folder. ${(e && e.message) || e}`) } finally { btn.disabled = false; fillExport() }
     return;
   }
   try {
-    const [W, H] = S.mode === 'day' ? [2796, 1290] : [3840, 2160];
-    const c = document.createElement('canvas'); c.width = Math.round(W * k); c.height = Math.round(H * k);
-    const ctx = c.getContext('2d'); ctx.scale(k, k);
-    S.mode === 'day' ? drawDay(ctx, P.day, S.day, []) : drawMonth(ctx, P.month, S.month, []);
-    const blob = await new Promise(r => c.toBlob(r, ext === 'png' ? 'image/png' : 'image/jpeg', .93));
+    const [, , k, ext] = SIZES[S.mode].find(s => s[0] === $('#exp-size').value) || SIZES[S.mode][0];
+    const [W] = S.mode === 'day' ? [2796] : [3840];
+    const blob = await blobOf(drawAt(W * k), ext === 'png' ? 'image/png' : 'image/jpeg', .93);
     const d = new Date(S.mode === 'day' ? S.day.date + 'T12:00' : S.month.month + '-01T12:00');
     const name = S.mode === 'day' ? `${d.getDate()} ${d.toLocaleString('en-GB', { month: 'long' })} ${d.getFullYear()} Bapa's Diary.${ext}` : `${d.toLocaleString('en-GB', { month: 'long' })} ${d.getFullYear()} Bapa's Diary ${{ A: 'close ups', B: 'activity', M: 'mixed' }[S.month.option]}.${ext}`;
     const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
     if (dl) await dl.save({ filename: name, data: blob });
     else { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000) }
-    st.className = 'status ok'; st.textContent = `Saved as a new export: ${name} (${(blob.size / 1e6).toFixed(1)} MB). Today’s 2pm picture is unchanged.`;
+    say('ok', `Downloaded ${name} (${(blob.size / 1e6).toFixed(1)} MB). The Bapa’s Diary folder is unchanged.`);
     let where = name;
     if (driveCode() && S.mode === 'day') {
       try {
-        st.textContent += ' Keeping a copy on Drive…';
+        say('ok', `Downloaded ${name}. Keeping a copy on Drive…`);
         const ans = await sendToDrive('new', await blobOf(drawAt(5635), 'image/png'), await blobOf(drawAt(4096), 'image/jpeg', .93));
-        st.textContent = `Saved as a new export: ${name}, with a copy in “${ans.folder}” on Drive. Today’s 2pm picture is unchanged.`; where = `${ans.name} in ${ans.folder}`;
-      } catch (e) { st.textContent = `Saved as a new export: ${name} on this device (the Drive copy didn’t work: ${e.message}). Today’s 2pm picture is unchanged.` }
+        say('ok', `Downloaded ${name}, with a copy in “${ans.folder}” on Drive. The Bapa’s Diary folder is unchanged.`); where = `${ans.name} in ${ans.folder}`;
+      } catch (e) { say('warn', `Downloaded ${name} to this device, but the Drive copy didn’t work. ${e.message}`) }
     }
-    remember('Save as a new export', where);
+    remember('New export', where);
   } catch (e) {
-    st.textContent = e && e.code === 'declined' ? 'Export cancelled.' : `Export did not finish: ${(e && e.message) || e}`;
-  } finally { btn.disabled = false }
+    say(e && e.code === 'declined' ? '' : 'warn', e && e.code === 'declined' ? 'Export cancelled.' : `Export did not finish: ${(e && e.message) || e}`);
+  } finally { btn.disabled = false; fillExport() }
 });
-view.addEventListener('click', ev => {
-  const r = view.getBoundingClientRect(), x = (ev.clientX - r.left) * view.width / r.width, y = (ev.clientY - r.top) * view.height / r.height;
-  const h = HITS.find(h => x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h);
-  if (h) { cur().sel = h.key; S.tab = 'photos'; build() }
-});
-
-// ------------------------------------------------------------ the settings rail
-const cur = () => S[S.mode];
-const TABS = { day: [['photos', 'Photos'], ['years', 'Years'], ['text', 'Text'], ['layout', 'Layout'], ['look', 'Look']], month: [['photos', 'Photos'], ['text', 'Text'], ['layout', 'Layout'], ['look', 'Look']] };
-function seg(id, value, opts) { return `<div class="seg" role="group" id="${id}">${opts.map(([v, l]) => `<button data-v="${v}" aria-pressed="${String(v) === String(value)}">${l}</button>`).join('')}</div>` }
-function range(id, label, v, min, max, step, fmt = x => x) { return `<div class="row"><label for="${id}">${label}<output id="${id}-o">${fmt(v)}</output></label><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${v}"></div>` }
-function check(id, label, v) { return `<label class="check"><input type="checkbox" id="${id}" ${v ? 'checked' : ''}> ${label}</label>` }
-function text(id, label, v, ph = '') { return `<div class="row"><label for="${id}">${label}</label><input type="text" id="${id}" value="${(v || '').replace(/"/g, '&quot;')}" placeholder="${ph.replace(/"/g, '&quot;')}"></div>` }
-function select(id, label, v, opts) { return `<div class="row"><label for="${id}">${label}</label><select id="${id}">${opts.map(([k, l, dis]) => `<option value="${k}" ${k === v ? 'selected' : ''} ${dis ? 'disabled' : ''}>${l}</option>`).join('')}</select></div>` }
-
-function paneDay() {
-  const o = S.day, pack = P.day;
-  if (S.tab === 'years') return `
-    <div class="group"><h3>Which date</h3>
-      ${select('d-date', 'Date', o.date, INDEX.days.map(k => [k, longDate(k)]))}
-      <p class="hint">Today and the next six days are ready each morning. For any other date, ask Claude (or run “Studio photo packs” on GitHub with that date) and it appears here.</p></div>
-    <div class="group"><h3>Years shown</h3>
-      <div class="chips" id="d-years">${pack.years.map(y => `<button data-y="${y.year}" aria-pressed="${o.years[y.year]?.on ?? true}">${y.year}</button>`).join('')}</div>
-      <div class="seg" role="group"><button class="btn" id="d-all">Show every year</button><button class="btn" id="d-none">Hide every year</button><button class="btn" id="d-pre">Only Pramukh Swami</button><button class="btn" id="d-post">Only Mahant Swami</button></div>
-      <p class="hint">Tap a year to hide or show it. The layout resizes itself to fill the picture.</p></div>`;
-  if (S.tab === 'text') return `
-    <div class="group"><h3>Title</h3>
-      ${check('d-tauto', 'Use the automatic title', o.titleAuto)}
-      ${o.titleAuto ? '' : text('d-title', 'Title', o.title, pack.title)}
-      ${check('d-festt', 'Put a big festival in the title (Gunatitanand Swami Jayanti today)', o.festTitle)}
-      ${check('d-one', 'Title and “in Bapa’s Diary” on one line', o.oneTitle)}
-      ${text('d-sub', 'Second part', o.subtitle)}</div>
-    <div class="group"><h3>Under each card</h3>
-      ${seg('d-caps', o.captions, [['all', 'Every caption'], ['special', 'Special moments only'], ['none', 'No captions']])}
-      ${range('d-capsize', 'Caption size', o.capSize, 15, 30, 1)}
-      ${check('d-year', 'Year on the card', o.showYear)} ${check('d-place', 'Place on the card', o.showPlace)} ${check('d-fest', 'Festival tag on cards taken on a festival', o.festTags)}</div>
-    <div class="group"><h3>Bottom line</h3>
-      ${check('d-story', 'History story (On this day in…)', o.showStory)} ${check('d-cal', 'BAPS calendar line (Indian date)', o.showCal)}
-      ${check('d-tom', 'Tomorrow’s festival in the corner', o.showTomorrow)} ${check('d-foot', 'Project name', o.showFooter)}
-      ${o.showFooter ? text('d-footer', 'Name', o.footer) : ''}
-      <p class="hint">Today: ${pack.story ? `story from ${pack.story.year}` : 'no story'}, calendar “${pack.cal_line || 'none'}”.</p></div>
-    <div class="group"><h3>Caption for every year</h3>
-      ${dayCards(pack, o).map(x => `<div class="row"><label for="cap-${x.y}">${x.y}</label><textarea class="capedit capall" id="cap-${x.y}" data-y="${x.y}" rows="2">${(x.caption || '').replace(/&/g, '&amp;').replace(/</g, '&lt;')}</textarea></div>`).join('')}
-      <p class="hint">Change any year’s caption here; empty it to show none. Reset on the Photos tab brings the website caption back.</p></div>`;
-  if (S.tab === 'layout') return `
-    <div class="group"><h3>Cords and cards</h3>
-      ${seg('d-rows', o.rows, [[2, '2 cords'], [3, '3 cords'], [4, '4 cords']])}
-      ${range('d-shape', 'Photo shape', o.shape, .6, 1.3, .05, v => v < .8 ? 'wide' : v > 1.05 ? 'tall' : 'nearly square')}
-      ${range('d-sag', 'Cord curve', o.sag, 0, 120, 2)}
-      ${range('d-cord', 'Cord thickness', o.cord, 0, 14, 1, v => v ? v : 'no cord')}
-      ${range('d-gap', 'Space between cards', o.gap, 0, 60, 2)}</div>
-    <div class="group"><h3>How they hang</h3>
-      ${seg('d-hang', o.hang, [['straight', 'Straight'], ['swing', 'Swinging a little']])}
-      ${o.hang === 'swing' ? range('d-tilt', 'Swing', o.tilt, .5, 4, .1, v => v + '°') : ''}
-      ${seg('d-peg', o.peg, [['gloss', 'Varnished pegs'], ['flat', 'Flat pegs'], ['none', 'No pegs']])}</div>`;
-  if (S.tab === 'look') return lookPane('d', o);
-  // photos
-  const sel = o.sel ?? pack.years[0].year, y = pack.years.find(v => v.year === sel) || pack.years[0], st = o.years[y.year] || {};
-  const pick = st.pick ?? defaultPick(y, o.photoStyle), c = y.cands[pick];
-  return `
-    <div class="group"><h3>Kind of photo, every year</h3>
-      ${seg('d-style', o.photoStyle, [['auto', 'As the daily run picks'], ['close', 'Close ups of Bapa'], ['action', 'What Bapa is doing']])}
-      <p class="hint">Changing this resets the photo choices below. Your own choices for a year stay until you press Reset.</p></div>
-    <div class="group"><h3>Year</h3>
-      <div class="chips" id="d-sel">${pack.years.filter(v => o.years[v.year]?.on ?? true).map(v => `<button data-y="${v.year}" class="${v.year === y.year ? 'sel' : ''}" aria-pressed="${o.years[v.year]?.pick != null || o.years[v.year]?.crop || o.years[v.year]?.caption != null ? 'true' : 'false'}">${v.year}</button>`).join('')}</div>
-      <p class="hint">A white year has your own changes. Or click a card in the picture.</p></div>
-    <div class="group"><h3>${y.year} · choose the photo</h3>
-      <p class="hint">${y.cands.length} photo${y.cands.length > 1 ? 's' : ''} of Bapa this year, the best first.</p>
-      <div class="thumbs" id="d-thumbs">${y.cands.map((c2, i) => `<button data-i="${i}" aria-pressed="${i === pick}" title="${c2.caption.replace(/"/g, '&quot;')}" aria-label="${c2.caption.replace(/"/g, '&quot;')}">${thumb(P.day, y, i)}${i === 0 ? '<span>DAILY PICK</span>' : c2.special ? '<span>SPECIAL</span>' : ''}</button>`).join('')}</div>
-      <p class="hint">${c.place} · ${c.date || y.year}${c.festival ? ' · ' + c.festival : ''}</p></div>
-    <div class="group"><h3>Crop</h3>
-      ${seg('d-crop', st.crop || 'auto', [['auto', 'Automatic'], ['close', 'Close up'], ['frame', 'Wider'], ['whole', 'Fill frame']])}
-      ${range('d-zoom', 'Zoom', st.zoom || 1, .6, 2.5, .05, v => Math.round(v * 100) + '%')}
-      ${range('d-dx', 'Move left or right', st.dx || 0, -.4, .4, .01, v => Math.round(v * 100))}
-      ${range('d-dy', 'Move up or down', st.dy || 0, -.4, .4, .01, v => Math.round(v * 100))}
-      <p class="hint">Automatic and Close up never cut Bapa’s head or pagh. Moving can, so check the preview.</p></div>
-    <div class="group"><h3>Caption</h3>
-      <textarea class="capedit" id="d-cap" aria-label="Caption for ${y.year}">${st.caption ?? c.caption}</textarea>
-      <p class="hint">Website caption: “${(c.original || '').replace(/</g, '&lt;')}”</p>
-      <div class="seg"><button class="btn" id="d-reset">Reset ${y.year} to the daily pick</button></div></div>`;
-}
-function lookPane(p, o) {
-  return `<div class="group"><h3>Background</h3>
-    ${seg(p + '-look', o.look, Object.entries(LOOKS).map(([k, v]) => [k, v.name]))}
-    ${range(p + '-glow', 'Lamp glow', o.glow, 0, 1, .05, v => Math.round(v * 100) + '%')}
-    ${range(p + '-jali', 'Jali pattern', o.jali, 0, .4, .01, v => Math.round(v * 100) + '%')}</div>
-  <div class="group"><h3>Photos</h3>
-    ${check(p + '-polish', 'Polish (a little more contrast and colour, as the daily run)', o.polish)}
-    ${range(p + '-bright', 'Brightness', o.bright, -.2, .3, .01, v => (v > 0 ? '+' : '') + Math.round(v * 100))}
-    ${range(p + '-warm', 'Warmth', o.warmth, 0, .5, .01, v => Math.round(v * 100))}
-    <div class="seg"><button class="btn" id="${p}-resetall">Reset every setting to the daily look</button></div></div>`;
-}
-function paneMonth() {
-  const o = S.month, pack = P.month;
-  if (S.tab === 'text') return `
-    <div class="group"><h3>Title</h3>
-      ${check('m-tauto', 'Use the automatic title', o.titleAuto)}
-      ${o.titleAuto ? '' : text('m-title', 'Title', o.title, `${pack.title} ${o.subtitle}`)}
-      ${check('m-sub', 'Indian months and Vikram Samvat under the title', o.showSub)}
-      ${check('m-bub', 'Where Bapa was (place bubbles)', o.bubbles)}</div>
-    <div class="group"><h3>On and under each card</h3>
-      ${check('m-tithi', 'Indian date (tithi) beside the day', o.tithi)} ${check('m-sun', 'Sundays in red', o.sundayRed)}
-      ${check('m-fest', 'Festival tag', o.fest)} ${check('m-story', 'History story of that exact day', o.stories)}
-      ${seg('m-caps', o.captions, [['auto', 'With Activity and Mixed'], ['on', 'Always'], ['off', 'Never']])}
-      ${range('m-capsize', 'Caption size', o.capSize, 16, 30, 1)}</div>
-    <div class="group"><h3>Caption for every day</h3>
-      ${monthCards(pack, o).map(x => `<div class="row"><label for="cap-${x.d.day}">${x.d.day} ${pack.title.split(' ')[0]}</label><textarea class="capedit capall" id="cap-${x.d.day}" data-d="${x.d.day}" rows="2">${(x.caption || '').replace(/&/g, '&amp;').replace(/</g, '&lt;')}</textarea></div>`).join('')}
-      <p class="hint">Captions show with Activity and Mixed (or Always, above). Change any day’s caption here.</p></div>`;
-  if (S.tab === 'layout') return `
-    <div class="group"><h3>Cords and cards</h3>
-      ${seg('m-rows', o.rows, [[3, '3 cords'], [4, '4 cords']])}
-      ${range('m-sag', 'Cord curve', o.sag, 0, 60, 1)}
-      ${range('m-tilt', 'Card tilt', o.tilt, 0, 3, .1, v => v + '°')}
-      ${check('m-pegs', 'Wooden pegs', o.pegs)}</div>`;
-  if (S.tab === 'look') return lookPane('m', o);
-  const sel = o.sel ?? 1, d = pack.days[sel - 1], st = o.days[d.day] || {};
-  const pick = st.pick ?? optPick(d, o.option), c = d.cands[pick];
-  return `
-    <div class="group"><h3>Month</h3>
-      ${select('m-month', 'Month', o.month, INDEX.months.map(k => [k, longMonth(k)]))}
-      ${seg('m-opt', o.option, [['A', 'Close-up images'], ['B', 'Activity'], ['M', 'Mixed']])}</div>
-    <div class="group"><h3>Day</h3>
-      <div class="chips" id="m-sel">${pack.days.map(v => `<button data-d="${v.day}" class="${v.day === d.day ? 'sel' : ''}" aria-pressed="${o.days[v.day] && Object.keys(o.days[v.day]).length ? 'true' : 'false'}">${v.day}</button>`).join('')}</div></div>
-    <div class="group"><h3>${d.day} ${pack.title} · choose the photo</h3>
-      ${d.cands.length ? `<p class="hint">${d.cands.length} photo${d.cands.length > 1 ? 's' : ''} of Bapa this day, the best first.</p><div class="thumbs" id="m-thumbs">${d.cands.map((c2, i) => `<button data-i="${i}" aria-pressed="${i === pick}" title="${c2.caption.replace(/"/g, '&quot;')}" aria-label="${c2.caption.replace(/"/g, '&quot;')}">${thumb(P.month, d, i)}${[['A', 'CLOSE'], ['B', 'ACTIVITY'], ['M', 'MIXED']].filter(([k]) => optPick(d, k) === i && (k !== 'M' || d.pickM != null)).map(([, l]) => `<span>${l}</span>`).join('').replace(/<\/span><span>/g, ' · ')}</button>`).join('')}</div>` : '<p class="hint">No photo for this day yet.</p>'}
-      <p class="hint">${c ? c.place : ''} · ${d.tithi}${d.fest.length ? ' · ' + d.fest.join(', ') : ''}</p></div>
-    <div class="group"><h3>Crop</h3>
-      ${seg('m-crop', st.crop || 'auto', [['auto', 'Automatic'], ['close', 'Close up'], ['frame', 'Wider'], ['whole', 'Fill frame']])}
-      ${range('m-zoom', 'Zoom', st.zoom || 1, .6, 2.5, .05, v => Math.round(v * 100) + '%')}
-      ${range('m-dx', 'Move left or right', st.dx || 0, -.4, .4, .01, v => Math.round(v * 100))}
-      ${range('m-dy', 'Move up or down', st.dy || 0, -.4, .4, .01, v => Math.round(v * 100))}</div>
-    <div class="group"><h3>Caption</h3>
-      <textarea class="capedit" id="m-cap" aria-label="Caption for day ${d.day}">${st.caption ?? (c ? c.caption : '')}</textarea>
-      <div class="seg"><button class="btn" id="m-reset">Reset day ${d.day}</button></div></div>`;
-}
-
-function build() {
-  document.querySelectorAll('.modes button').forEach(b => b.setAttribute('aria-pressed', String(b.id === 'mode-' + S.mode)));
-  if (!TABS[S.mode].some(t => t[0] === S.tab)) S.tab = 'photos';
-  $('#tabs').innerHTML = TABS[S.mode].map(([k, l]) => `<button role="tab" data-t="${k}" aria-selected="${k === S.tab}">${l}</button>`).join('');
-  const pack = P[S.mode];
-  $('#pane').innerHTML = pack ? (S.mode === 'day' ? paneDay() : paneMonth()) : '<p class="hint">Loading photos…</p>';
-  $('#compare').classList.toggle('on', S.mode === 'day' && !!pack);
-  if (pack && S.mode === 'day') $('#real').src = pack.base + 'real.jpg';
-  if (pack) {
-    if (S.mode === 'day') { const n = dayCards(pack, S.day).length; $('#meta').innerHTML = `<b>${pack.title}</b> · ${n} years · photos chosen on GitHub ${pack.made.slice(0, 10)}` }
-    else $('#meta').innerHTML = `<b>${pack.title}</b> · ${pack.days.length} days · ${{ A: 'close-up images', B: 'activity', M: 'mixed' }[S.month.option]}`;
-  }
-  fillSizes(); fillMode(); wire(); render();
-}
-function wire() {
-  const o = cur(), p = S.mode === 'day' ? 'd' : 'm';
-  const on = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn) };
-  const bind = (id, key, num, rebuild) => on(id, 'input', e => { o[key] = e.target.type === 'checkbox' ? e.target.checked : num ? +e.target.value : e.target.value; const out = document.getElementById(id + '-o'); if (out) out.textContent = out.textContent && e.target.value; rebuild ? build() : (render(), syncOut(id)) });
-  const segOn = (id, key, num, rebuild = true) => document.querySelectorAll(`#${id} button`).forEach(b => b.addEventListener('click', () => { o[key] = num ? +b.dataset.v : b.dataset.v; rebuild ? build() : render() }));
-  document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => { S.tab = b.dataset.t; build() }));
-  // shared look
-  segOn(p + '-look', 'look'); bind(p + '-glow', 'glow', 1); bind(p + '-jali', 'jali', 1); bind(p + '-polish', 'polish'); bind(p + '-bright', 'bright', 1); bind(p + '-warm', 'warmth', 1);
-  document.querySelectorAll('.capall').forEach(t => t.addEventListener('input', () => {
-    const k = t.dataset.y ?? t.dataset.d, bag = t.dataset.y ? o.years : o.days;
-    (bag[k] = bag[k] || {}).caption = t.value; render();
-  }));
-  on(p + '-resetall', 'click', () => { S[S.mode] = structuredClone(S.mode === 'day' ? DAY_DEFAULT : MONTH_DEFAULT); build() });
-  if (S.mode === 'day') {
-    const yr = () => { const k = o.sel ?? P.day.years[0].year; return (o.years[k] = o.years[k] || {}) };
-    document.querySelectorAll('#d-style button').forEach(b => b.addEventListener('click', () => { o.photoStyle = b.dataset.v; Object.values(o.years).forEach(y => { delete y.pick; delete y.crop; delete y.caption }); build() })); segOn('d-rows', 'rows', 1); segOn('d-hang', 'hang'); segOn('d-peg', 'peg'); segOn('d-caps', 'captions');
-    on('d-date', 'change', async e => { o.date = e.target.value; o.years = {}; o.sel = null; P.day = null; build(); P.day = await loadPack('day', o.date); build() });
-    bind('d-shape', 'shape', 1); bind('d-sag', 'sag', 1); bind('d-cord', 'cord', 1); bind('d-gap', 'gap', 1); bind('d-tilt', 'tilt', 1); bind('d-capsize', 'capSize', 1);
-    bind('d-tauto', 'titleAuto', 0, 1); bind('d-title', 'title'); bind('d-festt', 'festTitle'); bind('d-one', 'oneTitle'); bind('d-sub', 'subtitle');
-    bind('d-year', 'showYear'); bind('d-place', 'showPlace'); bind('d-fest', 'festTags'); bind('d-story', 'showStory'); bind('d-cal', 'showCal'); bind('d-tom', 'showTomorrow'); bind('d-foot', 'showFooter', 0, 1); bind('d-footer', 'footer');
-    document.querySelectorAll('#d-years button').forEach(b => b.addEventListener('click', () => { const y = o.years[b.dataset.y] = o.years[b.dataset.y] || {}; y.on = !(y.on ?? true); build() }));
-    const setAll = f => { P.day.years.forEach(y => { (o.years[y.year] = o.years[y.year] || {}).on = f(y.year) }); build() };
-    on('d-all', 'click', () => setAll(() => true)); on('d-none', 'click', () => setAll(() => false));
-    on('d-pre', 'click', () => setAll(y => y <= 2016)); on('d-post', 'click', () => setAll(y => y >= 2016));
-    document.querySelectorAll('#d-sel button').forEach(b => b.addEventListener('click', () => { o.sel = +b.dataset.y; build() }));
-    document.querySelectorAll('#d-thumbs button').forEach(b => b.addEventListener('click', () => { const y = yr(); y.pick = +b.dataset.i; delete y.caption; build() }));
-    document.querySelectorAll('#d-crop button').forEach(b => b.addEventListener('click', () => { yr().crop = b.dataset.v; build() }));
-    ['zoom', 'dx', 'dy'].forEach(k => on('d-' + k, 'input', e => { yr()[k] = +e.target.value; syncOut('d-' + k); render() }));
-    on('d-cap', 'input', e => { yr().caption = e.target.value; render() });
-    on('d-reset', 'click', () => { const k = o.sel ?? P.day.years[0].year; o.years[k] = { on: true }; build() });
-  } else {
-    const dy = () => { const k = o.sel ?? 1; return (o.days[k] = o.days[k] || {}) };
-    on('m-month', 'change', async e => { o.month = e.target.value; o.days = {}; o.sel = null; P.month = null; build(); P.month = await loadPack('month', o.month); build() });
-    segOn('m-opt', 'option'); segOn('m-rows', 'rows', 1); segOn('m-caps', 'captions');
-    bind('m-sag', 'sag', 1); bind('m-tilt', 'tilt', 1); bind('m-pegs', 'pegs'); bind('m-capsize', 'capSize', 1);
-    bind('m-tauto', 'titleAuto', 0, 1); bind('m-title', 'title'); bind('m-sub', 'showSub'); bind('m-bub', 'bubbles');
-    bind('m-tithi', 'tithi'); bind('m-sun', 'sundayRed'); bind('m-fest', 'fest'); bind('m-story', 'stories');
-    document.querySelectorAll('#m-sel button').forEach(b => b.addEventListener('click', () => { o.sel = +b.dataset.d; build() }));
-    document.querySelectorAll('#m-thumbs button').forEach(b => b.addEventListener('click', () => { const d = dy(); d.pick = +b.dataset.i; delete d.caption; build() }));
-    document.querySelectorAll('#m-crop button').forEach(b => b.addEventListener('click', () => { dy().crop = b.dataset.v; build() }));
-    ['zoom', 'dx', 'dy'].forEach(k => on('m-' + k, 'input', e => { dy()[k] = +e.target.value; syncOut('m-' + k); render() }));
-    on('m-cap', 'input', e => { dy().caption = e.target.value; render() });
-    on('m-reset', 'click', () => { o.days[o.sel ?? 1] = {}; build() });
-  }
-}
-function syncOut(id) {   // keep the little number beside a slider in step
-  const el = document.getElementById(id), out = document.getElementById(id + '-o'); if (!el || !out || el.type !== 'range') return;
-  const v = +el.value, fm = { 'd-zoom': x => Math.round(x * 100) + '%', 'm-zoom': x => Math.round(x * 100) + '%', 'd-glow': x => Math.round(x * 100) + '%', 'm-glow': x => Math.round(x * 100) + '%', 'd-jali': x => Math.round(x * 100) + '%', 'm-jali': x => Math.round(x * 100) + '%', 'd-tilt': x => x + '°', 'm-tilt': x => x + '°' };
-  out.textContent = fm[id] ? fm[id](v) : id.endsWith('dx') || id.endsWith('dy') || id.endsWith('warm') ? Math.round(v * 100) : id.endsWith('bright') ? (v > 0 ? '+' : '') + Math.round(v * 100) : id === 'd-shape' ? (v < .8 ? 'wide' : v > 1.05 ? 'tall' : 'nearly square') : id === 'd-cord' ? (v || 'no cord') : v;
-}
-document.querySelectorAll('.modes button').forEach(b => b.addEventListener('click', async () => {
-  S.mode = b.id.slice(5); build();
-  if (!P[S.mode]) { P[S.mode] = await loadPack(S.mode, S.mode === 'day' ? S.day.date : S.month.month); build() }
-}));
 
 (async () => {
   build();
@@ -927,7 +1070,7 @@ document.querySelectorAll('.modes button').forEach(b => b.addEventListener('clic
   try { await document.fonts.load(`700 84px ${SERIF}`); await document.fonts.load(`500 21px ${SERIF}`); await document.fonts.load(`600 21px ${SERIF}`); await document.fonts.load(`700 20px ${SANS}`) } catch (e) {}
   try {
     await loadIndex();
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+    const today = todayLondon();
     if (S.day.date !== today && INDEX.days.includes(today)) { S.day.date = today; S.day.years = {}; S.day.sel = null }
     if (!INDEX.days.includes(S.day.date)) { S.day.date = INDEX.days.includes(today) ? today : INDEX.days.at(-1); S.day.years = {}; S.day.sel = null }
     if (!INDEX.months.includes(S.month.month)) { S.month.month = INDEX.months.at(-1); S.month.days = {}; S.month.sel = null }
