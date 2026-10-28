@@ -1,0 +1,17 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, fetches nothing
+# from baps.org. Once a week it looks for new Legacy pairs (both Bapas doing the same thing, years apart) among the
+# photos that arrived that week and puts them in release legacy-auto (more.json); the website's next build shows them.
+# Everything it runs comes from the Legacy branch claude/project-thread-dmnrb9 (.github/workflows/legacy-weekly.yml);
+# it sits here only because GitHub runs timed workflows from main. It never deploys. Keeps 04:30 to 07:30 UTC free
+# for the daily picture's morning run. (Darpan, 28 Oct 2026: "update every week, dont need to show me, just go live")
+name: website-legacy-timer
+on:
+  schedule:
+    - cron: '40 1 * * 0'   # Sundays 01:40 UTC, before the 03:10 deep tags run, whose build then shows the new pairs
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  legacy:
+    uses: darpan31patel-wq/bapas-diary/.github/workflows/legacy-weekly.yml@claude/project-thread-dmnrb9
+    secrets: inherit
