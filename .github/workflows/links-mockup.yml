@@ -1,6 +1,6 @@
 # Website only: pictures of the gold "every tab linked together" buttons on the real pages, built from this branch with
 # the website's own build steps and the real photos, for Darpan to see before anything goes live (28 Oct 2026).
-# Deploys nothing. Pictures go to release links-mockup.
+# Deploys nothing. Pictures go to release links-mockup (second round: phone fixes).
 name: links-mockup
 on:
   push:
@@ -76,7 +76,7 @@ jobs:
               await p.evaluate(() => { const g = document.getElementById('y2010'); if (g) g.scrollIntoView({ block: 'start' }); scrollBy(0, -70); }); await p.waitForTimeout(2500); await shot('2-today-year');
               await p.locator('#y2010 .thumb').first().click().catch(() => {}); await p.waitForTimeout(3500); await shot('3-today-photo');
               // Search, a photo of that day
-              await go('/search/#date=2010-10-28', 6000);
+              await go('/search/#date=2010-10-26', 6000);
               await p.locator('[data-i]').first().click().catch(() => {}); await p.waitForTimeout(3500); await shot('4-search-photo');
               // Calendar, opened from "Calendar" on a photo of 28 October 2010: the stay glows, the day has a ring
               await go('/calendar/#2010-10-28', 7000); await shot('5-calendar-day');
