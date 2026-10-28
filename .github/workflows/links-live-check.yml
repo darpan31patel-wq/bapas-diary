@@ -1,0 +1,43 @@
+# Website only, read only: checks the live day photo box on the Calendar on bapas-diary.com after
+# they went live (28 Oct 2026). Changes nothing. Pictures go to release links-mockup as live-*.jpg.
+name: links-live-check
+on:
+  push:
+    branches: ['claude/project-thread-tbkjl3']
+    paths: ['.github/workflows/links-live-check.yml']
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Look at the live pages
+        run: |
+          npm i -s playwright@1.49.1 > /dev/null && npx playwright install --with-deps chromium > /dev/null
+          cat > c.js <<'JS'
+          const { chromium } = require('playwright');
+          const S = 'https://bapas-diary.com';
+          (async () => {
+            const b = await chromium.launch();
+            for (const [sz, w, h, mob] of [['computer', 1440, 900, false], ['phone', 390, 844, true]]) {
+              const ctx = await b.newContext({ viewport: { width: w, height: h }, isMobile: mob, hasTouch: mob, serviceWorkers: 'block' });
+              const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
+              await p.goto(S + '/calendar/#2023-05-16', { waitUntil: 'networkidle' }).catch(() => {}); await p.waitForTimeout(7000);
+              const day = mob ? p.locator('.ph-card') : p.locator('a.card[href*="2023-05-16"]');
+              await day.first().click().catch(e => console.log('no click', e.message.slice(0, 80))); await p.waitForTimeout(7000);
+              console.log(sz, 'box', await p.locator('.daybox').count(), 'url', p.url());
+              await p.screenshot({ path: `live-box-${sz}.jpg`, quality: 80 });
+              await p.mouse.click(mob ? 195 : 20, mob ? 20 : 450); await p.waitForTimeout(1500);
+              console.log(sz, 'box after outside click', await p.locator('.daybox').count());
+              await p.screenshot({ path: `live-box-closed-${sz}.jpg`, quality: 80 });
+              console.log(sz, 'errors', JSON.stringify(errs));
+              await ctx.close();
+            }
+            await b.close();
+          })();
+          JS
+          node c.js
+      - name: Keep the pictures
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload links-mockup -R "$GITHUB_REPOSITORY" --clobber live-*.jpg
