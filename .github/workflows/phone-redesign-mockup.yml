@@ -1,0 +1,23 @@
+# Website only (bapas-diary.com), mockup only: never deploys and touches nothing in the daily 2pm picture chain.
+# Records the live Through the years and Travels pages on a phone (mockups/phone-redesign/record.js) into the
+# release `phone-redesign-mockup`, so the phone redesign can be shown on the real pages. Runs when this file changes.
+name: phone-redesign-mockup
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['.github/workflows/phone-redesign-mockup.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm i --no-save playwright@1.48.2 && npx playwright install --with-deps chromium
+      - run: node mockups/phone-redesign/record.js rec && tar czf phone-rec.tgz rec && ls -la rec
+      - run: |
+          gh release view phone-redesign-mockup >/dev/null 2>&1 || gh release create phone-redesign-mockup --prerelease --title "Phone redesign mockup" --notes "Recordings of the live pages for the phone redesign mockup. Not used by the website or the daily picture."
+          gh release upload phone-redesign-mockup phone-rec.tgz --clobber
