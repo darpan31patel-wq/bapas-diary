@@ -19,7 +19,7 @@ jobs:
           cat > shots.js <<'JS'
           const { chromium } = require('playwright'); const fs = require('fs');
           const CSS = fs.readFileSync('site/review/bigger-text.css', 'utf8');
-          const pages = [['today', '/', '.yhead'], ['calendar', '/calendar/', '.ph-stay'], ['search', '/search/#q=annakut', '#years'], ['then-and-now', '/then-and-now/', '.soft small']];
+          const pages = [['today', '/', '.thumbs'], ['calendar', '/calendar/', '.ph-stay'], ['search', '/search/#q=annakut', '#years'], ['then-and-now', '/then-and-now/', '.soft small']];
           (async () => {
             const b = await chromium.launch();
             for (const [name, path, spot] of pages) for (const after of [false, true]) {
