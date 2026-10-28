@@ -193,7 +193,7 @@
   const SKIP = /^(SCRIPT|STYLE|TEXTAREA|CODE|PRE|NOSCRIPT|TEMPLATE)$/;
   const done = new WeakMap();                     // text node -> the Gujarati we put there
   const touched = new Set();                      // [node, attribute or null, English] to put back for English
-  const skip = el => !el || SKIP.test(el.nodeName) || (el.closest && el.closest('[translate="no"], .gu-switch, [contenteditable]'));
+  const skip = el => !el || SKIP.test(el.nodeName) || (el.closest && el.closest('[translate="no"]:not(html), .gu-switch, [contenteditable]'));
   function text(n) {
     const v = n.nodeValue;
     if (done.get(n) === v || !/[A-Za-z0-9]/.test(v)) return;
