@@ -13,7 +13,8 @@
  * by 10:30am it puts today's backup picture into Bapa's Diary instead, so 2pm still has something to send.
  *
  * Bapa's Diary Studio (Darpan, 25 Oct 2026): the Studio tab on your master dashboard can send a picture you made
- * there straight into Drive. "Replace today's picture" swaps today's picture in Bapa's Diary (so 2pm sends yours);
+ * there straight into Drive. "Put it in the Bapa's Diary folder" makes it that day's picture there (today before 2pm or
+ * any day ahead, and 2pm sends yours; a day gone by just has its copy updated);
  * "Save as a new export" puts it in a separate folder, "Bapa's Diary Studio exports", and leaves today's alone.
  * To switch it on (once): Deploy > New deployment > Select type: Web app > Execute as: Me, Who has access: Anyone
  * > Deploy (allow it). Then choose "studioCode" in the function menu, press Run, and paste the line it shows into
@@ -169,23 +170,25 @@ function doPost(e) {
     const p = JSON.parse(e.postData.contents);
     const key = PropertiesService.getScriptProperties().getProperty('STUDIO_KEY');
     if (!key || p.key !== key) return answer({ ok: false, error: 'The Studio code is wrong. Run studioCode in the script and paste the new line into the Studio.' });
+    if (p.mode === 'ping') return answer({ ok: true, mode: 'ping', version: 2 });   // the Studio's "Check the connection"
     const when = new Date(p.date + 'T12:00:00Z');
     const day = Utilities.formatDate(when, TZ, 'd MMMM yyyy');
     const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
     const png = Utilities.newBlob(Utilities.base64Decode(p.png), 'image/png');
     const jpg = p.jpg ? Utilities.newBlob(Utilities.base64Decode(p.jpg), 'image/jpeg') : null;
     if (p.mode === 'replace') {
-      if (p.date !== today) return answer({ ok: false, error: "Only today's picture can be replaced. This picture is for " + day + '.' });
+      // any day goes back into Bapa's Diary as that day's picture (Darpan, 28 Oct 2026: re-export to its folder). A day ahead
+      // is kept, since the 8:30am delivery leaves a day alone once its picture is there; a day gone by is only updated
       const folder = folder_();
       const oldPng = alive_(folder, day + '.png');
       const hour = +Utilities.formatDate(new Date(), TZ, 'H');
-      if (!oldPng && hour >= 14) return answer({ ok: false, error: "Today's picture has already gone out at 2pm, so it can't be replaced now. Use Save as a new export instead." });
+      const when2pm = p.date < today ? 'past' : p.date > today ? 'ahead' : hour >= 14 ? 'after' : 'before';
       if (oldPng) oldPng.setTrashed(true);
       const oldJpg = alive_(folder, day + ' photo.jpg');
       if (oldJpg) oldJpg.setTrashed(true);
       folder.createFile(png.setName(day + '.png')).setDescription('from the Studio');
       if (jpg) folder.createFile(jpg.setName(day + ' photo.jpg')).setDescription('from the Studio');
-      return answer({ ok: true, mode: 'replace', folder: FOLDER_NAME, name: day + '.png', time: Utilities.formatDate(new Date(), TZ, 'HH:mm') });
+      return answer({ ok: true, mode: 'replace', folder: FOLDER_NAME, name: day + '.png', when2pm: when2pm, time: Utilities.formatDate(new Date(), TZ, 'HH:mm') });
     }
     const found = DriveApp.getFoldersByName(STUDIO_NAME);
     const out = found.hasNext() ? found.next() : DriveApp.createFolder(STUDIO_NAME);
