@@ -23,7 +23,7 @@ jobs:
           from PIL import Image, ImageDraw
           rows = [l.rstrip('\n').split('\t') for l in open('.github/today-check.txt')]
           C, R, W, H = 6, 5, 300, 260
-          for part in ('A', 'B'):
+          for part in ('A', 'B', 'C'):
               got = [r for r in rows if r[0] == part]
               for n in range(0, len(got), C * R):
                   sheet = Image.new('RGB', (C * W, R * H), 'white'); d = ImageDraw.Draw(sheet)
