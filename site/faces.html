@@ -343,10 +343,8 @@ function goYear(y) {
   const i = years.get(y);
   if (i === undefined) return;
   stop();
-  const a = Date.UTC(y, 0, 1) / DAYMS;
-  zoomTo(368, a + 182);
-  intro(y);
-  show(i, false, true);
+  intro(y);   // the strip stays as it is, all the years in view unless zoomed in by hand (Darpan, 28 Oct 2026)
+  show(i, false, true); follow(); draw();
 }
 function stepYear(d) {
   const ys = [...years.keys()], at = ys.indexOf(list[idx].y);
@@ -531,7 +529,7 @@ cv.addEventListener('wheel', e => {
 function tap(e) {
   const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
   const t = center + (x - W() / 2) / ppd, d = dOf(t), Y = d.getUTCFullYear(), M = d.getUTCMonth();
-  if (y < 18) { if (years.has(Y)) goYear(Y); else { zoomTo(368, Date.UTC(Y, 0, 1) / DAYMS + 182); show(nearest(t)); } return; }
+  if (y < 18) { if (years.has(Y)) goYear(Y); else { show(nearest(t)); follow(); draw(); } return; }
   if (y < 33 && 30 * ppd > 14) { const a = Date.UTC(Y, M, 1) / DAYMS; zoomTo(33, a + 15); show(nearest(a + .5)); return; }
   show(nearest(t)); follow(); draw();
 }
