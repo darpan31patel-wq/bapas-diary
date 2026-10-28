@@ -6,14 +6,20 @@ name: website-image-search
 on:
   push:
     branches: ['claude/project-thread-hi1iz6']
-    paths: ['.github/workflows/website-image-search.yml']
+    paths: ['.github/workflows/website-image-search.yml', 'tools/image_index.py']
   workflow_dispatch:
+    inputs:
+      model:
+        description: 'Make the model file again'
+        type: boolean
+        default: false
 permissions:
   contents: write
 env:
   GH_TOKEN: ${{ github.token }}
 jobs:
   model:
+    if: github.event_name == 'workflow_dispatch' && inputs.model
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,3 +48,63 @@ jobs:
             gh release create image-search --prerelease --title "Search by image" --notes "Website search by image. Not used by the daily picture."
           cp dino-s/model.onnx dinov2-small.onnx; cp dino-s/model-q8.onnx dinov2-small-q8.onnx
           gh release upload image-search dinov2-small.onnx dinov2-small-q8.onnx --clobber
+  # every photo in R2 -> numbers, one machine per slice of a year; slices already kept in the release are skipped
+  plan:
+    needs: model
+    if: always() && needs.model.result != 'failure'
+    runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.plan.outputs.shards }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: plan
+        run: |
+          gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
+          curl -sf https://photos.bapas-diary.com/years.txt -o years.txt; echo "years in R2: $(tr '\n' ' ' < years.txt)"
+          gh release view image-search --json assets -q '.assets[].name' > have.txt
+          echo "shards=$(python3 tools/image_index.py plan --years years.txt --have have.txt)" | tee -a "$GITHUB_OUTPUT"
+  shard:
+    needs: plan
+    if: always() && needs.plan.result == 'success' && needs.plan.outputs.shards != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 8   # leaves machines free for website deploys
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Photo numbers
+        run: |
+          pip install -q onnxruntime pillow numpy
+          gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
+          gh release download image-search -p dinov2-small-q8.onnx
+          python3 tools/image_index.py shard --shard ${{ matrix.shard }} --out photos
+          python3 tools/image_index.py embed --model dinov2-small-q8.onnx --photos photos --out pic-${{ matrix.shard }}.npz
+          gh release upload image-search pic-${{ matrix.shard }}.npz --clobber
+  build:
+    needs: [plan, shard]
+    if: always() && needs.plan.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: The files the search page reads
+        run: |
+          pip install -q numpy
+          mkdir emb && gh release download image-search -p 'pic-*.npz' -D emb
+          gh release download image-search -p dinov2-small-q8.onnx
+          python3 tools/image_index.py build --emb emb --model dinov2-small-q8.onnx --out image
+          cp dinov2-small-q8.onnx image/
+          # the code that runs the model in the browser (onnxruntime-web, Microsoft, MIT), kept with it so no outside CDN is needed
+          npm pack onnxruntime-web@1.20.1 && tar -xzf onnxruntime-web-1.20.1.tgz
+          cp package/dist/ort.min.js package/dist/ort-wasm-simd-threaded.wasm package/dist/ort-wasm-simd-threaded.mjs image/
+          ls -la image
+          tar -czf image-search.tgz image
+          gh release upload image-search image-search.tgz --clobber
