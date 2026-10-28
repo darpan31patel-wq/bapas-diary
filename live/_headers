@@ -1,0 +1,17 @@
+# Safety and speed settings Cloudflare Pages reads for bapas-diary.com (whole website review, 28 Oct 2026). Website only.
+# Every page: always the secure address, never shown inside another website's page, no camera, microphone or location.
+/*
+  Strict-Transport-Security: max-age=31536000
+  X-Frame-Options: SAMEORIGIN
+  Content-Security-Policy: frame-ancestors 'self'; object-src 'none'; base-uri 'self'; upgrade-insecure-requests
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+
+# Fonts and the Search by photo model change rarely: a phone keeps them a week instead of asking again every visit
+/fonts/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+/gu/fonts/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+/search/image/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/travels/lib/*
+  Cache-Control: public, max-age=31536000, immutable
