@@ -421,21 +421,26 @@
     last = raw;
     if (!raw || !ready || !items.length) { if (box()) box().hidden = true; return null; }
     if (/[઀-૿]/.test(raw) && !W) loadGu().then(() => { if (last === raw) search(); });
-    const Q = read(raw);
+    // a person's name, or a question about one ("When did Bapa meet Narendra Modi?"): site/search-people.js
+    const person = window.askPerson && askPerson(raw);
+    const Q = person ? { isQuestion: true } : read(raw);
     if (!Q.isQuestion) { box().hidden = true; wasAsking = false; return null; }
     // a new question starts from everything: the year the page opened on (or filters left from a word search) would hide its answer
     if (!wasAsking) ['fest', 'place', 'act', 'mandir', 'year', 'month', 'day', 'from', 'to'].forEach(id => $(id).value = '');
     if (!wasAsking) linkPlace = '';
     wasAsking = true;
-    const A = answer(Q);
+    const A = person || answer(Q);
     box().innerHTML = A.html;
     box().hidden = !A.html;
     return A;
   };
+  // for Who was with Bapa (site/search-people.js)
+  window.askKit = { esc, t, gd, num, plural, range, fmt, guruOf, GURU, gurus, card };
+
   // questions to try, under the search bar
   // six, in two even rows of three (Darpan, 25 Oct 2026)
   const ASK = ['When did Bapa go to London?', 'Where was Bapa on Diwali 2005?', 'How many times did Bapa go to Africa?', 'Where was Bapa on 7 December?',
-    'Where did Bapa go in March 2026?', 'Where was Bapa on Janmashtami?'];
+    'When did Bapa meet Narendra Modi?', 'Where was Bapa on Janmashtami?'];
   if ($('c-ask')) {
     $('c-ask').innerHTML = ASK.map(x => `<button type="button" data-ask="${esc(x)}">${esc(x)}</button>`).join('');
     $('c-ask').addEventListener('click', e => {
