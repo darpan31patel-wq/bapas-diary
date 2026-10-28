@@ -238,7 +238,9 @@ def main():
     faces = json.load(open(a.people_faces)) if a.people_faces and os.path.exists(a.people_faces) else {}
     names = {p[0] for p in people}
     write(os.path.join(a.out, 'data', 'people-faces.json'),
-          {n: [k for k, _ in f['more']] for n, f in faces.items() if n in names and f['more']})
+          {n: [k for k, _ in f['more']] for n, f in faces.items() if n in names and f['more']
+           and len(f['more']) <= 3 * f['captioned']})   # far more found than captioned: young swamis near Bapa, often
+                                                        # in masks, look alike, so the face alone is not sure enough
 
     built = dict(db.execute("SELECT key, value FROM about"))
     write(os.path.join(a.out, 'data', 'about.json'),
