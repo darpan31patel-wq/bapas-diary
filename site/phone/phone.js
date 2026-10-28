@@ -117,6 +117,7 @@
     const PH = typeof PHOTOS !== 'undefined' ? PHOTOS : 'https://photos.bapas-diary.com/';
     const SR = typeof SEARCH !== 'undefined' ? SEARCH : '/search/';
     const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const EVERYDAY = /^(Ekadashi|Punam|Amas|Shraddh|Eclipse|Hindola|Dhanurmas|Holashtak|Republic Day|Independence Day)/;
     const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], WDL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     root.classList.add('ph-cal');
     const wrap = el('div', 'ph-cal-wrap');
@@ -231,6 +232,8 @@
           if (date === TODAY) b.classList.add('ph-today');
           const fest = [d[1], d[2]].filter(Boolean).join('; ').split('; ').filter(n => n && !/^(Fast|Sud|Vad) ?\w*$/.test(n));
           if (fest.length) b.classList.add('fest');
+          if (d[4] && !fut && !fest.some(n => !EVERYDAY.test(n))) b.classList.add('plain');   // an ordinary day (calmer looks, 28 Oct 2026)
+          b.dataset.r = Math.floor((first + i) / 7); if (date === TODAY) g.dataset.tr = b.dataset.r;
           b.setAttribute('aria-label', `${WDL[new Date(y, m - 1, day).getDay()]} ${day} ${MONTHS[m - 1]} ${y}${pl[i] ? ', ' + pl[i] : ''}${fest.length ? ', ' + fest.join(', ') : ''}`);
           b.setAttribute('aria-pressed', 'false');
           if (d[4] && !fut) {
@@ -249,6 +252,7 @@
       function pick(s, b, k, day, d, place, fest, fut) {
         if (sel) sel.setAttribute('aria-pressed', 'false');
         sel = b; b.setAttribute('aria-pressed', 'true');
+        wrap.querySelectorAll('.ph-grid[data-hr]').forEach(x => delete x.dataset.hr); b.parentNode.dataset.hr = b.dataset.r;
         const [y, m] = k.split('-').map(Number), date = `${k}-${String(day).padStart(2, '0')}`;
         const im = b.querySelector('img');
         card.href = `/photos/#date=${date}${place ? '&place=' + encodeURIComponent(place) : ''}`;   // all that day's photos in a grid (28 Oct 2026)
