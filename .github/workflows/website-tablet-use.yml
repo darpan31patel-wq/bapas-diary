@@ -1,0 +1,44 @@
+# Website only, read only: on an upright iPad, tap a year, zoom out and in, and press Play on the live Calendar, and check
+# all seven days stay on the screen (tablet check, 28 Oct 2026). Pictures go to release website-review (tabuse-*.jpg).
+name: website-tablet-use
+on:
+  push:
+    branches: ['claude/project-thread-mwunnf']
+    paths: ['.github/workflows/website-tablet-use.yml']
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Calendar on an upright iPad, by touch
+        run: |
+          npm i -s playwright@1.49.1 > /dev/null && npx playwright install --with-deps chromium > /dev/null
+          cat > u.js <<'JS'
+          const { chromium } = require('playwright');
+          (async () => {
+            const b = await chromium.launch();
+            const ctx = await b.newContext({ viewport: { width: 820, height: 1180 }, deviceScaleFactor: 1.5, isMobile: true, hasTouch: true, serviceWorkers: 'block' });
+            const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(String(e).slice(0, 120)));
+            await p.goto('https://bapas-diary.com/calendar/', { waitUntil: 'networkidle', timeout: 90000 }).catch(() => {});
+            await p.waitForTimeout(4000);
+            const look = async (what) => { await p.waitForTimeout(2500); const r = await p.evaluate(() => {
+                const ms = [...document.querySelectorAll('.month')].map(m => m.getBoundingClientRect()).filter(r => r.right > 0 && r.left < innerWidth);
+                const full = ms.filter(r => r.left >= -1 && r.right <= innerWidth + 1).length;
+                return `months on screen ${ms.length}, fully ${full}, zoom ${document.getElementById('zl')?.textContent}, year ${document.querySelector('.yr.on')?.textContent}`; });
+              console.log(what + ': ' + r); await p.screenshot({ path: `tabuse-${what}.jpg`, type: 'jpeg', quality: 70 }); };
+            await look('1-open');
+            await p.tap('.yr[data-y="2005"]').catch(e => console.log('year tap failed ' + e)); await look('2-year-2005');
+            await p.tap('#zout').catch(e => console.log('zoom out failed ' + e)); await look('3-zoom-out');
+            await p.tap('#zin').catch(e => console.log('zoom in failed ' + e)); await look('4-zoom-in');
+            await p.tap('#play').catch(e => console.log('play failed ' + e)); await p.waitForTimeout(4000); await look('5-playing');
+            await p.tap('#play').catch(() => {});
+            console.log('errors: ' + (errs.join(' | ') || 'none'));
+            await b.close();
+          })();
+          JS
+          node u.js | tee tabuse-report.txt; true
+      - name: Keep them in release website-review
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload website-review -R "$GITHUB_REPOSITORY" --clobber tabuse-*.jpg tabuse-report.txt
