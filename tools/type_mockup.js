@@ -11,6 +11,7 @@ const LIVE = path.join(__dirname, '..', 'live');
   fs.mkdirSync(out, { recursive: true });
   const b = await chromium.launch();
   for (const [dev, opts] of [['computer', { viewport: { width: 1440, height: 900 } }],
+                             ['tablet', { viewport: { width: 820, height: 1180 } }],
                              ['phone', { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true }]]) {
     for (const look of ['now', 'new']) {
       const c = await b.newContext({ ...opts, serviceWorkers: 'block' });
