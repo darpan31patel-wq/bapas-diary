@@ -95,6 +95,6 @@ export async function onRequestGet({ request, env }) {
     for (const id of segs) r = await resend(env, `/contacts/${encodeURIComponent(email)}/segments/${id}`, {});
   }
   if (!r.ok) return page('Something went wrong', 'Sorry, we could not finish signing you up. Please try again a little later.');
-  const when = { daily: 'every morning at 7 am UK time', weekly: 'every Sunday at 10 am UK time' };
+  const when = { daily: 'every morning at 8 am UK time', weekly: 'every Sunday at 10 am UK time' };
   return page('You are signed up 🙏🏽', 'Your darshan of Pramukh Swami Maharaj and Mahant Swami Maharaj arrives ' + lists.map((k) => when[k]).join(', and ') + '.');
 }
