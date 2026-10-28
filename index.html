@@ -1,0 +1,939 @@
+<meta charset="utf-8">
+<title>Bapa's Diary Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600;700&family=Arimo:wght@400;700&display=swap">
+<style>
+/* Layout: a working studio. Settings rail on the left, the live picture on a dark easel on the right; stacks on a phone. */
+:root {
+  --bg: #1b0a0e;          /* the deep maroon of the picture's edges */
+  --panel: #26111a;
+  --panel-2: #321722;
+  --line: #4a2532;
+  --fg: #f4ead6;          /* ivory card */
+  --muted: #b99e8a;
+  --gold: #e9be6e;
+  --gold-deep: #c9973f;
+  --saffron: #d8682a;
+  --ok: #8fc49a;
+  --serif: "EB Garamond", "Iowan Old Style", Georgia, serif;
+  --sans: "Arimo", "Helvetica Neue", Arial, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box }
+html, body { height: 100% }
+body { background: var(--bg); color: var(--fg); font: 14px/1.45 var(--sans); }
+.wrap { display: grid; grid-template-columns: 380px minmax(0, 1fr); min-height: 100%;
+  padding-left: max(0px, env(safe-area-inset-left, 0px)); padding-right: max(0px, env(safe-area-inset-right, 0px)); }
+.rail { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-width: 0; max-height: 100vh; position: sticky; top: 0 }
+.brand { padding: 18px 20px 12px; border-bottom: 1px solid var(--line) }
+.brand h1 { font: 700 26px/1.1 var(--serif); margin: 0; color: var(--gold); text-wrap: balance }
+.brand p { margin: 4px 0 0; color: var(--muted); font-size: 12.5px }
+.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 12px 20px 0 }
+.modes button, .tabs button, .seg button, .btn { font: inherit; color: var(--fg); background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; cursor: pointer }
+.modes button[aria-pressed="true"] { background: var(--gold); color: #2a0d14; border-color: var(--gold); font-weight: 700 }
+.tabs { display: flex; gap: 2px; padding: 12px 20px 0; flex-wrap: wrap }
+.tabs button { border-radius: 8px 8px 0 0; border-bottom: 0; padding: 7px 11px; font-size: 13px; color: var(--muted) }
+.tabs button[aria-selected="true"] { color: var(--gold); background: var(--bg); }
+.pane { overflow-y: auto; padding: 14px 20px 24px; background: var(--bg); flex: 1; border-top: 1px solid var(--line) }
+.group { display: grid; gap: 10px; padding: 12px 0; border-bottom: 1px dashed var(--line) }
+.group:last-child { border-bottom: 0 }
+.group h3 { margin: 0; font: 600 12px/1 var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--gold-deep) }
+.row { display: grid; grid-template-columns: 130px minmax(0, 1fr); align-items: center; gap: 10px }
+.row label { color: var(--muted); font-size: 13px }
+.row output { font-variant-numeric: tabular-nums; color: var(--gold); font-size: 12px; margin-left: 6px }
+input[type=text], select { width: 100%; font: inherit; background: var(--panel-2); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px }
+input[type=range] { width: 100%; accent-color: var(--gold) }
+input[type=checkbox] { accent-color: var(--gold); width: 16px; height: 16px }
+.check { display: flex; gap: 8px; align-items: center; color: var(--fg) }
+.seg { display: flex; flex-wrap: wrap; gap: 4px }
+.seg button { padding: 5px 9px; font-size: 12.5px; border-radius: 999px }
+.seg button[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: #2a0d14; font-weight: 700 }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px }
+.hint { color: var(--muted); font-size: 12px; margin: 0 }
+.chips { display: flex; flex-wrap: wrap; gap: 4px }
+.chips button { font: 600 12px var(--sans); font-variant-numeric: tabular-nums; padding: 4px 7px; border-radius: 6px; background: var(--panel-2); color: var(--muted); border: 1px solid var(--line); cursor: pointer }
+.chips button[aria-pressed="true"] { color: #2a0d14; background: var(--fg); border-color: var(--fg) }
+.chips button.sel { outline: 2px solid var(--gold); outline-offset: 1px }
+.thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; max-height: 420px; overflow-y: auto; padding-right: 2px }
+.thumbs button { padding: 0; border: 2px solid transparent; border-radius: 6px; overflow: hidden; background: #000; cursor: pointer; aspect-ratio: 1; position: relative }
+.thumbs button img { width: 100%; height: 100%; object-fit: contain; display: block }
+.thumbs button i { position: absolute; inset: 0; background-repeat: no-repeat }
+[hidden] { display: none !important }
+.thumbs button[aria-pressed="true"] { border-color: var(--gold) }
+.thumbs button span { position: absolute; left: 3px; top: 3px; font: 700 10px var(--sans); background: rgba(20,6,10,.8); color: var(--gold); padding: 1px 4px; border-radius: 3px }
+.capedit { width: 100%; min-height: 54px; font: 15px/1.3 var(--serif); background: var(--panel-2); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; resize: vertical }
+.stage { min-width: 0; display: flex; flex-direction: column; padding-block: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); gap: 12px }
+.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between }
+.bar .meta { color: var(--muted); font-size: 13px }
+.bar .meta b { color: var(--fg); font-weight: 600 }
+.easel { background: #0d0406; border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; place-items: center; min-width: 0 }
+#view { width: 100%; height: auto; max-width: 100%; display: block; box-shadow: 0 10px 40px rgba(0,0,0,.6); cursor: crosshair }
+.export { display: flex; gap: 8px; align-items: center; flex-wrap: wrap }
+.btn.primary { background: var(--gold); border-color: var(--gold); color: #2a0d14; font-weight: 700; padding: 10px 18px; font-size: 15px }
+.btn.primary:disabled { opacity: .5; cursor: wait }
+.status { font-size: 13px; color: var(--muted); min-height: 1.4em }
+.status.ok { color: var(--ok) }
+.status.warn { color: var(--saffron) }
+.expmode { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
+.expmode .seg button[data-v="replace"][aria-pressed="true"] { background: var(--saffron); border-color: var(--saffron); color: #fff }
+.drive { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 10px 12px; display: grid; gap: 8px; font-size: 13px; color: var(--muted) }
+.drive b { color: var(--gold) }
+.drive .row2 { display: flex; gap: 8px; flex-wrap: wrap }
+.drive input { flex: 1 1 260px; min-width: 0 }
+.last { font-size: 13px; color: var(--muted) }
+.last b { color: var(--fg) }
+.note { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 10px 12px; font-size: 13px; color: var(--muted) }
+.note b { color: var(--gold) }
+.compare { display: none }
+.compare.on { display: block }
+.compare img { width: 100%; border-radius: 6px; border: 1px solid var(--line) }
+@media (max-width: 900px) {
+  .wrap { grid-template-columns: minmax(0, 1fr) }
+  .rail { position: static; max-height: none; order: 2; border-right: 0 }
+  .stage { order: 1 }
+  .row { grid-template-columns: 110px minmax(0, 1fr) }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important } }
+</style>
+
+<div class="wrap">
+  <aside class="rail">
+    <div class="brand">
+      <h1>Bapa's Diary Studio</h1>
+      <p>Choose every part of the picture, then export.</p>
+    </div>
+    <div class="modes" role="group" aria-label="What to make">
+      <button id="mode-day" aria-pressed="true">Daily picture</button>
+      <button id="mode-month" aria-pressed="false">Month poster</button>
+    </div>
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div class="pane" id="pane"></div>
+  </aside>
+  <main class="stage">
+    <div class="bar">
+      <div class="meta" id="meta">Loading photos…</div>
+      <div class="export">
+        <select id="exp-size" aria-label="Export size"></select>
+        <button class="btn primary" id="exp-go">Export picture</button>
+      </div>
+    </div>
+    <div class="expmode" id="expmode" hidden>
+      <div class="seg" role="group" id="exp-mode" aria-label="What the export does">
+        <button data-v="new" aria-pressed="true">Save as a new export</button>
+        <button data-v="replace" aria-pressed="false">Replace today's picture</button>
+      </div>
+      <span class="hint" id="exp-mode-hint"></span>
+      <span class="hint" id="drive-on" hidden><b style="color:var(--ok)">● Connected to Google Drive</b> · <button class="btn" id="drive-off" style="padding:2px 8px;font-size:12px">Disconnect</button></span>
+    </div>
+    <div class="status" id="status" role="status"></div>
+    <div class="last" id="last"></div>
+    <div class="drive" id="drive" hidden>
+      <div><b>Connect to Google Drive</b> (once on each device). In your “gets 2pm picture ready” script, run <b>studioCode</b> and paste the line it shows here. You can also paste the Web app URL and the code (after the #) one at a time.</div>
+      <div class="row2"><input type="text" id="drive-code" placeholder="https://script.google.com/macros/s/…/exec#…" aria-label="Studio code from your script"><button class="btn" id="drive-save">Connect</button></div>
+    </div>
+    <div class="easel"><canvas id="view" width="2796" height="1290" aria-label="Live preview of the picture"></canvas></div>
+    <div class="note" id="tipnote"><b>Tip:</b> click any card in the picture to jump to its photo, crop and caption.</div>
+    <div class="compare" id="compare"><p class="hint">The picture the automatic morning run makes for this date, for comparison:</p><img id="real" alt="The automatic run's picture for this date"></div>
+  </main>
+</div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const MAROON = '#601420', PLACE = '#582222', IVORY_TOP = '#f8f2e4', IVORY_BOT = '#eadfc8', IVORY_EDGE = '#c4b292';
+const CAP_IVORY = '#faf1de', CAP_GOLD = '#f0d6a0', GOLD = '#ffcf6b';
+const SERIF = '"EB Garamond", Georgia, serif', SANS = '"Arimo", Arial, sans-serif';
+const store = { get(k) { try { return JSON.parse(localStorage.getItem(k)) } catch (e) { return null } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true } catch (e) { return false } } };
+
+// ------------------------------------------------------------ settings
+const LOOKS = {   // background tones, all within the approved maroon and gold
+  classic: { inner: [66, 16, 28], outer: [22, 5, 10], name: 'Classic maroon' },
+  deep: { inner: [48, 10, 20], outer: [14, 3, 7], name: 'Deeper maroon' },
+  warm: { inner: [78, 24, 26], outer: [28, 8, 10], name: 'Warmer maroon' },
+};
+const DAY_DEFAULT = {
+  date: '2026-10-25', photoStyle: 'auto', rows: 3, shape: .9, sag: 60, hang: 'straight', tilt: 1.5, gap: 10, peg: 'gloss', pegs: true, cord: 7,
+  titleAuto: true, title: '', subtitle: 'in Bapa’s Diary', oneTitle: true, festTitle: true, showCal: true, showStory: true, showTomorrow: true,
+  showFooter: true, footer: 'Darpan’s Smruti Project', captions: 'all', capSize: 21, showPlace: true, showYear: true, festTags: true,
+  look: 'classic', glow: .5, jali: .13, bright: 0, warmth: 0, polish: true, years: {}, sel: null,
+};
+const MONTH_DEFAULT = {
+  month: '2024-02', option: 'A', rows: 3, sag: 14, tilt: 1, pegs: true, titleAuto: true, title: '', subtitle: 'in Bapa’s Diary', showSub: true,
+  bubbles: true, tithi: true, sundayRed: true, fest: true, captions: 'auto', stories: true, capSize: 22,
+  look: 'classic', glow: .45, jali: .08, bright: 0, warmth: 0, polish: true, days: {}, sel: null,
+};
+let S = { mode: 'day', tab: 'photos', day: structuredClone(DAY_DEFAULT), month: structuredClone(MONTH_DEFAULT) };
+const saved = store.get('studio-settings-v1');
+if (saved) { S.day = Object.assign(structuredClone(DAY_DEFAULT), saved.day || {}); S.month = Object.assign(structuredClone(MONTH_DEFAULT), saved.month || {}); S.mode = saved.mode || 'day'; }
+// the photo packs: beside this page when it carries them (claude.ai), otherwise the studio branch on GitHub (tools/studio_packs.py)
+const RAW = 'https://raw.githubusercontent.com/darpan31patel-wq/bapas-diary/studio/packs/';
+let ROOT = '', INDEX = { days: [], months: [] };
+async function loadIndex() {
+  for (const root of ['', 'packs/', RAW]) {
+    try { const r = await fetch(root + 'index.json', { cache: 'no-store' }); if (r.ok) { INDEX = await r.json(); ROOT = root; return } } catch (e) {}
+  }
+  throw new Error('no index');
+}
+const longDate = k => new Date(k + 'T12:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+const longMonth = k => new Date(k + '-01T12:00').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+let P = { day: null, month: null }, IMG = {};
+
+async function loadPack(kind, key) {
+  const base = `${ROOT}${kind}/${key}/`;
+  const pack = await (await fetch(base + 'pack.json')).json();
+  pack.base = base;
+  const groups = kind === 'day' ? pack.years : pack.days;
+  groups.forEach(g => g.cands.forEach((c, i) => { c.key = `${base}${g.year || g.day}-${i}` }));
+  const first = groups.flatMap(g => [...g.cands.slice(0, 6), ...[g.pickA, g.pickB, g.pickM].filter(i => i != null).map(i => g.cands[i])]);
+  await Promise.all(first.filter(Boolean).map(c => photoOf(pack, c, true)));
+  return pack;
+}
+// the photos of a year (or day) are joined in two files, the best six and the rest; each file is fetched once,
+// the rest only when one of them is wanted
+const BINS = {};
+function photoOf(pack, c, wait) {
+  if (!c) return null;
+  const have = IMG[c.key];
+  if (have) return wait ? have.ready : have.im;
+  const im = new Image(), rec = { im: null };
+  rec.ready = new Promise(res => {
+    im.onload = () => { rec.im = im; res(); if (!wait) render() }; im.onerror = () => res();
+    if (c.img) im.src = pack.base + c.img;
+    else {
+      BINS[pack.base + c.f] ??= fetch(pack.base + c.f).then(r => r.blob());
+      BINS[pack.base + c.f].then(b => { im.src = URL.createObjectURL(b.slice(c.at[0], c.at[0] + c.at[1], 'image/jpeg')) }).catch(res);
+    }
+  });
+  IMG[c.key] = rec;
+  return wait ? rec.ready : null;
+}
+const allReady = () => Promise.all((S.mode === 'day' ? dayCards(P.day, S.day) : monthCards(P.month, S.month)).map(x => x.c && photoOf(P[S.mode], x.c, true)));
+// a sheet of small thumbnails a year or day: cell i of a grid `cols` wide
+function thumb(pack, g, i) {
+  if (!g.thumbs) return `<img src="${pack.base + g.cands[i].img}" alt="">`;
+  const n = g.cands.length, cols = Math.min(pack.cols || 10, n), rows = Math.ceil(n / cols);
+  return `<i style="background-image:url('${pack.base + g.thumbs}');background-size:${cols * 100}% ${rows * 100}%;background-position:${cols > 1 ? (i % cols) / (cols - 1) * 100 : 0}% ${rows > 1 ? Math.floor(i / cols) / (rows - 1) * 100 : 0}%"></i>`;
+}
+
+// ------------------------------------------------------------ crops (the daily run's own rules: never cut Bapa's head)
+function cropBox(c, a, mode, zoom = 1, dx = 0, dy = 0) {
+  const iw = c.w, ih = c.h;
+  let cw, ch;
+  if (iw / ih > a) { ch = ih; cw = ih * a } else { cw = iw; ch = iw / a }
+  if (!c.face) {
+    cw /= zoom; ch /= zoom;
+    let x0 = (iw - cw) / 2 + dx * cw, y0 = (ih - ch) * .35 + dy * ch;
+    return [clamp(x0, 0, iw - cw), clamp(y0, 0, ih - ch), cw, ch];
+  }
+  const [fx, fy, fw, fh] = c.face;
+  if (mode === 'close') { ch = Math.min(ch, fh / (a > 1 ? .38 : .30)); cw = Math.min(cw, ch * a); ch = cw / a }
+  cw /= zoom; ch /= zoom;
+  if (cw > iw) { cw = iw; ch = cw / a } if (ch > ih) { ch = ih; cw = ch * a }
+  const headTop = fy - .5 * fh, headBot = fy + 1.4 * fh;
+  let x0 = fx + fw / 2 - cw / 2;
+  let y0 = fy + fh / 2 - ch * (mode === 'close' ? (a <= 1 ? .42 : .36) : .38);
+  y0 = Math.max(y0, headBot - ch); y0 = Math.min(y0, headTop); y0 = Math.max(y0, headTop - ch * (mode === 'close' ? .07 : .14));
+  x0 += dx * cw; y0 += dy * ch;
+  return [clamp(x0, 0, iw - cw), clamp(y0, 0, ih - ch), cw, ch];
+}
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// ------------------------------------------------------------ drawing pieces
+function background(ctx, W, H, o) {
+  const L = LOOKS[o.look] || LOOKS.classic, rgb = a => `rgb(${a.join(',')})`;
+  ctx.save(); ctx.translate(W / 2, H * .45); ctx.scale(1, H / W * 1.12);
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, W * .5 * .9);
+  g.addColorStop(0, rgb(L.inner)); g.addColorStop(1, rgb(L.outer));
+  ctx.fillStyle = g; ctx.fillRect(-W, -W, W * 2, W * 2); ctx.restore();
+  const v = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .45, W / 2, H / 2, W * .62);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.45)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  if (o.glow > 0) {   // soft lamp light above the title
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    ctx.translate(W / 2, H * .06); ctx.scale(1, H / W * 1.9);
+    const gl = ctx.createRadialGradient(0, 0, 0, 0, 0, W * .42);
+    gl.addColorStop(0, `rgba(132,74,34,${o.glow})`); gl.addColorStop(1, 'rgba(132,74,34,0)');
+    ctx.fillStyle = gl; ctx.fillRect(-W, -W, W * 2, W * 2); ctx.restore();
+  }
+  if (o.jali > 0) {   // the carved jali lattice, faint and only near the edges
+    const R = 54 * W / 2796, t = document.createElement('canvas'); t.width = W; t.height = H;
+    const c = t.getContext('2d'); c.strokeStyle = 'rgb(160,84,74)'; c.lineWidth = 3 * W / 2796;
+    for (let y = -R; y < H + R; y += R) for (let x = -R; x < W + R; x += R) { c.beginPath(); c.arc(x, y, R, 0, Math.PI * 2); c.stroke() }
+    c.globalCompositeOperation = 'destination-in';
+    const m = document.createElement('canvas'); m.width = W; m.height = H; const mc = m.getContext('2d'); const d = 190 * W / 2796;
+    for (const [x0, y0, x1, y1, w, h, x, y] of [[0, 0, d, 0, d, H, 0, 0], [W, 0, W - d, 0, d, H, W - d, 0], [0, 0, 0, d, W, d, 0, 0], [0, H, 0, H - d, W, d, 0, H - d]]) {
+      const lg = mc.createLinearGradient(x0, y0, x1, y1); lg.addColorStop(0, `rgba(0,0,0,${o.jali})`); lg.addColorStop(1, 'rgba(0,0,0,0)');
+      mc.fillStyle = lg; mc.fillRect(x, y, w, h);
+    }
+    c.drawImage(m, 0, 0); ctx.drawImage(t, 0, 0);
+  }
+}
+function goldText(ctx, text, x, y, size, align = 'center') {
+  ctx.save(); ctx.font = `700 ${size}px ${SERIF}`; ctx.textAlign = align; ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillText(text, x + size * .03, y + size * .04);
+  const g = ctx.createLinearGradient(0, y - size * .75, 0, y); g.addColorStop(0, 'rgb(255,226,150)'); g.addColorStop(1, 'rgb(206,152,64)');
+  ctx.fillStyle = g; ctx.fillText(text, x, y); ctx.restore();
+  ctx.font = `700 ${size}px ${SERIF}`; return ctx.measureText(text).width;
+}
+function diamond(ctx, x, y, r, fill = GOLD) { ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y); ctx.closePath(); ctx.fillStyle = fill; ctx.fill() }
+function rope(ctx, pts, w) {
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const line = (dy, col, lw) => { ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y + dy) : ctx.moveTo(x, y + dy)); ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.stroke() };
+  ctx.filter = `blur(${w * .6}px)`; line(w * .7, 'rgba(0,0,0,.43)', w + 2); ctx.filter = 'none';
+  line(0, 'rgb(92,62,30)', w + 2); line(0, 'rgb(168,126,72)', w); line(-w * .18, 'rgb(196,156,98)', Math.max(1, w / 3));
+  ctx.strokeStyle = 'rgb(110,76,38)'; ctx.lineWidth = Math.max(1, w / 4);
+  let k = 0; const step = w * 1.1;
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], seg = Math.hypot(x1 - x0, y1 - y0);
+    while (k <= seg) { const t = k / seg, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; ctx.beginPath(); ctx.moveTo(x - w * .35, y + w * .45); ctx.lineTo(x + w * .35, y - w * .45); ctx.stroke(); k += step }
+    k -= seg;
+  }
+  ctx.restore();
+}
+function peg(ctx, cx, cy, s, look, short = 1) {
+  if (look === 'none') return;
+  const w = 10 * s * (.6 + .4 * short), h = 35 * s * short, top = cy - h * .45;
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 4 * s; ctx.shadowOffsetX = 3 * s; ctx.shadowOffsetY = 4 * s;
+  const path = new Path2D(); path.roundRect(cx - w, top, 2 * w, h, look === 'flat' ? [3 * s] : [w * .55, w * .55, w * .25, w * .25]);
+  const g = ctx.createLinearGradient(cx - w, 0, cx + w, 0);
+  if (look === 'flat') { g.addColorStop(0, 'rgb(150,104,66)'); g.addColorStop(1, 'rgb(128,86,52)') }
+  else { g.addColorStop(0, 'rgb(150,98,58)'); g.addColorStop(.22, 'rgb(236,186,130)'); g.addColorStop(.5, 'rgb(168,110,64)'); g.addColorStop(1, 'rgb(92,58,32)') }
+  ctx.fillStyle = g; ctx.fill(path); ctx.shadowColor = 'transparent';
+  ctx.strokeStyle = 'rgb(70,42,24)'; ctx.lineWidth = Math.max(1, s); ctx.stroke(path);
+  ctx.fillStyle = 'rgba(60,50,44,.8)'; ctx.fillRect(cx - w * .9, top + h * .42, w * 1.8, h * .09);   // the spring
+  ctx.fillStyle = 'rgba(40,24,14,.6)'; ctx.fillRect(cx - s * .5, top + h * .56, s, h * .44);         // the gap between the jaws
+  ctx.restore();
+}
+function photoFilter(o) {
+  const f = [];
+  if (o.polish) f.push('contrast(1.06) saturate(1.07)');
+  if (o.bright) f.push(`brightness(${1 + o.bright})`);
+  if (o.warmth) f.push(`sepia(${Math.abs(o.warmth) * .5}) ${o.warmth < 0 ? 'hue-rotate(160deg)' : ''}`);
+  return f.join(' ') || 'none';
+}
+function wrapLines(ctx, text, maxw, n) {
+  const words = (text || '').split(/\s+/).filter(Boolean), lines = []; let cur = '';
+  for (const w of words) { const t = cur ? cur + ' ' + w : w; if (ctx.measureText(t).width <= maxw || !cur) cur = t; else { lines.push(cur); cur = w } }
+  if (cur) lines.push(cur);
+  return lines.length <= n ? { lines, fits: true } : { lines: lines.slice(0, n), fits: false };
+}
+function fitCaption(ctx, text, maxw, n, size, weight = 500) {   // the whole caption first, then a touch smaller, never '…'
+  for (const k of [1, .9, .82, .74]) {
+    ctx.font = `${weight} ${size * k}px ${SERIF}`;
+    const r = wrapLines(ctx, text, maxw, n); if (r.fits) return { lines: r.lines, size: size * k };
+  }
+  ctx.font = `${weight} ${size * .74}px ${SERIF}`;
+  return { lines: wrapLines(ctx, text, maxw, n).lines, size: size * .74 };
+}
+function spacedText(ctx, text, x, y, track) {   // x is the left edge
+  for (const ch of text) { ctx.fillText(ch, x, y); x += ctx.measureText(ch).width + track } return x;
+}
+const spacedW = (ctx, text, track) => [...text].reduce((s, ch) => s + ctx.measureText(ch).width + track, 0) - track;
+
+// ------------------------------------------------------------ the daily picture (design B, W2)
+function dayCards(pack, o) {
+  return pack.years.filter(y => (o.years[y.year]?.on ?? true)).map(y => {
+    const st = o.years[y.year] || {};
+    const pick = st.pick ?? defaultPick(y, o.photoStyle);
+    const c = y.cands[pick] || y.cands[0];
+    let mode = st.crop && st.crop !== 'auto' ? st.crop : autoCrop(c, o.photoStyle);
+    return { y: y.year, c, mode, zoom: st.zoom || 1, dx: st.dx || 0, dy: st.dy || 0, caption: st.caption ?? c.caption, place: c.place, fest: c.festival };
+  });
+}
+function defaultPick(y, style) {
+  if (style === 'auto') return 0;
+  const score = c => {
+    const fr = c.face ? c.face[3] / c.h : 0;
+    if (style === 'close') return (c.face ? 1 : -5) + fr * 4;
+    return (c.face ? 1 : -5) + (c.special ? 2 : 0) + (c.nice ? 1.5 : 0) - fr * 2;
+  };
+  return y.cands.slice(0, 6).map((c, i) => [score(c) - i * .05, i]).sort((a, b) => b[0] - a[0])[0][1];
+}
+function autoCrop(c, style) {
+  if (style === 'close') return c.face ? 'close' : 'frame';
+  if (style === 'action') return c.crop === 'close' ? 'frame' : c.crop;
+  return c.crop || 'frame';
+}
+function drawDay(ctx, pack, o, hits) {
+  const W = 2796, H = 1290;
+  background(ctx, W, H, o);
+  const cards = dayCards(pack, o), n = cards.length;
+  // title
+  const auto = o.festTitle ? pack.title : pack.title.replace(/^.*?,\s*/, '');
+  const title = o.titleAuto ? auto : (o.title || auto);
+  const full = o.oneTitle ? `${title} ${o.subtitle}` : title;
+  let tsz = 84; ctx.font = `700 ${tsz}px ${SERIF}`;
+  while (ctx.measureText(full).width > W - 520 && tsz > 56) { tsz--; ctx.font = `700 ${tsz}px ${SERIF}` }
+  const tw = goldText(ctx, full, W / 2, 104, tsz);
+  diamond(ctx, W / 2 - tw / 2 - 30, 76, 6); diamond(ctx, W / 2 + tw / 2 + 30, 76, 6);
+  if (!o.oneTitle && o.subtitle) { ctx.font = `600 24px ${SANS}`; ctx.fillStyle = CAP_GOLD; const t = o.subtitle.toUpperCase(); spacedText(ctx, t, W / 2 - spacedW(ctx, t, 6) / 2, 142, 6) }
+  if (!n) return;
+  // layout, as compose_wide
+  const lay = { rows: o.rows, M: 44, ratio: o.shape, row_gap: 8 };
+  const nrows = Math.max(1, Math.min(lay.rows, Math.ceil(n / (lay.rows === 3 ? 5 : lay.rows === 2 ? 4 : 6))));
+  const per = Array.from({ length: nrows }, (_, i) => Math.floor(n / nrows) + (i < n % nrows ? 1 : 0));
+  const cols = per[0], M = lay.M; let gap = o.gap;
+  const footerOn = o.showFooter || (o.showStory && pack.story) || o.showCal;
+  const top = o.oneTitle ? 162 : 190, bottom = H - (footerOn ? 46 : 18);
+  const lh = o.capSize * 1.2, below = o.captions !== 'none' ? 2 * lh + 22 : 0;
+  const B_ = .035, BB_ = (o.showYear || o.showPlace) ? .17 : .035;
+  const pw_w = Math.min(440, ((W - 2 * M - gap * (cols - 1)) / cols) / (1 + 2 * B_));
+  const row_h = (bottom - top - (nrows - 1) * lay.row_gap - nrows * below) / nrows;
+  const ph = Math.min(pw_w * lay.ratio, row_h - (B_ + BB_) * pw_w);
+  const PW = Math.min(pw_w, ph / .6), PH = ph, B = Math.max(6, PW * B_), BB = Math.max(6, PW * BB_);
+  const CW = PW + 2 * B, CH = PH + B + BB;
+  gap = Math.min(60, (W - 2 * M - cols * CW) / Math.max(1, cols - 1));
+  let pitch = CH + below + lay.row_gap, block = (nrows - 1) * pitch + CH + below;
+  if (nrows > 1) { pitch += Math.max(0, bottom - top - block) / (nrows - 1); block = (nrows - 1) * pitch + CH + below }
+  const first = top + Math.max(0, (bottom - top - block) / 2), s = PW / 220;
+  const rnd = mulberry(1025);
+  let k = 0;
+  per.forEach((count, r) => {
+    const row = cards.slice(k, k + count); k += count;
+    const yTop = first + r * pitch;
+    const sag = xp => yTop - 4 - o.sag * (1 - 4 * (xp / W) * (1 - xp / W));
+    if (o.cord > 0) rope(ctx, Array.from({ length: W / 8 + 1 }, (_, i) => [i * 8, sag(i * 8)]), o.cord);
+    const x0 = (W - (row.length * CW + (row.length - 1) * gap)) / 2, later = [];
+    row.forEach((x, c) => {
+      const cx = x0 + c * (CW + gap) + CW / 2;
+      const a = o.hang === 'straight' ? 0 : (rnd() * 2 - 1) * o.tilt;
+      const qy = sag(cx) + 4, t = a * Math.PI / 180;
+      ctx.save(); ctx.translate(cx, qy); ctx.rotate(t);
+      drawPolaroid(ctx, x, -CW / 2, 0, PW, PH, B, BB, o);
+      ctx.restore();
+      hits.push({ key: x.y, x: cx - CW / 2, y: qy, w: CW, h: CH });
+      later.push(() => { if (o.pegs) peg(ctx, cx, qy, s, o.peg, .72) });
+      if (o.captions !== 'none') {
+        const txt = o.captions === 'special' && !(x.c.special) ? '' : x.caption;
+        if (txt) later.push(() => {
+          const bx = cx + CH * Math.sin(t), by = qy + CH * Math.cos(t) + 6;
+          const maxw = CW + Math.min(gap, 30) - 40;
+          const { lines, size } = fitCaption(ctx, txt, maxw, 2, o.capSize);
+          const lh2 = size * 1.2; ctx.font = `500 ${size}px ${SERIF}`;
+          const w = Math.max(...lines.map(l => ctx.measureText(l).width)) + 34, h = lines.length * lh2 + 16;
+          ctx.beginPath(); ctx.roundRect(bx - w / 2, by, w, h, lines.length === 1 ? h / 2 : 14); ctx.fillStyle = 'rgba(30,8,12,.59)'; ctx.fill();
+          ctx.fillStyle = CAP_IVORY; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          lines.forEach((l, i) => ctx.fillText(l, bx, by + 8 + (i + .5) * lh2));
+          ctx.textBaseline = 'alphabetic';
+        });
+      }
+    });
+    later.forEach(f => f());
+  });
+  // footer
+  ctx.textAlign = 'left';
+  const calLine = o.showCal ? pack.cal_line : '';
+  const name = o.showFooter ? (calLine ? `${calLine}   ·   ${o.footer}` : o.footer) : calLine;
+  if (o.showStory && pack.story) {
+    const lead = `On this day in ${pack.story.year}`, text = pack.story.line;
+    ctx.font = `500 24px ${SERIF}`; const fw = name ? ctx.measureText(name).width : 0;
+    const room = W - 2 * (fw + 90); let sz = 30;
+    const meas = () => { ctx.font = `700 ${sz}px ${SERIF}`; const lw = ctx.measureText(lead + '   ').width; ctx.font = `500 ${sz}px ${SERIF}`; return [lw, ctx.measureText(text).width] };
+    let [lw, tw2] = meas(); while (lw + tw2 > room && sz > 22) { sz--;[lw, tw2] = meas() }
+    const x = (W - lw - tw2) / 2, y = H - 15;
+    ctx.font = `700 ${sz}px ${SERIF}`; ctx.fillStyle = GOLD; ctx.fillText(lead, x, y);
+    ctx.font = `500 ${sz}px ${SERIF}`; ctx.fillStyle = CAP_GOLD; ctx.fillText(text, x + lw, y);
+    diamond(ctx, x - 26, y - sz * .33, 5); diamond(ctx, x + lw + tw2 + 26, y - sz * .33, 5);
+    if (name) { ctx.font = `500 24px ${SERIF}`; ctx.fillStyle = 'rgb(226,184,104)'; ctx.textAlign = 'right'; ctx.fillText(name, W - 30, y); ctx.textAlign = 'left' }
+  } else if (name) {
+    ctx.font = `500 26px ${SERIF}`; const w = ctx.measureText(name).width, y = H - 20;
+    ctx.fillStyle = 'rgb(226,184,104)'; ctx.fillText(name, (W - w) / 2, y);
+    diamond(ctx, (W - w) / 2 - 28, y - 8, 5); diamond(ctx, (W + w) / 2 + 28, y - 8, 5);
+  }
+  if (o.showTomorrow && o.showCal && pack.tomorrow && !(o.showStory && pack.story)) {
+    ctx.font = `500 24px ${SERIF}`; ctx.fillStyle = 'rgb(226,184,104)'; ctx.textAlign = 'right'; ctx.fillText(`Tomorrow: ${pack.tomorrow}`, W - 30, H - 15); ctx.textAlign = 'left';
+  }
+}
+function drawPolaroid(ctx, x, left, top, PW, PH, B, BB, o) {
+  const CW = PW + 2 * B, CH = PH + B + BB;
+  ctx.textAlign = 'left';
+  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = PW * .06; ctx.shadowOffsetY = PW * .03;
+  const g = ctx.createLinearGradient(0, top, 0, top + CH); g.addColorStop(0, IVORY_TOP); g.addColorStop(1, IVORY_BOT);
+  ctx.fillStyle = g; ctx.fillRect(left, top, CW, CH); ctx.restore();
+  ctx.strokeStyle = IVORY_EDGE; ctx.lineWidth = 1.5; ctx.strokeRect(left + .5, top + .5, CW - 1, CH - 1);
+  const im = photoOf(P.day, x.c);
+  if (im) {
+    const [sx, sy, sw, sh] = cropBox(x.c, PW / PH, x.mode, x.zoom, x.dx, x.dy);
+    ctx.save(); ctx.filter = photoFilter(o); ctx.drawImage(im, sx, sy, sw, sh, left + B, top + B, PW, PH); ctx.restore();
+  }
+  ctx.strokeStyle = 'rgba(120,96,70,.6)'; ctx.lineWidth = 1; ctx.strokeRect(left + B, top + B, PW, PH);
+  if (o.festTags && x.fest) {
+    ctx.font = `700 ${PW * .07}px ${SERIF}`; const tw = ctx.measureText(x.fest).width, h = PW * .07 * 1.35, pad = PW * .03;
+    const bx = left + B + PW * .03, by = top + B + PW * .03;
+    ctx.beginPath(); ctx.roundRect(bx, by, tw + 2 * pad, h, h / 2); ctx.fillStyle = 'rgb(236,192,104)'; ctx.fill(); ctx.strokeStyle = 'rgb(150,100,40)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = MAROON; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(x.fest, bx + pad + tw / 2, by + h / 2 + 1); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+  }
+  // the band: '2024  GONDAL'
+  const yt = o.showYear ? String(x.y) : '', pl = o.showPlace ? (x.place || '').toUpperCase() : '';
+  if (!yt && !pl) return;
+  ctx.font = `700 ${PW * .15}px ${SERIF}`; const yw = yt ? ctx.measureText(yt).width : 0;
+  let ps = PW * .065; ctx.font = `700 ${ps}px ${SANS}`; const track = PW * .012;
+  while (pl && ps > PW * .035 && spacedW(ctx, pl, track) + yw + PW * .05 > CW - 2 * B) { ps -= .5; ctx.font = `700 ${ps}px ${SANS}` }
+  const pw2 = pl ? spacedW(ctx, pl, track) : 0, gapw = yt && pl ? PW * .045 : 0;
+  const x0 = left + (CW - yw - gapw - pw2) / 2, base = top + B + PH + BB * .5 + PW * .15 * .34;
+  ctx.fillStyle = MAROON; ctx.font = `700 ${PW * .15}px ${SERIF}`; if (yt) ctx.fillText(yt, x0, base);
+  ctx.fillStyle = PLACE; ctx.font = `700 ${ps}px ${SANS}`; if (pl) spacedText(ctx, pl, x0 + yw + gapw, base - PW * .008, track);
+}
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296 } }
+
+// ------------------------------------------------------------ the month poster (m7, options A and B)
+const optPick = (d, opt) => opt === 'A' ? d.pickA : opt === 'B' ? d.pickB : d.pickM ?? d.pickA;
+function monthCards(pack, o) {
+  return pack.days.map(d => {
+    const st = o.days[d.day] || {};
+    const pick = st.pick ?? optPick(d, o.option);
+    const c = d.cands[pick];
+    let mode = st.crop && st.crop !== 'auto' ? st.crop : (o.option === 'A' ? d.modeA : o.option === 'B' ? d.modeB : d.modeM ?? d.modeA);
+    if (mode === 'snug' || mode === 'top') mode = 'frame';
+    return { d, c, mode, zoom: st.zoom || 1, dx: st.dx || 0, dy: st.dy || 0, caption: st.caption ?? (c ? c.caption : ''), place: c ? c.place : '' };
+  });
+}
+function drawMonth(ctx, pack, o, hits) {
+  const W = 3840, H = 2160;
+  background(ctx, W, H, o);
+  const title = o.titleAuto ? `${pack.title} ${o.subtitle}` : (o.title || `${pack.title} ${o.subtitle}`);
+  const tw = goldText(ctx, title, W / 2, 128, 112);
+  diamond(ctx, W / 2 - tw / 2 - 50, 92, 9); diamond(ctx, W / 2 + tw / 2 + 50, 92, 9);
+  let y = 150;
+  if (o.showSub) { ctx.font = `600 28px ${SERIF}`; ctx.fillStyle = '#f6efe2'; spacedText(ctx, pack.subline, (W - spacedW(ctx, pack.subline, 6)) / 2, 186, 6); y = 200 }
+  const cards = monthCards(pack, o), nd = cards.length;
+  if (o.bubbles) {   // where Bapa was, one bubble a stay
+    const runs = [];
+    cards.forEach(x => { const pl = x.place; if (!pl) return; if (runs.length && runs.at(-1)[0] === pl) runs.at(-1)[2] = x.d.day; else runs.push([pl, x.d.day, x.d.day]) });
+    const mon = new Date(pack.month + '-01T12:00').toLocaleString('en-GB', { month: 'short' });
+    const bub = runs.map(([pl, a, b]) => [pl, a === b ? `${a} ${mon}` : `${a} to ${b} ${mon}`]);
+    const width = ([a, b]) => { ctx.font = `700 34px ${SERIF}`; const w1 = ctx.measureText(a).width; ctx.font = `600 28px ${SERIF}`; return w1 + 16 + ctx.measureText(b).width + 64 };
+    const ws = bub.map(width); let bx = (W - ws.reduce((s, w) => s + w, 0) - 24 * (ws.length - 1)) / 2;
+    bub.forEach(([pl, when], i) => {
+      ctx.beginPath(); ctx.roundRect(bx, 214, ws[i], 56, 28); ctx.fillStyle = 'rgb(74,18,24)'; ctx.fill(); ctx.strokeStyle = 'rgb(200,160,90)'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(bx + 24, 242, 6, 0, Math.PI * 2); ctx.fillStyle = 'rgb(214,170,92)'; ctx.fill();
+      ctx.font = `700 34px ${SERIF}`; ctx.fillStyle = 'rgb(246,222,170)'; ctx.fillText(pl, bx + 42, 254);
+      const pw = ctx.measureText(pl).width; ctx.font = `600 28px ${SERIF}`; ctx.fillStyle = '#f6efe2'; ctx.fillText(when, bx + 42 + pw + 16, 253);
+      bx += ws[i] + 24;
+    });
+  }
+  const showCap = o.captions === 'on' || (o.captions === 'auto' && o.option !== 'A');
+  const aspect = showCap ? 1 : .86;
+  const nrows = o.rows, per = Array.from({ length: nrows }, (_, i) => Math.floor(nd / nrows) + (i < nd % nrows ? 1 : 0));
+  const cols = per[0], M = 56, gap = 22;
+  const card_w = Math.round((W - 2 * M - gap * (cols - 1)) / cols), border = 10, band = o.tithi ? 56 : 40, pw = card_w - 2 * border;
+  const top = o.bubbles ? 306 : (o.showSub ? 236 : 190), bottom = H - 24, pitch = (bottom - top) / nrows;
+  const ph = Math.min(Math.round(pw / aspect), pitch - border - band - (showCap ? 150 : 90)), card_h = ph + border + band;
+  const rnd = mulberry(7); let k = 0;
+  per.forEach((count, r) => {
+    const cy = top + r * pitch + 14, row = cards.slice(k, k + count); k += count;
+    const dip = x => cy + o.sag * Math.sin(Math.PI * x / W);
+    rope(ctx, Array.from({ length: W / 8 + 1 }, (_, i) => [i * 8, dip(i * 8)]), 6);
+    const x0 = (W - (count * card_w + (count - 1) * gap)) / 2, later = [];
+    row.forEach((x, c) => {
+      const cx = x0 + c * (card_w + gap) + card_w / 2, dy0 = dip(cx), a = (rnd() * 2 - 1) * o.tilt * Math.PI / 180;
+      ctx.save(); ctx.translate(cx, dy0 - 4); ctx.rotate(a);
+      const left = -card_w / 2; ctx.textAlign = 'left';
+      ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 10;
+      const g = ctx.createLinearGradient(0, 0, 0, card_h); g.addColorStop(0, IVORY_TOP); g.addColorStop(1, IVORY_BOT);
+      ctx.fillStyle = g; ctx.fillRect(left, 0, card_w, card_h); ctx.restore();
+      ctx.strokeStyle = IVORY_EDGE; ctx.lineWidth = 2; ctx.strokeRect(left + 1, 1, card_w - 2, card_h - 2);
+      const im = photoOf(P.month, x.c);
+      if (im) { const [sx, sy, sw, sh] = cropBox(x.c, pw / ph, x.mode, x.zoom, x.dx, x.dy); ctx.save(); ctx.filter = photoFilter(o); ctx.drawImage(im, sx, sy, sw, sh, left + border, border, pw, ph); ctx.restore() }
+      else { ctx.fillStyle = 'rgb(232,220,198)'; ctx.fillRect(left + border, border, pw, ph); diamond(ctx, 0, border + ph / 2, 10, 'rgb(200,176,136)') }
+      ctx.strokeStyle = 'rgb(150,130,100)'; ctx.lineWidth = 2; ctx.strokeRect(left + border - 1, border - 1, pw + 1, ph + 1);
+      // band: '14  SUD PANCHAM'
+      const dn = String(x.d.day); ctx.font = `700 46px ${SERIF}`; const nw = ctx.measureText(dn).width;
+      const lab = o.tithi ? x.d.tithi.toUpperCase() : ''; let ls = 19; ctx.font = `700 ${ls}px ${SANS}`;
+      while (lab && spacedW(ctx, lab, 3) > pw - nw - 14 && ls > 13) { ls--; ctx.font = `700 ${ls}px ${SANS}` }
+      const lw = lab ? spacedW(ctx, lab, 3) : 0, lx = left + (card_w - nw - (lab ? 12 : 0) - lw) / 2, base = border + ph + band / 2 + 16;
+      ctx.font = `700 46px ${SERIF}`; ctx.fillStyle = o.sundayRed && x.d.sunday ? 'rgb(170,34,34)' : MAROON; ctx.fillText(dn, lx, base);
+      if (lab) { ctx.font = `700 ${ls}px ${SANS}`; ctx.fillStyle = PLACE; spacedText(ctx, lab, lx + nw + 12, base - 8, 3) }
+      ctx.restore();
+      hits.push({ key: x.d.day, x: cx - card_w / 2, y: dy0, w: card_w, h: card_h });
+      later.push([cx, dy0, x]);
+    });
+    later.forEach(([cx, dy0, x]) => {
+      if (o.pegs) peg(ctx, cx, dy0, 1);
+      let ty = dy0 + card_h + 26; const maxw = card_w + gap - 10;
+      ctx.textAlign = 'center';
+      if (o.fest && x.d.fest.length) {
+        ctx.font = `700 19px ${SANS}`; let t = x.d.fest[0].toUpperCase();
+        while (spacedW(ctx, t, 2) > maxw - 30 && t.length > 4) t = t.slice(0, -1);
+        const fw = spacedW(ctx, t, 2) + 28;
+        ctx.beginPath(); ctx.roundRect(cx - fw / 2, ty, fw, 34, 17); ctx.fillStyle = 'rgb(196,84,22)'; ctx.fill();
+        ctx.fillStyle = 'rgb(255,244,224)'; ctx.textAlign = 'left'; spacedText(ctx, t, cx - fw / 2 + 14, ty + 24, 2); ctx.textAlign = 'center';
+        ty += 44;
+      }
+      if (showCap && x.caption) {
+        const { lines, size } = fitCaption(ctx, x.caption, maxw, (o.stories && x.d.story) ? 2 : 3, o.capSize);
+        ctx.font = `500 ${size}px ${SERIF}`; ctx.fillStyle = CAP_IVORY;
+        lines.forEach(t => { ctx.fillText(t, cx, ty + 22); ty += size * 1.2 }); ty += 8;
+      }
+      if (o.stories && x.d.story) {
+        ctx.font = `600 21px ${SERIF}`; const ls = wrapLines(ctx, x.d.story, maxw - 10, 3).lines;
+        ls.forEach((t, i) => { if (!i) diamond(ctx, cx - ctx.measureText(t).width / 2 - 12, ty + 15, 5, 'rgb(232,192,110)'); ctx.fillStyle = 'rgb(232,192,110)'; ctx.fillText(t, cx, ty + 22); ty += 25 });
+      }
+      ctx.textAlign = 'left';
+    });
+  });
+}
+
+// ------------------------------------------------------------ render + export
+let HITS = [], raf = 0;
+const view = $('#view');
+function render() {
+  cancelAnimationFrame(raf);
+  raf = requestAnimationFrame(() => {
+    const pack = P[S.mode]; if (!pack) return;
+    const [W, H] = S.mode === 'day' ? [2796, 1290] : [3840, 2160];
+    if (view.width !== W) { view.width = W; view.height = H }
+    const ctx = view.getContext('2d'); ctx.setTransform(1, 0, 0, 1, 0, 0); HITS = [];
+    S.mode === 'day' ? drawDay(ctx, pack, S.day, HITS) : drawMonth(ctx, pack, S.month, HITS);
+    store.set('studio-settings-v1', { mode: S.mode, day: S.day, month: S.month });
+  });
+}
+const SIZES = {
+  day: [['full', 'Full size PNG, 5592 × 2580', 2, 'png'], ['whatsapp', 'WhatsApp JPG, 4096 wide', 4096 / 2796, 'jpg'], ['small', 'Small JPG, 2048 wide', 2048 / 2796, 'jpg']],
+  month: [['full', 'Full size JPG, 3840 × 2160 (16:9)', 1, 'jpg'], ['big', 'Print PNG, 5760 × 3240', 1.5, 'png'], ['small', 'Small JPG, 1920 wide', .5, 'jpg']],
+};
+// ------------------------------------------------------------ what Export does: a new export, or today's 2pm picture replaced (Darpan, 25 Oct 2026)
+let EXPMODE = 'new';
+const todayLondon = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+// the Drive connection is kept in this browser twice (storage and a cookie), so a refresh or a cleared storage keeps it
+const COOKIE = 'studio_drive';
+let DRIVE_NOW = '';   // this visit's connection, for when the browser will not keep it
+function savedDrive() {
+  const v = store.get('studio-drive');
+  if (v) return v;
+  try { const m = document.cookie.match(new RegExp('(?:^|; )' + COOKIE + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : '' } catch (e) { return '' }
+}
+const driveCode = () => savedDrive() || DRIVE_NOW;
+function setDrive(v) {   // true when the browser kept it for next time
+  DRIVE_NOW = v;
+  store.set('studio-drive', v);
+  try { document.cookie = `${COOKIE}=${encodeURIComponent(v)}; path=/; max-age=${v ? 3e8 : 0}; SameSite=Lax; Secure` } catch (e) {}
+  return savedDrive() === v;
+}
+const NOT_KEPT = 'This browser is not letting the Studio save anything, so it will forget the connection when you refresh. In Chrome open Settings, then Privacy and security, then Site settings, then On device site data, and allow sites to save data (or add akshar-kutir-mandir-room.pages.dev to the allowed list). Then connect again.';
+function fillMode() {
+  const isToday = S.mode === 'day' && S.day.date === todayLondon();
+  $('#expmode').hidden = S.mode !== 'day';
+  if (!isToday && EXPMODE === 'replace') EXPMODE = 'new';
+  document.querySelectorAll('#exp-mode button').forEach(b => {
+    b.setAttribute('aria-pressed', String(b.dataset.v === EXPMODE));
+    if (b.dataset.v === 'replace') b.disabled = !isToday;
+  });
+  $('#exp-mode-hint').textContent = EXPMODE === 'replace'
+    ? 'Swaps today’s picture in your Bapa’s Diary folder, so the 2pm send goes out with this one.'
+    : (isToday || S.mode !== 'day' ? 'Downloads it, and keeps a copy in “Bapa’s Diary Studio exports” on Drive. Today’s 2pm picture stays as it is.' : 'Only today’s picture can be replaced; other dates save as a new export.');
+  $('#exp-go').textContent = EXPMODE === 'replace' ? 'Replace today’s 2pm picture' : 'Export picture';
+  $('#exp-size').hidden = EXPMODE === 'replace';
+  $('#drive').hidden = !!driveCode() && !$('#drive').dataset.open;
+  $('#drive-on').hidden = !driveCode() || S.mode !== 'day';
+  const last = store.get('studio-last');
+  $('#last').innerHTML = last ? `Last export: <b>${last.how}</b>, ${last.what}, ${last.when}` : '';
+}
+document.querySelectorAll('#exp-mode button').forEach(b => b.addEventListener('click', () => { EXPMODE = b.dataset.v; fillMode() }));
+$('#drive-off').addEventListener('click', () => { setDrive(''); $('#status').className = 'status'; $('#status').textContent = 'Disconnected from Google Drive on this device.'; fillMode() });
+$('#drive-save').addEventListener('click', () => {
+  // the line studioCode shows is '<web app address>#<code>'. The address and the code may also come one at a time, in
+  // either order; a test address (ending /dev) is not kept, the real one ends /exec
+  const raw = $('#drive-code').value.replace(/\s+/g, ''), st = $('#status');
+  const found = raw.match(/#([A-Za-z0-9]{16,})/) || raw.replace(/https:\/\/\S*/, '').match(/\b([a-f0-9]{32})\b/i);
+  const key = (found || [])[1] || store.get('studio-key-pending') || '';
+  let url = (raw.match(/https:\/\/script\.google\.com\/[^#]*?\/(exec|dev)\b/) || [])[0] || '';
+  const isDev = url.endsWith('/dev');
+  if (isDev) url = '';
+  url = url || store.get('studio-url-pending') || '';
+  if (key) store.set('studio-key-pending', key);
+  if (url) store.set('studio-url-pending', url);
+  $('#drive-code').value = '';
+  st.className = 'status warn';
+  if (!url) { st.textContent = (key ? 'Your code is saved. ' : '') + (isDev ? 'That address ends /dev, the test one. ' : '') + 'Now paste the Web app URL: in the script click Deploy, then Manage deployments, and copy the address that ends /exec.'; return }
+  if (!key) { st.textContent = 'The address is saved. Now paste the code: run studioCode, and copy the letters and numbers after the # sign.'; return }
+  const kept = setDrive(url + '#' + key); store.set('studio-key-pending', ''); store.set('studio-url-pending', '');
+  delete $('#drive').dataset.open; fillMode();
+  if (kept) { st.className = 'status ok'; st.textContent = 'Connected to Google Drive. It stays connected on this device.' }
+  else st.textContent = 'Connected for now. ' + NOT_KEPT;
+});
+async function toBase64(blob) { const buf = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < buf.length; i += 32768) s += String.fromCharCode.apply(null, buf.subarray(i, i + 32768)); return btoa(s) }
+async function sendToDrive(mode, png, jpg) {
+  const [url, key] = driveCode().split('#');
+  const body = JSON.stringify({ key, mode, date: S.day.date, png: await toBase64(png), jpg: jpg ? await toBase64(jpg) : null });
+  let r;
+  try { r = await fetch(url, { method: 'POST', body }) } catch (e) { throw new Error('Google Drive could not be reached from here. Use the Studio tab on your master dashboard, or check your internet.') }
+  const ans = await r.json().catch(() => null);
+  if (!ans) throw new Error('Google Drive did not answer clearly. Check the Bapa’s Diary folder before trying again.');
+  if (!ans.ok) { if (/code is wrong/.test(ans.error)) { setDrive(''); fillMode() } throw new Error(ans.error) }
+  return ans;
+}
+function drawAt(width) {
+  const [W, H] = S.mode === 'day' ? [2796, 1290] : [3840, 2160], k = width / W;
+  const c = document.createElement('canvas'); c.width = Math.round(W * k); c.height = Math.round(H * k);
+  const ctx = c.getContext('2d'); ctx.scale(k, k);
+  S.mode === 'day' ? drawDay(ctx, P.day, S.day, []) : drawMonth(ctx, P.month, S.month, []);
+  return c;
+}
+const blobOf = (c, type, q) => new Promise(r => c.toBlob(r, type, q));
+function remember(how, what) { store.set('studio-last', { how, what, when: new Date().toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }); fillMode() }
+
+function fillSizes() { $('#exp-size').innerHTML = SIZES[S.mode].map(([k, l]) => `<option value="${k}">${l}</option>`).join('') }
+$('#exp-go').addEventListener('click', async () => {
+  const [, , k, ext] = SIZES[S.mode].find(s => s[0] === $('#exp-size').value) || SIZES[S.mode][0];
+  const btn = $('#exp-go'), st = $('#status'); btn.disabled = true; st.className = 'status'; st.textContent = 'Drawing the full size picture…';
+  await allReady();
+  if (EXPMODE === 'replace') {
+    try {
+      if (!driveCode()) { $('#drive').dataset.open = '1'; fillMode(); throw new Error('Connect to Google Drive first (the box below), then press Replace again.') }
+      const png = await blobOf(drawAt(5635), 'image/png'), jpg = await blobOf(drawAt(4096), 'image/jpeg', .93);
+      st.textContent = 'Sending it to your Bapa’s Diary folder…';
+      const ans = await sendToDrive('replace', png, jpg);
+      st.className = 'status ok'; st.textContent = `Replaced today’s 2pm picture: ${ans.name} in ${ans.folder}, at ${ans.time}. The 2pm send will use this one.`;
+      remember('Replace today’s picture', ans.name);
+    } catch (e) { st.className = 'status warn'; st.textContent = `Not replaced: ${(e && e.message) || e}` } finally { btn.disabled = false }
+    return;
+  }
+  try {
+    const [W, H] = S.mode === 'day' ? [2796, 1290] : [3840, 2160];
+    const c = document.createElement('canvas'); c.width = Math.round(W * k); c.height = Math.round(H * k);
+    const ctx = c.getContext('2d'); ctx.scale(k, k);
+    S.mode === 'day' ? drawDay(ctx, P.day, S.day, []) : drawMonth(ctx, P.month, S.month, []);
+    const blob = await new Promise(r => c.toBlob(r, ext === 'png' ? 'image/png' : 'image/jpeg', .93));
+    const d = new Date(S.mode === 'day' ? S.day.date + 'T12:00' : S.month.month + '-01T12:00');
+    const name = S.mode === 'day' ? `${d.getDate()} ${d.toLocaleString('en-GB', { month: 'long' })} ${d.getFullYear()} Bapa's Diary.${ext}` : `${d.toLocaleString('en-GB', { month: 'long' })} ${d.getFullYear()} Bapa's Diary ${{ A: 'close ups', B: 'activity', M: 'mixed' }[S.month.option]}.${ext}`;
+    const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+    if (dl) await dl.save({ filename: name, data: blob });
+    else { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000) }
+    st.className = 'status ok'; st.textContent = `Saved as a new export: ${name} (${(blob.size / 1e6).toFixed(1)} MB). Today’s 2pm picture is unchanged.`;
+    let where = name;
+    if (driveCode() && S.mode === 'day') {
+      try {
+        st.textContent += ' Keeping a copy on Drive…';
+        const ans = await sendToDrive('new', await blobOf(drawAt(5635), 'image/png'), await blobOf(drawAt(4096), 'image/jpeg', .93));
+        st.textContent = `Saved as a new export: ${name}, with a copy in “${ans.folder}” on Drive. Today’s 2pm picture is unchanged.`; where = `${ans.name} in ${ans.folder}`;
+      } catch (e) { st.textContent = `Saved as a new export: ${name} on this device (the Drive copy didn’t work: ${e.message}). Today’s 2pm picture is unchanged.` }
+    }
+    remember('Save as a new export', where);
+  } catch (e) {
+    st.textContent = e && e.code === 'declined' ? 'Export cancelled.' : `Export did not finish: ${(e && e.message) || e}`;
+  } finally { btn.disabled = false }
+});
+view.addEventListener('click', ev => {
+  const r = view.getBoundingClientRect(), x = (ev.clientX - r.left) * view.width / r.width, y = (ev.clientY - r.top) * view.height / r.height;
+  const h = HITS.find(h => x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h);
+  if (h) { cur().sel = h.key; S.tab = 'photos'; build() }
+});
+
+// ------------------------------------------------------------ the settings rail
+const cur = () => S[S.mode];
+const TABS = { day: [['photos', 'Photos'], ['years', 'Years'], ['text', 'Text'], ['layout', 'Layout'], ['look', 'Look']], month: [['photos', 'Photos'], ['text', 'Text'], ['layout', 'Layout'], ['look', 'Look']] };
+function seg(id, value, opts) { return `<div class="seg" role="group" id="${id}">${opts.map(([v, l]) => `<button data-v="${v}" aria-pressed="${String(v) === String(value)}">${l}</button>`).join('')}</div>` }
+function range(id, label, v, min, max, step, fmt = x => x) { return `<div class="row"><label for="${id}">${label}<output id="${id}-o">${fmt(v)}</output></label><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${v}"></div>` }
+function check(id, label, v) { return `<label class="check"><input type="checkbox" id="${id}" ${v ? 'checked' : ''}> ${label}</label>` }
+function text(id, label, v, ph = '') { return `<div class="row"><label for="${id}">${label}</label><input type="text" id="${id}" value="${(v || '').replace(/"/g, '&quot;')}" placeholder="${ph.replace(/"/g, '&quot;')}"></div>` }
+function select(id, label, v, opts) { return `<div class="row"><label for="${id}">${label}</label><select id="${id}">${opts.map(([k, l, dis]) => `<option value="${k}" ${k === v ? 'selected' : ''} ${dis ? 'disabled' : ''}>${l}</option>`).join('')}</select></div>` }
+
+function paneDay() {
+  const o = S.day, pack = P.day;
+  if (S.tab === 'years') return `
+    <div class="group"><h3>Which date</h3>
+      ${select('d-date', 'Date', o.date, INDEX.days.map(k => [k, longDate(k)]))}
+      <p class="hint">Today and the next six days are ready each morning. For any other date, ask Claude (or run “Studio photo packs” on GitHub with that date) and it appears here.</p></div>
+    <div class="group"><h3>Years shown</h3>
+      <div class="chips" id="d-years">${pack.years.map(y => `<button data-y="${y.year}" aria-pressed="${o.years[y.year]?.on ?? true}">${y.year}</button>`).join('')}</div>
+      <div class="seg" role="group"><button class="btn" id="d-all">Show every year</button><button class="btn" id="d-none">Hide every year</button><button class="btn" id="d-pre">Only Pramukh Swami</button><button class="btn" id="d-post">Only Mahant Swami</button></div>
+      <p class="hint">Tap a year to hide or show it. The layout resizes itself to fill the picture.</p></div>`;
+  if (S.tab === 'text') return `
+    <div class="group"><h3>Title</h3>
+      ${check('d-tauto', 'Use the automatic title', o.titleAuto)}
+      ${o.titleAuto ? '' : text('d-title', 'Title', o.title, pack.title)}
+      ${check('d-festt', 'Put a big festival in the title (Gunatitanand Swami Jayanti today)', o.festTitle)}
+      ${check('d-one', 'Title and “in Bapa’s Diary” on one line', o.oneTitle)}
+      ${text('d-sub', 'Second part', o.subtitle)}</div>
+    <div class="group"><h3>Under each card</h3>
+      ${seg('d-caps', o.captions, [['all', 'Every caption'], ['special', 'Special moments only'], ['none', 'No captions']])}
+      ${range('d-capsize', 'Caption size', o.capSize, 15, 30, 1)}
+      ${check('d-year', 'Year on the card', o.showYear)} ${check('d-place', 'Place on the card', o.showPlace)} ${check('d-fest', 'Festival tag on cards taken on a festival', o.festTags)}</div>
+    <div class="group"><h3>Bottom line</h3>
+      ${check('d-story', 'History story (On this day in…)', o.showStory)} ${check('d-cal', 'BAPS calendar line (Indian date)', o.showCal)}
+      ${check('d-tom', 'Tomorrow’s festival in the corner', o.showTomorrow)} ${check('d-foot', 'Project name', o.showFooter)}
+      ${o.showFooter ? text('d-footer', 'Name', o.footer) : ''}
+      <p class="hint">Today: ${pack.story ? `story from ${pack.story.year}` : 'no story'}, calendar “${pack.cal_line || 'none'}”.</p></div>
+    <div class="group"><h3>Caption for every year</h3>
+      ${dayCards(pack, o).map(x => `<div class="row"><label for="cap-${x.y}">${x.y}</label><textarea class="capedit capall" id="cap-${x.y}" data-y="${x.y}" rows="2">${(x.caption || '').replace(/&/g, '&amp;').replace(/</g, '&lt;')}</textarea></div>`).join('')}
+      <p class="hint">Change any year’s caption here; empty it to show none. Reset on the Photos tab brings the website caption back.</p></div>`;
+  if (S.tab === 'layout') return `
+    <div class="group"><h3>Cords and cards</h3>
+      ${seg('d-rows', o.rows, [[2, '2 cords'], [3, '3 cords'], [4, '4 cords']])}
+      ${range('d-shape', 'Photo shape', o.shape, .6, 1.3, .05, v => v < .8 ? 'wide' : v > 1.05 ? 'tall' : 'nearly square')}
+      ${range('d-sag', 'Cord curve', o.sag, 0, 120, 2)}
+      ${range('d-cord', 'Cord thickness', o.cord, 0, 14, 1, v => v ? v : 'no cord')}
+      ${range('d-gap', 'Space between cards', o.gap, 0, 60, 2)}</div>
+    <div class="group"><h3>How they hang</h3>
+      ${seg('d-hang', o.hang, [['straight', 'Straight'], ['swing', 'Swinging a little']])}
+      ${o.hang === 'swing' ? range('d-tilt', 'Swing', o.tilt, .5, 4, .1, v => v + '°') : ''}
+      ${seg('d-peg', o.peg, [['gloss', 'Varnished pegs'], ['flat', 'Flat pegs'], ['none', 'No pegs']])}</div>`;
+  if (S.tab === 'look') return lookPane('d', o);
+  // photos
+  const sel = o.sel ?? pack.years[0].year, y = pack.years.find(v => v.year === sel) || pack.years[0], st = o.years[y.year] || {};
+  const pick = st.pick ?? defaultPick(y, o.photoStyle), c = y.cands[pick];
+  return `
+    <div class="group"><h3>Kind of photo, every year</h3>
+      ${seg('d-style', o.photoStyle, [['auto', 'As the daily run picks'], ['close', 'Close ups of Bapa'], ['action', 'What Bapa is doing']])}
+      <p class="hint">Changing this resets the photo choices below. Your own choices for a year stay until you press Reset.</p></div>
+    <div class="group"><h3>Year</h3>
+      <div class="chips" id="d-sel">${pack.years.filter(v => o.years[v.year]?.on ?? true).map(v => `<button data-y="${v.year}" class="${v.year === y.year ? 'sel' : ''}" aria-pressed="${o.years[v.year]?.pick != null || o.years[v.year]?.crop || o.years[v.year]?.caption != null ? 'true' : 'false'}">${v.year}</button>`).join('')}</div>
+      <p class="hint">A white year has your own changes. Or click a card in the picture.</p></div>
+    <div class="group"><h3>${y.year} · choose the photo</h3>
+      <p class="hint">${y.cands.length} photo${y.cands.length > 1 ? 's' : ''} of Bapa this year, the best first.</p>
+      <div class="thumbs" id="d-thumbs">${y.cands.map((c2, i) => `<button data-i="${i}" aria-pressed="${i === pick}" title="${c2.caption.replace(/"/g, '&quot;')}" aria-label="${c2.caption.replace(/"/g, '&quot;')}">${thumb(P.day, y, i)}${i === 0 ? '<span>DAILY PICK</span>' : c2.special ? '<span>SPECIAL</span>' : ''}</button>`).join('')}</div>
+      <p class="hint">${c.place} · ${c.date || y.year}${c.festival ? ' · ' + c.festival : ''}</p></div>
+    <div class="group"><h3>Crop</h3>
+      ${seg('d-crop', st.crop || 'auto', [['auto', 'Automatic'], ['close', 'Close up'], ['frame', 'Wider'], ['whole', 'Fill frame']])}
+      ${range('d-zoom', 'Zoom', st.zoom || 1, .6, 2.5, .05, v => Math.round(v * 100) + '%')}
+      ${range('d-dx', 'Move left or right', st.dx || 0, -.4, .4, .01, v => Math.round(v * 100))}
+      ${range('d-dy', 'Move up or down', st.dy || 0, -.4, .4, .01, v => Math.round(v * 100))}
+      <p class="hint">Automatic and Close up never cut Bapa’s head or pagh. Moving can, so check the preview.</p></div>
+    <div class="group"><h3>Caption</h3>
+      <textarea class="capedit" id="d-cap" aria-label="Caption for ${y.year}">${st.caption ?? c.caption}</textarea>
+      <p class="hint">Website caption: “${(c.original || '').replace(/</g, '&lt;')}”</p>
+      <div class="seg"><button class="btn" id="d-reset">Reset ${y.year} to the daily pick</button></div></div>`;
+}
+function lookPane(p, o) {
+  return `<div class="group"><h3>Background</h3>
+    ${seg(p + '-look', o.look, Object.entries(LOOKS).map(([k, v]) => [k, v.name]))}
+    ${range(p + '-glow', 'Lamp glow', o.glow, 0, 1, .05, v => Math.round(v * 100) + '%')}
+    ${range(p + '-jali', 'Jali pattern', o.jali, 0, .4, .01, v => Math.round(v * 100) + '%')}</div>
+  <div class="group"><h3>Photos</h3>
+    ${check(p + '-polish', 'Polish (a little more contrast and colour, as the daily run)', o.polish)}
+    ${range(p + '-bright', 'Brightness', o.bright, -.2, .3, .01, v => (v > 0 ? '+' : '') + Math.round(v * 100))}
+    ${range(p + '-warm', 'Warmth', o.warmth, 0, .5, .01, v => Math.round(v * 100))}
+    <div class="seg"><button class="btn" id="${p}-resetall">Reset every setting to the daily look</button></div></div>`;
+}
+function paneMonth() {
+  const o = S.month, pack = P.month;
+  if (S.tab === 'text') return `
+    <div class="group"><h3>Title</h3>
+      ${check('m-tauto', 'Use the automatic title', o.titleAuto)}
+      ${o.titleAuto ? '' : text('m-title', 'Title', o.title, `${pack.title} ${o.subtitle}`)}
+      ${check('m-sub', 'Indian months and Vikram Samvat under the title', o.showSub)}
+      ${check('m-bub', 'Where Bapa was (place bubbles)', o.bubbles)}</div>
+    <div class="group"><h3>On and under each card</h3>
+      ${check('m-tithi', 'Indian date (tithi) beside the day', o.tithi)} ${check('m-sun', 'Sundays in red', o.sundayRed)}
+      ${check('m-fest', 'Festival tag', o.fest)} ${check('m-story', 'History story of that exact day', o.stories)}
+      ${seg('m-caps', o.captions, [['auto', 'With Activity and Mixed'], ['on', 'Always'], ['off', 'Never']])}
+      ${range('m-capsize', 'Caption size', o.capSize, 16, 30, 1)}</div>
+    <div class="group"><h3>Caption for every day</h3>
+      ${monthCards(pack, o).map(x => `<div class="row"><label for="cap-${x.d.day}">${x.d.day} ${pack.title.split(' ')[0]}</label><textarea class="capedit capall" id="cap-${x.d.day}" data-d="${x.d.day}" rows="2">${(x.caption || '').replace(/&/g, '&amp;').replace(/</g, '&lt;')}</textarea></div>`).join('')}
+      <p class="hint">Captions show with Activity and Mixed (or Always, above). Change any day’s caption here.</p></div>`;
+  if (S.tab === 'layout') return `
+    <div class="group"><h3>Cords and cards</h3>
+      ${seg('m-rows', o.rows, [[3, '3 cords'], [4, '4 cords']])}
+      ${range('m-sag', 'Cord curve', o.sag, 0, 60, 1)}
+      ${range('m-tilt', 'Card tilt', o.tilt, 0, 3, .1, v => v + '°')}
+      ${check('m-pegs', 'Wooden pegs', o.pegs)}</div>`;
+  if (S.tab === 'look') return lookPane('m', o);
+  const sel = o.sel ?? 1, d = pack.days[sel - 1], st = o.days[d.day] || {};
+  const pick = st.pick ?? optPick(d, o.option), c = d.cands[pick];
+  return `
+    <div class="group"><h3>Month</h3>
+      ${select('m-month', 'Month', o.month, INDEX.months.map(k => [k, longMonth(k)]))}
+      ${seg('m-opt', o.option, [['A', 'Close-up images'], ['B', 'Activity'], ['M', 'Mixed']])}</div>
+    <div class="group"><h3>Day</h3>
+      <div class="chips" id="m-sel">${pack.days.map(v => `<button data-d="${v.day}" class="${v.day === d.day ? 'sel' : ''}" aria-pressed="${o.days[v.day] && Object.keys(o.days[v.day]).length ? 'true' : 'false'}">${v.day}</button>`).join('')}</div></div>
+    <div class="group"><h3>${d.day} ${pack.title} · choose the photo</h3>
+      ${d.cands.length ? `<p class="hint">${d.cands.length} photo${d.cands.length > 1 ? 's' : ''} of Bapa this day, the best first.</p><div class="thumbs" id="m-thumbs">${d.cands.map((c2, i) => `<button data-i="${i}" aria-pressed="${i === pick}" title="${c2.caption.replace(/"/g, '&quot;')}" aria-label="${c2.caption.replace(/"/g, '&quot;')}">${thumb(P.month, d, i)}${[['A', 'CLOSE'], ['B', 'ACTIVITY'], ['M', 'MIXED']].filter(([k]) => optPick(d, k) === i && (k !== 'M' || d.pickM != null)).map(([, l]) => `<span>${l}</span>`).join('').replace(/<\/span><span>/g, ' · ')}</button>`).join('')}</div>` : '<p class="hint">No photo for this day yet.</p>'}
+      <p class="hint">${c ? c.place : ''} · ${d.tithi}${d.fest.length ? ' · ' + d.fest.join(', ') : ''}</p></div>
+    <div class="group"><h3>Crop</h3>
+      ${seg('m-crop', st.crop || 'auto', [['auto', 'Automatic'], ['close', 'Close up'], ['frame', 'Wider'], ['whole', 'Fill frame']])}
+      ${range('m-zoom', 'Zoom', st.zoom || 1, .6, 2.5, .05, v => Math.round(v * 100) + '%')}
+      ${range('m-dx', 'Move left or right', st.dx || 0, -.4, .4, .01, v => Math.round(v * 100))}
+      ${range('m-dy', 'Move up or down', st.dy || 0, -.4, .4, .01, v => Math.round(v * 100))}</div>
+    <div class="group"><h3>Caption</h3>
+      <textarea class="capedit" id="m-cap" aria-label="Caption for day ${d.day}">${st.caption ?? (c ? c.caption : '')}</textarea>
+      <div class="seg"><button class="btn" id="m-reset">Reset day ${d.day}</button></div></div>`;
+}
+
+function build() {
+  document.querySelectorAll('.modes button').forEach(b => b.setAttribute('aria-pressed', String(b.id === 'mode-' + S.mode)));
+  if (!TABS[S.mode].some(t => t[0] === S.tab)) S.tab = 'photos';
+  $('#tabs').innerHTML = TABS[S.mode].map(([k, l]) => `<button role="tab" data-t="${k}" aria-selected="${k === S.tab}">${l}</button>`).join('');
+  const pack = P[S.mode];
+  $('#pane').innerHTML = pack ? (S.mode === 'day' ? paneDay() : paneMonth()) : '<p class="hint">Loading photos…</p>';
+  $('#compare').classList.toggle('on', S.mode === 'day' && !!pack);
+  if (pack && S.mode === 'day') $('#real').src = pack.base + 'real.jpg';
+  if (pack) {
+    if (S.mode === 'day') { const n = dayCards(pack, S.day).length; $('#meta').innerHTML = `<b>${pack.title}</b> · ${n} years · photos chosen on GitHub ${pack.made.slice(0, 10)}` }
+    else $('#meta').innerHTML = `<b>${pack.title}</b> · ${pack.days.length} days · ${{ A: 'close-up images', B: 'activity', M: 'mixed' }[S.month.option]}`;
+  }
+  fillSizes(); fillMode(); wire(); render();
+}
+function wire() {
+  const o = cur(), p = S.mode === 'day' ? 'd' : 'm';
+  const on = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn) };
+  const bind = (id, key, num, rebuild) => on(id, 'input', e => { o[key] = e.target.type === 'checkbox' ? e.target.checked : num ? +e.target.value : e.target.value; const out = document.getElementById(id + '-o'); if (out) out.textContent = out.textContent && e.target.value; rebuild ? build() : (render(), syncOut(id)) });
+  const segOn = (id, key, num, rebuild = true) => document.querySelectorAll(`#${id} button`).forEach(b => b.addEventListener('click', () => { o[key] = num ? +b.dataset.v : b.dataset.v; rebuild ? build() : render() }));
+  document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => { S.tab = b.dataset.t; build() }));
+  // shared look
+  segOn(p + '-look', 'look'); bind(p + '-glow', 'glow', 1); bind(p + '-jali', 'jali', 1); bind(p + '-polish', 'polish'); bind(p + '-bright', 'bright', 1); bind(p + '-warm', 'warmth', 1);
+  document.querySelectorAll('.capall').forEach(t => t.addEventListener('input', () => {
+    const k = t.dataset.y ?? t.dataset.d, bag = t.dataset.y ? o.years : o.days;
+    (bag[k] = bag[k] || {}).caption = t.value; render();
+  }));
+  on(p + '-resetall', 'click', () => { S[S.mode] = structuredClone(S.mode === 'day' ? DAY_DEFAULT : MONTH_DEFAULT); build() });
+  if (S.mode === 'day') {
+    const yr = () => { const k = o.sel ?? P.day.years[0].year; return (o.years[k] = o.years[k] || {}) };
+    document.querySelectorAll('#d-style button').forEach(b => b.addEventListener('click', () => { o.photoStyle = b.dataset.v; Object.values(o.years).forEach(y => { delete y.pick; delete y.crop; delete y.caption }); build() })); segOn('d-rows', 'rows', 1); segOn('d-hang', 'hang'); segOn('d-peg', 'peg'); segOn('d-caps', 'captions');
+    on('d-date', 'change', async e => { o.date = e.target.value; o.years = {}; o.sel = null; P.day = null; build(); P.day = await loadPack('day', o.date); build() });
+    bind('d-shape', 'shape', 1); bind('d-sag', 'sag', 1); bind('d-cord', 'cord', 1); bind('d-gap', 'gap', 1); bind('d-tilt', 'tilt', 1); bind('d-capsize', 'capSize', 1);
+    bind('d-tauto', 'titleAuto', 0, 1); bind('d-title', 'title'); bind('d-festt', 'festTitle'); bind('d-one', 'oneTitle'); bind('d-sub', 'subtitle');
+    bind('d-year', 'showYear'); bind('d-place', 'showPlace'); bind('d-fest', 'festTags'); bind('d-story', 'showStory'); bind('d-cal', 'showCal'); bind('d-tom', 'showTomorrow'); bind('d-foot', 'showFooter', 0, 1); bind('d-footer', 'footer');
+    document.querySelectorAll('#d-years button').forEach(b => b.addEventListener('click', () => { const y = o.years[b.dataset.y] = o.years[b.dataset.y] || {}; y.on = !(y.on ?? true); build() }));
+    const setAll = f => { P.day.years.forEach(y => { (o.years[y.year] = o.years[y.year] || {}).on = f(y.year) }); build() };
+    on('d-all', 'click', () => setAll(() => true)); on('d-none', 'click', () => setAll(() => false));
+    on('d-pre', 'click', () => setAll(y => y <= 2016)); on('d-post', 'click', () => setAll(y => y >= 2016));
+    document.querySelectorAll('#d-sel button').forEach(b => b.addEventListener('click', () => { o.sel = +b.dataset.y; build() }));
+    document.querySelectorAll('#d-thumbs button').forEach(b => b.addEventListener('click', () => { const y = yr(); y.pick = +b.dataset.i; delete y.caption; build() }));
+    document.querySelectorAll('#d-crop button').forEach(b => b.addEventListener('click', () => { yr().crop = b.dataset.v; build() }));
+    ['zoom', 'dx', 'dy'].forEach(k => on('d-' + k, 'input', e => { yr()[k] = +e.target.value; syncOut('d-' + k); render() }));
+    on('d-cap', 'input', e => { yr().caption = e.target.value; render() });
+    on('d-reset', 'click', () => { const k = o.sel ?? P.day.years[0].year; o.years[k] = { on: true }; build() });
+  } else {
+    const dy = () => { const k = o.sel ?? 1; return (o.days[k] = o.days[k] || {}) };
+    on('m-month', 'change', async e => { o.month = e.target.value; o.days = {}; o.sel = null; P.month = null; build(); P.month = await loadPack('month', o.month); build() });
+    segOn('m-opt', 'option'); segOn('m-rows', 'rows', 1); segOn('m-caps', 'captions');
+    bind('m-sag', 'sag', 1); bind('m-tilt', 'tilt', 1); bind('m-pegs', 'pegs'); bind('m-capsize', 'capSize', 1);
+    bind('m-tauto', 'titleAuto', 0, 1); bind('m-title', 'title'); bind('m-sub', 'showSub'); bind('m-bub', 'bubbles');
+    bind('m-tithi', 'tithi'); bind('m-sun', 'sundayRed'); bind('m-fest', 'fest'); bind('m-story', 'stories');
+    document.querySelectorAll('#m-sel button').forEach(b => b.addEventListener('click', () => { o.sel = +b.dataset.d; build() }));
+    document.querySelectorAll('#m-thumbs button').forEach(b => b.addEventListener('click', () => { const d = dy(); d.pick = +b.dataset.i; delete d.caption; build() }));
+    document.querySelectorAll('#m-crop button').forEach(b => b.addEventListener('click', () => { dy().crop = b.dataset.v; build() }));
+    ['zoom', 'dx', 'dy'].forEach(k => on('m-' + k, 'input', e => { dy()[k] = +e.target.value; syncOut('m-' + k); render() }));
+    on('m-cap', 'input', e => { dy().caption = e.target.value; render() });
+    on('m-reset', 'click', () => { o.days[o.sel ?? 1] = {}; build() });
+  }
+}
+function syncOut(id) {   // keep the little number beside a slider in step
+  const el = document.getElementById(id), out = document.getElementById(id + '-o'); if (!el || !out || el.type !== 'range') return;
+  const v = +el.value, fm = { 'd-zoom': x => Math.round(x * 100) + '%', 'm-zoom': x => Math.round(x * 100) + '%', 'd-glow': x => Math.round(x * 100) + '%', 'm-glow': x => Math.round(x * 100) + '%', 'd-jali': x => Math.round(x * 100) + '%', 'm-jali': x => Math.round(x * 100) + '%', 'd-tilt': x => x + '°', 'm-tilt': x => x + '°' };
+  out.textContent = fm[id] ? fm[id](v) : id.endsWith('dx') || id.endsWith('dy') || id.endsWith('warm') ? Math.round(v * 100) : id.endsWith('bright') ? (v > 0 ? '+' : '') + Math.round(v * 100) : id === 'd-shape' ? (v < .8 ? 'wide' : v > 1.05 ? 'tall' : 'nearly square') : id === 'd-cord' ? (v || 'no cord') : v;
+}
+document.querySelectorAll('.modes button').forEach(b => b.addEventListener('click', async () => {
+  S.mode = b.id.slice(5); build();
+  if (!P[S.mode]) { P[S.mode] = await loadPack(S.mode, S.mode === 'day' ? S.day.date : S.month.month); build() }
+}));
+
+(async () => {
+  build();
+  if (!store.set('studio-check', 1) || store.get('studio-check') !== 1) { $('#status').className = 'status warn'; $('#status').textContent = NOT_KEPT }
+  try { await document.fonts.load(`700 84px ${SERIF}`); await document.fonts.load(`500 21px ${SERIF}`); await document.fonts.load(`600 21px ${SERIF}`); await document.fonts.load(`700 20px ${SANS}`) } catch (e) {}
+  try {
+    await loadIndex();
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+    if (S.day.date !== today && INDEX.days.includes(today)) { S.day.date = today; S.day.years = {}; S.day.sel = null }
+    if (!INDEX.days.includes(S.day.date)) { S.day.date = INDEX.days.includes(today) ? today : INDEX.days.at(-1); S.day.years = {}; S.day.sel = null }
+    if (!INDEX.months.includes(S.month.month)) { S.month.month = INDEX.months.at(-1); S.month.days = {}; S.month.sel = null }
+    P[S.mode] = await loadPack(S.mode, S.mode === 'day' ? S.day.date : S.month.month); build();
+    const other = S.mode === 'day' ? 'month' : 'day';
+    P[other] = await loadPack(other, other === 'day' ? S.day.date : S.month.month);
+  } catch (e) { $('#meta').textContent = 'The photos could not be loaded. Reload the page to try again.' }
+})();
+</script>
