@@ -127,6 +127,7 @@
   }, true);
 
   const css = document.createElement('style');
-  css.textContent = `.ask-cu.who-cu { background-size: cover; background-position: center 30%; }`;
+  css.textContent = `.ask-cu.who-cu { background-size: cover; background-position: center 30%; }
+#q::-webkit-calendar-picker-indicator { display: none !important; }`;   // no dropdown arrow from the name list
   document.head.appendChild(css);
 })();
