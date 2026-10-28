@@ -66,7 +66,7 @@ function confirmEmail(link, lists) {
 }
 
 function page(title, words) {
-  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  return new Response(`<!doctype html><html lang="en" translate="no" class="notranslate"><head><meta charset="utf-8"><meta name="google" content="notranslate"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${title} · Bapa's Diary</title><link rel="stylesheet" href="/menu.css"></head>
 <body style="margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(120% 140% at 50% 0%,#5a1626,#3d0e19);color:#faf1de;font:18px/1.5 'EB Garamond',Georgia,serif;text-align:center">
 <main style="max-width:30rem;padding:24px"><h1 style="font-weight:600;color:#ffe296;margin:0 0 10px">${title}</h1><p style="margin:0 0 22px">${words}</p>
