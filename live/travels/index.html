@@ -542,7 +542,7 @@ body.dragging { -webkit-user-select: none; user-select: none; }
   const dateOf = mf => { mf = Math.max(0, Math.min(NM - 1e-6, mf)); const i = Math.floor(mf), y = Y0 + Math.floor(i / 12), m = i % 12;
     const a = Date.UTC(y, m, 1), b = Date.UTC(y, m + 1, 1); return a + (mf - i) * (b - a); };
   function buildTape() {
-    PX = innerWidth > 760 ? 84 : 58;
+    PX = innerWidth > 760 ? 50 : 36;   // shorter months, so more of the years fit on the screen (Darpan, 28 Oct 2026)
     tape.style.width = NM * PX + 'px'; $('bar').style.width = NM * PX + 'px';
     let h = '';
     for (let i = 0; i < NM; i++) { const m = i % 12, y = Y0 + Math.floor(i / 12);
