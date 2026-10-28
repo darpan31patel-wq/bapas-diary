@@ -171,16 +171,11 @@ html[data-look=b] .win .fest{padding:8px 3px 9%;font-size:calc(clamp(6.5px,1vh,9
 html[data-look=b] .strip{min-height:0;padding:6px 2px 0;align-self:stretch}
 html[data-look=b] .card.blank{padding:0}
 html[data-look=b] .card.blank .win{align-self:stretch}
-/* C, quiet until you look: every day softly faded; 5 days across and 2 rows around the day you point at (else today) in full
-   colour, the days next to them half way, and a gold glow behind that feathers out about half a row */
-html[data-look=c] .card{filter:grayscale(.8) brightness(.55) contrast(.95);box-shadow:0 4px 12px rgba(0,0,0,.3);transition:filter .6s ease,box-shadow .3s ease}
-html[data-look=c] .card.sp2{filter:grayscale(.6) brightness(.68)}
-html[data-look=c] .card.sp1,html[data-look=c] .card:hover,html[data-look=c] .card:focus-visible,html[data-look=c] .ribbon.picking .card.lit,html[data-look=c] .card.want{filter:none}
-.spot{display:none}
-html[data-look=c] .spot{display:block;position:absolute;z-index:3;pointer-events:none;opacity:0;transition:opacity .7s ease,left .5s ease,top .5s ease,width .5s ease,height .5s ease;
-  margin:calc(var(--h) * -.62) calc(var(--w) * -.62);padding:calc(var(--h) * .62) calc(var(--w) * .62);box-sizing:content-box;border-radius:50%;mix-blend-mode:screen;
-  background:radial-gradient(closest-side,rgba(255,206,110,0) 66%,rgba(255,206,110,.45) 82%,rgba(226,170,70,.2) 92%,rgba(206,152,64,0) 100%);filter:blur(calc(var(--f) * .12))}
-html[data-look=c] .spot.on{opacity:1}
+/* C, quiet until you look: every day softly faded; the days near the mouse (else today) come up in colour with a loose gold glow,
+   each by how near it is, so the light slides smoothly with the mouse */
+html[data-look=c] .card{--q:0;filter:grayscale(calc(.82 - .82 * var(--q))) brightness(calc(.55 + .45 * var(--q)));
+  box-shadow:0 4px 12px rgba(0,0,0,.3),0 0 calc(30px * var(--q)) calc(6px * var(--q)) rgba(255,206,110,calc(.38 * var(--q)));transition:filter .2s linear,box-shadow .2s linear}
+html[data-look=c] .card:focus-visible,html[data-look=c] .ribbon.picking .card.lit,html[data-look=c] .card.want{filter:none}
 /* D, photos on the special days: an ordinary day is a quiet square with its date, its photo appears when you point at it;
    festivals, birthdays, anniversaries and today show their darshan */
 html[data-look=d] .month{gap:calc(var(--g)*1.6)}
@@ -293,7 +288,7 @@ function render(mo){
       const f=[...new Set([d[1],d[2]].filter(Boolean).join('; ').split('; ').filter(n=>n&&!/^(Fast|Sud|Vad) ?\w*$/.test(n)))];
       let rest=f; b._on=null; b._all=f;
       if(!fut&&d[4]&&!f.some(n=>rank(n)<2)) b.classList.add('plain');   // an ordinary day (no festival, birthday or anniversary)
-      b.dataset.d=day; b.dataset.r=r; b.dataset.c=c; if(date===TODAY) mo._today=[r,c];
+      b.dataset.d=day; if(date===TODAY) mo._todayCard=b;
       if(f.length>1){const i=f.reduce((bi,n,j)=>rank(n)<rank(f[bi])?j:bi,0); b._on=f[i]; rest=f.filter((_,j)=>j!==i)}
       if(fut){future(win,d,day,date,x.pl,(x.pl&&(date===FUT||x.pl!==(day>1?pl[day-2]:prevPl)))?x.pl:'')}
       else if(d[4]){
@@ -307,33 +302,36 @@ function render(mo){
       const st=el('div','strip'+(rest.length&&!fut?' has':''),esc(rest.join(' · '))); b.appendChild(st);
       if(rest.length&&!fut) fitLater.push(st);
       b.addEventListener('click',e=>{if(dragMoved)e.preventDefault()});
-      b.addEventListener('mouseenter',()=>{light(k,day);spot(mo,r,c)});
+      b.addEventListener('mouseenter',()=>light(k,day));
       b.addEventListener('focus',()=>light(k,day));
       b._row=r; b._date=date; mo._cards.push(b); if(sel!=null)litCard(b); if(date===wantDate)b.classList.add('want');
     }
     b.style.gridArea=`${r+2}/${c+1}`; mo.appendChild(b);
   }
-  mo.addEventListener('mouseleave',()=>{light(null);spot(mo)});
-  requestAnimationFrame(fitStrips); requestAnimationFrame(()=>spot(mo));
+  mo.addEventListener('mouseleave',()=>light(null));
+  requestAnimationFrame(fitStrips); requestAnimationFrame(spotDraw);
 }
-/* look C (Darpan, 28 Oct 2026: "5 across and 2 up and down, feather it so the gold glow fades half across the next line"):
-   the days around the one you point at (else around today) come up in colour, the days next to them half way, a gold glow behind */
-function spot(mo,r,c){
-  if(document.documentElement.dataset.look!=='c'||!mo._cards)return;
-  if(r==null&&mo._today)[r,c]=mo._today;
-  let g=mo.querySelector(':scope>.spot'); if(!g){g=el('div','spot');mo.prepend(g)}
-  mo._cards.forEach(x=>x.classList.remove('sp1','sp2'));
-  if(r==null){g.classList.remove('on');return}
-  const top=Math.min(r,3), c0=Math.max(0,Math.min(c-2,2)), box=[];
-  mo._cards.forEach(x=>{const xr=+x.dataset.r, xc=+x.dataset.c;
-    const inR=xr>=top&&xr<=top+1, inC=xc>=c0&&xc<=c0+4;
-    if(inR&&inC){x.classList.add('sp1');box.push(x)}
-    else if((inR||xr===top-1||xr===top+2)&&xc>=c0-1&&xc<=c0+5)x.classList.add('sp2')});
-  if(!box.length){g.classList.remove('on');return}
-  const L=Math.min(...box.map(x=>x.offsetLeft)), T=Math.min(...box.map(x=>x.offsetTop)),
-    R=Math.max(...box.map(x=>x.offsetLeft+x.offsetWidth)), B=Math.max(...box.map(x=>x.offsetTop+x.offsetHeight)), h=box[0].offsetHeight;
-  Object.assign(g.style,{left:L+'px',top:T+'px',width:R-L+'px',height:B-T+'px'}); g.style.setProperty('--f',h+'px'); g.style.setProperty('--w',(R-L)/2+'px'); g.style.setProperty('--h',(B-T)/2+'px'); g.classList.add('on');
+/* look C (Darpan, 28 Oct 2026: "5 across and 2 up and down", "a very loose gold glow", "even if the mouse moves half a box, the
+   feather should move half a box too"): every day's colour and gold glow follow the mouse smoothly by how near it is; full about
+   5 days across and 2 rows around it, fading out over half a row; with no mouse, around today */
+let spotXY=null, spotRaf=0;
+const spotAt=p=>{spotXY=p; if(!spotRaf) spotRaf=requestAnimationFrame(spotDraw)};
+function spotDraw(){
+  spotRaf=0; if(document.documentElement.dataset.look!=='c')return;
+  for(const i of shown){
+    const mo=monthEls[i]; let p=spotXY;
+    if(!p&&mo._todayCard){const r=mo._todayCard.getBoundingClientRect(); p=[r.left+r.width/2,r.top+r.height/2]}
+    for(const c of mo._cards||[]){
+      let q=0;
+      if(p){const r=c.getBoundingClientRect(), pw=r.width*1.08, ph=r.height*1.08;
+        const d=Math.hypot((r.left+r.width/2-p[0])/(pw*2.5),(r.top+r.height/2-p[1])/ph);
+        q=Math.max(0,Math.min(1,(1.4-d)/.6)); q=q*q*(3-2*q)}
+      c.style.setProperty('--q',q.toFixed(3));
+    }
+  }
 }
+track.addEventListener('pointermove',e=>{if(e.pointerType==='mouse')spotAt([e.clientX,e.clientY])},{passive:true});
+track.addEventListener('pointerleave',()=>spotAt(null));
 /* the strip's words shrink a little to fit on one line, else take two lines */
 let fitLater=[];
 function fitStrips(){
@@ -521,6 +519,7 @@ function frame(){
       const im=cd.querySelector('img'); if(im) im.style.transform=`translateX(${(-off*4).toFixed(2)}%)`;
     }
   }
+  spotDraw();
   if(Math.abs(vel)>.05||ticking){ticking=false;requestAnimationFrame(frame)} else vel=0;
 }
 const kick=()=>{if(!ticking){ticking=true;requestAnimationFrame(frame)}};

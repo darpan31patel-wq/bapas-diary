@@ -184,16 +184,10 @@
   html[data-look=b] .ph-day img { inset: auto; left: 18%; top: 24%; width: 64%; height: 64%; border-radius: 50%; box-shadow: 0 0 0 1.5px rgba(206, 152, 64, .7); filter: saturate(.9); }
   html[data-look=b] .ph-day i { background: none; text-shadow: none; color: #ffe296; font: 500 11px/1 "EB Garamond", Garamond, serif; left: 4px; top: 3px; padding: 0; opacity: .85; }
   html[data-look=b] .ph-day.fest::after { right: 50%; margin-right: -3px; bottom: 2px; width: 5px; height: 5px; box-shadow: none; }
-  /* C, quiet until you look: faded days; 5 days across and 2 rows around the tapped day (else today) in colour, a gold glow feathering out */
-  html[data-look=c] .ph-grid { position: relative; }
-  html[data-look=c] .ph-day { filter: grayscale(.8) brightness(.55); transition: filter .6s ease; }
-  html[data-look=c] .ph-day.sp2 { filter: grayscale(.6) brightness(.68); }
-  html[data-look=c] .ph-day.sp1, html[data-look=c] .ph-picking .ph-day.lit, html[data-look=c] .ph-day.want { filter: none; }
-  .ph-grid .spot { display: none; }
-  html[data-look=c] .ph-grid .spot { display: block; position: absolute; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .7s ease, left .5s ease, top .5s ease, width .5s ease, height .5s ease;
-    margin: calc(var(--h) * -.62) calc(var(--w) * -.62); padding: calc(var(--h) * .62) calc(var(--w) * .62); box-sizing: content-box; border-radius: 50%; mix-blend-mode: screen;
-    background: radial-gradient(closest-side, rgba(255, 206, 110, 0) 66%, rgba(255, 206, 110, .45) 82%, rgba(226, 170, 70, .2) 92%, rgba(206, 152, 64, 0) 100%); filter: blur(calc(var(--f) * .12)); }
-  html[data-look=c] .ph-grid .spot.on { opacity: 1; }
+  /* C, quiet until you look: faded days; the days near the tapped day (else today) in colour with a loose gold glow, each by how near it is */
+  html[data-look=c] .ph-day { --q: 0; filter: grayscale(calc(.82 - .82 * var(--q))) brightness(calc(.55 + .45 * var(--q)));
+    box-shadow: 0 0 calc(18px * var(--q)) calc(3px * var(--q)) rgba(255, 206, 110, calc(.38 * var(--q))); transition: filter .5s ease, box-shadow .5s ease; }
+  html[data-look=c] .ph-picking .ph-day.lit, html[data-look=c] .ph-day.want { filter: none; }
   /* D, photos on the special days: an ordinary day shows its date, its photo when tapped */
   html[data-look=d] .ph-grid { gap: 7px; }
   html[data-look=d] .ph-day.plain img { opacity: 0; transition: opacity .4s; }
