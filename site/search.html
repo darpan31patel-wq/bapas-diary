@@ -579,7 +579,12 @@ async function load() {
       return { kind: 'photo', y, g, d: g[0], city: g[2].split(',')[0].trim(), file, cap, tags, m, b: bapa === 1, hay: (cap + ' ' + g[2] + ' ' + tags + ' ' + mandirWords(m)).toLowerCase() };
     })))));
   await tg;
-  if (START_YEAR && !linked && !$('q').value.trim() && !$('year').value) { $('year').value = START_YEAR; search(); }   // unless they already started searching
+  if (START_YEAR && !linked && !$('q').value.trim() && !$('year').value && !$('month').value) {   // unless they already started searching
+    // 'today' opens on this day in every year (Darpan, 28 Oct 2026: "why does it automatically go to 1999?")
+    if (START_YEAR === 'today') { const t = new Date(); $('month').value = String(t.getMonth() + 1).padStart(2, '0'); $('day').value = String(t.getDate()).padStart(2, '0'); }
+    else $('year').value = START_YEAR;
+    search();
+  }
 }
 // Links into the search (used by the day page): #date=1999-10-24 is that whole day, #day=10-24 is that day in
 // every year, #q=annakut is a search, #mandir=p is every murti pratishtha day (s shilanyas, t patotsav).
