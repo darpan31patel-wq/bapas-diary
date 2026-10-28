@@ -128,6 +128,9 @@
   .ph-jnote { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 30px; padding: 2px 16px 0; font: 400 12px/1.2 Arimo, Arial, sans-serif; color: #c9a98a; text-align: center; }
   .ph-jnote b { font: 600 16px/1 "EB Garamond", Garamond, serif; color: #ffe296; }
   .ph-jnote a { color: #ffe296; font-weight: 700; }
+  .ph-jnote { flex-wrap: wrap; }
+  .ph-jnote .go-row { flex-basis: 100%; margin: 4px 0 2px; }
+  .ph-day.want, .ph-picking .ph-day.lit.want { outline: 3px solid #ffe296; outline-offset: 2px; box-shadow: 0 0 16px 4px rgba(255, 214, 140, .65); border-radius: 12px; z-index: 2; opacity: 1; }
   .ph-jnote button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(217, 164, 65, .5); background: none; color: #ffe296; font-size: 13px; cursor: pointer; }
   .ph-picking .ph-day { opacity: .3; transition: opacity .4s; }
   .ph-picking .ph-day.lit { opacity: 1; border-radius: 12px; box-shadow: 0 0 0 1px rgba(255, 214, 120, .5), 0 0 10px 2px rgba(240, 190, 90, .45), 0 0 26px 7px rgba(206, 152, 64, .25); z-index: 1; overflow: visible; }

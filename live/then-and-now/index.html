@@ -96,10 +96,10 @@ button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 3px; }
   </header>
   <section class="pair" id="pair" aria-live="polite">
     <figure><div class="frame" id="pframe"></div>
-      <figcaption class="soft"><span class="guru">Pramukh Swami Maharaj</span><span class="pl" id="ppl"></span><span class="date" id="pdate"></span><span class="cap" id="pcap"></span></figcaption></figure>
+      <figcaption class="soft"><span class="guru">Pramukh Swami Maharaj</span><span class="pl" id="ppl"></span><span class="date" id="pdate"></span><span class="cap" id="pcap"></span><span id="pgo"></span></figcaption></figure>
     <div class="seam"><div class="years"><div class="soft" id="gapbox"><b id="gap">26</b><small>years</small></div></div></div>
     <figure><div class="frame" id="mframe"></div>
-      <figcaption class="soft"><span class="guru">Mahant Swami Maharaj</span><span class="pl" id="mpl"></span><span class="date" id="mdate"></span><span class="cap" id="mcap"></span></figcaption></figure>
+      <figcaption class="soft"><span class="guru">Mahant Swami Maharaj</span><span class="pl" id="mpl"></span><span class="date" id="mdate"></span><span class="cap" id="mcap"></span><span id="mgo"></span></figcaption></figure>
   </section>
   <div class="nav"><button class="back" id="prev" type="button" aria-label="Back"><span aria-hidden="true">‹</span></button><button class="next" id="next" type="button">Next <span aria-hidden="true">›</span></button></div>
   <div class="links soft" id="links">See every photo of <a id="plink">that day in <span id="py"></span></a> or <a id="mlink">that day in <span id="my"></span></a></div>
@@ -142,7 +142,10 @@ function show(n) {
     for (const [k, s] of [['p', p.psm], ['m', p.msm]]) {
       $(k + 'date').textContent = fmt(s.date); $(k + 'cap').textContent = clean(s.cap); $(k + 'pl').textContent = two ? short(s.place) : '';
       $(k + 'link').href = '/search/#date=' + s.date; $(k + 'y').textContent = s.date.slice(0, 4);
+      // this photo's day and place on the other tabs (Darpan, 28 Oct 2026: "all the tabs linked together")
+      if (window.BDLinks) $(k + 'go').innerHTML = BDLinks({date: s.date, place: two ? s.place : p.place, skip: 'tn'});
     }
+    $('links').hidden = !!window.BDLinks;   // the buttons under each photo have the photos of that day
     $('gap').textContent = +p.msm.date.slice(0, 4) - +p.psm.date.slice(0, 4);
     soft.forEach(e => e.classList.remove('out'));
   };

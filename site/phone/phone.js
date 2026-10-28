@@ -173,7 +173,7 @@
         x.el.innerHTML = `<b>${esc(x.p)}</b><small>${x.when}</small>`;
         x.el.setAttribute('aria-label', x.fut ? `Future vicharan: Bapa is going to ${x.p}, ${x.when} ${y0}. Light up these days` : `Bapa was in ${x.p}, ${x.when} ${y0}. Light up these days`);
       });
-      let browsed = 0, pickI = null, curStays = new Set();
+      let browsed = 0, pickI = null, curStays = new Set(), wantDate = '';
       ['touchstart', 'wheel', 'pointerdown'].forEach(ev => jrow.addEventListener(ev, () => browsed = Date.now(), {passive: true}));
       jrow.addEventListener('click', e => { const b = e.target.closest('.ph-stay'); if (b) { const i = +b.dataset.i; pickI === i ? unpick() : pickStay(i); } });
       // a tap anywhere else puts everything back to normal (Darpan, 25 Oct); a glowing day still shows its card
@@ -188,8 +188,10 @@
         if (pickI != null) stays[pickI].el.classList.remove('on');
         pickI = i; x.el.classList.add('on'); centre(x.el);
         wrap.classList.add('ph-picking'); wrap.querySelectorAll('.ph-day').forEach(lit);
-        note.innerHTML = (x.fut ? '<i>Future vicharan</i> ' : '') + `<b>${esc(x.p)}</b> ${x.when} ${x.y1} · ${x.days} ${x.days === 1 ? 'day' : 'days'} ` + (x.fut ? '' : `<a href="${SR}#place=${encodeURIComponent(x.p)}&from=${x.from}&to=${x.to}">Photos</a>`) + `<button type="button" aria-label="Clear">✕</button>`;
+        note.innerHTML = (x.fut ? '<i>Future vicharan</i> ' : '') + `<b>${esc(x.p)}</b> ${x.when} ${x.y1} · ${x.days} ${x.days === 1 ? 'day' : 'days'} ` + (x.fut || window.BDLinks ? '' : `<a href="${SR}#place=${encodeURIComponent(x.p)}&from=${x.from}&to=${x.to}">Photos</a>`) + `<button type="button" aria-label="Clear">✕</button>` +
+          (!x.fut && window.BDLinks ? BDLinks({from: x.from, to: x.to, place: x.p, skip: ['calendar', 'today']}) : '');   // the stay on the other tabs (28 Oct 2026)
         note.querySelector('button').onclick = unpick;
+        barH();
         go(x.k0, x.d0);
       }
       function unpick() {
@@ -197,6 +199,7 @@
         stays[pickI].el.classList.remove('on'); pickI = null;
         wrap.classList.remove('ph-picking'); wrap.querySelectorAll('.ph-day.lit').forEach(b => b.classList.remove('lit'));
         note.textContent = '';
+        barH();
       }
 
       const barH = () => wrap.style.setProperty('--ph-jbar', bar.offsetHeight + 'px');
@@ -239,7 +242,7 @@
             im.src = `${PH}t/${d[4]}/${encodeURIComponent(d[5])}`;
             b.append(im, el('i', '', day));
           } else b.textContent = day;
-          b._date = `${k}-${pad2(day)}`; if (pickI != null) lit(b);
+          b._date = `${k}-${pad2(day)}`; if (pickI != null) lit(b); if (b._date === wantDate) b.classList.add('want');
           b.onclick = () => pick(s, b, k, day, d, pl[i], fest, fut);
           g.append(b);
         });
@@ -298,8 +301,36 @@
         if (day) { draw(s); const b = s.querySelectorAll('.ph-day')[day - 1]; if (b) wrap.scrollTop = Math.max(wrap.scrollTop, b.offsetTop - bar.offsetHeight - 70); }
         mark();
       }
+      // links from the other tabs, as on the computer (28 Oct 2026): #2014-10-24 lights up the stay that day was part of,
+      // rings the day and shows its card; #place=London&from=&to= lights up that stay (else rings its first day)
+      function fromLink() {
+        const h = location.hash.slice(1), q = new URLSearchParams(h), iso = /^\d{4}-\d{2}-\d{2}$/;
+        let date = iso.test(h) ? h : '', i = -1;
+        const a = q.get('from') || '', b = q.get('to') || a;
+        if (iso.test(a) && iso.test(b)) {
+          const P = x => (window.BDLinks && BDLinks.place(x) || x).toLowerCase(), p = q.get('place') ? P(q.get('place')) : ''; let best = -1;
+          stays.forEach((x, j) => { if (x.fut || x.from > b || x.to < a || (p && P(x.p) !== p)) return;
+            const v = Math.min(+new Date(x.to), +new Date(b)) - Math.max(+new Date(x.from), +new Date(a));
+            if (v > best) { best = v; i = j; } });
+          if (i < 0) date = a;
+        }
+        if (date && !D.m[date.slice(0, 7)]) return false;
+        if (date) i = stays.findIndex(x => !x.fut && x.from <= date && x.to >= date);
+        if (!date && i < 0) return false;
+        wantDate = date;
+        wrap.querySelectorAll('.ph-day.want').forEach(x => x.classList.remove('want'));
+        if (i >= 0) { unpick(); pickStay(i); }
+        if (date) {
+          const k = date.slice(0, 7), day = +date.slice(8);
+          go(k, day);
+          const s = sections[keys.indexOf(k)], btn = s && s.querySelectorAll('.ph-day')[day - 1];
+          if (btn) { btn.classList.add('want'); btn.click(); }
+        }
+        return true;
+      }
       const h = location.hash.slice(1);
-      go(D.m[h] ? h : D.start);
+      if (!fromLink()) go(D.m[h] ? h : D.start);
+      addEventListener('hashchange', () => { if (location.hash.slice(1) !== curK) fromLink(); });
     }).catch(() => { wrap.innerHTML = '<p style="text-align:center;font-style:italic;color:#c9a98a;margin-top:40px">The calendar could not load. Please refresh the page.</p>'; });
   }
 })();

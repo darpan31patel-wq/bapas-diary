@@ -1,0 +1,553 @@
+<title>Calendar · Bapa's Diary</title>
+<meta name="description" content="Bapa's days from 1999 to today, month by month: a darshan photo for each day, the BAPS calendar and where Bapa was.">
+<link rel="stylesheet" href="{{MENU_CSS}}">
+<style>
+/* Calendar: one endless ribbon of five week rows, months side by side from 1999 (left) to today (right).
+   Website only (bapas-diary.com): nothing here touches the daily 2pm picture. Built by tools/web_calendar.py. */
+@font-face{font-family:"EB Garamond";font-weight:500;font-display:swap;src:url({{FONT_G5}}) format("woff2")}
+@font-face{font-family:"EB Garamond";font-weight:600;font-display:swap;src:url({{FONT_G6}}) format("woff2")}
+@font-face{font-family:Arimo;font-weight:700;font-display:swap;src:url({{FONT_A7}}) format("woff2")}
+:root{
+  --maroon:#42101c; --maroon-deep:#160509; --gold-hi:#ffe296; --gold-lo:#ce9840;
+  --ivory:#f8f2e4; --ivory-2:#eadfc8; --ink:#3a1a12; --muted:#c9a98a;
+  --serif:"EB Garamond", Garamond, "Times New Roman", serif;
+  --caps:Arimo, "Helvetica Neue", Arial, sans-serif;
+  --cw:140px; --g:8px; --z:1; --bh:28px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:radial-gradient(120% 90% at 50% 0%, var(--maroon) 0%, var(--maroon-deep) 78%);background-color:var(--maroon-deep);color:var(--ivory);font-family:var(--serif);overflow:hidden}
+.app{height:100%;display:flex;flex-direction:column;padding-top:calc(46px + env(safe-area-inset-top, 0px));padding-bottom:env(safe-area-inset-bottom, 0px)}
+header{padding-block:6px 4px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));text-align:center}
+.kicker{font-family:var(--caps);font-weight:700;font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:var(--muted)}
+.mtitle{position:relative;height:clamp(40px,6.6vh,64px);margin-top:2px}
+.mtitle span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:clamp(32px,5.8vh,56px);font-weight:500;line-height:1;
+  background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));-webkit-background-clip:text;background-clip:text;color:transparent;transition:opacity .7s ease, transform .7s ease;white-space:nowrap}
+.mtitle span.out{opacity:0;transform:translateY(8px)}
+.track{flex:1;min-height:0;touch-action:pan-x;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;cursor:grab;position:relative;outline:none}
+.track::-webkit-scrollbar{display:none}
+.track.drag{cursor:grabbing}
+.ribbon{height:100%;display:flex;align-items:stretch;gap:calc(var(--mgap) * var(--z));padding-inline:max(16px,30vw);padding-block:4px 10px;width:max-content;--mgap:clamp(28px,4vw,64px)}
+.month{position:relative;flex:none;height:var(--mh,100%);align-self:center;width:calc(7 * var(--cw) + 6 * var(--g));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:calc(26px * var(--z)) repeat(5,minmax(0,1fr));gap:var(--g);transition:opacity .25s linear}
+.mlab{display:none;position:absolute;left:0;right:0;bottom:100%;margin-bottom:10px;text-align:center;font-size:24px;font-weight:600;white-space:nowrap;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));-webkit-background-clip:text;background-clip:text;color:transparent}
+.zoomed .mlab{display:block}
+.wkd{font-family:var(--caps);font-weight:700;font-size:calc(clamp(12px,1.7vh,15px) * var(--z));letter-spacing:.22em;color:var(--muted);text-align:center;align-self:end;text-transform:uppercase}
+.empty{min-width:0;border:1px dashed rgba(234,223,200,.13);border-radius:3px}
+.card{position:relative;min-height:0;min-width:0;text-decoration:none;background:linear-gradient(170deg,var(--ivory),var(--ivory-2));border-radius:3px;padding:4px;display:flex;flex-direction:column;color:var(--ink);
+  box-shadow:0 6px 16px rgba(0,0,0,.42),0 1px 0 rgba(255,255,255,.4) inset;cursor:pointer;will-change:transform;text-align:center;transition:box-shadow .3s ease}
+.card:hover,.card:focus-visible{z-index:2;outline:none;box-shadow:0 0 0 2px var(--gold-hi),0 0 18px 4px rgba(255,214,120,.55),0 0 42px 10px rgba(206,152,64,.35),0 6px 16px rgba(0,0,0,.42)}
+.win{position:relative;flex:1;min-height:0;overflow:hidden}
+.win img{position:absolute;top:-1px;left:-5%;width:110%;max-width:none;height:calc(100% + 2px);object-fit:cover;object-position:50% 22%;will-change:transform;transition:filter .3s}
+.card:hover .win img{filter:brightness(1.06)}
+/* the date reads on any photo, even a white one: a soft dark backing behind it */
+.num{position:absolute;left:3px;top:3px;font-size:calc(clamp(14px,2.5vh,22px) * var(--z));font-weight:600;color:var(--ivory);text-shadow:0 1px 3px rgba(0,0,0,.6);line-height:1;padding:.12em .28em .16em;border-radius:.3em;background:rgba(22,5,9,.5);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+.fest{position:absolute;left:0;right:0;bottom:0;padding:12px 5px 4px;text-align:center;font-family:var(--caps);font-weight:700;font-size:calc(clamp(7.5px,1.15vh,10px) * var(--z));letter-spacing:.06em;color:var(--gold-hi);
+  background:linear-gradient(0deg,rgba(22,5,9,.92),rgba(22,5,9,0));line-height:1.2;text-wrap:balance}
+.strip:not(.has){display:none}   /* no words: the photo fills the frame (Darpan, 26 Oct) */
+.strip.two{white-space:normal;text-wrap:balance;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.card.blank .strip{display:none}
+.bind{font-size:min(14cqh,11cqw);font-weight:500;line-height:1.05;color:var(--ink);text-wrap:balance}
+.card.blank .fest{position:static;background:none;color:#9a5a20;padding:2px 2px 0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.strip{font-family:var(--caps);font-weight:700;font-size:calc(clamp(7px,1.05vh,9.5px) * var(--z));letter-spacing:.06em;color:#7a4e36;padding:4px 2px 0;white-space:nowrap;overflow:hidden;text-overflow:clip;text-align:center;min-height:1.6em;line-height:1.2}
+.card.blank .win{background:radial-gradient(circle at 50% 40%,#fbf6ea,#e9dcc0);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:4px;gap:2px;container-type:size}
+.bnum{font-size:min(46cqh,40cqw);font-weight:600;line-height:.9;color:var(--maroon)}
+/* years and places in one bar at the bottom (Darpan, 25 Oct: put them together, easier to understand, select and scroll):
+   a row of years, and under it every stay from 1999 to today, a gold year label where each year starts.
+   Scroll the places freely; tap a year to jump; tap a place to light up its days on the calendar. */
+footer{padding-block:4px 10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.jbar{max-width:1180px;margin:0 auto;border:1px solid rgba(206,152,64,.35);border-radius:18px;background:rgba(22,5,9,.55);padding:6px 6px 4px}
+.years{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;padding:2px 4px 6px;border-bottom:1px solid rgba(206,152,64,.22)}
+.years::-webkit-scrollbar{display:none}
+.yr{flex:1 0 auto;min-width:38px;border:0;background:none;padding:5px 4px;border-radius:12px;font-family:var(--caps);font-weight:700;font-size:11px;letter-spacing:.04em;color:var(--muted);cursor:pointer;transition:background .25s,color .25s}
+.yr:hover{color:var(--gold-hi);background:rgba(206,152,64,.14)}
+.yr.on{background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--maroon-deep)}
+.yr:focus-visible{outline:2px solid var(--gold-hi);outline-offset:1px}
+.jwrap{position:relative;display:flex;align-items:center;gap:4px;margin-top:6px}
+.jarr{flex:none;width:34px;height:34px;border-radius:50%;border:1px solid rgba(206,152,64,.5);background:none;color:var(--gold-hi);font:600 22px/1 var(--serif);cursor:pointer;display:grid;place-items:center;padding:0 0 3px}
+.jarr:hover{background:rgba(206,152,64,.18)}
+.jarr:focus-visible{outline:2px solid var(--gold-hi);outline-offset:2px}
+.jscroll{position:relative;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;scroll-behavior:auto;cursor:grab;-webkit-mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent);mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent)}
+.jscroll::-webkit-scrollbar{display:none}
+.jscroll.drag{cursor:grabbing}
+.jrow{display:flex;align-items:center;white-space:nowrap;padding:8px 40%;width:max-content}
+.place{flex:none;display:inline-flex;align-items:baseline;gap:6px;padding:6px 13px 7px;border-radius:18px;border:1px solid rgba(206,152,64,.55);background:none;color:var(--ivory);font-family:var(--serif);font-size:clamp(14px,1.9vh,17px);line-height:1.1;opacity:.6;cursor:pointer;
+  transition:transform .35s cubic-bezier(.3,.7,.2,1),opacity .35s,background .35s,color .35s,box-shadow .35s}
+.place small{font-family:var(--caps);font-weight:700;font-size:.62em;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.place:hover,.place:focus-visible{opacity:1;outline:none;border-color:var(--gold-hi);box-shadow:0 0 12px rgba(255,214,120,.3)}
+.place.cur{opacity:1}
+.place.on{opacity:1;transform:scale(1.12);border-color:var(--gold-hi);box-shadow:0 0 14px rgba(255,214,120,.4)}
+.place.sel{opacity:1;transform:scale(1.12);background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--maroon-deep);border-color:transparent;box-shadow:0 0 18px rgba(255,214,120,.55)}
+.place.on small,.place.sel small{color:var(--maroon)}
+.place.on small{color:var(--gold-hi)}
+.hop{flex:none;width:18px;height:1px;margin:0 4px;background:rgba(206,152,64,.55);position:relative}
+.hop:after{content:'';position:absolute;right:-1px;top:-3px;border:3.5px solid transparent;border-left-color:rgba(206,152,64,.85);border-right:0}
+.ymark{flex:none;font-family:var(--caps);font-weight:700;font-size:12px;letter-spacing:.14em;color:var(--maroon-deep);background:var(--gold-lo);border-radius:10px;padding:4px 9px;margin:0 10px 0 12px}
+.jnote:empty{display:none}
+.jnote{min-height:22px;display:flex;align-items:center;justify-content:center;gap:10px;font-family:var(--caps);font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:2px 8px 2px;text-align:center}
+.jnote b{font-family:var(--serif);font-weight:600;font-size:15px;letter-spacing:0;text-transform:none;color:var(--gold-hi)}
+.jnote .go-row{margin:0;gap:6px}
+.jnote .go{padding:3px 10px;font-size:10px}
+/* the day a link from another tab asked for (#2014-10-24) */
+.ribbon .card.want,.ribbon.picking .card.lit.want{z-index:2;opacity:1;border-radius:10px;outline:3px solid var(--gold-hi);outline-offset:3px;box-shadow:0 0 22px 6px rgba(255,214,140,.7),0 0 54px 16px rgba(226,170,70,.4)}
+.jnote button{border:1px solid rgba(206,152,64,.5);background:none;color:var(--gold-hi);border-radius:12px;font:inherit;padding:3px 10px;cursor:pointer}
+/* the days of the chosen stay glow in a round gold light; the other days step back */
+.ribbon.picking .card{opacity:.32;transition:opacity .4s,box-shadow .4s}
+.ribbon.picking .card.lit{opacity:1;z-index:1;border-radius:10px;box-shadow:0 0 0 1px rgba(255,214,120,.45),0 0 14px 2px rgba(240,190,90,.42),0 0 36px 8px rgba(226,170,70,.3),0 0 72px 20px rgba(206,152,64,.18)}
+.ribbon.picking .card.lit .win{border-radius:7px}
+@media (prefers-reduced-motion:no-preference){.ribbon.picking .card.lit{animation:glow 3.2s ease-in-out infinite alternate}}
+@keyframes glow{to{box-shadow:0 0 0 1px rgba(255,214,120,.55),0 0 18px 3px rgba(240,190,90,.5),0 0 46px 11px rgba(226,170,70,.36),0 0 90px 26px rgba(206,152,64,.22)}}
+/* the FUTURE CALENDAR (Darpan, 26 Oct: "make it obvious its FUTURE VICHARAN and FUTURE CALENDER"): the days after
+   today are the same cream squares as a day with no photo, in a dashed gold frame, with where Bapa is going;
+   the month title says Future calendar; in the bar, FUTURE VICHARAN before the coming stays, which are dashed too */
+.card.future{background:none;border:1.5px dashed rgba(255,226,150,.6);padding:3px;box-shadow:none;cursor:default}
+.card.future .win{background:radial-gradient(circle at 50% 40%,#fdf9f0,#efe4cc);opacity:.92;border-radius:2px}
+.card.future .bnum{color:#a0702c}
+.card.future .bind{color:#5a3a26}
+.vpl{font-family:var(--caps);font-weight:700;font-size:min(10cqh,9cqw);letter-spacing:.08em;text-transform:uppercase;color:var(--maroon);line-height:1.1}
+.vev{font-family:var(--serif);font-style:italic;font-weight:600;font-size:min(12cqh,10cqw);line-height:1.1;color:var(--maroon);background:rgba(206,152,64,.28);border-radius:.5em;padding:.1em .45em .15em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-wrap:balance}
+.card.future .fest{-webkit-line-clamp:2}
+/* a full day steps its words down until they all fit in the square */
+.card.blank .win>*{flex:none;max-width:100%}
+.card.blank.t1 .bnum{font-size:min(34cqh,32cqw)}
+.card.blank.t2 .bnum{font-size:min(26cqh,26cqw)}
+.card.blank.t2 .bind,.card.blank.t2 .vev{font-size:min(10.5cqh,9cqw)}
+.card.blank.t3 .fest,.card.blank.t3 .vev{-webkit-line-clamp:1}
+.card.today{box-shadow:0 0 0 2px var(--gold-hi),0 6px 16px rgba(0,0,0,.42)}
+.tday{position:absolute;right:3px;top:3px;z-index:1;font-family:var(--caps);font-weight:700;font-size:calc(clamp(7px,1.05vh,9px) * var(--z));letter-spacing:.14em;color:var(--maroon-deep);background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));border-radius:.6em;padding:.3em .55em}
+.ftag{font-style:normal;-webkit-text-fill-color:var(--maroon-deep);color:var(--maroon-deep);background:none;font-family:var(--caps);font-weight:700;font-size:clamp(9px,1.25vh,12px);letter-spacing:.2em;text-transform:uppercase;border:1.5px dashed var(--gold-hi);border-radius:20px;padding:.45em .9em .4em;margin-left:.9em;align-self:center;position:relative}
+.ftag:before{content:'';position:absolute;inset:0;border-radius:20px;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));opacity:.95;z-index:-1}
+.mtitle span{isolation:isolate}
+.fmark{flex:none;font-family:var(--caps);font-weight:700;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--maroon-deep);background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));border-radius:12px;padding:5px 11px;margin:0 10px 0 16px;box-shadow:0 0 14px rgba(255,214,120,.35)}
+.place.future{border-style:dashed;border-color:rgba(255,226,150,.75)}
+.place.future small{color:var(--gold-hi)}
+.place.future.sel small{color:var(--maroon)}
+.yr.fy{font-style:italic}
+.ctrl{display:flex;justify-content:center;align-items:center;gap:14px;margin-top:2px;flex-wrap:wrap}
+.zm{display:inline-flex;align-items:center;border:1px solid rgba(206,152,64,.5);border-radius:18px;overflow:hidden}
+.zm button{border:0;background:none;color:var(--gold-hi);font:600 20px/1 var(--serif);width:34px;height:30px;cursor:pointer}
+.zm button:disabled{opacity:.3;cursor:default}
+.zm button:focus-visible{outline:2px solid var(--gold-hi);outline-offset:-2px}
+.zm span{font-family:var(--caps);font-weight:700;font-size:10px;letter-spacing:.16em;color:var(--ivory-2);min-width:44px;text-align:center;text-transform:uppercase}
+.play{display:inline-flex;align-items:center;gap:9px;border:0;cursor:pointer;padding:7px 16px 7px 8px;border-radius:22px;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--maroon-deep);font-family:var(--caps);font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;box-shadow:0 3px 12px rgba(0,0,0,.4)}
+.play:focus-visible,.spd button:focus-visible{outline:2px solid var(--gold-hi);outline-offset:3px}
+.play i{width:24px;height:24px;border-radius:50%;background:var(--maroon-deep);display:grid;place-items:center}
+.play svg{width:10px;height:10px;fill:var(--gold-hi)}
+.play.on{box-shadow:0 0 0 3px rgba(255,226,150,.25),0 0 18px rgba(255,214,120,.45)}
+.spd{display:inline-flex;border:1px solid rgba(206,152,64,.5);border-radius:18px;overflow:hidden}
+.spd button{border:0;background:none;color:var(--ivory-2);font-family:var(--caps);font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;padding:7px 11px;cursor:pointer}
+.spd button[aria-pressed="true"]{background:rgba(206,152,64,.28);color:var(--gold-hi)}
+.hint{text-align:center;font-family:var(--caps);font-weight:700;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+.loading{align-self:center;font-style:italic;color:var(--muted);font-size:18px}
+@media (max-width:600px){.hint{display:none}}
+@media (prefers-reduced-motion:reduce){.mtitle span,.month{transition:none}}
+</style>
+
+<nav class="site-menu stay" aria-label="Website tabs"><a href="/">Today</a><a href="/calendar/" class="on" aria-current="page">Calendar</a><a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/about/">About</a></nav>
+<div class="app">
+  <header>
+    <div class="mtitle" aria-live="polite"><span id="t0"></span><span id="t1" class="out"></span></div>
+  </header>
+  <div class="track" id="track" tabindex="0" aria-label="Calendar of days, scroll sideways">
+    <div class="ribbon" id="ribbon"><div class="loading">Opening the calendar…</div></div>
+  </div>
+  <footer>
+    <div class="jbar" role="group" aria-label="Where Bapa was, year by year">
+      <div class="years" id="years" role="group" aria-label="Years"></div>
+      <div class="jwrap">
+        <button class="jarr" id="jprev" type="button" aria-label="Earlier places">‹</button>
+        <div class="jscroll" id="jscroll" aria-label="Where Bapa was, scroll sideways"><div class="jrow" id="jrow"></div></div>
+        <button class="jarr" id="jnext" type="button" aria-label="Later places">›</button>
+      </div>
+      <div class="jnote" id="jnote" aria-live="polite"></div>
+    </div>
+    <div class="ctrl"><button class="play" id="play" aria-pressed="false"></button><div class="spd" role="group" aria-label="Speed"><button data-s="22" aria-pressed="false">Slow</button><button data-s="40" aria-pressed="true">Gentle</button><button data-s="85" aria-pressed="false">Faster</button></div><div class="zm" role="group" aria-label="Zoom"><button id="zout" aria-label="Zoom out, see more months">−</button><span id="zl">100%</span><button id="zin" aria-label="Zoom in">+</button></div></div>
+  </footer>
+</div>
+
+<script>
+const DATA_URL='{{DATA}}', PHOTOS='{{PHOTOS}}', SEARCH='{{SEARCH}}';
+const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const WD=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"], WDL=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const track=document.getElementById('track'), ribbon=document.getElementById('ribbon'), yearsEl=document.getElementById('years');
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ord=n=>n+(n%10==1&&n!=11?'ST':n%10==2&&n!=12?'ND':n%10==3&&n!=13?'RD':'TH');
+/* zoom: smaller days so more months fit on the screen (Darpan, 24 Oct) */
+const ZOOMS=[1,.8,.65,.5], ZMIN=.4; let Z=1;
+try{const z=+localStorage.getItem('calendarZoom'); if(z>=ZMIN&&z<=1) Z=z}catch(e){}
+let D, keys=[], monthEls=[], shown=new Set(), MW=0, GAP=0, PAD=0, FUT=null;
+/* today on the calendar: the day before the FUTURE CALENDAR (else the visitor's own date) */
+let TODAY=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
+
+/* sizes: five rows of days fill the height; every month is the same width */
+function sizeCols(){
+  const h=(track.clientHeight-14)*Z, g=Math.max(3,Math.min(10,innerHeight*.009)*Z), bh=0;
+  const rh=(h-26*Z-5*g)/5, cw=Math.max(30,Math.round(rh*1.08));
+  const r=document.documentElement.style; r.setProperty('--cw',cw+'px'); r.setProperty('--g',g+'px'); r.setProperty('--bh',bh+'px');
+  r.setProperty('--z',Z); r.setProperty('--mh',h+'px');
+  MW=7*cw+6*g;
+  /* measured across all the months, so a rounding of a fraction of a pixel doesn't add up over 300 months */
+  const n=monthEls.length; if(n>1){GAP=(monthEls[n-1].offsetLeft-monthEls[0].offsetLeft)/(n-1)-MW;PAD=monthEls[0].offsetLeft}
+}
+
+/* where Bapa was each day: days with no photo take the place of the days around them when both agree */
+function places(k){
+  const days=D.m[k], pl=days.map(d=>d[3]||null);
+  for(let i=0;i<pl.length;i++) if(!pl[i]){let a=i-1,b=i;while(b<pl.length&&!pl[b])b++; if(a>=0&&b<pl.length&&pl[a]===pl[b]) for(let j=i;j<b;j++)pl[j]=pl[a]; i=b}
+  return pl;
+}
+
+function blank(win,d,y,m,day){
+  win.innerHTML='';
+  /* a day with no photo: the date, the Indian date and every festival in the cream square (the weekday is in the header) */
+  win.append(el('div','bnum',day));
+  if(d[0]) win.appendChild(el('div','bind',esc(d[0])));
+  const c=win.parentNode; if(c._all&&c._all.length) win.appendChild(el('div','fest',esc(c._all.join(' · '))));
+  c.classList.add('blank');
+}
+
+/* a FUTURE CALENDAR day: the date, the Indian date, the festivals, and on the day he arrives somewhere, the place;
+   on a day with something planned there (a sabha, Bal Din), what it is */
+function future(win,d,day,date,place,arrive){
+  win.append(el('div','bnum',day));
+  if(d[0]) win.appendChild(el('div','bind',esc(d[0])));
+  const c=win.parentNode; if(c._all&&c._all.length) win.appendChild(el('div','fest',esc(c._all.join(' · '))));
+  if(arrive) win.appendChild(el('div','vpl',esc(arrive)));
+  const v=D.v&&D.v[date]; if(v) win.appendChild(el('div','vev',esc(v)));
+  c.classList.add('blank'); fitLater.push(win);
+}
+function render(mo){
+  if(mo._done)return; mo._done=true; mo.innerHTML='';
+  const k=mo.dataset.k, [y,m]=k.split('-').map(Number), days=D.m[k], pl=places(k), mn=MONTHS[m-1].slice(0,3);
+  const prev=keys[keys.indexOf(k)-1], prevPl=prev?places(prev).slice(-1)[0]:null;
+  mo.appendChild(el('div','mlab',`${MONTHS[m-1]} ${y}`));
+  WD.forEach((w,c)=>{const x=el('div','wkd',w);x.style.gridArea=`1/${c+1}`;mo.appendChild(x)});
+  /* days: a sixth week wraps into the empty boxes of the first */
+  const first=new Date(y,m-1,1).getDay(), grid=Array(35).fill(null);
+  days.forEach((d,i)=>{let p=first+i, wr=false; if(p>=35){p-=35;wr=true} grid[p]={d,day:i+1,wr,pl:pl[i]}});
+  mo._cards=[];
+  for(let r=0;r<5;r++) for(let c=0;c<7;c++){
+    const x=grid[r*7+c]; let b;   // x.pl: where Bapa was (or is going)
+    if(!x) b=el('div','empty');
+    else{
+      const {d,day}=x, date=`${k}-${String(day).padStart(2,'0')}`, fut=FUT&&date>=FUT;
+      if(fut){b=el('div','card future');b.tabIndex=0}
+      else{b=el('a','card'); b.href=`${SEARCH}#date=${date}`; b.draggable=false}
+      b.setAttribute('aria-label',`${WDL[new Date(y,m-1,day).getDay()]} ${day} ${MONTHS[m-1]} ${y}${d[0]?', '+d[0]:''}`+
+        (fut?`. Future calendar${x.pl?'. Future vicharan: '+x.pl:''}${D.v&&D.v[date]?', '+D.v[date]:''}`:`. Open this day's photos`));
+      const win=el('div','win'); b.appendChild(win);
+      /* no Indian date (Darpan, 26 Oct: too much text); a day's festival goes small in the white strip, and when a day
+         has two, the birthday, anniversary or festival goes on the photo and the other in the strip */
+      const f=[...new Set([d[1],d[2]].filter(Boolean).join('; ').split('; ').filter(n=>n&&!/^(Fast|Sud|Vad) ?\w*$/.test(n)))];
+      let rest=f; b._on=null; b._all=f;
+      if(f.length>1){const i=f.reduce((bi,n,j)=>rank(n)<rank(f[bi])?j:bi,0); b._on=f[i]; rest=f.filter((_,j)=>j!==i)}
+      if(fut){future(win,d,day,date,x.pl,(x.pl&&(date===FUT||x.pl!==(day>1?pl[day-2]:prevPl)))?x.pl:'')}
+      else if(d[4]){
+        const im=new Image(); im.alt=d[6]||''; im.loading='lazy'; im.decoding='async'; im.draggable=false;
+        im.onerror=()=>blank(win,d,y,m,day); im.src=`${PHOTOS}s/${d[4]}/${encodeURIComponent(d[5])}`;
+        win.append(im,el('div','num',day));
+        if(b._on) win.appendChild(el('div','fest',esc(b._on)));
+      } else blank(win,d,y,m,day);
+      if(date===TODAY) b.appendChild(el('span','tday','Today'));
+      if(date===TODAY) b.classList.add('today');
+      const st=el('div','strip'+(rest.length&&!fut?' has':''),esc(rest.join(' · '))); b.appendChild(st);
+      if(rest.length&&!fut) fitLater.push(st);
+      b.addEventListener('click',e=>{if(dragMoved)e.preventDefault()});
+      b.addEventListener('mouseenter',()=>light(k,day));
+      b.addEventListener('focus',()=>light(k,day));
+      b._row=r; b._date=date; mo._cards.push(b); if(sel!=null)litCard(b); if(date===wantDate)b.classList.add('want');
+    }
+    b.style.gridArea=`${r+2}/${c+1}`; mo.appendChild(b);
+  }
+  mo.addEventListener('mouseleave',()=>light(null));
+  requestAnimationFrame(fitStrips);
+}
+/* the strip's words shrink a little to fit on one line, else take two lines */
+let fitLater=[];
+function fitStrips(){
+  const l=fitLater; fitLater=[];
+  for(const st of l){ if(!st.isConnected)continue;
+    if(st.classList.contains('win')){const c=st.parentNode; c.classList.remove('t1','t2','t3');
+      for(const t of ['t1','t2','t3']){if(st.scrollHeight<=st.clientHeight+1)break; c.classList.add(t)} continue}
+    st.style.fontSize='';
+    st.classList.remove('two'); let fs=parseFloat(getComputedStyle(st).fontSize), min=fs*.78;
+    while(st.scrollWidth>st.clientWidth+1&&fs>min){fs-=.25;st.style.fontSize=fs+'px'}
+    if(st.scrollWidth>st.clientWidth+1) st.classList.add('two') }   // still too long: two lines at that size
+}
+/* which of a day's two goes on the photo: birthdays and anniversaries, then festivals, then the everyday ones */
+const EVERYDAY=/^(Ekadashi|Punam|Amas|Shraddh|Eclipse|Hindola|Dhanurmas|Holashtak|Republic Day|Independence Day)/;
+const rank=n=>/Jayanti|Smrutiparva|Diksha|Varni Din|Birthday/i.test(n)?0:EVERYDAY.test(n)?2:1;
+/* the squares' words are measured again once the fonts are in and after a zoom */
+function refit(){ribbon.querySelectorAll('.card.blank .win').forEach(w=>fitLater.push(w)); requestAnimationFrame(fitStrips)}
+function unrender(mo){if(!mo._done)return; mo._done=false; mo._cards=[]; mo.innerHTML=''}
+/* where Bapa was: every stay from 1999 to today in one row under the years; dayStay maps "YYYY-MM day" to its stay */
+const jrow=document.getElementById('jrow'), jscroll=document.getElementById('jscroll'), jnote=document.getElementById('jnote');
+let stays=[], dayStay={}, monthStays={}, hoverStay=null, browsed=0, sel=null;
+const pad2=n=>String(n).padStart(2,'0');
+function buildJourney(){
+  const MN=MONTHS.map(x=>x.slice(0,3)); let lastP=null, cur=null, lastY=null, gap=0, futMark=null;   // a stay carries on over up to 3 days with no place
+  const frag=document.createDocumentFragment();
+  keys.forEach(k=>{
+    const y=+k.slice(0,4);
+    places(k).forEach((p,i)=>{
+      const day=i+1;
+      if(!p){if(++gap>3)lastP=null;return}
+      const fut=!!FUT&&`${k}-${pad2(day)}`>=FUT;   // the coming stays start afresh after today, marked FUTURE VICHARAN
+      if(cur&&p===lastP&&cur.fut===fut){cur.k1=k;cur.d1=day;gap=0}
+      else{
+        if(fut&&!futMark){futMark=el('span','fmark','Future vicharan'); frag.appendChild(futMark); lastY=y}
+        else if(y!==lastY){const ym=el('span','ymark',String(y)); ym.dataset.y=y; frag.appendChild(ym); lastY=y}
+        else if(stays.length) frag.appendChild(el('span','hop'));
+        cur={p,k0:k,d0:day,k1:k,d1:day,i:stays.length,fut}; stays.push(cur); gap=0;
+        cur.el=el('button','place'+(fut?' future':'')); cur.el.type='button'; cur.el.dataset.i=cur.i; frag.appendChild(cur.el);
+      }
+      lastP=p; dayStay[k+' '+day]=cur.i; (monthStays[k]=monthStays[k]||new Set()).add(cur.i);
+    });
+  });
+  stays.forEach(s=>{
+    const [y0,m0]=s.k0.split('-').map(Number), [y1,m1]=s.k1.split('-').map(Number), a=`${s.d0} ${MN[m0-1]}`, b=`${s.d1} ${MN[m1-1]}`;
+    s.when=s.k0===s.k1&&s.d0===s.d1?a:s.k0===s.k1?`${s.d0} to ${b}`:`${a} to ${b}${y0!==y1?' '+y1:''}`;
+    s.y=y0; s.from=`${s.k0}-${pad2(s.d0)}`; s.to=`${s.k1}-${pad2(s.d1)}`;
+    s.days=Math.round((new Date(s.to)-new Date(s.from))/864e5)+1;
+    s.el.innerHTML=`${esc(s.p)} <small>${s.when}</small>`;
+    s.el.setAttribute('aria-label',s.fut?`Future vicharan: Bapa is going to ${s.p}, ${s.when} ${y0}. Light up these days`:`Bapa was in ${s.p}, ${s.when} ${y0}. Light up these days`);
+  });
+  jrow.appendChild(frag);
+}
+/* slide the row of places so a stay sits in the middle (not while someone is looking through the row themselves) */
+function centreJourney(i,force){
+  const s=stays[i]; if(!s||(!force&&Date.now()-browsed<6000))return;
+  jscroll.scrollTo({left:s.el.offsetLeft+s.el.offsetWidth/2-jscroll.clientWidth/2,behavior:reduce?'auto':'smooth'});
+}
+let curStays=new Set();
+function journeyMonth(k){
+  curStays.forEach(i=>stays[i].el.classList.remove('cur')); curStays=monthStays[k]||new Set();
+  curStays.forEach(i=>stays[i].el.classList.add('cur'));
+  if(hoverStay==null&&sel==null&&curStays.size){const a=[...curStays]; centreJourney(a[Math.floor(a.length/2)])}
+  /* a month with no place (after the last planned stay): the row shows the last stay before it */
+  else if(hoverStay==null&&sel==null){let j=-1; stays.forEach((x,i)=>{if(x.k0<=k)j=i}); if(j>=0)centreJourney(j)}
+}
+function light(k,day){
+  if(hoverStay!=null&&stays[hoverStay]) stays[hoverStay].el.classList.remove('on');
+  hoverStay=k==null?null:dayStay[k+' '+day]??null;
+  if(hoverStay!=null){stays[hoverStay].el.classList.add('on');if(sel==null)centreJourney(hoverStay)}
+  else if(cur) journeyMonth(cur);
+}
+/* the years row shows the year of the places in the middle of the row */
+function markYear(y){yearsEl.querySelectorAll('.yr').forEach(b=>{const on=+b.dataset.y===y;if(on!==b.classList.contains('on')){b.classList.toggle('on',on);if(on)b.scrollIntoView({block:'nearest',inline:'nearest'})}})}
+function rowYear(){
+  const mid=jscroll.scrollLeft+jscroll.clientWidth/2; let y=null;
+  for(const m of jrow.querySelectorAll('.ymark')){if(m.offsetLeft<=mid)y=+m.dataset.y;else break}
+  if(cur&&!(monthStays[cur]&&monthStays[cur].size)&&Date.now()-browsed>6000) y=+cur.slice(0,4);   // a month with no place keeps its own year
+  if(y!=null)markYear(y);
+}
+let rowTick=false;
+jscroll.addEventListener('scroll',()=>{if(!rowTick){rowTick=true;requestAnimationFrame(()=>{rowTick=false;rowYear()})}},{passive:true});
+/* the row of places scrolls by itself: mouse wheel, trackpad, swipe, drag, or the arrows */
+jscroll.addEventListener('wheel',e=>{browsed=Date.now();if(e.ctrlKey)return;if(Math.abs(e.deltaY)>Math.abs(e.deltaX)){jscroll.scrollLeft+=e.deltaY;e.preventDefault()}},{passive:false});
+['touchstart','pointerdown'].forEach(ev=>jscroll.addEventListener(ev,()=>browsed=Date.now(),{passive:true}));
+let jdown=null, jmoved=false;
+jscroll.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse')return;jdown={x:e.clientX,s:jscroll.scrollLeft};jmoved=false});
+addEventListener('pointermove',e=>{if(!jdown)return;const dx=e.clientX-jdown.x;if(Math.abs(dx)>4){jmoved=true;jscroll.classList.add('drag')}jscroll.scrollLeft=jdown.s-dx;browsed=Date.now()});
+addEventListener('pointerup',()=>{jdown=null;jscroll.classList.remove('drag');setTimeout(()=>jmoved=false,0)});
+document.getElementById('jprev').onclick=()=>{browsed=Date.now();jscroll.scrollBy({left:-jscroll.clientWidth*.7,behavior:reduce?'auto':'smooth'})};
+document.getElementById('jnext').onclick=()=>{browsed=Date.now();jscroll.scrollBy({left:jscroll.clientWidth*.7,behavior:reduce?'auto':'smooth'})};
+jrow.addEventListener('click',e=>{const b=e.target.closest('.place');if(!b||jmoved)return;const i=+b.dataset.i;sel===i?unpick():pick(i)});
+
+/* tap a place: the calendar glides to that stay, its days glow, and if the stay is longer than fits on the screen
+   the calendar zooms out until it all fits (Darpan, 25 Oct); Clear (or Esc) puts the zoom back */
+const ZSEL=.15; let zBefore=null;
+function pick(i){
+  const s=stays[i]; if(!s)return;
+  setPlay(false);
+  if(sel!=null&&stays[sel]) stays[sel].el.classList.remove('sel');
+  sel=i; s.el.classList.add('sel'); s.el.setAttribute('aria-pressed','true');
+  ribbon.classList.add('picking');
+  monthEls.forEach(mo=>(mo._cards||[]).forEach(litCard));
+  const i0=keys.indexOf(s.k0), i1=keys.indexOf(s.k1), n=i1-i0+1, W=track.clientWidth;
+  if(zBefore==null) zBefore=Z;
+  let z=Z;
+  const fits=()=>n*MW+(n-1)*GAP<=W*.94;
+  if(!fits()){ const z0=Z; for(z=Z;z>ZSEL;z=Math.round((z-.01)*100)/100){Z=z;sizeCols();if(fits())break}
+    z=Math.min(z0,z*1.25);   // 25% less zoomed out than a full fit, so the pictures stay bigger (Darpan, 25 Oct)
+    setZoom(z,null,true) }
+  const left=PAD+(i0*(MW+GAP)+i1*(MW+GAP)+MW)/2-W/2;
+  track.scrollTo({left,behavior:reduce||Math.abs(left-track.scrollLeft)>W*3?'auto':'smooth'});
+  centreJourney(i,true);
+  jnote.innerHTML=(s.fut?'<span>Future vicharan</span>':'')+`<b>${esc(s.p)}</b><span>${s.when} ${+s.k1.slice(0,4)} · ${s.days} ${s.days===1?'day':'days'}</span>`+
+    (s.fut?'':window.BDLinks?BDLinks({from:s.from,to:s.to,place:s.p,skip:['calendar','today']}):`<a href="${SEARCH}#place=${encodeURIComponent(s.p)}&from=${s.from}&to=${s.to}" style="color:var(--gold-hi)">See these photos</a>`)+`<button type="button" id="jclear">Clear</button>`;
+  document.getElementById('jclear').onclick=unpick;
+}
+function unpick(){
+  if(sel==null)return;
+  stays[sel].el.classList.remove('sel'); stays[sel].el.removeAttribute('aria-pressed'); sel=null;
+  ribbon.classList.remove('picking'); ribbon.querySelectorAll('.card.lit').forEach(c=>c.classList.remove('lit'));
+  jnote.textContent='';
+  if(zBefore!=null){const z=zBefore;zBefore=null;setZoom(z)}
+}
+/* links from the other tabs (Darpan, 28 Oct 2026: "all the tabs linked together"): #2014-10-24 glows the stay that day
+   was part of, with a gold ring on the day itself (or only the ring when Bapa was not on a stay);
+   #place=London&from=2014-10-20&to=2014-10-27 glows that stay (the same place at those dates), else rings the first day */
+let wantDate='';
+function fromLink(){
+  const h=location.hash.slice(1), q=new URLSearchParams(h), iso=/^\d{4}-\d{2}-\d{2}$/;
+  let date=iso.test(h)?h:'', i=-1;
+  const a=q.get('from')||'', b=q.get('to')||a;
+  if(iso.test(a)&&iso.test(b)){
+    const P=x=>(window.BDLinks&&BDLinks.place(x)||x).toLowerCase(), p=q.get('place')?P(q.get('place')):'';
+    let best=-1;
+    stays.forEach((s,j)=>{if(s.fut||s.from>b||s.to<a||(p&&P(s.p)!==p))return;
+      const v=Math.min(+new Date(s.to),+new Date(b))-Math.max(+new Date(s.from),+new Date(a)); if(v>best){best=v;i=j}});
+    if(i<0)date=a;
+  }
+  if(!date&&i<0)return false;
+  if(date){if(!D.m[date.slice(0,7)])return false; i=dayStay[date.slice(0,7)+' '+(+date.slice(8))]??-1}
+  ribbon.querySelectorAll('.card.want').forEach(c=>c.classList.remove('want')); wantDate=date;
+  monthEls.forEach(mo=>(mo._cards||[]).forEach(c=>{if(c._date===date)c.classList.add('want')}));
+  if(i>=0&&!stays[i].fut){unpick();pick(i)}
+  else{goTo(date.slice(0,7),false)}
+  try{history.replaceState(null,'','#'+(date||q.toString()))}catch(e){}
+  return true;
+}
+function litCard(c){const s=stays[sel];c.classList.toggle('lit',!!s&&c._date>=s.from&&c._date<=s.to)}
+addEventListener('keydown',e=>{if(e.key==='Escape')unpick()});
+/* a click anywhere else puts everything back to normal (Darpan, 25 Oct); a glowing day still opens its photos,
+   any other day only clears the glow; dragging the calendar sideways keeps it */
+document.addEventListener('click',e=>{
+  if(sel==null||dragMoved||jmoved||e.target.closest('.jbar,.ctrl'))return;
+  const c=e.target.closest('.card'); if(c&&c.classList.contains('lit'))return;
+  if(c)e.preventDefault(); unpick();
+},true);
+
+/* month title cross fade and the year rail */
+let cur=null, flip=0;
+const t=[document.getElementById('t0'),document.getElementById('t1')];
+function setMonth(k){
+  if(k===cur)return; cur=k; const [y,m]=k.split('-').map(Number);
+  const nxt=t[1-flip], old=t[flip]; nxt.textContent=`${MONTHS[m-1]} ${y}`;
+  if(FUT&&`${k}-01`>=FUT) nxt.appendChild(el('em','ftag','Future calendar')); nxt.classList.remove('out'); old.classList.add('out'); flip=1-flip;
+  if(sel==null&&Date.now()-browsed>6000) markYear(y);
+  journeyMonth(k);
+  try{history.replaceState(null,'','#'+k)}catch(e){}
+}
+function goTo(k,smooth){
+  const i=Math.max(0,keys.indexOf(k)); const left=PAD+i*(MW+GAP)-(track.clientWidth-MW)/2;
+  const far=Math.abs(left-track.scrollLeft)>track.clientWidth*3;
+  track.scrollTo({left,behavior:smooth&&!far&&!reduce?'smooth':'auto'});
+}
+
+/* scroll motion: months fade by distance, frames lag behind the scroll, photos drift inside frames */
+let last=0, vel=0, ticking=false;
+function frame(){
+  const W=track.clientWidth, sl=track.scrollLeft, mid=sl+W/2;
+  vel+=(sl-last-vel)*.25; last=sl;
+  const ci=Math.max(0,Math.min(keys.length-1,Math.round((mid-PAD-MW/2)/(MW+GAP))));
+  setMonth(keys[ci]);
+  /* only the months near the screen are drawn */
+  const lo=Math.floor((sl-PAD-W)/(MW+GAP)), hi=Math.ceil((sl+2*W-PAD)/(MW+GAP));
+  for(const i of [...shown]) if(i<lo-1||i>hi+1){unrender(monthEls[i]);shown.delete(i)}
+  for(let i=Math.max(0,lo);i<=Math.min(keys.length-1,hi);i++) if(!shown.has(i)){render(monthEls[i]);shown.add(i)}
+  const lag=reduce?0:Math.max(-22,Math.min(22,-vel*.9));
+  for(const i of shown){
+    const mo=monthEls[i], c=PAD+i*(MW+GAP)+MW/2, edge=Math.max(0,Math.abs(c-mid)-MW/2);
+    const inSel=sel!=null&&mo.dataset.k>=stays[sel].k0&&mo.dataset.k<=stays[sel].k1;
+    mo.style.opacity=inSel?'1':Math.max(Z<1?.55:.28,1-edge/(W*.55/Z)).toFixed(3);
+    if(reduce)continue;
+    for(const cd of mo._cards){
+      const r=cd.getBoundingClientRect(); if(r.right<-50||r.left>W+50)continue;
+      const off=(r.left+r.width/2-W/2)/W;
+      cd.style.transform=`translateX(${(lag*(1+cd._row*.18)).toFixed(1)}px) rotate(${(lag*.04).toFixed(2)}deg)`;
+      const im=cd.querySelector('img'); if(im) im.style.transform=`translateX(${(-off*4).toFixed(2)}%)`;
+    }
+  }
+  if(Math.abs(vel)>.05||ticking){ticking=false;requestAnimationFrame(frame)} else vel=0;
+}
+const kick=()=>{if(!ticking){ticking=true;requestAnimationFrame(frame)}};
+
+/* wheel, keys and mouse drag move sideways */
+track.addEventListener('scroll',kick,{passive:true});
+track.addEventListener('wheel',e=>{if(e.ctrlKey||e.metaKey)return;if(Math.abs(e.deltaY)>Math.abs(e.deltaX)){track.scrollLeft+=e.deltaY;e.preventDefault()}},{passive:false});
+track.addEventListener('keydown',e=>{if(e.key==='ArrowRight')track.scrollBy({left:200,behavior:'smooth'});if(e.key==='ArrowLeft')track.scrollBy({left:-200,behavior:'smooth'})});
+let down=null, dragMoved=false;
+track.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse')return;down={x:e.clientX,s:track.scrollLeft};dragMoved=false});
+addEventListener('pointermove',e=>{if(!down)return;const dx=e.clientX-down.x;if(Math.abs(dx)>4){dragMoved=true;track.classList.add('drag')}track.scrollLeft=down.s-dx});
+addEventListener('pointerup',()=>{down=null;track.classList.remove('drag');setTimeout(()=>dragMoved=false,0)});
+
+/* play: glide slowly through the days; any touch, wheel or drag pauses it */
+const playBtn=document.getElementById('play'), PLAY_ICON='<svg viewBox="0 0 10 10"><path d="M2 1l7 4-7 4z"/></svg>', PAUSE_ICON='<svg viewBox="0 0 10 10"><path d="M1.5 1h2.5v8H1.5zM6 1h2.5v8H6z"/></svg>';
+let playing=false, speed=40, pos=0, lastT=0;
+function setPlay(on){
+  playing=on; playBtn.classList.toggle('on',on);
+  playBtn.innerHTML=`<i>${on?PAUSE_ICON:PLAY_ICON}</i>${on?'Pause':'Play'}`;
+  playBtn.setAttribute('aria-pressed',on);
+  if(on){ if(track.scrollLeft>=track.scrollWidth-track.clientWidth-2) track.scrollLeft=0; pos=track.scrollLeft; lastT=0; requestAnimationFrame(step)}
+}
+function step(t){
+  if(!playing)return;
+  if(lastT){pos+=speed*Math.min(.1,(t-lastT)/1000); track.scrollLeft=pos;
+    if(pos>=track.scrollWidth-track.clientWidth-1){setPlay(false);return}}
+  lastT=t; requestAnimationFrame(step);
+}
+playBtn.onclick=()=>setPlay(!playing);
+document.querySelectorAll('.spd button').forEach(b=>b.onclick=()=>{
+  speed=+b.dataset.s; document.querySelectorAll('.spd button').forEach(x=>x.setAttribute('aria-pressed',x===b)); if(!playing)setPlay(true)});
+['wheel','pointerdown','touchstart'].forEach(ev=>track.addEventListener(ev,()=>{if(playing)setPlay(false)},{passive:true}));
+addEventListener('keydown',e=>{if(e.code==='Space'&&!e.target.closest('button,a')){e.preventDefault();setPlay(!playing)}});
+setPlay(false);
+const zin=document.getElementById('zin'), zout=document.getElementById('zout'), zl=document.getElementById('zl');
+/* at = the screen x that stays put while zooming (the mouse or the pinch), else the middle */
+function setZoom(z,at,forPlace){
+  z=Math.max(forPlace?ZSEL:ZMIN,Math.min(1,Math.round(z*100)/100));
+  const W=track.clientWidth, x=at==null?W/2:at, u=MW?(track.scrollLeft+x-PAD)/(MW+GAP):null;
+  Z=z; document.body.classList.toggle('zoomed',z<.86); zl.textContent=Math.round(z*100)+'%'; zin.disabled=z>=1; zout.disabled=z<=ZMIN;
+  if(!forPlace) try{localStorage.setItem('calendarZoom',z)}catch(e){}
+  if(!D)return; sizeCols();
+  if(u!=null) track.scrollLeft=PAD+u*(MW+GAP)-x;
+  kick(); refit();
+}
+zout.onclick=()=>setZoom(ZOOMS.find(s=>s<Z-.01)??ZMIN);
+zin.onclick=()=>setZoom([...ZOOMS].reverse().find(s=>s>Z+.01)??1);
+addEventListener('keydown',e=>{if(e.target.closest('input'))return;if(e.key==='-')zout.click();if(e.key==='='||e.key==='+')zin.click()});
+/* Ctrl + mouse wheel (Windows) and trackpad pinch zoom the calendar instead of the page */
+let zt=null;
+const zoomBy=(f,x)=>{zt=zt??Z; zt=Math.max(ZMIN,Math.min(1,zt*f)); requestAnimationFrame(()=>{if(zt!=null){setZoom(zt,x);zt=null}})};
+track.addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey))return; e.preventDefault();
+  const r=track.getBoundingClientRect(), dy=e.deltaY*(e.deltaMode?33:1);
+  /* a mouse wheel click is one gentle step; a trackpad pinch follows the fingers */
+  zoomBy(Math.abs(dy)>=50?(dy>0?.88:1/.88):Math.exp(-dy*.01),e.clientX-r.left)},{passive:false});
+/* Safari trackpad pinch */
+let gz=null;
+track.addEventListener('gesturestart',e=>{e.preventDefault();gz=Z});
+track.addEventListener('gesturechange',e=>{e.preventDefault();if(gz!=null){const r=track.getBoundingClientRect();setZoom(gz*e.scale,e.clientX-r.left)}});
+track.addEventListener('gestureend',e=>{e.preventDefault();gz=null});
+/* two finger pinch on phones and tablets */
+let pz=null;
+const tdist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+track.addEventListener('touchstart',e=>{if(e.touches.length===2){const r=track.getBoundingClientRect();pz={d:tdist(e.touches),z:Z,x:(e.touches[0].clientX+e.touches[1].clientX)/2-r.left}}},{passive:true});
+track.addEventListener('touchmove',e=>{if(pz&&e.touches.length===2){e.preventDefault();setZoom(pz.z*tdist(e.touches)/pz.d,pz.x)}},{passive:false});
+track.addEventListener('touchend',e=>{if(e.touches.length<2)pz=null});
+setZoom(Z);
+
+fetch(DATA_URL).then(r=>r.json()).then(data=>{
+  D=data; keys=Object.keys(D.m).sort(); FUT=D.fut||null;
+  if(FUT){const t=new Date(FUT+'T12:00:00Z');t.setUTCDate(t.getUTCDate()-1);TODAY=t.toISOString().slice(0,10)}
+  ribbon.innerHTML='';
+  keys.forEach(k=>{const mo=el('div','month');mo.dataset.k=k;ribbon.appendChild(mo);monthEls.push(mo)});
+  const y0=+keys[0].slice(0,4), y1=+keys[keys.length-1].slice(0,4);
+  for(let y=y0;y<=y1;y++){
+    const b=el('button','yr'+(FUT&&y>+FUT.slice(0,4)?' fy':''),String(y)); b.type='button'; b.dataset.y=y; b.title=`Go to ${y}`;
+    b.onclick=()=>{setPlay(false);unpick();browsed=0;const k=`${y}-${(cur||'-01').slice(5)}`;goTo(D.m[k]?k:keys.find(x=>x.startsWith(y))||keys[0],true);
+      const m=jrow.querySelector(`.ymark[data-y="${y}"]`); markYear(y); if(m) jscroll.scrollTo({left:m.offsetLeft-12,behavior:reduce?'auto':'smooth'}); browsed=Date.now()};
+    yearsEl.appendChild(b);
+  }
+  buildJourney();
+  sizeCols();
+  const h=location.hash.slice(1);
+  requestAnimationFrame(()=>{if(!fromLink())goTo(D.m[h]?h:D.start,false);kick()});
+  addEventListener('hashchange',()=>{if(location.hash.slice(1)!==cur)fromLink()});
+  addEventListener('resize',()=>{const k=cur;sizeCols();if(k)goTo(k,false);kick()});
+  document.fonts&&document.fonts.ready.then(()=>{if(cur)journeyMonth(cur);refit()});
+}).catch(()=>{ribbon.innerHTML='<div class="loading">The calendar could not load. Please refresh the page.</div>'});
+</script>
