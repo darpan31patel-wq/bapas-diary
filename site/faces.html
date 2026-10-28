@@ -8,7 +8,7 @@
 <style>
 /* Layout: the whole photo lit in the middle like a darshan in a dim mandir, the day's facts either side, the years running underneath */
 :root {
-  --bg: #15100d; --panel: #201814; --line: #3b2d25; --ink: #f4e9dc; --muted: #b8a28c; --saffron: #ec8a2d; --gold: #f2b544; --glow: rgba(236,138,45,.18);
+  --bg: #15100d; --panel: #201814; --line: #3b2d25; --ink: #f4e9dc; --muted: #b8a28c; --saffron: #ec8a2d; --glow: rgba(236,138,45,.18);
   --display: 'Marcellus', 'Iowan Old Style', Georgia, serif;
   --body: 'Mukta', 'Segoe UI', system-ui, sans-serif;
   --fade: 160ms;
@@ -61,11 +61,6 @@ h1 { font-family: var(--display); font-weight: 400; font-size: clamp(24px, 3.6vw
 .cal b { color: var(--ink); font-weight: 600; }
 .more { align-self: start; text-decoration: none; font: inherit; font-weight: 600; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 16px; cursor: pointer; }
 .more:hover { border-color: var(--saffron); }
-/* the same day on the other tabs, in the pill look Travels uses for "Then and now" */
-.links { display: flex; flex-wrap: wrap; gap: 8px; }
-.tn { display: inline-block; padding: 7px 14px; border: 1px solid var(--gold); border-radius: 999px; color: var(--gold); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; -webkit-user-select: none; user-select: none; }
-.tn:hover, .tn:focus-visible { background: var(--gold); color: var(--bg); outline: none; }
-@media (max-width: 760px) { .tn { padding: 5px 12px; font-size: 12px; } }
 .count { font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .scrub { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 /* every year as a button in one row; the years gone by and the part of this year passed fill with saffron, like a progress bar (Darpan, 28 Oct 2026) */
@@ -160,7 +155,6 @@ select.btn { padding-right: 8px; }
       <p class="cap" id="cap"></p>
       <p class="cal" id="cal"></p>
       <a class="more" id="more" href="/search/"></a>
-      <div class="links"><a class="tn" id="toCal" href="/calendar/">Calendar &rsaquo;</a><a class="tn" id="toDay" href="/">On this day &rsaquo;</a></div>
       <span class="count" id="count"></span>
     </div>
   </section>
@@ -319,9 +313,8 @@ function facts(x) {
   $('place').textContent = x.place;
   $('cap').textContent = x.cap;
   $('cal').innerHTML = x.tithi ? `<b>${esc(x.tithi)}</b>${x.fest ? ' · ' + esc(x.fest) : ''}` : '';
-  $('more').textContent = x.photos > 1 ? `See all ${x.photos} photos from this day` : 'See this day in Search';
+  $('more').textContent = 'See more';   // opens Search on this day (Darpan, 28 Oct 2026: 'I wanted a See More button')
   $('more').href = `/search/#date=${x.day}`;
-  $('toCal').href = `/calendar/#${x.day}`; $('toDay').href = `/#${x.day}`;   // the same day on the other tabs
   $('count').textContent = `Day ${list.indexOf(x) + 1} of ${list.length} with a close darshan`;
 }
 
