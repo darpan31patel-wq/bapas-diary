@@ -19,15 +19,17 @@ jobs:
           cat > shots.js <<'JS'
           const { chromium } = require('playwright'); const fs = require('fs');
           const CSS = fs.readFileSync('site/review/bigger-text.css', 'utf8');
-          const pages = [['today', '/'], ['calendar', '/calendar/'], ['search', '/search/#q=annakut'], ['then-and-now', '/then-and-now/'], ['travels', '/travels/'], ['years', '/through-the-years/']];
+          const pages = [['today', '/', '.yhead'], ['calendar', '/calendar/', '.ph-stay'], ['search', '/search/#q=annakut', '#years'], ['then-and-now', '/then-and-now/', '.soft small']];
           (async () => {
             const b = await chromium.launch();
-            for (const [name, path] of pages) for (const after of [false, true]) {
+            for (const [name, path, spot] of pages) for (const after of [false, true]) {
               const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, serviceWorkers: 'block' });
               const p = await ctx.newPage();
               await p.goto('https://bapas-diary.com' + path, { waitUntil: 'networkidle', timeout: 90000 }).catch(() => {});
               if (after) await p.addStyleTag({ content: CSS });
               await p.waitForTimeout(5000);
+              await p.evaluate(sel => { const e = document.querySelector(sel); if (e) { e.scrollIntoView({ block: 'center' }); } }, spot).catch(() => {});
+              await p.waitForTimeout(1500);
               const small = await p.evaluate(() => {
                 const out = {};
                 for (const e of document.querySelectorAll('body *')) {
