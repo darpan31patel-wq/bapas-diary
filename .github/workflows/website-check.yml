@@ -29,6 +29,9 @@ jobs:
             echo "== $u"
             curl -s -o /dev/null -D - -H 'Accept-Encoding: br, gzip' -H 'Origin: https://bapas-diary.com' "$u" | grep -iE '^(HTTP|cache-control|cf-cache-status|age|content-encoding|content-length|content-type|etag|last-modified|location|strict-transport|content-security|x-frame|x-content-type|referrer-policy|permissions-policy|access-control-allow-origin|server)' 
           done
+          echo "== the globe's own helper files (28 Oct safety fixes)"
+          for u in https://bapas-diary.com/travels/lib/d3-7.8.5.min.js https://bapas-diary.com/travels/lib/topojson-3.0.2.min.js; do echo "$u -> $(curl -s -o /dev/null -w '%{http_code} %{size_download}B' "$u")"; done
+          curl -s https://bapas-diary.com/travels/ | grep -o '<script src="[^"]*"' | head -3
           echo "== sizes as a phone downloads them (compressed)"
           for u in https://bapas-diary.com/ https://bapas-diary.com/search/ https://bapas-diary.com/through-the-years/ https://bapas-diary.com/calendar/ https://bapas-diary.com/travels/; do
             echo "$u $(curl -s -o /dev/null --compressed -w '%{size_download}B in %{time_total}s' "$u")"
@@ -40,5 +43,6 @@ jobs:
             npx --yes lighthouse@12.2.1 "https://bapas-diary.com$p" --quiet --chrome-flags='--headless=new --no-sandbox' \
               --only-categories=performance,accessibility,best-practices,seo --output=json --output-path="lh-$n.json" > /dev/null 2>&1 || { echo "$p: lighthouse failed"; continue; }
             jq -r --arg p "$p" '"\($p): perf \(.categories.performance.score*100|round) a11y \(.categories.accessibility.score*100|round) best \(.categories["best-practices"].score*100|round) seo \(.categories.seo.score*100|round) | first paint \(.audits["first-contentful-paint"].displayValue) | biggest paint \(.audits["largest-contentful-paint"].displayValue) | blocking \(.audits["total-blocking-time"].displayValue) | shift \(.audits["cumulative-layout-shift"].displayValue) | bytes \(.audits["total-byte-weight"].displayValue)"' "lh-$n.json"
+            jq -r '.audits["errors-in-console"].details.items[]? | "   ! console error: \(.description // .source)"' "lh-$n.json" | cut -c1-200
             jq -r '[.audits | to_entries[] | select(.value.score != null and .value.score < 0.9 and (.value.details.type == "opportunity" or .value.details.type == "table")) | "   - \(.value.title) \(.value.displayValue // "")"] | .[:12][]' "lh-$n.json"
           done
