@@ -18,7 +18,7 @@ from make import Image
 from PIL import ImageOps
 
 LONG = 1000   # the long side of each of the best six photos
-MORE = 800    # the long side of every other photo of Bapa
+MORE = 720    # the long side of every other photo of the year
 CELL = 160    # thumbnail sheet: square cells, COLS a row
 COLS = 10
 FACES = {}    # path -> Bapa's face box, as the daily pick found it
@@ -96,21 +96,24 @@ def main():
             continue
         rows = [w['pick']] + [x for _, x, _ in w['rows'] if x is not w['pick']]
         have = {x['i'] for x in rows}
-        more = []   # every other photo of the year where Bapa is recognised, biggest face first
+        # every other photo of the year: first those where Bapa is recognised (biggest face first), then the rest, so
+        # any photo of the day can be chosen (Darpan, 28 Oct 2026: 'all the pictures available for that year')
+        more, rest = [], []
         for x in items:
-            if x['y'] != w['year'] or x['i'] in have or 'path' not in x or not FACES.get(x['path']) or make.JUNK.search(x.get('c') or ''):
-                continue
-            try:
-                im = Image.open(x['path']).convert('RGB')
-            except Exception:
+            if x['y'] != w['year'] or x['i'] in have or 'path' not in x or make.JUNK.search(x.get('c') or ''):
                 continue
             have.add(x['i'])
-            more.append(dict(x, im=im, face=FACES[x['path']], crop='frame', special=make.is_special(x.get('c') or '')))
-        more.sort(key=lambda x: -x['face'][3] / x['im'].height)
+            face = FACES.get(x['path'])
+            (more if face else rest).append(dict(x, face=face, crop='frame' if face else 'whole', special=make.is_special(x.get('c') or ''), nobapa=not face))
+        more.sort(key=lambda x: -x['face'][3])
         cands, ims = [], []
         blobs = {f: open(os.path.join(out, f'{w["year"]}-{f}.jpg'), 'wb') for f in ('best', 'more')}
-        for k, x in enumerate(rows[:6] + more):
-            im = x['im'].copy(); s = min(1, (LONG if k < 6 else MORE) / max(im.size)); im = im.resize((round(im.width * s), round(im.height * s)), Image.LANCZOS)
+        for k, x in enumerate(rows[:6] + more + rest):
+            try:
+                im = x['im'].copy() if 'im' in x else Image.open(x['path']).convert('RGB')
+            except Exception:
+                continue
+            s = min(1, (LONG if k < 6 else MORE) / max(im.size)); im = im.resize((round(im.width * s), round(im.height * s)), Image.LANCZOS)
             f = 'best' if k < 6 else 'more'
             at = blobs[f].tell(); im.save(blobs[f], 'JPEG', quality=82 if k < 6 else 76)
             ims.append(im)
@@ -120,7 +123,7 @@ def main():
                               face=[round(v * s, 1) for v in x['face']] if x['face'] else None,
                               crop=x.get('crop', 'frame'), caption=make.caption(x), original=x.get('c') or '',
                               place=make.place(x), date=d, special=bool(x.get('special')), nice=bool(x.get('nice')),
-                              festival=fs[0] if fs else ''))
+                              festival=fs[0] if fs else '', **({'nobapa': True} if x.get('nobapa') else {})))
         for f, b in blobs.items():
             b.close()
             if os.path.getsize(b.name) == 0:
