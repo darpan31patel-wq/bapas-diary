@@ -15,9 +15,6 @@
 .tn:hover, .tn:focus-visible { background: var(--gold); color: var(--night); outline: none; }
 @media (max-width: 760px) { .tn { margin-top: 6px; padding: 5px 12px; font-size: 12px; } }
 /* end then and now */
-/* every stop links to its photos in Search and its month on the Calendar (Darpan, 28 Oct 2026: link all the tabs together) */
-.go { display: inline-flex; flex-wrap: wrap; gap: 0 8px; }
-.pic a { display: block; width: 100%; height: 100%; }
 </style>
 <title>Bapa's Travels</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -235,13 +232,12 @@ body.dragging { -webkit-user-select: none; user-select: none; }
 
 
 <section class="story" aria-live="polite">
-  <div class="head"><div class="year" id="year">2017</div><div class="pic" id="pic" hidden><a id="picLink" href="/search/" tabindex="-1"><div id="picImg" role="img" aria-label=""></div></a></div></div>
+  <div class="head"><div class="year" id="year">2017</div><div class="pic" id="pic" hidden><div id="picImg" role="img" aria-label=""></div></div></div>
   <div class="status" id="status">In</div>
   <div class="place" id="place">Ahmedabad</div>
   <div><span class="country" id="country">India</span> <span class="dates" id="dates"></span></div>
   <div class="cap" id="cap"></div>
   <a class="tn" id="tn" href="/then-and-now/" hidden>Then and now &rsaquo;</a>
-  <span class="go" id="go" hidden><a class="tn" id="goPhotos" href="/search/">Photos &rsaquo;</a><a class="tn" id="goCal" href="/calendar/">Calendar &rsaquo;</a></span>
   <div class="stats">
     <div><b id="sStops">1</b><small>places this year</small></div>
     <div><b id="sCountries">1</b><small>countries</small></div>
@@ -514,15 +510,6 @@ body.dragging { -webkit-user-select: none; user-select: none; }
     const TN = {"Ahmedabad": "ahmedabad", "Atladara (Vadodara)": "atladara-vadodara", "Bhadra": "bhadra", "Bharuch": "bharuch", "Bhavnagar": "bhavnagar", "Bhuj": "bhuj", "Bochasan": "bochasan", "Chicago": "chicago", "Edison": "edison", "Gandhinagar": "gandhinagar", "Godhra": "godhra", "Gondal": "gondal", "Junagadh": "junagadh", "Lenasia": "lenasia", "Limbdi": "limbdi", "London": "london", "Mahelav": "mahelav", "Mumbai": "mumbai", "Nadiad": "nadiad", "Nairobi": "nairobi", "Navsari": "navsari", "New Delhi": "new-delhi", "Rajkot": "rajkot", "Robbinsville": "robbinsville", "Sankari": "sankari", "Sarangpur": "sarangpur", "Surat": "surat", "Tithal": "tithal", "Vallabh Vidyanagar": "vallabh-vidyanagar"}, tn = TN[tgt.name];
     $('tn').hidden = st.flying || !tn; if (tn) $('tn').href = '/then-and-now/#' + tn;
     // end then and now
-    // links: this stay's photos in Search, its month on the Calendar; the close up opens the photos too
-    $('go').hidden = st.flying;
-    if (!st.flying) {
-      $('goPhotos').href = `/search/#place=${encodeURIComponent(s.p)}&from=${s.a}&to=${s.b}`;
-      $('goPhotos').setAttribute('aria-label', `Photos from ${s.name}, ${fmtRange(s.a, s.b)} ${s.year}`);
-      $('goCal').href = `/calendar/#place=${encodeURIComponent(s.p)}&from=${s.a}&to=${s.b}`;   // the Calendar glows the whole stay
-      $('goCal').setAttribute('aria-label', `${s.name} on the Calendar, ${MONTHS[+s.a.slice(5, 7) - 1]} ${s.year}`);
-      $('picLink').href = $('goPhotos').href;
-    }
     $('cap').textContent = st.flying ? 'From ' + s.name + ', ' + Math.round(d3.geoDistance(s.ll, n.ll) * 6371).toLocaleString('en-GB') + ' km' : (s.cap || '');
     const t2 = st.flying ? totals[st.i + 1] : tot;
     $('sStops').textContent = t2.places; $('sCountries').textContent = t2.countries;
