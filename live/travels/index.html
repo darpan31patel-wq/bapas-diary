@@ -9,6 +9,7 @@
 
 
 
+
 /* then and now */
 .tn { display: inline-block; margin-top: 10px; padding: 7px 14px; border: 1px solid var(--gold); border-radius: 999px; color: var(--gold); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; -webkit-user-select: none; user-select: none; }
 .tn:hover, .tn:focus-visible { background: var(--gold); color: var(--night); outline: none; }
@@ -392,7 +393,7 @@ body.dragging { -webkit-user-select: none; user-select: none; }
       }, reduce ? 0 : 180);
     }
     // then and now
-    const TN = {"Ahmedabad": "ahmedabad", "Atladara (Vadodara)": "atladara-vadodara", "Bhadra": "bhadra", "Bharuch": "bharuch", "Bhavnagar": "bhavnagar", "Bhuj": "bhuj", "Bochasan": "bochasan", "Chicago": "chicago", "Edison": "edison", "Gandhinagar": "gandhinagar", "Godhra": "godhra", "Gondal": "gondal", "Junagadh": "junagadh", "Lenasia": "lenasia", "Limbdi": "limbdi", "London": "london", "Mahelav": "mahelav", "Mumbai": "mumbai", "Nadiad": "nadiad", "Nairobi": "nairobi", "Navsari": "navsari", "New Delhi": "new-delhi", "Robbinsville": "robbinsville", "Sankari": "sankari", "Sarangpur": "sarangpur", "Surat": "surat", "Tithal": "tithal", "Vallabh Vidyanagar": "vallabh-vidyanagar"}, tn = TN[tgt.name];
+    const TN = {"Ahmedabad": "ahmedabad", "Atladara (Vadodara)": "atladara-vadodara", "Bhadra": "bhadra", "Bharuch": "bharuch", "Bhavnagar": "bhavnagar", "Bhuj": "bhuj", "Bochasan": "bochasan", "Chicago": "chicago", "Edison": "edison", "Gandhinagar": "gandhinagar", "Godhra": "godhra", "Gondal": "gondal", "Junagadh": "junagadh", "Lenasia": "lenasia", "Limbdi": "limbdi", "London": "london", "Mahelav": "mahelav", "Mumbai": "mumbai", "Nadiad": "nadiad", "Nairobi": "nairobi", "Navsari": "navsari", "New Delhi": "new-delhi", "Rajkot": "rajkot", "Robbinsville": "robbinsville", "Sankari": "sankari", "Sarangpur": "sarangpur", "Surat": "surat", "Tithal": "tithal", "Vallabh Vidyanagar": "vallabh-vidyanagar"}, tn = TN[tgt.name];
     $('tn').hidden = st.flying || !tn; if (tn) $('tn').href = '/then-and-now/#' + tn;
     // end then and now
     $('cap').textContent = st.flying ? 'From ' + s.name + ', ' + Math.round(d3.geoDistance(s.ll, n.ll) * 6371).toLocaleString('en-GB') + ' km' : (s.cap || '');
