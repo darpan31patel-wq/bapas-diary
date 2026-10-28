@@ -234,8 +234,9 @@
           b.setAttribute('aria-pressed', 'false');
           if (d[4] && !fut) {
             const im = new Image(); im.alt = ''; im.loading = 'lazy'; im.decoding = 'async';
-            im.onerror = () => { im.remove(); b.querySelector('i') && b.querySelector('i').remove(); b.prepend(String(day)); };
-            im.src = `${PH}s/${d[4]}/${encodeURIComponent(d[5])}`;
+            // the tiny copy (R2 t/, about 10 KB) first, the 480 px one if a new photo has no tiny copy yet (website review, 28 Oct 2026)
+            im.onerror = () => { if (im.src.includes('/t/')) { im.src = im.src.replace('/t/', '/s/'); return; } im.remove(); b.querySelector('i') && b.querySelector('i').remove(); b.prepend(String(day)); };
+            im.src = `${PH}t/${d[4]}/${encodeURIComponent(d[5])}`;
             b.append(im, el('i', '', day));
           } else b.textContent = day;
           b._date = `${k}-${pad2(day)}`; if (pickI != null) lit(b);
