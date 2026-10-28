@@ -10,11 +10,10 @@
 
 
 
-/* then and now */
+/* See more button on the stop card */
 .tn { display: inline-block; margin-top: 10px; padding: 7px 14px; border: 1px solid var(--gold); border-radius: 999px; color: var(--gold); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; -webkit-user-select: none; user-select: none; }
 .tn:hover, .tn:focus-visible { background: var(--gold); color: var(--night); outline: none; }
 @media (max-width: 760px) { .tn { margin-top: 6px; padding: 5px 12px; font-size: 12px; } }
-/* end then and now */
 </style>
 <title>Bapa's Travels</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -237,7 +236,7 @@ body.dragging { -webkit-user-select: none; user-select: none; }
   <div class="place" id="place">Ahmedabad</div>
   <div><span class="country" id="country">India</span> <span class="dates" id="dates"></span></div>
   <div class="cap" id="cap"></div>
-  <a class="tn" id="tn" href="/then-and-now/" hidden>Then and now &rsaquo;</a>
+  <a class="tn" id="more" href="/search/" hidden>See more &rsaquo;</a>
   <div class="stats">
     <div><b id="sStops">1</b><small>places this year</small></div>
     <div><b id="sCountries">1</b><small>countries</small></div>
@@ -506,10 +505,9 @@ body.dragging { -webkit-user-select: none; user-select: none; }
         const nx = new Image(); nx.src = `photos/${tgt.year + 1}.jpg`;   // next year's sheet, ready in time
       }, reduce ? 0 : 180);
     }
-    // then and now
-    const TN = {"Ahmedabad": "ahmedabad", "Atladara (Vadodara)": "atladara-vadodara", "Bhadra": "bhadra", "Bharuch": "bharuch", "Bhavnagar": "bhavnagar", "Bhuj": "bhuj", "Bochasan": "bochasan", "Chicago": "chicago", "Edison": "edison", "Gandhinagar": "gandhinagar", "Godhra": "godhra", "Gondal": "gondal", "Junagadh": "junagadh", "Lenasia": "lenasia", "Limbdi": "limbdi", "London": "london", "Mahelav": "mahelav", "Mumbai": "mumbai", "Nadiad": "nadiad", "Nairobi": "nairobi", "Navsari": "navsari", "New Delhi": "new-delhi", "Rajkot": "rajkot", "Robbinsville": "robbinsville", "Sankari": "sankari", "Sarangpur": "sarangpur", "Surat": "surat", "Tithal": "tithal", "Vallabh Vidyanagar": "vallabh-vidyanagar"}, tn = TN[tgt.name];
-    $('tn').hidden = st.flying || !tn; if (tn) $('tn').href = '/then-and-now/#' + tn;
-    // end then and now
+    // See more: every photo of this stay in Search, like the See more buttons on Today (Darpan, 28 Oct 2026)
+    $('more').hidden = st.flying;
+    if (!st.flying) { $('more').href = `/search/#place=${encodeURIComponent(s.p)}&from=${s.a}&to=${s.b}`; $('more').setAttribute('aria-label', `See more photos from ${s.name}, ${fmtRange(s.a, s.b)} ${s.year}`); }
     $('cap').textContent = st.flying ? 'From ' + s.name + ', ' + Math.round(d3.geoDistance(s.ll, n.ll) * 6371).toLocaleString('en-GB') + ' km' : (s.cap || '');
     const t2 = st.flying ? totals[st.i + 1] : tot;
     $('sStops').textContent = t2.places; $('sCountries').textContent = t2.countries;

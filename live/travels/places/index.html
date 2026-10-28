@@ -230,7 +230,7 @@ h1 { font: 400 30px/1.15 var(--display); margin: 0; text-wrap: balance; }
         <div class="vd">${fmtRange(v.a, v.b)}</div>
         <div class="vm">${plural(v.days, 'day')} · ${plural(v.n, 'photo')} · ${v.psm ? 'Pramukh Swami Maharaj' : 'Mahant Swami Maharaj'}</div>
         <div class="vc">${esc(v.cap || '')}</div>
-        <a class="vl" href="${searchLink(p, v)}">See these photos ›</a></div></div>`;
+        <a class="vl" href="${searchLink(p, v)}">See more ›</a></div></div>`;
     }
     $('one').innerHTML = `<button class="back" id="back" type="button">‹ All places</button>
       <h2 class="pname">${esc(p.name)}</h2><div class="pcountry">${esc(p.country)}</div>
@@ -238,7 +238,6 @@ h1 { font: 400 30px/1.15 var(--display); margin: 0; text-wrap: balance; }
       <div class="stats"><div><b>${p.visits.length}</b><small>${p.visits.length === 1 ? 'visit' : 'visits'}</small></div>
         <div><b>${p.days.toLocaleString()}</b><small>days</small></div><div><b>${p.photos.toLocaleString()}</b><small>photos</small></div></div>
       <a class="all" href="${searchLink(p)}">See all ${p.photos.toLocaleString()} photos from ${esc(p.name)}</a>
-      ${TN[p.name] ? `<a class="tn" href="/then-and-now/#${TN[p.name]}">Then and now ›</a>` : ''}
       <div class="vh"><h2>Every visit</h2><button id="order" type="button">${newestFirst ? 'Show oldest first' : 'Show newest first'}</button></div>${rows}`;
     $('back').onclick = () => select(null);
     $('order').onclick = () => { newestFirst = !newestFirst; renderOne(); };
