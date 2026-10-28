@@ -70,9 +70,10 @@ def shorter_versions(text):
     return out
 
 
-def website_caption(c):
-    """The caption the Bapa pages show: what Bapa does (make.caption), said shorter where the website's words are long."""
-    return summarise(R.caption({'c': c})) if c else ''
+def website_caption(c, day=None):
+    """The caption the Bapa pages show: what Bapa does (make.caption), said shorter where the website's words are long;
+    day ('YYYY-MM-DD', the photo's date) takes out 'on 6 August' when that is the photo's own day."""
+    return summarise(R.caption({'c': R.undate(c, day)})) if c else ''
 
 
 def card_caption(c):
@@ -89,8 +90,8 @@ def captions(a):
     """1: the Bapa pages' databases get the website caption in place of baps.org's own words (Search keeps those)."""
     for path in a.db:
         db = sqlite3.connect(path)
-        rows = db.execute('SELECT album, file, caption FROM photos').fetchall()
-        new = [(website_caption(c), al, fi) for al, fi, c in rows]
+        rows = db.execute('SELECT album, file, caption, date FROM photos').fetchall()
+        new = [(website_caption(c, d), al, fi) for al, fi, c, d in rows]
         db.executemany('UPDATE photos SET caption = ? WHERE album = ? AND file = ?', [n for n, r in zip(new, rows) if n[0] != (r[2] or '')])
         db.commit()
         changed = sum(1 for n, r in zip(new, rows) if n[0] != (r[2] or ''))
@@ -397,6 +398,7 @@ def day(a):
             if y not in years:
                 stats['tg_years'] += 1
             Y = years.setdefault(y, {'y': y, 'place': (place or '').split(',')[0].strip(), 'p': [], 'tg': 1})
+            cap = R.undate(cap) or ('Darshan' if cap else '')   # 'On Saturday 30 July' under a 30 July card says nothing new (Darpan, 28 Oct 2026)
             Y['p'].append([al, key, cap, 1, box, card_caption(cap)])
         for Y in years.values():
             if not Y.get('tg'):

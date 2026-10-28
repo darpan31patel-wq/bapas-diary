@@ -23,6 +23,7 @@ is put inside index.html, so it works offline too.
 import argparse, json, os, re, shutil, sqlite3
 
 import search_people
+from web_bapa_rules import undate   # dates glued to captions out, as on the Bapa pages (Darpan, 28 Oct 2026)
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PAGE = os.path.join(HERE, 'site', 'search.html')
@@ -193,7 +194,7 @@ def main():
         if key not in yr['at']:
             yr['at'][key] = len(yr['g'])
             yr['g'].append(list(key))
-        yr['p'].append([yr['at'][key], file, cap or '', tags(f'{album}/{file}'), 1 if bapa == 1 else 0])
+        yr['p'].append([yr['at'][key], file, undate(cap or '', date), tags(f'{album}/{file}'), 1 if bapa == 1 else 0])
         g = yr['g'][yr['at'][key]]
         for k in mandir(cap) if date else ():
             if len(g) < 5:

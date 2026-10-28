@@ -6,7 +6,7 @@ changes anything in the daily 2pm picture chain, so a change there can't break t
 Only the parts that judge a single photo are here: the face check, face quality, and the caption rules. What make.py
 does for one picture a day (the last 7 days, the collage layout) stays there.
 """
-import glob, os, re
+import datetime, glob, json, os, re
 
 import cv2
 import numpy as np
@@ -214,8 +214,95 @@ def bapa_is_subject(c):
 
 MONTH = r'(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?'
 JUNK = re.compile(r'click here|to view|please|https?:|read more|watch (the )?video|\bvideo\b.*\bhere\b', re.I)
+_PLACES = set()
+def _place(w):
+    """True for a town or country name alone ('Amdavad', 'London, UK'): what is left of an album's date heading."""
+    if not _PLACES:
+        try:
+            _PLACES.update(k.lower() for k in json.load(open(os.path.join(HERE, 'places.json'), encoding='utf-8')))
+        except Exception:
+            pass
+        _PLACES.update({'amdavad', 'ahmedabad', 'delhi', 'new delhi', 'mumbai', 'london', 'uk', 'usa', 'india', 'toronto', 'atlanta', 'tithal', 'jamnagar', 'aurangabad', 'x'})
+    parts = [x.strip().lower() for x in re.split(r'[,&]| and ', w) if x.strip()]
+    return bool(parts) and all(x in _PLACES or re.fullmatch(r'[a-z]+-\d+', x) for x in parts)
+
+
+_DAY = r'\d{1,2}(?:st|nd|rd|th)?'
+_MON = r'(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept|Sep|Oct|Nov|Dec)\b\.?'   # whole words: never 'mark' or 'Janma'
+_WEEKDAY = r'(?:(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+)?'
+_DATE = re.compile(   # '28 October 2008', '16 to 25 February, 2001', '15 September to 1 October 2008', 'August 1, 2004', '6 Dec 2016'
+    rf'(?:\b(?:on|dated)\s+)?{_WEEKDAY}(?:\b{_DAY}(?:\s+{_MON})?\s*(?:to|-|–)\s*)?(?<!\d){_DAY}\s*{_MON}(?:,?\s+\d{{4}})?(?!\d)'
+    rf'|(?:\b(?:on|dated)\s+)?{_WEEKDAY}\b{_MON}\s+{_DAY}\b(?:,?\s+\d{{4}})?(?!\d)')
+_RANGE = rf'(?:{_DAY}(?:\s+{_MON})?\s*(?:to|-|–)\s*)?{_DAY}\s*{_MON}'   # '28 October', '16 to 25 February', '15 September to 1 October'
+_GLUED = re.compile(rf'[a-z](?={_RANGE})|\d{{4}}(?=[A-Z])')   # 'Puja28 October', 'Ahmedabad1 to 15 September', '2008Divine'
+_LINK = re.compile(r'\s*(?:More Details|For more (?:books|details|photos))\b\.?', re.I)
+_MOODS = re.compile(r'^(?:day \d+\s*)?divine moods?(?: of (?:bapa|swamish\w+))?(?: at [a-z ]+)?$', re.I)
+_YEAR_END = re.compile(r'(?<!\bin)(?<!\bsince)(?<!\bfrom)(?<!\bof)(?<!\buntil)(?<!\bby)(?<!\bto)(?<!\band)(?<!\bthe)(?:,\s*|\s+)(?:19|20)\d\d$')
+
+
+def _pieces(c):
+    """The caption's own pieces, split at ' - ' (never inside quotes or brackets: 'Spardha - 2021', '(May 21, 1950 - the day')."""
+    cuts, at = [], 0
+    for m in re.finditer(r'\s+-\s+|\s+-$|^-\s+|\s*-\s*$', c):
+        before = c[:m.start()]
+        if len(re.findall(r"(?<![A-Za-z])'|'(?![A-Za-z])|\"", before)) % 2 == 0 and before.count('(') == before.count(')'):
+            cuts.append(c[at:m.start()]); at = m.end()
+    return cuts + [c[at:]]
+
+
+def undate(c, day=None):
+    """The date out of a caption when it only repeats the card's own date (Darpan, 28 Oct 2026: 'Chopda Puja28 October
+    2008' under a 2008 card): a date glued to a word, a date heading or ending a piece of the caption ('Balika Din, July
+    16, 2004 - ...', 'Visits classrooms, 6 Dec 2016'), and an album's own date heading ('Amdavad15 September to 1 October
+    2008Divine Moods -'), which becomes the darshan it is. A date that is part of the story stays ('in memory of 21 June
+    1970, when Yogiji Maharaj ...'), unless it is the photo's own day (day = 'YYYY-MM-DD'): 'Arrives at the mandir on August
+    6, 2014 at 12:52 AM' on 6 August. Link text ('More Details', 'For more photos') goes too."""
+    if c and day and len(day) >= 10:
+        def same(m):   # the photo's own day, in its own year when the caption gives one; '11 May 1961' on 11 May 2023 stays
+            t = re.sub(r'(?<=\d)(?:st|nd|rd|th)\b|,', '', m.group(1)).replace('Sept', 'Sep').strip()
+            yr = re.search(r'\d{4}$', t)
+            if yr and yr.group(0) != day[:4]:
+                return m.group(0)
+            t = re.sub(r'\s*\d{4}$', '', t)
+            for f in ('%d %B', '%d %b', '%B %d', '%b %d'):
+                try:
+                    d = datetime.datetime.strptime(t, f)
+                except ValueError:
+                    continue
+                return '' if (d.month, d.day) == (int(day[5:7]), int(day[8:10])) else m.group(0)
+            return m.group(0)
+        c = re.sub(rf'\s+on\s+((?:{_DAY}\s+{_MON}|{_MON}\s+{_DAY})(?:,?\s+\d{{4}})?)(?!\d)', same, c)
+    if not c or not (_DATE.search(c) or _GLUED.search(c) or _LINK.search(c) or re.search(r'\s-\s*$', c)):
+        return c   # only a caption with a date, a glued date, link text or an album heading's trailing dash is touched
+    town = re.fullmatch(r'\s*[A-Z][a-z]+\s*-\s*', c)   # 'Kiri -': an album named after the town
+    c = _LINK.sub(' ', c)
+    c = re.sub(rf'^([A-Z][a-z]+)(?={_RANGE})', lambda m: '' if _place(m.group(1)) else m.group(1), c)   # 'London7 October 2007BAPS ...': the place heads the album's date
+    c = re.sub(rf'(?<=[a-z])(?={_RANGE})|(?<=\d{{4}})(?=[A-Z])', ' - ', c)   # unglue into pieces: 'Puja - 28 October 2008 - Divine'
+    c = re.sub(rf'\s*\(\s*(?:{_DATE.pattern})\s*\)\s*', ' - ', c, flags=re.I)   # '(3 April 2004)Bhagwan Swaminarayan'
+    c = re.sub(r'(?<=\d{4})-\s', ' - ', c)                                     # '9 December 1999- Bapa observes'
+    parts = []
+    for x in _pieces(c):
+        x = was = re.sub(r'\s+', ' ', x).strip(' ,;:')
+        x = re.sub(rf'^(?:on|dated) (?:{_DATE.pattern}) ', '', x, flags=re.I)                     # 'On 6th July Bapa inaugurates ...'
+        m = re.search(rf'(?:^|,\s*|\s+)(?:{_DATE.pattern})[\s,]*$', x, flags=re.I)   # '..., 6 Dec 2016', '... on 26 January'
+        if m and not re.search(r'\b(?:of|in|since|from|until|till|by|before|after|than|to|and)$', x[:m.start()], re.I):   # 'in memory of 21 June 1970' stays
+            x = x[:m.start()].strip(' ,;:')
+        x = re.sub(r'^\((.*)\)$', r'\1', x)   # '(Adhik Shravan sud Punam)'
+        x = re.sub(rf'^(?:{_DATE.pattern})(?:,\s*|\s+)', '', x, flags=re.I).strip(' ,;:')         # '16 to 25 February, 2001, Amdavad'
+        m = _YEAR_END.search(x)
+        if m and not re.search(rf'(?:{_MON}|\d)\s*$', x[:m.start()]):   # never the year of a date the caption keeps ('21 June 1970')
+            x = x[:m.start()]                                                                # 'Mohadi, 1976', 'Family Shibir 2004'
+        if not x or re.fullmatch(rf'(?:19|20)\d\d|day \d+|{_DATE.pattern}', x, re.I) or _place(x) or x != was and re.fullmatch(r'[A-Z][a-z]+(?:-\d+)?', x):   # a town's name left of a date heading
+            continue
+        y = re.sub(r'^([A-Z][a-z]+)\s+(?=Divine)', lambda m: '' if _place(m.group(1)) else m.group(0), x)
+        parts.append('In a divine mood' if _MOODS.match(y) else x)
+    c = ': '.join(parts)
+    return '' if town or not c else c
+
+
 def tidy(c):
     """Small clean ups of the website's caption: the date (it is always this day), 'the the', Mr and Mrs."""
+    c = undate(c)
     c = re.sub(rf'[\s,]*(?:on |dated )?\b\d{{1,2}}(?:st|nd|rd|th)? {MONTH}(?: \d{{4}})?\s*$', '', c)   # 'Doing mala, 18 Oct 2016'
     c = re.sub(rf'[\s,]*(?:on |dated )?\b{MONTH} \d{{1,2}}(?:st|nd|rd|th)?(?:,? \d{{4}})?\s*$', '', c)   # 'on October 18, 2016'
     c = re.sub(r'\b(the|a|an|of|to|in|on|and) \1\b', r'\1', c, flags=re.I)
