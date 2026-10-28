@@ -5,6 +5,8 @@ on:
   push:
     branches: ['claude/project-thread-1yl8ki']
     paths: ['.github/workflows/today-check.yml', '.github/today-check.txt']
+permissions:
+  contents: write
 jobs:
   sheets:
     runs-on: ubuntu-latest
@@ -34,7 +36,9 @@ jobs:
                       d.text((x + 4, y + H - 24), f'{label} {key.split("/")[-1][:30]}', fill='black')
                   sheet.save(f'sheets/{part}-{n // (C * R) + 1:02d}.jpg', quality=80)
           PY
-      - uses: actions/upload-artifact@v4
-        with:
-          name: today-check
-          path: sheets
+      - name: Kept in release today-check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view today-check >/dev/null 2>&1 || gh release create today-check --prerelease --title "Website: Today contact sheets" --notes "Website only: contact sheets to check the Today cards by eye."
+          tar czf today-check.tgz sheets && gh release upload today-check today-check.tgz --clobber
