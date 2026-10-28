@@ -259,7 +259,8 @@
     display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "pic yp yp" "pic sub more"; row-gap: 4px; column-gap: 12px; align-items: center; }
   html.ph-travels .story .head, html.ph-travels .story .where, html.ph-travels .story .cap, html.ph-travels .story .stats, html.ph-travels .story .next { display: none; }
   html.ph-travels .pic { grid-area: pic; float: none; width: 72px; height: 72px; margin: 0; border-radius: 50%; box-shadow: 0 0 0 2px var(--gold), 0 6px 18px rgba(0,0,0,.45); }
-  html.ph-travels .pic[hidden] { display: block !important; background: radial-gradient(circle at 50% 40%, #2a3770, #141c44); }
+  html.ph-travels .story:has(.pic[hidden]) { column-gap: 0; }   /* no close up for this stop: the words start at the edge */
+  html.ph-travels .story:has(.pic[hidden]) .tn { margin-left: 10px; }
   html.ph-travels .pr-yp { grid-area: yp; align-self: end; display: flex; align-items: baseline; gap: 10px; min-width: 0; }
   html.ph-travels .year { font-size: 32px; line-height: 1.1; }
   html.ph-travels .place { margin: 0; font-size: 26px; line-height: 1.2; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -292,4 +293,10 @@
   html.ph-travels .mo, html.ph-travels .mo.jan { top: 22px; height: 14px; line-height: 14px; font-size: 11px; color: var(--mist); border-left: 1px solid var(--line); }
   html.ph-travels .mo.jan { border-left: 2px solid var(--gold); color: var(--gold); }
   html.ph-travels .mo.jan b { display: none; }
+}
+@media (max-width: 380px) {   /* small phones: the gurus' names and the dates still fit */
+  html.ph-years-page .tab .who, html.ph-travels .era .who { font-size: 12.5px; }
+  html.ph-travels .pr-sub { font-size: 12.5px; }
+  html.ph-travels .story .tn { padding: 7px 11px; font-size: 12.5px; }
+  html.ph-travels .pic { width: 60px; height: 60px; }
 }
