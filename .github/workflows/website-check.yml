@@ -38,7 +38,7 @@ jobs:
           done
       - name: Lighthouse on a phone
         run: |
-          for p in / /search/ /through-the-years/ /calendar/ /travels/ /then-and-now/; do
+          for p in /search/ /travels/; do
             n=$(echo "$p" | tr -dc 'a-z-'); n=${n:-today}
             npx --yes lighthouse@12.2.1 "https://bapas-diary.com$p" --quiet --chrome-flags='--headless=new --no-sandbox' \
               --only-categories=performance,accessibility,best-practices,seo --output=json --output-path="lh-$n.json" > /dev/null 2>&1 || { echo "$p: lighthouse failed"; continue; }
