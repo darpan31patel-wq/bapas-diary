@@ -8,6 +8,9 @@
 name: legacy-weekly
 on:
   workflow_call:
+  push:   # a change to the picker here tries it at once (still never deploys)
+    branches: ['claude/project-thread-dmnrb9']
+    paths: ['tools/legacy_auto.py', '.github/workflows/legacy-weekly.yml']
   workflow_dispatch:
 concurrency:
   group: legacy-weekly
