@@ -102,8 +102,111 @@ def main():
     sub = ap.add_subparsers(dest='cmd', required=True)
     p = sub.add_parser('plan'); p.add_argument('--db', default='bapas.db'); p.add_argument('--years'); p.add_argument('--have'); p.add_argument('--max', type=int, default=256)
     p = sub.add_parser('index'); p.add_argument('--db', default='bapas.db'); p.add_argument('--shard'); p.add_argument('--out'); p.add_argument('--models', default='face-models')
+    p = sub.add_parser('match'); p.add_argument('--db', default='bapas.db'); p.add_argument('--faces', default='faces'); p.add_argument('--out', default='people-faces.json')
+    p.add_argument('--thresh', type=float, default=.5); p.add_argument('--bapa', type=float, default=.5); p.add_argument('--min-photos', type=int, default=4)
     a = ap.parse_args()
-    {'plan': plan, 'index': index}[a.cmd](a)
+    {'plan': plan, 'index': index, 'match': match}[a.cmd](a)
+
+
+
+# ---------- learning each person's face (run where the shard files are; nothing here needs the photos) ----------
+PASSED = '2016-08-13'   # Pramukh Swami Maharaj until this day, Mahant Swami Maharaj from it
+
+
+def load(folder):
+    import numpy as np
+    keys, rows, emb = [], [], []
+    for f in sorted(os.listdir(folder)):
+        if not f.startswith('faces-') or not f.endswith('.npz'):
+            continue
+        d = np.load(os.path.join(folder, f))
+        r = d['rows'].copy()
+        r[:, 0] += len(keys)
+        keys += d['keys'].tolist()
+        rows.append(r)
+        emb.append(d['emb'])
+    rows = np.concatenate(rows)
+    e = np.concatenate(emb).astype(np.float32)
+    e /= np.linalg.norm(e, axis=1, keepdims=True) + 1e-9
+    return keys, rows, e.astype(np.float16)
+
+
+def match(a):
+    """Each person's face, learnt from photos whose captions name them, then looked for in every other photo.
+    Writes {name: [[ALBUM/FILE, score], ...]} of photos found by face only, and contact sheets to check by eye."""
+    import re, sys
+    import numpy as np
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import search_people
+    keys, rows, E = load(a.faces)
+    print(len(keys), 'photos with faces,', len(rows), 'faces')
+    db = sqlite3.connect(a.db)
+    info = {f'{al}/{f}': (c or '', b == 1, d or '') for al, f, c, b, d in
+            db.execute('SELECT album, file, caption, is_bapa, coalesce(date, date_from) FROM photos')}
+    photo = rows[:, 0].astype(int)
+    size = np.minimum(rows[:, 3], rows[:, 4])
+    good = (rows[:, 5] >= .8) & (size >= 36)
+    faces_in = {}
+    for i, p in enumerate(photo):
+        faces_in.setdefault(p, []).append(i)
+
+    def sims(c, idx=None):   # one face number against many, in pieces so memory stays small
+        idx = np.arange(len(E)) if idx is None else np.asarray(idx)
+        out = np.empty(len(idx), np.float32)
+        for s in range(0, len(idx), 200000):
+            out[s:s + 200000] = E[idx[s:s + 200000]].astype(np.float32) @ c
+        return out
+
+    # Bapa: the one face in close photos whose caption is about Swamishri, for each guru
+    bapa = np.zeros(len(E), bool)
+    for era in 'PM':
+        one = [faces_in[p][0] for p, k in enumerate(keys) if p in faces_in and len(faces_in[p]) == 1 and good[faces_in[p][0]]
+               and info.get(k, ('', 0, ''))[1] and re.match(r'swamishri\b', info[k][0].lower())
+               and ((info[k][2] < PASSED) == (era == 'P'))]
+        ex = E[one[:6000]].astype(np.float32)
+        c = ex.mean(0); c /= np.linalg.norm(c)
+        for _ in range(3):   # the faces most like the middle are him; the rest are other people in "Swamishri ..." photos
+            s = ex @ c
+            keep = ex[s > np.percentile(s, 40)]
+            c = keep.mean(0); c /= np.linalg.norm(c)
+        ref = keep[:3000]
+        for s in range(0, len(E), 100000):
+            m = (E[s:s + 100000].astype(np.float32) @ ref.T)
+            bapa[s:s + 100000] |= np.sort(m, axis=1)[:, -8:].mean(1) > a.bapa
+        print(era, 'Bapa faces so far', int(bapa.sum()))
+
+    people = search_people.people(db)
+    found, sheets = {}, {}
+    for name, kind, spell, n, days, first, last in people:
+        if n < a.min_photos:
+            continue
+        rx = re.compile('(?:^|[^a-z])(?:' + '|'.join(re.escape(s) for s in spell) + ')')
+        mine = {p for p, k in enumerate(keys) if rx.search(info.get(k, ('',))[0].lower())}
+        cand = [i for p in mine for i in faces_in.get(p, []) if good[i] and not bapa[i]]
+        if len(mine) < a.min_photos or not cand:
+            continue
+        C = E[cand].astype(np.float32)
+        S = C @ C.T
+        cp = photo[cand]
+        support = [(len(set(cp[(S[i] > .42) & (cp != cp[i])])), i) for i in range(len(cand))]
+        sup, seed = max(support)
+        if sup < max(2, .25 * (len(mine) - 1)):
+            continue
+        c = C[seed].copy()
+        for _ in range(3):
+            members = np.where(C @ c > .45)[0]
+            c = C[members].mean(0); c /= np.linalg.norm(c)
+        own = set(cp[members])
+        everyone = sims(c)
+        hit = np.where((everyone > a.thresh) & ~bapa & good)[0]
+        other = sorted({(float(everyone[i]), keys[photo[i]]) for i in hit if photo[i] not in mine}, reverse=True)
+        # a face in many photos without the name is more likely an attendant than this person: count it
+        print(f'{name}: {len(mine)} captioned photos, face in {len(own)}, found in {len(other)} more')
+        found[name] = {'captioned': len(mine), 'face_in': len(own), 'more': [[k, round(s, 3)] for s, k in other]}
+        sheets[name] = ([keys[photo[cand[i]]] for i in members[:12]], [rows[cand[i]][1:5].tolist() for i in members[:12]],
+                        [k for s, k in other[:24]], [rows[i][1:5].tolist() for i in sorted(hit, key=lambda i: -everyone[i]) if photo[i] not in mine][:24])
+    json.dump(found, open(a.out, 'w'), ensure_ascii=False)
+    json.dump(sheets, open(a.out.replace('.json', '-sheets.json'), 'w'), ensure_ascii=False)
 
 
 if __name__ == '__main__':
