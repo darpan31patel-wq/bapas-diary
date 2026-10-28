@@ -233,7 +233,7 @@
           const fest = [d[1], d[2]].filter(Boolean).join('; ').split('; ').filter(n => n && !/^(Fast|Sud|Vad) ?\w*$/.test(n));
           if (fest.length) b.classList.add('fest');
           if (d[4] && !fut && !fest.some(n => !EVERYDAY.test(n))) b.classList.add('plain');   // an ordinary day (calmer looks, 28 Oct 2026)
-          b.dataset.r = Math.floor((first + i) / 7); if (date === TODAY) g.dataset.tr = b.dataset.r;
+          b.dataset.r = Math.floor((first + i) / 7); b.dataset.c = (first + i) % 7; if (date === TODAY) g._today = [+b.dataset.r, +b.dataset.c];
           b.setAttribute('aria-label', `${WDL[new Date(y, m - 1, day).getDay()]} ${day} ${MONTHS[m - 1]} ${y}${pl[i] ? ', ' + pl[i] : ''}${fest.length ? ', ' + fest.join(', ') : ''}`);
           b.setAttribute('aria-pressed', 'false');
           if (d[4] && !fut) {
@@ -248,11 +248,28 @@
           g.append(b);
         });
         s.append(g);
+        requestAnimationFrame(() => spot(g));
+      }
+      // look C (Darpan, 28 Oct 2026): 5 days across and 2 rows around the tapped day (else today) in colour, a gold glow feathering out
+      function spot(g, r, c, off) {
+        if (root.dataset.look !== 'c') return;
+        if (r == null && !off && g._today) [r, c] = g._today;
+        let sp = g.querySelector(':scope > .spot'); if (!sp) { sp = el('div', 'spot'); g.prepend(sp); }
+        const days = [...g.querySelectorAll('.ph-day')]; days.forEach(x => x.classList.remove('sp1', 'sp2'));
+        if (r == null) { sp.classList.remove('on'); return; }
+        const rows = Math.max(...days.map(x => +x.dataset.r)), top = Math.max(0, Math.min(r, rows - 1)), c0 = Math.max(0, Math.min(c - 2, 2)), box = [];
+        days.forEach(x => { const xr = +x.dataset.r, xc = +x.dataset.c, inR = xr >= top && xr <= top + 1, inC = xc >= c0 && xc <= c0 + 4;
+          if (inR && inC) { x.classList.add('sp1'); box.push(x); }
+          else if ((inR || xr === top - 1 || xr === top + 2) && xc >= c0 - 1 && xc <= c0 + 5) x.classList.add('sp2'); });
+        if (!box.length) { sp.classList.remove('on'); return; }
+        const L = Math.min(...box.map(x => x.offsetLeft)), T = Math.min(...box.map(x => x.offsetTop)),
+          R = Math.max(...box.map(x => x.offsetLeft + x.offsetWidth)), B = Math.max(...box.map(x => x.offsetTop + x.offsetHeight));
+        Object.assign(sp.style, {left: L + 'px', top: T + 'px', width: R - L + 'px', height: B - T + 'px'}); sp.style.setProperty('--f', box[0].offsetHeight + 'px'); sp.classList.add('on');
       }
       function pick(s, b, k, day, d, place, fest, fut) {
         if (sel) sel.setAttribute('aria-pressed', 'false');
         sel = b; b.setAttribute('aria-pressed', 'true');
-        wrap.querySelectorAll('.ph-grid[data-hr]').forEach(x => delete x.dataset.hr); b.parentNode.dataset.hr = b.dataset.r;
+        wrap.querySelectorAll('.ph-grid .spot.on').forEach(x => spot(x.parentNode, null, null, true)); spot(b.parentNode, +b.dataset.r, +b.dataset.c);
         const [y, m] = k.split('-').map(Number), date = `${k}-${String(day).padStart(2, '0')}`;
         const im = b.querySelector('img');
         card.href = `/photos/#date=${date}${place ? '&place=' + encodeURIComponent(place) : ''}`;   // all that day's photos in a grid (28 Oct 2026)

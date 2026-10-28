@@ -184,15 +184,15 @@
   html[data-look=b] .ph-day img { inset: auto; left: 18%; top: 24%; width: 64%; height: 64%; border-radius: 50%; box-shadow: 0 0 0 1.5px rgba(206, 152, 64, .7); filter: saturate(.9); }
   html[data-look=b] .ph-day i { background: none; text-shadow: none; color: #ffe296; font: 500 11px/1 "EB Garamond", Garamond, serif; left: 4px; top: 3px; padding: 0; opacity: .85; }
   html[data-look=b] .ph-day.fest::after { right: 50%; margin-right: -3px; bottom: 2px; width: 5px; height: 5px; box-shadow: none; }
-  /* C, quiet until you look: faded days, this week and the tapped day's week in full colour */
-  html[data-look=c] .ph-day { filter: grayscale(.8) brightness(.55); transition: filter .5s ease; }
-  html[data-look=c] .ph-day[aria-pressed="true"], html[data-look=c] .ph-day.ph-today, html[data-look=c] .ph-picking .ph-day.lit, html[data-look=c] .ph-day.want,
-    html[data-look=c] .ph-grid[data-hr="0"] .ph-day[data-r="0"], html[data-look=c] .ph-grid[data-tr="0"] .ph-day[data-r="0"],
-    html[data-look=c] .ph-grid[data-hr="1"] .ph-day[data-r="1"], html[data-look=c] .ph-grid[data-tr="1"] .ph-day[data-r="1"],
-    html[data-look=c] .ph-grid[data-hr="2"] .ph-day[data-r="2"], html[data-look=c] .ph-grid[data-tr="2"] .ph-day[data-r="2"],
-    html[data-look=c] .ph-grid[data-hr="3"] .ph-day[data-r="3"], html[data-look=c] .ph-grid[data-tr="3"] .ph-day[data-r="3"],
-    html[data-look=c] .ph-grid[data-hr="4"] .ph-day[data-r="4"], html[data-look=c] .ph-grid[data-tr="4"] .ph-day[data-r="4"],
-    html[data-look=c] .ph-grid[data-hr="5"] .ph-day[data-r="5"], html[data-look=c] .ph-grid[data-tr="5"] .ph-day[data-r="5"] { filter: none; }
+  /* C, quiet until you look: faded days; 5 days across and 2 rows around the tapped day (else today) in colour, a gold glow feathering out */
+  html[data-look=c] .ph-grid { position: relative; }
+  html[data-look=c] .ph-day { filter: grayscale(.8) brightness(.55); transition: filter .6s ease; }
+  html[data-look=c] .ph-day.sp2 { filter: grayscale(.6) brightness(.68); }
+  html[data-look=c] .ph-day.sp1, html[data-look=c] .ph-picking .ph-day.lit, html[data-look=c] .ph-day.want { filter: none; }
+  .ph-grid .spot { display: none; }
+  html[data-look=c] .ph-grid .spot { display: block; position: absolute; z-index: 3; pointer-events: none; border-radius: 12px; opacity: 0; transition: opacity .6s ease, left .45s ease, top .45s ease, width .45s ease, height .45s ease;
+    margin: -3px; padding: 3px; box-sizing: content-box; box-shadow: 0 0 0 1px rgba(255, 226, 150, .45), 0 0 calc(var(--f) * .25) calc(var(--f) * .04) rgba(255, 214, 120, .5), 0 0 calc(var(--f) * .55) calc(var(--f) * .12) rgba(226, 170, 70, .28); }
+  html[data-look=c] .ph-grid .spot.on { opacity: 1; }
   /* D, photos on the special days: an ordinary day shows its date, its photo when tapped */
   html[data-look=d] .ph-grid { gap: 7px; }
   html[data-look=d] .ph-day.plain img { opacity: 0; transition: opacity .4s; }
