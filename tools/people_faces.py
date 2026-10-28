@@ -15,8 +15,6 @@ in the photo's own pixels at web size) and emb (int8, 128 numbers a face, times 
 import argparse, json, os, sqlite3, time, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
-import numpy as np
-
 PHOTOS = 'https://photos.bapas-diary.com/'
 ZOO = 'https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models/'
 MODELS = {'yunet.onnx': 'face_detection_yunet/face_detection_yunet_2023mar.onnx',
@@ -58,6 +56,7 @@ def get(key, tier='m'):
 
 def index(a):
     import cv2
+    import numpy as np
     y, i, n = map(int, a.shard.split('-'))
     db = sqlite3.connect(a.db)
     rows = db.execute('SELECT album, file FROM photos WHERE year = ? ORDER BY album, file', (y,)).fetchall()
