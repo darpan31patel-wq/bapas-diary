@@ -112,6 +112,7 @@
 
   /* ---------- Calendar ---------- */
   function calendar() {
+    const H0 = location.hash.slice(1);   // the address as it came, before the computer calendar rewrites it to its month
     const DATA = typeof DATA_URL !== 'undefined' ? DATA_URL : '/data/calendar.json';
     const PH = typeof PHOTOS !== 'undefined' ? PHOTOS : 'https://photos.bapas-diary.com/';
     const SR = typeof SEARCH !== 'undefined' ? SEARCH : '/search/';
@@ -300,8 +301,7 @@
       }
       // Search's Calendar button, as on the computer (Darpan, 28 Oct 2026): #2014-10-24 lights up the stay that day was
       // part of, rings the day and shows its card
-      function fromLink() {
-        const date = location.hash.slice(1);
+      function fromLink(date) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !D.m[date.slice(0, 7)]) return false;
         const i = stays.findIndex(x => !x.fut && x.from <= date && x.to >= date);
         wantDate = date;
@@ -313,9 +313,8 @@
         if (btn) { btn.classList.add('want'); btn.click(); }
         return true;
       }
-      const h = location.hash.slice(1);
-      if (!fromLink()) go(D.m[h] ? h : D.start);
-      addEventListener('hashchange', () => { if (location.hash.slice(1) !== curK) fromLink(); });
+      if (!fromLink(H0)) go(D.m[H0] ? H0 : D.start);
+      addEventListener('hashchange', () => { if (location.hash.slice(1) !== curK) fromLink(location.hash.slice(1)); });
     }).catch(() => { wrap.innerHTML = '<p style="text-align:center;font-style:italic;color:#c9a98a;margin-top:40px">The calendar could not load. Please refresh the page.</p>'; });
   }
 })();
