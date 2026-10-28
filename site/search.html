@@ -164,7 +164,7 @@ body { background: linear-gradient(#efdcd2, #f3e5d8) fixed; }
 .days .day-head .about { flex-basis: 100%; font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .days .day-head .about { order: 6; }
 .days .day-head .stay { order: 3; text-wrap: balance; font: 700 11px var(--sans); letter-spacing: .2em; text-transform: uppercase; color: #d9a441; }
-.card .said { display: none; }   /* already on the day's ribbon */
+.card .said, .card:not(.post) .cap.said { display: none; }   /* already on the day's ribbon */
 .card .said + .place:not(.said) { margin-top: 6px; padding-top: 7px; border-top: 1px solid rgba(110, 20, 36, .18); }
 .days .day-head .only { order: 7; font-size: 14px; }
 .days .day-head .bd-share { margin: 0; padding: 3px 9px; }
