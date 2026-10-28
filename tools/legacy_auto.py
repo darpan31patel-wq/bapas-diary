@@ -14,7 +14,7 @@ portrait, banner or the other guru), both clearly show the same scene (z >= 3 fo
 photo's clearest scene or nearly), they look alike (look >= .87, or >= .91 at two different places), neither photo is already
 on the page nor nearly the same as one that is (look > .93), and at most two new pairs per scene and two per place.
 """
-import argparse, json, os, sys
+import argparse, json, os, re, sys
 
 import numpy as np
 
@@ -23,14 +23,20 @@ import legacy_match as lm   # noqa: E402
 
 WEEK = 6
 PER_SCENE = 2
-# scenes that came out clean by eye on 28 Oct; Walking, Yagna, By the water and Lighting the lamp mostly found other things
+# scenes that came out clean by eye on 28 Oct; Walking, Yagna, By the water, Lighting the lamp and Arti (a lamp in one
+# photo only) mostly found other things
 AUTO = {'Taking a meal': 'Taking prasad', 'Outside the mandir': 'Darshan in the mandir', 'Reading': 'Reading',
-        'Writing a letter': 'Writing letters', 'Morning puja': 'Morning puja', 'Arti': 'Arti',
+        'Writing a letter': 'Writing letters', 'Morning puja': 'Morning puja',
         'Abhishek': 'Abhishek', 'Pushpanjali': 'Showers of petals', 'Giving prasad': 'Giving prasad',
         'With the children': 'With the children', 'On a swing': 'In the hindolo', 'In the garden': 'In the garden',
         'Planting a tree': 'Caring for a plant', 'Annakut': 'Annakut darshan', 'Nagar yatra': 'Darshan for the devotees',
         'Speaking to the assembly': 'Blessing the assembly', 'Cutting the ribbon': 'Opening ceremony',
         'Travelling': 'Travelling'}
+
+
+def tidy(place):
+    """'2004, Houston' (a few tour albums put the year first) -> 'Houston'"""
+    return re.sub(r'^\d{4},\s*', '', place or '')
 
 
 def main():
@@ -88,14 +94,14 @@ def main():
     new, per_place = [], {}
     for score, label, nice, kp, km, look in found:
         rp, rm = keep[kp], keep[km]
-        pl = rp['place'] if rp['place'] == rm['place'] else ''
+        pl = tidy(rp['place']) if rp['place'] == rm['place'] else ''
         if pl and per_place.get(pl, 0) >= 2:
             continue
         per_place[pl] = per_place.get(pl, 0) + 1
 
         def side(k, r):
             al, fi = k.split('/', 1)
-            return dict(date=r['date'], cap=r['cap'], album=al, file=fi, r=round(r['W'] / r['H'], 3), place=r['place'],
+            return dict(date=r['date'], cap=r['cap'], album=al, file=fi, r=round(r['W'] / r['H'], 3), place=tidy(r['place']),
                         t='l' if f'l/{k}' in large else 'm')
         new.append(dict(place=pl, moment=nice, psm=side(kp, rp), msm=side(km, rm), auto=label, look=round(look, 3)))
         if len(new) >= a.week:
