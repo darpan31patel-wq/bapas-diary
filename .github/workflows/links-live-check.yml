@@ -1,0 +1,49 @@
+# Website only, read only: checks the live See more / Calendar buttons and the day photo grid on bapas-diary.com after
+# they went live (28 Oct 2026). Changes nothing. Pictures go to release links-mockup as live-*.jpg.
+name: links-live-check
+on:
+  push:
+    branches: ['claude/project-thread-tbkjl3']
+    paths: ['.github/workflows/links-live-check.yml']
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Look at the live pages
+        run: |
+          npm i -s playwright@1.49.1 > /dev/null && npx playwright install --with-deps chromium > /dev/null
+          cat > c.js <<'JS'
+          const { chromium } = require('playwright');
+          const S = 'https://bapas-diary.com';
+          (async () => {
+            const b = await chromium.launch();
+            for (const [sz, w, h, mob] of [['computer', 1440, 900, false], ['phone', 390, 844, true]]) {
+              const ctx = await b.newContext({ viewport: { width: w, height: h }, isMobile: mob, hasTouch: mob, serviceWorkers: 'block' });
+              const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
+              await p.goto(S + '/photos/#date=2010-10-26&place=Gondal', { waitUntil: 'networkidle' }).catch(() => {}); await p.waitForTimeout(4000);
+              console.log(sz, 'photos page:', (await p.locator('header').innerText()).replace(/\n/g, ' | '), 'tiles', await p.locator('.grid button').count(),
+                'loaded', await p.evaluate(() => [...document.querySelectorAll('.grid img')].filter(i => i.naturalWidth).length));
+              await p.screenshot({ path: `live-photos-${sz}.jpg`, quality: 80 });
+              await p.goto(S + '/calendar/#2010-10-26', { waitUntil: 'networkidle' }).catch(() => {}); await p.waitForTimeout(6000);
+              console.log(sz, 'calendar ring', await p.locator('.card.want, .ph-day.want').count(), 'url', p.url());
+              await p.screenshot({ path: `live-calendar-${sz}.jpg`, quality: 80 });
+              const day = mob ? p.locator('.ph-card') : p.locator('a.card[href*="2010-10-26"]');
+              await day.first().click().catch(e => console.log('no click', e.message.slice(0, 80))); await p.waitForTimeout(4000);
+              console.log(sz, 'day click opens', p.url());
+              await p.goto(S + '/#10-28', { waitUntil: 'networkidle' }).catch(() => {}); await p.waitForTimeout(4000);
+              console.log(sz, 'today see more', await p.locator('.yhead .go').count(), await p.locator('.yhead .go').first().innerText().catch(() => ''));
+              await p.goto(S + '/then-and-now/', { waitUntil: 'networkidle' }).catch(() => {}); await p.waitForTimeout(3000);
+              console.log(sz, 'then and now see more', await p.locator('#pgo').getAttribute('href').catch(() => 'none'));
+              console.log(sz, 'errors', JSON.stringify(errs));
+              await ctx.close();
+            }
+            await b.close();
+          })();
+          JS
+          node c.js
+      - name: Keep the pictures
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload links-mockup -R "$GITHUB_REPOSITORY" --clobber live-*.jpg
