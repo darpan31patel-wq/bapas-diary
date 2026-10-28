@@ -463,6 +463,24 @@ function nudge(c, e) {   // only ever moves when someone brushes it, so it stays
   if (!swinging.size) requestAnimationFrame(swing);
   swinging.add(c);
 }
+// Swiped sideways on a phone, the cards swing on their cord as the row moves under the finger, a little behind it the
+// way a hanging photo would, and settle back by themselves (Darpan, 28 Oct 2026). Only the cards on the screen move.
+let lastLeft = null;
+$('cards').addEventListener('scroll', () => {
+  const box = $('cards'), left = box.scrollLeft, dx = lastLeft == null ? 0 : left - lastLeft;
+  lastLeft = left;
+  if (!dx) return;
+  const w = box.clientWidth;
+  cards.forEach(c => {
+    const r = c.slot.getBoundingClientRect();
+    if (r.right < 0 || r.left > w) return;
+    // the row slides left (dx > 0), so the card's bottom trails to the right: an anticlockwise turn
+    c.v = Math.max(-.12, Math.min(.12, (c.v || 0) - Math.max(-1, Math.min(1, dx / 40)) * .018));
+    c.a = c.a || 0;
+    if (!swinging.size) requestAnimationFrame(swing);
+    swinging.add(c);
+  });
+}, {passive: true});
 // the caption under a card leans with it, from the same peg, so it always sits centred under the card (Darpan, 26 Oct 2026)
 function lean(c, deg) {   // the card and its caption turn together on the peg, so the caption can never drift off centre
   c.slot.style.transformOrigin = '50% -12px';
