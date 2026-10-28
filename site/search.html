@@ -39,6 +39,16 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding-block: 16px 10px; align-items: center; max-width: 920px; margin-inline: auto; }
 #q { flex: 1 1 260px; min-width: 0; font: 500 20px var(--serif); padding: 9px 14px; border: 1.5px solid var(--maroon); border-radius: 8px; background: var(--paper-hi); color: var(--ink); }
 #q::placeholder { color: var(--muted); font-style: italic; }
+/* top suggestions under the search box, only once a letter is typed (Darpan, 28 Oct 2026) */
+.controls { position: relative; }
+#suggest { position: absolute; z-index: 6; margin: 0; padding: 4px 0; list-style: none; background: var(--paper-hi); border: 1.5px solid var(--maroon); border-top: 0;
+  border-radius: 0 0 8px 8px; box-shadow: 0 10px 22px rgba(59, 18, 25, .18); overflow: hidden; }
+#suggest[hidden] { display: none; }
+#suggest li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 9px 14px; cursor: pointer; text-align: left; }
+#suggest li.on, #suggest li:hover { background: rgba(217, 164, 65, .2); }
+#suggest .w { flex: 1 1 auto; min-width: 0; font: 500 19px/1.25 var(--serif); color: var(--ink); }   /* a long name goes onto two lines, never cut short */
+#suggest .w b { color: var(--maroon); }
+#suggest .k { margin-left: auto; font: 700 10px var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--gold-deep); white-space: nowrap; }
 select, input[type=date], .clear { font: 700 12px var(--sans); letter-spacing: .04em; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper-hi); color: var(--maroon); }
 .clear { cursor: pointer; text-transform: uppercase; letter-spacing: .12em; font-size: 11px; }
 .reset { font: italic 600 16px var(--serif); color: var(--maroon); background: none; border: 0; border-bottom: 1px solid var(--gold-soft); border-radius: 0; padding: 4px 2px; cursor: pointer; }
@@ -234,6 +244,7 @@ body { background: linear-gradient(#efdcd2, #f3e5d8) fixed; }
   <div class="wrap">
     <div class="controls">
       <input id="q" type="search" placeholder="Search anything, or ask: When did Bapa go to London?" autocomplete="off" aria-label="Search words or ask a question">
+      <ul id="suggest" role="listbox" aria-label="Suggestions" hidden></ul>
       <button class="reset" id="clear" type="button" title="Clear the search and every filter">&#x2715; Clear all</button>
       <select id="order" aria-label="Order"><option value="old">Oldest first</option><option value="new">Newest first</option></select>
     </div>
@@ -504,6 +515,72 @@ function more(want = lastWant) {
 let timer, picMode = false;   // picMode: the results are the photos most like a picture, best first, so no date headings
 function soon() { clearTimeout(timer); timer = setTimeout(search, 180); }
 $('q').addEventListener('input', () => { if (window.picClose && $('q').value) picClose(); soon(); });
+// Top suggestions (Darpan, 28 Oct 2026: "don't activate until the first letter is typed", then the six top things to
+// search for). Nothing shows on an empty box. The places, festivals, people and things in the photos that start with
+// the letters typed come first, then those with a later word starting with them; the ones with the most photos win
+// (anything with fewer than 20 photos is left out, so the list stays to things worth searching).
+// The list sits under the box and never takes the focus, so typing carries on as normal on tablets and phones.
+const SUG = { list: null, at: -1, shown: [] };
+fetch('data/people.json').then(r => r.json()).then(l => { SUG.people = l.map(p => [p[0], p[3]]); SUG.list = null; }).catch(() => {});
+function sugList() {
+  if (SUG.list && SUG.n === items.length) return SUG.list;
+  const places = {}, acts = {}, perDay = {}, fests = {};
+  for (const r of items) if (r.kind === 'photo') {
+    if (r.city) places[r.city] = (places[r.city] || 0) + 1;
+    if (r.tags) for (const t of r.tags.split(', ')) acts[t] = (acts[t] || 0) + 1;
+    perDay[r.d] = (perDay[r.d] || 0) + 1;
+  }
+  for (const d in perDay) for (const f of cal[d] ? cal[d].list : window.festOn ? festOn(d) : []) fests[f] = (fests[f] || 0) + perDay[d];
+  const list = [], seen = new Set();
+  const put = (o, kind) => { for (const [w, n] of Array.isArray(o) ? o : Object.entries(o)) {
+    const key = w.toLowerCase();
+    if (n >= 20 && !seen.has(key)) { seen.add(key); list.push({ w, n, kind, low: key, words: key.split(/[^a-z0-9]+/).filter(Boolean) }); } } };
+  put(fests, 'Festival'); put(places, 'Place'); put(SUG.people || [], 'Person'); put(acts, 'In the photo');
+  SUG.n = items.length;
+  return SUG.list = list.sort((a, b) => b.n - a.n);
+}
+function sugShow() {
+  const box = $('suggest'), q = $('q'), typed = q.value.trim().toLowerCase().replace(/\s+/g, ' ');
+  SUG.at = -1;
+  if (!typed || document.activeElement !== q || typed.length > 30) { box.hidden = true; return; }
+  const first = [], later = [];
+  for (const s of sugList()) {
+    if (s.low.startsWith(typed)) first.push(s);
+    else if (!typed.includes(' ') && s.words.some(w => w.startsWith(typed))) later.push(s);
+    if (first.length >= 6) break;
+  }
+  SUG.shown = first.concat(later).slice(0, 6);
+  if (!SUG.shown.length || SUG.shown.length === 1 && SUG.shown[0].low === typed) { box.hidden = true; return; }
+  box.innerHTML = SUG.shown.map((s, i) => {
+    let at = 0;   // where the typed letters are, to show them in bold
+    while (at < s.low.length && !(s.low.startsWith(typed, at) && (!at || !/[a-z0-9]/.test(s.low[at - 1])))) at++;
+    const w = esc(s.w.slice(0, at)) + '<b>' + esc(s.w.slice(at, at + typed.length)) + '</b>' + esc(s.w.slice(at + typed.length));
+    return `<li role="option" data-i="${i}"><span class="w">${w}</span><span class="k">${s.kind} · ${s.n.toLocaleString()} photos</span></li>`;
+  }).join('');
+  box.style.left = q.offsetLeft + 'px'; box.style.top = q.offsetTop + q.offsetHeight + 'px'; box.style.width = q.offsetWidth + 'px';
+  box.hidden = false;
+}
+function sugPick(i) {
+  const s = SUG.shown[i];
+  if (!s) return;
+  $('q').value = s.w; $('suggest').hidden = true; $('q').blur();   // the keyboard goes away so the photos can be seen
+  clearTimeout(timer); search();
+}
+$('q').addEventListener('input', sugShow);
+$('q').addEventListener('blur', () => setTimeout(() => { $('suggest').hidden = true; }, 150));
+$('q').addEventListener('keydown', e => {
+  const box = $('suggest');
+  if (box.hidden) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    const n = SUG.shown.length;
+    SUG.at = e.key === 'ArrowDown' ? (SUG.at + 1) % n : SUG.at <= 0 ? n - 1 : SUG.at - 1;
+    box.querySelectorAll('li').forEach((li, i) => li.classList.toggle('on', i === SUG.at));
+  } else if (e.key === 'Enter' && SUG.at >= 0) { e.preventDefault(); sugPick(SUG.at); }
+  else if (e.key === 'Escape') box.hidden = true;
+});
+$('suggest').addEventListener('mousedown', e => e.preventDefault());   // keeps the box focused while a suggestion is tapped
+$('suggest').addEventListener('click', e => { const li = e.target.closest('li'); if (li) sugPick(+li.dataset.i); });
 $('place').addEventListener('change', () => { linkPlace = ''; });   // first, so the search below sees the new choice
 ['fest', 'place', 'act', 'mandir', 'year', 'month', 'day', 'order', 'from', 'to'].forEach(id => $(id).addEventListener('change', search));
 $('more').addEventListener('click', () => more());
