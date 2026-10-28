@@ -86,9 +86,7 @@ footer{padding-block:4px 10px;padding-left:max(16px,env(safe-area-inset-left,0px
 .jnote:empty{display:none}
 .jnote{min-height:22px;display:flex;align-items:center;justify-content:center;gap:10px;font-family:var(--caps);font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:2px 8px 2px;text-align:center}
 .jnote b{font-family:var(--serif);font-weight:600;font-size:15px;letter-spacing:0;text-transform:none;color:var(--gold-hi)}
-.jnote .go-row{margin:0;gap:6px}
-.jnote .go{padding:3px 10px;font-size:10px}
-/* the day a link from another tab asked for (#2014-10-24) */
+/* the day Search's Calendar button asked for (#2014-10-24) */
 .ribbon .card.want,.ribbon.picking .card.lit.want{z-index:2;opacity:1;border-radius:10px;outline:3px solid var(--gold-hi);outline-offset:3px;box-shadow:0 0 22px 6px rgba(255,214,140,.7),0 0 54px 16px rgba(226,170,70,.4)}
 .jnote button{border:1px solid rgba(206,152,64,.5);background:none;color:var(--gold-hi);border-radius:12px;font:inherit;padding:3px 10px;cursor:pointer}
 /* the days of the chosen stay glow in a round gold light; the other days step back */
@@ -377,7 +375,7 @@ function pick(i){
   track.scrollTo({left,behavior:reduce||Math.abs(left-track.scrollLeft)>W*3?'auto':'smooth'});
   centreJourney(i,true);
   jnote.innerHTML=(s.fut?'<span>Future vicharan</span>':'')+`<b>${esc(s.p)}</b><span>${s.when} ${+s.k1.slice(0,4)} · ${s.days} ${s.days===1?'day':'days'}</span>`+
-    (s.fut?'':window.BDLinks?BDLinks({from:s.from,to:s.to,place:s.p,skip:['calendar','today']}):`<a href="${SEARCH}#place=${encodeURIComponent(s.p)}&from=${s.from}&to=${s.to}" style="color:var(--gold-hi)">See these photos</a>`)+`<button type="button" id="jclear">Clear</button>`;
+    (s.fut?'':`<a href="${SEARCH}#place=${encodeURIComponent(s.p)}&from=${s.from}&to=${s.to}" style="color:var(--gold-hi)">See these photos</a>`)+`<button type="button" id="jclear">Clear</button>`;
   document.getElementById('jclear').onclick=unpick;
 }
 function unpick(){
@@ -387,28 +385,17 @@ function unpick(){
   jnote.textContent='';
   if(zBefore!=null){const z=zBefore;zBefore=null;setZoom(z)}
 }
-/* links from the other tabs (Darpan, 28 Oct 2026: "all the tabs linked together"): #2014-10-24 glows the stay that day
-   was part of, with a gold ring on the day itself (or only the ring when Bapa was not on a stay);
-   #place=London&from=2014-10-20&to=2014-10-27 glows that stay (the same place at those dates), else rings the first day */
+/* Search's Calendar button (Darpan, 28 Oct 2026): #2014-10-24 glows the stay that day was part of, with a gold ring on
+   the day itself (or only the ring when Bapa was not on a stay) */
 let wantDate='';
 function fromLink(){
-  const h=location.hash.slice(1), q=new URLSearchParams(h), iso=/^\d{4}-\d{2}-\d{2}$/;
-  let date=iso.test(h)?h:'', i=-1;
-  const a=q.get('from')||'', b=q.get('to')||a;
-  if(iso.test(a)&&iso.test(b)){
-    const P=x=>(window.BDLinks&&BDLinks.place(x)||x).toLowerCase(), p=q.get('place')?P(q.get('place')):'';
-    let best=-1;
-    stays.forEach((s,j)=>{if(s.fut||s.from>b||s.to<a||(p&&P(s.p)!==p))return;
-      const v=Math.min(+new Date(s.to),+new Date(b))-Math.max(+new Date(s.from),+new Date(a)); if(v>best){best=v;i=j}});
-    if(i<0)date=a;
-  }
-  if(!date&&i<0)return false;
-  if(date){if(!D.m[date.slice(0,7)])return false; i=dayStay[date.slice(0,7)+' '+(+date.slice(8))]??-1}
+  const date=location.hash.slice(1);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!D.m[date.slice(0,7)])return false;
+  const i=dayStay[date.slice(0,7)+' '+(+date.slice(8))]??-1;
   ribbon.querySelectorAll('.card.want').forEach(c=>c.classList.remove('want')); wantDate=date;
   monthEls.forEach(mo=>(mo._cards||[]).forEach(c=>{if(c._date===date)c.classList.add('want')}));
   if(i>=0&&!stays[i].fut){unpick();pick(i)}
-  else{goTo(date.slice(0,7),false)}
-  try{history.replaceState(null,'','#'+(date||q.toString()))}catch(e){}
+  else goTo(date.slice(0,7),false);
   return true;
 }
 function litCard(c){const s=stays[sel];c.classList.toggle('lit',!!s&&c._date>=s.from&&c._date<=s.to)}

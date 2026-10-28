@@ -90,7 +90,7 @@
   .viewer { z-index: 70; background: #000; padding-inline: 0; }
   .viewer .vtop { padding-inline: 14px; }
   .viewer .vframe { background: none; padding: 0; box-shadow: none; }
-  .viewer .vframe img { max-width: 100vw; max-height: calc(100dvh - 340px); }   /* room for the gold buttons to the other tabs */
+  .viewer .vframe img { max-width: 100vw; max-height: calc(100dvh - 290px); }   /* room for the gold Photos button */
   .viewer .vcap { color: #f3e6cc; padding-inline: 18px; max-width: 100vw; --go: #d9a441; --go-on: #2a0d14; }
   .viewer .vcap p { font-size: 21px; }
   .viewer .vcap div { color: #d9a441; font-size: 11px; }
@@ -128,8 +128,6 @@
   .ph-jnote { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 30px; padding: 2px 16px 0; font: 400 12px/1.2 Arimo, Arial, sans-serif; color: #c9a98a; text-align: center; }
   .ph-jnote b { font: 600 16px/1 "EB Garamond", Garamond, serif; color: #ffe296; }
   .ph-jnote a { color: #ffe296; font-weight: 700; }
-  .ph-jnote { flex-wrap: wrap; }
-  .ph-jnote .go-row { flex-basis: 100%; margin: 4px 0 2px; }
   .ph-day.want, .ph-picking .ph-day.lit.want { outline: 3px solid #ffe296; outline-offset: 2px; box-shadow: 0 0 16px 4px rgba(255, 214, 140, .65); border-radius: 12px; z-index: 2; opacity: 1; }
   .ph-jnote button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(217, 164, 65, .5); background: none; color: #ffe296; font-size: 13px; cursor: pointer; }
   .ph-picking .ph-day { opacity: .3; transition: opacity .4s; }

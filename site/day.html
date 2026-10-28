@@ -55,7 +55,6 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 .cards{position:relative;display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));column-gap:clamp(12px,1.6vw,26px);row-gap:clamp(30px,3.4vw,46px);padding-top:16px}
 @media (max-width:520px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .slot{display:flex;flex-direction:column;align-items:center;min-width:0}
-.card.wanted{box-shadow:0 0 0 3px var(--gold-hi),0 0 34px 8px rgba(255,214,140,.55),0 10px 18px rgba(0,0,0,.42);transition:box-shadow 1.2s}
 .card{position:relative;display:block;width:100%;background:linear-gradient(var(--ivory-top),var(--ivory-bot));border:1px solid var(--ivory-edge);padding:3.5% 3.5% 0;box-shadow:0 10px 18px rgba(0,0,0,.42),0 2px 4px rgba(0,0,0,.3);cursor:pointer;text-align:center;text-decoration:none;transform-origin:50% -12px;will-change:transform}
 .peg{position:absolute;left:50%;top:-17px;width:12px;height:30px;margin-left:-6px;border-radius:6px 6px 3px 3px;background:linear-gradient(90deg,#6b4022,#b07a4a 30%,#9a6538 55%,#5d361c);box-shadow:1px 3px 4px rgba(0,0,0,.45);z-index:2}
 .peg::after{content:"";position:absolute;left:1px;right:1px;top:12px;height:3px;background:#3a2210;opacity:.7}
@@ -104,8 +103,12 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 .yhead .caps{color:var(--gold-soft)}
 .yhead .it{font:500 16px var(--serif);font-style:italic;color:var(--cream)}
 .yhead .fest{margin:0;background:var(--gold-soft);color:var(--maroon-out)}
-.yhead .go-row{margin:0 0 0 auto}
-.yhead > a{margin-left:auto;font:700 10px var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--gold-soft)}
+.yhead a{margin-left:auto}
+/* the gold Photos button: that day's photos in Search (Darpan, 28 Oct 2026) */
+.go{display:inline-block;padding:6px 13px;border:1px solid var(--go,var(--gold-soft));border-radius:999px;color:var(--go,var(--gold-soft));font:600 11.5px/1.2 var(--sans);letter-spacing:.08em;text-transform:uppercase;text-decoration:none;white-space:nowrap}
+.go:hover,.go:focus-visible{background:var(--go,var(--gold-soft));color:var(--go-on,var(--maroon-out));outline:none}
+.vcap{--go:var(--maroon-ink);--go-on:var(--gold-hi)}
+.vcap .go{margin-top:9px}
 .story-line{margin:12px 0 0;font:500 16px/1.45 var(--serif);font-style:italic;color:var(--cream);max-width:70ch}
 .story-line b{font-style:normal;font:700 10px var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--gold-soft);margin-right:8px}
 .tripnote{margin:18px 0 0;font:700 10px var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--gold-soft)}
@@ -128,8 +131,6 @@ footer{text-align:center;margin-top:52px;font:600 19px var(--serif);color:var(--
 .thumb .im.words{display:grid;place-items:center;padding:8px;background:radial-gradient(circle at 50% 40%,#5a1626,var(--maroon-deep));color:var(--gold-hi);font:500 italic 12px/1.3 var(--serif);text-align:center;overflow:hidden}
 .vcap{padding:10px 6px 12px;color:var(--maroon-ink);text-align:center;max-width:min(92vw,1100px)}
 .vcap p{margin:0;font:500 17px/1.35 var(--serif);text-wrap:balance}
-.vcap{--go:var(--maroon-ink);--go-on:var(--gold-hi)}
-.vcap .go-row{margin-top:9px}
 .vcap div{margin-top:5px;font:700 9.5px/1.4 var(--sans);letter-spacing:.18em;text-transform:uppercase}
 .vnav{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
 .viewer.play .vframe img{animation:breathe 7s ease-in-out both}
@@ -319,25 +320,8 @@ const tithiOf = c => c ? c[0] : '';
 
 let DAY = null, cards = [], everyPhoto = [], timers = [], paused = false, showing = null;
 
-// the date in the address (#10-24) opens that day; no date opens today. #2014-10-24 opens 24 October at its 2014 card
-// (the other tabs link here, Darpan, 28 Oct 2026: "all the tabs linked together")
-let wantYear = null;
-function wanted() {
-  let h = location.hash.slice(1);
-  if (/^\d{4}-\d\d-\d\d$/.test(h)) { wantYear = +h.slice(0, 4); h = h.slice(5); }
-  return /^\d\d-\d\d$/.test(h) && +h.slice(3) <= LEN[+h.slice(0, 2) - 1] ? h : TODAY;
-}
-const links = o => window.BDLinks ? BDLinks(o) : '';
-function showYear() {   // the year a link asked for: its card glows gold and comes into view
-  const y = wantYear; wantYear = null;
-  if (!y) return;
-  const c = cards.find(x => x.y === y), g = $('y' + y), t = c ? c.slot : g;
-  if (!t) return;
-  setTimeout(() => {
-    t.scrollIntoView({behavior: reduce ? 'auto' : 'smooth', block: 'center', inline: 'center'});
-    if (c) { c.el.classList.add('wanted'); setTimeout(() => c.el.classList.remove('wanted'), 6000); }
-  }, 400);
-}
+// the date in the address (#10-24) opens that day; no date opens today
+function wanted() { const h = location.hash.slice(1); return /^\d\d-\d\d$/.test(h) && +h.slice(3) <= LEN[+h.slice(0, 2) - 1] ? h : TODAY; }
 
 async function open(mmdd, push) {
   stop();
@@ -398,7 +382,6 @@ function render() {
   $('all').hidden = !n;
   requestAnimationFrame(cords);
   start();
-  showYear();
 }
 
 function card(y, {Y, place, stories}, want = true) {
@@ -643,7 +626,7 @@ function group(y, Y, where, cal, stories) {
   const fest = festOf(cal);
   g.innerHTML = `<div class="yhead"><h3>${y}</h3><span class="caps">${esc(where || '')}</span>` +
     (cal ? `<span class="it">${esc(cal[0])}</span>` : '') + (fest ? `<span class="fest">${esc(fest)}</span>` : '') +
-    links({date: y + '-' + DAY.date, place: where, skip: 'today'}) + `</div>` +
+    `<a class="go" href="${esc(SRC.search(y + '-' + DAY.date))}">Photos &rsaquo;</a></div>` +
     stories.map(s => `<p class="story-line"><b>On this day</b>${esc(s)}</p>`).join('');
   const add = (list, note) => {
     if (!list || !list.length) return;
@@ -683,7 +666,7 @@ function view(i, play) {
   const none = `<div class="none">${esc(p[2] || 'Darshan')}</div>`;
   $('vstage').innerHTML = `<figure class="vframe" style="margin:0">${url ? `<img alt="${esc(p[2])}" src="${esc(url)}">` : none}` +
     `<figcaption class="vcap"><p>${esc(p[2] || 'Darshan')}</p><div>${esc([when, where, cal && cal[0], festOf(cal)].filter(Boolean).join(' · '))}</div>` +
-    links(trip ? {date: y + '-' + DAY.date, from: trip[0], to: trip[1], place: where, skip: 'today'} : {date: y + '-' + DAY.date, place: where, skip: 'today'}) + `</figcaption></figure>`;
+    `<a class="go" href="${esc(trip && trip[0] !== trip[1] ? `{{SEARCH}}#place=${encodeURIComponent(String(where || '').split(',')[0])}&from=${trip[0]}&to=${trip[1]}` : SRC.search(trip ? trip[0] : y + '-' + DAY.date))}">Photos &rsaquo;</a></figcaption></figure>`;
   const img = $('vstage').querySelector('img');
   if (img) img.onerror = () => img.outerHTML = none;
   $('vpos').textContent = `${vi + 1} of ${everyPhoto.length}`;
@@ -746,7 +729,7 @@ addEventListener('keydown', e => {
   else if (e.key === 'ArrowRight') view(vi + 1);
   else if (e.key === 'ArrowLeft') view(vi - 1);
 });
-addEventListener('hashchange', () => { if (/^#(\d{4}-)?\d\d-\d\d$/.test(location.hash) || !location.hash) open(wanted()); });
+addEventListener('hashchange', () => { if (/^#\d\d-\d\d$/.test(location.hash) || !location.hash) open(wanted()); });
 
 open(wanted());
 // left open overnight (a tablet on a stand), today's page moves on to the new day at midnight, like the TV player

@@ -188,10 +188,8 @@
         if (pickI != null) stays[pickI].el.classList.remove('on');
         pickI = i; x.el.classList.add('on'); centre(x.el);
         wrap.classList.add('ph-picking'); wrap.querySelectorAll('.ph-day').forEach(lit);
-        note.innerHTML = (x.fut ? '<i>Future vicharan</i> ' : '') + `<b>${esc(x.p)}</b> ${x.when} ${x.y1} · ${x.days} ${x.days === 1 ? 'day' : 'days'} ` + (x.fut || window.BDLinks ? '' : `<a href="${SR}#place=${encodeURIComponent(x.p)}&from=${x.from}&to=${x.to}">Photos</a>`) + `<button type="button" aria-label="Clear">✕</button>` +
-          (!x.fut && window.BDLinks ? BDLinks({from: x.from, to: x.to, place: x.p, skip: ['calendar', 'today']}) : '');   // the stay on the other tabs (28 Oct 2026)
+        note.innerHTML = (x.fut ? '<i>Future vicharan</i> ' : '') + `<b>${esc(x.p)}</b> ${x.when} ${x.y1} · ${x.days} ${x.days === 1 ? 'day' : 'days'} ` + (x.fut ? '' : `<a href="${SR}#place=${encodeURIComponent(x.p)}&from=${x.from}&to=${x.to}">Photos</a>`) + `<button type="button" aria-label="Clear">✕</button>`;
         note.querySelector('button').onclick = unpick;
-        barH();
         go(x.k0, x.d0);
       }
       function unpick() {
@@ -199,7 +197,6 @@
         stays[pickI].el.classList.remove('on'); pickI = null;
         wrap.classList.remove('ph-picking'); wrap.querySelectorAll('.ph-day.lit').forEach(b => b.classList.remove('lit'));
         note.textContent = '';
-        barH();
       }
 
       const barH = () => wrap.style.setProperty('--ph-jbar', bar.offsetHeight + 'px');
@@ -301,31 +298,19 @@
         if (day) { draw(s); const b = s.querySelectorAll('.ph-day')[day - 1]; if (b) wrap.scrollTop = Math.max(wrap.scrollTop, b.offsetTop - bar.offsetHeight - 70); }
         mark();
       }
-      // links from the other tabs, as on the computer (28 Oct 2026): #2014-10-24 lights up the stay that day was part of,
-      // rings the day and shows its card; #place=London&from=&to= lights up that stay (else rings its first day)
+      // Search's Calendar button, as on the computer (Darpan, 28 Oct 2026): #2014-10-24 lights up the stay that day was
+      // part of, rings the day and shows its card
       function fromLink() {
-        const h = location.hash.slice(1), q = new URLSearchParams(h), iso = /^\d{4}-\d{2}-\d{2}$/;
-        let date = iso.test(h) ? h : '', i = -1;
-        const a = q.get('from') || '', b = q.get('to') || a;
-        if (iso.test(a) && iso.test(b)) {
-          const P = x => (window.BDLinks && BDLinks.place(x) || x).toLowerCase(), p = q.get('place') ? P(q.get('place')) : ''; let best = -1;
-          stays.forEach((x, j) => { if (x.fut || x.from > b || x.to < a || (p && P(x.p) !== p)) return;
-            const v = Math.min(+new Date(x.to), +new Date(b)) - Math.max(+new Date(x.from), +new Date(a));
-            if (v > best) { best = v; i = j; } });
-          if (i < 0) date = a;
-        }
-        if (date && !D.m[date.slice(0, 7)]) return false;
-        if (date) i = stays.findIndex(x => !x.fut && x.from <= date && x.to >= date);
-        if (!date && i < 0) return false;
+        const date = location.hash.slice(1);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !D.m[date.slice(0, 7)]) return false;
+        const i = stays.findIndex(x => !x.fut && x.from <= date && x.to >= date);
         wantDate = date;
         wrap.querySelectorAll('.ph-day.want').forEach(x => x.classList.remove('want'));
         if (i >= 0) { unpick(); pickStay(i); }
-        if (date) {
-          const k = date.slice(0, 7), day = +date.slice(8);
-          go(k, day);
-          const s = sections[keys.indexOf(k)], btn = s && s.querySelectorAll('.ph-day')[day - 1];
-          if (btn) { btn.classList.add('want'); btn.click(); }
-        }
+        const k = date.slice(0, 7), day = +date.slice(8);
+        go(k, day);
+        const s = sections[keys.indexOf(k)], btn = s && s.querySelectorAll('.ph-day')[day - 1];
+        if (btn) { btn.classList.add('want'); btn.click(); }
         return true;
       }
       const h = location.hash.slice(1);

@@ -124,7 +124,8 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 .big-info { padding: 54px 22px 22px; display: flex; flex-direction: column; gap: 10px; min-width: 0; overflow-wrap: anywhere; }
 .big-info .cap { font-size: 22px; color: var(--cap); }
 .big-info .meta { color: var(--gold-soft); opacity: 1; }
-.big-info .go-row { margin-top: 6px; }
+.big-info .go { display: inline-block; margin-top: 4px; padding: 6px 13px; border: 1px solid var(--gold-soft); border-radius: 999px; color: var(--gold-soft); font: 600 11.5px/1.2 var(--sans); letter-spacing: .08em; text-transform: uppercase; text-decoration: none; }
+.big-info .go:hover, .big-info .go:focus-visible { background: var(--gold-soft); color: var(--maroon-out); outline: none; }   /* the Calendar button (Darpan, 28 Oct 2026) */
 .big-info .badge { color: var(--gold-soft); }
 .big-info .when { font: 700 26px var(--serif); color: var(--gold-hi); }
 .big-info .tithi { font: 700 11px var(--sans); letter-spacing: .22em; text-transform: uppercase; color: var(--gold-soft); }
@@ -452,8 +453,6 @@ function calInfo(d) {
     + (c.fest ? `<div class="fest">${esc(c.fest)}</div>` : '')
     + (c.about || c.notes ? `<div class="about">${esc([c.about, c.notes].filter(Boolean).join('\n'))}</div>` : '');
 }
-// the same day, stay or place on the other tabs (site/links/links.js, Darpan, 28 Oct 2026: "all the tabs linked together")
-const goLinks = o => window.BDLinks ? BDLinks({...o, skip: 'search', left: true}) : '';
 function showBig(i) {
   const p = hits[i]; if (!p) return;
   at = i;
@@ -461,10 +460,10 @@ function showBig(i) {
   if (p.kind === 'photo') {
     const g = p.g, medium = `${PHOTOS}m/${g[3]}/${p.file}`;
     $('big-pic').innerHTML = `<img src="${medium}" alt="${esc(p.cap)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'soon',textContent:'Photo coming soon'}))">`;
-    $('big-info').innerHTML = `<div class="cap">${esc(p.cap || 'Darshan')}</div><div class="meta">${esc(g[1] ? niceDate(g[0]) + ' to ' + niceDate(g[1]) : niceDate(g[0]))} · ${esc(g[2])}</div>${p.m ? `<div class="mandir">${[...p.m].map(k => MANDIR[k][1]).join(' · ')}</div>` : ''}<hr><div class="when">${esc(day)}</div>${calInfo(p.d)}${goLinks({date: p.d, from: g[1] ? g[0] : '', to: g[1] || '', place: g[2]})}`;
+    $('big-info').innerHTML = `<div class="cap">${esc(p.cap || 'Darshan')}</div><div class="meta">${esc(g[1] ? niceDate(g[0]) + ' to ' + niceDate(g[1]) : niceDate(g[0]))} · ${esc(g[2])}</div>${p.m ? `<div class="mandir">${[...p.m].map(k => MANDIR[k][1]).join(' · ')}</div>` : ''}<hr><div class="when">${esc(day)}</div>${calInfo(p.d)}${p.d >= '1999' ? `<div><a class="go" href="/calendar/#${p.d}">Calendar &rsaquo;</a></div>` : ''}`;
   } else {
     $('big-pic').innerHTML = `<div class="story">${esc(p.text)}</div>`;
-    $('big-info').innerHTML = `<span class="badge">On this day</span>${p.m ? `<div class="mandir">${[...p.m].map(k => MANDIR[k][1]).join(' · ')}</div>` : ''}${p.place ? `<div class="meta">${esc(p.place)}</div>` : ''}<hr><div class="when">${esc(day)}</div>${calInfo(p.d)}${goLinks({date: p.d, place: p.place})}`;
+    $('big-info').innerHTML = `<span class="badge">On this day</span>${p.m ? `<div class="mandir">${[...p.m].map(k => MANDIR[k][1]).join(' · ')}</div>` : ''}${p.place ? `<div class="meta">${esc(p.place)}</div>` : ''}<hr><div class="when">${esc(day)}</div>${calInfo(p.d)}`;
   }
   const n = hits.filter(viewable).length, pos = hits.slice(0, i + 1).filter(viewable).length;
   $('big-pos').textContent = `${pos.toLocaleString()} of ${n.toLocaleString()}`;

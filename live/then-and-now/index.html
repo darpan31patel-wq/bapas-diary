@@ -56,7 +56,9 @@ figure { margin: 0; display: grid; grid-template-rows: auto 1fr; gap: 10px; min-
 .soft { transition: opacity calc(var(--fade) / 2) ease-in-out; }
 .soft.out { opacity: 0; }
 figcaption { text-align: center; display: grid; gap: 2px; align-content: start; }
-@media (max-width: 760px) { figcaption .go-row { gap: 5px; } figcaption .go { padding: 4px 8px; font-size: 9.5px; letter-spacing: .04em; } }
+/* the gold Photos button under each photo: that day in Search (Darpan, 28 Oct 2026) */
+.go { display: inline-block; margin-top: 8px; padding: 6px 13px; border: 1px solid var(--gold); border-radius: 999px; color: var(--gold); font: 600 11.5px/1.2 var(--sans); letter-spacing: .08em; text-transform: uppercase; text-decoration: none; }
+.go:hover, .go:focus-visible { background: var(--gold); color: var(--maroon-out); outline: none; }
 .guru { font: 600 clamp(15px, 2vw, 21px)/1.25 var(--title); letter-spacing: .04em; color: var(--gold-hi); }
 .pl { font: 600 clamp(14px, 1.6vw, 17px)/1.3 var(--title); letter-spacing: .06em; color: var(--gold); }
 .pl:empty { display: none; }
@@ -97,13 +99,13 @@ button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 3px; }
   </header>
   <section class="pair" id="pair" aria-live="polite">
     <figure><div class="frame" id="pframe"></div>
-      <figcaption class="soft"><span class="guru">Pramukh Swami Maharaj</span><span class="pl" id="ppl"></span><span class="date" id="pdate"></span><span class="cap" id="pcap"></span><span id="pgo"></span></figcaption></figure>
+      <figcaption class="soft"><span class="guru">Pramukh Swami Maharaj</span><span class="pl" id="ppl"></span><span class="date" id="pdate"></span><span class="cap" id="pcap"></span><span><a class="go" id="pgo">Photos &rsaquo;</a></span></figcaption></figure>
     <div class="seam"><div class="years"><div class="soft" id="gapbox"><b id="gap">26</b><small>years</small></div></div></div>
     <figure><div class="frame" id="mframe"></div>
-      <figcaption class="soft"><span class="guru">Mahant Swami Maharaj</span><span class="pl" id="mpl"></span><span class="date" id="mdate"></span><span class="cap" id="mcap"></span><span id="mgo"></span></figcaption></figure>
+      <figcaption class="soft"><span class="guru">Mahant Swami Maharaj</span><span class="pl" id="mpl"></span><span class="date" id="mdate"></span><span class="cap" id="mcap"></span><span><a class="go" id="mgo">Photos &rsaquo;</a></span></figcaption></figure>
   </section>
   <div class="nav"><button class="back" id="prev" type="button" aria-label="Back"><span aria-hidden="true">‹</span></button><button class="next" id="next" type="button">Next <span aria-hidden="true">›</span></button></div>
-  <div class="links soft" id="links">See every photo of <a id="plink">that day in <span id="py"></span></a> or <a id="mlink">that day in <span id="my"></span></a></div>
+  <div class="links soft" id="links" hidden>See every photo of <a id="plink">that day in <span id="py"></span></a> or <a id="mlink">that day in <span id="my"></span></a></div>
 </main>
 <script>
 const short = p => p.split(',')[0];
@@ -142,11 +144,8 @@ function show(n) {
     $('place').textContent = two ? p.moment : pl; $('place').dataset.set = 1; $('crumb').textContent = pl; $('moment').textContent = two ? '' : p.moment;
     for (const [k, s] of [['p', p.psm], ['m', p.msm]]) {
       $(k + 'date').textContent = fmt(s.date); $(k + 'cap').textContent = clean(s.cap); $(k + 'pl').textContent = two ? short(s.place) : '';
-      $(k + 'link').href = '/search/#date=' + s.date; $(k + 'y').textContent = s.date.slice(0, 4);
-      // this photo's day and place on the other tabs (Darpan, 28 Oct 2026: "all the tabs linked together")
-      if (window.BDLinks) $(k + 'go').innerHTML = BDLinks({date: s.date, place: two ? s.place : p.place, skip: 'tn'});
+      $(k + 'link').href = $(k + 'go').href = '/search/#date=' + s.date; $(k + 'y').textContent = s.date.slice(0, 4);
     }
-    $('links').hidden = !!window.BDLinks;   // the buttons under each photo have the photos of that day
     $('gap').textContent = +p.msm.date.slice(0, 4) - +p.psm.date.slice(0, 4);
     soft.forEach(e => e.classList.remove('out'));
   };
