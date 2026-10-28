@@ -40,6 +40,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir out && rsync -a --exclude README.md live/ out/
+          gh release download legacy-auto -p more.json -D out/then-and-now 2>/dev/null || echo '[]' > out/then-and-now/more.json   # weekly Legacy pairs (Darpan: just go live, 28 Oct)
           gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
           # Bapa's own pages (Today, Calendar, share pictures) show only photos with Bapa in them; Search keeps every photo
           # (Darpan, 25 Oct 2026: "anything Bapa specific should only have pictures of Bapa on there")
