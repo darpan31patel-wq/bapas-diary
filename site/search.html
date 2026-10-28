@@ -284,7 +284,8 @@ function longDate(d) {
   const [y, m, dd] = d.split('-');
   return m ? `${+dd} ${MONTHS[+m - 1]} ${y}` : d;
 }
-const calWords = d => { const c = cal[d]; return c ? [c.indian, c.fest, c.about, c.notes].join(' ').toLowerCase() : ''; };
+// before 2010 the main festivals are worked out (site/search-ask.js, festOn), so "Diwali 2005" finds those days too
+const calWords = d => { const c = cal[d]; return c ? [c.indian, c.fest, c.about, c.notes].join(' ').toLowerCase() : window.festOn ? festOn(d).join(' ').toLowerCase() : ''; };
 
 function parse(q) {
   const want = [], not = [];
@@ -315,6 +316,8 @@ function search() {
   // results are the photos (with Bapa) and stories that answer it, instead of photos that have every word
   const asked = window.askDiary ? askDiary($('q').value) : null;
   const { want, not } = asked ? { want: [], not: [] } : parse($('q').value), year = $('year').value, month = $('month').value, day = $('day').value;
+  // each word also finds its other spellings (Diwali, Divali; site/search-ask.js)
+  const spell = want.length && window.spellWords ? spellWords(want) : { alts: want.map(w => [w]), flat: want, note: '' };
   const from = $('from').value, to = $('to').value, fest = $('fest').value, place = $('place').value || linkPlace, act = $('act').value.startsWith('@') ? '' : $('act').value, mandir = mandirPicked();
   const lp = linkPlace.toLowerCase();   // a place from a map link also finds albums named after two places, or 'Washington DC'
   const byYear = {};
@@ -325,14 +328,14 @@ function search() {
     if (day && r.d.slice(8, 10) !== day) continue;
     if (from && r.d < from) continue;
     if (to && r.d > to) continue;
-    if (fest && !(cal[r.d] && cal[r.d].list.includes(fest))) continue;
+    if (fest && !(cal[r.d] ? cal[r.d].list.includes(fest) : window.festOn && festOn(r.d).includes(fest))) continue;
     if (place && !(r.kind === 'photo' ? r.city === place || (place === linkPlace && r.g[2].split(',').some(c => c.trim().toLowerCase().startsWith(lp))) : (r.place || '').includes(place))) continue;
     if (act && !(r.tags && r.tags.split(', ').includes(act))) continue;
     if (mandir && !(r.m || '').includes(mandir)) continue;
     if (asked && !asked.keep(r)) continue;
     if (want.length || not.length) {
       const hay = r.hay + ' ' + calWords(r.d);
-      if (!want.every(w => hay.includes(w)) || not.some(w => hay.includes(w))) continue;
+      if (!spell.alts.every(a => a.some(w => hay.includes(w))) || not.some(w => hay.includes(w))) continue;
     }
     const k = yearKey(r.y);
     byYear[k] = (byYear[k] || 0) + 1;
@@ -340,7 +343,9 @@ function search() {
     hits.push(r);
   }
   if ($('order').value === 'new') hits.reverse();
-  render(byYear, want);
+  lastWant = spell.flat;
+  render(byYear, spell.flat);
+  if (spell.note) $('count').insertAdjacentHTML('beforeend', `<span class="spelt">${spell.note}</span>`);
 }
 
 function render(byYear, want) {
@@ -376,6 +381,7 @@ function dayHead(d, want, onlyCal) {
     + (mandirDay[d] ? [...mandirDay[d]].map(k => `<span class="mandir">${MANDIR[k][1]}</span>`).join('') : '')
     + (c && c.indian ? `<span class="tithi">${highlight(c.indian, want)}${c.vs ? ' · V.S. ' + c.vs : ''}</span>` : '')
     + (c && c.fest ? `<span class="fest">${highlight(c.fest, want)}</span>` : '')
+    + (!c && window.festOn && festOn(d).length ? `<span class="fest">${highlight(festOn(d).join(', '), want)}</span>` : '')
     + (c && (c.about || c.notes) ? `<span class="about">${highlight([c.about, c.notes].filter(Boolean).join('. '), want)}</span>` : '')
     + (onlyCal ? '<span class="only">No photos or stories saved for this day yet.</span>' : '')
     + '</div>';
@@ -400,7 +406,8 @@ function postCard(p, want, i) {
     ${p.place ? `<div class="place">${highlight(p.place, want)}</div>` : ''}
     </div></article>`;
 }
-function more(want = parse($('q').value).want) {
+var lastWant = [];
+function more(want = lastWant) {
   const box = $('cards'), next = hits.slice(shown, shown + PAGE);
   let html = '';
   next.forEach((p, i) => {
