@@ -1,0 +1,59 @@
+# Website only (bapas-diary.com): tiny copies of every photo for the small squares (whole website review, 28 Oct 2026).
+# Reads R2 s/ (our own 480 px copies), writes R2 t/ (240 px WebP, tools/tiny_photos.py). Never baps.org, never Drive,
+# touches nothing in the daily picture and changes no page: the pages only use t/ once Darpan says yes to that.
+# Runs when this file or tools/tiny_photos.py is pushed; photos already in t/ are skipped, so it can be run again.
+name: website-tiny
+on:
+  push:
+    branches: ['claude/project-thread-mwunnf']
+    paths: ['.github/workflows/website-tiny.yml', 'tools/tiny_photos.py']
+concurrency: website-tiny
+jobs:
+  tiny:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5]
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get ready (R2 access)
+        run: |
+          pip install -q pillow
+          curl -s https://rclone.org/install.sh | sudo bash > /dev/null
+          id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
+          key=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1)
+          echo "::add-mask::$id"; echo "::add-mask::$key"   # keep both out of the run logs
+          mkdir -p ~/.config/rclone
+          printf '[r2]\ntype = s3\nprovider = Cloudflare\naccess_key_id = %s\nsecret_access_key = %s\nendpoint = https://%s.r2.cloudflarestorage.com\nno_check_bucket = true\n' "$id" "$key" "$CF_ACCOUNT" > ~/.config/rclone/rclone.conf
+      - name: Tiny copies into R2 t/
+        run: |
+          rclone lsf -R --files-only --fast-list r2:bapas-diary-photos/s > s.txt
+          rclone lsf -R --files-only --fast-list r2:bapas-diary-photos/t > t.txt || : > t.txt
+          # this machine's share: albums split six ways, and only photos not in t/ yet
+          python3 -c "
+          import sys, zlib
+          have = set(open('t.txt').read().split())
+          mine = [k for k in open('s.txt').read().split() if k not in have and zlib.crc32(k.split('/')[0].encode()) % 6 == ${{ matrix.shard }}]
+          open('todo.txt', 'w').write('\n'.join(mine) + ('\n' if mine else ''))
+          print(f'{len(have)} already in t/; this machine makes {len(mine)}')"
+          split -l 4000 todo.txt part- || true
+          for p in part-*; do
+            [ -s "$p" ] || continue
+            rm -rf s t
+            rclone copy r2:bapas-diary-photos/s s --files-from "$p" --transfers 48 --checkers 48 --s3-no-head
+            python3 tools/tiny_photos.py --src s --out t
+            for i in 1 2 3; do
+              rclone copy t r2:bapas-diary-photos/t --transfers 48 --checkers 48 --s3-no-check-bucket --no-traverse \
+                --header-upload 'Content-Type: image/webp' --header-upload 'Cache-Control: public, max-age=31536000, immutable' && break
+              echo "R2 did not take every file, trying again"; sleep 30
+            done
+            echo "$(date -u +%H:%M) done $(wc -l < "$p") from $p"
+          done
+      - name: Check one
+        if: matrix.shard == 0
+        run: curl -s -o /dev/null -D - https://photos.bapas-diary.com/t/3148/01_TP_1998_80_17.jpg | grep -iE '^(HTTP|content-type|content-length|cache-control)'
