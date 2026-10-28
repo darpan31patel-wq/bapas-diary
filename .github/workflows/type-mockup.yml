@@ -1,0 +1,23 @@
+# Website only (bapas-diary.com), mockup only: never deploys and touches nothing in the daily 2pm picture chain.
+# Screenshots of the live pages now and with the new Lora and Poppins lettering (tools/type_mockup.js), into the
+# release `type-mockup`. Runs when this file changes on a claude/** branch.
+name: type-mockup
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['.github/workflows/type-mockup.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm i --no-save playwright@1.48.2 && npx playwright install --with-deps chromium
+      - run: node tools/type_mockup.js shots && tar czf type-shots.tgz shots
+      - run: |
+          gh release view type-mockup >/dev/null 2>&1 || gh release create type-mockup --prerelease --title "Lettering mockup" --notes "Screenshots for the Lora and Poppins mockup. Not used by the website or the daily picture."
+          gh release upload type-mockup type-shots.tgz --clobber
