@@ -301,7 +301,7 @@ body.dragging { -webkit-user-select: none; user-select: none; }
   const grat = d3.geoGraticule10();
   let W, H, DPR, minDim, cx, cy;
   function resize() {
-    DPR = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight;
+    DPR = Math.min(devicePixelRatio || 1, innerWidth > 760 ? 2 : 1.5); W = innerWidth; H = innerHeight;   // phones: a little softer, much less to paint
     canvas.width = W * DPR; canvas.height = H * DPR; ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     minDim = Math.min(W, H);
     const wide = W > 760;
@@ -399,11 +399,24 @@ body.dragging { -webkit-user-select: none; user-select: none; }
     } else {
       if (st.i > 0 && stops[st.i - 1].year === y) label(stops[st.i - 1].ll, stops[st.i - 1].name, false);
       const [x, yy] = proj(cur.ll);
-      pulse = (pulse + 0.015) % 1;
-      ctx.beginPath(); ctx.arc(x, yy, 6 + pulse * 18, 0, 7); ctx.strokeStyle = `rgba(232,119,46,${1 - pulse})`; ctx.lineWidth = 2; ctx.stroke();
       ctx.beginPath(); ctx.arc(x, yy, 6, 0, 7); ctx.fillStyle = C.saffron; ctx.fill();
       label(cur.ll, cur.name, true);
     }
+  }
+  // Standing still at a place, the globe is kept as a picture and only the pulse ring round the place is drawn again
+  const snap = document.createElement('canvas'), sctx = snap.getContext('2d');
+  let snapKey = '';
+  function drawStill(st) {
+    const key = st.i + ' ' + W + ' ' + H + ' ' + era;   // a stay looks the same all the way through
+    if (key !== snapKey) {
+      draw(st); snapKey = key;
+      snap.width = canvas.width; snap.height = canvas.height; sctx.drawImage(canvas, 0, 0);
+    } else {
+      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(snap, 0, 0); ctx.restore();
+    }
+    const [x, yy] = proj(stops[st.i].ll);
+    pulse = performance.now() / 1100 % 1;   // by the clock, so it keeps its pace however often the globe is drawn
+    ctx.beginPath(); ctx.arc(x, yy, 6 + pulse * 18, 0, 7); ctx.strokeStyle = `rgba(232,119,46,${1 - pulse})`; ctx.lineWidth = 2; ctx.stroke();
   }
 
   // Story card
@@ -542,10 +555,20 @@ body.dragging { -webkit-user-select: none; user-select: none; }
     const goal = target();
     tNow = reduce ? goal : tNow + (goal - tNow) * Math.min(1, dt / 140);
     if (Math.abs(goal - tNow) < 1e-4) tNow = goal;
-    const st = stateAt(tNow);
-    draw(st); story(st); rail(st);
-    requestAnimationFrame(frame);
+    // Draw the globe only when something moves; standing still, the pulse ring needs about 15 frames a second (the
+    // website review found the globe redrawing 60 times a second kept phones busy, 28 Oct 2026)
+    const still = !playing && !drag && tNow === goal;
+    if (!still || tNow !== drawnT || now - drawnAt > 66) {
+      const st = stateAt(tNow);
+      if (st.flying) draw(st); else drawStill(st);
+      story(st); rail(st);
+      drawnT = tNow; drawnAt = now;
+    }
+    if (!document.hidden) requestAnimationFrame(frame); else looping = false;
   }
+  let drawnT = NaN, drawnAt = 0, looping = true;
+  // a hidden tab stops the globe completely; coming back starts it again
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && !looping) { looping = true; last = performance.now(); requestAnimationFrame(frame); } });
   // Switch journey: the globe, years and months start again from the first stop of the chosen guru's journey
   function setEra(e, auto) {
     stopPlay(); plan(e); yearButtons(); buildTape(); sizeScroller();
