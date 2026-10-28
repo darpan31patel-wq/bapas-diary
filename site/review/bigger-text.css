@@ -1,1 +1,12 @@
-/* Mockup only (whole website review, 28 Oct 2026): the smallest words on a phone made a little bigger. Not on the site. */
+/* The smallest words on a phone made a little bigger (whole website review, 28 Oct 2026). Website only.
+   Nothing under 12 px for words people read; the menu tabs keep the size the new lettering gave them. */
+.thumb small { font-size: 13px !important; line-height: 1.3 !important }
+.yhead .caps { font-size: 12.5px !important }
+.yhead a, .story-line b { font-size: 12px !important }
+.label .fest { font-size: 11px !important }
+.ph-stay small { font-size: 12.5px !important }
+.ph-day i { font-size: 12px !important }
+.ph-grid .wk { font-size: 12px !important }
+.frow .flabel, .txt .badge, .bd-share span, .bd-favlink span { font-size: 12px !important }
+#years button span, #years button .n { font-size: 12px !important }
+.soft small { font-size: 12px !important }
