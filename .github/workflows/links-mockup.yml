@@ -1,6 +1,6 @@
 # Website only: pictures of the gold "every tab linked together" buttons on the real pages, built from this branch with
 # the website's own build steps and the real photos, for Darpan to see before anything goes live (28 Oct 2026).
-# Deploys nothing. Pictures go to release links-mockup (fourth round: phone Calendar fix).
+# Deploys nothing. Pictures go to release links-mockup (fifth round: See more, day photo grid).
 name: links-mockup
 on:
   push:
@@ -80,7 +80,12 @@ jobs:
               if (mob) await p.evaluate(() => document.querySelector('#big .go').scrollIntoView({ block: 'center' }));
               await p.waitForTimeout(800); await shot('3-search-photo');
               await p.locator('#big .go').first().click().catch(() => {}); await p.waitForTimeout(7000); await shot('4-calendar');
-              // Then and now: the Photos button under each photo
+              // tapping a day's picture on the Calendar (on a phone, its card) opens all that day's photos in a grid
+              if (mob) await p.locator('.ph-card').click().catch(() => {}); else await p.locator('a.card[href*="2010-10-26"]').click().catch(() => {});
+              await p.waitForTimeout(7000); await shot('4b-day-grid');
+              await p.locator('.grid button').first().click().catch(() => {}); await p.waitForTimeout(4000); await shot('4c-grid-photo');
+              await go('/photos/#date=2023-05-16&place=London', 7000); await shot('4d-day-grid-busy');
+              // Then and now: the See more button under each photo
               await go('/then-and-now/#london', 6000);
               if (mob) await p.evaluate(() => document.getElementById('pgo').scrollIntoView({ block: 'center' }));
               await p.waitForTimeout(800); await shot('5-then-and-now');
