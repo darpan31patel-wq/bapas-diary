@@ -68,7 +68,7 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 .photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 /* and it never sits still: each photo drifts slowly closer to Bapa's face and back, out of step with the others, so the
    board feels alive between the changes (Darpan, 28 Oct 2026) */
-.photo .layer img:not(.bg){transform-origin:var(--fx,50%) var(--fy,30%);animation:breathe 26s ease-in-out infinite alternate;animation-delay:var(--wait,0s)}
+.photo .layer img:not(.bg){transform-origin:var(--fx,50%) var(--fy,30%);animation:breathe 20s ease-in-out infinite alternate;animation-delay:var(--wait,0s)}
 @keyframes breathe{from{transform:scale(1)}to{transform:scale(var(--zoom,1.03))}}
 .paused .photo .layer img{animation-play-state:paused}
 /* Darpan, 25 Oct 2026 (the On this day picture's rules): Bapa's whole head stays in the frame; any space left when it
@@ -243,7 +243,7 @@ footer{text-align:center;margin-top:52px;font:600 19px var(--serif);color:var(--
   <div class="controls" id="controls" hidden>
     <button class="pill" id="pause" type="button">Pause</button>
     <label for="speed">Speed</label>
-    <select id="speed"><option value="5000">Slow</option><option value="3200" selected>Gentle</option><option value="2000">Quick</option></select>
+    <select id="speed"><option value="2000">Slow</option><option value="1000" selected>Gentle</option><option value="700">Quick</option></select>
     <button class="pill" id="slideshow" type="button">Slideshow</button>
     <a class="pill" id="search-day" target="_blank" rel="noopener">Search this date</a>
   </div>
@@ -420,6 +420,7 @@ function card(y, {Y, place, stories}, want = true) {
   const close = p => !!(p[4] && p[4][7]);   // want: this card opens on a close up (true) or an activity photo (false)
   const first = photos.findIndex(p => p[3] && close(p) === want);
   if (photos.length) show(c, first >= 0 ? first : Math.max(0, photos.findIndex(p => p[3])), true);   // open on a darshan of Bapa
+  if (photos.length > 1) (c.pre = new Image()).src = SRC.photo(photos[(c.k + 1) % photos.length]);   // its next photo loads straight away, ready for the first fade
   group(y, Y, where, cal, stories);
   return c;
 }
@@ -484,7 +485,7 @@ function frame(img, p) {
   // the slow drift closes in on his face, never so far that it cuts into his head
   const ox = fx + fw / 2, oy = fy + fh / 2, fit = (edge, far) => far > 0 ? edge / far : 9;
   const room = Math.min(fit(ox - x0, ox - head[0]), fit(x0 + cw - ox, head[2] - ox), fit(oy - y0, oy - head[1]), fit(y0 + ch - oy, head[3] - oy));
-  img.style.setProperty('--zoom', Math.max(1, Math.min(1.06, room * .99)).toFixed(3));
+  img.style.setProperty('--zoom', Math.max(1, Math.min(1.08, room * .99)).toFixed(3));
   img.style.setProperty('--fx', (ox / iw * 100).toFixed(1) + '%');
   img.style.setProperty('--fy', (oy / ih * 100).toFixed(1) + '%');
   Object.assign(img.style, {width: iw / cw * 100 + '%', height: ih / ch * 100 + '%', left: -x0 / cw * 100 + '%', top: -y0 / ch * 100 + '%'});
@@ -524,7 +525,7 @@ function show(c, k, first) {
     next.p = p;
     const gap = frame(next, p);
     bg.hidden = !gap; if (gap) bg.src = url;
-    next.style.setProperty('--wait', `-${(Math.random() * 26).toFixed(1)}s`);   // each card drifts out of step with the rest
+    next.style.setProperty('--wait', `-${(Math.random() * 20).toFixed(1)}s`);   // each card drifts out of step with the rest
     const old = c.layers[c.cur];
     c.cur = i; done(false);
     if (first) { layer.classList.add('on'); c.busy = false; return; }
@@ -538,13 +539,13 @@ function show(c, k, first) {
   next.onerror = () => { if (ticket !== c.ticket) return; clearTimeout(wait); c.busy = false; done(true); };
   next.src = url;
   const after = c.photos[(k + 1) % c.photos.length], ahead = after && after !== p && SRC.photo(after);
-  if (ahead) new Image().src = ahead;   // the card's next photo loads quietly now, so its change is ready when its turn comes
+  if (ahead) (c.pre = new Image()).src = ahead;   // the card's next photo loads quietly now, so its change is ready when its turn comes
 }
 
-// The board breathes: every few seconds one of the cards on the screen fades to its next photo, the one that has waited
-// longest going first, so with twenty or so cards in view there is always one changing (Darpan, 28 Oct 2026: "there
-// should regularly be a picture fading out and changing to another"). A card rests at least twelve seconds between
-// changes, and cards off the screen wait until they are seen. A year with a single photo keeps it, drifting gently.
+// The board is always moving: every second one of the cards on the screen starts fading to its next photo, the one that
+// has waited longest going first, so the fades follow one another and never start together (Darpan, 28 Oct 2026: "in the
+// first second, a picture should fade. The next second, another picture"). A card rests at least four seconds
+// between changes, and cards off the screen wait until they are seen. A year with a single photo keeps it, drifting gently.
 const inView = new Set();
 const watch = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => {
   const c = cards.find(x => x.el === e.target);
@@ -552,8 +553,8 @@ const watch = 'IntersectionObserver' in window ? new IntersectionObserver(es => 
 }), {threshold: .35}) : null;
 let last = null;
 function beat() {
-  const rest = 12000 * (reduce ? 1.6 : 1), t = Date.now();
-  const ready = cards.filter(c => c.photos.length > 1 && !c.busy && t - c.at >= rest && c !== last && (!watch || inView.has(c)))
+  const rest = 4000 * (reduce ? 1.6 : 1), t = Date.now();
+  const ready = cards.filter(c => c.photos.length > 1 && !c.busy && t - c.at >= rest && c !== last && (!watch || inView.has(c)) && (!c.pre || c.pre.complete))   // next photo already here, so the fade starts on the beat
     .sort((a, b) => a.at - b.at);
   const c = ready[Math.floor(Math.random() * Math.min(3, ready.length))];   // one of the three that waited longest
   if (c) { last = c; c.at = t; show(c, (c.k + 1) % c.photos.length); }
@@ -562,8 +563,10 @@ function start() {
   stop();
   if (paused || document.hidden) return;
   if (watch) { inView.clear(); cards.forEach(c => watch.observe(c.el)); }
-  const t = Date.now(); cards.forEach(c => c.at = Math.max(c.at, t - 12000 + 2500 + Math.random() * 6000));   // a first change soon after opening
-  timers.push(setInterval(beat, +$('speed').value * (reduce ? 1.6 : 1)));
+  // the first fade starts within a second of opening, then a new one every second (Darpan, 28 Oct 2026: "the fades are
+  // constantly running", never a still page while it settles)
+  const every = +$('speed').value * (reduce ? 1.6 : 1);
+  timers.push(setTimeout(() => { beat(); timers.push(setInterval(beat, every)); }, Math.min(800, every)));
 }
 function stop() { timers.forEach(clearInterval); timers = []; if (watch) watch.disconnect(); }
 $('pause').onclick = () => { paused = !paused; $('pause').textContent = paused ? 'Play' : 'Pause'; $('board').classList.toggle('paused', paused); start(); };
