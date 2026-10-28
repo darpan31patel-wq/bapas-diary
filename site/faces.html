@@ -41,13 +41,11 @@ h1 { font-family: var(--display); font-weight: 400; font-size: clamp(24px, 3.6vw
 .frame img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; opacity: 0; transition: opacity var(--fade) linear; box-shadow: 0 12px 40px -10px rgba(0,0,0,.7); }
 .frame img.on { opacity: 1; }
 .frame img.rest { transition: opacity var(--fade) linear, transform 1.4s ease-in-out, width 1.4s ease-in-out, height 1.4s ease-in-out; }
-/* a year opens with its own card for a moment: the year, his age, how many days, where he was most */
+/* a year opens with its own card for a moment: his age and the year */
 .intro { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px; text-align: center; background: radial-gradient(closest-side, rgba(21,16,13,.86), rgba(21,16,13,.62)); opacity: 0; transition: opacity .7s ease; pointer-events: none; }
 .intro.on { opacity: 1; }
 .intro .iy { font-family: var(--display); font-size: clamp(56px, 13vmin, 128px); line-height: 1; }
 .intro .ia { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--saffron); }
-.intro .in { font-size: clamp(15px, 2vmin, 19px); }
-.intro .ip { font-size: clamp(14px, 1.8vmin, 17px); color: var(--muted); max-width: 24em; }
 
 .eyes { position: absolute; inset: 0; pointer-events: none; }
 .eyes i { position: absolute; top: var(--eye-y); width: 24px; height: 24px; margin: -12px 0 0 -12px; border: 1.5px solid rgba(255,255,255,.8); border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,.4); }
@@ -149,7 +147,7 @@ select.btn { padding-right: 8px; }
       <div class="frame" id="frame" aria-live="polite">
         <img id="imgA" alt=""><img id="imgB" alt="">
         <div class="eyes" id="eyes" hidden><i id="eyeR"></i><i id="eyeL"></i></div>
-        <div class="intro" id="intro" aria-hidden="true"><span class="ia" id="ia"></span><span class="iy" id="iy"></span><span class="in" id="in"></span><span class="ip" id="ip"></span></div>
+        <div class="intro" id="intro" aria-hidden="true"><span class="ia" id="ia"></span><span class="iy" id="iy"></span></div>
       </div>
     </div>
 
@@ -347,13 +345,10 @@ function stepYear(d) {
   if (ys[at + d] !== undefined) goYear(ys[at + d]);
 }
 function intro(y) {
-  const xs = list.filter(x => x.y === y), n = new Map();
-  for (const x of xs) if (x.place) n.set(x.place, (n.get(x.place) || 0) + 1);
-  const a0 = ageOn(xs[0].day), a1 = ageOn(xs[xs.length - 1].day);
+  // just his age and the year (Darpan, 28 Oct 2026: he went to many places each year, so no places or day counts)
+  const xs = list.filter(x => x.y === y), a0 = ageOn(xs[0].day), a1 = ageOn(xs[xs.length - 1].day);
   $('iy').textContent = y;
   $('ia').textContent = a0 === a1 ? `Bapa aged ${a0}` : `Bapa aged ${a0} to ${a1}`;
-  $('in').textContent = `${xs.length} ${xs.length === 1 ? 'day' : 'days'} of close darshan`;
-  $('ip').textContent = [...n].sort((a, b) => b[1] - a[1]).slice(0, 3).map(p => p[0]).join(' · ');
   $('intro').classList.add('on'); introOn = true;
   clearTimeout(intro.t); intro.t = setTimeout(hideIntro, 1900);
 }
