@@ -231,6 +231,7 @@
           if (date === TODAY) b.classList.add('ph-today');
           const fest = [d[1], d[2]].filter(Boolean).join('; ').split('; ').filter(n => n && !/^(Fast|Sud|Vad) ?\w*$/.test(n));
           if (fest.length) b.classList.add('fest');
+          if (date === TODAY) g._today = b;
           b.setAttribute('aria-label', `${WDL[new Date(y, m - 1, day).getDay()]} ${day} ${MONTHS[m - 1]} ${y}${pl[i] ? ', ' + pl[i] : ''}${fest.length ? ', ' + fest.join(', ') : ''}`);
           b.setAttribute('aria-pressed', 'false');
           if (d[4] && !fut) {
@@ -245,10 +246,26 @@
           g.append(b);
         });
         s.append(g);
+        requestAnimationFrame(() => spot(g));
+      }
+      // look C (Darpan, 28 Oct 2026): the days near the tapped day (else today) come up in colour with a loose gold glow, each by how
+      // near it is: full about 5 days across and 2 rows around it, fading out over half a row
+      function spot(g, at, off) {
+        if (!at && !off) at = g._today;
+        g.classList.toggle('spotted', !!at);
+        const days = g.querySelectorAll('.ph-day');
+        days.forEach(x => {
+          let q = 0;
+          if (at) { const pw = x.offsetWidth * 1.1, ph = x.offsetHeight * 1.1;
+            const d = Math.hypot((x.offsetLeft - at.offsetLeft) / (pw * 2.5), (x.offsetTop - at.offsetTop) / ph);
+            q = Math.max(0, Math.min(1, (1.4 - d) / .6)); q = q * q * (3 - 2 * q); }
+          x.style.setProperty('--q', q.toFixed(3));
+        });
       }
       function pick(s, b, k, day, d, place, fest, fut) {
         if (sel) sel.setAttribute('aria-pressed', 'false');
         sel = b; b.setAttribute('aria-pressed', 'true');
+        wrap.querySelectorAll('.ph-grid.spotted').forEach(x => spot(x, null, true)); spot(b.parentNode, b);
         const [y, m] = k.split('-').map(Number), date = `${k}-${String(day).padStart(2, '0')}`;
         const im = b.querySelector('img');
         card.href = `/photos/#date=${date}${place ? '&place=' + encodeURIComponent(place) : ''}`;   // all that day's photos in a grid (28 Oct 2026)

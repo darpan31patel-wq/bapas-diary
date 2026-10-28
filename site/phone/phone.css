@@ -175,3 +175,11 @@
 .ph-stay small { font-size: 12.5px }
 .ph-day i, .ph-grid .wk { font-size: 12px }
 .ph-mt .ph-ftag, .ph-jrow .ph-fmark { font-size: 11.5px }
+
+/* the calmer phone Calendar, look C (Darpan, 28 Oct 2026: "yes C") */
+@media (max-width: 760px) {
+  /* C, quiet until you look: faded days; the days near the tapped day (else today) in colour with a loose gold glow, each by how near it is */
+  .ph-day { --q: 0; filter: grayscale(calc(.82 - .82 * var(--q))) brightness(calc(.55 + .45 * var(--q)));
+    box-shadow: 0 0 calc(18px * var(--q)) calc(3px * var(--q)) rgba(255, 206, 110, calc(.38 * var(--q))); transition: filter .5s ease, box-shadow .5s ease; }
+  .ph-picking .ph-day.lit, .ph-day.want { filter: none; }
+}
