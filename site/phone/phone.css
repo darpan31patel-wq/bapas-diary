@@ -3,6 +3,11 @@
    page at deploy time. Everything is inside one media query, so computers and tablets keep the pages exactly as they are.
    On a phone: the shared menu becomes a tab bar at the bottom for the thumb (Today, Calendar, Search, Travels, Years, Then & now),
    About moves to a round "i" at the top right, buttons are at least 44px, and photos open full screen on black. */
+/* The page starts below the clock and notch (Darpan, 28 Oct 2026: "Top bar"). Chrome on an iPhone with its address bar at the
+   bottom draws the page under the clock; the top strip already moves down for it, so every page moves down the same amount,
+   or the date buttons sit on top of Bapa's Diary, EN, A A and the "i". 0 everywhere else, so nothing else moves. */
+:root { padding-top: env(safe-area-inset-top, 0px); }
+
 @media (max-width: 760px) {
   :root { --ph-bar: calc(62px + env(safe-area-inset-bottom, 0px)); }
 
