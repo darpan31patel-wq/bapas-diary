@@ -1,0 +1,17 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, fetches nothing
+# from baps.org. Once a day it gives the photos added since yesterday their Search by photo numbers (the small photos
+# come from R2), so Search by photo finds them too. Everything it runs comes from the Search by photo branch
+# claude/project-thread-hi1iz6 (.github/workflows/website-image-search.yml); it sits here only because GitHub runs
+# timed workflows from main. It does not rebuild the website: the next website deploy picks up the new numbers.
+# Keeps 04:30 to 07:30 UTC free for the daily picture's morning run. (Darpan: yes, daily timer, 28 Oct 2026)
+name: website-image-search-timer
+on:
+  schedule:
+    - cron: '40 2 * * *'   # 02:40 UTC, before the deep tags timer's 03:10 run, which redeploys when there are new photos
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  numbers:
+    uses: darpan31patel-wq/bapas-diary/.github/workflows/website-image-search.yml@claude/project-thread-hi1iz6
+    secrets: inherit
