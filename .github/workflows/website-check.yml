@@ -41,11 +41,14 @@ jobs:
           done
       - name: Lighthouse on a phone
         run: |
-          for p in /calendar/ /search/; do
+          set +e
+          for p in / /calendar/ /search/ /through-the-years/ /travels/ /then-and-now/ /about/; do
             n=$(echo "$p" | tr -dc 'a-z-'); n=${n:-today}
             npx --yes lighthouse@12.2.1 "https://bapas-diary.com$p" --quiet --chrome-flags='--headless=new --no-sandbox' \
               --only-categories=performance,accessibility,best-practices,seo --output=json --output-path="lh-$n.json" > /dev/null 2>&1 || { echo "$p: lighthouse failed"; continue; }
-            jq -r --arg p "$p" '"\($p): perf \(.categories.performance.score*100|round) a11y \(.categories.accessibility.score*100|round) best \(.categories["best-practices"].score*100|round) seo \(.categories.seo.score*100|round) | first paint \(.audits["first-contentful-paint"].displayValue) | biggest paint \(.audits["largest-contentful-paint"].displayValue) | blocking \(.audits["total-blocking-time"].displayValue) | shift \(.audits["cumulative-layout-shift"].displayValue) | bytes \(.audits["total-byte-weight"].displayValue)"' "lh-$n.json"
+            jq -r --arg p "$p" '"\($p): perf \((.categories.performance.score // 0)*100|round) a11y \(.categories.accessibility.score*100|round) best \(.categories["best-practices"].score*100|round) seo \(.categories.seo.score*100|round) | first paint \(.audits["first-contentful-paint"].displayValue) | biggest paint \(.audits["largest-contentful-paint"].displayValue) | blocking \(.audits["total-blocking-time"].displayValue) | shift \(.audits["cumulative-layout-shift"].displayValue) | bytes \(.audits["total-byte-weight"].displayValue)"' "lh-$n.json"
+            jq -r '"   text size: \(.audits["font-size"].displayValue // "fine")"' "lh-$n.json"
+            jq -r '.audits["font-size"].details.items[]? | select(.selector != null) | "      \(.fontSize) \(.coverage) \(.selector | if type == "object" then .snippet else . end)"' "lh-$n.json" | head -8 | cut -c1-160
             jq -r '.audits["errors-in-console"].details.items[]? | "   ! console error: \(.description // .source) \(.sourceLocation.url // .url // "")"' "lh-$n.json" | cut -c1-200
             jq -r '[.audits | to_entries[] | select(.value.score != null and .value.score < 0.9 and (.value.details.type == "opportunity" or .value.details.type == "table")) | "   - \(.value.title) \(.value.displayValue // "")"] | .[:12][]' "lh-$n.json"
           done
