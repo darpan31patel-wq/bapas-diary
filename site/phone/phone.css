@@ -171,27 +171,10 @@
   html.ph-years-page body { padding-bottom: calc(10px + var(--ph-bar)); }
 }
 
-/* CALMER LOOKS on the phone Calendar (Darpan, 28 Oct 2026: "quite intense on the eye"), picked with html[data-look]; only the chosen one stays */
+/* the calmer phone Calendar, look C (Darpan, 28 Oct 2026: "yes C") */
 @media (max-width: 760px) {
-  /* A, breathing space */
-  html[data-look=a] .ph-grid { gap: 9px; }
-  html[data-look=a] .ph-day, html[data-look=d] .ph-day { border-radius: 12px; border: 1px solid rgba(255, 226, 150, .14); background: rgba(255, 226, 150, .035); }
-  html[data-look=a] .ph-day img { filter: saturate(.78) brightness(.92); }
-  html[data-look=a] .ph-day[aria-pressed="true"] img { filter: none; }
-  /* B, soft frames: a round darshan in a thin gold ring, the date in gold above it */
-  html[data-look=b] .ph-grid { gap: 6px; }
-  html[data-look=b] .ph-day { border-radius: 12px; border: 1px solid rgba(206, 152, 64, .2); background: rgba(255, 226, 150, .035); }
-  html[data-look=b] .ph-day img { inset: auto; left: 18%; top: 24%; width: 64%; height: 64%; border-radius: 50%; box-shadow: 0 0 0 1.5px rgba(206, 152, 64, .7); filter: saturate(.9); }
-  html[data-look=b] .ph-day i { background: none; text-shadow: none; color: #ffe296; font: 500 11px/1 "EB Garamond", Garamond, serif; left: 4px; top: 3px; padding: 0; opacity: .85; }
-  html[data-look=b] .ph-day.fest::after { right: 50%; margin-right: -3px; bottom: 2px; width: 5px; height: 5px; box-shadow: none; }
   /* C, quiet until you look: faded days; the days near the tapped day (else today) in colour with a loose gold glow, each by how near it is */
-  html[data-look=c] .ph-day { --q: 0; filter: grayscale(calc(.82 - .82 * var(--q))) brightness(calc(.55 + .45 * var(--q)));
+  .ph-day { --q: 0; filter: grayscale(calc(.82 - .82 * var(--q))) brightness(calc(.55 + .45 * var(--q)));
     box-shadow: 0 0 calc(18px * var(--q)) calc(3px * var(--q)) rgba(255, 206, 110, calc(.38 * var(--q))); transition: filter .5s ease, box-shadow .5s ease; }
-  html[data-look=c] .ph-picking .ph-day.lit, html[data-look=c] .ph-day.want { filter: none; }
-  /* D, photos on the special days: an ordinary day shows its date, its photo when tapped */
-  html[data-look=d] .ph-grid { gap: 7px; }
-  html[data-look=d] .ph-day.plain img { opacity: 0; transition: opacity .4s; }
-  html[data-look=d] .ph-day.plain[aria-pressed="true"] img, html[data-look=d] .ph-day.plain.ph-today img, html[data-look=d] .ph-picking .ph-day.plain.lit img { opacity: 1; }
-  html[data-look=d] .ph-day.plain i { left: 0; right: 0; top: 50%; transform: translateY(-50%); background: none; text-shadow: none; color: #e8c47a; font: 500 17px/1 "EB Garamond", Garamond, serif; padding: 0; }
-  html[data-look=d] .ph-day.plain[aria-pressed="true"] i, html[data-look=d] .ph-day.plain.ph-today i { opacity: 0; }
+  .ph-picking .ph-day.lit, .ph-day.want { filter: none; }
 }

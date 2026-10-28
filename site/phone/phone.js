@@ -117,7 +117,6 @@
     const PH = typeof PHOTOS !== 'undefined' ? PHOTOS : 'https://photos.bapas-diary.com/';
     const SR = typeof SEARCH !== 'undefined' ? SEARCH : '/search/';
     const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    const EVERYDAY = /^(Ekadashi|Punam|Amas|Shraddh|Eclipse|Hindola|Dhanurmas|Holashtak|Republic Day|Independence Day)/;
     const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], WDL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     root.classList.add('ph-cal');
     const wrap = el('div', 'ph-cal-wrap');
@@ -232,7 +231,6 @@
           if (date === TODAY) b.classList.add('ph-today');
           const fest = [d[1], d[2]].filter(Boolean).join('; ').split('; ').filter(n => n && !/^(Fast|Sud|Vad) ?\w*$/.test(n));
           if (fest.length) b.classList.add('fest');
-          if (d[4] && !fut && !fest.some(n => !EVERYDAY.test(n))) b.classList.add('plain');   // an ordinary day (calmer looks, 28 Oct 2026)
           if (date === TODAY) g._today = b;
           b.setAttribute('aria-label', `${WDL[new Date(y, m - 1, day).getDay()]} ${day} ${MONTHS[m - 1]} ${y}${pl[i] ? ', ' + pl[i] : ''}${fest.length ? ', ' + fest.join(', ') : ''}`);
           b.setAttribute('aria-pressed', 'false');
@@ -253,7 +251,6 @@
       // look C (Darpan, 28 Oct 2026): the days near the tapped day (else today) come up in colour with a loose gold glow, each by how
       // near it is: full about 5 days across and 2 rows around it, fading out over half a row
       function spot(g, at, off) {
-        if (root.dataset.look !== 'c') return;
         if (!at && !off) at = g._today;
         g.classList.toggle('spotted', !!at);
         const days = g.querySelectorAll('.ph-day');
