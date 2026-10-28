@@ -6,7 +6,7 @@ name: website-deploy
 on:
   push:
     branches: ['claude/**']
-    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/search-people.js', 'site/search-image.js', 'tools/search_people.py', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'tools/web_offline.py', 'tools/web_secure.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', 'functions/**', 'site/weekly/**', '.github/workflows/website-deploy.yml']
+    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/search-people.js', 'site/search-image.js', 'tools/search_people.py', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'tools/web_offline.py', 'tools/web_secure.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', 'tools/web_type.py', 'functions/**', 'site/weekly/**', '.github/workflows/website-deploy.yml']
   workflow_call:   # website-hires (on main) rebuilds the site when a year of full size photos is in R2
 concurrency: website-deploy
 jobs:
@@ -91,6 +91,7 @@ jobs:
           python3 tools/web_rules.py look --out out   # the On this day picture's finish, look D, on the photos (Darpan: 2)
           python3 tools/web_gujarati.py --out out   # English / Gujarati switch (Darpan: yes Gujarati)
           python3 tools/web_secure.py --out out   # the globe's helper scripts from our own site (whole website review, 28 Oct)
+          python3 tools/web_type.py --out out   # Lora headings, Poppins subtitles, labels and buttons (Darpan, 28 Oct)
           python3 tools/web_offline.py --out out --photo-years photo-years.txt   # works with no internet, Save for travelling (Darpan: yes offline)
           python3 tools/web_gujarati.py --out out   # again, for the page the offline step just added
           du -sh out/*
