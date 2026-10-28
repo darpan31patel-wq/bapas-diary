@@ -98,7 +98,7 @@ def pick(rows, seed, used, shown, n=1):
             if any(o[0][:4] == y for o in out):
                 continue
             best = sorted((r for r in by_year[y] if score(r[4]) >= least),
-                          key=lambda r: (-score(r[4]), hashlib.sha1((seed + r[3]).encode()).hexdigest()))
+                          key=lambda r: (FACE.get((r[2], r[3]), (0,))[0] > 2, -score(r[4]), hashlib.sha1((seed + r[3]).encode()).hexdigest()))
             for r in best[:12]:
                 if in_r2(r[2], r[3]):
                     out.append(r)
@@ -108,7 +108,18 @@ def pick(rows, seed, used, shown, n=1):
     return out
 
 
+FACE = {}   # (album, file): (rank, fx, fy) from the website's face rules, when --db is its bapa.db
+
+
 def guru_rows(db, where, args):
+    """Photos of Bapa. With the website's bapa.db (tools/web_faces.py pick, Darpan 25 Oct 2026: only photos where Bapa
+    is recognised) only the photos its face rules keep, best darshan first, with where his face is."""
+    if db.execute("SELECT 1 FROM sqlite_master WHERE name = 'bapa_pick'").fetchone():
+        rows = db.execute(f"SELECT p.date, p.place, p.album, p.file, p.caption, b.rank, b.fx, b.fy FROM photos p "
+                          f"JOIN bapa_pick b USING (album, file) WHERE p.date IS NOT NULL AND {where.replace('date', 'p.date')}", args).fetchall()
+        for r in rows:
+            FACE[(r[2], r[3])] = r[5:]
+        return [r[:5] for r in rows]
     return db.execute(f"SELECT date, place, album, file, caption FROM photos WHERE is_bapa = 1 AND date IS NOT NULL AND {where}", args).fetchall()
 
 
@@ -145,15 +156,16 @@ def week_data(db, sunday, length=7):
 
 
 def cut(album, file, out_path, width):
-    """The R2 photo cut to 4:3, a little above the middle where Bapa's face usually is."""
+    """The R2 photo cut to 4:3 around Bapa's face (from the face rules), or a little above the middle without them."""
     from PIL import Image, ImageOps
     req = urllib.request.Request(PHOTOS + urllib.request.quote(f'm/{album}/{file}'), headers={'User-Agent': UA})
     body = urllib.request.urlopen(req, timeout=60).read()
     im = ImageOps.exif_transpose(Image.open(io.BytesIO(body))).convert('RGB')
     w, h = im.size
     tw, th = (w, round(w * 3 / 4)) if w * 3 / 4 <= h else (round(h * 4 / 3), h)
-    x = (w - tw) // 2
-    y = min(max(round(h * 0.38 - th / 2), 0), h - th)
+    fx, fy = (FACE[(album, file)][1:] if (album, file) in FACE and FACE[(album, file)][1] is not None else (.5, .38))
+    x = min(max(round(w * fx - tw / 2), 0), w - tw)
+    y = min(max(round(h * fy - th * .42), 0), h - th)   # his face a little above the middle of the picture
     im = im.crop((x, y, x + tw, y + th)).resize((width, round(width * 3 / 4)), Image.LANCZOS)
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     im.save(out_path, 'JPEG', quality=82, optimize=True, progressive=True)
@@ -254,6 +266,44 @@ def render(data, img):
 {hello}</td></tr>
 {"".join(parts)}
 <tr><td align="center" style="padding:20px 22px 26px;font:12px/1.6 {SANS};color:{C["muted"]}">
+<div style="font:italic 600 20px {SERIF};color:{C["maroon"]};padding-bottom:6px">Jay Swaminarayan</div>
+You get this because you signed up on <a href="{SITE}" style="color:{C["maroon"]}">bapas-diary.com</a>.<br>
+Reply to this email to write to us. <a href="{{{{{{RESEND_UNSUBSCRIBE_URL}}}}}}" style="color:{C["maroon"]}">Stop these emails</a> with one tap.</td></tr>
+</table></td></tr></table></body></html>'''
+
+
+def render_picture(day, cal, pic, full, special=None):
+    """The morning email as Darpan asked (26 Oct 2026: "can we not just send out our 2pm picture"): that day's Bapa's
+    Diary picture itself, read from the daily run's finished picture, never changing anything in that chain."""
+    link = f'{SITE}day/{day.isoformat()[5:]}/'
+    bits = [esc(cal[0])] if cal[0] else []
+    if cal[1]:
+        bits.append(f'<b style="color:{C["amber"]}">{esc(cal[1])}</b>')
+    line = f'<div style="font:14px/1.4 {SANS};color:{C["muted"]};padding:0 0 12px">{" · ".join(bits)}</div>' if bits else ''
+    extra = ''
+    if special:
+        extra = (f'<tr><td style="padding:0 14px 18px"><div style="font:700 11px {SANS};letter-spacing:2px;text-transform:uppercase;'
+                 f'color:{C["amber"]};padding:0 4px 8px">A special day</div><a href="{special[1]}"><img src="{special[0]}" width="572" '
+                 f'alt="Today\'s special Bapa\'s Diary picture" style="display:block;width:100%;height:auto;border:0;border-radius:6px"></a></td></tr>')
+    pre = f"Today's darshan of Pramukh Swami Maharaj and Mahant Swami Maharaj, {nice(day.isoformat())}."
+    return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<meta name="color-scheme" content="light"><title>Today's darshan</title></head>
+<body style="margin:0;padding:0;background:{C["cream"]}">
+<div style="display:none;max-height:0;overflow:hidden">{pre}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{C["cream"]}"><tr><td align="center" style="padding:22px 8px 30px">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:{C["paper"]}">
+<tr><td align="center" style="background:{C["maroon"]};padding:24px 20px 20px">
+<div style="font:700 11px {SANS};letter-spacing:4px;text-transform:uppercase;color:{C["gold"]}">Bapa's Diary</div>
+<div style="font:600 30px/1.1 {SERIF};color:{C["pale"]};padding:8px 0 6px">Today's darshan</div>
+<div style="font:italic 17px {SERIF};color:#f3e4c6">{nice(day.isoformat())}</div></td></tr>
+<tr><td style="padding:20px 18px 6px;font:18px/1.45 {SERIF};color:{C["ink"]}"><b style="color:{C["maroon"]};font-weight:600">Jay Swaminarayan 🙏🏽</b><br>
+Here is today in Bapa's Diary.{line and ''}</td></tr>
+<tr><td style="padding:0 18px">{line}</td></tr>
+<tr><td style="padding:0 14px 6px"><a href="{full}"><img src="{pic}" width="572" alt="Today in Bapa's Diary: Pramukh Swami Maharaj and Mahant Swami Maharaj on this day over the years" style="display:block;width:100%;height:auto;border:0;border-radius:6px"></a>
+<div style="font:12px {SANS};color:{C["muted"]};text-align:center;padding:6px 0 0">Tap the picture to see it full size</div></td></tr>
+{extra}
+<tr><td align="center" style="padding:16px 18px 24px"><a href="{link}" style="display:inline-block;font:700 13px {SANS};color:#3d0e19;background:{C["gold"]};padding:11px 20px;border-radius:999px;text-decoration:none">Open {nice(day.isoformat(), "%-d %B")} in Bapa's Diary</a></td></tr>
+<tr><td align="center" style="padding:18px 22px 26px;font:12px/1.6 {SANS};color:{C["muted"]};border-top:1px solid {C["line"]}">
 <div style="font:italic 600 20px {SERIF};color:{C["maroon"]};padding-bottom:6px">Jay Swaminarayan</div>
 You get this because you signed up on <a href="{SITE}" style="color:{C["maroon"]}">bapas-diary.com</a>.<br>
 Reply to this email to write to us. <a href="{{{{{{RESEND_UNSUBSCRIBE_URL}}}}}}" style="color:{C["maroon"]}">Stop these emails</a> with one tap.</td></tr>
