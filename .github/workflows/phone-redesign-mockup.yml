@@ -1,6 +1,6 @@
 # Website only (bapas-diary.com), mockup only: never deploys and touches nothing in the daily 2pm picture chain.
 # Records the live Through the years and Travels pages on a phone (mockups/phone-redesign/record.js) into the
-# release `phone-redesign-mockup`, so the phone redesign can be shown on the real pages. Runs when this file changes.
+# release `phone-redesign-mockup`, so the phone redesign can be shown on the real pages. Runs when this file changes (second run: check the live full screen look).
 name: phone-redesign-mockup
 on:
   push:
