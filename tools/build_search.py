@@ -173,7 +173,7 @@ def main():
     ap.add_argument('--deep-tags', help='deep-tags.json from release deep-tags (red flowers, food, crowd...)')
     ap.add_argument('--people-faces', help='people-faces.json from release people-faces (tools/people_faces.py match)')
     ap.add_argument('--photos', default='https://photos.bapas-diary.com/', help='where the s/ and m/ photos are (R2)')
-    ap.add_argument('--start-year', default='', help='the year the page opens on, e.g. while only that year has photos')
+    ap.add_argument('--start-year', default='', help="the year the page opens on, or 'today' for this day in every year")
     ap.add_argument('--image', help='folder with the Search by photo model and photo numbers (release image-search)')
     a = ap.parse_args()
     os.makedirs(os.path.join(a.out, 'data'), exist_ok=True)
