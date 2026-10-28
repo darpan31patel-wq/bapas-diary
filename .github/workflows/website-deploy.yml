@@ -25,7 +25,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PROJECT: bapas-diary
       DOMAIN: bapas-diary.com
-      CAL_COMMIT: 737b25ff4e59f526bdc68bed1517cd5aa3a0f4c5   # claude/project-thread-vxi5sm: bf30042 (linked tabs) plus the calmer look C, faded days with a soft gold glow (Darpan, 28 Oct 2026: go live)
+      CAL_COMMIT: 8fab292e87adf172e3a7dcdf659eb12f45cd8f7f   # claude/project-thread-tbkjl3: 737b25f (look C) plus a day's photos in a box over the Calendar
     steps:
       - uses: actions/checkout@v4
         with:
