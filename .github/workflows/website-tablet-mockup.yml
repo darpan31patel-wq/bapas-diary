@@ -1,0 +1,44 @@
+# Website only, read only: before and after pictures of the live Calendar on tablets, with all seven days across the
+# screen when the tablet is upright (tablet check, 28 Oct 2026). The change exists only inside this test browser.
+name: website-tablet-mockup
+on:
+  push:
+    branches: ['claude/project-thread-mwunnf']
+    paths: ['.github/workflows/website-tablet-mockup.yml', 'site/review/tablet-calendar.js']
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Calendar on tablets, before and after
+        run: |
+          npm i -s playwright@1.49.1 > /dev/null && npx playwright install --with-deps chromium > /dev/null
+          cat > m.js <<'JS'
+          const { chromium } = require('playwright'); const { OLD, NEW } = require('./site/review/tablet-calendar.js');
+          const sizes = [['ipadmini-up', 768, 1024], ['ipadair-up', 820, 1180], ['ipadpro-up', 1024, 1366], ['android-up', 800, 1280], ['ipadair-side', 1180, 820]];
+          (async () => {
+            const b = await chromium.launch();
+            for (const [sz, w, h] of sizes) for (const after of [false, true]) {
+              const ctx = await b.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1.5, isMobile: true, hasTouch: true, serviceWorkers: 'block' });
+              const p = await ctx.newPage(); let swapped = 'n/a';
+              if (after) await p.route(/\/calendar\/(index\.html)?$/, async r => {
+                try { const res = await r.fetch(); let t = await res.text(); swapped = t.includes(OLD); t = t.replace(OLD, NEW); await r.fulfill({ response: res, body: t }); } catch (e) {}
+              });
+              await p.goto('https://bapas-diary.com/calendar/', { waitUntil: 'networkidle', timeout: 90000 }).catch(() => {});
+              await p.waitForTimeout(5000);
+              const m = await p.evaluate(() => { const e = document.querySelector('.month'); const r = e && e.getBoundingClientRect(); const wk = [...document.querySelectorAll('.wkd')].filter(x => { const b = x.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth; }).length;
+                return r ? `month ${Math.round(r.width)}x${Math.round(r.height)}, weekday names fully on screen: ${wk}` : 'no month'; }).catch(e => String(e));
+              console.log(`${sz} ${after ? 'AFTER (swapped ' + swapped + ')' : 'before'}: ${m}`);
+              await p.screenshot({ path: `tabcal-${sz}-${after ? 'after' : 'before'}.jpg`, type: 'jpeg', quality: 72 });
+              await ctx.close().catch(() => {});
+            }
+            await b.close();
+          })();
+          JS
+          node m.js | tee tabcal-report.txt; true
+      - name: Keep them in release website-review
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload website-review -R "$GITHUB_REPOSITORY" --clobber tabcal-*.jpg tabcal-report.txt
