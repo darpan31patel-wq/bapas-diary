@@ -56,7 +56,7 @@ def items_for(day, cache):
     collected = os.path.join(make.HERE, 'archive', mmdd + '.json')
     if os.path.exists(collected):
         have = {x['i'] for x in items}
-        items += [x for x in json.load(open(collected)) if x['i'] not in have]
+        items += [x for x in json.load(open(collected)) if x['i'] not in have and x['y'] < day.year]   # past years only, as make.main()
     combed = os.path.join(make.HERE, 'archive', 'vicharan', mmdd + '.txt')
     if os.path.exists(combed):
         have = {x['i'] for x in items}
