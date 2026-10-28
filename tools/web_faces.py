@@ -206,7 +206,10 @@ def pick(a):
     other = other_guru(src)
 
     def seen(al, fi):   # Bapa recognised by face, in a photo that isn't of the other guru
-        return faces.get(f'{al}/{fi}', [0])[0] >= R.SAME_PERSON and (al, fi) not in other
+        # and a sharp face: Bapa there in person, not his picture on a banner at the back of a stage or a tiny blurry
+        # face far away (Darpan, 26 Oct 2026: 2017 Gandhinagar showed a children's drama with only the Bal Din banner)
+        rec = faces.get(f'{al}/{fi}', [0])
+        return rec[0] >= R.SAME_PERSON and len(rec) > 6 and rec[6] >= R.SHARP_MIN and (al, fi) not in other
 
     keep, why = {}, {'recognised': 0, 'unique moment': 0, 'pin': 0, 'caption only (year not in R2 yet)': 0, 'caption only (thin day)': 0}
     by_day = {}

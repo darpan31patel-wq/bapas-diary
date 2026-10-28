@@ -31,6 +31,7 @@ HERE = R.HERE
 CARD_CHARS = 40   # a Today card's caption fits two lines in about this many letters (cards are 150 to 200 px wide)
 NEAR_DAYS = 7     # a day up to 7 days away may fill a year that has no photos on the date (make.py: 3; Darpan, 26 Oct 2026: "yes nearest day")
 TG_SAME_PERSON = .38   # make.py: the channel's photos are often old video stills of a younger Bapa
+TG_FACE_MIN = .1     # from 1999 on: a channel photo's face of Bapa is at least this part of the photo's height
 TG_FROM = 1950    # make.py: channel darshans of Bapa from this year (earlier ones are of the gurus before him)
 EARLY = 'early'    # R2 folder of the darshan photos before 1999 (public name: never the source's)
 BAPS_FROM = 1999  # baps.org's own photos start here
@@ -313,8 +314,22 @@ def day(a):
                                     'trip': [d.isoformat(), d.isoformat()], 't': [r[:4] for r in rows]}
                         have.add(y)
                         stats['near_added'] += 1
+        shown_tg = set()
         # 5: the channels' darshan of Bapa on this very day (every year since 26 Oct 2026, as the 2pm picture)
         for y, place, al, key, cap, box, sim, short in tgc.get(mmdd, []):
+            # from 1999 on, as sure of Bapa's face as for baps.org's photos, and his face big enough to see (a tenth of
+            # the photo's height at least), never a tiny far figure (Darpan, 26 Oct 2026: "i only want bapa")
+            if y >= BAPS_FROM and (sim < R.SAME_PERSON or box[5] < TG_FACE_MIN):
+                continue
+            # a 3:4 channel post is the channel's own frame (its name above, the date below) that unframe() didn't take
+            # off: never shown, the site never names its sources (Darpan, 23 Oct 2026)
+            if abs(box[6] - .75) < .01:
+                continue
+            # the two channels often post the same photo: show it once (Darpan, 26 Oct 2026: never repeat a picture)
+            same = (y, tuple(round(v, 2) for v in box[:7]))
+            if same in shown_tg:
+                continue
+            shown_tg.add(same)
             if y in years and not years[y].get('tg'):   # baps.org has this year already
                 B = years[y]
                 # make.py: baps.org's own photos of the very day stay; when it only has a nearby day or a trip, the
