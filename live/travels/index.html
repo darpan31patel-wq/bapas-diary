@@ -15,6 +15,9 @@
 .tn:hover, .tn:focus-visible { background: var(--gold); color: var(--night); outline: none; }
 @media (max-width: 760px) { .tn { margin-top: 6px; padding: 5px 12px; font-size: 12px; } }
 /* end then and now */
+/* every stop links to its photos in Search and its month on the Calendar (Darpan, 28 Oct 2026: link all the tabs together) */
+.go { display: inline-flex; flex-wrap: wrap; gap: 0 8px; }
+.pic a { display: block; width: 100%; height: 100%; }
 </style>
 <title>Bapa's Travels</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -81,7 +84,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .yr { flex: 1 1 0; min-width: 0; height: 40px; padding: 0; border-radius: 10px; border: 1px solid var(--line); background: rgba(13,19,48,.7);
   color: var(--ink); font-family: var(--display); font-size: 18px; cursor: pointer; font-variant-numeric: tabular-nums; }
 .yr:hover { border-color: var(--gold); }
-.yr.on { background: var(--gold); border-color: var(--gold); color: var(--night); }
+.yr.on { background: linear-gradient(90deg, var(--saffron) var(--fill, 0%), rgba(13,19,48,.7) var(--fill, 0%)); border-color: var(--gold); color: var(--ink); }
 .yr.other:not(.on) { color: var(--mist); background: rgba(13,19,48,.4); border-style: dashed; }   /* the other guru's journey */
 .yr .short { display: none; }
 @media (max-width: 1280px) { .yr { font-size: 16px; border-radius: 8px; } }
@@ -138,7 +141,8 @@ body.dragging { -webkit-user-select: none; user-select: none; }
   .yr.other::after { background: var(--mist); opacity: .45; }
   .yr .short, .yr .full { display: none; position: absolute; left: 50%; top: 2px; transform: translateX(-50%); white-space: nowrap; }
   .yr.lab .full { display: block; color: var(--mist); font-weight: 400; }
-  .yr.on .full { display: block; z-index: 1; padding: 0 7px; border-radius: 6px; background: var(--gold); color: var(--night); font-weight: 600; }
+  .yr.on .full { display: block; z-index: 1; padding: 0 7px; border-radius: 6px; border: 1px solid var(--gold); color: var(--ink); font-weight: 600;
+    background: linear-gradient(90deg, var(--saffron) var(--fill, 0%), var(--night) var(--fill, 0%)); }
   .yr.on::after { background: var(--gold); opacity: 1; height: 14px; }
   .yr:first-child .full { left: 0; transform: none; } .yr:last-child .full { left: auto; right: 0; transform: none; }
   .yr .short::before { content: none; }
@@ -225,12 +229,13 @@ body.dragging { -webkit-user-select: none; user-select: none; }
 
 
 <section class="story" aria-live="polite">
-  <div class="head"><div class="year" id="year">2017</div><div class="pic" id="pic" hidden><div id="picImg" role="img" aria-label=""></div></div></div>
+  <div class="head"><div class="year" id="year">2017</div><div class="pic" id="pic" hidden><a id="picLink" href="/search/" tabindex="-1"><div id="picImg" role="img" aria-label=""></div></a></div></div>
   <div class="status" id="status">In</div>
   <div class="place" id="place">Ahmedabad</div>
   <div><span class="country" id="country">India</span> <span class="dates" id="dates"></span></div>
   <div class="cap" id="cap"></div>
   <a class="tn" id="tn" href="/then-and-now/" hidden>Then and now &rsaquo;</a>
+  <span class="go" id="go" hidden><a class="tn" id="goPhotos" href="/search/">Photos &rsaquo;</a><a class="tn" id="goCal" href="/calendar/">Calendar &rsaquo;</a></span>
   <div class="stats">
     <div><b id="sStops">1</b><small>places this year</small></div>
     <div><b id="sCountries">1</b><small>countries</small></div>
@@ -503,6 +508,15 @@ body.dragging { -webkit-user-select: none; user-select: none; }
     const TN = {"Ahmedabad": "ahmedabad", "Atladara (Vadodara)": "atladara-vadodara", "Bhadra": "bhadra", "Bharuch": "bharuch", "Bhavnagar": "bhavnagar", "Bhuj": "bhuj", "Bochasan": "bochasan", "Chicago": "chicago", "Edison": "edison", "Gandhinagar": "gandhinagar", "Godhra": "godhra", "Gondal": "gondal", "Junagadh": "junagadh", "Lenasia": "lenasia", "Limbdi": "limbdi", "London": "london", "Mahelav": "mahelav", "Mumbai": "mumbai", "Nadiad": "nadiad", "Nairobi": "nairobi", "Navsari": "navsari", "New Delhi": "new-delhi", "Rajkot": "rajkot", "Robbinsville": "robbinsville", "Sankari": "sankari", "Sarangpur": "sarangpur", "Surat": "surat", "Tithal": "tithal", "Vallabh Vidyanagar": "vallabh-vidyanagar"}, tn = TN[tgt.name];
     $('tn').hidden = st.flying || !tn; if (tn) $('tn').href = '/then-and-now/#' + tn;
     // end then and now
+    // links: this stay's photos in Search, its month on the Calendar; the close up opens the photos too
+    $('go').hidden = st.flying;
+    if (!st.flying) {
+      $('goPhotos').href = `/search/#place=${encodeURIComponent(s.p)}&from=${s.a}&to=${s.b}`;
+      $('goPhotos').setAttribute('aria-label', `Photos from ${s.name}, ${fmtRange(s.a, s.b)} ${s.year}`);
+      $('goCal').href = '/calendar/#' + s.a.slice(0, 7);
+      $('goCal').setAttribute('aria-label', `${s.name} on the Calendar, ${MONTHS[+s.a.slice(5, 7) - 1]} ${s.year}`);
+      $('picLink').href = $('goPhotos').href;
+    }
     $('cap').textContent = st.flying ? 'From ' + s.name + ', ' + Math.round(d3.geoDistance(s.ll, n.ll) * 6371).toLocaleString('en-GB') + ' km' : (s.cap || '');
     const t2 = st.flying ? totals[st.i + 1] : tot;
     $('sStops').textContent = t2.places; $('sCountries').textContent = t2.countries;
@@ -547,7 +561,7 @@ body.dragging { -webkit-user-select: none; user-select: none; }
     $('pins').innerHTML = stops.map(s => `<i style="left:${monthsOf(+day(s.a)) * PX}px"></i>`).join('');
   }
   addEventListener('resize', buildTape);
-  let railYear = null, railM = 0;
+  let railYear = null, railM = 0, railFill = -1;
   function rail(st) {
     const s = stops[st.i];
     const d = dateAtT(tNow);
@@ -556,9 +570,13 @@ body.dragging { -webkit-user-select: none; user-select: none; }
     const y = new Date(d).getUTCFullYear();
     if (y !== railYear) {
       railYear = y;
-      yearsEl.querySelectorAll('.yr').forEach(b => { const on = +b.dataset.y === y; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+      yearsEl.querySelectorAll('.yr').forEach(b => { const on = +b.dataset.y === y; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); if (!on) b.style.removeProperty('--fill'); });
       $('track').setAttribute('aria-valuetext', MONTHS[new Date(d).getUTCMonth()] + ' ' + y);
+      railFill = -1;
     }
+    // the year you are in fills with saffron from left to right as the journey moves through it (Darpan, 28 Oct 2026)
+    const f = Math.round((d - Date.UTC(y, 0, 1)) / (Date.UTC(y + 1, 0, 1) - Date.UTC(y, 0, 1)) * 1000) / 10;
+    if (f !== railFill) { railFill = f; const b = yearsEl.querySelector('.yr.on'); if (b) b.style.setProperty('--fill', f + '%'); }
   }
 
   // Scroll drives time; play just scrolls for you
