@@ -103,7 +103,7 @@ def main():
     p = sub.add_parser('plan'); p.add_argument('--db', default='bapas.db'); p.add_argument('--years'); p.add_argument('--have'); p.add_argument('--max', type=int, default=256)
     p = sub.add_parser('index'); p.add_argument('--db', default='bapas.db'); p.add_argument('--shard'); p.add_argument('--out'); p.add_argument('--models', default='face-models')
     p = sub.add_parser('match'); p.add_argument('--db', default='bapas.db'); p.add_argument('--faces', default='faces'); p.add_argument('--out', default='people-faces.json')
-    p.add_argument('--thresh', type=float, default=.6); p.add_argument('--margin', type=float, default=.06); p.add_argument('--protos', type=int, default=60); p.add_argument('--bapa', type=float, default=.5); p.add_argument('--min-photos', type=int, default=4)
+    p.add_argument('--thresh', type=float, default=.66); p.add_argument('--margin', type=float, default=.08); p.add_argument('--protos', type=int, default=60); p.add_argument('--bapa', type=float, default=.5); p.add_argument('--min-photos', type=int, default=4)
     p = sub.add_parser('sheets'); p.add_argument('--sheets'); p.add_argument('--out', default='sheets'); p.add_argument('--max', type=int, default=80)
     a = ap.parse_args()
     {'plan': plan, 'index': index, 'match': match, 'sheets': sheets}[a.cmd](a)
@@ -215,7 +215,7 @@ def match(a):
     owner = np.concatenate([[j] * len(m) for j, (_, _, m, _) in enumerate(learnt)])
     PE = E[P].astype(np.float32).T
     with_bapa = np.array([info.get(k, ('', False))[1] for k in keys])
-    look = np.where(good & ~bapa & with_bapa[photo])[0]
+    look = np.where(good & (size >= 44) & ~bapa & with_bapa[photo])[0]   # big enough to be sure (checked by eye, 28 Oct)
     best = np.zeros(len(look), np.int32); top = np.zeros(len(look), np.float32); second = np.zeros(len(look), np.float32)
     bounds = np.r_[0, np.cumsum([len(m) for _, _, m, _ in learnt])]
     for s in range(0, len(look), 20000):
