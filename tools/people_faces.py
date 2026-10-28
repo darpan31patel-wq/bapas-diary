@@ -12,7 +12,7 @@ captions do not.
 A shard file holds keys (ALBUM/FILE of each photo with a face), rows (photo, x, y, w, h, score: one row a face,
 in the photo's own pixels at web size) and emb (int8, 128 numbers a face, times 300).
 """
-import argparse, json, os, sqlite3, time, urllib.request
+import argparse, json, os, re, sqlite3, time, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 PHOTOS = 'https://photos.bapas-diary.com/'
@@ -104,8 +104,9 @@ def main():
     p = sub.add_parser('index'); p.add_argument('--db', default='bapas.db'); p.add_argument('--shard'); p.add_argument('--out'); p.add_argument('--models', default='face-models')
     p = sub.add_parser('match'); p.add_argument('--db', default='bapas.db'); p.add_argument('--faces', default='faces'); p.add_argument('--out', default='people-faces.json')
     p.add_argument('--thresh', type=float, default=.5); p.add_argument('--bapa', type=float, default=.5); p.add_argument('--min-photos', type=int, default=4)
+    p = sub.add_parser('sheets'); p.add_argument('--sheets'); p.add_argument('--out', default='sheets'); p.add_argument('--max', type=int, default=80)
     a = ap.parse_args()
-    {'plan': plan, 'index': index, 'match': match}[a.cmd](a)
+    {'plan': plan, 'index': index, 'match': match, 'sheets': sheets}[a.cmd](a)
 
 
 
@@ -207,6 +208,38 @@ def match(a):
                         [k for s, k in other[:24]], [rows[i][1:5].tolist() for i in sorted(hit, key=lambda i: -everyone[i]) if photo[i] not in mine][:24])
     json.dump(found, open(a.out, 'w'), ensure_ascii=False)
     json.dump(sheets, open(a.out.replace('.json', '-sheets.json'), 'w'), ensure_ascii=False)
+
+
+def sheets(a):
+    """Contact sheets to check by eye: for each person, top row the faces learnt from their captioned photos, then
+    the faces found in photos whose captions do not name them, best first, each with its score."""
+    import cv2
+    import numpy as np
+    data = json.load(open(a.sheets))
+    os.makedirs(a.out, exist_ok=True)
+    cache = {}
+
+    def crop(key, box):
+        if key not in cache:
+            raw = get(key)
+            cache[key] = cv2.imdecode(np.frombuffer(raw, np.uint8), cv2.IMREAD_COLOR) if raw else None
+        img = cache[key]
+        if img is None:
+            return np.zeros((112, 112, 3), np.uint8)
+        x, y, w, h = map(int, box)
+        m = int(w * .35)
+        c = img[max(0, y - m):y + h + m, max(0, x - m):x + w + m]
+        return cv2.resize(c, (112, 112)) if c.size else np.zeros((112, 112, 3), np.uint8)
+
+    for name, (seed_keys, seed_boxes, more_keys, more_boxes) in list(data.items())[:a.max]:
+        tiles = [crop(k, b) for k, b in zip(seed_keys, seed_boxes)]
+        row1 = np.hstack(tiles + [np.zeros((112, 112, 3), np.uint8)] * (12 - len(tiles)))
+        found = [crop(k, b) for k, b in zip(more_keys, more_boxes)]
+        found += [np.zeros((112, 112, 3), np.uint8)] * (24 - len(found))
+        sheet = np.vstack([np.full((30, 112 * 12, 3), 255, np.uint8), row1, np.full((8, 112 * 12, 3), 255, np.uint8),
+                           np.hstack(found[:12]), np.hstack(found[12:24])])
+        cv2.putText(sheet, name, (6, 22), cv2.FONT_HERSHEY_SIMPLEX, .7, (0, 0, 0), 2)
+        cv2.imwrite(os.path.join(a.out, re.sub(r'[^A-Za-z0-9]+', '-', name) + '.jpg'), sheet, [cv2.IMWRITE_JPEG_QUALITY, 80])
 
 
 if __name__ == '__main__':

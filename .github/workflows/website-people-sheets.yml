@@ -1,0 +1,23 @@
+# Website only. Contact sheets to check the face matches of Who was with Bapa by eye (tools/people_faces.py sheets):
+# reads .github/people-sheets.json, crops the faces from R2 (photos.bapas-diary.com, never baps.org), and keeps
+# people-sheets.zip in the release people-faces. Changes nothing on the website.
+name: website-people-sheets
+on:
+  push:
+    branches: ['claude/project-thread-docu5h']
+    paths: ['.github/people-sheets.json']
+  workflow_dispatch:
+permissions:
+  contents: write
+env:
+  GH_TOKEN: ${{ github.token }}
+jobs:
+  sheets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          pip install -q opencv-python-headless numpy
+          python3 tools/people_faces.py sheets --sheets .github/people-sheets.json --out sheets
+          zip -qr people-sheets.zip sheets
+          gh release upload people-faces people-sheets.zip --clobber
