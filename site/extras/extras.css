@@ -104,3 +104,6 @@ nav.site-menu, .ph-top { zoom: calc(1 / var(--bd-zoom, 1)); }
   .bd-words { left: 6%; right: 6%; top: auto; bottom: 12%; width: auto; transform: none; text-align: center; font-size: 2cqh; }
 }
 @media (prefers-reduced-motion: reduce) { .bd-slide { transition: none; } .bd-slide.on img { animation: none; } .bd-toast { transition: none; } }
+
+/* Easier to read on a phone: the smallest words a little bigger (website review, 28 Oct 2026) */
+.bd-share span, .bd-favlink span { font-size: 12px }
