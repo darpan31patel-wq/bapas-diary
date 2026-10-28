@@ -103,7 +103,7 @@ def main():
     p = sub.add_parser('plan'); p.add_argument('--db', default='bapas.db'); p.add_argument('--years'); p.add_argument('--have'); p.add_argument('--max', type=int, default=256)
     p = sub.add_parser('index'); p.add_argument('--db', default='bapas.db'); p.add_argument('--shard'); p.add_argument('--out'); p.add_argument('--models', default='face-models')
     p = sub.add_parser('match'); p.add_argument('--db', default='bapas.db'); p.add_argument('--faces', default='faces'); p.add_argument('--out', default='people-faces.json')
-    p.add_argument('--thresh', type=float, default=.5); p.add_argument('--bapa', type=float, default=.5); p.add_argument('--min-photos', type=int, default=4)
+    p.add_argument('--thresh', type=float, default=.6); p.add_argument('--margin', type=float, default=.06); p.add_argument('--protos', type=int, default=60); p.add_argument('--bapa', type=float, default=.5); p.add_argument('--min-photos', type=int, default=4)
     p = sub.add_parser('sheets'); p.add_argument('--sheets'); p.add_argument('--out', default='sheets'); p.add_argument('--max', type=int, default=80)
     a = ap.parse_args()
     {'plan': plan, 'index': index, 'match': match, 'sheets': sheets}[a.cmd](a)
@@ -177,35 +177,68 @@ def match(a):
         print(era, 'Bapa faces so far', int(bapa.sum()))
 
     people = search_people.people(db)
-    found, sheets = {}, {}
+    # 1. each person's face, from the photos whose captions name them. Strong photos are the ones with only one face
+    #    besides Bapa's ("Swamishri blesses Shri Narendra Modi", "Pujya Viveksagar Swami addresses the assembly"):
+    #    the face there must be them. It must agree across several strong photos, so a face that is only often near
+    #    them (an attendant, a crowd) is never learnt as theirs.
+    learnt = []
     for name, kind, spell, n, days, first, last in people:
         if n < a.min_photos:
             continue
         rx = re.compile('(?:^|[^a-z])(?:' + '|'.join(re.escape(s) for s in spell) + ')')
         mine = {p for p, k in enumerate(keys) if rx.search(info.get(k, ('',))[0].lower())}
-        cand = [i for p in mine for i in faces_in.get(p, []) if good[i] and not bapa[i]]
-        if len(mine) < a.min_photos or not cand:
+        strong = []
+        for p in mine:
+            fs = faces_in.get(p, [])
+            other = [i for i in fs if good[i] and not bapa[i]]
+            if len(other) == 1 and len(fs) <= 3:
+                strong.append(other[0])
+        if len(strong) < 2:
             continue
-        C = E[cand].astype(np.float32)
-        S = C @ C.T
-        cp = photo[cand]
-        support = [(len(set(cp[(S[i] > .42) & (cp != cp[i])])), i) for i in range(len(cand))]
-        sup, seed = max(support)
-        if sup < max(2, .25 * (len(mine) - 1)):
+        C = E[strong].astype(np.float32)
+        agree = (C @ C.T > .42).sum(1) - 1   # faces change over 50 years (Narendra Modi 2002 and 2024), so a quarter is enough
+        need = max(1 if len(strong) < 4 else 2, .25 * (len(strong) - 1))
+        if agree.max() < need:
             continue
-        c = C[seed].copy()
-        for _ in range(3):
-            members = np.where(C @ c > .45)[0]
-            c = C[members].mean(0); c /= np.linalg.norm(c)
-        own = set(cp[members])
-        everyone = sims(c)
-        hit = np.where((everyone > a.thresh) & ~bapa & good)[0]
-        other = sorted({(float(everyone[i]), keys[photo[i]]) for i in hit if photo[i] not in mine}, reverse=True)
-        # a face in many photos without the name is more likely an attendant than this person: count it
-        print(f'{name}: {len(mine)} captioned photos, face in {len(own)}, found in {len(other)} more')
-        found[name] = {'captioned': len(mine), 'face_in': len(own), 'more': [[k, round(s, 3)] for s, k in other]}
-        sheets[name] = ([keys[photo[cand[i]]] for i in members[:12]], [rows[cand[i]][1:5].tolist() for i in members[:12]],
-                        [k for s, k in other[:24]], [rows[i][1:5].tolist() for i in sorted(hit, key=lambda i: -everyone[i]) if photo[i] not in mine][:24])
+        c = C[agree >= need].mean(0)
+        c /= np.linalg.norm(c)
+        cand = np.array([i for p in mine for i in faces_in.get(p, []) if good[i] and not bapa[i]])
+        cs = E[cand].astype(np.float32) @ c
+        members = cand[cs > .5][np.argsort(-cs[cs > .5])][:a.protos]
+        if len(members) < 2:
+            continue
+        learnt.append((name, kind, members, mine))
+    print(len(learnt), 'people with a face learnt')
+    # 2. every face in a photo with Bapa against every learnt face: a face is a person's when it is close to their
+    #    faces (the mean of its three closest) and clearly closer than to anyone else's
+    P = np.concatenate([m for _, _, m, _ in learnt])
+    owner = np.concatenate([[j] * len(m) for j, (_, _, m, _) in enumerate(learnt)])
+    PE = E[P].astype(np.float32).T
+    with_bapa = np.array([info.get(k, ('', False))[1] for k in keys])
+    look = np.where(good & ~bapa & with_bapa[photo])[0]
+    best = np.zeros(len(look), np.int32); top = np.zeros(len(look), np.float32); second = np.zeros(len(look), np.float32)
+    bounds = np.r_[0, np.cumsum([len(m) for _, _, m, _ in learnt])]
+    for s in range(0, len(look), 20000):
+        M = E[look[s:s + 20000]].astype(np.float32) @ PE
+        score = np.stack([np.sort(M[:, bounds[j]:bounds[j + 1]], axis=1)[:, -3:].mean(1) for j in range(len(learnt))], 1)
+        o = np.argsort(-score, axis=1)
+        r = np.arange(len(score))
+        best[s:s + 20000], top[s:s + 20000], second[s:s + 20000] = o[:, 0], score[r, o[:, 0]], score[r, o[:, 1]]
+    found, sheets = {}, {}
+    for j, (name, kind, members, mine) in enumerate(learnt):
+        hit = np.where((best == j) & (top >= a.thresh) & (top - second >= a.margin))[0]
+        hit = [h for h in hit[np.argsort(-top[hit])] if photo[look[h]] not in mine]
+        more, seen = [], set()
+        for h in hit:
+            k = keys[photo[look[h]]]
+            if k not in seen:
+                seen.add(k)
+                more.append([k, round(float(top[h]), 3)])
+        print(f'{name}: {len(mine)} captioned photos, face learnt from {len(members)}, found in {len(more)} more')
+        found[name] = {'captioned': len(mine), 'learnt': len(members), 'more': more}
+        show = [hit[i] for i in sorted(set(np.linspace(0, len(hit) - 1, 24).astype(int)))] if hit else []   # best to weakest
+        sheets[name] = ([keys[photo[i]] for i in members[:12]], [rows[i][1:5].tolist() for i in members[:12]],
+                        [keys[photo[look[h]]] for h in show], [rows[look[h]][1:5].tolist() for h in show])
     json.dump(found, open(a.out, 'w'), ensure_ascii=False)
     json.dump(sheets, open(a.out.replace('.json', '-sheets.json'), 'w'), ensure_ascii=False)
 

@@ -62,7 +62,10 @@ OLD = {'jiva khachar', 'dada khachar', 'mukund brahmachari', 'mulji brahmachari'
 SAME = {'prime minister modi': 'Narendra Modi', 'narendrabhai modi': 'Narendra Modi', 'charles iii': 'King Charles',
         'raghabhai': 'Ragha Bharwad', 'raghu bharwad': 'Ragha Bharwad', 'lalkrishna advani': 'L.K. Advani', 'sheikh nahayan': 'Nahyan Mabarak Al Nahyan',
         'c.p. radhakrishnan': 'C.P. Radhakrishna', 'pierre poilievre leader': 'Pierre Poilievre', 'sharad arvind bobade': 'Sharad Arvind Bobde',
-        'henry j. hyde': 'Henry Hyde', 'atmarpit nemiji': 'Atmaprit Nemiji', 'harirkishna maharaj': None}
+        'henry j. hyde': 'Henry Hyde', 'atmarpit nemiji': 'Atmaprit Nemiji', 'harirkishna maharaj': None,
+        # one person under two names, shown by their faces matching (tools/people_faces.py)
+        'swayamprakash swami': 'Doctor Swami', 'bhaktipriya swami': 'Kothari Swami', 'rakeshbhai': 'Gurudevshri Rakeshji',
+        'subhashbhai': 'Subhashbhai Patel', 'swayamparaksh swami': 'Doctor Swami'}
 # swamis known by a title, kept as they are
 TITLED_SWAMI = {'doctor', 'kothari', 'jeer', 'jeeyar', 'chinna'}
 
