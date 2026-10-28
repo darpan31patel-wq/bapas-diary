@@ -8,7 +8,7 @@
 <style>
 /* Layout: the whole photo lit in the middle like a darshan in a dim mandir, the day's facts either side, the years running underneath */
 :root {
-  --bg: #15100d; --panel: #201814; --line: #3b2d25; --ink: #f4e9dc; --muted: #b8a28c; --saffron: #ec8a2d; --glow: rgba(236,138,45,.18);
+  --bg: #15100d; --panel: #201814; --line: #3b2d25; --ink: #f4e9dc; --muted: #b8a28c; --saffron: #ec8a2d; --gold: #f2b544; --glow: rgba(236,138,45,.18);
   --display: 'Marcellus', 'Iowan Old Style', Georgia, serif;
   --body: 'Mukta', 'Segoe UI', system-ui, sans-serif;
   --fade: 160ms;
@@ -63,21 +63,26 @@ h1 { font-family: var(--display); font-weight: 400; font-size: clamp(24px, 3.6vw
 .cal b { color: var(--ink); font-weight: 600; }
 .more { align-self: start; text-decoration: none; font: inherit; font-weight: 600; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 16px; cursor: pointer; }
 .more:hover { border-color: var(--saffron); }
+/* the same day on the other tabs, in the pill look Travels uses for "Then and now" */
+.links { display: flex; flex-wrap: wrap; gap: 8px; }
+.tn { display: inline-block; padding: 7px 14px; border: 1px solid var(--gold); border-radius: 999px; color: var(--gold); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; -webkit-user-select: none; user-select: none; }
+.tn:hover, .tn:focus-visible { background: var(--gold); color: var(--bg); outline: none; }
+@media (max-width: 760px) { .tn { padding: 5px 12px; font-size: 12px; } }
 .count { font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .scrub { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-/* every year as a button, with a step either side (Darpan, 28 Oct 2026: moving between years should be smoother) */
+/* every year as a button in one row; the years gone by and the part of this year passed fill with saffron, like a progress bar (Darpan, 28 Oct 2026) */
 .years { display: flex; align-items: center; gap: 8px; min-width: 0; }
 /* all the years side by side in one row that never slides (Darpan, 28 Oct 2026: 'want all the years in one row static') */
 .years .list { flex: 1; min-width: 0; display: flex; gap: 4px; padding: 2px; }
 .yr { flex: 1 1 0; min-width: 0; font: inherit; font-size: clamp(11px, 1.05vw, 15px); font-variant-numeric: tabular-nums; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 0; cursor: pointer; text-align: center; white-space: nowrap; overflow: hidden; }
 .yr .s { display: none; }
 @media (max-width: 1100px) { .yr .f { display: none; } .yr .s { display: inline; } }   /* narrow screens: '99, '00 ... so every year still fits */
-.yr:hover, .step:hover { border-color: var(--saffron); }
+.yr:hover { border-color: var(--saffron); }
 .yr[aria-pressed="true"] { border-color: var(--saffron); font-weight: 600; background: linear-gradient(90deg, var(--saffron) 0 var(--p), var(--panel) var(--p) 100%); text-shadow: 0 1px 3px rgba(0,0,0,.65); transition: --p .35s ease-out; }
+/* years already passed are full saffron */
+.yr.past { color: var(--bg); background: var(--saffron); border-color: var(--saffron); }
 @property --p { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
-.step { flex: none; font: inherit; font-size: 14px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; cursor: pointer; white-space: nowrap; }
-.step:disabled { opacity: .35; cursor: default; border-color: var(--line); }
-.yr:focus-visible, .step:focus-visible { outline: 2px solid var(--saffron); outline-offset: 2px; }
+.yr:focus-visible { outline: 2px solid var(--saffron); outline-offset: 2px; }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .bar .days { flex: 1 1 240px; min-width: 0; }   /* the scroller takes all the room the buttons leave (Darpan, 28 Oct 2026: 'get rid of year month eye line button, extend the scroller bar') */
 .btn { font: inherit; font-size: 14px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
@@ -108,7 +113,6 @@ select.btn { padding-right: 8px; }
   .sub, .note, .speed { display: none; }
   .bar { flex-wrap: nowrap; } .bar .days { flex: 1 1 0; }   /* Play and the scroller side by side */
   .tab .yrs { font-size: 12px; }
-  .step { display: none; }   /* a phone needs the room for every year; swiping and the years themselves move between them */
   .years .list { gap: 2px; } .yr { font-size: 12px; border-radius: 6px; padding: 6px 0; } .yr .q { display: none; }
 }
 /* a phone on its side: the photo on the left, the day's facts beside it, the controls kept small underneath */
@@ -124,7 +128,7 @@ select.btn { padding-right: 8px; }
   .info.l { text-align: left; align-items: flex-start; }
   .sub, .note, .speed, .count { display: none; }
   .bar .days { order: 0; flex-basis: 160px; height: 36px; }
-  .yr { padding: 2px 0; } .step { font-size: 13px; padding: 2px 10px; }
+  .yr { padding: 2px 0; }
 }
 @media (prefers-reduced-motion: reduce) { :root { --fade: 0ms; } .frame img.rest { transition: none; } }
 </style>
@@ -158,6 +162,7 @@ select.btn { padding-right: 8px; }
       <p class="cap" id="cap"></p>
       <p class="cal" id="cal"></p>
       <a class="more" id="more" href="/search/"></a>
+      <div class="links"><a class="tn" id="toCal" href="/calendar/">Calendar &rsaquo;</a><a class="tn" id="toDay" href="/">On this day &rsaquo;</a></div>
       <span class="count" id="count"></span>
     </div>
   </section>
@@ -169,9 +174,7 @@ select.btn { padding-right: 8px; }
         <input class="days" type="range" id="days" min="0" max="0" value="0" aria-label="Move through the days">
       </div>
       <div class="years" role="group" aria-label="Years">
-        <button class="step" id="yPrev" type="button" aria-label="Year before">‹ <span class="w">Year before</span></button>
         <div class="list" id="years"></div>
-        <button class="step" id="yNext" type="button" aria-label="Next year"><span class="w">Next year</span> ›</button>
       </div>
   </div>
 </div>
@@ -320,6 +323,7 @@ function facts(x) {
   $('cal').innerHTML = x.tithi ? `<b>${esc(x.tithi)}</b>${x.fest ? ' · ' + esc(x.fest) : ''}` : '';
   $('more').textContent = x.photos > 1 ? `See all ${x.photos} photos from this day` : 'See this day in Search';
   $('more').href = `/search/#date=${x.day}`;
+  $('toCal').href = `/calendar/#${x.day}`; $('toDay').href = `/#${x.day}`;   // the same day on the other tabs
   $('count').textContent = `Day ${list.indexOf(x) + 1} of ${list.length} with a close darshan`;
 }
 
@@ -370,9 +374,8 @@ function markYear(y) {
     const on = +b.dataset.y === y;
     b.setAttribute('aria-pressed', on);
     if (!on) b.style.removeProperty('--p');
+    b.classList.toggle('past', +b.dataset.y < y);   // the years gone by stay full, so the row reads as one progress bar (Darpan, 28 Oct 2026)
   }
-  const ys = [...years.keys()];
-  $('yPrev').disabled = ys[0] === y; $('yNext').disabled = ys[ys.length - 1] === y;
 }
 function esc(s) { return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
 
@@ -438,8 +441,6 @@ $('frame').addEventListener('pointermove', e => {
   if (n !== swipe.n) { show(idx + n - swipe.n, true); swipe.n = n; }
 });
 for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) $('frame').addEventListener(t, () => { swipe = null; });
-$('yPrev').onclick = () => stepYear(-1);
-$('yNext').onclick = () => stepYear(1);
 for (const b of document.querySelectorAll('.tab')) b.onclick = () => setEra(b.dataset.era);
 // the photo takes the largest square that fits the space left between the title row and the controls
 function fit() {
