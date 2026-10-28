@@ -1030,8 +1030,12 @@ def shorter_versions(text):
     out = [t] if t != text else []
     for i in cuts:
         cand = t[:i].rstrip(" ,;:-")
+        nxt = t[i:].lstrip(" ,;:-").split(' ', 1)[0].lower()
+        if (nxt == 'of' and re.search(r'\b(the|a|an|his|her)\s+\S+$', cand, re.I)) or (nxt == 'by' and re.search(r'ed$', cand)):
+            continue   # 'Reads prasangs from the life' (of Gunatitanand Swami), 'a bowl sanctified' (by Bhagwan): not a whole sentence (Darpan, 28 Oct 2026)
         quotes = len(re.findall(r"(?<![A-Za-z])'|'(?![A-Za-z])", cand))
-        if len(cand.split()) >= 2 and quotes % 2 == 0 and cand.split()[-1].lower() not in SHORT_END and cand not in out:
+        doubles = len(re.findall(r'"', cand)) + len(re.findall('[\u201c\u201d]', cand))
+        if len(cand.split()) >= 2 and quotes % 2 == 0 and doubles % 2 == 0 and cand.split()[-1].lower() not in SHORT_END and cand not in out:
             out.append(cand)
     return out
 
@@ -1060,6 +1064,8 @@ def tidy(c):
     c = re.sub(r'\b(an) (?=[^aeiouAEIOU\W])', 'a ', c)
     c = re.sub(r"^(['\u2018\u201c].+?['\u2019\u201d])\s*[-\u2013\u2014:]\s*(?:Param Pujya |Pujya |HH )?(?:Pramukh|Mahant) Swami(?: Maharaj)?\s*$", r'\1', c)   # a quote of his: the card is already his
     c = re.sub(r'\s+([,;:])\s*', r'\1 ', c)   # 'Sharad Purnima ,Chants dhun'
+    c = re.sub(rf'(?<=[a-z])\s*\d{{1,2}} {MONTH} \d{{4}}\s*[-\u2013\u2014]\s*', ': ', c)   # 'Chopda Puja28 October 2008 - Bapa blesses the bhaktas'
+    c = re.sub(r"(['\u2019])['\u2019]+", r'\1', c)   # "bhajan, 'Taro Chatak rangilo''" (Darpan, 28 Oct 2026)
     return re.sub(r'\s+', ' ', c).strip(' ,;:')
 
 
@@ -1481,8 +1487,9 @@ def under_card(x, card, gap, f, lh, style, rnd):
         if not lines[-1].endswith('…'):
             f = f2
             break
-    else:
-        lines = wrap(probe, text, f, maxw, n)
+    else:   # no whole sentence fits in n lines: the whole caption on one more line rather than trailing off (Darpan, 28 Oct 2026)
+        f = garamond(f.size * .82, 500)
+        lines = wrap(probe, text, f, maxw, n + 1)
     lh = lh * f.size / cf_size
     # drawn four times bigger and shrunk: small text then keeps the font's true letter spacing (no 'Perform s') and smooth edges
     K = 4; fk = garamond(f.size * K, 500)
