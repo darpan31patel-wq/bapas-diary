@@ -1,0 +1,57 @@
+# Website only: which words are too small to read on a phone, and before and after pictures with them a little bigger,
+# on the live site (whole website review, 28 Oct 2026). Changes no page: the bigger text exists only inside this test
+# browser. Pictures go to release website-review.
+name: website-text-mockup
+on:
+  push:
+    branches: ['claude/project-thread-mwunnf']
+    paths: ['.github/workflows/website-text-mockup.yml', 'site/review/bigger-text.css']
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Small text, before and after
+        run: |
+          npm i -s playwright@1.49.1 > /dev/null && npx playwright install --with-deps chromium > /dev/null
+          cat > shots.js <<'JS'
+          const { chromium } = require('playwright'); const fs = require('fs');
+          const CSS = fs.readFileSync('site/review/bigger-text.css', 'utf8');
+          const pages = [['today', '/'], ['calendar', '/calendar/'], ['search', '/search/#q=annakut'], ['then-and-now', '/then-and-now/'], ['travels', '/travels/'], ['years', '/through-the-years/']];
+          (async () => {
+            const b = await chromium.launch();
+            for (const [name, path] of pages) for (const after of [false, true]) {
+              const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, serviceWorkers: 'block' });
+              const p = await ctx.newPage();
+              await p.goto('https://bapas-diary.com' + path, { waitUntil: 'networkidle', timeout: 90000 }).catch(() => {});
+              if (after) await p.addStyleTag({ content: CSS });
+              await p.waitForTimeout(5000);
+              const small = await p.evaluate(() => {
+                const out = {};
+                for (const e of document.querySelectorAll('body *')) {
+                  if (!e.offsetParent && getComputedStyle(e).position !== 'fixed') continue;
+                  const own = [...e.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent.trim()).join(' ').trim();
+                  if (own.length < 2) continue;
+                  const r = e.getBoundingClientRect(); if (r.width === 0 || r.bottom < 0 || r.top > innerHeight * 3) continue;
+                  const fs = parseFloat(getComputedStyle(e).fontSize); if (fs >= 12) continue;
+                  const cls = (e.className && typeof e.className === 'string' ? '.' + e.className.trim().split(/\s+/).join('.') : '');
+                  const par = e.parentElement; const pc = par && typeof par.className === 'string' && par.className ? '.' + par.className.trim().split(/\s+/)[0] : (par ? par.tagName.toLowerCase() : '');
+                  const k = `${fs}px ${pc} > ${e.tagName.toLowerCase()}${cls}`;
+                  out[k] = out[k] || { n: 0, eg: own.slice(0, 40) }; out[k].n++;
+                }
+                return Object.entries(out).sort((a, b) => b[1].n - a[1].n).slice(0, 10);
+              });
+              console.log(`== ${name} ${after ? 'AFTER' : 'before'}`); for (const [k, v] of small) console.log(`   ${v.n}x ${k}  "${v.eg}"`);
+              await p.screenshot({ path: `text-${name}-${after ? 'after' : 'before'}.jpg`, type: 'jpeg', quality: 80 });
+              await ctx.close().catch(() => {});
+            }
+            await b.close();
+          })();
+          JS
+          node shots.js | tee text-report.txt; true
+      - name: Keep them in release website-review
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload website-review -R "$GITHUB_REPOSITORY" --clobber text-*.jpg text-report.txt
