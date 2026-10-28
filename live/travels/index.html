@@ -139,6 +139,33 @@ body.dragging { -webkit-user-select: none; user-select: none; }
 .views a { padding: 7px 20px; border-radius: 999px; color: var(--mist); text-decoration: none; font-size: 15px; }
 .views a.on { background: var(--gold); color: var(--night); font-weight: 600; }
 @media (max-width: 760px) { .views { top: calc(52px + env(safe-area-inset-top, 0px)); } .views a { padding: 6px 16px; font-size: 14px; } }
+/* Two journeys, one guru each, in the top corners like Through the years (Darpan, 28 Oct 2026) */
+.era { position: fixed; z-index: 6; top: calc(56px + env(safe-area-inset-top, 0px)); max-width: calc(50% - 150px);
+  font: inherit; text-align: left; color: var(--ink); background: var(--card); border: 2px solid var(--line); border-radius: 14px;
+  padding: 8px 16px; cursor: pointer; display: flex; flex-direction: column; gap: 2px;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); -webkit-user-select: none; user-select: none; }
+#era-psm { left: max(24px, env(safe-area-inset-left, 0px)); }
+#era-msm { right: max(24px, env(safe-area-inset-right, 0px)); text-align: right; align-items: flex-end; }
+.era .who { font-family: var(--display); font-size: clamp(16px, 2vw, 22px); line-height: 1.15; }
+.era .yrs { font-size: 13px; color: var(--mist); }
+.era:hover { border-color: var(--gold); }
+.era[aria-selected="true"] { color: var(--night); background: var(--gold); border-color: var(--gold); }
+.era[aria-selected="true"] .yrs { color: var(--night); opacity: .8; }
+.era:focus-visible, .cont:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.cont { font: inherit; color: var(--gold); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+@media (min-width: 761px) { .story { top: calc(50% + 24px); } }
+@media (min-width: 761px) and (max-height: 799px) {   /* short laptop screens: the card sits under the journey buttons and clear of the years */
+  .story { top: calc(136px + env(safe-area-inset-top, 0px)); transform: none; padding: 16px 20px; }
+  .year { font-size: 48px; } .pic { width: 92px; height: 92px; } .status { margin-top: 6px; } .place { font-size: 30px; }
+  .stats { margin-top: 10px; padding-top: 10px; } .next { display: none; }
+}
+@media (max-width: 760px) {
+  .era { top: calc(100px + env(safe-area-inset-top, 0px)); max-width: none; width: calc(50% - 20px); min-height: 56px; justify-content: center; padding: 6px 10px; border-radius: 12px; }
+  #era-psm { left: max(16px, env(safe-area-inset-left, 0px)); }
+  #era-msm { right: max(16px, env(safe-area-inset-right, 0px)); }
+  .era .who { font-size: 14px; white-space: nowrap; } .era .yrs { font-size: 11.5px; white-space: nowrap; }
+}
+@media (max-width: 380px) { .era .who, .era .yrs { white-space: normal; } .era .who { font-size: 13px; } .era .yrs { font-size: 11px; } }
 </style>
 
 </head>
@@ -146,6 +173,10 @@ body.dragging { -webkit-user-select: none; user-select: none; }
 <nav class="site-menu stay" aria-label="Website tabs"><a href="/">Today</a><a href="/search/">Search</a><a class="on" href="/travels/" aria-current="page">Travels</a><a href="/through-the-years/">Through the years</a><a href="/calendar/">Calendar</a><a href="/about/">About</a></nav>
 <canvas id="globe" aria-label="Globe showing Bapa's travels"></canvas>
 <nav class="views" aria-label="Travels views"><a class="on" href="/travels/" aria-current="page">Journey</a><a href="/travels/places/">Places</a></nav>
+<div class="eras" role="tablist" aria-label="Journey">
+  <button class="era" role="tab" id="era-psm" data-era="psm" type="button" aria-selected="true"><span class="who">Pramukh Swami Maharaj</span><span class="yrs">1999 to 13 August 2016</span></button>
+  <button class="era" role="tab" id="era-msm" data-era="msm" type="button" aria-selected="false"><span class="who">Mahant Swami Maharaj</span><span class="yrs">13 August 2016 to today</span></button>
+</div>
 
 
 
@@ -197,21 +228,31 @@ body.dragging { -webkit-user-select: none; user-select: none; }
   const DATA = JSON.parse(document.getElementById('trips').textContent);
   const LAND = (t => topojson.feature(t, t.objects.land))(JSON.parse(document.getElementById('land').textContent));
   const P = DATA.places;
-  const YEARS = Object.keys(DATA.years).sort();
   const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const C = { sea: css('--sea'), land: css('--land'), gold: css('--gold'), saffron: css('--saffron'), ink: css('--ink'), mist: css('--mist'), night: css('--night') };
 
   // One list of stops, all years in date order
-  const stops = [];
+  const ALL = [];
   const PICS = DATA.pics || {};
-  YEARS.forEach(y => DATA.years[y].forEach((s, n) => stops.push({ ...s, key: y + '-' + n, year: +y, ll: P[s.p].ll, name: P[s.p].name, country: P[s.p].country })));
+  Object.keys(DATA.years).sort().forEach(y => DATA.years[y].forEach((s, n) => ALL.push({ ...s, key: y + '-' + n, year: +y, ll: P[s.p].ll, name: P[s.p].name, country: P[s.p].country })));
+  // Two journeys, switched like Through the years (Darpan, 28 Oct 2026): Pramukh Swami Maharaj's up to 13 August 2016,
+  // Mahant Swami Maharaj's from then on. Sarangpur 2016 runs across that day, so it ends with Pramukh Swami Maharaj's
+  // last photos there (12 August) and starts again with Mahant Swami Maharaj's first (18 August), without a close up.
+  const SPLIT = '2016-08-13';
+  const FIRST_MSM = { a: '2016-08-18', cap: 'HH Mahant Swami Maharaj greets Jai Swaminarayan to Pujya Viveksagar Swami during Bhaktachintamani parayan' };
+  const journey = era => era === 'psm'
+    ? ALL.filter(s => s.a < SPLIT).map(s => s.b < SPLIT ? s : { ...s, b: '2016-08-12' })
+    : ALL.filter(s => s.b >= SPLIT).map(s => s.a >= SPLIT ? s : { ...s, ...FIRST_MSM, key: s.key + '-msm' });
+  let era, stops, segs, T, totals, YEARS;
   const day = s => new Date(s + 'T00:00:00Z');
   const fmt = d => { const x = day(d); return x.getUTCDate() + ' ' + MONTHS[x.getUTCMonth()]; };
   const fmtRange = (a, b) => a === b ? fmt(a) : (a.slice(5, 7) === b.slice(5, 7) ? day(a).getUTCDate() + ' to ' + fmt(b) : fmt(a) + ' to ' + fmt(b));
 
+  function plan(e) {
+  era = e; stops = journey(e); YEARS = [...new Set(stops.map(s => String(s.year)))];
   // Scroll timeline: each stop gets a short pause, each flight a stretch that grows with distance
-  const segs = []; let T = 0;
+  segs = []; T = 0;
   stops.forEach((s, i) => {
     const days = (day(s.b) - day(s.a)) / 864e5 + 1;
     const stay = 0.5 + Math.min(days, 30) * 0.035;
@@ -232,6 +273,17 @@ body.dragging { -webkit-user-select: none; user-select: none; }
     g.d0 = Math.max(cur, d0); g.d1 = Math.max(d1, g.d0 + .4 * 864e5);   // never stands still, never goes back
     cur = g.d1;
   });
+  // Running totals at each stop: places, countries and km in that year so far
+  totals = []; {
+    let y = null, seen, cs, km = 0;
+    stops.forEach((s, i) => {
+      if (s.year !== y) { y = s.year; seen = new Set(); cs = new Set(); km = 0; }
+      if (i > 0 && stops[i - 1].year === y) km += d3.geoDistance(stops[i - 1].ll, s.ll) * 6371;
+      seen.add(s.p); cs.add(s.country);
+      totals.push({ places: seen.size, countries: cs.size, km });
+    });
+  }
+  }
   const dateAtT = t => {
     let lo = 0, hi = segs.length - 1;
     while (lo < hi) { const m = (lo + hi + 1) >> 1; if (segs[m].t0 <= t) lo = m; else hi = m - 1; }
@@ -241,17 +293,6 @@ body.dragging { -webkit-user-select: none; user-select: none; }
   const UNIT = 180;   // page pixels per step of the journey: smaller moves through time faster
   const scroller = document.getElementById('scroller');
   const sizeScroller = () => { scroller.style.height = (T * UNIT + innerHeight) + 'px'; };
-
-  // Running totals at each stop: places, countries and km in that year so far
-  const totals = []; {
-    let y = null, seen, cs, km = 0;
-    stops.forEach((s, i) => {
-      if (s.year !== y) { y = s.year; seen = new Set(); cs = new Set(); km = 0; }
-      if (i > 0 && stops[i - 1].year === y) km += d3.geoDistance(stops[i - 1].ll, s.ll) * 6371;
-      seen.add(s.p); cs.add(s.country);
-      totals.push({ places: seen.size, countries: cs.size, km });
-    });
-  }
 
   // Canvas and projection
   const canvas = document.getElementById('globe'), ctx = canvas.getContext('2d');
@@ -401,17 +442,21 @@ body.dragging { -webkit-user-select: none; user-select: none; }
     $('sStops').textContent = t2.places; $('sCountries').textContent = t2.countries;
     $('sKm').textContent = Math.round(t2.km).toLocaleString('en-GB');
     const up = stops.slice(st.i + (st.flying ? 2 : 1), st.i + (st.flying ? 5 : 4)).map(x => x.name);
-    $('next').innerHTML = up.length ? 'Then <strong>' + up.join('</strong>, <strong>') + '</strong>' : 'End of the mockup years';
+    $('next').innerHTML = up.length ? 'Then <strong>' + up.join('</strong>, <strong>') + '</strong>' : era === 'psm' ? 'Then <button class="cont" id="cont" type="button">Mahant Swami Maharaj&rsquo;s journey &rsaquo;</button>' : '';
   }
 
   // Year buttons, and one long tape of months: drag it and December rolls straight on into the next January
   const yearsEl = $('years'), tape = $('tape');
-  YEARS.forEach(y => {
-    const b = document.createElement('button'); b.className = 'yr'; b.type = 'button'; b.dataset.y = y; b.textContent = y;
-    b.addEventListener('click', () => { stopPlay(); const k = stops.findIndex(s => s.year === +y); if (k >= 0) goStop(k, false); });
-    yearsEl.appendChild(b);
-  });
-  const Y0 = +YEARS[0], NM = YEARS.length * 12;
+  let Y0, NM;
+  function yearButtons() {
+    yearsEl.textContent = '';
+    YEARS.forEach(y => {
+      const b = document.createElement('button'); b.className = 'yr'; b.type = 'button'; b.dataset.y = y; b.textContent = y;
+      b.addEventListener('click', () => { stopPlay(); const k = stops.findIndex(s => s.year === +y); if (k >= 0) goStop(k, false); });
+      yearsEl.appendChild(b);
+    });
+    Y0 = +YEARS[0]; NM = YEARS.length * 12;
+  }
   let PX = 80;   // pixels per month
   const monthsOf = d => { const x = new Date(d), y = x.getUTCFullYear(), m = x.getUTCMonth();
     const a = Date.UTC(y, m, 1), b = Date.UTC(y, m + 1, 1); return (y - Y0) * 12 + m + (d - a) / (b - a); };
@@ -427,7 +472,7 @@ body.dragging { -webkit-user-select: none; user-select: none; }
     tape.insertAdjacentHTML('afterbegin', h);
     $('pins').innerHTML = stops.map(s => `<i style="left:${monthsOf(+day(s.a)) * PX}px"></i>`).join('');
   }
-  buildTape(); addEventListener('resize', buildTape);
+  addEventListener('resize', buildTape);
   let railYear = null, railM = 0;
   function rail(st) {
     const s = stops[st.i];
@@ -501,6 +546,19 @@ body.dragging { -webkit-user-select: none; user-select: none; }
     draw(st); story(st); rail(st);
     requestAnimationFrame(frame);
   }
+  // Switch journey: the globe, years and months start again from the first stop of the chosen guru's journey
+  function setEra(e, auto) {
+    stopPlay(); plan(e); yearButtons(); buildTape(); sizeScroller();
+    shown = -1; railYear = null; $('picImg').dataset.key = '';
+    document.querySelectorAll('.era').forEach(b => b.setAttribute('aria-selected', b.dataset.era === e));
+    history.replaceState(null, '', e === 'msm' ? '#msm' : location.pathname + location.search);
+    scrollTo({ top: 0, behavior: 'auto' }); tNow = 0;
+    if (auto && !reduce) startPlay();
+  }
+  document.querySelectorAll('.era').forEach(b => b.addEventListener('click', () => { if (b.dataset.era !== era) setEra(b.dataset.era, true); }));
+  $('next').addEventListener('click', e => { if (e.target.closest('#cont')) setEra('msm', true); });
+  addEventListener('hashchange', () => { const e = location.hash === '#msm' ? 'msm' : 'psm'; if (e !== era) setEra(e, true); });
+  setEra(location.hash === '#msm' ? 'msm' : 'psm');
   resize(); tNow = target(); requestAnimationFrame(frame);
   // Auto play: the journey starts by itself a moment after the page opens; any touch, scroll or button pauses it
   if (!reduce) setTimeout(() => { if (!touched) startPlay(); }, 1500);
