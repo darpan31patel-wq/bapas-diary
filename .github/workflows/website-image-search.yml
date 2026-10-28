@@ -119,3 +119,12 @@ jobs:
           mkdir -p mock
           while read -r k; do mkdir -p "mock/$(dirname "$k")"; curl -sf "https://photos.bapas-diary.com/s/$k" -o "mock/$k" || echo "missing $k"; sleep 0.2; done < tools/image_mockup_keys.txt
           tar -czf mockup-photos.tgz -C mock . && gh release upload image-search mockup-photos.tgz --clobber
+  # read only: is Search by photo on the live site?
+  live:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -sf https://bapas-diary.com/search/ | grep -c 'pic-btn'
+          curl -sf https://bapas-diary.com/search/image/meta.json | python3 -c "import json,sys; m=json.load(sys.stdin); print(m['n'], m['vecs'], m['model'])"
+          for f in dinov2-small-q8.onnx vec-0.bin vec-1.bin keys.json ort.min.js ort-wasm-simd-threaded.wasm ort-wasm-simd-threaded.mjs; do echo "$f $(curl -s -o /dev/null -w '%{http_code} %{size_download} %{content_type}' https://bapas-diary.com/search/image/$f)"; done
