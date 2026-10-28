@@ -29,7 +29,9 @@ def main():
         d = datetime.date.fromisoformat(d.strip())
         want.append(d); asked[str(d)] = str(today)
     for d in want:
-        if os.path.exists(os.path.join(days_dir, str(d), 'pack.json')) and str(d) not in a.dates:
+        made = os.path.join(days_dir, str(d), 'pack.json')
+        # a pack made before every photo of the year was kept (28 Oct 2026) is made again
+        if os.path.exists(made) and str(d) not in a.dates and json.load(open(made)).get('every'):
             continue
         print('making', d, flush=True)
         r = subprocess.run([sys.executable, os.path.join(HERE, 'tools', 'dashboard_pack.py'), str(d), days_dir])
