@@ -43,6 +43,6 @@ jobs:
             npx --yes lighthouse@12.2.1 "https://bapas-diary.com$p" --quiet --chrome-flags='--headless=new --no-sandbox' \
               --only-categories=performance,accessibility,best-practices,seo --output=json --output-path="lh-$n.json" > /dev/null 2>&1 || { echo "$p: lighthouse failed"; continue; }
             jq -r --arg p "$p" '"\($p): perf \(.categories.performance.score*100|round) a11y \(.categories.accessibility.score*100|round) best \(.categories["best-practices"].score*100|round) seo \(.categories.seo.score*100|round) | first paint \(.audits["first-contentful-paint"].displayValue) | biggest paint \(.audits["largest-contentful-paint"].displayValue) | blocking \(.audits["total-blocking-time"].displayValue) | shift \(.audits["cumulative-layout-shift"].displayValue) | bytes \(.audits["total-byte-weight"].displayValue)"' "lh-$n.json"
-            jq -r '.audits["errors-in-console"].details.items[]? | "   ! console error: \(.description // .source)"' "lh-$n.json" | cut -c1-200
+            jq -r '.audits["errors-in-console"].details.items[]? | "   ! console error: \(.description // .source) \(.sourceLocation.url // .url // "")"' "lh-$n.json" | cut -c1-200
             jq -r '[.audits | to_entries[] | select(.value.score != null and .value.score < 0.9 and (.value.details.type == "opportunity" or .value.details.type == "table")) | "   - \(.value.title) \(.value.displayValue // "")"] | .[:12][]' "lh-$n.json"
           done
