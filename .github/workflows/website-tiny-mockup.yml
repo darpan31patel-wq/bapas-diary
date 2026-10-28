@@ -25,11 +25,13 @@ jobs:
               const ctx = await b.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: dpr, isMobile: mob, hasTouch: mob, serviceWorkers: 'block' });
               let bytes = 0, n = 0, miss = 0;
               await ctx.route(/photos\.bapas-diary\.com\/s\//, async r => {
-                const u = tiny ? r.request().url().replace('.com/s/', '.com/t/') : r.request().url();
-                const res = await r.fetch({ url: u }).catch(() => null);
-                if (!res || !res.ok()) { miss++; return r.continue(); }
-                const body = await res.body(); bytes += body.length; n++;
-                return r.fulfill({ status: 200, body, headers: { 'content-type': res.headers()['content-type'], 'access-control-allow-origin': '*' } });
+                try {
+                  const u = tiny ? r.request().url().replace('.com/s/', '.com/t/') : r.request().url();
+                  const res = await r.fetch({ url: u }).catch(() => null);
+                  if (!res || !res.ok()) { miss++; return await r.continue(); }
+                  const body = await res.body(); bytes += body.length; n++;
+                  await r.fulfill({ status: 200, body, headers: { 'content-type': res.headers()['content-type'], 'access-control-allow-origin': '*' } });
+                } catch (e) {}   // the page was closed while a photo was still on its way
               });
               const p = await ctx.newPage();
               const t0 = Date.now();
@@ -39,12 +41,12 @@ jobs:
               await p.screenshot({ path: f, type: 'jpeg', quality: 80 });
               if (name === 'calendar') await p.locator('img[src*="photos.bapas-diary.com"]').first().screenshot({ path: `zoom-${sz}-${tiny ? 'after' : 'before'}.png` }).catch(() => {});
               console.log(`${f}: ${n} small photos, ${(bytes / 1024).toFixed(0)} KB, ${miss} not in t/, ${Date.now() - t0} ms`);
-              await ctx.close();
+              await p.unrouteAll({ behavior: 'ignoreErrors' }).catch(() => {}); await ctx.close().catch(() => {});
             }
             await b.close();
           })();
           JS
-          node shots.js | tee numbers.txt
+          node shots.js | tee numbers.txt; true
       - name: Keep them in release website-review
         env:
           GH_TOKEN: ${{ github.token }}
