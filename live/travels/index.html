@@ -265,12 +265,12 @@ body.dragging { -webkit-user-select: none; user-select: none; }
   <div class="yrs" id="years" aria-label="Years"></div>
   <div class="row">
     <div class="ctrls">
-      <button class="step" id="goPrev" type="button" aria-label="Previous place"><svg width="16" height="16" viewBox="0 0 14 14"><path d="M9.5 2L4 7l5.5 5" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+      <button class="step" id="goPrev" type="button" hidden aria-label="Previous place"><svg width="16" height="16" viewBox="0 0 14 14"><path d="M9.5 2L4 7l5.5 5" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
       <button class="play" id="play" type="button" aria-label="Play the journey">
         <svg id="icoPlay" width="22" height="22" viewBox="0 0 18 18"><path d="M4 2l12 7-12 7z" fill="currentColor"/></svg>
         <svg id="icoPause" width="22" height="22" viewBox="0 0 18 18" hidden><path d="M3 2h4v14H3zM11 2h4v14h-4z" fill="currentColor"/></svg>
       </button>
-      <button class="step" id="goNext" type="button" aria-label="Next place"><svg width="16" height="16" viewBox="0 0 14 14"><path d="M4.5 2L10 7l-5.5 5" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+      <button class="step" id="goNext" type="button" hidden aria-label="Next place"><svg width="16" height="16" viewBox="0 0 14 14"><path d="M4.5 2L10 7l-5.5 5" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
       <button class="speed" id="speed" type="button" aria-label="Play speed">1×</button>
     </div>
     <div class="track" id="track" role="slider" tabindex="0" aria-label="Drag through the months and years">
@@ -610,7 +610,7 @@ body.dragging { -webkit-user-select: none; user-select: none; }
   // back from the first stop of Mahant Swami Maharaj's journey, or on from the last of Pramukh Swami Maharaj's, goes across
   const goBack = () => { stopPlay(); const st = here(); if (era === 'msm' && !st.flying && st.i === 0) handover('psm', 'end'); else goStop(st.flying ? st.i : st.i - 1, true); };
   const goOn = () => { stopPlay(); const st = here(); if (era === 'psm' && st.i >= stops.length - 1) handover('msm', 'start'); else goStop(st.i + 1, true); };
-  $('goPrev').addEventListener('click', goBack);
+  $('goPrev').addEventListener('click', goBack);   // the two buttons are hidden (Darpan, 28 Oct 2026: "get rid of" them); the arrow keys still use these
   $('goNext').addEventListener('click', goOn);
   addEventListener('keydown', e => {
     if (e.target.closest && e.target.closest('button')) return;
