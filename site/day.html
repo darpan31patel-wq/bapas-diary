@@ -59,13 +59,23 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 .peg{position:absolute;left:50%;top:-17px;width:12px;height:30px;margin-left:-6px;border-radius:6px 6px 3px 3px;background:linear-gradient(90deg,#6b4022,#b07a4a 30%,#9a6538 55%,#5d361c);box-shadow:1px 3px 4px rgba(0,0,0,.45);z-index:2}
 .peg::after{content:"";position:absolute;left:1px;right:1px;top:12px;height:3px;background:#3a2210;opacity:.7}
 .photo{position:relative;aspect-ratio:3/4;max-width:100%;overflow:hidden;background:var(--maroon-deep)}
-.photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 7.2s ease-in-out}
-.photo img.on{opacity:1}
+/* each photo sits on its own layer with its softened fill; the next photo's layer fades in on top of the one showing,
+   which stays fully there until it is covered, so the change is a clean dissolve with no dark dip in the middle
+   (Darpan, 28 Oct 2026: some pictures weren't fading or changing as expected) */
+.photo .layer{position:absolute;inset:0;opacity:0;z-index:0}
+.photo .layer.on{opacity:1}
+.photo .layer.top{z-index:1;transition:opacity 3s ease-in-out}
+.photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+/* and it never sits still: each photo drifts slowly closer to Bapa's face and back, out of step with the others, so the
+   board feels alive between the changes (Darpan, 28 Oct 2026) */
+.photo .layer img:not(.bg){transform-origin:var(--fx,50%) var(--fy,30%);animation:breathe 26s ease-in-out infinite alternate;animation-delay:var(--wait,0s)}
+@keyframes breathe{from{transform:scale(1)}to{transform:scale(var(--zoom,1.03))}}
+.paused .photo .layer img{animation-play-state:paused}
 /* Darpan, 25 Oct 2026 (the On this day picture's rules): Bapa's whole head stays in the frame; any space left when it
    has to zoom out is filled with the photo's own colours, softened (make.fill) */
 .photo img.placed{inset:auto;max-width:none;object-fit:fill}
 .photo img.bg{inset:-8%;width:116%;height:116%;object-fit:cover;filter:blur(12px) brightness(.72)}
-.photo .words{position:absolute;inset:0;display:grid;place-items:center;padding:12%;background:radial-gradient(circle at 50% 40%,#5a1626,var(--maroon-deep));transition:opacity 7.2s ease-in-out}
+.photo .words{position:absolute;inset:0;z-index:2;display:grid;place-items:center;padding:12%;background:radial-gradient(circle at 50% 40%,#5a1626,var(--maroon-deep));transition:opacity 3s ease-in-out}
 .photo .words p{margin:0;font:500 clamp(14px,1.3vw,16px)/1.35 var(--serif);font-style:italic;color:var(--gold-hi);text-align:center;text-wrap:balance;overflow-wrap:anywhere;transition:opacity 1.5s ease-in-out}
 .photo .words.off{opacity:0}
 .photo.story{display:grid;place-items:center;padding:12%;background:radial-gradient(circle at 50% 40%,#5a1626,var(--maroon-deep))}
@@ -136,7 +146,7 @@ footer{text-align:center;margin-top:52px;font:600 19px var(--serif);color:var(--
 
 .loading{text-align:center;margin:60px 0;color:var(--mist);font:500 18px var(--serif);font-style:italic}
 .mocknote{margin:14px auto 0;max-width:62ch;text-align:center;font:500 14px/1.45 var(--serif);color:var(--gold-hi);background:rgba(0,0,0,.25);border:1px dashed rgba(217,164,65,.45);padding:9px 14px}
-@media (prefers-reduced-motion:reduce){.photo img,.cap{transition:none}.viewer.play .vframe img{animation:none}}
+@media (prefers-reduced-motion:reduce){.photo .layer.top{transition-duration:1.2s}.photo .layer img{animation:none!important}.cap{transition:none}.viewer.play .vframe img{animation:none}}
 </style>
 
 <nav class="site-menu" aria-label="Website tabs"><a href="/" class="on" aria-current="page">Today</a><a href="/calendar/">Calendar</a><a href="{{SEARCH}}">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/about/">About</a></nav>
@@ -233,7 +243,7 @@ footer{text-align:center;margin-top:52px;font:600 19px var(--serif);color:var(--
   <div class="controls" id="controls" hidden>
     <button class="pill" id="pause" type="button">Pause</button>
     <label for="speed">Speed</label>
-    <select id="speed"><option value="22000">Slow</option><option value="18000" selected>Gentle</option><option value="15000">Quick</option></select>
+    <select id="speed"><option value="5000">Slow</option><option value="3200" selected>Gentle</option><option value="2000">Quick</option></select>
     <button class="pill" id="slideshow" type="button">Slideshow</button>
     <a class="pill" id="search-day" target="_blank" rel="noopener">Search this date</a>
   </div>
@@ -379,12 +389,16 @@ function card(y, {Y, place, stories}, want = true) {
   el.addEventListener('click', e => { e.preventDefault(); const g = $('y' + y); if (g) g.scrollIntoView({behavior: reduce ? 'auto' : 'smooth'}); else if (photos.length) view(0); });
   el.setAttribute('aria-label', photos.length ? `${y}, ${where}: see all ${photos.length} photos` : `${y}, ${where}`);
   const ph = document.createElement('div'); ph.className = 'photo';
-  const c = {y, el, slot, photos, k: -1, imgs: [], cur: 0, rest: hang(y)};
+  const c = {y, el, slot, photos, k: -1, imgs: [], cur: 0, rest: hang(y), at: 0};
   lean(c, c.rest);
-  if (photos.length) {
-    const a = new Image(), b = new Image(); a.alt = b.alt = '';
-    c.bgs = [new Image(), new Image()]; c.bgs.forEach(g => { g.alt = ''; g.className = 'bg'; g.setAttribute('aria-hidden', 'true'); });
-    ph.append(c.bgs[0], c.bgs[1], a, b); c.imgs = [a, b];
+  if (photos.length) {   // two layers, each a photo over its softened fill: one showing, the other ready for the next photo
+    c.layers = [0, 1].map(() => {
+      const l = document.createElement('div'), g = new Image(), i = new Image();
+      l.className = 'layer'; g.alt = i.alt = ''; g.className = 'bg'; g.setAttribute('aria-hidden', 'true');
+      l.append(g, i); ph.append(l);
+      return l;
+    });
+    c.imgs = c.layers.map(l => l.lastChild); c.bgs = c.layers.map(l => l.firstChild);
   } else {
     ph.classList.add('story'); ph.innerHTML = `<p>${esc(stories[0] || '')}</p>`;
   }
@@ -467,10 +481,16 @@ function frame(img, p) {
   x0 = cw <= iw ? Math.min(Math.max(0, x0), iw - cw) : (iw - cw) / 2;
   y0 = ch <= ih ? Math.min(Math.max(0, y0), ih - ch) : (ih - ch) / 2;
   img.classList.add('placed');
+  // the slow drift closes in on his face, never so far that it cuts into his head
+  const ox = fx + fw / 2, oy = fy + fh / 2, fit = (edge, far) => far > 0 ? edge / far : 9;
+  const room = Math.min(fit(ox - x0, ox - head[0]), fit(x0 + cw - ox, head[2] - ox), fit(oy - y0, oy - head[1]), fit(y0 + ch - oy, head[3] - oy));
+  img.style.setProperty('--zoom', Math.max(1, Math.min(1.06, room * .99)).toFixed(3));
+  img.style.setProperty('--fx', (ox / iw * 100).toFixed(1) + '%');
+  img.style.setProperty('--fy', (oy / ih * 100).toFixed(1) + '%');
   Object.assign(img.style, {width: iw / cw * 100 + '%', height: ih / ch * 100 + '%', left: -x0 / cw * 100 + '%', top: -y0 / ch * 100 + '%'});
   return cw > iw + 1 || ch > ih + 1;
 }
-addEventListener('resize', () => cards.forEach(c => (c.imgs || []).forEach(i => i.p && frame(i, i.p))));
+addEventListener('resize', () => cards.forEach(c => (c.imgs || []).forEach((i, n) => { if (!i.p) return; const gap = frame(i, i.p), g = c.bgs[n]; g.hidden = !gap; if (gap && g.src !== i.src) g.src = i.src; })));
 
 function show(c, k, first) {
   const p = c.photos[k], url = SRC.photo(p);
@@ -492,34 +512,61 @@ function show(c, k, first) {
     setTimeout(() => { c.cap.textContent = p[5] || p[2]; c.cap.classList.remove('fade'); }, first ? 0 : 1500);
   };
   if (!url) return done(true);
-  const next = c.imgs[first ? 0 : 1 - c.cur], bg = c.bgs[c.imgs.indexOf(next)];
+  // the hidden layer takes the next photo; it only fades in once the photo is fully loaded and ready to paint, so a
+  // change never starts half drawn, and a photo that will not load is simply passed over
+  const i = first ? 0 : 1 - c.cur, layer = c.layers[i], next = c.imgs[i], bg = c.bgs[i], ticket = c.ticket = (c.ticket || 0) + 1;
+  c.busy = true;
+  const give = () => { if (ticket === c.ticket) c.busy = false; };
+  const wait = setTimeout(give, 15000);
   const swap = () => {
+    if (ticket !== c.ticket) return;
+    clearTimeout(wait);
     next.p = p;
     const gap = frame(next, p);
-    if (gap) bg.src = url;
-    if (!first) { c.imgs[c.cur].classList.remove('on'); c.bgs[c.cur].classList.remove('on'); }
-    next.classList.add('on'); bg.classList.toggle('on', gap); c.cur = c.imgs.indexOf(next); done(false);
+    bg.hidden = !gap; if (gap) bg.src = url;
+    next.style.setProperty('--wait', `-${(Math.random() * 26).toFixed(1)}s`);   // each card drifts out of step with the rest
+    const old = c.layers[c.cur];
+    c.cur = i; done(false);
+    if (first) { layer.classList.add('on'); c.busy = false; return; }
+    layer.classList.add('top'); void layer.offsetWidth; layer.classList.add('on');
+    setTimeout(() => {   // covered: the old photo goes, and this card may change again
+      if (ticket !== c.ticket) return;
+      old.classList.remove('on'); layer.classList.remove('top'); c.busy = false;
+    }, reduce ? 1300 : 3100);
   };
-  next.onload = () => requestAnimationFrame(swap);
-  next.onerror = () => done(true);
+  next.onload = () => (next.decode ? next.decode().catch(() => {}) : Promise.resolve()).then(() => requestAnimationFrame(swap));
+  next.onerror = () => { if (ticket !== c.ticket) return; clearTimeout(wait); c.busy = false; done(true); };
   next.src = url;
+  const after = c.photos[(k + 1) % c.photos.length], ahead = after && after !== p && SRC.photo(after);
+  if (ahead) new Image().src = ahead;   // the card's next photo loads quietly now, so its change is ready when its turn comes
 }
 
-// every card turns on its own, a little out of step with the others, so the board breathes rather than flashes
+// The board breathes: every few seconds one of the cards on the screen fades to its next photo, the one that has waited
+// longest going first, so with twenty or so cards in view there is always one changing (Darpan, 28 Oct 2026: "there
+// should regularly be a picture fading out and changing to another"). A card rests at least twelve seconds between
+// changes, and cards off the screen wait until they are seen. A year with a single photo keeps it, drifting gently.
+const inView = new Set();
+const watch = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => {
+  const c = cards.find(x => x.el === e.target);
+  if (c) e.isIntersecting ? inView.add(c) : inView.delete(c);
+}), {threshold: .35}) : null;
+let last = null;
+function beat() {
+  const rest = 12000 * (reduce ? 1.6 : 1), t = Date.now();
+  const ready = cards.filter(c => c.photos.length > 1 && !c.busy && t - c.at >= rest && c !== last && (!watch || inView.has(c)))
+    .sort((a, b) => a.at - b.at);
+  const c = ready[Math.floor(Math.random() * Math.min(3, ready.length))];   // one of the three that waited longest
+  if (c) { last = c; c.at = t; show(c, (c.k + 1) % c.photos.length); }
+}
 function start() {
   stop();
-  if (paused) return;
-  const every = +$('speed').value * (reduce ? 1.6 : 1);
-  cards.filter(c => c.photos.length > 1).forEach(c => {
-    const t = setTimeout(function turn() {
-      show(c, (c.k + 1) % c.photos.length);
-      timers.push(setTimeout(turn, every * (.85 + Math.random() * .3)));
-    }, every * (.3 + Math.random()));
-    timers.push(t);
-  });
+  if (paused || document.hidden) return;
+  if (watch) { inView.clear(); cards.forEach(c => watch.observe(c.el)); }
+  const t = Date.now(); cards.forEach(c => c.at = Math.max(c.at, t - 12000 + 2500 + Math.random() * 6000));   // a first change soon after opening
+  timers.push(setInterval(beat, +$('speed').value * (reduce ? 1.6 : 1)));
 }
-function stop() { timers.forEach(clearTimeout); timers = []; }
-$('pause').onclick = () => { paused = !paused; $('pause').textContent = paused ? 'Play' : 'Pause'; start(); };
+function stop() { timers.forEach(clearInterval); timers = []; if (watch) watch.disconnect(); }
+$('pause').onclick = () => { paused = !paused; $('pause').textContent = paused ? 'Play' : 'Pause'; $('board').classList.toggle('paused', paused); start(); };
 $('speed').onchange = start;
 document.addEventListener('visibilitychange', () => document.hidden ? stop() : start());
 
