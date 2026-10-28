@@ -199,6 +199,7 @@ def tg(a):
     db = sqlite3.connect(a.db)
     folder = {(ch, i): f for ch, i, f in db.execute('SELECT channel, id, local_folder FROM tg_posts')}
     cards, seen, tried = {}, 0, 0
+    known = known_places(db)
     for os_dir in ('s/' + EARLY, 'm/' + EARLY):
         os.makedirs(os.path.join(a.out, os_dir), exist_ok=True)
     for ch, date, place, posts, data, guru in db.execute(
@@ -241,7 +242,7 @@ def tg(a):
                 close = h >= R.CLOSE_MIN_FACE and front >= .35 and sharp >= R.SHARP_MIN and bright >= R.BRIGHT_MIN
                 cap = website_caption(own.get('card') or e['card'])
                 cards.setdefault(date[5:], []).append(
-                    [y, own.get('place') or e.get('place') or place or '', EARLY, key, cap,
+                    [y, card_place(own.get('place'), e.get('place') or place, known), EARLY, key, cap,
                      [round((x + w / 2) / W, 3), round((yy + h / 2) / H, 3), round(x / W, 4), round(yy / H, 4), round(w / W, 4),
                       round(h / H, 4), round(W / H, 4), int(close)], round(sim, 3), card_caption(cap)])
                 seen += 1
@@ -253,6 +254,56 @@ def tg(a):
 # ---------------------------------------------------------------- 3 4 5 6 7 the Today page's data
 
 town = lambda p: re.split(r'[,(]', p or '')[0].strip().lower()
+
+# Darpan, 28 Oct 2026 ("Look at 1990, why is the location like this?"): the UK diary's place is read off the words written
+# on each photo, so it can come with the rest of that line and specks read as letters ('Morning puja —.London',
+# 'London oN', 'Evening sabha =London'). A card shows a town only: a place Bapa's photos know, else a tidy name.
+NOT_A_PLACE = re.compile(r'\b(morning|evening|afternoon|puja|sabha|arti|aarti|viday|arrival|arrive|departure|flight|swagat|'
+                         r'yatra|pratishtha|muhurat|rangotsav|mahotsav|shibir|sammelan|din|day|opening|visit|meets|festival|crematorium|'
+                         r'tournament|counter|vad|sud|ashirwad|meeting|project|national|kishore|shishu|balika|mandal|cultural)\b', re.I)
+
+
+def known_places(db):
+    """Every town Bapa's photos name, and the places file's towns, longest first."""
+    names = {(p or '').split(',')[0].strip() for (p,) in db.execute('SELECT DISTINCT place FROM photos')}
+    try:
+        names |= set(json.load(open(os.path.join(HERE, 'places.json'), encoding='utf-8')))
+    except (OSError, ValueError):
+        pass
+    return sorted((n for n in names if len(n) > 2 and not NOT_A_PLACE.search(n)), key=len, reverse=True)
+
+
+def tidy_place(text, known):
+    """('Morning puja —.London', ...) -> 'London': the first known town in it, else a tidy name, else ''."""
+    text = text or ''
+    found = [(m.start(), n) for n in known for m in [re.search(r'(?<![\w-])' + re.escape(n) + r'(?![\w-])', text, re.I)] if m]
+    if found:
+        return min(found, key=lambda f: (f[0], -len(f[1])))[1]
+    m = re.search(r"\b(?:in|to|from|meets)\s+([A-Z][\w'’.-]*(?:\s+(?:[A-Z][\w'’.-]*|on|upon|under))*)", text)
+    if m and NOT_A_PLACE.search(text):   # 'Murti Pratishtha in Ashton-under-Lyne', 'Visit to town of Unhost'
+        return m.group(1)
+    t = re.split(r'\s*[—–=~:;|@*«»"“”©®<>]+\s*|\s+-+\s*|\s*-+\s+', text.split(',')[0])
+    t = max((x for x in t if x), key=len, default='')
+    if NOT_A_PLACE.search(t):   # 'Aso vad 4', 'Evening sabha'
+        return ''
+    words = t.strip(' .\'’-').split()
+    while words and (len(re.sub(r'\W', '', words[-1])) <= 2 or not words[-1][0].isupper()):   # 'Leeds So', 'Islington aN'
+        words.pop()
+    while words and len(re.sub(r'\W', '', words[0])) <= 1:   # 'V Wellingborough'
+        words.pop(0)
+    t = ' '.join(words)
+    ok = (len(t) > 2 and re.fullmatch(r"[A-Z][\w'’.-]*(?: (?:[A-Z][\w'’.-]*|of|on|upon|under|the|de|la))*", t)
+          and not re.search(r'\d', t) and not NOT_A_PLACE.search(t) and not re.match(r'(At|In|To|From) ', t))
+    return t if ok else ''
+
+
+def card_place(card, event, known):
+    """A channel card's town: the one read off the photo when it is clean, else the post's own place."""
+    own = tidy_place(card, known)
+    ev = tidy_place(event, known)
+    if own and ev and own != ev and own.lower().startswith(ev.lower()) and own not in known:
+        return ev   # 'Parish' read off the photo, the post says Paris
+    return own or ev
 
 
 def face_box(rec, close=None):
@@ -275,6 +326,7 @@ def day(a):
             'SELECT year, date, place, album, file, caption, is_bapa FROM photos WHERE date IS NOT NULL'):
         dated.setdefault((y, date), []).append([al, fi, cap or '', bapa, place])
     tgc = json.load(open(a.tg, encoding='utf-8')) if a.tg and os.path.exists(a.tg) else {}
+    known = known_places(db)
     stats = dict(trip_dropped=0, near_added=0, stories_dropped=0, tg_years=0, framed=0)
 
     def finish(p):
@@ -315,8 +367,13 @@ def day(a):
                         have.add(y)
                         stats['near_added'] += 1
         shown_tg = set()
+        # the post's own place for each year, tidied, for a card whose photo gave none worth showing
+        for s in D['stories']:
+            s[1] = tidy_place(s[1], known)
+        said = {s[0]: s[1] for s in D['stories'] if s[1]}
         # 5: the channels' darshan of Bapa on this very day (every year since 26 Oct 2026, as the 2pm picture)
         for y, place, al, key, cap, box, sim, short in tgc.get(mmdd, []):
+            place = tidy_place(place, known) or said.get(y, '')   # 'Morning puja —.London' is London (Darpan, 28 Oct 2026)
             # from 1999 on, as sure of Bapa's face as for baps.org's photos, and his face big enough to see (a tenth of
             # the photo's height at least), never a tiny far figure (Darpan, 26 Oct 2026: "i only want bapa")
             if y >= BAPS_FROM and (sim < R.SAME_PERSON or box[5] < TG_FACE_MIN):
