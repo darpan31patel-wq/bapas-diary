@@ -1,0 +1,42 @@
+# Mockup only (never live): Through the years with more close ups on 2013 to 13 August 2016 (Darpan, 29 Oct 2026). Runs the
+# changed tools/faces_years.py on a copy of the live faces, from R2 only (no baps.org), and puts the result, eye
+# check sheets and mockup photos in release years-more-2013-mockup. Runs when this file is pushed.
+name: years-more-2013-mockup
+on:
+  push:
+    branches: [claude/project-thread-vrr0us]
+    paths: [.github/workflows/years-more-2013-mockup.yml]
+permissions:
+  contents: write
+jobs:
+  mock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Get ready
+        run: |
+          pip install -q opencv-python-headless numpy pillow open_clip_torch torch --extra-index-url https://download.pytorch.org/whl/cpu
+          gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
+          curl -sf https://photos.bapas-diary.com/years.txt -o years.txt
+          mkdir hints && gh release download website-faces -p 'face2-*.json.gz' -D hints
+          gh release download faces-mockup -p faces.tgz && tar xzf faces.tgz && cp faces/faces.json live-faces.json
+      - name: Close ups
+        run: python3 tools/faces_years.py --db bapas.db --years years.txt --hints hints --out faces --sheet sheet 2>&1 | grep -v WARN | tee more-log.txt
+      - name: Page, sheets, mockup photos
+        run: |
+          python3 tools/build_faces.py --faces faces --db bapas.db --out through-the-years --site
+          python3 tools/mock/years_more.py live-faces.json faces/faces.json more 2013-01-01 2016-08-13
+          tar czf more-faces.tgz faces && tar czf more-site.tgz through-the-years
+          (cd more && tar czf ../more-sheets.tgz sheets counts.tsv && tar cf ../more-mock.tar mock)
+      - name: Into the release
+        run: |
+          gh release view years-more-2013-mockup >/dev/null 2>&1 || \
+            gh release create years-more-2013-mockup --prerelease --title "Through the years: more 2013 to 2016 (mockup)" --notes "Website mockup only. Not live, not used by the daily picture."
+          gh release upload years-more-2013-mockup more-faces.tgz more-site.tgz more-sheets.tgz more-mock.tar more-log.txt --clobber
