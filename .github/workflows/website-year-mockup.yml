@@ -1,0 +1,39 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, deploys nothing.
+# Builds the Year in review page (tools/web_year.py) and packs it with the R2 photos it shows into the release
+# `year-mockup`, so Claude can make a private mockup of it (the mockup can't load photos from R2 directly).
+# Photos come from photos.bapas-diary.com only, never baps.org.
+name: website-year-mockup
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['.github/workflows/website-year-mockup.yml', 'tools/web_year.py', 'site/year/**']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: website-year-mockup
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      YEARS: '2025'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Year in review page and its photos
+        run: |
+          pip install -q -r requirements.txt
+          gh release download website-faces -p bapa.db.gz -O - | gunzip > bapa.db
+          mkdir faces && for y in ${YEARS//,/ }; do gh release download website-faces -p "face2-$y-*.json.gz" -D faces; done
+          python3 tools/web_year.py --db bapa.db --faces faces --travels live/travels/index.html --out out --years "$YEARS" --keys keys.txt
+          mkdir -p photos/m photos/s
+          while read -r k; do
+            for t in m s; do
+              mkdir -p "photos/$t/$(dirname "$k")"
+              curl -fsS --retry 3 -o "photos/$t/$k" "https://photos.bapas-diary.com/$t/$k" || echo "missing $t/$k"
+            done
+          done < keys.txt
+          echo "$(find photos -type f | wc -l) photos"
+          tar czf year-mockup.tgz out photos keys.txt
+          gh release view year-mockup >/dev/null 2>&1 || \
+            gh release create year-mockup --prerelease --title "Year in review mockup" --notes "The Year in review page and its photos, for building a mockup. Not used by the daily picture."
+          gh release upload year-mockup year-mockup.tgz --clobber
