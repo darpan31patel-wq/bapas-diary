@@ -611,21 +611,24 @@ $('pause').onclick = () => { paused = !paused; $('pause').textContent = paused ?
 $('speed').onchange = start;
 document.addEventListener('visibilitychange', () => document.hidden ? stop() : start());
 
-// how many cards on each rope: each rope down holds one fewer, 8, 7, 6, 5, never more than the rope above and never
-// more than one fewer. Of the ways the cards can fall, the one whose top rope is fullest wins, then the one with the
-// most steps, then the one with fewest ropes, and no rope drops below half the top one
-// (today's 30 cards: 8, 7, 6, 5, 4; 28: 8, 7, 7, 6; 26: 8, 7, 6, 5; 13: 7, 6; 5: 5)
+// how many cards on each rope: the top ropes full, then only the bottom ropes step down one card at a time, never
+// more than the rope above, never more than one fewer, never below half a full rope (Darpan, 29 Oct 2026: "want top
+// rows to be full, just the bottom ones"). Most full ropes wins, then the fullest top rope, then the most steps, then the fewest ropes
+// (today's 30 cards: 8, 8, 7, 7; 26: 8, 7, 6, 5; 21: 8, 7, 6; 13: 7, 6; 5: 5)
 function steps(total, fit) {
   let best = [total], score = -1;
-  for (let r = Math.ceil(total / fit); r <= Math.ceil(total / Math.ceil(fit / 2)); r++) {
-    const c = Array.from({length: r}, (_, i) => Math.max(Math.ceil(fit / 2), fit - i));
-    let sum = c.reduce((a, b) => a + b, 0);
-    while (sum < total) { let i = r - 1; while (i > 0 && c[i] === c[i - 1]) i--; if (c[i] >= fit) break; c[i]++; sum++; }   // raise the lowest rope shorter than the one above
-    while (sum > total) { let i = 0; while (i < r - 1 && c[i] === c[i + 1]) i++; if (c[i] <= 1) break; c[i]--; sum--; }   // lower the highest rope longer than the one below
-    if (sum !== total || c[r - 1] * 2 < c[0]) continue;
-    const s = c[0] * 1000 + new Set(c).size * 10 - r;
-    if (s > score) { score = s; best = c; }
-  }
+  const low = Math.ceil(fit / 2), c = [];
+  (function walk(left, top) {
+    if (!left) {
+      const s = c.filter(k => k === fit).length * 1e6 + c[0] * 1e4 + new Set(c).size * 100 - c.length;
+      if (s > score) { score = s; best = c.slice(); }
+      return;
+    }
+    for (let k = Math.min(top, left); k >= (c.length ? Math.max(1, top - 1) : 1); k--) {   // the top rope may hold fewer than fit
+      if (k < low && k !== left) continue;   // only a lone short rope may sit below half
+      c.push(k); walk(left - k, k); c.pop();
+    }
+  })(total, fit);
   return best;
 }
 
