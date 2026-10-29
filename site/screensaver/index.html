@@ -1965,10 +1965,13 @@ startSaver();
 body.awake, body.awake .saver { cursor: default; }
 @media (pointer: coarse) { .x-leave, .x-leave.on { opacity: 1; pointer-events: auto; } }
 /* a phone: the photo alone, no book page (Darpan, 29 Oct 2026: "for a phone, maybe get rid of the text 25% side") */
-/* When there is a lot to say (an arti on at the mandir, or one coming soon), the words by the clock and in the mandir
-   step down a little so it all fits without crowding (Darpan, 29 Oct 2026: "make all the text a little bit smaller") */
-.saver.book.aarti-on .x-clock-group, .saver.book.soon-on .x-clock-group { transform: scale(.86); transform-origin: 50% 100%; }
-.saver.book.aarti-on .x-clock-group .saver-tag { font-size: clamp(7px, min(1.05vh, .6vw), 12px); letter-spacing: .12em; white-space: normal; text-align: center; }
+/* When there is a lot to say (an arti on at the mandir, or one coming soon), the clock block grows up into the empty
+   space above it, and its lines breathe, instead of crowding at the bottom (Darpan, 29 Oct 2026: "use the dead space") */
+.saver.book.aarti-on .x-clock-footer, .saver.book.soon-on .x-clock-footer { height: calc(4.4vh + 17vh * .8 + 4.6vh + 9vh); }
+.saver.book.aarti-on .saver-thread, .saver.book.soon-on .saver-thread { bottom: calc(4.4vh + 17vh * .8 + 4.6vh + 9vh - 2px); }
+.saver.book.aarti-on .x-shlok-content, .saver.book.soon-on .x-shlok-content { bottom: calc(4.4vh + 17vh * .8 + 4.6vh + 9vh + 5vh); }
+.saver.book.aarti-on .x-clock-group, .saver.book.soon-on .x-clock-group { gap: 1.5vh; }
+.saver.book.aarti-on .x-clock-group .saver-tag { font-size: clamp(7px, min(1.05vh, .6vw), 12px); letter-spacing: .12em; white-space: nowrap; }
 .saver.book.aarti-on .x-sun .x-sun-arti .a-line { font-size: clamp(8px, min(1.45vh, .8vw), 17px); }
 @media (max-width: 700px) { .saver.book { --page-w: 0px; } .saver.book .x-shlok, .saver.book .x-clock-footer, .saver.book .x-diya { display: none !important; } .saver.book .saver-caption { max-width: 80vw; } }
 </style>
