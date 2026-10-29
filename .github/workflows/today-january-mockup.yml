@@ -27,7 +27,7 @@ jobs:
           env = ''.join(f"export {k}='{v}'\n" for k, v in d['env'].items() if 'secrets' not in str(v))
           open('build.sh', 'w').write('set -e\n' + env + step['run'])
           EOF
-          echo '[]' > calendar-looks.json
+          echo '{}' > calendar-looks.json
           bash build.sh
       - name: Today and 1 January's photos into the release
         run: |
