@@ -234,12 +234,12 @@ const WORDS_FADE_SECONDS = 4;          // the words fade away over 4s, then the 
 const PHOTO_DIM = 0.10;                // every photo 10% darker (0 = full brightness)
 // The mandir posts photos each morning at:
 //   .../daily-murti/20261007/ddm_07.jpg   (date folder, photo code, day of month)
-// PHOTO_CODES: exactly the photos chosen (Oct 2026), in this order. Nothing else is shown.
-// Any photo not posted that day is simply skipped.
-const PHOTO_CODES = ["ddm", "ddm_c", "gm", "gm_c", "hkm_c", "varni", "bm", "sm", "ym", "psm"];
-// Two photos that stay the same every day, shown after the daily ones.
+// PHOTO_CODES: exactly the photos chosen, in this order (Darpan, 29 Oct 2026: "only want these going forward"):
+// the central shrine, Ghanshyam Maharaj wide and close, Harikrishna Maharaj close, Pramukh Swami Maharaj, Nilkanth Varni.
+// Nothing else is shown. Any photo not posted that day is simply skipped.
+const PHOTO_CODES = ["ddm", "gm", "gm_c", "hkm_c", "psm", "varni"];
 const DARSHAN_BASE = SS.darshan;
-const FIXED_PHOTOS = [DARSHAN_BASE + "others/msm-static.jpg", DARSHAN_BASE + "others/ss-static.jpg"];
+const FIXED_PHOTOS = [];   // no photo that stays the same every day (29 Oct 2026)
 function darshanPhotosFor(date) {
   const ymd = dayKey(date), dd = ymd.slice(6);
   return PHOTO_CODES.map(code => `${DARSHAN_BASE}${ymd}/${code}_${dd}.jpg`);

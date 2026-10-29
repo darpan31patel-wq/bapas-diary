@@ -29,8 +29,6 @@ grab() {   # grab <path under daily-murti>: from R2 if there, else from the mand
 for day in "$(TZ=Europe/London date -d yesterday +%Y%m%d)" "$(TZ=Europe/London date +%Y%m%d)"; do
   for c in $codes; do grab "$day/${c}_${day:6:2}.jpg"; done
 done
-grab others/msm-static.jpg
-grab others/ss-static.jpg
 printf '%s\n' "${got[@]}" | jq -R . | jq -sc . > "$work/list.json"
 put "$work/list.json" list.json application/json "public, max-age=300"
 echo "::notice::darshan photos for the two days: ${#got[@]} ($(cat "$work/list.json"))"
