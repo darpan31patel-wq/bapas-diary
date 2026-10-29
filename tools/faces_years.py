@@ -50,7 +50,10 @@ LIKENESS_MAX = .5          # the picture check's chance that a face is a picture
 # and try and bulk up that section, still following the same rules'): those years have far fewer dated days, so each
 # day there shows up to MORE different close ups, not one, by the same rules. Their web photos are small (600 to 800 px
 # across), so a face there may be a little smaller in pixels (SMALL_SPAN) when it is just as sharp and light.
-MORE_UNTIL, MORE, MORE_KEEP, MORE_RULES = '2013-01-01', 4, 30, 1
+# Then the same for his last years (Darpan, 29 Oct 2026: 'More photos for 2013 to 2016: the same bulking up we did for
+# 1999 to 2012'): every Pramukh Swami Maharaj day, to 13 August 2016. Mahant Swami Maharaj's days stay one a day.
+MORE_UNTIL, MORE, MORE_KEEP, MORE_RULES = PSM_UNTIL, 4, 30, 2
+MORE_FROM = {1: '2013-01-01'}     # under that _more mark the days before this already have theirs: only later ones redone
 SMALL_SPAN, SMALL_PHOTO = 35, 900
 SAME_LOOK, SAME_MOMENT = 10, 20   # photos this close (bits of 64, dhash) are one moment: never two of them on a day
 SAME_RUN = 3                      # nor two frames a few files apart in one album with the same caption (a burst)
@@ -285,7 +288,8 @@ def auto(a):
     if a.redo:   # after a rule change, once it has been looked over (the workflow's redo input)
         seen = {'_rules': RULES}
     if seen.get('_more') != MORE_RULES:   # the days before MORE_UNTIL are chosen again, up to MORE close ups each
-        seen = {d: n for d, n in seen.items() if not ('0' <= d[0] <= '9' and d < MORE_UNTIL)}
+        since = MORE_FROM.get(seen.get('_more'), '')
+        seen = {d: n for d, n in seen.items() if not ('0' <= d[0] <= '9' and since <= d < MORE_UNTIL)}
         seen['_more'] = MORE_RULES
     todo = []
     for y in years:
