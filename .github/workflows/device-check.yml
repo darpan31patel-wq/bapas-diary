@@ -14,11 +14,11 @@ jobs:
     timeout-minutes: 90
     env:
       GH_TOKEN: ${{ github.token }}
-      RUN_NO: '3'
+      RUN_NO: '4'
     steps:
       - uses: actions/checkout@v4
       - run: npm i --no-save playwright@1.56.1 && npx playwright install --with-deps chromium webkit
-      - run: node mockups/device-check/shoot2.js shots2; tar czf device-shots2.tgz shots2 && ls shots2 | wc -l
+      - run: node mockups/device-check/shoot3.js shots3; tar czf device-shots3.tgz shots3 && ls shots3 | wc -l
       - run: |
           gh release view device-check >/dev/null 2>&1 || gh release create device-check --prerelease --title "Device check" --notes "Screenshots of the live website on phones and tablets. Not used by the website or the daily picture."
-          gh release upload device-check device-shots2.tgz --clobber
+          gh release upload device-check device-shots3.tgz --clobber

@@ -1,0 +1,5 @@
+/* Search on phones: a chosen box and its cross share the row like the other boxes, so nothing pokes past the screen */
+@media (max-width: 520px) {
+  .frow .pick { flex: 1 1 40%; }
+  .frow .pick > select, .frow .pick > input { flex: 1 1 auto; width: 100%; max-width: none; }
+}
