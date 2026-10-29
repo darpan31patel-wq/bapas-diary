@@ -53,9 +53,12 @@ LIKENESS_MAX = .5          # the picture check's chance that a face is a picture
 MORE_UNTIL, MORE, MORE_KEEP, MORE_RULES = '2013-01-01', 4, 30, 1
 SMALL_SPAN, SMALL_PHOTO = 35, 900
 SAME_LOOK, SAME_MOMENT = 10, 20   # photos this close (bits of 64, dhash) are one moment: never two of them on a day
+SAME_RUN = 3                      # nor two frames a few files apart in one album with the same caption (a burst)
+MORE_CLOSE, MORE_FRONT = .3, .65  # the day's other close ups: his face fills a good part of the photo, looking at the camera
 
 
 def min_span(day, bgr):
+    """The smallest face (span) a photo may have: smaller on a small early photo, when the face fills it (MORE_CLOSE)."""
     return SMALL_SPAN if day < MORE_UNTIL and max(bgr.shape[:2]) <= SMALL_PHOTO else MIN_SPAN
 
 
@@ -323,12 +326,16 @@ def auto(a):
                 if f is None:
                     continue
                 s, facts = score(bgr, f, sim)
-                if facts['gap'] >= min_span(day, bgr) and facts['front'] >= FRONT_MIN and facts['sharp'] >= SHARP_MIN and facts['bright'] >= BRIGHT_MIN:
+                if (facts['gap'] >= MIN_SPAN or facts['gap'] >= min_span(day, bgr) and facts['close'] >= MORE_CLOSE) and facts['front'] >= FRONT_MIN and facts['sharp'] >= SHARP_MIN and facts['bright'] >= BRIGHT_MIN:
                     good.append((s, bgr, f, r, sim, facts))
             chosen = []   # the best first; on a thin early day, more of its different moments after it
             for g in sorted(good, key=lambda g: -g[0]):
                 h = dhash(g[1])
-                if any(bin(h ^ c[-1]).count('1') <= (SAME_MOMENT if (g[3][5] or '') == (c[3][5] or '') else SAME_LOOK) for c in chosen):
+                if chosen and (g[5]['close'] < MORE_CLOSE or g[5]['front'] < MORE_FRONT):
+                    continue   # another close up of the day must be as close and as straight on as the page wants
+                same = lambda c: (g[3][5] or '') == (c[3][5] or '') and (
+                    bin(h ^ c[-1]).count('1') <= SAME_MOMENT or (g[3][3] == c[3][3] and abs(xs.index(g[3]) - xs.index(c[3])) <= SAME_RUN))
+                if any(same(c) or bin(h ^ c[-1]).count('1') <= SAME_LOOK for c in chosen):
                     continue   # the same moment as one already chosen, a frame or two apart
                 fake = like(g[1], g[2]) if like else 0
                 g[5]['fake'] = round(fake, 2)
