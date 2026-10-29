@@ -51,8 +51,10 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 
 /* Computers: the header packed closer, so ropes 1 and 2 show as the page opens (Darpan, 29 Oct 2026: "I don't like how
    much dead space there is at the top ... I want rope 1 and 2 a little bit higher up the page"). Same order as before,
-   centred: the tithi and the count share one line, and the email and Screensaver buttons sit side by side. */
-@media (min-width:1180px){
+   centred: the tithi and the count share one line, and the email and Screensaver buttons sit side by side.
+   iPads on their side (1000 to 1179px) get it too, so their ropes start near the top as well (phone and tablet check,
+   29 Oct 2026); there the count takes its own line under the tithi, clear of the Where Bapa is now card. */
+@media (min-width:1000px){
   header{display:flex;flex-wrap:wrap;justify-content:center;align-items:baseline;column-gap:18px;margin:clamp(10px,1.2vw,18px) 0 0}
   h1,.sub,#mocknote{flex:0 0 100%}
   h1{font-size:clamp(58px,5.6vw,80px)}
@@ -63,6 +65,10 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
   header .remind,header .ss-launch{margin:16px 0 0;align-self:center}
   header .ss-big{padding:12px 28px}
   .board{margin-top:18px}
+}
+@media (min-width:1000px) and (max-width:1179px){
+  .count{flex:0 0 100%;margin-top:8px}
+  .count::before{content:none}
 }
 
 /* board */

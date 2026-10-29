@@ -305,3 +305,20 @@
   html.ph-travels .story .tn { padding: 7px 11px; font-size: 12.5px; }
   html.ph-travels .pic { width: 60px; height: 60px; }
 }
+
+/* the smallest phones (320 to 359px wide, e.g. the first iPhone SE and small Androids): the top strip fits instead of
+   pushing the i button off the screen, and the tab names do not touch (phone and tablet check, 29 Oct 2026) */
+@media (max-width: 359px) {
+  html .ph-top { padding: 0 6px 0 10px; }
+  html .ph-brand { font-size: 14px; }
+  html .ph-top .bd-aa, html .ph-top .bd-off-btn, html .ph-about { width: 32px; height: 32px; }
+  html .ph-top .bd-aa { margin: 0 4px 0 0; }
+  html .ph-top .bd-aa b { font-size: 15px; }
+  html .ph-top .bd-off-btn svg, html .ph-about svg { width: 17px; height: 17px; }
+  html .bd-off-right { gap: 4px; }
+  html .ph-top .gu-switch { height: 30px; margin: 0 4px 0 auto; font-size: 12px; }
+  html .ph-top .gu-switch .g { font-size: 14px; }
+  html .ph-top .gu-switch span { padding: 0 7px; }
+  html nav.site-menu a { font-size: 9.5px; letter-spacing: 0; }
+  html nav.site-menu a[href="/then-and-now/"]::after { font-size: 9.5px; }
+}
