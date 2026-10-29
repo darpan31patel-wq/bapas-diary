@@ -1,0 +1,24 @@
+# Website only (bapas-diary.com), read only: never deploys and touches nothing in the daily 2pm picture chain.
+# Takes JPEG pictures of whole months on the live Calendar (mockups/month-pictures/shoot.js) and keeps them in the
+# release `month-pictures`. Runs when this file changes, on this thread's branch only.
+name: month-pictures
+on:
+  push:
+    branches: ['claude/project-thread-xz947o']
+    paths: ['.github/workflows/month-pictures.yml']
+permissions:
+  contents: write
+jobs:
+  shoot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      MONTHS: '1999-11 2012-11 2019-03 2023-10 2026-09'
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm i --no-save playwright@1.56.1 && npx playwright install --with-deps chromium
+      - run: node mockups/month-pictures/shoot.js pics $MONTHS && ls -la pics
+      - run: |
+          gh release view month-pictures >/dev/null 2>&1 || gh release create month-pictures --prerelease --title "Calendar month pictures" --notes "JPEG pictures of whole months on the live Calendar. Not used by the website or the daily picture."
+          gh release upload month-pictures pics/*.jpg --clobber
