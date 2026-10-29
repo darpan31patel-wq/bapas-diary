@@ -74,10 +74,10 @@
   .ph-hint-one { display: none; text-align: center; margin: 4px 0 0; font: 400 13px/1.3 Arimo, Arial, sans-serif; color: rgba(250, 241, 222, .62); }
   html.ph-all #cards { grid-template-columns: repeat(var(--ph-cols, 2), minmax(0, 1fr)); column-gap: calc(28px / var(--ph-cols, 2)); }
   html.ph-all.ph-c3 #cards .yr { font-size: 17px; }
-  html.ph-all.ph-c3 #cards .ti, html.ph-all.ph-c3 #cards .cap { font-size: 12px; }
+  html.ph-all.ph-c3 #cards .ti, html.ph-all.ph-c3 #cards .ev, html.ph-all.ph-c3 #cards .cap { font-size: 12px; }
   html.ph-all.ph-c4 #cards .yr { font-size: 14px; }
   html.ph-all.ph-c4 #cards .pl, html.ph-all.ph-c4 #cards .fest, html.ph-all.ph-c4 #cards .of { font-size: 7px; letter-spacing: .08em; }
-  html.ph-all.ph-c4 #cards .ti { display: none; }
+  html.ph-all.ph-c4 #cards .ti, html.ph-all.ph-c4 #cards .ev { display: none; }
   html.ph-all.ph-c4 #cards .cap { font-size: 11px; min-height: 0; }
   html.ph-all.ph-c4 #cards .photo .words p, html.ph-all.ph-c4 #cards .photo.story p { font-size: 10px; }
   html.ph-all.ph-c1 #cards .yr { font-size: 30px; }

@@ -100,6 +100,7 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 .yr{font:700 clamp(24px,2.3vw,30px)/1 var(--serif)}
 .pl{margin-top:6px;font:800 clamp(12.5px,1.1vw,15px)/1.2 var(--sans);letter-spacing:.11em;text-transform:uppercase;color:var(--maroon-ink);text-wrap:balance;overflow-wrap:anywhere}   /* year and place are the biggest words on a card (Darpan, 26 Oct 2026) */
 .ti{margin-top:4px;font:500 12.5px/1.25 var(--serif);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev{margin-top:4px;font:500 12.5px/1.25 var(--serif);text-wrap:balance;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .fest{display:inline-block;margin-top:5px;max-width:100%;font:700 8.5px/1.25 var(--sans);letter-spacing:.14em;text-transform:uppercase;background:var(--maroon-ink);color:var(--gold-hi);padding:3px 7px;border-radius:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .of{margin-top:5px;font:700 8.5px/1 var(--sans);letter-spacing:.16em;color:rgba(110,20,36,.6);font-variant-numeric:tabular-nums}
 .cap{margin-top:11px;min-height:2.8em;width:100%;text-align:center;font:500 15px/1.35 var(--serif);color:var(--cream);transition:opacity 1.5s ease-in-out;text-wrap:balance;max-width:100%;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
@@ -127,6 +128,12 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 .vcap .go{margin-top:9px}
 .story-line{margin:12px 0 0;font:500 16px/1.45 var(--serif);font-style:italic;color:var(--cream);max-width:70ch}
 .story-line b{font-style:normal;font:700 10px var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--gold-soft);margin-right:8px}
+.day-story .paras{columns:34ch 3;column-gap:40px}   /* a long story uses the whole width on a wide screen (Darpan, 26 Oct 2026) */
+.day-story .more{margin:0;padding-top:8px;font:400 15px/1.55 var(--serif);color:var(--cream);opacity:.88;break-inside:avoid}
+.day-story .diary{margin:8px 0 0;padding:0;list-style:none;max-width:70ch}
+.day-story .diary li{position:relative;margin:0 0 5px;padding-left:16px;font:400 15px/1.45 var(--serif);color:var(--cream);opacity:.9}
+.day-story .diary li::before{content:"";position:absolute;left:2px;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--gold-soft)}
+.viewer .vcap p.vday{margin:7px auto 0;max-width:70ch;font:italic 400 14px/1.45 var(--serif);opacity:.85;text-wrap:balance;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
 .tripnote{margin:18px 0 0;font:700 10px var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--gold-soft)}
 .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px;margin-top:12px}
 .thumb{display:block;padding:5px 5px 0;background:linear-gradient(var(--ivory-top),var(--ivory-bot));border:0;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,.35);min-width:0}
@@ -336,6 +343,36 @@ const festsOf = c => {
 };
 const festOf = c => festsOf(c).join(' · ');
 const tithiOf = c => c ? c[0] : '';
+// What each On this day post says beyond its one line (Darpan, 29 Oct 2026: "lots more information ... incorporate more"):
+// s = [year, place, line, {ti: Indian date, h: title, w: [paragraphs, or the UK diary's lines], l: 1 for a diary day}],
+// and a card's own year keeps the stories it tells in Y.day = [[line, title, [words], diary], ...] and Y.ti
+const said = t => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const tail = line => String(line || '').replace(/^[^:]{0,60}\bin [^:]+:\s*/, '');   // 'Pramukh Swami Maharaj in London: Dhanteras'
+const told = (Y, stories) => (Y && Y.day || []).concat((stories || []).filter(s => s[3]).map(s => [s[2], s[3].h || '', s[3].w || [], s[3].l || 0]));
+const dayTi = (Y, stories) => (Y && Y.ti) || ((stories || []).find(s => s[3] && s[3].ti) || [, , , {}])[3].ti || '';
+// the day's occasion, for the card's frame: the post's title, its line, or the next thing done that day, whichever the
+// photo captions don't already say
+function occasion(Y, stories, photos) {
+  const caps = new Set(photos.flatMap(p => [said(p[2]), said(p[5])]));
+  for (const [line, h, w, l] of told(Y, stories))
+    for (const t of [h, tail(line)].concat(l ? w : []))
+      if (t && t.length <= 80 && !caps.has(said(t))) return t;
+  return '';
+}
+// the whole story, for under the year's photos and in the wide view
+function storyHTML(line, h, w, l) {
+  const top = h || tail(line) || line;
+  const rest = (w || []).filter(t => said(t) !== said(top) && said(t) !== said(tail(line)));
+  return `<div class="day-story"><p class="story-line"><b>On this day</b>${esc(top)}</p>` +
+    (rest.length ? (l ? `<ul class="diary">${rest.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : `<div class="paras">${rest.map(t => `<p class="more">${esc(t)}</p>`).join('')}</div>`) : '') + '</div>';
+}
+function storyShort(Y, stories, photo) {   // a few words for the wide view: what else the post says about the day
+  for (const [line, h, w, l] of told(Y, stories)) {
+    const t = (l ? w.filter(x => said(x) !== said(photo)).join(' · ') : (w[0] || '')) || h || '';
+    if (t && said(t) !== said(photo)) return t;
+  }
+  return '';
+}
 
 let DAY = null, cards = [], everyPhoto = [], timers = [], paused = false, showing = null;
 
@@ -383,9 +420,10 @@ function render() {
   // one card per year: its photos, or, for the older years, the On this day story
   const byYear = {};
   D.years.forEach(Y => byYear[Y.y] = {Y, stories: []});
-  D.stories.forEach(([y, place, line]) => {   // the same story can come from two sources: show it once
+  D.stories.forEach(s => {   // the same story can come from two sources: show it once
+    const [y, place, line] = s;
     const b = byYear[y] = byYear[y] || {Y: null, place, stories: []};
-    if (!b.stories.includes(line)) b.stories.push(line);
+    if (!b.stories.some(o => o[2] === line)) b.stories.push(s);
   });
   const years = Object.keys(byYear).map(Number).sort((a, b) => a - b);
   everyPhoto = [];
@@ -436,14 +474,16 @@ function card(y, {Y, place, stories}, want = true) {
     });
     c.imgs = c.layers.map(l => l.lastChild); c.bgs = c.layers.map(l => l.firstChild);
   } else {
-    ph.classList.add('story'); ph.innerHTML = `<p>${esc(stories[0] || '')}</p>`;
+    ph.classList.add('story'); ph.innerHTML = `<p>${esc(stories[0] ? stories[0][2] : '')}</p>`;
   }
   el.innerHTML = '<div class="peg"></div>';
   el.append(ph);
-  const fest = festOf(cal);
+  const fest = festOf(cal), ti = tithiOf(cal) || dayTi(Y, stories), ev = occasion(Y, stories, photos);
   const lab = document.createElement('div'); lab.className = 'label';
+  // the Indian date from the post itself in years the BAPS calendar doesn't cover, and the day's occasion (29 Oct 2026)
   lab.innerHTML = `<div class="yr">${y}</div><div class="pl">${esc(where || '')}</div>` +
-    (cal ? `<div class="ti">${esc(tithiOf(cal))}</div>` : '') + (fest ? `<div class="fest">${esc(fest)}</div>` : '');   // no "4 of 4" counter (Darpan, 26 Oct 2026)
+    (ti ? `<div class="ti">${esc(ti)}</div>` : '') + (ev ? `<div class="ev">${esc(ev)}</div>` : '') +
+    (fest ? `<div class="fest">${esc(fest)}</div>` : '');   // no "4 of 4" counter (Darpan, 26 Oct 2026)
   el.append(lab);
   const cap = document.createElement('div'); cap.className = 'cap';
   cap.textContent = photos.length ? '' : 'On this day';
@@ -697,18 +737,18 @@ document.fonts && document.fonts.ready.then(cords);
 function group(y, Y, where, cal, stories) {
   if (!Y && !stories.length) return;
   const g = document.createElement('section'); g.className = 'yeargroup'; g.id = 'y' + y;
-  const fest = festOf(cal);
+  const fest = festOf(cal), ti = tithiOf(cal) || dayTi(Y, stories);
   g.innerHTML = `<div class="yhead"><h3>${y}</h3><span class="caps">${esc(where || '')}</span>` +
-    (cal ? `<span class="it">${esc(cal[0])}</span>` : '') + (fest ? `<span class="fest">${esc(fest)}</span>` : '') +
+    (ti ? `<span class="it">${esc(ti)}</span>` : '') + (fest ? `<span class="fest">${esc(fest)}</span>` : '') +
     `<a class="go" href="${esc(SRC.search(y + '-' + DAY.date))}">See more &rsaquo;</a></div>` +
-    stories.map(s => `<p class="story-line"><b>On this day</b>${esc(s)}</p>`).join('');
+    told(Y, stories).map(t => storyHTML(...t)).join('');
   const add = (list, note) => {
     if (!list || !list.length) return;
     if (note) g.insertAdjacentHTML('beforeend', `<p class="tripnote">${note}</p>`);
     const grid = document.createElement('div'); grid.className = 'thumbs';
     list.forEach(p => {
       const i = everyPhoto.length;
-      everyPhoto.push({p, y, where, cal, trip: note ? Y.trip : null});
+      everyPhoto.push({p, y, where, cal, trip: note ? Y.trip : null, ti: !cal && dayTi(Y, stories), more: storyShort(Y, stories, p[2])});
       const b = document.createElement('button'); b.className = 'thumb'; b.type = 'button';
       const url = SRC.photo(p);
       b.innerHTML = `<span class="im">${url ? `<img loading="lazy" decoding="async" alt="${esc(p[2])}" src="${esc(url)}" style="object-position:${focus(p)}">` : ''}</span><small>${esc(p[2] || 'Darshan')}</small>`;
@@ -734,12 +774,13 @@ function view(i, play) {
   if (!everyPhoto.length) return;
   if ($('viewer').hidden) { lastFocus = document.activeElement; $('viewer').hidden = false; document.body.style.overflow = 'hidden'; $('vclose').focus(); }
   vi = (i + everyPhoto.length) % everyPhoto.length;
-  const {p, y, where, cal, trip} = everyPhoto[vi];
+  const {p, y, where, cal, trip, ti, more} = everyPhoto[vi];
   const url = SRC.big(p) || SRC.photo(p);
   const when = trip ? tripText(trip) + ' ' + y : `${DAY.title} ${y}`;
   const none = `<div class="none">${esc(p[2] || 'Darshan')}</div>`;
   $('vstage').innerHTML = `<figure class="vframe" style="margin:0">${url ? `<img alt="${esc(p[2])}" src="${esc(url)}">` : none}` +
-    `<figcaption class="vcap"><p>${esc(p[2] || 'Darshan')}</p><div>${esc([when, where, cal && cal[0], festOf(cal)].filter(Boolean).join(' · '))}</div>` +
+    `<figcaption class="vcap"><p>${esc(p[2] || 'Darshan')}</p><div>${esc([when, where, (cal && cal[0]) || ti, festOf(cal)].filter(Boolean).join(' · '))}</div>` +
+    (more ? `<p class="vday">${esc(more)}</p>` : '') +
     `<a class="go" href="${esc(trip && trip[0] !== trip[1] ? `{{SEARCH}}#place=${encodeURIComponent(String(where || '').split(',')[0])}&from=${trip[0]}&to=${trip[1]}` : SRC.search(trip ? trip[0] : y + '-' + DAY.date))}">See more &rsaquo;</a></figcaption></figure>`;
   const img = $('vstage').querySelector('img');
   if (img) img.onerror = () => img.outerHTML = none;
