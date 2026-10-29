@@ -50,7 +50,6 @@
     ask.className = 'ss-ask';
     ask.setAttribute('role', 'dialog'); ask.setAttribute('aria-modal', 'true'); ask.setAttribute('aria-labelledby', 'ss-ask-title');
     ask.innerHTML = '<div class="ss-box"><h2 id="ss-ask-title">You are now entering screensaver state</h2>' +
-      '<p>The screen fills with darshan, On this day and Bapa’s latest photos, with the time, his day and a shlok.</p>' +
       '<p class="ss-small">To leave it, press Escape, or tap the ✕ on a touch screen.</p>' +
       '<div class="ss-row"><button type="button" class="pill solid" data-a="ok">OK</button><button type="button" class="pill" data-a="no">Not now</button></div></div>';
     document.body.appendChild(ask);
