@@ -31,6 +31,7 @@ def main():
     db = sqlite3.connect(a.db)
     cal = {r[0]: r[1:] for r in db.execute('SELECT date, indian_date, festivals FROM calendar')}
     rows = []
+    days = [y for x in days for y in [x] + [dict(x, **z) for z in x.get('more', [])]]   # an early day's other close ups after its best
     for x in days:
         m = x.get('src') == 'm'   # measured on R2's m/ copy, which the page shows itself; older days have their own p/ and f/
         if 'eyes' not in x or not (m or os.path.exists(os.path.join(a.faces, 'p', x['day'] + '.jpg'))):
