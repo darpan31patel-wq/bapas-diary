@@ -1,0 +1,22 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, fetches nothing
+# from baps.org. Once a day, after the evening's new photos and Bapa's schedule have been brought in (about 8pm UK),
+# it checks the faces in the new photos (website-faces, which looks again at this year's last slice when the year has
+# grown) and then rebuilds the whole website, so the screensaver's Latest Vicharan and Bapa's schedule, the Today
+# page and every Bapa page are never more than a day behind (Darpan, 29 Oct 2026: "screensaver fresh every day").
+# Everything it runs comes from the website branches; it sits here only because GitHub runs timed workflows from main.
+# Keeps 04:30 to 07:30 UTC free for the daily picture's morning run.
+name: website-fresh-timer
+on:
+  schedule:
+    - cron: '40 21 * * *'   # 21:40 UTC, after the evening photo helper; the deep tags robot's 23:10 run comes later
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  faces:
+    uses: darpan31patel-wq/bapas-diary/.github/workflows/website-faces.yml@claude/project-thread-9isen0
+  site:
+    needs: faces
+    if: ${{ !cancelled() }}   # the site is rebuilt even if the face check had trouble: the schedule still updates
+    uses: darpan31patel-wq/bapas-diary/.github/workflows/website-deploy.yml@claude/project-thread-eawr12
+    secrets: inherit
