@@ -46,6 +46,22 @@ OTHER = {'psm': (re.compile(r'Mahant Swami'), re.compile(r'Pramukh Swami|Swamish
          'msm': (re.compile(r'Pramukh Swami'), re.compile(r'Mahant Swami|Swamishri|\bBapa\b|\bHDH\b'))}  # the other guru only
 ABOUT = re.compile(r'Swamishri|\bBapa\b|Pramukh Swami|Mahant Swami|\bHDH\b|^[a-z]')   # a caption about Bapa: not murtis
 LIKENESS_MAX = .5          # the picture check's chance that a face is a picture of him rather than him (see Likeness)
+# Pramukh Swami Maharaj's earlier years are thin (Darpan, 29 Oct 2026: 'try and add in many more photos for 1999 to 2012
+# and try and bulk up that section, still following the same rules'): those years have far fewer dated days, so each
+# day there shows up to MORE different close ups, not one, by the same rules. Their web photos are small (600 to 800 px
+# across), so a face there may be a little smaller in pixels (SMALL_SPAN) when it is just as sharp and light.
+MORE_UNTIL, MORE, MORE_KEEP, MORE_RULES = '2013-01-01', 4, 30, 1
+SMALL_SPAN, SMALL_PHOTO = 35, 900
+SAME_LOOK, SAME_MOMENT = 10, 20   # photos this close (bits of 64, dhash) are one moment: never two of them on a day
+
+
+def min_span(day, bgr):
+    return SMALL_SPAN if day < MORE_UNTIL and max(bgr.shape[:2]) <= SMALL_PHOTO else MIN_SPAN
+
+
+def dhash(bgr):
+    g = cv2.resize(cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY), (9, 8), interpolation=cv2.INTER_AREA)
+    return int(''.join('1' if v else '0' for v in (g[:, 1:] > g[:, :-1]).flatten()), 2)
 
 DETECT = cv2.FaceDetectorYN.create(os.path.join(MODELS, 'face_detection_yunet_2023mar.onnx'), '', (320, 320), .6, .3, 5000)
 RECOGNISE = cv2.FaceRecognizerSF.create(os.path.join(MODELS, 'face_recognition_sface_2021dec.onnx'), '')
@@ -265,6 +281,9 @@ def auto(a):
             cv2.imwrite(os.path.join(a.sheet, f'{day}.jpg'), align(bgr, f), [cv2.IMWRITE_JPEG_QUALITY, 80])
     if a.redo:   # after a rule change, once it has been looked over (the workflow's redo input)
         seen = {'_rules': RULES}
+    if seen.get('_more') != MORE_RULES:   # the days before MORE_UNTIL are chosen again, up to MORE close ups each
+        seen = {d: n for d, n in seen.items() if not ('0' <= d[0] <= '9' and d < MORE_UNTIL)}
+        seen['_more'] = MORE_RULES
     todo = []
     for y in years:
         if y not in scanned:
@@ -294,7 +313,8 @@ def auto(a):
                     cands.append((9, r))   # not scanned yet: a new photo
                 elif rec[0] >= SAME_PERSON and rec[0] > rec[11]:
                     cands.append((hint(rec), r))
-            cands = [r for _, r in sorted(cands, key=lambda c: -c[0])[:a.keep]]
+            many = day < MORE_UNTIL
+            cands = [r for _, r in sorted(cands, key=lambda c: -c[0])[:max(a.keep, MORE_KEEP) if many else a.keep]]
             good = []
             for r, bgr in zip(cands, net.map(lambda r: get(f'{r[3]}/{r[4]}'), cands)):
                 if bgr is None:
@@ -303,40 +323,50 @@ def auto(a):
                 if f is None:
                     continue
                 s, facts = score(bgr, f, sim)
-                if facts['gap'] >= MIN_SPAN and facts['front'] >= FRONT_MIN and facts['sharp'] >= SHARP_MIN and facts['bright'] >= BRIGHT_MIN:
+                if facts['gap'] >= min_span(day, bgr) and facts['front'] >= FRONT_MIN and facts['sharp'] >= SHARP_MIN and facts['bright'] >= BRIGHT_MIN:
                     good.append((s, bgr, f, r, sim, facts))
-            best = None
+            chosen = []   # the best first; on a thin early day, more of its different moments after it
             for g in sorted(good, key=lambda g: -g[0]):
+                h = dhash(g[1])
+                if any(bin(h ^ c[-1]).count('1') <= (SAME_MOMENT if (g[3][5] or '') == (c[3][5] or '') else SAME_LOOK) for c in chosen):
+                    continue   # the same moment as one already chosen, a frame or two apart
                 fake = like(g[1], g[2]) if like else 0
                 g[5]['fake'] = round(fake, 2)
                 if fake <= LIKENESS_MAX:
-                    best = g
-                    break
+                    chosen.append(g + (h,))
+                    if len(chosen) >= (MORE if many else 1):
+                        break
+                    continue
                 print(f'    {day}: {g[3][3]}/{g[3][4]} looks like a picture of him ({fake:.2f}), left out', flush=True)
             out.pop(day, None)
-            if best:
-                s, bgr, f, (_, to, place, album, file, cap), sim, facts = best
+            best = chosen[0] if chosen else None
+            for k, (s, bgr, f, (_, to, place, album, file, cap), sim, facts, _h) in enumerate(chosen):
                 rx, ry, lx, ly = [float(v) for v in f[4:8]]
                 if rx > lx:
                     rx, ry, lx, ly = lx, ly, rx, ry
-                out[day] = dict(day=day, to=to if to and to != day else None, place=place or '', caption=cap or '',
-                                album=album, file=file, guru=guru, sim=round(sim, 2), score=round(s, 2), **facts,
-                                photos=len(xs), w=bgr.shape[1], h=bgr.shape[0], src='m',
-                                eyes=[round(v, 1) for v in (rx, ry, lx, ly)], span=round(span(f), 1))
+                x = dict(day=day, to=to if to and to != day else None, place=place or '', caption=cap or '',
+                         album=album, file=file, guru=guru, sim=round(sim, 2), score=round(s, 2), **facts,
+                         photos=len(xs), w=bgr.shape[1], h=bgr.shape[0], src='m',
+                         eyes=[round(v, 1) for v in (rx, ry, lx, ly)], span=round(span(f), 1))
+                if k == 0:
+                    out[day] = x
+                else:
+                    out[day].setdefault('more', []).append(x)
                 if a.sheet:
-                    cv2.imwrite(os.path.join(a.sheet, f'{day}.jpg'), align(bgr, f), [cv2.IMWRITE_JPEG_QUALITY, 80])
-            for g in good if a.sheet else []:
+                    cv2.imwrite(os.path.join(a.sheet, f'{day}{"-" + str(k) if k else ""}.jpg'), align(bgr, f), [cv2.IMWRITE_JPEG_QUALITY, 80])
+            for g in good if a.sheet else []:   # every face left out as a picture of him
                 if g[5].get('fake', 0) > LIKENESS_MAX:
                     cv2.imwrite(os.path.join(a.sheet, f'out-{day}-{g[3][4]}.jpg'), align(g[1], g[2]), [cv2.IMWRITE_JPEG_QUALITY, 80])
             seen[day] = len(xs)
             if n % 50 == 0 or n == len(todo) - 1:
-                print(f'  {n + 1}/{len(todo)} {day}: {len(cands)} looked at, {"close " + str(best[5]["close"]) if best else "no face"}, '
+                print(f'  {n + 1}/{len(todo)} {day}: {len(cands)} looked at, {len(chosen)} chosen, {"close " + str(best[5]["close"]) if best else "no face"}, '
                       f'{time.time() - t0:.0f}s', flush=True)
                 json.dump(sorted(out.values(), key=lambda x: x['day']), open(jp, 'w'), indent=0, ensure_ascii=False)
                 json.dump(seen, open(sp, 'w'), sort_keys=True)
     json.dump(sorted(out.values(), key=lambda x: x['day']), open(jp, 'w'), indent=0, ensure_ascii=False)
     json.dump(seen, open(sp, 'w'), sort_keys=True)
-    print(f'{len(out)} days with a close up, {len(todo)} looked at this time')
+    print(f'{len(out)} days with a close up and {sum(len(x.get("more", [])) for x in out.values())} more on the early days, '
+          f'{len(todo)} looked at this time')
 
 
 def sheets(src, dest):

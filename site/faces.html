@@ -315,7 +315,7 @@ function facts(x) {
   $('cal').innerHTML = x.tithi ? `<b>${esc(x.tithi)}</b>${x.fest ? ' · ' + esc(x.fest) : ''}` : '';
   $('more').textContent = 'See more';   // opens Search on this day (Darpan, 28 Oct 2026: 'I wanted a See More button')
   $('more').href = `/search/#date=${x.day}`;
-  $('count').textContent = `Day ${list.indexOf(x) + 1} of ${list.length} with a close darshan`;
+  $('count').textContent = `Darshan ${list.indexOf(x) + 1} of ${list.length}`;   // an early day can have a few
 }
 
 // Each year opens on its clearest close up of him looking straight at the camera (the day scored best by the same
