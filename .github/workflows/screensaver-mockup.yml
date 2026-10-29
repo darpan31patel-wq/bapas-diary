@@ -68,3 +68,4 @@ jobs:
           gh release view screensaver-mockup -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
             gh release create screensaver-mockup -R "$GITHUB_REPOSITORY" --prerelease --title "Screensaver mockup pack" --notes "The live Today page with the screensaver built on it, and the photos it would show, for the mockup. Not used by the daily picture."
           gh release upload screensaver-mockup screensaver-mockup.tgz --clobber -R "$GITHUB_REPOSITORY"
+
