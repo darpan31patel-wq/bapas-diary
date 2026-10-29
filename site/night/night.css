@@ -1,0 +1,53 @@
+/* Gentle night mode (Darpan, 29 Oct 2026: "a darker, softer look for the evenings. YES"). Website only.
+   From 7pm to 6am by the clock of the phone or computer, every page goes softer by itself, no button: the maroon
+   ground a little deeper, the ivory polaroids and the light Search page dimmed to warm sand and dark maroon, the
+   cream words and gold a touch quieter, and a faint warm glow over everything, like a lamp turned down in the
+   evening. tools/web_night.py adds the little clock check (html.night) and this file to every page. */
+
+/* the warm glow over the whole page, photos too (not over the screensaver, which keeps its own look) */
+html::after { content: ""; position: fixed; inset: 0; z-index: 2147482000; pointer-events: none; background: rgba(42, 20, 4, .13);
+  opacity: 0; transition: opacity 2.5s ease; }
+html.night::after { opacity: 1; }
+html.night.ss-open::after { opacity: 0; transition: none; }
+html.night { color-scheme: dark; }
+html.night .site-menu a:not(.on):not(:hover) { color: #c59a4c; }
+
+/* Today (and its share and favourites pages, which use the same colours) */
+html.night[data-pg="today"], html.night[data-pg="favourites"], html.night[data-pg="day"] {
+  --maroon-in: #2a0b12; --maroon-out: #0b0305; --maroon-deep: #1c070b;
+  --ivory-top: #c9ba9e; --ivory-bot: #b4a487; --ivory-edge: #847257; --cream: #e4d6bc;
+  --gold-hi: #eed08b; --gold-soft: #c99a45; --cord: #a88a58; --mist: rgba(228, 214, 188, .55);
+}
+html.night[data-pg="today"] body, html.night[data-pg="favourites"] body { background: var(--maroon-out); }
+html.night[data-pg="today"] .page { background:
+  radial-gradient(ellipse 60% 30% at 50% 0%, rgba(255, 196, 110, .07), transparent 70%),
+  radial-gradient(ellipse 90% 70% at 50% 30%, var(--maroon-in), var(--maroon-out)) no-repeat; }
+html.night[data-pg="today"] .card { box-shadow: 0 10px 18px rgba(0, 0, 0, .55), 0 2px 4px rgba(0, 0, 0, .4); }
+html.night[data-pg="today"] .ss-big { background: linear-gradient(180deg, #dcb767, #b98a3a); border-color: #dcb767; }
+
+/* Calendar */
+html.night[data-pg="calendar"] {
+  --maroon: #2a0b12; --maroon-deep: #0b0305; --ivory: #e4d6bc; --ivory-2: #b4a487; --gold-hi: #eed08b; --gold-lo: #b98a3a; --muted: #ad9078;
+}
+
+/* Search: the light page becomes the night maroon, the polaroids dim sand */
+html.night[data-pg="search"] {
+  --maroon-in: #2a0b12; --maroon-out: #0b0305;
+  --paper: #170609; --paper-hi: #c9ba9e; --line: rgba(217, 164, 65, .22);
+  --ivory-top: #c9ba9e; --ivory-bot: #b4a487; --ivory-edge: #847257; --cap: #e4d6bc; --gold-hi: #eed08b;
+}
+html.night[data-pg="search"] body { background: linear-gradient(#1d080d, #110406) fixed; }
+html.night[data-pg="search"] .bar { background: rgba(22, 6, 10, .94); box-shadow: 0 6px 14px rgba(0, 0, 0, .35); }
+html.night[data-pg="search"] .band { background:
+  radial-gradient(ellipse 60% 70% at 50% 0%, rgba(255, 196, 110, .08), transparent 70%),
+  radial-gradient(ellipse 90% 120% at 50% 30%, var(--maroon-in), var(--maroon-out)); }
+/* words that sit straight on the page, not on a polaroid */
+html.night[data-pg="search"] :is(.status, .can .lead, .frow .and, .hint, .more button, .years button, .day-head .only) { color: #cdbda2; }
+html.night[data-pg="search"] :is(.status b, .years .n, .years button.on span, .years button:hover span, .reset) { color: #eed08b; }
+html.night[data-pg="search"] :is(.flabel, .dates, .badge) { color: #c99a45; }
+html.night[data-pg="search"] .years button.on .col, html.night[data-pg="search"] .years button:hover .col { background: linear-gradient(#eed08b, #b98a3a); }
+html.night[data-pg="search"] .day-head { background: radial-gradient(ellipse 80% 120% at 50% 0%, #3a0f19, #1a0609); box-shadow: 0 8px 18px rgba(0, 0, 0, .4); }
+html.night[data-pg="search"] .card { box-shadow: 0 8px 16px rgba(0, 0, 0, .5), 0 2px 4px rgba(0, 0, 0, .35); }
+
+/* About and Then and now: already dark, only quieter */
+html.night:is([data-pg="about"], [data-pg="then-and-now"]) { --maroon-out: #0b0305; --maroon-in: #2a0b12; --paper: #e4d6bc; --gold-hi: #eed08b; }
