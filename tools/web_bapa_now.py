@@ -126,8 +126,9 @@ CSS = r'''<style>
 .bapa-now .bn-dates{margin-top:3px;font:500 15px/1.3 var(--serif);color:var(--cream)}
 .bapa-now .bn-today,.bapa-now .bn-next{margin-top:3px;font:500 14px/1.3 var(--serif);color:var(--mist);text-wrap:balance}
 .bapa-now .bn-today b,.bapa-now .bn-next b{font-weight:700;color:var(--cream)}
-/* computers: in the empty space to the right of the date, level with the day buttons, so nothing below it moves */
-@media (min-width:1180px){
+/* computers and iPads on their side (from 1000px): in the empty space to the right of the date, level with the day buttons,
+   so nothing below it moves */
+@media (min-width:1000px){
   header{position:relative}
   .bapa-now{position:absolute;right:0;top:-48px;margin:0;width:clamp(330px,28vw,420px);max-width:none;padding:12px 18px 12px 12px;gap:16px}
   .bapa-now svg{width:clamp(110px,9vw,136px);height:clamp(110px,9vw,136px)}
@@ -136,20 +137,21 @@ CSS = r'''<style>
 }
 /* and the email and Screensaver buttons move into the empty space on the left, the same height as the card, so the
    header is one row shorter and the ropes start higher (Darpan, 29 Oct 2026: "ropes as high up on the page as possible") */
-@media (min-width:1180px){
+@media (min-width:1000px){
   header .ss-launch,header .remind{position:absolute;left:0;margin:0;width:clamp(300px,25vw,400px);display:flex;flex-direction:column;align-items:center}
   header .ss-launch{top:-44px}
   header .remind{top:30px;z-index:5}
   header .remind form{margin-top:10px;padding:14px;background:#2a0a12;border:1px solid rgba(217,164,65,.38);border-radius:14px;box-shadow:0 10px 24px rgba(0,0,0,.45)}
   .board{margin-top:6px}
 }
-@media (min-width:1180px) and (max-width:1359px){
+@media (min-width:1000px) and (max-width:1359px){
   .bapa-now{width:300px;padding:10px 14px 10px 10px;gap:12px}
   .bapa-now svg{width:100px;height:100px}
   .bapa-now .bn-town{font-size:25px}
   .bapa-now .bn-dates{font-size:14px}
   .bapa-now .bn-today,.bapa-now .bn-next{font-size:13px}
 }
+@media (min-width:1000px) and (max-width:1179px){.bapa-now .bn-next{display:none}}   /* iPads on their side: a shorter card */
 /* phones: one short strip, so the ropes stay close: the map, the town and its dates on one line, and today's event */
 @media (max-width:600px){.bapa-now{margin-top:14px;padding:8px 12px 8px 8px;gap:10px}.bapa-now svg{width:64px;height:64px;border-radius:8px}
   .bapa-now .bn-lbl{font-size:9px}.bapa-now .bn-town{font-size:20px}.bapa-now .bn-town small{display:none}

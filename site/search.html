@@ -260,6 +260,12 @@ body { background: linear-gradient(#efdcd2, #f3e5d8) fixed; }
   background: linear-gradient(#ffe7a3, #e8b45c); color: #3a0c15; font-weight: 700; box-shadow: 0 2px 8px rgba(168, 116, 42, .35); }
 .frow .pick.on > select:hover, .frow .pick.on > input[type=date]:hover { border-color: var(--maroon); }
 .frow.on > .flabel { color: var(--maroon); }
+/* on phones a chosen box and its cross share the row like the other boxes, so nothing pokes past the screen (phone and
+   tablet check, 29 Oct 2026: on the smallest phones the Filter row was 48px too wide) */
+@media (max-width: 520px) {
+  .frow .pick { flex: 1 1 40%; }
+  .frow .pick > select, .frow .pick > input { flex: 1 1 auto; width: 100%; max-width: none; }
+}
 .qbox { flex: 1 1 260px; min-width: 0; position: relative; display: flex; }
 .qbox #q { flex: 1 1 auto; }
 #q::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
