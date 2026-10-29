@@ -1,0 +1,27 @@
+# Website only (bapas-diary.com): a read-only look at the live screensaver after a deploy, from the screensaver thread
+# (the thread's own computer cannot reach bapas-diary.com). Publishes nothing.
+name: screensaver-check
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/project-thread-tydbrg']
+    paths: ['.github/workflows/screensaver-check.yml']
+jobs:
+  look:
+    runs-on: ubuntu-latest
+    steps:
+      - name: The live pages answer
+        run: |
+          for u in https://bapas-diary.com/ https://bapas-diary.com/screensaver/ https://bapas-diary.com/screensaver/version.txt \
+                   https://bapas-diary.com/screensaver/data/latest.json https://bapas-diary.com/screensaver/data/schedule.json \
+                   https://bapas-diary.com/screensaver/launch.js https://bapas-diary.com/screensaver/launch.css https://bapas-diary.com/screensaver/sw.js \
+                   https://photos.bapas-diary.com/darshan/list.json https://photos.bapas-diary.com/darshan/others/msm-static.jpg; do
+            echo "::notice::$u -> $(curl -s -o /dev/null -w '%{http_code} %{content_type} %{size_download}B' "$u")"
+          done
+          curl -s https://bapas-diary.com/ > today.html
+          echo "::notice::Today page: button $(grep -c 'id=\"screensaverButton\"' today.html), launch.js $(grep -c '/screensaver/launch.js' today.html), launch.css $(grep -c '/screensaver/launch.css' today.html)"
+          curl -s https://bapas-diary.com/screensaver/ > ss.html
+          echo "::notice::screensaver page: $(wc -c < ss.html) bytes, build $(grep -o "DARSHAN_BUILD = '[^']*'" ss.html | head -1), type.css $(grep -c 'type.css' ss.html), gu.js $(grep -c 'gu/gu.js' ss.html), translate $(grep -c 'translate=\"no\"' ss.html), 25s $(grep -c 'SECONDS_PER_PHOTO = 25' ss.html), arti stack $(grep -c 'now .arti' ss.html)"
+          echo "::notice::latest.json: $(curl -s https://bapas-diary.com/screensaver/data/latest.json | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), "photos, newest", d[0]["iso"] if d else "none", "oldest", d[-1]["iso"] if d else "none")')"
+          echo "::notice::schedule.json: $(curl -s https://bapas-diary.com/screensaver/data/schedule.json | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d.get("stays",[])), "stays,", len(d.get("days",{})), "days")')"
+          echo "::notice::version.txt: $(curl -s https://bapas-diary.com/screensaver/version.txt)"
