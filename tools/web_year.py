@@ -108,8 +108,9 @@ def land_rings(topo):
     return rings
 
 
-def map_svg(stops, places, rings):
-    """A flat map of the year's journey: the land round the towns, the route in gold, a numbered dot for each town."""
+def map_svg(stops, places, rings, numbers, label):
+    """A flat map of the year's journey: the land round the towns, the route in gold, a numbered dot for each town
+    (numbers: the town's number in the list beside the map)."""
     lls = [places[s['p']]['ll'] for s in stops if s['p'] in places]
     if not lls:
         return ''
@@ -118,50 +119,81 @@ def map_svg(stops, places, rings):
     c = math.cos(math.radians((la0 + la1) / 2))
     w, h = (lo1 - lo0) * c, la1 - la0
     want = 1.55   # wide map: a long way round the world stays readable, a year in Gujarat is not a thin strip
-    if w < 6 * want:
-        w = 6 * want
+    if w < 5 * want:
+        w = 5 * want
     if h < w / want:
         h = w / want
     if w < h * want:
         w = h * want
     cx, cy = (lo0 + lo1) / 2, (la0 + la1) / 2
-    W, H = 1000, round(1000 * h / w)
-    pad = .14
+    pad = .12
+    W = 1000
     sc = W / (w * (1 + 2 * pad))
+    H = round(h * (1 + 2 * pad) * sc)
+
     def xy(p):
-        return ((p[0] - cx) * c * sc + W / 2, (cy - p[1]) * sc + H * (1 + 2 * pad) / 2)
-    H = round(H * (1 + 2 * pad))
+        return ((p[0] - cx) * c * sc + W / 2, (cy - p[1]) * sc + H / 2)
     paths = []
     for r in rings:
-        if not any(abs(p[0] - cx) * c * sc < W and abs(p[1] - cy) * sc < H for p in r[::4] or r):
+        if max(p[1] for p in r) < -60:   # Antarctica
             continue
-        pts = [xy(p) for p in r]
-        d = 'M' + 'L'.join(f'{x:.0f} {y:.0f}' for x, y in pts) + 'Z'
-        paths.append(d)
-    route, seen, dots = [], {}, []
+        u = [r[0]]   # a coast across the date line stays in one piece, on the side of the world the map shows
+        for x, y in r[1:]:
+            x += 360 * round((u[-1][0] - x) / 360)
+            u.append((x, y))
+        k = 360 * round((cx - sum(x for x, _ in u) / len(u)) / 360)
+        r = [(x + k, y) for x, y in u]
+        if not any(-W < x < 2 * W and -H < y < 2 * H for x, y in map(xy, r[::4] or r)):
+            continue
+        paths.append('M' + 'L'.join(f'{x:.0f} {y:.0f}' for x, y in map(xy, r)) + 'Z')
+    route, dots = [], {}
     for s in stops:
         if s['p'] not in places:
             continue
         x, y = xy(places[s['p']]['ll'])
         route.append(f'{x:.1f} {y:.1f}')
-        if s['p'] not in seen:
-            seen[s['p']] = len(seen) + 1
-            dots.append((seen[s['p']], s['p'], x, y))
-    labels, out = [], []
+        dots.setdefault(s['p'], (numbers[s['p']], x, y))
     days = {}
     for s in stops:
         days[s['p']] = days.get(s['p'], 0) + (datetime.date.fromisoformat(s['b']) - datetime.date.fromisoformat(s['a'])).days + 1
-    for n, p, x, y in sorted(dots, key=lambda d: -days.get(d[1], 0)):   # longest stays named first, none on top of another
-        if all(abs(x - lx) > 120 or abs(y - ly) > 34 for lx, ly in labels) and 20 < x < W - 20:
-            labels.append((x, y))
-            anchor = 'end' if x > W * .8 else 'start'
-            dx = -14 if anchor == 'end' else 14
-            out.append(f'<text x="{x + dx:.0f}" y="{y + 5:.0f}" text-anchor="{anchor}">{esc(places[p]["name"])}</text>')
-    dot = ''.join(f'<g class="dot"><circle cx="{x:.1f}" cy="{y:.1f}" r="10"/><text x="{x:.1f}" y="{y + 3.6:.1f}">{n}</text></g>'
-                  for n, p, x, y in dots)
-    return (f'<svg class="map" viewBox="0 0 {W} {H}" role="img" aria-label="Map of the towns Bapa stayed in">'
+    labels, out = [], []
+    for p, (n, x, y) in sorted(dots.items(), key=lambda d: -days.get(d[0], 0)):   # longest stays named first, none on top of another
+        anchor = 'end' if x > W * .78 else 'start'
+        x0 = x - 16 - 11 * len(places[p]['name']) if anchor == 'end' else x + 14
+        x1 = x0 + 16 + 11 * len(places[p]['name'])
+        if all(x1 < a or x0 > b or abs(y - ly) > 26 for a, b, ly in labels) and all(abs(x - dx) > 12 or abs(y - dy) > 12 or q == p
+                                                                                     for q, (m, dx, dy) in dots.items()):
+            labels.append((x0, x1, y))
+            out.append(f'<text x="{x + (-14 if anchor == "end" else 14):.0f}" y="{y + 6:.0f}" text-anchor="{anchor}">{esc(places[p]["name"])}</text>')
+    dot = ''.join(f'<g class="dot"><circle cx="{x:.1f}" cy="{y:.1f}" r="11"/><text x="{x:.1f}" y="{y + 4:.1f}">{n}</text></g>'
+                  for p, (n, x, y) in sorted(dots.items(), key=lambda d: -d[1][0]))
+    return (f'<figure class="mapf"><svg class="map" viewBox="0 0 {W} {H}" role="img" aria-label="{esc(label)}: map of the towns Bapa stayed in">'
             f'<path class="land" d="{" ".join(paths)}"/>'
-            f'<polyline class="route" points="{" ".join(route)}"/>{dot}<g class="names">{"".join(out)}</g></svg>'), seen
+            f'<polyline class="route" points="{" ".join(route)}"/>{dot}<g class="names">{"".join(out)}</g></svg>'
+            f'<figcaption class="mapnote">{esc(label)}</figcaption></figure>')
+
+
+def maps(stays, places, rings):
+    """The whole year's journey, and when it went far and wide, a closer map of the country with most of the towns."""
+    numbers = {}
+    for s in stays:
+        if s['p'] in places:
+            numbers.setdefault(s['p'], len(numbers) + 1)
+    if not numbers:
+        return '', numbers
+    countries = []
+    for p in numbers:
+        if places[p]['country'] not in countries:
+            countries.append(places[p]['country'])
+    lls = [places[p]['ll'] for p in numbers]
+    span = max(p[0] for p in lls) - min(p[0] for p in lls)
+    out = map_svg(stays, places, rings, numbers, ', '.join(countries) if len(countries) > 1 else countries[0])
+    home = max(countries, key=lambda k: sum(1 for p in numbers if places[p]['country'] == k))
+    near = [p for p in numbers if places[p]['country'] == home]
+    nl = [places[p]['ll'] for p in near]
+    if len(countries) > 1 and len(near) >= 4 and max(p[0] for p in nl) - min(p[0] for p in nl) < span / 4:
+        out += map_svg([s for s in stays if s['p'] in near], places, rings, numbers, f'Across {home}')
+    return out, numbers
 
 
 class Year:
@@ -234,8 +266,9 @@ def moments(y, db, stays):
         text = info.get('whatsapp') or info.get('story') or line
         text = re.sub(r'^On this day in \d{4},?\s*', '', text or '')
         text = text[:1].upper() + text[1:]
-        if d not in days:
-            days[d] = dict(day=d, title=info.get('card') or line, text=text, why='history')
+        title = re.sub(r'^(?:HH |His Holiness )?(?:Param Pujya )?(?:Mahant|Pramukh) Swami Maharaj (?=[a-z])', '', line or '')
+        if d not in days and title:
+            days[d] = dict(day=d, title=title[:1].upper() + title[1:], text=text, why='history')
     for d, fest, about in db.execute("SELECT date, festivals, festival_about FROM calendar WHERE date LIKE ? AND festivals != ''", (year + '%',)):
         rows = y.on(d)
         if len(rows) < 8 or d in days:
@@ -245,7 +278,7 @@ def moments(y, db, stays):
         said = [r for r in rows if any(w in r['raw'].lower() for w in words) and CELEBRATE.search(r['raw'])]
         if said or MAJOR.search(fest):
             text = said[0]['cap'] if said else re.split(r'(?<=\.)\s', about or '')[0]
-            days[d] = dict(day=d, title=' and '.join(names), text=text, why='festival')
+            days[d] = dict(day=d, title=' and '.join(re.sub(r'\s*\(.*?\)', '', n) for n in names), text=text, why='festival')
     for r in y.rows:
         if r['day'] in days or r['day'][:4] != year:
             continue
@@ -284,7 +317,7 @@ def page(y, db, trips, rings, years, cal):
     guru = 'Pramukh Swami Maharaj' if year < 2016 else 'Mahant Swami Maharaj' if year > 2016 else 'Pramukh Swami Maharaj and Mahant Swami Maharaj'
     stays = [s for s in trips['years'].get(str(year), [])]
     places = trips['places']
-    map_html, numbered = map_svg(stays, places, rings) if stays else ('', {})
+    map_html, numbered = maps(stays, places, rings)
     dist = sum(km(places[a['p']]['ll'], places[b['p']]['ll']) for a, b in zip(stays, stays[1:]) if a['p'] in places and b['p'] in places)
     countries = sorted({places[s['p']]['country'] for s in stays if s['p'] in places})
     mo = moments(y, db, stays)
@@ -363,7 +396,7 @@ def page(y, db, trips, rings, years, cal):
         title=esc(title), year=year, guru=esc(guru), lead=esc(
             f'Every town, every festival and the best darshan of {guru}’s {year}, from {len(y.rows):,} photos.'),
         nums=nums_html, map=map_html, stays=''.join(stays_html), moments=''.join(mo_html), months=''.join(months_html),
-        best=best_html, others=others, countries=esc(', '.join(countries)))
+        best=best_html, others=others)
 
 
 TEMPLATE = os.path.join(R.HERE, 'site', 'year', 'year.html')   # the page's look; @@name@@ marks where each part goes
