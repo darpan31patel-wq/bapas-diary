@@ -1,0 +1,33 @@
+/* The Screensaver button on the Today page, the "entering screensaver state" box over the page gone soft, and the
+   full screen frame (Darpan, 29 Oct 2026). Website only. Colours and fonts are the Today page's own. */
+.ss-launch { display: flex; justify-content: center; margin: clamp(14px, 2vw, 26px) 0 0; }
+.ss-big {
+  display: inline-flex; align-items: center; gap: 12px; padding: 16px 34px; border-radius: 999px; cursor: pointer;
+  font: 700 14px/1 var(--sans); letter-spacing: .2em; text-transform: uppercase;
+  color: var(--maroon-out); background: linear-gradient(180deg, #f3cf7a, var(--gold-soft)); border: 1px solid #f3cf7a;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .45);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.ss-big:hover { transform: translateY(-1px); box-shadow: 0 10px 28px rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .45); }
+.ss-big svg { width: 22px; height: 22px; fill: currentColor; flex: none; }
+@media (max-width: 600px) { .ss-big { padding: 15px 26px; font-size: 13px; } }
+
+/* the page goes soft behind the question */
+.ss-asking .page, .ss-asking .site-menu { filter: blur(10px) brightness(.55); transition: filter .5s ease; }
+.ss-asking body { overflow: hidden; }
+.ss-ask { position: fixed; inset: 0; z-index: 2147483000; display: grid; place-items: center; padding: 24px; background: rgba(22, 5, 9, .35); animation: ss-in .35s ease; }
+@keyframes ss-in { from { opacity: 0; } to { opacity: 1; } }
+.ss-box {
+  max-width: 460px; width: 100%; padding: 30px 30px 26px; border-radius: 16px; text-align: center;
+  background: linear-gradient(180deg, #3d0d18, #22060c); border: 1px solid rgba(217, 164, 65, .55); color: var(--cream);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .6);
+}
+.ss-box h2 { margin: 0 0 12px; font: 400 clamp(22px, 3vw, 28px)/1.2 var(--serif); color: var(--gold-hi); }
+.ss-box p { margin: 0 0 8px; font: 400 16px/1.5 var(--serif); }
+.ss-box .ss-small { font: 400 13px/1.4 var(--sans); color: #e8c98a; letter-spacing: .02em; }
+.ss-row { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
+.ss-row .pill { padding: 13px 26px; font-size: 12px; }
+
+/* the screensaver fills the window */
+.ss-frame { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; margin: 0; z-index: 2147483001; background: #120408; }
+.ss-open, .ss-open body { overflow: hidden; }
