@@ -77,9 +77,10 @@ def main():
                          tile(os.path.join(photos, p['msm']), f"{i} msm {b['date'][:4]} {b['place'][:18]} look {p['look']}", b.get('cap', ''))))
         sheet(rows, os.path.join(out, 'sheets', slug(label) + '.jpg'))
     old = sorted(enumerate(cands['old']), key=lambda x: x[1]['look'] if x[1]['look'] is not None else -1)
+    cap = lambda k: info.get(k, {}).get('cap', '')   # noqa: E731
     for n in range(0, len(old), 12):
-        sheet([(tile(os.path.join(photos, p['psm']), f"{i} {p['place'][:16]} {p['moment'][:18]}"),
-                tile(os.path.join(photos, p['msm']), f"look {p['look']}")) for i, p in old[n:n + 12]],
+        sheet([(tile(os.path.join(photos, p['psm']), f"{i} {p['place'][:16]} {p['moment'][:18]}", cap(p['psm'])),
+                tile(os.path.join(photos, p['msm']), f"look {p['look']}", cap(p['msm']))) for i, p in old[n:n + 12]],
               os.path.join(out, 'sheets', f'old-{n // 12}.jpg'))
     print(len(keys), 'photos,', len(cands['scenes']), 'scenes')
 
