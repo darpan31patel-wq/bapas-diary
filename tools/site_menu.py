@@ -7,8 +7,10 @@ import hashlib, os, re, sys
 
 # Darpan, 24 Oct 2026: Calendar is the second tab. 26 Oct 2026: Then and now is its own tab ("make it its own thing",
 # "yes then and now tab"), after Through the years; added here to every page's menu, so no page can miss it.
-ORDER = ['/', '/calendar/', '/search/', '/travels/', '/through-the-years/', '/then-and-now/', '/about/']
-ADD = {'/then-and-now/': 'Legacy'}   # Darpan, 28 Oct 2026: "change 'then and now' to 'legacy'"
+# 29 Oct 2026: the Darshan tab, the Neasden mandir's murti darshan day by day ("yes"), before About.
+ORDER = ['/', '/calendar/', '/search/', '/travels/', '/through-the-years/', '/then-and-now/', '/darshan/', '/about/']
+ADD = {'/then-and-now/': 'Legacy',   # Darpan, 28 Oct 2026: "change 'then and now' to 'legacy'"
+       '/darshan/': 'Darshan'}
 NAV = re.compile(r'(<nav class="site-menu[^"]*"[^>]*>)(.*?)(</nav>)', re.S)
 TAB = re.compile(r'<a\b[^>]*\bhref="([^"]+)"[^>]*>.*?</a>', re.S)
 # Darpan, 26 Oct 2026: the tabs always stay at the top of the screen; scrolled down they go very faint but can still be
