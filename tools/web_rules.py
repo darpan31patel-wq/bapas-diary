@@ -22,7 +22,7 @@ picture chain. Like web_bapa_rules.py, the parts of make.py used here are copies
 6, 7  A story is not told again when a card of that year already shows that day in that town (the UK and Europe diary
    included); its 2008 to 2016 years are already left out where the stories are read in (tools/satpurush.py).
 """
-import argparse, datetime, glob, gzip, hashlib, io, json, os, re, sqlite3, sys
+import argparse, collections, datetime, glob, gzip, hashlib, io, json, os, re, sqlite3, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import web_bapa_rules as R
@@ -243,7 +243,7 @@ def tg(a):
                 close = h >= R.CLOSE_MIN_FACE and front >= .35 and sharp >= R.SHARP_MIN and bright >= R.BRIGHT_MIN
                 cap = website_caption(own.get('card') or e['card'])
                 cards.setdefault(date[5:], []).append(
-                    [y, card_place(own.get('place'), e.get('place') or place, known), EARLY, key, cap,
+                    [y, caption_place(cap, known) or card_place(own.get('place'), e.get('place') or place, known), EARLY, key, cap,
                      [round((x + w / 2) / W, 3), round((yy + h / 2) / H, 3), round(x / W, 4), round(yy / H, 4), round(w / W, 4),
                       round(h / H, 4), round(W / H, 4), int(close)], round(sim, 3), card_caption(cap)])
                 seen += 1
@@ -298,6 +298,28 @@ def tidy_place(text, known):
     return t if ok else ''
 
 
+# Darpan, 29 Oct 2026 ("why 2 locations?"): a post's place is where Bapa was at the end of that day, so on a day he flew
+# out its photos of the morning said 'Nairobi' under 'Viday from Neasden Mandir'. Where the caption says where he is
+# ('from', 'at' or 'in' a town), the card shows that town. A mandir's own area is said as its town.
+PLACE_ALIAS = {'Neasden': 'London', 'Neasden hari mandir': 'London', 'Islington': 'London', 'Alexandra Palace': 'London',
+               'Alexandra Pavilion': 'London', 'Alexandra Park': 'London', 'Dollis Hill': 'London'}
+
+
+def caption_place(caption, known):
+    """('Viday from Neasden Mandir', ...) -> 'London': the town the caption puts Bapa in, else ''. 'Departs for
+    Robbinsville' or 'Sanctifies murtis for Shimla Mandir' say nothing of where he is."""
+    text = (caption or '').strip(' .')
+    names = sorted(set(known) | set(PLACE_ALIAS), key=len, reverse=True)
+    found = [(m.start(), n) for n in names
+             for m in [re.search(r'(?:\b(?:from|at|in)\s+(?:the\s+)?|^)' + re.escape(n) + r'(?![\w-])', text, re.I)] if m]
+    if not found:
+        return ''
+    n = min(found, key=lambda f: (f[0], -len(f[1])))[1]
+    if not re.search(r'\b(?:from|at|in)\b', text, re.I) and text.lower() != n.lower():
+        return ''   # only a caption that is the town itself ('London') or says he is from, at or in it
+    return PLACE_ALIAS.get(n, n)
+
+
 def card_place(card, event, known):
     """A channel card's town: the one read off the photo when it is clean, else the post's own place."""
     own = tidy_place(card, known)
@@ -328,7 +350,7 @@ def day(a):
         dated.setdefault((y, date), []).append([al, fi, cap or '', bapa, place])
     tgc = json.load(open(a.tg, encoding='utf-8')) if a.tg and os.path.exists(a.tg) else {}
     known = known_places(db)
-    stats = dict(trip_dropped=0, near_added=0, stories_dropped=0, tg_years=0, framed=0)
+    stats = dict(trip_dropped=0, near_added=0, stories_dropped=0, tg_years=0, framed=0, other_town=0)
 
     def finish(p):
         """p = [album, file, caption, bapa, face, card caption]"""
@@ -373,8 +395,12 @@ def day(a):
             s[1] = tidy_place(s[1], known)
         said = {s[0]: s[1] for s in D['stories'] if s[1]}
         # 5: the channels' darshan of Bapa on this very day (every year since 26 Oct 2026, as the 2pm picture)
+        todo = []
         for y, place, al, key, cap, box, sim, short in tgc.get(mmdd, []):
-            place = tidy_place(place, known) or said.get(y, '')   # 'Morning puja —.London' is London (Darpan, 28 Oct 2026)
+            # where the caption says he is, else the place read off the photo: 'Morning puja —.London' is London (Darpan,
+            # 28 Oct 2026), 'Viday from Neasden Mandir' is London, not the Nairobi he flew to that night (29 Oct 2026)
+            place = caption_place(cap, known) or tidy_place(place, known) or said.get(y, '')
+            place = PLACE_ALIAS.get(place, place)   # 'Alexandra Park' is London
             # from 1999 on, as sure of Bapa's face as for baps.org's photos, and his face big enough to see (a tenth of
             # the photo's height at least), never a tiny far figure (Darpan, 26 Oct 2026: "i only want bapa")
             if y >= BAPS_FROM and (sim < R.SAME_PERSON or box[5] < TG_FACE_MIN):
@@ -388,6 +414,26 @@ def day(a):
             if same in shown_tg:
                 continue
             shown_tg.add(same)
+            todo.append((y, place, al, key, cap, box))
+        # a year's card names one town, so it shows the photos taken there: the town most of them name, never a photo
+        # whose caption says he is somewhere else (Darpan, 29 Oct 2026: "why 2 locations?")
+        # Where baps.org has that year from a nearby day, its town (only those photos could join it); on a tie, where the
+        # day's story puts him.
+        most = {}
+        for y, place, *_ in todo:
+            if place:
+                most.setdefault(y, collections.Counter())[town(place)] += 1
+        main = {}
+        for y, n in most.items():
+            near = town(years[y]['place']) if y in years else ''
+            t = near if near in n else max(n, key=lambda t: (n[t], t == town(said.get(y, ''))))
+            main[y] = next(p for yy, p, *_ in todo if yy == y and p and town(p) == t)
+        for y, place, al, key, cap, box in todo:
+            if y in main:
+                if place and town(place) != town(main[y]):
+                    stats['other_town'] += 1
+                    continue
+                place = main[y]
             if y in years and not years[y].get('tg'):   # baps.org has this year already
                 B = years[y]
                 # make.py: baps.org's own photos of the very day stay; when it only has a nearby day or a trip, the
