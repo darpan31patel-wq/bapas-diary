@@ -1,0 +1,40 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, and never fetches
+# from www.baps.org. Copies the London mandir's daily darshan photos (and one Sarangpur photo) into the website's own
+# photo store, photos.bapas-diary.com/darshan/, for the screensaver on the Today page (Darpan, 29 Oct 2026:
+# "completely self-reliant"). The mandir posts its photos at about 7:30 to 8:30am UK, so this looks through the London
+# morning, hourly, and never between 04:30 and 07:30 UTC (the daily picture's own morning). A photo already copied is
+# never fetched again. The timer runs from main and uses the website branch's files, as website-hires does.
+name: screensaver-darshan
+on:
+  schedule:
+    - cron: '7 0-3,8-13 * * *'
+    - cron: '40 7 * * *'
+  workflow_dispatch:
+concurrency: screensaver-darshan
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BUCKET: bapas-diary-photos
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name == 'main' && 'claude/project-thread-eawr12' || github.ref }}
+      - name: Not yet on the website branch? Then nothing to do
+        id: ready
+        run: test -f tools/screensaver/darshan_copy.sh && echo ok=1 >> "$GITHUB_OUTPUT" || echo "the screensaver files are not on the website branch yet: nothing copied"
+      - name: R2 access (the same key as website-hires, kept out of the logs)
+        if: steps.ready.outputs.ok
+        run: |
+          pip install -q pillow
+          id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
+          key=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1)
+          echo "::add-mask::$id"; echo "::add-mask::$key"
+          { echo "AWS_ACCESS_KEY_ID=$id"; echo "AWS_SECRET_ACCESS_KEY=$key"
+            echo "AWS_DEFAULT_REGION=auto"; echo "R2=https://$CF_ACCOUNT.r2.cloudflarestorage.com"; } >> "$GITHUB_ENV"
+      - name: The mandir's photos for yesterday and today into R2
+        if: steps.ready.outputs.ok
+        run: bash tools/screensaver/darshan_copy.sh
