@@ -906,7 +906,7 @@ Promise.race([Promise.allSettled([refreshPhotos(), refreshMemories(), refreshLat
 /* A few birds glide slowly across the sky about once a minute, gently flapping */
 .x-sun .ev { opacity: 0; }
 .x-sun .ev.go { opacity: 1; }
-.x-sun .birds.go .flock { animation: flock 56s linear forwards; }
+.x-sun .birds.go .flock { animation: flock 90s linear forwards; }
 .x-sun .birds.back.go .flock { animation-name: flockback; }
 .x-sun .wing { transform-box: fill-box; transform-origin: 50% 100%; }
 .x-sun .birds.go .wing { animation: flap 1.6s ease-in-out infinite alternate; }   /* only while they are flying */
@@ -915,11 +915,11 @@ Promise.race([Promise.allSettled([refreshPhotos(), refreshMemories(), refreshLat
 /* Every 30 seconds one small moment that fits the time of day (13 Oct 2026; all at half speed since 16 Oct):
    by day a plane with its contrail, a drifting cloud or birds; birds heading home at sunset;
    at night a shooting star, a plane's blinking light or a few stars twinkling */
-.x-sun .plane.go { animation: plane 52s linear forwards; }
+.x-sun .plane.go { animation: plane 90s linear forwards; }
 @keyframes plane { from { transform: translate(-80px, 8px); } to { transform: translate(880px, -18px); } }
 .x-sun .plane.go .blink { animation: blink 2.8s steps(1) infinite; }
 @keyframes blink { 0%, 60% { opacity: 1; } 61%, 100% { opacity: 0; } }
-.x-sun .cloud.go { animation: cloud 60s linear forwards; }
+.x-sun .cloud.go { animation: cloud 150s linear forwards; }
 @keyframes cloud { 0% { transform: translate(-180px, 0); opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { transform: translate(820px, 0); opacity: 0; } }
 .x-sun .shoot.go { animation: shoot 3.6s ease-out forwards; }
 @keyframes shoot { 0% { transform: translate(0, 0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(-260px, 120px); opacity: 0; } }
@@ -1074,10 +1074,8 @@ Promise.race([Promise.allSettled([refreshPhotos(), refreshMemories(), refreshLat
 .x-sun .birds.go .wing, .x-sun .plane.go .blink { animation-play-state: running; }
 .saver-clock .colon, .saver-tag i { animation-timing-function: steps(14); }
 .x-sun.arti .diyas .d { animation-timing-function: steps(14); }
-/* the plane, cloud and birds cross the sky at about 10 small steps a second */
-.x-sun .birds.go .flock { animation-timing-function: steps(560); }
-.x-sun .plane.go { animation-timing-function: steps(520); }
-.x-sun .cloud.go { animation-timing-function: steps(456); }
+/* the plane, cloud and birds cross the sky slowly and smoothly (Darpan, 29 Oct 2026: "cloud is moving too fast, slow
+   animations down, but keep them smooth"): no small steps any more */
 .x-sun .wing { animation-timing-function: steps(10); }
 
 /* ===== Extra touches added 19 Oct 2026 ===== */
@@ -1528,7 +1526,7 @@ Promise.race([Promise.allSettled([refreshPhotos(), refreshMemories(), refreshLat
   // the sun rays, a shooting star, twinkling stars or the fireworks, never two together, and at least half a minute of
   // quiet sky before the next. The slow drifting cloud may keep one of them company. Each one is cleared away once it
   // has crossed, so nothing that has finished can ever start again (the master slide copies the sky as it is).
-  const LASTS = { birds: 56, plane: 52, cloud: 60, shoot: 3.6, twinkle: 15, rays: 30, fireworks: 13 }, QUIET_SECONDS = 30;
+  const LASTS = { birds: 90, plane: 90, cloud: 150, shoot: 3.6, twinkle: 15, rays: 30, fireworks: 13 }, QUIET_SECONDS = 30;
   let busyUntil = 0, cloudUntil = 0;
   const skyFree = name => Date.now() >= (name === 'cloud' ? cloudUntil : busyUntil);
   function play(el, name, mod) {
