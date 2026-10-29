@@ -591,7 +591,8 @@ function sugShow() {
   box.innerHTML = SUG.shown.map((s, i) => {
     let at = 0;   // where the typed letters are, to show them in bold
     while (at < s.low.length && !(s.low.startsWith(typed, at) && (!at || !/[a-z0-9]/.test(s.low[at - 1])))) at++;
-    const w = esc(s.w.slice(0, at)) + '<b>' + esc(s.w.slice(at, at + typed.length)) + '</b>' + esc(s.w.slice(at + typed.length));
+    const sw = cap(s.w);   // shown with a capital first letter (Darpan, 29 Oct 2026: "make all the suggestions capital")
+    const w = esc(sw.slice(0, at)) + '<b>' + esc(sw.slice(at, at + typed.length)) + '</b>' + esc(sw.slice(at + typed.length));
     return `<li role="option" data-i="${i}"><span class="w">${w}</span><span class="k">${s.kind} · ${s.n.toLocaleString()} photos</span></li>`;
   }).join('');
   const qa = q.closest('.qbox') || q;   // the box with its cross sits in .qbox, which is as big as the box
@@ -742,8 +743,9 @@ function fillPlacesActions() {
 }
 // the mandir day picked in the action list (#mandir= links pick it there too); #mandir only stays so older code can clear it
 const mandirPicked = () => $('act').value.startsWith('@') ? $('act').value.slice(1) : '';
+const cap = w => w ? w[0].toUpperCase() + w.slice(1) : w;   // every suggestion starts with a capital letter; it still searches the same words (Darpan, 29 Oct 2026)
 function fillCan() {
-  $('c-try').innerHTML = TRY.map(([w, kind]) => `<button data-${kind}="${esc(w)}">${esc(w)}</button>`).join('');
+  $('c-try').innerHTML = TRY.map(([w, kind]) => `<button data-${kind}="${esc(w)}">${esc(cap(w))}</button>`).join('');
 }
 function add(list) {
   for (const r of list) items.push(r);
