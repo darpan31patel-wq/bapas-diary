@@ -6,7 +6,7 @@ name: legacy-more
 on:
   push:
     branches: ['claude/project-thread-juo6qh']
-    paths: ['site/legacy-more-cands.json', '.github/workflows/legacy-more.yml']
+    paths: ['site/legacy-more-cands.json', 'site/legacy-auto-try.json', '.github/workflows/legacy-more.yml']
   workflow_dispatch:
 concurrency:
   group: legacy-more
@@ -31,6 +31,7 @@ jobs:
           echo "::add-mask::$CF_TOKEN"
           pip install -q opencv-python-headless numpy boto3
           python3 tools/legacy_sheets.py site/legacy-more-cands.json legacy-more
+          python3 tools/legacy_sheets.py site/legacy-auto-try.json legacy-more/auto-try   # what the weekly robot would add now
       - name: Into the release
         run: |
           tar czf legacy-more.tgz legacy-more
