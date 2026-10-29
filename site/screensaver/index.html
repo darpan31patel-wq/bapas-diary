@@ -936,7 +936,8 @@ startSaver();
 @keyframes diya { from { opacity: .55; } to { opacity: 1; } }
 @keyframes flap { from { transform: scaleY(1); } to { transform: scaleY(-.5); } }
 @media (prefers-reduced-motion: reduce) { .x-sun .flag, .x-sun .flock, .x-sun .wing, .x-sun .fall, .x-sun .diyas .d { animation: none; } .x-sun .ev, .x-sun .rays, .x-sun .fireworks { display: none; } }
-.x-sun .wxt:not(:empty)::before { content: " · "; }
+.x-sun .now .sun, .x-sun .wxt { display: block; }   /* the weather on its own line under the sun's time (Bapa's Diary, 29 Oct 2026) */
+.x-sun .wxt:empty { display: none; }
 .x-sun .now { margin-top: .2vh; font-size: clamp(9px, min(1.35vh, .8vw), 16px); font-weight: 700; letter-spacing: .26em; text-transform: uppercase; color: #e8c98a; white-space: nowrap; }
 .x-shlok.sun-on .x-shlok-content { top: 22vh; }
 .x-shlok .lbl { white-space: nowrap; }
@@ -1962,6 +1963,8 @@ startSaver();
 .x-leave span { font: 600 clamp(11px, 1.5vh, 15px)/1.3 var(--font); letter-spacing: .12em; text-transform: uppercase; color: #ffe7b8; text-shadow: 0 1px 6px rgba(0, 0, 0, .8); }
 body.awake, body.awake .saver { cursor: default; }
 @media (pointer: coarse) { .x-leave, .x-leave.on { opacity: 1; pointer-events: auto; } }
+/* a phone held upright: the book page a little wider, so its words have room (Bapa's Diary, 29 Oct 2026) */
+@media (orientation: portrait) and (max-width: 700px) { .saver.book { --page-w: 40vw; } }
 </style>
 <script>
 /* Leaving (Darpan, 29 Oct 2026: "to exit, please press escape, or please press the X button on a touchscreen device").
@@ -1971,7 +1974,8 @@ body.awake, body.awake .saver { cursor: default; }
   if (/[?&]stay\b/.test(location.search)) return;
   const box = document.createElement('div');
   box.className = 'x-leave on';
-  box.innerHTML = '<button type="button" aria-label="Leave the screensaver">✕</button><span>To leave, press Escape or tap ✕</span>';
+  const touch = matchMedia('(pointer: coarse)').matches;   // a touch screen has no Escape: just the ✕
+  box.innerHTML = '<button type="button" aria-label="Leave the screensaver">✕</button><span>' + (touch ? 'Tap ✕ to leave' : 'To leave, press Escape or tap ✕') + '</span>';
   document.body.appendChild(box);
   const leave = () => {
     if (window.parent !== window) window.parent.postMessage({ type: 'screensaver-exit' }, '*');
