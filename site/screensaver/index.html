@@ -842,8 +842,11 @@ function startSaver() {
 
 // Look for the new day's photos every 15 minutes, so they appear soon after the mandir posts them
 setInterval(() => { refreshPhotos(); refreshMemories(); refreshLatest(); refreshSarangpur(); }, 15 * 60 * 1000);   // a new list fades in on its own; the photo on screen is never restarted
-refreshPhotos().then(refreshMemories).then(refreshLatest).then(refreshSarangpur);
-startSaver();
+// All four lists are looked for at once, and the screensaver starts once they are in (our own files: usually well under a
+// second) or after 3 seconds at most. So the first photo follows the shuffled round like every other one, instead of always
+// being the mandir's because its list came first (Darpan, 29 Oct 2026: "why does the screensaver always start on daily murti
+// darshan ... i thought i said shuffle").
+Promise.race([Promise.allSettled([refreshPhotos(), refreshMemories(), refreshLatest(), refreshSarangpur()]), new Promise(r => setTimeout(r, 3000))]).then(startSaver);
 </script>
 
 <!-- ======================= SCREENSAVER EXTRAS (Oct 2026) =======================
