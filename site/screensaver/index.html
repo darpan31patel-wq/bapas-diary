@@ -228,8 +228,8 @@ const MEMORIES_URL = /[?&]plain\b/.test(location.search) ? "" : "data/";   // la
 //   copy       the website's photo copy at full screen size (l/, 2560 px)
 const SS = Object.assign({ darshan: "https://photos.bapas-diary.com/darshan/", day: "/data/day/", copy: "https://photos.bapas-diary.com/l/" }, window.SS_MOCK || {});
 const MEMORIES_PER_DAY = 400;          // every photo for the day: they load one at a time, so a long list costs nothing
-const SECONDS_PER_PHOTO = 40;          // how long each photo stays (16 Oct 2026: another 5 seconds)
-const PHOTO_FADE_SECONDS = 11;         // how slowly one photo melts into the next (5 seconds longer)
+const SECONDS_PER_PHOTO = 25;          // how long each photo stays (Darpan, 29 Oct 2026: 25 seconds)
+const PHOTO_FADE_SECONDS = 9;          // how slowly one photo melts into the next (Darpan, 29 Oct 2026: 9 seconds)
 const WORDS_FADE_SECONDS = 4;          // the words fade away over 4s, then the new ones fade in over 4s: 8s in all
 const PHOTO_DIM = 0.10;                // every photo 10% darker (0 = full brightness)
 // The mandir posts photos each morning at:
@@ -1965,6 +1965,11 @@ startSaver();
 body.awake, body.awake .saver { cursor: default; }
 @media (pointer: coarse) { .x-leave, .x-leave.on { opacity: 1; pointer-events: auto; } }
 /* a phone: the photo alone, no book page (Darpan, 29 Oct 2026: "for a phone, maybe get rid of the text 25% side") */
+/* When there is a lot to say (an arti on at the mandir, or one coming soon), the words by the clock and in the mandir
+   step down a little so it all fits without crowding (Darpan, 29 Oct 2026: "make all the text a little bit smaller") */
+.saver.book.aarti-on .x-clock-group, .saver.book.soon-on .x-clock-group { transform: scale(.86); transform-origin: 50% 100%; }
+.saver.book.aarti-on .x-clock-group .saver-tag { font-size: clamp(7px, min(1.05vh, .6vw), 12px); letter-spacing: .12em; white-space: normal; text-align: center; }
+.saver.book.aarti-on .x-sun .x-sun-arti .a-line { font-size: clamp(8px, min(1.45vh, .8vw), 17px); }
 @media (max-width: 700px) { .saver.book { --page-w: 0px; } .saver.book .x-shlok, .saver.book .x-clock-footer, .saver.book .x-diya { display: none !important; } .saver.book .saver-caption { max-width: 80vw; } }
 </style>
 <script>
