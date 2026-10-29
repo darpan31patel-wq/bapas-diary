@@ -1,0 +1,23 @@
+# Website only (bapas-diary.com), mockup only: never deploys and touches nothing in the daily 2pm picture chain.
+# Screenshots of the live pages now and with the gentle night mode (tools/night_mockup.js), into the release
+# `night-mockup`. Runs when this file changes on a claude/** branch (first run).
+name: night-mockup
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['.github/workflows/night-mockup.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm i --no-save playwright@1.48.2 && npx playwright install --with-deps chromium
+      - run: node tools/night_mockup.js shots && tar czf night-shots.tgz shots
+      - run: |
+          gh release view night-mockup >/dev/null 2>&1 || gh release create night-mockup --prerelease --title "Night mode mockup" --notes "Screenshots for the gentle night mode mockup. Not used by the website or the daily picture."
+          gh release upload night-mockup night-shots.tgz --clobber
