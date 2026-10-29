@@ -21,7 +21,7 @@ The page loads photos from R2 by album and file (s/ALBUM/FILE, made by tools/web
 --photos also saves day/s/ALBUM/FILE (320 px) straight from baps.org, with where the face is ("f": [x, y] after the
 bapa flag) so a card centres on it. That is only for mockups: the cloud can't reach R2, the real site uses R2.
 """
-import argparse, datetime, io, json, os, sqlite3, sys, time
+import argparse, datetime, io, json, os, re, sqlite3, sys, time
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path[:0] = [HERE, os.path.join(HERE, 'tools')]
@@ -84,12 +84,142 @@ def day_data(db, mmdd):
     cal = {d[:4]: [v or '' for v in row] for d, *row in db.execute(
         "SELECT date, indian_date, festivals, notes FROM calendar WHERE substr(date, 6) = ? ORDER BY date", (mmdd,))}
 
-    stories = [[int(d[:4]), (place or '').split(',')[0].strip(), line or headline or '']
-               for d, place, line, headline in db.execute(
-                   "SELECT date, place, line, headline FROM tg_events WHERE substr(date, 6) = ? ORDER BY date", (mmdd,))
-               if line or headline]
+    stories, seen = [], {}
+    for ch, d, place, line, headline, data in db.execute(
+            "SELECT channel, date, place, line, headline, data FROM tg_events WHERE substr(date, 6) = ? ORDER BY date", (mmdd,)):
+        if not (line or headline):
+            continue
+        s = [int(d[:4]), (place or '').split(',')[0].strip(), line or headline or '']
+        more = post_more(db, ch, data, d, line or headline)
+        if more:
+            s.append(more)
+        # the same story told twice (both channels, or a post shared again in other words): keep the one that says more
+        old = next((o for o in seen.get(s[0], []) if same_story(o, s)), None)
+        if old:
+            if len(json.dumps(s[2:])) > len(json.dumps(old[2:])):
+                old[2:] = s[2:]
+            continue
+        seen.setdefault(s[0], []).append(s)
+        stories.append(s)
     return {'date': mmdd, 'title': f'{day.day} {day:%B}', 'years': [years[y] for y in sorted(years)], 'cal': cal,
             'stories': stories}
+
+
+# Darpan, 29 Oct 2026: "there's lots more information on the Telegram group for each post that we're not using". The
+# site showed only each post's one line summary; the post itself also gives the day's Indian date, its title and the
+# whole story (or, in the UK diary, everything Bapa did that day). post_more() reads those out, with no links, no
+# channel names and nothing that names where the words come from (the public site never names its sources).
+MONTH = {'kartik': 'Kartak', 'kartak': 'Kartak', 'magshar': 'Magshar', 'magsar': 'Magshar', 'margshirsh': 'Magshar',
+         'posh': 'Posh', 'paush': 'Posh', 'maha': 'Maha', 'magh': 'Maha', 'fagan': 'Fagan', 'fagun': 'Fagan',
+         'falgun': 'Fagan', 'phagun': 'Fagan', 'chaitra': 'Chaitra', 'chaitar': 'Chaitra', 'vaishakh': 'Vaishakh',
+         'vaishakh': 'Vaishakh', 'jeth': 'Jeth', 'jeshth': 'Jeth', 'ashadh': 'Ashadh', 'ashad': 'Ashadh',
+         'shravan': 'Shravan', 'bhadarvo': 'Bhadarvo', 'bhadrapad': 'Bhadarvo', 'aso': 'Aso', 'ashvin': 'Aso'}
+TITHI = ['', 'Padvo', 'Bij', 'Trij', 'Choth', 'Pancham', 'Chhath', 'Satam', 'Atham', 'Nom', 'Dasham', 'Ekadashi',
+         'Baras', 'Teras', 'Chaudas']
+TITHI_WORDS = {'punam': 15, 'purnima': 15, 'poonam': 15, 'amas': 30, 'amavasya': 30, 'ekadashi': 11, 'agiyaras': 11}
+NOT_SAID = re.compile(r'https?://|www\.|t\.me|telegram|(this|our|the|join) channel|whatsapp|instagram|^\W*(smruti (photos|video)|'
+                      r'full program|highlights|video|watch|photos|join|follow|subscribe|link|click)\b|#\w|[🎥📹📸📷🔗👉▶]', re.I)
+LINK_NAME = re.compile(r'\b(full program(me)?|playlist|video|watch|live|highlights|bhajan|kirtan|prarthna|prarthana)\b', re.I)
+
+
+def same_story(a, b):
+    """Two stories of one year tell the same thing: their lines, or their first paragraphs, share most of their words."""
+    words = lambda t: set(re.findall(r'[a-z]{3,}', (t or '').lower())) - {'the', 'and', 'for', 'with', 'from', 'his', 'swami', 'maharaj'}
+    first = lambda s: ((s[3] if len(s) > 3 else {}).get('w') or [''])[0]
+    for x, y in ((a[2], b[2]), (first(a), first(b))):
+        x, y = words(x), words(y)
+        if x and y and len(x & y) / min(len(x), len(y)) >= .6:
+            return True
+    return False
+
+
+EMOJI = re.compile('[\U0001F000-\U0001FAFF\u2600-\u27BF\u2B00-\u2BFF\uFE0F\u200D]')
+
+
+def tithi(text):
+    """'Aso vad 4', '(Fagun vad 5, VS 1856)', 'Kartik sud Punam' -> 'Aso Vad Choth', as the BAPS calendar writes it."""
+    m = re.search(r'\b(adhik\s+)?([a-z]+)\s+(sud|vad|sudi|vadi)\s+(\d{1,2}|[a-z]+)\b', text or '', re.I)
+    if not m or m.group(2).lower() not in MONTH:
+        return ''
+    n = m.group(4).lower()
+    n = int(n) if n.isdigit() else TITHI_WORDS.get(n, 0)
+    side = 'Sud' if m.group(3).lower().startswith('s') else 'Vad'
+    if not 1 <= n <= 30:
+        return ''
+    name = 'Punam' if n == 15 and side == 'Sud' else 'Amas' if n in (15, 30) else TITHI[n] if n < 15 else ''
+    return name and ' '.join(filter(None, ['Adhik' if m.group(1) else '', MONTH[m.group(2).lower()], side, name]))
+
+
+def post_more(db, ch, data, date, line):
+    """{'ti': Indian date, 'h': the post's own title, 'w': [what it says, a paragraph or a line each], 'l': 1 for a UK
+    diary day (a list of what Bapa did)} from the story's own post, or None."""
+    import web_bapa_rules as R
+    try:
+        e = json.loads(data or '{}')
+        n = int(str(e.get('url') or '').rstrip('/').rsplit('/', 1)[-1])
+    except ValueError:
+        return None
+    row = db.execute('SELECT text FROM tg_posts WHERE channel = ? AND id = ?', (ch, n)).fetchone()
+    text = (row and row[0] or '').replace('\r', '')
+    if not text.strip() or text.rstrip().endswith('…'):   # a cut short copy of a post says nothing new
+        return None
+    blocks = [[l.strip() for l in b.split('\n') if l.strip()] for b in re.split(r'\n\s*\n', text)]
+    lines = [l for b in blocks for l in b]
+    out = {}
+    head = lines[:4]   # the date, the Indian date, the place(s) and the title come first, in that order
+    for l in head:
+        if not out.get('ti') and len(l) < 60:
+            out['ti'] = tithi(l)
+    if not out.get('ti'):
+        out.pop('ti', None)
+    place = (e.get('place') or '').split(',')[0].strip().lower()
+    said, title = [], ''
+    for b in blocks:
+        keep = []
+        for l in b:
+            short = len(l) < 70 and not re.search(r'[.!?]["’”]?$', l)
+            if short and (re.match(r'^\(?\w*,?\s*\d{1,2}(st|nd|rd|th)?\s+\w+,?\s+\d{4}', l) or tithi(l) or
+                          re.fullmatch(r'\(?(VS|Samvat)\s*\d*\)?', l, re.I)):
+                continue   # the date and Indian date lines
+            if short and not said and not keep and (l.split(',')[0].strip().lower() == place or re.search(
+                    r',\s*(India|UK|USA|Kenya|Canada|Australia|Uganda|Tanzania|UAE|France|Belgium|Germany|Switzerland|'
+                    r'Netherlands|Italy|Portugal|Sweden|New Zealand|Singapore|South Africa)\b', l) or ch == 'satpurush'):
+                continue   # the place line(s): the card shows the place already
+            if NOT_SAID.search(l):
+                # the name of the link that follows goes with it ('Smruti Bhajan: Kem Re Tolay', then the link)
+                if re.search(r'https?://|www\.', l) and keep and len(keep[-1]) < 70 and not re.search(r'[.!?]$', keep[-1]):
+                    keep.pop()
+                continue
+            if len(l) < 80 and LINK_NAME.search(l) and not re.search(r'[.!?]$', l) and ch != 'satpurush':
+                continue   # 'Grand Dedication Playlist': a link's name, its link already gone
+            keep.append(l)
+        if keep:
+            said.append(' '.join(keep) if ch != 'satpurush' else keep)
+    if ch == 'satpurush':   # a diary day: each thing Bapa did is its own line
+        said = [l.rstrip('.').strip() for b in said for l in b]
+        out['l'] = 1
+    if said and ch != 'satpurush' and len(said[0]) < 90 and not re.search(r'[.!?]$', said[0]):
+        title = said.pop(0)   # a short first line with no full stop is the post's title
+    d = datetime.date.fromisoformat(date)
+    own = rf'(?:{d.day}(?:st|nd|rd|th)?\s+{d:%B}|{d:%B}\s+{d.day}(?:st|nd|rd|th)?),?\s+{d.year}'
+    said = [EMOJI.sub('', s).strip() for s in said]   # the posts' little pictures ('🛕 In 1984, ...') stay with the posts
+    said = [re.sub(rf'^On\s+{own},?\s+', 'On this day, ', s) for s in said]   # the card shows the date already
+    said = [re.sub(rf',?\s+on\s+(?:the\s+(?:morning|afternoon|evening|night)\s+of\s+)?{own}\b', '', s) for s in said]
+    said = [re.sub(r'\s+', ' ', R.undate(s, date) if s else s).strip() for s in said]
+    said = [re.sub(r'([.!?])\s*:\s+', r'\1 ', s) for s in said]   # '...children.: He has written' (a list run together)
+    told = {(line or '').lower().rstrip('.'), (line or '').split(': ', 1)[-1].lower().rstrip('.')}   # 'in London: Dhanteras'
+    # a diary day keeps every line (the page leaves out the one its summary already says); a story drops its summary
+    said = [s for s in said if s and (ch == 'satpurush' or s.lower().rstrip('.') not in told)]
+    title = re.sub(r',\s*(India|UK|USA|Kenya|Canada|Australia|UAE)$', '', EMOJI.sub('', title)).strip()
+    if title and title.lower() not in (line or '').lower():
+        out['h'] = title
+    while said and len(' '.join(said)) > 1600:   # a long story: its first part, never a cut sentence
+        said.pop()
+    if said:
+        out['w'] = said
+    else:
+        out.pop('l', None)
+    return out or None
 
 
 def save_photos(data, out, gap):

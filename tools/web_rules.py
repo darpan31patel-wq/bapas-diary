@@ -455,10 +455,19 @@ def day(a):
             Y.pop('tg', None)
         # 6, 7: a story is not told again where a card already shows that day in that town
         shown = {(Y['y'], town(Y['place'])) for Y in years.values() if Y['p'] or Y.get('t')}
+        # ... but what its post says more goes on that card (Darpan, 29 Oct 2026: "incorporate more information"): the
+        # day's Indian date, the post's title and its story, or the UK diary's list of what Bapa did that day
         keep = []
         for s in D['stories']:
+            more = s[3] if len(s) > 3 else {}
+            Y = years.get(s[0])
+            if Y and more.get('ti') and (Y['p'] or Y.get('t')):
+                Y.setdefault('ti', more['ti'])
             if (s[0], town(s[1])) in shown:
                 stats['stories_dropped'] += 1
+                if Y and (more.get('w') or more.get('h')):
+                    Y.setdefault('day', []).append([s[2]] + [more.get(k) or '' for k in ('h', 'w', 'l')])
+                    stats['stories_on_cards'] = stats.get('stories_on_cards', 0) + 1
                 continue
             keep.append(s)
         D['stories'] = keep
