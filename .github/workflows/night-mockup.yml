@@ -1,6 +1,6 @@
 # Website only (bapas-diary.com), mockup only: never deploys and touches nothing in the daily 2pm picture chain.
 # Screenshots of the live pages now and with the gentle night mode (tools/night_mockup.js), into the release
-# `night-mockup`. Runs when this file changes on a claude/** branch (first run).
+# `night-mockup`. Runs when this file changes on a claude/** branch (second run: Search buttons and filters, About card, Calendar squares, warmer glow).
 name: night-mockup
 on:
   push:
