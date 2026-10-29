@@ -34,17 +34,22 @@ BUTTON = f'<div class="ss-launch"><button type="button" id="screensaverButton" c
 
 
 def latest(db_path, schedule):
-    """Bapa's newest days of photos, newest first, in the kit's shape: img, iso, when, place, caption, tz."""
+    """Bapa's newest days of photos, newest first, in the kit's shape: img, iso, when, place, caption, tz.
+    Only close ups: photos where his face is recognised, large, sharp and facing the camera (bapa_pick.close, the face
+    check's own mark), best darshan first. Never a tiny or blurry Bapa on a Bapa page (Darpan, 26 Oct 2026); a day whose
+    photos the face check hasn't seen yet (not in the photo copy yet) waits until it has."""
     db = sqlite3.connect(db_path)
-    dates = [r[0] for r in db.execute("SELECT DISTINCT date FROM photos WHERE date IS NOT NULL ORDER BY date DESC LIMIT ?", (DAYS,))]
+    dates = [r[0] for r in db.execute("SELECT DISTINCT p.date FROM photos p JOIN bapa_pick b USING (album, file) "
+                                      "WHERE p.date IS NOT NULL AND b.close = 1 ORDER BY p.date DESC LIMIT ?", (DAYS,))]
     out = []
     for d in dates:
-        rows = db.execute("SELECT album, file, caption, place FROM photos WHERE date = ? ORDER BY album, file", (d,)).fetchall()
+        rows = db.execute("SELECT p.album, p.file, p.caption, p.place FROM photos p JOIN bapa_pick b USING (album, file) "
+                          "WHERE p.date = ? AND b.close = 1 ORDER BY b.rank, p.album, p.file", (d,)).fetchall()
         day = datetime.date.fromisoformat(d)
         for album, file, cap, place in common.spread(rows, MOST):
             out.append({'img': f'https://photos.bapas-diary.com/l/{album}/{file}', 'iso': d, 'when': f'{day.day} {day:%B %Y}',
                         'place': place or '', 'caption': common.clean(cap), 'tz': common.tz_of(place or '', day, schedule)})
-        print(f'  {d}: {len(rows)} photos of Bapa')
+        print(f'  {d}: {len(rows)} close ups of Bapa')
     return out
 
 
