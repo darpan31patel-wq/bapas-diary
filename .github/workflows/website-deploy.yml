@@ -6,7 +6,7 @@ name: website-deploy
 on:
   push:
     branches: ['claude/**']
-    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/search-people.js', 'site/search-image.js', 'tools/search_people.py', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'tools/web_offline.py', 'tools/web_secure.py', 'tools/web_tiny.py', 'tools/web_tablet.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', 'functions/**', 'site/weekly/**', '.github/workflows/website-deploy.yml', 'tools/web_type.py', 'tools/web_notranslate.py', 'site/screensaver/**', 'tools/web_screensaver.py', 'tools/screensaver/**']
+    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/search-people.js', 'site/search-image.js', 'tools/search_people.py', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'tools/web_offline.py', 'tools/web_secure.py', 'tools/web_tiny.py', 'tools/web_tablet.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', 'functions/**', 'site/weekly/**', '.github/workflows/website-deploy.yml', 'tools/web_type.py', 'tools/web_notranslate.py', 'site/screensaver/**', 'tools/web_screensaver.py', 'tools/screensaver/**', 'tools/web_year.py', 'site/year/**']
   workflow_call:   # website-hires (on main) rebuilds the site when a year of full size photos is in R2
 concurrency: website-deploy
 jobs:
@@ -74,6 +74,8 @@ jobs:
           python3 calsrc/tools/web_calendar.py --db bapa-top.db --site cal --photos-url https://photos.bapas-diary.com/ --search-url /search/ --photo-years photo-years.txt --pool bapa.db --sigs calendar-looks.json --faces faces --schedule schedule.json   # a different looking photo each day, and the days ahead (Darpan: yes perfect go live, 26 Oct)
           python3 tools/web_rules.py calfaces --site cal --faces faces   # Bapa's whole head in each Calendar photo (Darpan, 25 Oct 2026)
           rsync -a cal/ out/ && test -f out/calendar/index.html
+          # Year in review: one page for each whole year (/year/2025/ ...), Bapa in person only, towns from the Travels page (Darpan, 29 Oct 2026)
+          python3 tools/web_year.py --db bapa.db --faces faces --travels out/travels/index.html --out out
           sqlite3 bapas.db 'SELECT count(*) FROM calendar'
           # opens on 1999 while only 1999 photos are copied to R2 (site/photo-years.txt)
           # Search by photo (Darpan: yes search by photo, 28 Oct 2026): the model, the code that runs it and the photo numbers, made by website-image-search
