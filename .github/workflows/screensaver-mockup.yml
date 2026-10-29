@@ -1,0 +1,70 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, and never fetches
+# from www.baps.org. For the screensaver mockup: takes the live Today page and the day's data, builds the screensaver on
+# it with tools/web_screensaver.py, and gathers the photos it would show (the mandir's two days, Sarangpur, a few On this
+# day and Latest Vicharan photos from the website's own copy) into the release `screensaver-mockup`, so Claude can show
+# Darpan the screensaver on the real page with real photos. Runs only when this file changes on its own branch, or by hand.
+name: screensaver-mockup
+on:
+  push:
+    branches: ['claude/project-thread-tydbrg']
+    paths: ['.github/workflows/screensaver-mockup.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: The live Today page, the day's data, and the screensaver built on it
+        run: |
+          DAY=$(TZ=Europe/London date +%m-%d); echo "DAY=$DAY" >> "$GITHUB_ENV"
+          mkdir -p out/data/day pack
+          curl -fsSL https://bapas-diary.com/ -o out/index.html
+          curl -fsSL "https://bapas-diary.com/data/day/$DAY.json" -o "out/data/day/$DAY.json"
+          gh release download website-faces -p bapa.db.gz && gunzip bapa.db.gz
+          pip install -q -r requirements.txt && python3 tools/web_rules.py captions --db bapa.db || echo "captions left as they are"
+          curl -fsSL https://raw.githubusercontent.com/darpan31patel-wq/bapas-diary/database/crawl/schedule/latest.json -o schedule.json
+          python3 tools/web_screensaver.py --out out --db bapa.db --schedule schedule.json
+          cp -r out pack/out
+      - name: The photos it would show
+        run: |
+          base=https://londonmandir.baps.org/wp-content/themes/BAPS/images/daily-murti
+          codes=$(sed -n 's/^const PHOTO_CODES = \[\(.*\)\];.*/\1/p' site/screensaver/index.html | tr -d '",')
+          for day in $(TZ=Europe/London date -d yesterday +%Y%m%d) $(TZ=Europe/London date +%Y%m%d); do
+            mkdir -p "pack/darshan/$day"
+            for c in $codes; do curl -sf -A "Mozilla/5.0" -o "pack/darshan/$day/${c}_${day:6:2}.jpg" "$base/$day/${c}_${day:6:2}.jpg" || rm -f "pack/darshan/$day/${c}_${day:6:2}.jpg"; sleep 1; done
+          done
+          mkdir -p pack/darshan/others
+          for f in msm-static ss-static; do curl -sf -A "Mozilla/5.0" -o "pack/darshan/others/$f.jpg" "$base/others/$f.jpg"; sleep 1; done
+          find pack/darshan -name '*.jpg' | sort
+          pip install -q pillow && python3 tools/screensaver/sarangpur.py pack/darshan || true
+          # On this day: two photos a year at screen size (m/) and the Today page's own small copies (s/); Latest: two a day
+          python3 - <<'EOF' > list.txt
+          import json, os
+          d = json.load(open(f"out/data/day/{os.environ['DAY']}.json"))
+          for Y in d['years']:
+              for p in (Y['p'] or [])[:2]:
+                  print('m/' + p[0] + '/' + p[1]); print('s/' + p[0] + '/' + p[1])
+          seen = {}
+          for x in json.load(open('out/screensaver/data/latest.json')):
+              if seen.get(x['iso'], 0) < 2:
+                  seen[x['iso']] = seen.get(x['iso'], 0) + 1
+                  print(x['img'].replace('https://photos.bapas-diary.com/l/', 'm/'))
+          EOF
+          wc -l list.txt
+          while read k; do
+            mkdir -p "pack/$(dirname "$k")"
+            curl -fsSL "https://photos.bapas-diary.com/$k" -o "pack/$k" || echo "missing $k"
+            sleep 0.2
+          done < list.txt
+          du -sh pack
+          tar czf screensaver-mockup.tgz -C pack .
+      - name: Into the release
+        run: |
+          gh release view screensaver-mockup -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create screensaver-mockup -R "$GITHUB_REPOSITORY" --prerelease --title "Screensaver mockup pack" --notes "The live Today page with the screensaver built on it, and the photos it would show, for the mockup. Not used by the daily picture."
+          gh release upload screensaver-mockup screensaver-mockup.tgz --clobber -R "$GITHUB_REPOSITORY"
