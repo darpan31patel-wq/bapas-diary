@@ -61,7 +61,8 @@ def main():
         shutil.copy(os.path.join(SRC, f), os.path.join(dest, f))
     shutil.copytree(os.path.join(SRC, 'fonts'), os.path.join(dest, 'fonts'), dirs_exist_ok=True)
     p = os.path.join(dest, 'index.html')
-    open(p, 'w', encoding='utf-8').write(open(p, encoding='utf-8').read().replace("'DARSHAN_BUILD_ID'", repr(a.build), 1))
+    page = open(p, encoding='utf-8').read().replace("'DARSHAN_BUILD_ID'", repr(a.build), 1)
+    open(p, 'w', encoding='utf-8').write(page)
     open(os.path.join(dest, 'version.txt'), 'w').write(a.build + '\n')
 
     # Bapa's schedule: the kit's copy, brought up to date from the page as Bapa's Diary last read it
