@@ -936,7 +936,8 @@ startSaver();
 @keyframes diya { from { opacity: .55; } to { opacity: 1; } }
 @keyframes flap { from { transform: scaleY(1); } to { transform: scaleY(-.5); } }
 @media (prefers-reduced-motion: reduce) { .x-sun .flag, .x-sun .flock, .x-sun .wing, .x-sun .fall, .x-sun .diyas .d { animation: none; } .x-sun .ev, .x-sun .rays, .x-sun .fireworks { display: none; } }
-.x-sun .now .sun, .x-sun .wxt { display: block; }   /* the weather on its own line under the sun's time (Bapa's Diary, 29 Oct 2026) */
+.x-sun .now .sun, .x-sun .wxt { display: block; }   /* the weather on its own line under the sun's time, smaller and softer (Darpan, 29 Oct 2026) */
+.x-sun .wxt { font-size: .78em; letter-spacing: .18em; opacity: .75; margin-top: .3vh; }
 .x-sun .wxt:empty { display: none; }
 .x-sun .now { margin-top: .2vh; font-size: clamp(9px, min(1.35vh, .8vw), 16px); font-weight: 700; letter-spacing: .26em; text-transform: uppercase; color: #e8c98a; white-space: nowrap; }
 .x-shlok.sun-on .x-shlok-content { top: 22vh; }
