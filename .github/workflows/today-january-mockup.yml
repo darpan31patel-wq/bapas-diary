@@ -34,7 +34,7 @@ jobs:
           mkdir -p pack
           cp -r out/index.html out/*.css out/*.js out/fonts out/gu pack/ 2>/dev/null || true
           mkdir -p pack/data/day && cp out/data/day/01-01.json pack/data/day/
-          grep -oh 'https://photos\.bapas-diary\.com/[^"\\ )]*' out/data/day/01-01.json out/index.html | sort -u > urls.txt || true
+          python3 -c "import json; d=json.load(open('out/data/day/01-01.json')); print('\n'.join(sorted({f'https://photos.bapas-diary.com/{t}/{x[0]}/{x[1]}' for y in d['years'] for k in ('p','t') for x in y.get(k, []) for t in ('s','m')})))" > urls.txt
           echo "$(wc -l < urls.txt) photos"
           while read -r u; do p="pack/photos/${u#https://photos.bapas-diary.com/}"; mkdir -p "$(dirname "$p")"; curl -fsS --retry 3 -o "$p" "$u" || echo "missing $u"; done < urls.txt
           ls out/data/day | head -3
