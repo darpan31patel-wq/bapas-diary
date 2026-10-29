@@ -1,0 +1,37 @@
+# Website only (bapas-diary.com): contact sheets for the many more Legacy pairs (tools/legacy_more.py writes
+# site/legacy-more-cands.json; tools/legacy_sheets.py draws them) so each is checked by eye. Separate from the daily
+# 2pm picture: touches nothing in that chain. Photos come only from R2 (m/ALBUM/FILE), never baps.org. Never deploys.
+# The photos and sheets go into the release `then-now-mockup` as legacy-more.tgz.
+name: legacy-more
+on:
+  push:
+    branches: ['claude/project-thread-juo6qh']
+    paths: ['site/legacy-more-cands.json', '.github/workflows/legacy-more.yml']
+  workflow_dispatch:
+concurrency:
+  group: legacy-more
+permissions:
+  contents: write
+jobs:
+  sheets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BUCKET: bapas-diary-photos
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Sheets
+        run: |
+          echo "::add-mask::$CF_TOKEN"
+          pip install -q opencv-python-headless numpy boto3
+          python3 tools/legacy_sheets.py site/legacy-more-cands.json legacy-more
+      - name: Into the release
+        run: |
+          tar czf legacy-more.tgz legacy-more
+          gh release upload then-now-mockup legacy-more.tgz --clobber -R "$GITHUB_REPOSITORY"

@@ -23,7 +23,7 @@ def slug(s):
     return re.sub(r'[^a-z0-9]+', '-', s.lower()).strip('-')
 
 
-def tile(path, label):
+def tile(path, label, cap=''):
     t = np.full((T, int(T * 4 / 3), 3), 40, np.uint8)
     im = cv2.imread(path) if os.path.exists(path) else None
     if im is not None:
@@ -33,6 +33,9 @@ def tile(path, label):
         t[y:y + im.shape[0], x:x + im.shape[1]] = im
     cv2.rectangle(t, (0, 0), (t.shape[1], 22), (0, 0, 0), -1)
     cv2.putText(t, label, (4, 16), cv2.FONT_HERSHEY_SIMPLEX, .5, (0, 255, 255), 1)
+    if cap:
+        cv2.rectangle(t, (0, T - 20), (t.shape[1], T), (0, 0, 0), -1)
+        cv2.putText(t, cap.encode('ascii', 'replace').decode()[:58], (4, T - 6), cv2.FONT_HERSHEY_SIMPLEX, .38, (255, 255, 255), 1)
     return t
 
 
@@ -70,8 +73,8 @@ def main():
         rows = []
         for i, p in enumerate(pairs):
             a, b = info[p['psm']], info[p['msm']]
-            rows.append((tile(os.path.join(photos, p['psm']), f"{i} psm {a['date'][:4]} {a['place'][:18]}"),
-                         tile(os.path.join(photos, p['msm']), f"{i} msm {b['date'][:4]} {b['place'][:18]} look {p['look']}")))
+            rows.append((tile(os.path.join(photos, p['psm']), f"{i} psm {a['date'][:4]} {a['place'][:18]}", a.get('cap', '')),
+                         tile(os.path.join(photos, p['msm']), f"{i} msm {b['date'][:4]} {b['place'][:18]} look {p['look']}", b.get('cap', ''))))
         sheet(rows, os.path.join(out, 'sheets', slug(label) + '.jpg'))
     old = sorted(enumerate(cands['old']), key=lambda x: x[1]['look'] if x[1]['look'] is not None else -1)
     for n in range(0, len(old), 12):
