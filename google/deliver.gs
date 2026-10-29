@@ -27,6 +27,8 @@ const SOURCE = 'https://github.com/darpan31patel-wq/bapas-diary/releases/downloa
 const BANK = 'https://api.github.com/repos/darpan31patel-wq/bapas-diary/releases/tags/bank';
 const TZ = 'Europe/London';
 const STUDIO_NAME = "Bapa's Diary Studio exports";
+const SETTINGS_NAME = "Bapa's Diary Studio settings";   // the never again list (a folder of its own, so nothing in it is ever sent)
+const NEVER_NAME = 'never again.json';
 
 function setup() {
   ScriptApp.getProjectTriggers().forEach(t => ScriptApp.deleteTrigger(t));
@@ -163,6 +165,21 @@ function studioCode() {
   console.log('Paste this into the Studio:  ' + url + '#' + key);
 }
 
+/** Adds a photo ({photo: {i, caption, date, year}}) or words ({caption}) to the never again list the morning run reads. */
+function never_(p) {
+  const found = DriveApp.getFoldersByName(SETTINGS_NAME);
+  const folder = found.hasNext() ? found.next() : DriveApp.createFolder(SETTINGS_NAME);
+  const file = alive_(folder, NEVER_NAME);
+  let list = { photos: [], captions: [] };
+  if (file) { try { list = Object.assign(list, JSON.parse(file.getBlob().getDataAsString())) } catch (e) {} }
+  if (p.photo) list.photos.push(Object.assign({ added: Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd') }, p.photo));
+  else if (p.caption && list.captions.indexOf(p.caption) < 0) list.captions.push(p.caption);
+  else if (!p.caption) return { ok: false, error: 'Nothing to add to the never again list.' };
+  const text = JSON.stringify(list, null, 1);
+  if (file) file.setContent(text); else folder.createFile(NEVER_NAME, text, 'application/json');
+  return { ok: true, mode: 'never', photos: list.photos.length, captions: list.captions.length };
+}
+
 /** A picture from the Studio. {key, mode: 'replace' | 'new', date: 'yyyy-MM-dd', png, jpg (base64)} */
 function doPost(e) {
   const answer = o => ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
@@ -170,7 +187,8 @@ function doPost(e) {
     const p = JSON.parse(e.postData.contents);
     const key = PropertiesService.getScriptProperties().getProperty('STUDIO_KEY');
     if (!key || p.key !== key) return answer({ ok: false, error: 'The Studio code is wrong. Run studioCode in the script and paste the new line into the Studio.' });
-    if (p.mode === 'ping') return answer({ ok: true, mode: 'ping', version: 2 });   // the Studio's "Check the connection"
+    if (p.mode === 'ping') return answer({ ok: true, mode: 'ping', version: 3 });   // the Studio's "Check the connection"
+    if (p.mode === 'never') return answer(never_(p));   // Never use this photo again (Darpan, 29 Oct 2026)
     const when = new Date(p.date + 'T12:00:00Z');
     const day = Utilities.formatDate(when, TZ, 'd MMMM yyyy');
     const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');

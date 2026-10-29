@@ -48,6 +48,13 @@ jobs:
           mkdir -p ~/.config/rclone && python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
           gh release download database -p bapas.db.gz --clobber && gunzip -f bapas.db.gz
           echo "ARCHIVE=gdrive:Bapa's Archive" >> "$GITHUB_ENV"
+      - name: Bring the never again list from Drive (photos marked in the Studio are never used again, Darpan 29 Oct 2026)
+        if: env.ARCHIVE != ''
+        continue-on-error: true
+        run: |
+          rclone copyto "gdrive:Bapa's Diary Studio settings/never again.json" "$RUNNER_TEMP/never.json" \
+            && echo "NEVER_FILE=$RUNNER_TEMP/never.json" >> "$GITHUB_ENV" || echo "No never again list yet"
+
       - name: Make the new packs
         env:
           DATES: ${{ inputs.dates }}

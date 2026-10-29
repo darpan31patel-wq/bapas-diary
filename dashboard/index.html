@@ -119,6 +119,14 @@ dialog h2 { margin: 0; font: 700 22px/1.1 var(--serif); color: var(--gold) }
 .opt:has(input:checked) { border-color: var(--gold) }
 dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; align-items: center }
 .last { font-size: 13px; color: var(--muted) }
+.checks { border: 1px solid var(--saffron); border-radius: 10px; padding: 8px 12px; font-size: 13.5px; margin: 0 }
+.checks b { color: var(--saffron) } .checks ul { margin: 4px 0 0; padding-left: 18px } .checks.ok { border-color: var(--line); color: var(--ok) }
+.week { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; max-height: 70vh; overflow: auto }
+.week button { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--line); border-radius: 10px; padding: 8px; font-size: 13px }
+.week button:hover, .week button:focus-visible { border-color: var(--saffron) }
+.week img { width: 100%; aspect-ratio: 2796 / 1290; object-fit: cover; border-radius: 6px; background: #1a0508 }
+.week .bad { color: var(--saffron) } .week .good { color: var(--ok) } .week ul { margin: 0; padding-left: 16px; color: var(--muted) }
+dialog.wide { width: min(1000px, calc(100% - 24px)) }
 .last b { color: var(--fg) }
 @media (max-width: 980px) {
   .work { grid-template-columns: minmax(0, 1fr) }
@@ -144,12 +152,14 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
   <select id="pick" aria-label="Which day"></select>
   <select id="pick-opt" aria-label="Kind of poster" hidden></select>
   <span class="spacer"></span>
+  <button class="btn" id="week-open">Week ahead</button>
   <button class="chip" id="drive-chip">Connect Google Drive</button>
   <button class="btn primary" id="exp-open">Export…</button>
 </header>
 <div class="work">
   <main class="stage">
     <div class="meta" id="meta">Loading photos…</div>
+    <div class="checks" id="checks" hidden></div>
     <div class="easel" id="easel">
       <canvas id="view" width="2796" height="1290" aria-label="Live preview of the picture. Click a card to change it."></canvas>
       <div class="fe" id="fe" hidden></div>
@@ -175,6 +185,15 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
     <p class="status" id="exp-status" role="status"></p>
     <div class="last" id="last"></div>
     <div class="acts"><button class="btn" value="cancel" formnovalidate>Close</button><button class="btn primary" id="exp-go" type="button">Export</button></div>
+  </form>
+</dialog>
+
+<dialog id="wk" class="wide" aria-labelledby="wk-h">
+  <form method="dialog" class="in">
+    <h2 id="wk-h">The week ahead</h2>
+    <p class="hint">Each day as the morning run will make it, with anything worth a second look. Click a day to change it now; send it with Export, then Use for the 2pm send.</p>
+    <div class="week" id="wk-days"></div>
+    <div class="acts"><button class="btn" value="cancel">Close</button></div>
   </form>
 </dialog>
 
@@ -208,7 +227,7 @@ const LOOKS = {   // background tones, all within the approved maroon and gold
 const DAY_DEFAULT = {
   date: '2026-10-25', photoStyle: 'auto', rows: 3, shape: .9, sag: 60, hang: 'straight', tilt: 1.5, gap: 10, peg: 'gloss', pegs: true, cord: 7,
   titleAuto: true, title: '', subtitle: 'in Bapa’s Diary', oneTitle: true, festTitle: true, showCal: true, showStory: true, showTomorrow: true,
-  showFooter: true, footer: 'Darpan’s Smruti Project', captions: 'all', capSize: 21, showPlace: true, showYear: true, festTags: true,
+  showFooter: true, footer: 'Darpan’s Smruti Project', captions: 'all', capSize: 21, showPlace: true, showYear: true, festTags: true, anniv: true, hero: true, heroYear: null,
   look: 'classic', glow: .5, jali: .13, bright: 0, warmth: 0, polish: true, years: {}, sel: null,
 };
 const MONTH_DEFAULT = {
@@ -392,9 +411,14 @@ function dayCards(pack, o) {
     const pick = st.pick ?? defaultPick(y, o.photoStyle);
     const c = y.cands[pick] || y.cands[0];
     let mode = st.crop && st.crop !== 'auto' ? st.crop : autoCrop(c, o.photoStyle);
-    return { y: y.year, c, mode, zoom: st.zoom || 1, dx: st.dx || 0, dy: st.dy || 0, caption: st.caption ?? c.caption, place: st.place ?? c.place, fest: c.festival };
+    const ago = +pack.date.slice(0, 4) - y.year;
+    return { y: y.year, c, mode, zoom: st.zoom || 1, dx: st.dx || 0, dy: st.dy || 0, caption: st.caption ?? c.caption, place: st.place ?? c.place, fest: c.festival,
+      ago: ANNIVERSARY.includes(ago) ? ago : 0 };
   });
 }
+const ANNIVERSARY = [25, 40, 50, 60, 75];   // '★ 50 years ago today' on those cards (make.py ANNIVERSARY, Darpan 29 Oct 2026)
+// the bigger card on a special day: the one the morning run chose (pack.hero), one Darpan chose, or none (make.py hero_of)
+const heroYear = (pack, o) => !o.hero ? 0 : (o.heroYear ?? pack.hero ?? 0);
 function defaultPick(y, style) {
   if (style === 'auto') return 0;
   const score = c => {
@@ -426,8 +450,28 @@ function drawDay(ctx, pack, o, hits) {
   // layout, as compose_wide
   const lay = { rows: o.rows, M: 44, ratio: o.shape, row_gap: 8 };
   const nrows = Math.max(1, Math.min(lay.rows, Math.ceil(n / (lay.rows === 3 ? 5 : lay.rows === 2 ? 4 : 6))));
-  const per = Array.from({ length: nrows }, (_, i) => Math.floor(n / nrows) + (i < n % nrows ? 1 : 0));
-  const cols = per[0], M = lay.M; let gap = o.gap;
+  const hy = heroYear(pack, o), hero = nrows >= 2 && n >= 6 && hy ? cards.find(x => x.y === hy) : null;
+  let per, rows = [], cols;
+  if (hero) {   // the hero takes two places on each of the top two cords, the other cards either side of it (as make.py)
+    const m = n - 1;
+    if (nrows === 2) per = [m - Math.floor(m / 2), Math.floor(m / 2)];
+    else {
+      let best = 0, cost = [1e9, 1e9];
+      for (let sd = 0; sd <= Math.floor(m / 2); sd++) {
+        const c2 = [Math.max(2 * Math.ceil(sd / 2) + 2, m - 2 * sd), Math.abs(m - 3 * sd - 2)];
+        if (c2[0] < cost[0] || (c2[0] === cost[0] && c2[1] < cost[1])) { cost = c2; best = sd }
+      }
+      per = [best, best, m - 2 * best];
+    }
+    const rest = cards.filter(x => x !== hero); let k = 0;
+    per.forEach(c => { rows.push(rest.slice(k, k + c)); k += c });
+    cols = Math.max(...rows.slice(0, 2).map(r => 2 * Math.ceil(r.length / 2) + 2), ...rows.slice(2).map(r => r.length));
+  } else {
+    per = Array.from({ length: nrows }, (_, i) => Math.floor(n / nrows) + (i < n % nrows ? 1 : 0));
+    let k = 0; per.forEach(c => { rows.push(cards.slice(k, k + c)); k += c });
+    cols = per[0];
+  }
+  const M = lay.M; let gap = o.gap;
   const footerOn = o.showFooter || (o.showStory && pack.story) || o.showCal;
   const top = o.oneTitle ? 162 : 190, bottom = H - (footerOn ? 46 : 18);
   const lh = o.capSize * 1.2, below = o.captions !== 'none' ? 2 * lh + 22 : 0;
@@ -442,15 +486,39 @@ function drawDay(ctx, pack, o, hits) {
   if (nrows > 1) { pitch += Math.max(0, bottom - top - block) / (nrows - 1); block = (nrows - 1) * pitch + CH + below }
   const first = top + Math.max(0, (bottom - top - block) / 2), s = PW / 220;
   const rnd = mulberry(1025);
-  let k = 0;
-  per.forEach((count, r) => {
-    const row = cards.slice(k, k + count); k += count;
+  let sag0 = null;
+  const caption = (x, cx, by, maxw) => {   // the caption on its dark pill under a card
+    const { lines, size } = fitCaption(ctx, x.caption, maxw, 2, o.capSize);
+    const lh2 = size * 1.2; ctx.font = `500 ${size}px ${SERIF}`;
+    const w = Math.max(...lines.map(l => ctx.measureText(l).width)) + 34, h = lines.length * lh2 + 16;
+    ctx.beginPath(); ctx.roundRect(cx - w / 2, by, w, h, lines.length === 1 ? h / 2 : 14); ctx.fillStyle = 'rgba(30,8,12,.59)'; ctx.fill();
+    ctx.fillStyle = CAP_IVORY; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    lines.forEach((l, i) => ctx.fillText(l, cx, by + 8 + (i + .5) * lh2));
+    ctx.textBaseline = 'alphabetic';
+  };
+  rows.forEach((row, r) => {
     const yTop = first + r * pitch;
     const sag = xp => yTop - 4 - o.sag * (1 - 4 * (xp / W) * (1 - xp / W));
+    if (r === 0) sag0 = sag;
     if (o.cord > 0) rope(ctx, Array.from({ length: W / 8 + 1 }, (_, i) => [i * 8, sag(i * 8)]), o.cord);
-    const x0 = (W - (row.length * CW + (row.length - 1) * gap)) / 2, later = [];
+    let x0 = (W - (row.length * CW + (row.length - 1) * gap)) / 2, slots = row.map((_, c) => c);
+    const later = [];
+    if (hero && r === 1) {   // hung from the top cord, drawn now so the second cord runs behind it
+      const HW = 2 * CW + gap, HH = pitch + CH, hPW = HW / (1 + 2 * B_), hB = Math.max(6, hPW * B_), hBB = Math.max(6, hPW * BB_);
+      const qy = sag0(W / 2) + 4;
+      ctx.save(); ctx.translate(W / 2, qy); drawPolaroid(ctx, hero, -HW / 2, 0, hPW, HH - hB - hBB, hB, hBB, o); ctx.restore();
+      hits.push({ key: hero.y, x: W / 2 - HW / 2, y: qy, w: HW, h: HH });
+      [-.3, .3].forEach(d => later.push(() => { if (o.pegs) peg(ctx, W / 2 + d * HW, sag0(W / 2 + d * HW) + 4, s, o.peg, .72) }));
+      const txt = o.captions === 'none' || (o.captions === 'special' && !hero.c.special) ? '' : hero.caption;
+      if (txt) later.push(() => caption(hero, W / 2, qy + HH + 6, HW - 40));
+    }
+    if (hero && r < 2) {   // either side of the hero
+      const L = Math.floor(row.length / 2);
+      slots = row.map((_, c) => c < L ? c - L : c - L + 2);
+      x0 = W / 2 - CW - gap / 2;
+    }
     row.forEach((x, c) => {
-      const cx = x0 + c * (CW + gap) + CW / 2;
+      const cx = x0 + slots[c] * (CW + gap) + CW / 2;
       const a = o.hang === 'straight' ? 0 : (rnd() * 2 - 1) * o.tilt;
       const qy = sag(cx) + 4, t = a * Math.PI / 180;
       ctx.save(); ctx.translate(cx, qy); ctx.rotate(t);
@@ -460,17 +528,7 @@ function drawDay(ctx, pack, o, hits) {
       later.push(() => { if (o.pegs) peg(ctx, cx, qy, s, o.peg, .72) });
       if (o.captions !== 'none') {
         const txt = o.captions === 'special' && !(x.c.special) ? '' : x.caption;
-        if (txt) later.push(() => {
-          const bx = cx + CH * Math.sin(t), by = qy + CH * Math.cos(t) + 6;
-          const maxw = CW + Math.min(gap, 30) - 40;
-          const { lines, size } = fitCaption(ctx, txt, maxw, 2, o.capSize);
-          const lh2 = size * 1.2; ctx.font = `500 ${size}px ${SERIF}`;
-          const w = Math.max(...lines.map(l => ctx.measureText(l).width)) + 34, h = lines.length * lh2 + 16;
-          ctx.beginPath(); ctx.roundRect(bx - w / 2, by, w, h, lines.length === 1 ? h / 2 : 14); ctx.fillStyle = 'rgba(30,8,12,.59)'; ctx.fill();
-          ctx.fillStyle = CAP_IVORY; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          lines.forEach((l, i) => ctx.fillText(l, bx, by + 8 + (i + .5) * lh2));
-          ctx.textBaseline = 'alphabetic';
-        });
+        if (txt) later.push(() => caption(x, cx + CH * Math.sin(t), qy + CH * Math.cos(t) + 6, CW + Math.min(gap, 30) - 40));
       }
     });
     later.forEach(f => f());
@@ -517,6 +575,16 @@ function drawPolaroid(ctx, x, left, top, PW, PH, B, BB, o) {
     const bx = left + B + PW * .03, by = top + B + PW * .03;
     ctx.beginPath(); ctx.roundRect(bx, by, tw + 2 * pad, h, h / 2); ctx.fillStyle = 'rgb(236,192,104)'; ctx.fill(); ctx.strokeStyle = 'rgb(150,100,40)'; ctx.lineWidth = 1; ctx.stroke();
     ctx.fillStyle = MAROON; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(x.fest, bx + pad + tw / 2, by + h / 2 + 1); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+  }
+  if (o.anniv && x.ago) {   // a round anniversary: a gold tab with a star at the top right
+    const label = `${x.ago} years ago today`; let fs = PW * .085; ctx.font = `700 ${fs}px ${SERIF}`;
+    while (ctx.measureText(label).width > PW * .66 && fs > PW * .05) { fs -= .5; ctx.font = `700 ${fs}px ${SERIF}` }
+    const tw = ctx.measureText(label).width, h = fs * 1.35, pad = PW * .03, sw = fs * .95;
+    const bx = left + B + PW - PW * .03 - tw - sw - 2 * pad, by = top + B + PW * .03;
+    ctx.beginPath(); ctx.roundRect(bx, by, tw + sw + 2 * pad, h, h / 2); ctx.fillStyle = 'rgb(236,192,104)'; ctx.fill(); ctx.strokeStyle = 'rgb(150,100,40)'; ctx.lineWidth = 1; ctx.stroke();
+    const cx = bx + pad + sw * .42, cy = by + h / 2, rr = fs * .4;
+    ctx.beginPath(); for (let k = 0; k < 10; k++) { const q = k % 2 ? rr * .42 : rr; ctx.lineTo(cx + q * Math.sin(k * Math.PI / 5), cy - q * Math.cos(k * Math.PI / 5)) } ctx.closePath(); ctx.fillStyle = 'rgb(140,28,40)'; ctx.fill();
+    ctx.fillStyle = MAROON; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, bx + pad + sw + tw / 2, by + h / 2 + 1); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
   }
   // the band: '2024  GONDAL'
   const yt = o.showYear ? String(x.y) : '', pl = o.showPlace ? (x.place || '').toUpperCase() : '';
@@ -676,7 +744,11 @@ function buildEditor() {
     <label for="fe-place">Place on the card</label><input type="text" class="place" id="fe-place" data-f="place" data-k="${k}" value="${esc(x.place)}">
     <label for="fe-cap">Caption</label><textarea class="capedit" id="fe-cap" data-f="caption" data-k="${k}" rows="2">${esc(x.caption)}</textarea>
     <div class="row3"><button class="btn small" id="fe-prev" ${n < 2 ? 'disabled' : ''}>◀ Photo</button><button class="btn small" id="fe-next" ${n < 2 ? 'disabled' : ''}>Photo ▶</button>
-      <button class="btn small" id="fe-all">See all ${n}</button>${S.mode === 'day' ? '<button class="btn small" id="fe-hide">Hide this year</button>' : ''}<button class="btn small" id="fe-reset">Reset</button></div>`;
+      <button class="btn small" id="fe-all">See all ${n}</button>${S.mode === 'day' ? '<button class="btn small" id="fe-hide">Hide this year</button>' : ''}<button class="btn small" id="fe-reset">Reset</button></div>
+    ${S.mode === 'day' ? `<div class="row3"><button class="btn small" id="fe-hero">${heroYear(P.day, cur()) == k ? 'Back to normal size' : 'Make this the big card'}</button>
+      <button class="btn small" id="fe-never">Never use this photo again</button></div>
+      <div class="row3" id="fe-never-ask" hidden><span class="hint">Never again:</span><button class="btn small" data-w="photo">Just this photo</button><button class="btn small" data-w="words">Any photo with these words</button><button class="btn small" data-w="">Cancel</button></div>
+      <p class="status" id="fe-status" role="status"></p>` : ''}`;
   fe.hidden = false;
   $('#fe-x').onclick = closeEditor;
   const step = d => { const b = bag(k); b.pick = (x.pick + d + n) % n; delete b.caption; build() };
@@ -684,6 +756,26 @@ function buildEditor() {
   $('#fe-all').onclick = () => { S.tab = 'card'; build(); const t = $('#c-thumbs'); if (t) t.scrollIntoView({ block: 'nearest', behavior: 'smooth' }) };
   if ($('#fe-hide')) $('#fe-hide').onclick = () => { bag(k).on = false; FE = false; build() };
   $('#fe-reset').onclick = () => { const b = bag(k); Object.keys(b).forEach(f => f !== 'on' && delete b[f]); build() };
+  if (S.mode !== 'day') return;
+  $('#fe-hero').onclick = () => { const o = cur(); o.hero = true; o.heroYear = heroYear(P.day, o) == k ? 0 : +k; build() };
+  $('#fe-never').onclick = () => { $('#fe-never-ask').hidden = false };
+  document.querySelectorAll('#fe-never-ask button').forEach(b => b.onclick = () => b.dataset.w ? neverAgain(k, x, b.dataset.w) : ($('#fe-never-ask').hidden = true));
+}
+// Never use this photo again (Darpan, 29 Oct 2026): your script keeps the list in Drive, and every morning run, bank day and
+// Studio pack leaves those photos out. Here the card simply moves on to its next photo.
+async function neverAgain(k, x, what) {
+  const st = $('#fe-status'); st.className = 'status'; st.textContent = 'Saving…';
+  const c = x.c, entry = what === 'words' ? { caption: c.caption } : { photo: { i: c.i || '', caption: c.caption, date: c.date, year: +k } };
+  try {
+    if (!driveCode()) throw new Error('Connect Google Drive first (the button at the top): the never again list lives in your Drive.');
+    const ans = await askDrive(Object.assign({ mode: 'never' }, entry));
+    if (!ans.ok || ans.mode !== 'never') throw new Error(/Nothing to add/.test(ans.error || '') ? ans.error : `Your script is an older one that has no never again list yet. Paste the newest script, then: ${REDEPLOY}`);
+    const n = x.g.cands.length, b = bag(k);
+    x.g.cands.forEach(cc => { if (cc === c || (what === 'words' && cc.caption === c.caption)) cc.never = true });
+    let i = x.pick; for (let t = 0; t < n && x.g.cands[i].never; t++) i = (i + 1) % n;
+    b.pick = i; delete b.caption; build();
+    say('ok', what === 'words' ? `Saved. No photo with the words “${c.caption}” will be used again, on any day.` : `Saved. This ${k} photo will never be used again, on any day.`);
+  } catch (e) { st.className = 'status warn'; st.textContent = e.message }
 }
 function placeEditor() {
   if (fe.hidden || getComputedStyle(fe).position === 'static') return;
@@ -723,7 +815,7 @@ function paneCard() {
   const tags = i => day ? (i === 0 ? '<span>DAILY PICK</span>' : g.cands[i].special ? '<span>SPECIAL</span>' : '')
     : [['A', 'CLOSE'], ['B', 'ACTIVITY'], ['M', 'MIXED']].filter(([o2]) => optPick(g, o2) === i && (o2 !== 'M' || g.pickM != null)).map(([, l]) => `<span>${l}</span>`).join('').replace(/<\/span><span>/g, ' · ');
   const nb = g.cands.filter(c2 => !c2.nobapa).length, rest = g.cands.length - nb;
-  const cell = i => { const c2 = g.cands[i]; return `<button data-i="${i}" class="${c2.nobapa ? 'nob' : ''}" aria-pressed="${i === x.pick}" title="${esc(c2.caption)}" aria-label="${esc(c2.caption)}">${thumb(pack, g, i)}${tags(i)}</button>` };
+  const cell = i => { const c2 = g.cands[i]; return `<button data-i="${i}" class="${c2.nobapa || c2.never ? 'nob' : ''}" aria-pressed="${i === x.pick}" title="${esc(c2.caption)}" aria-label="${esc(c2.caption)}">${thumb(pack, g, i)}${tags(i)}</button>` };
   const firstRest = g.cands.findIndex(c2 => c2.nobapa);
   const grid = g.cands.map((_, i) => (i === firstRest && i > 0 ? `<p class="hint" style="grid-column:1/-1;margin:6px 0 0">The other ${rest} photo${rest > 1 ? 's' : ''} from ${esc(label(k))} (Bapa’s face not found automatically)</p>` : '') + cell(i)).join('');
   const changed = kk => { const b = (day ? o.years : o.days)[kk]; return b && Object.keys(b).some(f => f !== 'on') };
@@ -773,7 +865,8 @@ function paneWords() {
     <div class="group"><h3>On and under each card</h3>
       ${seg('d-caps', o.captions, [['all', 'Every caption'], ['special', 'Special moments only'], ['none', 'No captions']])}
       ${range('d-capsize', 'Caption size', o.capSize, 15, 30, 1)}
-      ${check('d-year', 'Year on the card', o.showYear)} ${check('d-place', 'Place on the card', o.showPlace)} ${check('d-fest', 'Festival tag on cards taken on a festival', o.festTags)}</div>
+      ${check('d-year', 'Year on the card', o.showYear)} ${check('d-place', 'Place on the card', o.showPlace)} ${check('d-fest', 'Festival tag on cards taken on a festival', o.festTags)}
+      ${check('d-anniv', 'Gold star on cards from 25, 40, 50, 60 or 75 years ago', o.anniv)} ${check('d-hero', 'One bigger card on a special day', o.hero)}</div>
     <div class="group"><h3>Bottom line</h3>
       ${check('d-story', 'History story (On this day in…)', o.showStory)} ${check('d-cal', 'BAPS calendar line', o.showCal)}
       ${check('d-tom', 'Tomorrow’s festival in the corner', o.showTomorrow)} ${check('d-foot', 'Project name', o.showFooter)}
@@ -846,6 +939,10 @@ function build() {
     : `<b>${esc(pack.title)}</b><span>${pack.days.length} days</span><span>${{ A: 'close-up images', B: 'activity', M: 'mixed' }[o.option]}</span><span>${total} photos to choose from</span>`;
   $('#pane').innerHTML = S.tab === 'card' ? paneCard() : S.tab === 'words' ? paneWords() : S.tab === 'layout' ? paneLayout() : lookPane(day ? 'd' : 'm', o);
   if (day && $('#compare').open) $('#real').src = pack.base + 'real.jpg';
+  const ck = $('#checks'), list2 = day ? (pack.checks || []) : [];
+  ck.hidden = !day || !pack.checks;
+  ck.className = 'checks' + (list2.length ? '' : ' ok');
+  ck.innerHTML = list2.length ? `<b>Worth a second look before 2pm</b><ul>${list2.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : '✓ The morning check found nothing odd in this day’s picture.';
   buildEditor(); wire(); render();
 }
 function wire() {
@@ -871,7 +968,7 @@ function wire() {
     segOn('d-rows', 'rows', 1); segOn('d-hang', 'hang'); segOn('d-peg', 'peg'); segOn('d-caps', 'captions');
     bind('d-shape', 'shape', 1); bind('d-sag', 'sag', 1); bind('d-cord', 'cord', 1); bind('d-gap', 'gap', 1); bind('d-tilt', 'tilt', 1); bind('d-capsize', 'capSize', 1);
     bind('d-tauto', 'titleAuto', 0, 1); bind('d-title', 'title'); bind('d-festt', 'festTitle'); bind('d-one', 'oneTitle'); bind('d-sub', 'subtitle');
-    bind('d-year', 'showYear'); bind('d-place', 'showPlace'); bind('d-fest', 'festTags'); bind('d-story', 'showStory'); bind('d-cal', 'showCal'); bind('d-tom', 'showTomorrow'); bind('d-foot', 'showFooter', 0, 1); bind('d-footer', 'footer');
+    bind('d-year', 'showYear'); bind('d-place', 'showPlace'); bind('d-fest', 'festTags'); bind('d-anniv', 'anniv'); bind('d-hero', 'hero'); bind('d-story', 'showStory'); bind('d-cal', 'showCal'); bind('d-tom', 'showTomorrow'); bind('d-foot', 'showFooter', 0, 1); bind('d-footer', 'footer');
     document.querySelectorAll('.w-on').forEach(b => b.addEventListener('change', () => { bag(b.dataset.k).on = b.checked; b.closest('.w').classList.toggle('off', !b.checked); render(); $('#meta').querySelector('span').textContent = `${dayCards(P.day, o).length} of ${P.day.years.length} years on the picture` }));
     const setAll = f => { P.day.years.forEach(y => { bag(y.year).on = f(y.year) }); build() };
     on('d-all', 'click', () => setAll(() => true)); on('d-pre', 'click', () => setAll(y => y <= 2016)); on('d-post', 'click', () => setAll(y => y >= 2016));
@@ -890,6 +987,20 @@ function syncOut(id) {   // keep the little number beside a slider in step
 }
 $('#compare').addEventListener('toggle', () => { if ($('#compare').open && P.day) $('#real').src = P.day.base + 'real.jpg' });
 
+// ------------------------------------------------------------ the week ahead (Darpan, 29 Oct 2026): each coming day's picture and its checks
+function fillWeek() {
+  const today = todayLondon(), days = INDEX.days.filter(d => d >= today).slice(0, 7), checks = INDEX.checks || {};
+  $('#wk-days').innerHTML = days.length ? days.map(d => {
+    const c = checks[d];
+    const note = !c ? '<span class="hint">Not checked yet</span>' : c.length ? `<span class="bad">${c.length} thing${c.length > 1 ? 's' : ''} to look at</span><ul>${c.slice(0, 3).map(t => `<li>${esc(t)}</li>`).join('')}${c.length > 3 ? '<li>…</li>' : ''}</ul>` : '<span class="good">✓ All looks fine</span>';
+    return `<button type="button" data-d="${d}"><img loading="lazy" src="${ROOT}day/${d}/real.jpg" alt="The picture for ${longDate(d)}"><b>${d === today ? 'Today, ' : ''}${new Date(d + 'T12:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</b>${note}</button>`;
+  }).join('') : '<p class="hint">The coming days are not ready yet. They are made every morning at about 10:30.</p>';
+  document.querySelectorAll('#wk-days button').forEach(b => b.addEventListener('click', () => {
+    $('#wk').close(); FE = false; S.mode = 'day'; S.day.date = b.dataset.d; S.day.years = {}; S.day.sel = null; S.day.heroYear = null; load('day');
+  }));
+}
+$('#week-open').addEventListener('click', () => { fillWeek(); $('#wk').showModal() });
+
 // ------------------------------------------------------------ top bar: what to make and which day
 async function load(kind) {
   const key = kind === 'day' ? S.day.date : S.month.month;
@@ -904,7 +1015,7 @@ document.querySelectorAll('.modes button').forEach(b => b.addEventListener('clic
 }));
 $('#pick').addEventListener('change', e => {
   FE = false;
-  if (S.mode === 'day') { S.day.date = e.target.value; S.day.years = {}; S.day.sel = null } else { S.month.month = e.target.value; S.month.days = {}; S.month.sel = null }
+  if (S.mode === 'day') { S.day.date = e.target.value; S.day.years = {}; S.day.sel = null; S.day.heroYear = null } else { S.month.month = e.target.value; S.month.days = {}; S.month.sel = null }
   load(S.mode);
 });
 $('#pick-opt').addEventListener('change', e => { S.month.option = e.target.value; build() });

@@ -523,6 +523,44 @@ def remember(day, photos):
     json.dump(s, open(SHOWN_FILE, 'w'), indent=1)
 
 
+# Darpan, 29 Oct 2026 (idea 1, 'never again'): a photo or caption he marks in the Studio is never used again on any day.
+# The Studio asks his "gets 2pm picture ready" script to keep the list in Drive ("Bapa's Diary Studio settings/never again.json");
+# each run copies it to NEVER_FILE. archive/never.json holds any kept in the repo by hand. Both: {"photos": [{"i", "fp",
+# "caption", "date", "year"}], "captions": ["..."]}.
+NEVER_FILE = os.environ.get('NEVER_FILE', '')
+
+
+def never_list():
+    out = {'photos': [], 'captions': []}
+    for path in (os.path.join(HERE, 'archive', 'never.json'), NEVER_FILE):
+        try:
+            got = json.load(open(path, encoding='utf-8')) if path else {}
+        except (OSError, ValueError):
+            continue
+        for k in out:
+            out[k] += got.get(k) or []
+    return out
+
+
+def never_again(items):
+    """The day's photos without those marked never again: the same address, the same photo (its fingerprint), or a
+    caption marked never again (compared as shown under the card, so 'Swamishri blesses all' and 'Blesses all' match)."""
+    nv = never_list()
+    if not (nv['photos'] or nv['captions']):
+        return items
+    ids = {p.get('i') for p in nv['photos'] if p.get('i')}
+    fps = [p['fp'] for p in nv['photos'] if p.get('fp')]
+    caps = {c.strip().lower() for c in nv['captions'] if c and c.strip()}
+    keep = []
+    for x in items:
+        if x.get('i') in ids or (caps and caption(x).strip().lower() in caps) or \
+                (fps and 'path' in x and any(same_photo(fingerprint(x), f) for f in fps)):
+            print(f'  never again: {x["y"]} {caption(x)}')
+            continue
+        keep.append(x)
+    return keep
+
+
 def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
     """Per year, a photo where Bapa is recognised, chosen by Darpan's rule (18 Oct 2026): a photo is either a
     really nice action shot or a close up of Bapa. An action shot only counts when what he is doing stays in
@@ -1555,6 +1593,8 @@ class WideCard(Card):
         d.rectangle((B - 1, B - 1, B + PW, B + PH), outline=(150, 130, 100), width=max(1, round(SCALE)))
         if x.get('fest'):   # the festival this photo was taken on, a small gold tab at its top left (Darpan, 24 Oct 2026, mockup 7)
             fest_tag(d, x['fest'], B, PW)
+        if x.get('ago'):   # a round anniversary, a gold tab with a star at its top right (Darpan, 29 Oct 2026, idea 4)
+            fest_tag(d, f'{x["ago"]} years ago today', B, PW, right=True, star=True)
         if self.band == 'none':
             self.foot_band(card, x)
             return card
@@ -1613,6 +1653,40 @@ class WideCard(Card):
             d.text((x0 + yw + sp, y), text, font=cf, fill=CAPTION_IVORY, anchor='ls')
 
 
+# Darpan, 29 Oct 2026 (idea 6, 'yes, lets try'): on a special day one card hangs bigger in the middle of the top two cords,
+# the others around it. Special: a murti pratishtha, the opening of a mandir or Akshardham, a shilanyas, an annakut, or a
+# photo taken on a festival whose caption names it (its gold festival tab). The first kind found wins.
+HERO = True
+HERO_WORDS = [re.compile(p, re.I) for p in (
+    r'(?:inaugurat|opens)\w* (?:the )?(?:\w+ ){0,3}(?:mandir|akshardham)',
+    r'^(?:performs|during) (?:the )?(?:\w+ ){0,2}(?:murti-?)?pratishtha',
+    r'^(?!arrives|departs|on his way)\w+.*(?:pratishtha|shilanyas)|^(?:performs|celebrates|during|doing|gives|offers)\b.*\bannakut|^gives (?:bhagwati |parshad )?diksha',
+)]
+
+
+def hero_sharp(im):
+    """Big and sharp enough to be shown twice the size: 800 px or more on its long side, and crisp (an old video still is not)."""
+    if max(im.size) < 800:
+        return False
+    g = np.asarray(im.convert('L').resize((400, max(1, round(400 * im.height / im.width)))))
+    return cv2.Laplacian(g, cv2.CV_64F).var() >= 300
+
+
+def hero_of(photos):
+    """The one card to hang bigger today, or None on an ordinary day."""
+    if not HERO:
+        return None
+    for k, pat in enumerate(HERO_WORDS + [None]):
+        found = [x for x in photos if (pat.search(caption(x)) if pat else x.get('fest') and x['fest'].split()[0].lower() in caption(x).lower())
+                 and x.get('im') is not None and hero_sharp(x['im'])]
+        if found:
+            return max(found, key=lambda x: (x.get('crop') != 'close', x['y']))
+    return None
+
+
+ANNIVERSARY = (25, 40, 50, 60, 75)   # a card exactly this many years ago gets a '★ 50 years ago today' tab (Darpan, 29 Oct 2026, idea 4)
+
+
 def compose_wide(photos, day, seed, style, history=None, title=None, cal=None):
     """Three (W1, W2) or four (W3) cords of wide cards, every year on the day, sized to fill the picture."""
     lay = WIDE[style]
@@ -1624,13 +1698,30 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None):
         header_one(img, title or f'{day.day} {day:%B}', 'in Bapa’s Diary')
     else:
         header(img, f'{day.day} {day:%B}', 'in Bapa’s Diary', compact=lay.get('compact', False))
+    for x in photos:
+        x['ago'] = (day.year - x['y']) if ANNIVERSARY and day.year - x['y'] in ANNIVERSARY else None
     n = len(photos)
     nrows = max(1, min(lay['rows'], -(-n // (5 if lay['rows'] == 3 else 6))))
-    per = [n // nrows + (1 if i < n % nrows else 0) for i in range(nrows)]
-    rows, k = [], 0
-    for c in per:
-        rows.append(photos[k:k + c]); k += c
-    cols, M, gap, row_gap = per[0], px(lay['M']), px(lay['gap']), px(lay['row_gap'])
+    hero = hero_of(photos) if nrows >= 2 and n >= 6 else None
+    if hero:   # the hero takes two places on each of the top two cords; the other cards sit either side of it
+        rest = [x for x in photos if x is not hero]
+        m = len(rest)
+        if nrows == 2:
+            per = [m - m // 2, m // 2]
+        else:
+            best = min(range(0, m // 2 + 1), key=lambda sd: (max(2 * -(-sd // 2) + 2, m - 2 * sd), abs(m - 2 * sd - sd - 2)))
+            per = [best, best, m - 2 * best]
+        rows, k = [], 0
+        for c in per:
+            rows.append(rest[k:k + c]); k += c
+        cols = max([2 * -(-len(r) // 2) + 2 for r in rows[:2]] + [len(r) for r in rows[2:]])
+    else:
+        per = [n // nrows + (1 if i < n % nrows else 0) for i in range(nrows)]
+        rows, k = [], 0
+        for c in per:
+            rows.append(photos[k:k + c]); k += c
+        cols = per[0]
+    M, gap, row_gap = px(lay['M']), px(lay['gap']), px(lay['row_gap'])
     top_space, bottom_space = (px(156), H - px(44 + SAG)) if lay.get('oneline') or lay.get('compact') else (px(200), H - px(96))
     if lay.get('lift'):   # the cord's lowest point (the middle) sits at the top line and its ends rise into the free corners beside the title
         top_space, bottom_space = px(lay['lift']), H - px(46)
@@ -1649,6 +1740,11 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None):
         pitch += max(0, bottom_space - top_space - block) / (nrows - 1); block = (nrows - 1) * pitch + card.CH + below
     first = top_space + max(0, (bottom_space - top_space - block) / 2)
     s = card.PW / 220
+    if hero:   # as wide as two cards and the gap between them, from the top cord down to the second row's cards' foot
+        HW, HH = 2 * card.CW + gap, pitch + card.CH
+        hp = HW / (card.CW / card.PW)
+        probe = WideCard(hp, 1, lay['band'])
+        hcard = WideCard(hp, (HH - probe.B - probe.BB) / probe.PW, lay['band'])
     for r, row in enumerate(rows):
         y_top = first + r * pitch
         if lay.get('lift'):
@@ -1657,9 +1753,26 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None):
             sag = lambda xp: y_top - px(4) + px(SAG) * 4 * (xp / W) * (1 - xp / W)                    # the cord dips a little in the middle
         rope(img, [(xp, sag(xp)) for xp in range(0, W + 1, 4)])   # drawn before the cards, so it always runs behind them
         later = []   # pegs and captions go on after the whole row, so a card swinging over its neighbour never hides them
+        if r == 0 and hero:   # where the top cord runs at the hero's middle and its two pegs
+            hq = {cx: sag(cx) + px(4) for cx in (W / 2 - .3 * hcard.CW, W / 2, W / 2 + .3 * hcard.CW)}
+        if r == 1 and hero:   # hung from the top cord, put on now so the second cord runs behind it
+            hung = hcard.hang(hcard.make(hero))
+            qy = hq[W / 2]
+            img.paste(hung, (int(W / 2 - hung.width / 2), int(qy + hcard.CH / 2 - hung.height / 2)), hung)
+            for cx, cy in hq.items():
+                if cx != W / 2:
+                    later.append(lambda cx=cx, cy=cy: peg(img, cx, cy, s, short=.72))
+            if lay.get('pill') and shown_caption(hero):
+                tag, pos = under_card(hero, hcard, gap, cf_a, lh_a, 'W2', rnd)
+                later.append(lambda tag=tag, by=qy + hcard.CH: img.paste(tag, (int(W / 2 - tag.width / 2), int(by + px(6))), tag))
         x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
+        slots = list(range(len(row)))
+        if hero and r < 2:   # either side of the hero: the left half ends a gap before it, the right half starts a gap after it
+            L = len(row) // 2
+            slots = [c - L for c in range(L)] + [c - L + 2 for c in range(L, len(row))]
+            x0 = W / 2 - card.CW - gap / 2   # the left edge of the hero's first place
         for c, x in enumerate(row):
-            cx = x0 + c * (card.CW + gap) + card.CW / 2
+            cx = x0 + slots[c] * (card.CW + gap) + card.CW / 2
             if lay.get('straight'):   # every card hangs straight down from its peg on the curved cord (Darpan 18 Oct 2026: any swing looked messy)
                 a, drop = 0, 0
             elif lay.get('playful'):   # a real line of photos: a few nearly straight, most swung a little, a couple swung well, some touching
@@ -2068,15 +2181,22 @@ def tag_festivals(photos):
             x['fest'] = f
 
 
-def fest_tag(d, text, B, PW):
+def fest_tag(d, text, B, PW, right=False, star=False):
     f = garamond(PW * .085, 700)
-    while d.textlength(text, font=f) > PW * .8 and f.size > PW * .05:
+    while d.textlength(text, font=f) > PW * (.66 if right else .8) and f.size > PW * .05:
         f = garamond(f.size - 1, 700)
     tw, h, pad = d.textlength(text, font=f), f.size * 1.35, PW * .03
+    sw = f.size * .95 if star else 0   # room for the star (the font has none, so it is drawn)
     x0 = y0 = B + PW * .03
-    box = (x0, y0, x0 + tw + 2 * pad, y0 + h)
+    if right:
+        x0 = B + PW - PW * .03 - tw - sw - 2 * pad
+    box = (x0, y0, x0 + tw + sw + 2 * pad, y0 + h)
     d.rounded_rectangle(box, radius=h / 2, fill=(236, 192, 104), outline=(150, 100, 40), width=max(1, round(px(1))))
-    d.text(((box[0] + box[2]) / 2, (box[1] + box[3]) / 2), text, font=f, fill=(96, 20, 32), anchor='mm')
+    if star:
+        cx, cy, r = x0 + pad + sw * .42, y0 + h / 2, f.size * .4
+        d.polygon([(cx + (r if k % 2 == 0 else r * .42) * np.sin(k * np.pi / 5), cy - (r if k % 2 == 0 else r * .42) * np.cos(k * np.pi / 5))
+                   for k in range(10)], fill=(140, 28, 40))
+    d.text(((box[0] + sw + box[2]) / 2, (box[1] + box[3]) / 2), text, font=f, fill=(96, 20, 32), anchor='mm')
 
 
 PRAY = '\U0001F64F\U0001F3FD'   # folded hands in a light brown skin tone, always (Darpan, 25 Oct 2026)
@@ -2222,6 +2342,66 @@ def compose_special(ev, day):
     return img
 
 
+# Darpan, 29 Oct 2026 (idea 2, 'morning self check'): before the picture goes to Drive it looks itself over for the
+# mistakes that have slipped through before (a date or file name in a caption, a country as a card's place, the same
+# photo or words twice), and says so in plain words: an email (a GitHub issue) for today, a note in the Studio for each
+# of the next days. Nothing in the picture changes; it is a list for Darpan to look at.
+ODD = [(re.compile(r'[A-Za-z][0-9]|[0-9][A-Za-z]{3,}'), 'letters and numbers run together'),
+       (re.compile(rf'\b\d{{1,2}}(?:st|nd|rd|th)? {MONTH}\b|\b{MONTH},? \d{{4}}\b'), 'a date'),
+       (re.compile(r'\b(?:Sud|Vad|Sudi|Vadi) \d'), 'an Indian date heading'),
+       (re.compile(r'\.(?:jpe?g|png)\b|\b(?:IMG|DSC)_?\d', re.I), 'a photo file name'),
+       (re.compile(r'https?:|www\.|\.com\b|\.org\b', re.I), 'a web link'),
+       (re.compile(r'\.\.\.|…'), 'dots where the words stop'),
+       (re.compile(r'[-–—]\s*$|^\s*[-–—]'), 'a loose dash'),
+       (re.compile(r'[\[\]{}|_*#@<>]|^[^(]*\)|\([^)]*$'), 'a stray bracket or mark'),
+       (re.compile(r'^\W|[,;:]$'), 'a stray mark at the start or end'),
+       (re.compile(r'\w&|&\w| \'s\b| ,|\s{2,}'), 'broken spacing'),
+       (re.compile(r'\b(?:For more photos|Click|Read more|Album)\b', re.I), 'website words')]
+
+
+def check_picture(photos, day, recent=None):
+    """The things worth a second look in a day's picture, each one line of plain words (empty when all is well)."""
+    said, seen_caps, seen_fps = [], [], []
+    recent = shown() if recent is None else recent
+    for x in photos:
+        y, c, where = x['y'], caption(x), place(x)
+        card = f'{y} card'
+        if y >= day.year:
+            said.append(f'{card}: it is from this year, and only past years should show')
+        if not c:
+            said.append(f'{card}: it has no caption')
+        for pat, what in ODD:
+            if c and pat.search(c):
+                said.append(f'{card}: the caption has {what}: “{c}”')
+                break
+        if not where:
+            said.append(f'{card}: no town is shown on the card')
+        elif not is_town(where):
+            said.append(f'{card}: the place “{where.upper()}” is not a town')
+        key = pick_key(x)
+        twin = next((yy for yy, k in seen_caps if c != DARSHAN and same_caption(key, k)), None)
+        if twin:
+            said.append(f'{card}: says nearly the same as the {twin} card (“{c}”)')
+        seen_caps.append((y, key))
+        fp = fingerprint(x) if 'path' in x else x.get('fp')
+        twin = next((yy for yy, f in seen_fps if same_photo(fp, f)), None)
+        if twin:
+            said.append(f'{card}: the same photo as the {twin} card')
+        seen_fps.append((y, fp))
+        if x.get('crop') == 'close' and not x.get('face'):
+            said.append(f'{card}: a close up where Bapa’s face was not found')
+        for d, v in recent.items():   # the same photo on another day of the last week
+            try:
+                gap = (day - datetime.date.fromisoformat(d)).days
+            except ValueError:
+                continue
+            old = v.get(str(y)) if isinstance(v, dict) else None
+            if 0 < gap <= RECENT_DAYS and isinstance(old, dict) and (old.get('i') == x.get('i') or same_photo(old.get('f'), fp)):
+                said.append(f'{card}: the same photo was shown {gap} day{"s" if gap > 1 else ""} ago')
+                break
+    return said
+
+
 def main():
     global CAPTIONS, CLOSE_SHARE, PICK
     ap = argparse.ArgumentParser()
@@ -2261,6 +2441,7 @@ def main():
     settle_places(tg_extra, mmdd)
     download_all(items, a.cache)
     unframe(items)
+    items = never_again(items)
     tall = 1 / 1.45 if len({x['y'] for x in items}) > 10 else 1 / 1.08
     photos = pick_one_per_year(items, seed=mmdd, aspect=FRAME_ASPECT.get(LIVE_STYLE, tall), day=day)
     if not photos:
@@ -2269,6 +2450,7 @@ def main():
         photos = prefer_festival(items, photos, mmdd, FRAME_ASPECT.get(LIVE_STYLE, tall), day)
     except Exception as e:
         print('  festival photos not checked:', e)
+    checks = check_picture(photos, day)   # before remember(), so today's own entry isn't counted
     remember(day, photos)
     full_size(photos)
     tag_festivals(photos)
@@ -2343,7 +2525,7 @@ def main():
                 f.write(f'{name}:\n')
                 for x in ps:
                     f.write(f'  {x["y"]}  {"UNIQUE  " if unique_caption(caption(x)) else "standard"}  {caption(x)}\n')
-    for f in ('caption.txt', 'bapas-diary-special.png', 'bapas-diary-special.jpg', 'flags.txt', 'bapas-diary-backup.png'):   # nothing left over from another day
+    for f in ('caption.txt', 'bapas-diary-special.png', 'bapas-diary-special.jpg', 'flags.txt', 'bapas-diary-backup.png', 'checks.txt'):   # nothing left over from another day
         if os.path.exists(os.path.join(a.out, f)):
             os.remove(os.path.join(a.out, f))
     if story:
@@ -2388,6 +2570,9 @@ def main():
             sp.save(os.path.join(a.out, 'bapas-diary-special.png'), optimize=True)
             sp.save(os.path.join(a.out, 'bapas-diary-special.jpg'), quality=95, optimize=True)
             print('  special picture:', special['date'], special.get('headline'))
+    if checks:
+        open(os.path.join(a.out, 'checks.txt'), 'w', encoding='utf-8').write('\n'.join(checks) + '\n')
+        print('  worth a look:\n    ' + '\n    '.join(checks))
     open(os.path.join(a.out, 'date.txt'), 'w').write(f'{day}\n')
     open(os.path.join(a.out, 'summary.txt'), 'w').write(f'{len(photos)} years: ' + ', '.join(str(x['y']) for x in photos) + '\n')
     print('saved', os.path.join(a.out, 'bapas-diary.jpg'))

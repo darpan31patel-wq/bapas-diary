@@ -30,8 +30,7 @@ def main():
         want.append(d); asked[str(d)] = str(today)
     for d in want:
         made = os.path.join(days_dir, str(d), 'pack.json')
-        # a pack made before every photo of the year was kept (28 Oct 2026) is made again
-        if os.path.exists(made) and str(d) not in a.dates and json.load(open(made)).get('every'):
+        if os.path.exists(made) and str(d) not in a.dates and 'checks' in json.load(open(made)):   # packs made before the self check (29 Oct 2026) are made again
             continue
         print('making', d, flush=True)
         r = subprocess.run([sys.executable, os.path.join(HERE, 'tools', 'dashboard_pack.py'), str(d), days_dir])
@@ -49,7 +48,13 @@ def main():
         if old:
             shutil.rmtree(os.path.join(days_dir, name)); asked.pop(name, None)
     json.dump(asked, open(keep_file, 'w'), indent=1)
-    idx = dict(days=sorted(n for n in os.listdir(days_dir) if os.path.exists(os.path.join(days_dir, n, 'pack.json'))),
+    days = sorted(n for n in os.listdir(days_dir) if os.path.exists(os.path.join(days_dir, n, 'pack.json')))
+    checks = {}   # each day's morning self check, for the Studio's week ahead (Darpan, 29 Oct 2026)
+    for n in days:
+        c = json.load(open(os.path.join(days_dir, n, 'pack.json'))).get('checks')
+        if c is not None:
+            checks[n] = c
+    idx = dict(days=days, checks=checks,
                months=sorted(n for n in os.listdir(os.path.join(packs, 'month')) if os.path.exists(os.path.join(packs, 'month', n, 'pack.json'))),
                updated=datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='minutes'))
     json.dump(idx, open(os.path.join(packs, 'index.json'), 'w'), indent=1)

@@ -78,6 +78,13 @@ jobs:
           gh release download database -p bapas.db.gz --clobber && gunzip -f bapas.db.gz
           echo "ARCHIVE=gdrive:Bapa's Archive" >> "$GITHUB_ENV"
 
+      - name: Bring the never again list from Drive (photos marked in the Studio are never used again, Darpan 29 Oct 2026)
+        if: steps.done.outputs.skip != '1' && env.ARCHIVE != ''
+        continue-on-error: true
+        run: |
+          rclone copyto "gdrive:Bapa's Diary Studio settings/never again.json" "$RUNNER_TEMP/never.json" \
+            && echo "NEVER_FILE=$RUNNER_TEMP/never.json" >> "$GITHUB_ENV" || echo "No never again list yet"
+
       - name: Make the picture
         if: steps.done.outputs.skip != '1'
         env:
@@ -118,10 +125,23 @@ jobs:
             --notes "Rebuilt every morning. Your Google script collects bapas-diary.png from here at 8:30am."
           gh release upload today out/bapas-diary.png out/bapas-diary.jpg out/date.txt --clobber
           # the channel's story for the 2pm caption, and on big days the special picture; yesterday's are taken down
-          for f in caption.txt bapas-diary-special.png bapas-diary-special.jpg flags.txt bapas-diary-backup.png; do
+          for f in caption.txt bapas-diary-special.png bapas-diary-special.jpg flags.txt bapas-diary-backup.png checks.txt; do
             if [ -e "out/$f" ]; then gh release upload today "out/$f" --clobber
             else gh release delete-asset today "$f" -y 2>/dev/null || true; fi
           done
+
+      - name: Morning self check found something worth a look (GitHub emails you; Darpan, 29 Oct 2026)
+        if: steps.done.outputs.skip != '1' && github.ref == 'refs/heads/main' && hashFiles('out/checks.txt') != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "Today's picture is made and on its way to Drive. The morning check found these worth a second look before 2pm:"
+            echo; sed 's/^/- /' out/checks.txt; echo
+            echo "To change a card, open the Studio (Week ahead shows the coming days too), fix it, then Export and Use for the 2pm send. Nothing to do if they look fine. Close this issue once checked."
+          } > check-body.md
+          gh issue create --title "Have a look at today's picture ($(cat out/date.txt))" --body-file check-body.md
 
       - name: Flag a channel card Bapa's face wasn't surely found in (GitHub emails you)
         if: steps.done.outputs.skip != '1' && github.ref == 'refs/heads/main' && hashFiles('out/flags.txt') != ''
@@ -146,7 +166,8 @@ jobs:
           cp out/summary.txt "preview/$(cat out/date.txt).txt"
           [ -e out/caption.txt ] && cp out/caption.txt "preview/$(cat out/date.txt)-caption.txt"
           [ -e out/bapas-diary-special.png ] && cp out/bapas-diary-special.png "preview/$(cat out/date.txt)-special.png"
-          [ -e out/flags.txt ] && cp out/flags.txt "preview/$(cat out/date.txt)-flags.txt"; fi
+          [ -e out/flags.txt ] && cp out/flags.txt "preview/$(cat out/date.txt)-flags.txt"
+          [ -e out/checks.txt ] && cp out/checks.txt "preview/$(cat out/date.txt)-checks.txt"; fi
           for f in out/all-photos.txt out/album-check.txt; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-$(basename "$f")"; done
           for f in out/caption-*.jpg out/caption-*.png; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-$(basename "$f")"; done
           for d in out/photos-*; do [ -d "$d" ] && rm -rf "preview/$(cat out/date.txt)-$(basename "$d")" && cp -r "$d" "preview/$(cat out/date.txt)-$(basename "$d")"; done

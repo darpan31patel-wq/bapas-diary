@@ -72,7 +72,7 @@ def items_for(day, cache):
     items += tg_extra
     make.download_all(items, cache)
     make.unframe(items)
-    return items, tg_evs
+    return make.never_again(items), tg_evs
 
 
 def main():
@@ -86,6 +86,8 @@ def main():
     photos = make.pick_one_per_year(items, seed=f'{day:%m-%d}', aspect=make.FRAME_ASPECT[make.LIVE_STYLE], day=day)
     unwatch()
     make.tag_festivals(photos)
+    checks = make.check_picture(photos, day)   # the morning self check, shown in the Studio and its week ahead
+    hero = make.hero_of(photos) if len(photos) >= 6 else None
     story = make.tg_story(tg_evs, photos)
     make.compose(photos, day, seed=f'{day:%m-%d}', style=make.LIVE_STYLE, history=story).convert('RGB') \
         .resize((2400, round(2400 * make.H / make.W)), Image.LANCZOS).save(os.path.join(out, 'real.jpg'), quality=85)
@@ -121,7 +123,7 @@ def main():
             fs = make.festivals(make.cal_day(d)) if len(d) == 10 else []
             cands.append(dict(f=f'{w["year"]}-{f}.jpg', at=[at, blobs[f].tell() - at], w=im.width, h=im.height,
                               face=[round(v * s, 1) for v in x['face']] if x['face'] else None,
-                              crop=x.get('crop', 'frame'), caption=make.caption(x), original=x.get('c') or '',
+                              crop=x.get('crop', 'frame'), caption=make.caption(x), original=x.get('c') or '', i=x.get('i') or '',
                               place=make.place(x), date=d, special=bool(x.get('special')), nice=bool(x.get('nice')),
                               festival=fs[0] if fs else '', **({'nobapa': True} if x.get('nobapa') else {})))
         for f, b in blobs.items():
@@ -134,7 +136,7 @@ def main():
     pack = dict(date=str(day), title=make.cal_title(day) or f'{day.day} {day:%B}', subtitle='in Bapa’s Diary',
                 footer=make.FOOTER, cal_line=cal[0] if cal else '', tomorrow=cal[1] if cal else '',
                 story=dict(year=story['date'][:4], line=story.get('line', '')) if story else None,
-                years=years, cell=CELL, cols=COLS, every=True, made=datetime.datetime.utcnow().isoformat(timespec='minutes') + 'Z')
+                years=years, cell=CELL, cols=COLS, every=True, checks=checks, hero=hero['y'] if hero else None, made=datetime.datetime.utcnow().isoformat(timespec='minutes') + 'Z')
     json.dump(pack, open(os.path.join(out, 'pack.json'), 'w'), indent=1, ensure_ascii=False)
     print(f'{day}: {len(years)} years, {sum(len(y["cands"]) for y in years)} photos -> {out}')
 
