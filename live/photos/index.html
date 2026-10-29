@@ -45,6 +45,18 @@ h1 { margin: 0; font: 600 clamp(30px, 5vw, 50px)/1.1 var(--title); letter-spacin
 .grid img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s; }
 .grid button:hover img, .grid button:focus-visible img { transform: scale(1.05); }
 .grid button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 2px; }
+/* what the day's On this day posts say (Darpan, 29 Oct 2026: "YES go live", the same as on Today): the Indian date, the
+   occasion, and the whole story or everything Bapa did that day */
+.day h2 .ti { font: italic 400 16px var(--serif); letter-spacing: 0; text-transform: none; color: var(--paper); }
+.tell { margin: 0 0 12px; }
+.tell .line { margin: 0; font: italic 500 17px/1.45 var(--serif); color: var(--paper); max-width: 70ch; }
+.tell .line b { font: 700 11px var(--sans); font-style: normal; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); margin-right: 8px; }
+.tell .paras { max-width: 70ch; }
+.tell .paras.many { max-width: none; columns: 34ch 3; column-gap: 40px; }   /* a long story uses the whole width */
+.tell .paras p { margin: 0; padding-top: 7px; font: 400 15px/1.55 var(--serif); color: var(--paper); opacity: .88; break-inside: avoid; }
+.tell ul { margin: 6px 0 0; padding: 0; list-style: none; max-width: 70ch; }
+.tell li { position: relative; margin: 0 0 4px; padding-left: 16px; font: 400 15px/1.45 var(--serif); opacity: .9; }
+.tell li::before { content: ""; position: absolute; left: 2px; top: .62em; width: 5px; height: 5px; border-radius: 50%; background: var(--gold); }
 .note { text-align: center; color: var(--muted); font-style: italic; margin: 50px 0; }
 @media (max-width: 760px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; } .day h2 { font-size: 19px; } }
 /* the photo big */
@@ -131,6 +143,32 @@ async function load() {
       grid.append(b);
     });
     s.append(grid); $('days').append(s);
+    if (keys.length <= 31) tell(k, s);
+  });
+}
+
+// The day's own On this day words, from Today's day file (/data/day/MM-DD.json): its BAPS calendar Indian date, or the
+// post's own for years before the calendar; the post's title or occasion; and its story, or the UK diary's list of the day
+const dayFiles = {};
+const said = t => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const tail = line => String(line || '').replace(/^[^:]{0,60}\bin [^:]+:\s*/, '');   // 'Pramukh Swami Maharaj in London: Dhanteras'
+async function tell(k, s) {
+  const md = k.slice(5), y = +k.slice(0, 4);
+  const D = await (dayFiles[md] = dayFiles[md] || fetch(`/data/day/${md}.json`).then(r => r.ok ? r.json() : null).catch(() => null));
+  if (!D) return;
+  const Y = (D.years || []).find(x => x.y === y) || {};
+  const stories = (D.stories || []).filter(x => x[0] === y);
+  const told = (Y.day || []).concat(stories.map(x => [x[2], (x[3] || {}).h || '', (x[3] || {}).w || [], (x[3] || {}).l || 0]));
+  const ti = ((D.cal || {})[y] || [])[0] || Y.ti || ((stories.find(x => x[3] && x[3].ti) || [])[3] || {}).ti;
+  if (ti) s.querySelector('h2').insertAdjacentHTML('beforeend', `<span class="ti">${esc(ti)}</span>`);
+  const seen = new Set();
+  told.forEach(([line, h, w, l]) => {
+    const top = h || tail(line) || line;
+    if (!top || seen.has(said(top))) return;
+    seen.add(said(top));
+    const rest = (w || []).filter(t => said(t) !== said(top) && said(t) !== said(tail(line)));
+    s.querySelector('.grid').insertAdjacentHTML('beforebegin', `<div class="tell"><p class="line"><b>On this day</b>${esc(top)}</p>` +
+      (rest.length ? (l ? `<ul>${rest.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : `<div class="paras${rest.length > 2 ? ' many' : ''}">${rest.map(t => `<p>${esc(t)}</p>`).join('')}</div>`) : '') + '</div>');
   });
 }
 
