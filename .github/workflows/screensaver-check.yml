@@ -16,8 +16,9 @@ jobs:
                    https://bapas-diary.com/screensaver/data/latest.json https://bapas-diary.com/screensaver/data/schedule.json \
                    https://bapas-diary.com/screensaver/launch.js https://bapas-diary.com/screensaver/launch.css https://bapas-diary.com/screensaver/sw.js \
                    https://photos.bapas-diary.com/darshan/list.json https://photos.bapas-diary.com/darshan/others/msm-static.jpg; do
-            echo "::notice::$u -> $(curl -s -o /dev/null -w '%{http_code} %{content_type} %{size_download}B' "$u")"
+            all="$all ${u#https://} $(curl -s -o /dev/null -w '%{http_code} %{size_download}B' "$u") |"
           done
+          echo "::notice::answers (at most ten notices a step):$all"
           curl -s https://bapas-diary.com/ > today.html
           echo "::notice::Today page: button $(grep -c 'id=\"screensaverButton\"' today.html), launch.js $(grep -c '/screensaver/launch.js' today.html), launch.css $(grep -c '/screensaver/launch.css' today.html)"
           curl -s https://bapas-diary.com/screensaver/ > ss.html
