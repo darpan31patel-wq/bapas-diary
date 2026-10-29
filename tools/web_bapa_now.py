@@ -134,6 +134,15 @@ CSS = r'''<style>
   .bapa-now .bn-town{font-size:clamp(26px,2.2vw,32px)}
   .bapa-now .bn-next{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 }
+/* and the email and Screensaver buttons move into the empty space on the left, the same height as the card, so the
+   header is one row shorter and the ropes start higher (Darpan, 29 Oct 2026: "ropes as high up on the page as possible") */
+@media (min-width:1180px){
+  header .ss-launch,header .remind{position:absolute;left:0;margin:0;width:clamp(300px,25vw,400px);display:flex;flex-direction:column;align-items:center}
+  header .ss-launch{top:-44px}
+  header .remind{top:30px;z-index:5}
+  header .remind form{margin-top:10px;padding:14px;background:#2a0a12;border:1px solid rgba(217,164,65,.38);border-radius:14px;box-shadow:0 10px 24px rgba(0,0,0,.45)}
+  .board{margin-top:6px}
+}
 @media (min-width:1180px) and (max-width:1359px){
   .bapa-now{width:300px;padding:10px 14px 10px 10px;gap:12px}
   .bapa-now svg{width:100px;height:100px}
@@ -141,7 +150,11 @@ CSS = r'''<style>
   .bapa-now .bn-dates{font-size:14px}
   .bapa-now .bn-today,.bapa-now .bn-next{font-size:13px}
 }
-@media (max-width:600px){.bapa-now{margin-top:16px}.bapa-now svg{width:84px;height:84px}.bapa-now .bn-town{font-size:23px}}
+/* phones: one short strip, so the ropes stay close: the map, the town and its dates on one line, and today's event */
+@media (max-width:600px){.bapa-now{margin-top:14px;padding:8px 12px 8px 8px;gap:10px}.bapa-now svg{width:64px;height:64px;border-radius:8px}
+  .bapa-now .bn-lbl{font-size:9px}.bapa-now .bn-town{font-size:20px}.bapa-now .bn-town small{display:none}
+  .bapa-now .bn-dates{display:inline;font-size:13.5px}.bapa-now .bn-town{display:inline;margin-right:8px}
+  .bapa-now .bn-today{font-size:13px;margin-top:2px}.bapa-now .bn-next{display:none}}
 </style>
 '''
 
@@ -185,7 +198,7 @@ JS = r'''<script>
     const line = (head, e) => `<b>${head}:</b> <span>${esc(e.what)}</span>, <span>${clock(e.from).slice(-2) === clock(e.to).slice(-2) ? clock(e.from).slice(0, -3) : clock(e.from)} to ${clock(e.to)} ${when}</span>`;
     q('.bn-today').innerHTML = on ? line('Now', on) : next ? line(m(next) >= 720 ? 'This evening' : 'Today', next) : '';
     q('.bn-today').hidden = !(on || next);
-    q('.bn-next').innerHTML = n ? `<b>Next:</b> <span>${esc(n.city)}</span>, <span>${short(n.from)} to ${short(n.to)}</span>` : '';
+    q('.bn-next').innerHTML = n ? `<b>Next:</b> <span>${esc(n.city)}</span>, <span>${n.from.slice(0, 7) === n.to.slice(0, 7) ? +n.from.slice(8) : short(n.from)} to ${short(n.to)}</span>` : '';
     q('.bn-next').hidden = !n;
     // the map: the town in the middle, a dotted line towards the next town when it is on the map
     const svg = q('svg');
