@@ -230,6 +230,29 @@ body { background: linear-gradient(#efdcd2, #f3e5d8) fixed; }
 /* Easier to read on a phone: the smallest words a little bigger (website review, 28 Oct 2026) */
 .frow .flabel, .txt .badge, .day-head .mandir, .txt .place { font-size: 12px; }
 #years button span, #years button .n { font-size: 12px; }
+/* A box that has a choice in it stands out (Darpan, 29 Oct 2026: "make it very clear that an option has been selected,
+   or a box has been written in"): a chosen box fills with the gold of the title, its row's label turns maroon, and a small
+   round button beside it takes that one choice away. Words in the search box give it a gold ring and a cross to empty it;
+   Clear all fills in maroon while anything is chosen. */
+.pick { display: inline-flex; align-items: center; gap: 5px; min-width: 0; max-width: 100%; }
+.pick > select, .pick > input { min-width: 0; }
+.undo { flex: none; display: none; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
+  background: var(--maroon); color: var(--gold-hi); font: 700 12px/24px var(--sans); text-align: center; box-shadow: 0 1px 3px rgba(59, 18, 25, .3); }
+.undo:hover { background: var(--maroon-in); }
+.pick.on .undo { display: inline-block; }
+.frow .pick.on > select, .frow .pick.on > input[type=date] { border: 1.5px solid var(--gold-deep); border-radius: 99px; padding: 6px 12px;
+  background: linear-gradient(#ffe7a3, #e8b45c); color: #3a0c15; font-weight: 700; box-shadow: 0 2px 8px rgba(168, 116, 42, .35); }
+.frow .pick.on > select:hover, .frow .pick.on > input[type=date]:hover { border-color: var(--maroon); }
+.frow.on > .flabel { color: var(--maroon); }
+.qbox { flex: 1 1 260px; min-width: 0; position: relative; display: flex; }
+.qbox #q { flex: 1 1 auto; }
+#q::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+.qbox.on #q { border: 2.5px solid var(--gold-deep); background: #fff4d6; padding: 8px 44px 8px 13px; box-shadow: 0 0 0 4px rgba(217, 164, 65, .3); }
+.qbox .undo { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; font-size: 14px; line-height: 28px; }
+.qbox.on .undo { display: inline-block; }
+.reset.on { background: var(--maroon); color: var(--gold-hi); border: 0; border-radius: 99px; padding: 7px 16px; font-style: normal; font: 700 13px var(--sans); letter-spacing: .04em; }
+.reset.on:hover { background: var(--maroon-in); color: var(--gold-hi); }
+@media (max-width: 520px) { .frow .pick { flex: 1 1 40%; } .frow .pick > select, .frow .pick > input { flex: 1 1 auto; } }
 </style>
 
 <nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a class="on" href="/search/" aria-current="page">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/calendar/">Calendar</a><a href="/about/">About</a></nav>
@@ -243,7 +266,7 @@ body { background: linear-gradient(#efdcd2, #f3e5d8) fixed; }
 <div class="bar">
   <div class="wrap">
     <div class="controls">
-      <input id="q" type="search" placeholder="Search anything, or ask: When did Bapa go to London?" autocomplete="off" aria-label="Search words or ask a question">
+      <span class="qbox"><input id="q" type="search" placeholder="Search anything, or ask: When did Bapa go to London?" autocomplete="off" aria-label="Search words or ask a question"><button class="undo" type="button" id="q-undo" aria-label="Empty the search box" title="Empty the search box">&#x2715;</button></span>
       <ul id="suggest" role="listbox" aria-label="Suggestions" hidden></ul>
       <button class="reset" id="clear" type="button" title="Clear the search and every filter">&#x2715; Clear all</button>
       <select id="order" aria-label="Order"><option value="old">Oldest first</option><option value="new">Newest first</option></select>
@@ -363,6 +386,7 @@ const yearKey = y => y < FIRST ? 'old' : String(y);
 
 function search() {
   $('day-view')?.remove();
+  marks();
   // a question ("When did Bapa go to London?", site/search-ask.js): its answer goes above the results, and the
   // results are the photos (with Bapa) and stories that answer it, instead of photos that have every word
   // a picture chosen with "Search by photo" (site/search-image.js): the closest photos, best first, and the filters still work
@@ -557,7 +581,8 @@ function sugShow() {
     const w = esc(s.w.slice(0, at)) + '<b>' + esc(s.w.slice(at, at + typed.length)) + '</b>' + esc(s.w.slice(at + typed.length));
     return `<li role="option" data-i="${i}"><span class="w">${w}</span><span class="k">${s.kind} · ${s.n.toLocaleString()} photos</span></li>`;
   }).join('');
-  box.style.left = q.offsetLeft + 'px'; box.style.top = q.offsetTop + q.offsetHeight + 'px'; box.style.width = q.offsetWidth + 'px';
+  const qa = q.closest('.qbox') || q;   // the box with its cross sits in .qbox, which is as big as the box
+  box.style.left = qa.offsetLeft + 'px'; box.style.top = qa.offsetTop + qa.offsetHeight + 'px'; box.style.width = qa.offsetWidth + 'px';
   box.hidden = false;
 }
 function sugPick(i) {
@@ -655,6 +680,23 @@ $('years').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   $('year').value = $('year').value === b.dataset.y ? '' : b.dataset.y; search();
 });
+// each choice stands out, with its own cross to take it away (Darpan, 29 Oct 2026)
+const PICKS = { year: 'year', month: 'month', day: 'day', from: 'first date', to: 'second date', place: 'place', fest: 'festival', act: 'action' };
+for (const [id, name] of Object.entries(PICKS)) {
+  const el = $(id), w = document.createElement('span');
+  w.className = 'pick'; el.before(w); w.append(el);
+  w.insertAdjacentHTML('beforeend', `<button class="undo" type="button" aria-label="Take away the ${name}" title="Take away the ${name}">&#x2715;</button>`);
+  w.lastChild.addEventListener('click', () => { if (id === 'place') linkPlace = ''; if (id === 'act') $('mandir').value = ''; el.value = ''; search(); });
+}
+function marks() {
+  let any = !!$('q').value.trim();
+  $('q').closest('.qbox').classList.toggle('on', any);
+  for (const id in PICKS) { const on = !!$(id).value; $(id).parentNode.classList.toggle('on', on); any = any || on; }
+  document.querySelectorAll('.frow').forEach(r => r.classList.toggle('on', !!r.querySelector('.pick.on')));
+  $('clear').classList.toggle('on', any);
+}
+$('q').addEventListener('input', marks);
+$('q-undo').addEventListener('click', () => { window.picClose && picClose(); $('q').value = ''; search(); $('q').focus(); });
 $('clear').addEventListener('click', () => { linkPlace = ''; window.picClose && picClose(); ['q', 'fest', 'place', 'act', 'mandir', 'year', 'month', 'day', 'from', 'to'].forEach(id => $(id).value = ''); search(); });
 
 function fillFestivals() {

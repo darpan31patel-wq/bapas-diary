@@ -37,7 +37,7 @@
   document.head.appendChild(css);
 
   const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="4"/></svg>';
-  $('q').insertAdjacentHTML('afterend', `<button id="pic-btn" type="button" title="Search with a photo: choose one, paste one, or drop one here" aria-label="Search by photo">${icon}<span>${T('Search by photo', 'ફોટાથી શોધો')}</span></button><input id="pic-file" type="file" accept="image/*" hidden>`);
+  ($('q').closest('.qbox') || $('q')).insertAdjacentHTML('afterend', `<button id="pic-btn" type="button" title="Search with a photo: choose one, paste one, or drop one here" aria-label="Search by photo">${icon}<span>${T('Search by photo', 'ફોટાથી શોધો')}</span></button><input id="pic-file" type="file" accept="image/*" hidden>`);
   document.querySelector('.bar').insertAdjacentHTML('afterend', `<div id="pic-panel" class="wrap" hidden>
     <div id="pic-frame"><img id="pic-img" alt="Your picture"><div id="pic-box" hidden></div></div>
     <div id="pic-side"><p id="pic-msg"></p><p class="hint" id="pic-hint"></p>
