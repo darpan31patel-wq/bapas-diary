@@ -67,13 +67,19 @@ function clean(r) {
   return r.blob().then(b => new Response(b, {status: r.status, statusText: r.statusText, headers: r.headers}));
 }
 
+// keep a copy, but a copy that cannot be kept (a phone that is nearly full) never stops the page or photo showing
+// (phone and tablet check, 29 Oct 2026)
+async function keep(name, key, res) {
+  try { await (await caches.open(name)).put(key, res.clone()); return true; } catch (x) { return false; }
+}
+
 function timeout(p, ms) {
   return new Promise((ok, no) => { const t = setTimeout(() => no(new Error('slow')), ms); p.then(v => { clearTimeout(t); ok(v); }, x => { clearTimeout(t); no(x); }); });
 }
 
 async function internetFirst(r, name) {
   const net = fetch(r).then(async res => {
-    if (res.ok) { const c = await caches.open(name); await c.put(r, res.clone()); }
+    if (res.ok) await keep(name, r, res);
     return res;
   });
   try { return await timeout(net, WAIT); } catch (x) {
@@ -85,7 +91,7 @@ async function internetFirst(r, name) {
 
 async function page(r) {
   const net = fetch(r).then(async res => {
-    if (res.ok && !res.redirected) { const c = await caches.open('bd-site'); await c.put(r.url.split('#')[0], res.clone()); }
+    if (res.ok && !res.redirected) await keep('bd-site', r.url.split('#')[0], res);
     return res;
   });
   try { return await timeout(net, WAIT); } catch (x) {
@@ -103,7 +109,7 @@ async function savedFirst(r, name) {
   const saved = await caches.match(r);
   if (saved) return saved;
   const res = await fetch(r);
-  if (res.ok) { const c = await caches.open(name); c.put(r, res.clone()); }
+  if (res.ok) keep(name, r, res);
   return res;
 }
 
@@ -118,11 +124,8 @@ async function photo(r) {
       res = await fetch(r.url, {mode: 'no-cors', credentials: 'omit'});
       corsOk = false;   // the internet is there but the photos do not allow real copies
     }
-    if (res.ok || res.type === 'opaque') {
-      const c = await caches.open('bd-photos');
-      await c.put(r.url, res.clone());
-      trim(c, res.type === 'opaque' ? 150 : PHOTO_MAX);   // sealed copies take much more room in the browser's count
-    }
+    if ((res.ok || res.type === 'opaque') && await keep('bd-photos', r.url, res))
+      trim(await caches.open('bd-photos'), res.type === 'opaque' ? 150 : PHOTO_MAX);   // sealed copies take much more room in the browser's count
     return res;
   } catch (x) {
     return blank();
