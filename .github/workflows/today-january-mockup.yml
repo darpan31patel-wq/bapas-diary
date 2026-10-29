@@ -1,0 +1,43 @@
+# Website only, mockup only (never handed over, deploys nothing). Builds the whole site exactly as the deploy's build
+# step does (read from website-deploy.yml on this branch), then packs the Today page and 1 January's photos into the
+# release `today-january-mockup`, so Claude can show the Year in review line on the real Today page.
+name: today-january-mockup
+on:
+  push:
+    branches: ['claude/project-thread-gcis02']
+    paths: ['.github/workflows/today-january-mockup.yml']
+permissions:
+  contents: write
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PROJECT: bapas-diary
+      DOMAIN: bapas-diary.com
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the site as the deploy does
+        run: |
+          python3 - <<'EOF'
+          import yaml
+          w = yaml.safe_load(open('.github/workflows/website-deploy.yml'))
+          d = w['jobs']['deploy']
+          step = next(s for s in d['steps'] if s.get('name', '').startswith('Photo search'))
+          env = ''.join(f"export {k}='{v}'\n" for k, v in d['env'].items() if 'secrets' not in str(v))
+          open('build.sh', 'w').write('set -e\n' + env + step['run'])
+          EOF
+          echo '[]' > calendar-looks.json
+          bash build.sh
+      - name: Today and 1 January's photos into the release
+        run: |
+          mkdir -p pack
+          cp -r out/index.html out/*.css out/*.js out/fonts out/gu pack/ 2>/dev/null || true
+          mkdir -p pack/data/day && cp out/data/day/01-01.json pack/data/day/
+          grep -oh 'https://photos\.bapas-diary\.com/[^"\\ )]*' out/data/day/01-01.json out/index.html | sort -u > urls.txt || true
+          echo "$(wc -l < urls.txt) photos"
+          while read -r u; do p="pack/photos/${u#https://photos.bapas-diary.com/}"; mkdir -p "$(dirname "$p")"; curl -fsS --retry 3 -o "$p" "$u" || echo "missing $u"; done < urls.txt
+          ls out/data/day | head -3
+          tar czf today-january.tgz pack
+          gh release view today-january-mockup >/dev/null 2>&1 || gh release create today-january-mockup --prerelease --title "Today in January mockup" --notes "Today page and one day's photos, for a mockup. Not used by the daily picture."
+          gh release upload today-january-mockup today-january.tgz --clobber
