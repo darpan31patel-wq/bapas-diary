@@ -25,7 +25,9 @@ jobs:
           ref: ${{ github.ref_name == 'main' && 'claude/project-thread-eawr12' || github.ref }}
       - name: Not yet on the website branch? Then nothing to do
         id: ready
-        run: test -f tools/screensaver/darshan_copy.sh && echo ok=1 >> "$GITHUB_OUTPUT" || echo "the screensaver files are not on the website branch yet: nothing copied"
+        run: |
+          if [ -f tools/screensaver/darshan_copy.sh ]; then echo ok=1 >> "$GITHUB_OUTPUT"
+          else echo "the screensaver files are not on the website branch yet, so nothing is copied"; fi
       - name: R2 access (the same key as website-hires, kept out of the logs)
         if: steps.ready.outputs.ok
         run: |
