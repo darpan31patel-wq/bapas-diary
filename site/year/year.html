@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>@@title@@ · Bapa's Diary</title>
+<meta name="description" content="@@lead@@">
+<link rel="stylesheet" href="/menu.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Arimo:wght@400;700&display=swap">
+<style>
+/* Year in review (tools/web_year.py): the About page's deep maroon and gold, ivory cards, the whole width of the screen
+   (Darpan, 26 Oct 2026: no dead space left and right on wide screens) */
+:root {
+  --maroon-in: #42101c; --maroon-out: #160509; --maroon: #6e1424; --ink: #3b1219; --muted: #7a5a50;
+  --gold-hi: #ffe296; --gold-deep: #a8742a; --gold-soft: #d9a441; --paper: #f3ead9; --paper-hi: #faf3e6;
+  --serif: Lora, Georgia, "Times New Roman", serif;
+  --title: Cinzel, "Trajan Pro", Georgia, serif;
+  --script: "Cormorant Garamond", Garamond, Georgia, serif;
+  --sans: Arimo, Arial, Helvetica, sans-serif;
+  --side: max(16px, min(4vw, 56px), env(safe-area-inset-left, 0px));
+}
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--paper); font: 400 17px/1.6 var(--serif); background: var(--maroon-out); }
+.page { overflow-x: hidden; overflow-x: clip; min-height: 100vh; padding: 64px 0 90px; background:
+  radial-gradient(ellipse 60% 26% at 50% 0%, rgba(255, 196, 110, .2), transparent 70%),
+  radial-gradient(ellipse 120% 50% at 50% 10%, var(--maroon-in), var(--maroon-out)); }
+.wide { padding: 0 var(--side); }
+img { display: block; }
+.ph, .th { cursor: zoom-in; background: #2a0c12; }
+
+/* ---------- top: both gurus, the year ---------- */
+.top { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: clamp(14px, 3vw, 48px); padding-top: 18px; }
+.ring { width: clamp(84px, 11vw, 150px); aspect-ratio: 4 / 5; border-radius: 999px 999px 14px 14px; padding: 4px;
+  background: linear-gradient(#ffe296, #a8742a); box-shadow: 0 0 0 7px rgba(217, 164, 65, .12), 0 14px 34px rgba(0, 0, 0, .55); margin: 0; }
+.ring img { width: 100%; height: 100%; border-radius: 999px 999px 10px 10px; object-fit: cover; }
+.ring figcaption { margin-top: 12px; text-align: center; font: 700 9.5px/1.4 var(--sans); letter-spacing: .18em; text-transform: uppercase; color: var(--gold-soft); }
+.head { text-align: center; }
+.kicker { margin: 0 0 6px; font: 700 12px var(--sans); letter-spacing: .34em; text-transform: uppercase; color: var(--gold-soft); }
+h1 { margin: 0; font: 600 clamp(40px, 7vw, 92px)/1.02 var(--title); letter-spacing: .02em; text-wrap: balance;
+  background: linear-gradient(#ffe296, #ce9840); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .45)); }
+h1 small { display: block; font-size: .42em; letter-spacing: .12em; margin-top: 6px; }
+#lead { margin: 14px auto 0; max-width: 46em; font: italic 500 clamp(19px, 2vw, 24px)/1.4 var(--script); color: #f1dcc0; text-wrap: balance; }
+
+/* ---------- the year in numbers ---------- */
+.nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 34px 0 0; }
+.num { text-align: center; padding: 16px 10px 14px; border-radius: 14px; background: rgba(255, 226, 150, .06);
+  border: 1px solid rgba(217, 164, 65, .35); }
+.num b { display: block; font: 600 clamp(30px, 3.4vw, 46px)/1.05 var(--title); color: var(--gold-hi); }
+.num span { display: block; margin-top: 6px; font: 700 10.5px/1.35 var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--gold-soft); }
+
+h2 { display: flex; align-items: center; gap: 18px; margin: 58px 0 22px; font: 600 clamp(16px, 1.6vw, 20px) var(--title); letter-spacing: .24em;
+  text-transform: uppercase; color: var(--gold-hi); }
+h2::before, h2::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--gold-soft), transparent); }
+
+/* ---------- twelve best darshan, one a month ---------- */
+.best { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+.best figure { position: relative; margin: 0; border-radius: 12px; overflow: hidden; aspect-ratio: 4 / 5; box-shadow: 0 10px 26px rgba(0, 0, 0, .45); }
+.best img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s ease; }
+.best figure:hover img { transform: scale(1.04); }
+.best figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 10px 9px; text-align: center; pointer-events: none;
+  font: 700 10.5px var(--sans); letter-spacing: .22em; text-transform: uppercase; color: var(--gold-hi);
+  background: linear-gradient(transparent, rgba(22, 5, 9, .85)); }
+
+/* ---------- the journey: map and the towns in order ---------- */
+.journey { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(300px, 1fr); gap: 22px; align-items: start; }
+.mapbox { position: sticky; top: 60px; border-radius: 16px; overflow: hidden; background: radial-gradient(ellipse at 50% 40%, #2b1730, #170a16);
+  border: 1px solid rgba(217, 164, 65, .35); box-shadow: 0 18px 44px rgba(0, 0, 0, .5); }
+.map { display: block; width: 100%; height: auto; }
+.map .land { fill: #4a2a3a; stroke: #6b4152; stroke-width: 1; }
+.map .route { fill: none; stroke: var(--gold-hi); stroke-width: 2.4; stroke-dasharray: 7 6; stroke-linejoin: round; opacity: .9; }
+.map .dot circle { fill: #a8742a; stroke: #ffe296; stroke-width: 2; }
+.map .dot text { fill: #2a0c12; font: 700 11px var(--sans); text-anchor: middle; }
+.map .names text { fill: #fff3cf; font: 600 19px var(--serif); paint-order: stroke; stroke: rgba(23, 10, 22, .85); stroke-width: 5px; }
+.mapnote { margin: 0; padding: 10px 16px 12px; font: 700 10.5px var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--gold-soft); }
+.stays { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.stays li { display: grid; grid-template-columns: 26px 62px 1fr; gap: 12px; align-items: center; padding: 8px 12px 8px 10px; border-radius: 12px;
+  background: linear-gradient(var(--paper-hi), var(--paper)); color: var(--ink); box-shadow: inset 0 0 0 1px rgba(168, 116, 42, .35); }
+.stays .n { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--gold-deep); color: #fff7e2;
+  font: 700 11px var(--sans); }
+.stays .th { width: 62px; height: 62px; border-radius: 9px; object-fit: cover; }
+.stays i.th { display: block; }
+.stays b { display: block; font: 600 18px/1.2 var(--serif); color: var(--maroon); }
+.stays small { font: 700 10px var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--gold-deep); }
+.stays em { display: block; font: 400 13.5px/1.3 var(--sans); font-style: normal; color: var(--muted); margin-top: 2px; }
+
+/* ---------- big moments ---------- */
+.moments { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 18px; }
+.moment { display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; color: var(--ink);
+  background: linear-gradient(var(--paper-hi), var(--paper)); box-shadow: 0 18px 40px rgba(0, 0, 0, .45), inset 0 0 0 1px rgba(168, 116, 42, .35); }
+.moment figure { margin: 0; aspect-ratio: 4 / 3; overflow: hidden; }
+.moment .ph { width: 100%; height: 100%; object-fit: cover; }
+.mt { display: flex; flex-direction: column; flex: 1; padding: 16px 20px 18px; }
+.when { margin: 0; font: 700 11px/1.4 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--gold-deep); }
+.where { margin: 2px 0 0; font: 600 13px var(--sans); color: var(--muted); }
+.moment h3 { margin: 8px 0 6px; font: 600 23px/1.2 var(--serif); color: var(--maroon); text-wrap: balance; }
+.what { margin: 0 0 14px; font-size: 15.5px; line-height: 1.55; text-wrap: pretty; }
+a.see { align-self: flex-start; margin-top: auto; display: inline-block; padding: 8px 18px 7px; border-radius: 999px; text-decoration: none;
+  font: 700 11px var(--sans); letter-spacing: .16em; text-transform: uppercase; color: #3a1a08;
+  background: linear-gradient(#ffe296, #d9a441); box-shadow: 0 4px 12px rgba(168, 116, 42, .35); }
+a.see:hover { background: linear-gradient(#fff0c0, #e6b453); }
+
+/* ---------- month by month ---------- */
+.months { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 560px), 1fr)); gap: 18px; }
+.month { display: grid; grid-template-columns: 190px 1fr; gap: 16px; padding: 16px; border-radius: 16px;
+  background: rgba(255, 226, 150, .05); border: 1px solid rgba(217, 164, 65, .3); }
+.mh { display: flex; flex-direction: column; }
+.mh h3 { margin: 0 0 6px; font: 600 28px/1.1 var(--title); color: var(--gold-hi); }
+.towns { margin: 0; font: 600 16px/1.35 var(--serif); color: #fff3cf; }
+.fests { margin: 8px 0 0; font: italic 500 17px/1.3 var(--script); color: #f1c886; }
+.cnt { margin: 8px 0 14px; font: 700 10px var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--gold-soft); }
+.mosaic { display: grid; grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 6px; aspect-ratio: 16 / 9; min-width: 0; }
+.mosaic figure { margin: 0; overflow: hidden; border-radius: 9px; min-height: 0; }
+.mosaic figure:first-child { grid-row: span 2; }
+.mosaic .ph { width: 100%; height: 100%; object-fit: cover; }
+
+/* ---------- other years ---------- */
+.others { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.others a { padding: 6px 12px 5px; border-radius: 999px; text-decoration: none; font: 700 12px var(--sans); letter-spacing: .08em; color: var(--gold-soft);
+  border: 1px solid rgba(217, 164, 65, .35); }
+.others a:hover, .others a.on { color: #fff3cf; background: rgba(255, 211, 107, .16); border-color: rgba(255, 211, 107, .65); }
+
+/* ---------- a photo, big ---------- */
+#big { position: fixed; inset: 0; z-index: 80; display: none; place-items: center; padding: 50px 16px 24px; background: rgba(12, 3, 6, .93);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+#big.on { display: grid; }
+#big figure { margin: 0; max-width: min(1200px, 100%); text-align: center; }
+#big img { max-width: 100%; max-height: calc(100vh - 180px); margin: 0 auto; border-radius: 10px; box-shadow: 0 20px 60px rgba(0, 0, 0, .6); }
+#big figcaption { margin: 14px auto 12px; max-width: 46em; font: 500 18px/1.45 var(--serif); color: #fff3cf; }
+#big figcaption small { display: block; margin-bottom: 4px; font: 700 11px var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--gold-soft); }
+#big .x { position: absolute; top: 12px; right: 16px; width: 40px; height: 40px; border: 0; border-radius: 50%; cursor: pointer;
+  background: rgba(255, 226, 150, .14); color: var(--gold-hi); font: 400 26px/1 var(--sans); }
+
+@media (max-width: 1100px) {
+  .best { grid-template-columns: repeat(4, 1fr); }
+  .journey { grid-template-columns: 1fr; }
+  .mapbox { position: static; }
+  .stays { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+}
+@media (max-width: 760px) {
+  .page { padding: 18px 0 110px; }   /* phones: the tabs sit at the bottom */
+  .top { grid-template-columns: 1fr 1fr; justify-items: center; }
+  .head { grid-column: 1 / -1; grid-row: 1; }
+  .best { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .month { grid-template-columns: 1fr; }
+  .nums { grid-template-columns: repeat(2, 1fr); }
+  h2 { margin-top: 42px; letter-spacing: .16em; }
+}
+</style>
+</head>
+<body>
+<nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a href="/calendar/">Calendar</a><a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/about/">About</a></nav>
+<div class="page">
+  <div class="wide">
+    <div class="top">
+      <figure class="ring"><img src="/about/img/psm.jpg" alt="Pramukh Swami Maharaj"><figcaption>Pramukh Swami Maharaj</figcaption></figure>
+      <div class="head">
+        <p class="kicker">Year in review</p>
+        <h1>@@year@@<small>with Bapa</small></h1>
+        <p id="lead">@@lead@@</p>
+      </div>
+      <figure class="ring"><img src="/about/img/msm.jpg" alt="Mahant Swami Maharaj"><figcaption>Mahant Swami Maharaj</figcaption></figure>
+    </div>
+    <div class="nums">@@nums@@</div>
+
+    <h2>A darshan for every month</h2>
+    <div class="best">@@best@@</div>
+
+    <h2>The year's journey</h2>
+    <div class="journey">
+      <div class="mapbox">@@map@@<p class="mapnote">@@countries@@</p></div>
+      <ol class="stays">@@stays@@</ol>
+    </div>
+
+    <h2>Big moments</h2>
+    <div class="moments">@@moments@@</div>
+
+    <h2>Month by month</h2>
+    <div class="months">@@months@@</div>
+
+    <h2>Other years</h2>
+    <nav class="others" aria-label="Other years">@@others@@</nav>
+  </div>
+</div>
+<div id="big" role="dialog" aria-modal="true" aria-label="Photo"><button class="x" aria-label="Close">×</button>
+  <figure><img alt=""><figcaption><small></small><span></span></figcaption><a class="see" href="/search/">See more</a></figure></div>
+<script>
+(function () {
+  var big = document.getElementById('big'), im = big.querySelector('img'), cap = big.querySelector('figcaption span'),
+      when = big.querySelector('figcaption small'), see = big.querySelector('a.see');
+  var M = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('img.ph, img.th');
+    if (t) {
+      var d = t.dataset.day || '';
+      im.src = t.dataset.big; cap.textContent = t.dataset.cap || '';
+      when.textContent = d ? (+d.slice(8)) + ' ' + M[+d.slice(5, 7) - 1] + ' ' + d.slice(0, 4) : '';
+      see.href = '/search/#date=' + d; big.classList.add('on');
+    } else if (big.classList.contains('on') && !e.target.closest('a.see')) {
+      if (e.target === big || e.target.closest('.x')) big.classList.remove('on');
+    }
+  });
+  addEventListener('keydown', function (e) { if (e.key === 'Escape') big.classList.remove('on'); });
+})();
+</script>
+</body>
+</html>
