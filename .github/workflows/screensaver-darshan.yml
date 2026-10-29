@@ -10,6 +10,9 @@ on:
     - cron: '7 0-3,8-13 * * *'
     - cron: '40 7 * * *'
   workflow_dispatch:
+  push:   # a first run on its own branch, so it can be started by hand from then on
+    branches: ['claude/project-thread-tydbrg']
+    paths: ['.github/workflows/screensaver-darshan.yml']
 concurrency: screensaver-darshan
 jobs:
   copy:
