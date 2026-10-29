@@ -160,32 +160,48 @@ body { background: linear-gradient(#efdcd2, #f3e5d8) fixed; }
 .grid { row-gap: 22px; }
 /* Compact results (Darpan, 28 Oct 2026: "the red box shouldn't be so large", and a day with one or two photos should
    not take a whole line). Each day is its own soft box: a slim maroon ribbon on top, its photos under it, and the box
-   only as wide as its photos, so small days sit side by side. A thin gold line marks each new month. */
-.days { --cw: 190px; --cg: 18px; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 18px 16px; padding-block: 14px 24px; }
+   only as wide as its photos, so small days sit side by side. Darpan, 28 Oct 2026 ("better use of the dead space"):
+   the days flow on across months and years with no line between them, and on wide screens they use the whole width. */
+.days { --cw: 190px; --cg: 18px; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 18px 16px; padding-block: 14px 24px;
+  margin-inline: min(0px, calc(50% - 50vw + 32px)); }
+/* the menu at the top goes faint as you scroll; a strip of the page's own colour behind it keeps photos from showing through */
+@media (min-width: 761px) { body::before { height: calc(env(safe-area-inset-top, 0px) + 46px); background: #efdcd2; } }
 /* a big day leaves room for a small one beside it, so a day with one photo never sits alone on a line */
 .days .day { --w: calc(var(--n) * var(--cw) + (var(--n) - 1) * var(--cg) + 24px); flex: 1 1 min(var(--w), calc(100% - var(--cw) - 80px)); min-width: 0;
   max-width: min(100%, calc(var(--w) + var(--cw) * .5)); background: rgba(255, 250, 242, .42); border: 1px solid rgba(110, 20, 36, .12); border-radius: 12px; }
 .days .pics { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--cw), 1fr)); gap: var(--cg); padding: 14px 12px 16px; align-items: start; }
-.days .day-head { margin: 0; padding: 7px 12px; border-radius: 11px 11px 0 0; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 3px 12px; box-shadow: none; }
-.days .day-head .when { font-size: clamp(17px, 1.5vw, 20px); }
-.days .day-head .when::before, .days .day-head .when::after { margin: 0 .55em; }
-.days .day-head .fest { font-size: 15px; }
-.days .day-head .mandir { padding: 3px 10px 2px; }
-.days .day-head .about { flex-basis: 100%; font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.days .day-head .about { order: 6; }
-.days .day-head .stay { order: 3; text-wrap: balance; font: 700 11px var(--sans); letter-spacing: .2em; text-transform: uppercase; color: #d9a441; }
 .card .said, .card:not(.post) .cap.said { display: none; }   /* already on the day's ribbon */
 .card .said + .place:not(.said) { margin-top: 6px; padding-top: 7px; border-top: 1px solid rgba(110, 20, 36, .18); }
-.days .day-head .only { order: 7; font-size: 14px; }
+/* Every ribbon the same slim size (Darpan, 29 Oct 2026, picked "slim and equal"): the date, then
+   one line with the festival, the Gujarati date and the place, then the mandir tag and Share this day. */
+.days .day-head { margin: 0; padding: 8px 12px; border-radius: 11px 11px 0 0; flex-flow: row wrap; justify-content: center; align-content: center; gap: 4px 10px; box-shadow: none; }
+.days .day-head .when { flex-basis: 100%; font-size: clamp(17px, 1.5vw, 20px); }
+.days .day-head .when::before, .days .day-head .when::after { margin: 0 .55em; }
+.days .day-head .info { flex-basis: 100%; min-width: 0; font: 700 11px/1.5 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: #d9a441; }
+.days .day-head .info i { font-style: normal; opacity: .7; }
+.days .day-head .info .fest { font: 600 15px var(--serif); letter-spacing: 0; text-transform: none; color: #faf1de; }
+.days .day-head .info .tithi, .days .day-head .info .stay, .days .day-head .info .only { font: inherit; color: inherit; }
+.days .day-head .acts { display: flex; gap: 6px; }
+.days .day-head .mandir { padding: 3px 10px 2px; }
+.days .day-head .about { flex-basis: 100%; order: 6; font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .days .day-head .bd-share { margin: 0; padding: 3px 9px; }
 .days .day-head .bd-share span { font-size: 10.5px; }
-.month-line { flex-basis: 100%; display: flex; align-items: center; gap: 14px; margin-top: 8px; font: 700 12px var(--sans); letter-spacing: .26em; text-transform: uppercase; color: var(--maroon); }
-.month-line::before, .month-line::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--gold)); }
-.month-line::after { background: linear-gradient(90deg, var(--gold), transparent); }
+/* slim: one line each, the same height everywhere; what does not fit ends in "…" and shows in full when you point at it */
+.days.slim .day-head { height: 84px; overflow: hidden; flex-wrap: wrap; }
+.days.slim .day-head .when, .days.slim .day-head .info { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.days.slim .day-head .info * { text-wrap: nowrap; }
+.days.slim .day.one .day-head .acts { flex-wrap: nowrap; min-width: 0; }
+.days.slim .day.one .day-head .mandir { white-space: nowrap; font-size: 9px; letter-spacing: .12em; padding: 3px 8px 2px; }
+.days.slim .day-head .about { display: none; }
+.days.slim .day.one .day-head .wd { display: none; }
+.days.slim .day.one .day-head .when::before, .days.slim .day.one .day-head .when::after { display: none; }
+@media (max-width: 520px) { .days.slim .day.one .day-head .bd-share span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } }
+.days.slim .day.one .day-head .acts + .bd-share span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 520px) {
   .days { gap: 12px 10px; }
   .days .day { flex: 1 1 100%; max-width: 100%; }
-  .days .day.one { flex: 1 1 calc(50% - 5px); max-width: calc(50% - 5px); }
+  .days .day { box-sizing: border-box; }
+  .days .day.one { flex: 1 1 calc(50% - 6px); max-width: calc(50% - 6px); }
   .days .pics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 10px; padding: 10px 8px 12px; }
   .days .day.one .pics { grid-template-columns: minmax(0, 1fr); }
   .days .day-head { padding: 6px 8px; }
@@ -346,7 +362,7 @@ const $ = id => document.getElementById(id);
 // and BAPS calendar days that have a festival or note (kind 'day'). Every item also carries its date's calendar
 // words, so "Diwali" finds every photo taken on a Diwali day. Results are shown grouped by date under the calendar.
 let items = [], cal = {}, mandirDay = {}, loaded = 0, total = 0, hits = [], shown = 0, lastDate = '';
-let perDay = new Map(), monthLines = false;   // photos and stories on each date; a line for each month when a month has more than one date
+let perDay = new Map();   // photos and stories on each date
 let sameDay = new Map();   // per date: the place and the date span every photo of it shares, said once on its ribbon, not on each card
 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
@@ -450,7 +466,7 @@ function render(byYear, want) {
   const nDates = new Set(hits.map(h => h.d)).size;
   $('count').innerHTML = picMode ? `<b>${nPhotos.toLocaleString()}</b> photos most like your picture, closest first` + (loaded < total ? ' (still loading)' : '') : `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'} and <b>${nPosts.toLocaleString()}</b> On this day stor${nPosts === 1 ? 'y' : 'ies'} on <b>${nDates.toLocaleString()}</b> date${nDates === 1 ? '' : 's'}`
     + (loaded < total ? ' (still loading)' : '');
-  $('results').innerHTML = `<div class="${picMode ? 'grid' : 'days'}" id="cards"></div>`;
+  $('results').innerHTML = `<div class="${picMode ? 'grid' : 'days slim'}" id="cards"></div>`;
   shown = 0; lastDate = '';
   perDay = new Map(); hits.forEach(h => { if (h.kind !== 'day') perDay.set(h.d, (perDay.get(h.d) || 0) + 1); });
   sameDay = new Map();
@@ -461,28 +477,26 @@ function render(byYear, want) {
     if (!s) sameDay.set(h.d, { place, span });
     else { if (s.place !== place) s.place = null; if (s.span !== span) s.span = null; }
   });
-  monthLines = nDates > new Set(hits.map(h => h.d.slice(0, 7))).size;
   more(want);
 }
 
 // the date heading: what the BAPS calendar says about that day
 function dayHead(d, want, onlyCal) {
   const c = cal[d];
-  const when = d.length === 10 ? (c ? `${c.wd} ${longDate(d)}` : longDate(d)) : d;
-  return `<div class="day-head"><button class="when" type="button" data-day="${d}" title="See everything from this day">${esc(when)}</button>`
-    + (mandirDay[d] ? [...mandirDay[d]].map(k => `<span class="mandir">${MANDIR[k][1]}</span>`).join('') : '')
-    + (c && c.indian ? `<span class="tithi">${highlight(c.indian, want)}${c.vs ? ' · V.S. ' + c.vs : ''}</span>` : '')
-    + (c && c.fest ? `<span class="fest">${highlight(c.fest, want)}</span>` : '')
-    + (!c && window.festOn && festOn(d).length ? `<span class="fest">${highlight(festOn(d).join(', '), want)}</span>` : '')
+  const when = d.length === 10 ? (c ? `<span class="wd">${c.wd} </span>${longDate(d)}` : longDate(d)) : esc(d);
+  const fest = c && c.fest ? c.fest : !c && window.festOn && festOn(d).length ? festOn(d).join(', ') : '';
+  const tithi = c && c.indian ? c.indian + (c.vs ? ' · V.S. ' + c.vs : '') : '', stay = !picMode && sameDay.get(d) ? stayText(sameDay.get(d)) : '';
+  const info = [fest && `<span class="fest">${highlight(fest, want)}</span>`, tithi && `<span class="tithi">${highlight(tithi, want)}</span>`,
+    stay && `<span class="stay">${highlight(stay, want)}</span>`, onlyCal && '<span class="only">No photos or stories saved for this day yet.</span>'].filter(Boolean);
+  return `<div class="day-head"><button class="when" type="button" data-day="${d}" title="See everything from this day">${when}</button>`
+    + (info.length ? `<div class="info" title="${esc([fest, tithi, stay].filter(Boolean).join(' · '))}">${info.join('<i> · </i>')}</div>` : '')
+    + (mandirDay[d] ? `<div class="acts">${[...mandirDay[d]].map(k => `<span class="mandir">${MANDIR[k][1]}</span>`).join('')}</div>` : '')
     + (c && (c.about || c.notes) ? `<span class="about">${highlight([c.about, c.notes].filter(Boolean).join('. '), want)}</span>` : '')
-    + (onlyCal ? '<span class="only">No photos or stories saved for this day yet.</span>' : '')
-    + (!picMode && sameDay.get(d) ? stayLine(sameDay.get(d), want) : '')
     + '</div>';
 }
-function stayLine(s, want) {
+function stayText(s) {
   const [a, b] = (s.span || '|').split('|');
-  const bits = [s.place ? highlight(s.place, want) : '', b ? `${a.slice(0, 7) === b.slice(0, 7) ? +a.slice(8) : a.slice(0, 4) === b.slice(0, 4) ? niceDate(a).replace(/ \d{4}$/, '') : niceDate(a)} to ${niceDate(b)}` : ''].filter(Boolean);
-  return bits.length ? `<span class="stay">${bits.join(' · ')}</span>` : '';
+  return [s.place || '', b ? `${a.slice(0, 7) === b.slice(0, 7) ? +a.slice(8) : a.slice(0, 4) === b.slice(0, 4) ? niceDate(a).replace(/ \d{4}$/, '') : niceDate(a)} to ${niceDate(b)}` : ''].filter(Boolean).join(' · ');
 }
 const plain = t => (t || '').toLowerCase().replace(/[^a-z0-9]+/g, '');   // a caption the card before already said
 // on a card, only what its day's ribbon does not already say
@@ -521,7 +535,6 @@ function more(want = lastWant) {
     if (picMode) { html += card; return; }
     if (p.d !== lastDate) {
       if (open) html += '</div></section>';
-      if (monthLines && p.d.slice(0, 7) !== lastDate.slice(0, 7)) html += `<div class="month-line">${p.d.length >= 7 ? MONTHS[+p.d.slice(5, 7) - 1] + ' ' : ''}${p.d.slice(0, 4)}</div>`;
       lastDate = p.d; open = true;
       const n = perDay.get(p.d) || 0;
       html += `<section class="day${n === 1 ? ' one' : ''}" style="--n:${Math.max(1, n)}">${dayHead(p.d, want, !n)}<div class="pics">`;
