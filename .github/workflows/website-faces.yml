@@ -39,7 +39,8 @@ jobs:
           gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
           curl -sf https://photos.bapas-diary.com/years.txt -o years.txt; echo "years in R2: $(tr '\n' ' ' < years.txt)"
           gh release view website-faces --json assets -q '.assets[].name' > have.txt
-          shards=$(python3 tools/web_faces.py plan --db bapas.db --years years.txt --have have.txt)
+          mkdir -p counts && (gh release download website-faces -p 'count-*.txt' -D counts || true)   # how many photos each year had at its last look
+          shards=$(python3 tools/web_faces.py plan --db bapas.db --years years.txt --have have.txt --counts counts)
           echo "shards=$shards" | tee -a "$GITHUB_OUTPUT"
   scan:
     needs: plan
@@ -64,6 +65,7 @@ jobs:
           gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
           python3 tools/web_faces.py scan --db bapas.db --shard ${{ matrix.shard }} --out face2-${{ matrix.shard }}.json.gz
           gh release upload website-faces face2-${{ matrix.shard }}.json.gz --clobber
+          ls count-*.txt >/dev/null 2>&1 && gh release upload website-faces count-*.txt --clobber || true   # the year's photo count at this look
   pick:
     needs: [plan, scan]
     if: always() && needs.plan.result == 'success'

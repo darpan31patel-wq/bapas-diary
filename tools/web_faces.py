@@ -49,7 +49,11 @@ def wait_quiet():
 
 
 def plan(a):
-    """The shards still to do: every year in R2 cut into pieces of about --size photos, minus those already kept."""
+    """The shards still to do: every year in R2 cut into pieces of about --size photos, minus those already kept.
+    New photos of this year (29 Oct 2026: the days since the last look were never checked, so Latest Vicharan and the
+    Bapa pages stopped at 23 October): the newest albums sort last, so a year's last shard is looked at again whenever
+    the year has more photos than when that shard was made (count-YEAR.txt in the release, written by scan), or, with
+    no count kept yet, for this year."""
     years = sorted(int(l) for l in open(a.years) if l.strip().isdigit())
     have = set(open(a.have).read().split()) if a.have and os.path.exists(a.have) else set()
     db = sqlite3.connect(a.db)
@@ -58,6 +62,12 @@ def plan(a):
         n = db.execute('SELECT count(*) FROM photos WHERE year = ?', (y,)).fetchone()[0]
         parts = max(1, -(-n // a.size))
         todo += [f'{y}-{i}-{parts}' for i in range(parts) if f'{PREFIX}{y}-{i}-{parts}.json.gz' not in have]
+        last = f'{y}-{parts - 1}-{parts}'
+        if last not in todo and f'{PREFIX}{last}.json.gz' in have:
+            cf = os.path.join(a.counts or '', f'count-{y}.txt')
+            had = int(open(cf).read().strip() or 0) if a.counts and os.path.exists(cf) else None
+            if (had is None and y == datetime.date.today().year) or (had is not None and n > had):
+                todo.append(last)   # new photos since the last look: they sort last, into this shard
     print(json.dumps(todo[:a.max]))
 
 
@@ -118,6 +128,8 @@ def scan(a):
                   f'{missing} not in R2, {time.time() - t0:.0f}s', flush=True)
     with gzip.open(a.out, 'wt') as f:
         json.dump(out, f, separators=(',', ':'))
+    if i == n - 1:   # the year's last shard: remember how many photos the year had, so new ones bring it back (plan)
+        open(f'count-{y}.txt', 'w').write(f'{db.execute("SELECT count(*) FROM photos WHERE year = ?", (y,)).fetchone()[0]}\n')
 
 
 def load_faces(folder):
@@ -372,6 +384,7 @@ def main():
     sub = ap.add_subparsers(dest='cmd', required=True)
     p = sub.add_parser('plan'); p.add_argument('--db', required=True); p.add_argument('--years', required=True)
     p.add_argument('--have'); p.add_argument('--size', type=int, default=2500); p.add_argument('--max', type=int, default=200)
+    p.add_argument('--counts', help='folder with count-YEAR.txt from the release: how many photos each year had at its last look')
     p = sub.add_parser('scan'); p.add_argument('--db', required=True); p.add_argument('--shard', required=True)
     p.add_argument('--out', required=True); p.add_argument('--tier', default='m')
     p = sub.add_parser('pick'); p.add_argument('--db', required=True); p.add_argument('--faces', required=True)
