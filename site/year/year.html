@@ -34,7 +34,8 @@ img { display: block; }
 .ring { width: clamp(84px, 11vw, 150px); aspect-ratio: 4 / 5; border-radius: 999px 999px 14px 14px; padding: 4px;
   background: linear-gradient(#ffe296, #a8742a); box-shadow: 0 0 0 7px rgba(217, 164, 65, .12), 0 14px 34px rgba(0, 0, 0, .55); margin: 0; }
 .ring img { width: 100%; height: 100%; border-radius: 999px 999px 10px 10px; object-fit: cover; }
-.ring figcaption { margin-top: 12px; text-align: center; font: 700 9.5px/1.4 var(--sans); letter-spacing: .18em; text-transform: uppercase; color: var(--gold-soft); }
+.guru { margin: 0; }
+.guru figcaption { margin-top: 12px; text-align: center; font: 700 9.5px/1.4 var(--sans); letter-spacing: .18em; text-transform: uppercase; color: var(--gold-soft); }
 .head { text-align: center; }
 .kicker { margin: 0 0 6px; font: 700 12px var(--sans); letter-spacing: .34em; text-transform: uppercase; color: var(--gold-soft); }
 h1 { margin: 0; font: 600 clamp(40px, 7vw, 92px)/1.02 var(--title); letter-spacing: .02em; text-wrap: balance;
@@ -65,13 +66,14 @@ h2::before, h2::after { content: ""; flex: 1; height: 1px; background: linear-gr
 
 /* ---------- the journey: map and the towns in order ---------- */
 .journey { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(300px, 1fr); gap: 22px; align-items: start; }
-.mapbox { position: sticky; top: 60px; border-radius: 16px; overflow: hidden; background: radial-gradient(ellipse at 50% 40%, #2b1730, #170a16);
+.mapbox { position: sticky; top: 60px; display: grid; gap: 14px; }
+.mapf { margin: 0; border-radius: 16px; overflow: hidden; background: radial-gradient(ellipse at 50% 40%, #2b1730, #170a16);
   border: 1px solid rgba(217, 164, 65, .35); box-shadow: 0 18px 44px rgba(0, 0, 0, .5); }
 .map { display: block; width: 100%; height: auto; }
 .map .land { fill: #4a2a3a; stroke: #6b4152; stroke-width: 1; }
 .map .route { fill: none; stroke: var(--gold-hi); stroke-width: 2.4; stroke-dasharray: 7 6; stroke-linejoin: round; opacity: .9; }
 .map .dot circle { fill: #a8742a; stroke: #ffe296; stroke-width: 2; }
-.map .dot text { fill: #2a0c12; font: 700 11px var(--sans); text-anchor: middle; }
+.map .dot text { fill: #2a0c12; font: 700 12px var(--sans); text-anchor: middle; }
 .map .names text { fill: #fff3cf; font: 600 19px var(--serif); paint-order: stroke; stroke: rgba(23, 10, 22, .85); stroke-width: 5px; }
 .mapnote { margin: 0; padding: 10px 16px 12px; font: 700 10.5px var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--gold-soft); }
 .stays { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -139,7 +141,8 @@ a.see:hover { background: linear-gradient(#fff0c0, #e6b453); }
   .stays { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
 }
 @media (max-width: 760px) {
-  .page { padding: 18px 0 110px; }   /* phones: the tabs sit at the bottom */
+  .page { padding: 64px 0 110px; }   /* phones: the tabs sit at the bottom, the name and switches at the top */
+  .moment figure { aspect-ratio: 16 / 10; }
   .top { grid-template-columns: 1fr 1fr; justify-items: center; }
   .head { grid-column: 1 / -1; grid-row: 1; }
   .best { grid-template-columns: repeat(3, 1fr); gap: 6px; }
@@ -154,13 +157,13 @@ a.see:hover { background: linear-gradient(#fff0c0, #e6b453); }
 <div class="page">
   <div class="wide">
     <div class="top">
-      <figure class="ring"><img src="/about/img/psm.jpg" alt="Pramukh Swami Maharaj"><figcaption>Pramukh Swami Maharaj</figcaption></figure>
+      <figure class="guru"><div class="ring"><img src="/about/img/psm.jpg" alt="Pramukh Swami Maharaj"></div><figcaption>Pramukh Swami Maharaj</figcaption></figure>
       <div class="head">
         <p class="kicker">Year in review</p>
         <h1>@@year@@<small>with Bapa</small></h1>
         <p id="lead">@@lead@@</p>
       </div>
-      <figure class="ring"><img src="/about/img/msm.jpg" alt="Mahant Swami Maharaj"><figcaption>Mahant Swami Maharaj</figcaption></figure>
+      <figure class="guru"><div class="ring"><img src="/about/img/msm.jpg" alt="Mahant Swami Maharaj"></div><figcaption>Mahant Swami Maharaj</figcaption></figure>
     </div>
     <div class="nums">@@nums@@</div>
 
@@ -169,7 +172,7 @@ a.see:hover { background: linear-gradient(#fff0c0, #e6b453); }
 
     <h2>The year's journey</h2>
     <div class="journey">
-      <div class="mapbox">@@map@@<p class="mapnote">@@countries@@</p></div>
+      <div class="mapbox">@@map@@</div>
       <ol class="stays">@@stays@@</ol>
     </div>
 
