@@ -611,6 +611,24 @@ $('pause').onclick = () => { paused = !paused; $('pause').textContent = paused ?
 $('speed').onchange = start;
 document.addEventListener('visibilitychange', () => document.hidden ? stop() : start());
 
+// how many cards on each rope: each rope down holds one fewer, 8, 7, 6, 5, never more than the rope above and never
+// more than one fewer. Of the ways the cards can fall, the one whose top rope is fullest wins, then the one with the
+// most steps, then the one with fewest ropes, and no rope drops below half the top one
+// (today's 30 cards: 8, 7, 6, 5, 4; 28: 8, 7, 7, 6; 26: 8, 7, 6, 5; 13: 7, 6; 5: 5)
+function steps(total, fit) {
+  let best = [total], score = -1;
+  for (let r = Math.ceil(total / fit); r <= Math.ceil(total / Math.ceil(fit / 2)); r++) {
+    const c = Array.from({length: r}, (_, i) => Math.max(Math.ceil(fit / 2), fit - i));
+    let sum = c.reduce((a, b) => a + b, 0);
+    while (sum < total) { let i = r - 1; while (i > 0 && c[i] === c[i - 1]) i--; if (c[i] >= fit) break; c[i]++; sum++; }   // raise the lowest rope shorter than the one above
+    while (sum > total) { let i = 0; while (i < r - 1 && c[i] === c[i + 1]) i++; if (c[i] <= 1) break; c[i]--; sum--; }   // lower the highest rope longer than the one below
+    if (sum !== total || c[r - 1] * 2 < c[0]) continue;
+    const s = c[0] * 1000 + new Set(c).size * 10 - r;
+    if (s > score) { score = s; best = c; }
+  }
+  return best;
+}
+
 // one cord per row of cards, drawn through the pegs
 function cords() {
   // the cords run the full width of the window, edge to edge (Darpan, 24 Oct 2026). On computers the cards fill that
@@ -621,13 +639,17 @@ function cords() {
     const w = board.parentElement.getBoundingClientRect(), g = Math.max(40, vw * .035);   // a safe gap from the window edge (Darpan, 26 Oct 2026: "a tiny bit more breathing space")
     board.style.marginLeft = Math.round(g - w.left) + 'px'; board.style.marginRight = Math.round(g - (vw - w.right)) + 'px';
   } else board.style.marginLeft = board.style.marginRight = '';
-  // bigger cards, 7 or 8 to a rope, whichever leaves the last rope fuller, and more ropes as needed (Darpan, 26 Oct 2026)
+  // bigger cards, up to 8 to a rope, and each rope down holds one fewer, stepping gently (8, 7, 6, 5), every rope
+  // centred (Darpan, 29 Oct 2026: "8 and then 7, 6, 5. So it's spread out across and everything should be centered").
+  // The grid has two columns per card, so a rope one card shorter starts half a card in and sits in the middle.
   const grid = $('cards');
   if (wide) {
-    const gw = grid.clientWidth, gap = parseFloat(getComputedStyle(grid).columnGap) || 20, fit = Math.max(1, Math.floor((gw + gap) / (168 + gap)));
-    const left = n => cards.length % n || n, n = Math.min(fit, left(7) > left(8) ? 7 : 8);
-    grid.style.gridTemplateColumns = `repeat(${n},minmax(0,1fr))`;
-  } else grid.style.gridTemplateColumns = '';
+    const gw = grid.clientWidth, gap = parseFloat(getComputedStyle(grid).columnGap) || 20, fit = Math.max(1, Math.min(8, Math.floor((gw + gap) / (168 + gap))));
+    const per = steps(cards.length, fit), n = per[0] || 1;
+    grid.style.gridTemplateColumns = `repeat(${2 * n},minmax(0,1fr))`;
+    let i = 0;
+    per.forEach(k => { for (let j = 0; j < k; j++, i++) cards[i].slot.style.gridColumn = `${j ? 'auto' : n - k + 1} / span 2`; });
+  } else { grid.style.gridTemplateColumns = ''; cards.forEach(c => c.slot.style.gridColumn = ''); }
   cards.forEach(c => lean(c, c.rest + (c.a || 0)));   // the cards changed size: each caption swings from the new peg height
   const b = board.getBoundingClientRect(), D = wide ? Math.min(64, vw * .032) : 0;
   svg.style.left = -b.left + 'px'; svg.style.width = vw + 'px';
