@@ -44,12 +44,13 @@ def latest(db_path, schedule):
                                       f"WHERE {seen} ORDER BY p.date DESC LIMIT ?", (DAYS,))]
     out = []
     for d in dates:
-        rows = db.execute("SELECT p.album, p.file, p.caption, p.place FROM photos p JOIN bapa_pick b USING (album, file) "
+        rows = db.execute("SELECT p.album, p.file, p.caption, p.place, b.close FROM photos p JOIN bapa_pick b USING (album, file) "
                           f"WHERE p.date = ? AND {seen} ORDER BY b.rank, p.album, p.file", (d,)).fetchall()
         day = datetime.date.fromisoformat(d)
-        for album, file, cap, place in common.spread(rows, MOST):
+        for album, file, cap, place, close in common.spread(rows, MOST):
             out.append({'img': f'https://photos.bapas-diary.com/l/{album}/{file}', 'iso': d, 'when': f'{day.day} {day:%B %Y}',
-                        'place': place or '', 'caption': common.clean(cap), 'tz': common.tz_of(place or '', day, schedule)})
+                        'place': place or '', 'caption': common.clean(cap), 'tz': common.tz_of(place or '', day, schedule),
+                        'close': int(close or 0)})   # 1 = a close up of Bapa; the screensaver shows activity photos first (Darpan, 29 Oct 2026)
         print(f'  {d}: {len(rows)} photos of Bapa')
     return out
 

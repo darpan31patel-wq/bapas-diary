@@ -600,7 +600,7 @@ const SAMPLE_ART = '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M15 37V
 function buildSlides() {
   // darshan, On This Day and Latest Vicharan: each list once (they play in blocks, see makeOrder)
   const D = photos.map(img => ({ kind: 'darshan', img }));
-  if (sarangpur) D.push({ kind: 'darshan', img: sarangpur.img, iso: sarangpur.iso, mandir: 'Sarangpur' });
+  if (sarangpur) D.push({ kind: 'sarangpur', img: sarangpur.img, iso: sarangpur.iso, mandir: 'Sarangpur' });   // its own kind: rarer than Neasden (Darpan, 29 Oct 2026)
   const M = memories.map(m => ({ kind: 'memory', ...m }));
   const L = latest.map(m => ({ kind: 'latest', ...m }));
   slideItems = [...D, ...M, ...L];
@@ -644,12 +644,11 @@ function randomPose() {   // sample slides
   const x = (Math.random() * 2 - 1) * room, y = (Math.random() * 2 - 1) * room;
   return `scale(${scale.toFixed(3)}) translate(${x.toFixed(2)}%, ${y.toFixed(2)}%)`;
 }
-// Shuffle: darshan and On This Day photos all mixed together, in a fresh random order every
-// time the screensaver starts and every time round. The same photo never shows twice running.
-// One photo of each kind in turn (Oct 2026): Daily Murti Darshan, On This Day and
-// Latest Vicharan take turns one photo at a time, the three in a fresh random order each round,
-// and the same kind never shows twice running. Each kind draws from its own shuffled list, so
-// every photo comes round before any repeats. A kind with no photos is simply left out.
+// The order (Darpan, 29 Oct 2026: "most on this day, then latest vicharan, every so often Neasden murti darshan,
+// then Sarangpur"): each round of six photos holds three On This Day, two Latest Vicharan and one mandir darshan,
+// shuffled so the same kind never shows twice running; every fourth mandir darshan is Sarangpur's (when there is one).
+// Each kind draws from its own shuffled list, so every photo comes round before any repeats, and Latest Vicharan
+// puts two activity photos before each close up ("activity better"). A kind with no photos is simply left out.
 // Photos already shown today are remembered across screensaver starts (Oct 2026: "i keep
 // seeing the same ones"), so each start begins with photos not yet seen today, and every photo of
 // a kind comes round before any of them repeats.
@@ -665,22 +664,43 @@ function markSeen(item) {
   try { localStorage.setItem(SEEN_KEY, JSON.stringify(seenToday)); } catch (e) {}
 }
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const ROUND = { memory: 3, latest: 2, darshan: 1 };   // one round: three On This Day, two Latest Vicharan, one mandir darshan
+const SARANGPUR_EVERY = 4;                            // every fourth mandir darshan is Sarangpur's
+let darshanTurns = 0;
+function roundKinds(all, lastKind) {   // the round's kinds shuffled, never the same kind twice running (across rounds too)
+  const base = [];
+  for (const k of Object.keys(ROUND)) if (all.includes(k) || (k === 'darshan' && all.includes('sarangpur'))) for (let i = 0; i < ROUND[k]; i++) base.push(k);
+  if (!base.length) return shuffle(all.slice());
+  for (let t = 0; t < 60; t++) {
+    const r = shuffle(base.slice());
+    if (r[0] !== lastKind && r.every((k, i) => !i || k !== r[i - 1])) return r;
+  }
+  return base;
+}
+function fillQueue(kind, idxs) {   // a kind's photos in a fresh order; Latest Vicharan: two activity photos, then a close up
+  if (kind !== 'latest') return shuffle(idxs);
+  const act = shuffle(idxs.filter(i => !slideItems[i].close)), close = shuffle(idxs.filter(i => slideItems[i].close)), out = [];
+  while (act.length || close.length) { if (act.length) out.push(act.shift()); if (act.length) out.push(act.shift()); if (close.length) out.push(close.shift()); }
+  return out;
+}
 function makeOrder(prevIdx) {
   const groups = {};
   slideItems.forEach((it, i) => (groups[it.kind] = groups[it.kind] || []).push(i));
   const all = Object.keys(groups);
   let lastKind = prevIdx != null && slideItems[prevIdx] ? slideItems[prevIdx].kind : null;
-  const rounds = Math.max(1, ...all.map(k => groups[k].length));
+  if (lastKind === 'sarangpur') lastKind = 'darshan';
+  const rounds = Math.min(80, Math.max(1, ...all.map(k => Math.ceil(groups[k].length / (ROUND[k] || 1)))));
   const out = [];
   for (let r = 0; r < rounds; r++) {
-    const kinds = shuffle(all.slice());
-    if (kinds.length > 1 && kinds[0] === lastKind) kinds.push(kinds.shift());   // never the same kind twice running
-    for (const kind of kinds) {
+    const kinds = roundKinds(all, lastKind);
+    for (let kind of kinds) {
+      if (kind === 'darshan') kind = (!groups.darshan || (groups.sarangpur && ++darshanTurns % SARANGPUR_EVERY === 0)) ? 'sarangpur' : 'darshan';
+      if (!groups[kind]) continue;
       const q = blockQueues[kind] = (blockQueues[kind] || []).filter(i => groups[kind].includes(i));
       if (!q.length) {                         // not seen today first; once all have been seen, start again
         const was = seenSet(), fresh = groups[kind].filter(i => !was.has(slideItems[i].img));
         if (!fresh.length) seenToday.imgs = seenToday.imgs.filter(img => !groups[kind].some(i => slideItems[i].img === img));
-        q.push(...shuffle(fresh.length ? fresh : groups[kind].slice()), ...shuffle(fresh.length ? groups[kind].filter(i => !fresh.includes(i)) : []));
+        q.push(...fillQueue(kind, fresh.length ? fresh : groups[kind].slice()), ...fillQueue(kind, fresh.length ? groups[kind].filter(i => !fresh.includes(i)) : []));
       }
       out.push(q.shift());
     }
