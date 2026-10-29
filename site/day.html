@@ -128,7 +128,8 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 .vcap .go{margin-top:9px}
 .story-line{margin:12px 0 0;font:500 16px/1.45 var(--serif);font-style:italic;color:var(--cream);max-width:70ch}
 .story-line b{font-style:normal;font:700 10px var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--gold-soft);margin-right:8px}
-.day-story .paras{columns:34ch 3;column-gap:40px}   /* a long story uses the whole width on a wide screen (Darpan, 26 Oct 2026) */
+.day-story .paras{max-width:70ch}
+.day-story .paras.many{max-width:none;columns:34ch 3;column-gap:40px}   /* a long story uses the whole width on a wide screen (Darpan, 26 Oct 2026) */
 .day-story .more{margin:0;padding-top:8px;font:400 15px/1.55 var(--serif);color:var(--cream);opacity:.88;break-inside:avoid}
 .day-story .diary{margin:8px 0 0;padding:0;list-style:none;max-width:70ch}
 .day-story .diary li{position:relative;margin:0 0 5px;padding-left:16px;font:400 15px/1.45 var(--serif);color:var(--cream);opacity:.9}
@@ -364,7 +365,7 @@ function storyHTML(line, h, w, l) {
   const top = h || tail(line) || line;
   const rest = (w || []).filter(t => said(t) !== said(top) && said(t) !== said(tail(line)));
   return `<div class="day-story"><p class="story-line"><b>On this day</b>${esc(top)}</p>` +
-    (rest.length ? (l ? `<ul class="diary">${rest.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : `<div class="paras">${rest.map(t => `<p class="more">${esc(t)}</p>`).join('')}</div>`) : '') + '</div>';
+    (rest.length ? (l ? `<ul class="diary">${rest.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : `<div class="paras${rest.length > 2 ? ' many' : ''}">${rest.map(t => `<p class="more">${esc(t)}</p>`).join('')}</div>`) : '') + '</div>';
 }
 function storyShort(Y, stories, photo) {   // a few words for the wide view: what else the post says about the day
   for (const [line, h, w, l] of told(Y, stories)) {
