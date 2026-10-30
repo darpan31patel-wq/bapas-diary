@@ -138,6 +138,17 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 .of{margin-top:5px;font:700 8.5px/1 var(--sans);letter-spacing:.16em;color:rgba(110,20,36,.6);font-variant-numeric:tabular-nums}
 .cap{margin-top:11px;min-height:2.8em;width:100%;text-align:center;font:500 15px/1.35 var(--serif);color:var(--cream);transition:opacity 1.5s ease-in-out;text-wrap:balance;max-width:100%;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .cap.fade{opacity:0}
+/* a very faint golden glow around a frame while the mouse moves over it; with no mouse on any frame the glow drifts
+   gently from year to year, 1999, 2000, 2001 ... to the last, then starts again (Darpan, 30 Oct 2026) */
+.card::after{content:"";position:absolute;inset:-1px;pointer-events:none;opacity:0;transition:opacity 1.8s ease-in-out;
+  box-shadow:0 0 22px 5px rgba(255,216,128,.5),0 0 64px 18px rgba(230,176,72,.24)}
+.card.glow::after{opacity:1;transition-duration:.9s}
+.card.glow.hand::after{transition-duration:.45s}
+/* the mouse resting on a caption for half a second opens it to the photo's whole caption, over whatever is below, so
+   nothing on the page moves (Darpan, 30 Oct 2026) */
+.cap.open{position:relative;z-index:6;display:block;-webkit-line-clamp:unset;overflow:visible;margin-top:5px;padding:6px 9px 8px;
+  background:rgba(48,8,18,.94);border:1px solid rgba(217,164,65,.38);border-radius:3px;box-shadow:0 8px 20px rgba(0,0,0,.45)}
+.slot.lift{z-index:7}
 
 .controls{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:28px;align-items:center}
 .controls select{font:700 11px var(--sans);letter-spacing:.1em;text-transform:uppercase;background:rgba(0,0,0,.25);color:var(--gold-hi);border:1px solid rgba(217,164,65,.45);border-radius:999px;padding:9px 12px;cursor:pointer}
@@ -640,6 +651,7 @@ function render() {
   const withPhotos = years.filter(y => hasPhotos(byYear[y]));
   const order = withPhotos.map((_, i) => i).sort(() => Math.random() - .5), closeUp = new Set(order.slice(0, Math.ceil(order.length / 2)));
   cards = withPhotos.map((y, i) => card(y, byYear[y], closeUp.has(i)));
+  under = null; walkAt = -1; clearTimeout(walkTimer); walkTimer = setTimeout(walk, 1500);   // the glow starts at the first year
   years.filter(y => !hasPhotos(byYear[y])).forEach(y => group(y, null, byYear[y].place, DAY.cal && DAY.cal[y], byYear[y].stories));
   [...$('groups').children].sort((a, b) => a.id.slice(1) - b.id.slice(1)).forEach(g => $('groups').append(g));
   $('board').hidden = $('controls').hidden = false;
@@ -693,6 +705,10 @@ function card(y, {Y, place, stories}, want = true) {
   el.addEventListener('pointermove', e => nudge(c, e));
   el.addEventListener('pointerleave', () => c.lastX = null);
   el.addEventListener('pointerdown', e => { c.lastX = e.clientX - 30 * (Math.random() < .5 ? 1 : -1); nudge(c, e); });
+  el.addEventListener('pointerenter', e => { if (e.pointerType !== 'touch') glowOn(c); });
+  el.addEventListener('pointerleave', e => { if (e.pointerType !== 'touch') glowOff(c); });
+  cap.addEventListener('pointerenter', e => { if (e.pointerType !== 'touch') c.capWait = setTimeout(() => capOpen(c), 500); });
+  cap.addEventListener('pointerleave', () => { clearTimeout(c.capWait); capClose(c); });
   const close = p => !!(p[4] && p[4][7]);   // want: this card opens on a close up (true) or an activity photo (false)
   const first = photos.findIndex(p => p[3] && close(p) === want);
   if (photos.length) show(c, first >= 0 ? first : Math.max(0, photos.findIndex(p => p[3])), true);   // open on a darshan of Bapa
@@ -752,6 +768,54 @@ function swing() {
   if (swinging.size) requestAnimationFrame(swing);
 }
 
+// The golden glow (Darpan, 30 Oct 2026: "a very faint glow, golden glow, when the mouse moves through each frame ... If
+// there's no mouse on any of the frames, I want the golden glow to like gently fade through the year"). The mouse's
+// frame glows straight away; once the mouse has been off every frame for a couple of seconds, the glow walks the years
+// again in order, one frame fading out as the next fades in, and starts again at the first year after the last. Frames
+// off the screen are passed over, so on a phone the glow is always somewhere you can see.
+let under = null, walkAt = -1, walkTimer = null;
+function glowOn(c) {
+  under = c; clearTimeout(walkTimer); walkTimer = null;
+  cards.forEach(x => x.el.classList.toggle('glow', x === c));
+  c.el.classList.add('hand');
+}
+function glowOff(c) {
+  if (under !== c) return;
+  under = null; c.el.classList.remove('glow', 'hand');
+  walkAt = cards.indexOf(c);   // the walk carries on from the frame the mouse left
+  clearTimeout(walkTimer); walkTimer = setTimeout(walk, 2000);
+}
+function walk() {
+  walkTimer = null;
+  if (under || !cards.length) return;
+  if (!document.hidden && !paused) {
+    const seen = c => { const r = c.el.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth && r.width > 0; };
+    let k = -1;
+    for (let n = 1; n <= cards.length; n++) { const i = (walkAt + n) % cards.length; if (seen(cards[i])) { k = i; break; } }
+    cards.forEach((x, i) => x.el.classList.toggle('glow', i === k));
+    if (k >= 0) walkAt = k;
+  }
+  walkTimer = setTimeout(walk, reduce ? 3600 : 2600);
+}
+// the caption opens over the page: it keeps its place in the row (a negative margin takes back the height it gains), and
+// its card lifts above the cards below. The card holds its photo while the caption is open, so the words stay with it.
+function capOpen(c) {
+  const p = c.photos[c.k];
+  if (!p || c.open) return;
+  const full = p[2] || p[5] || '';
+  if (!full || (full === c.cap.textContent && c.cap.scrollHeight <= c.cap.clientHeight + 1)) return;   // nothing more to show
+  c.h0 = c.cap.offsetHeight; c.open = true;
+  c.cap.textContent = full; c.cap.classList.add('open'); c.slot.classList.add('lift');
+  capFit(c);
+}
+function capFit(c) { c.cap.style.marginBottom = ''; c.cap.style.marginBottom = (c.h0 + 11 - c.cap.offsetHeight - 5) + 'px'; }
+function capClose(c) {
+  if (!c.open) return;
+  const p = c.photos[c.k];
+  c.open = false; c.cap.classList.remove('open'); c.slot.classList.remove('lift'); c.cap.style.marginBottom = '';
+  if (p) c.cap.textContent = p[5] || p[2];
+}
+
 function focus(p) { const f = p[4]; return f ? `${(f[0] * 100).toFixed(1)}% ${Math.min(100, f[1] * 115).toFixed(1)}%` : '50% 28%'; }
 
 // make.crop_to, the On this day picture's framing (Darpan, 25 Oct 2026): the photo fills the card around Bapa, his face
@@ -804,7 +868,7 @@ function show(c, k, first) {
       w.classList.toggle('off', !missing);
     }
     c.cap.classList.add('fade');
-    setTimeout(() => { c.cap.textContent = p[5] || p[2]; c.cap.classList.remove('fade'); }, first ? 0 : 1500);
+    setTimeout(() => { c.cap.textContent = c.open ? p[2] || p[5] : p[5] || p[2]; c.cap.classList.remove('fade'); if (c.open) capFit(c); }, first ? 0 : 1500);
   };
   if (!url) return done(true);
   // the hidden layer takes the next photo; it only fades in once the photo is fully loaded and ready to paint, so a
@@ -848,7 +912,7 @@ const watch = 'IntersectionObserver' in window ? new IntersectionObserver(es => 
 let last = null;
 function beat() {
   const rest = 4000 * (reduce ? 1.6 : 1), t = Date.now();
-  const ready = cards.filter(c => c.photos.length > 1 && !c.busy && t - c.at >= rest && c !== last && (!watch || inView.has(c)) && (!c.pre || c.pre.complete))   // next photo already here, so the fade starts on the beat
+  const ready = cards.filter(c => c.photos.length > 1 && !c.busy && !c.open && t - c.at >= rest && c !== last && (!watch || inView.has(c)) && (!c.pre || c.pre.complete))   // next photo already here, so the fade starts on the beat
     .sort((a, b) => a.at - b.at);
   const c = ready[Math.floor(Math.random() * Math.min(3, ready.length))];   // one of the three that waited longest
   if (c) { last = c; c.at = t; show(c, (c.k + 1) % c.photos.length); }
