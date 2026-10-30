@@ -6,7 +6,7 @@ name: website-deploy
 on:
   push:
     branches: ['claude/**']
-    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/search-people.js', 'site/search-image.js', 'tools/search_people.py', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'tools/web_offline.py', 'tools/web_secure.py', 'tools/web_tiny.py', 'tools/web_tablet.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', 'functions/**', 'site/weekly/**', '.github/workflows/website-deploy.yml', 'tools/web_type.py', 'tools/web_notranslate.py', 'site/screensaver/**', 'tools/web_screensaver.py', 'tools/screensaver/**', 'tools/web_year.py', 'site/year/**', 'tools/web_bapa_now.py', 'tools/web_darshan.py', 'tools/web_festival.py']
+    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/search-people.js', 'site/search-image.js', 'tools/search_people.py', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'tools/web_offline.py', 'tools/web_secure.py', 'tools/web_tiny.py', 'tools/web_tablet.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', 'functions/**', 'site/weekly/**', '.github/workflows/website-deploy.yml', 'tools/web_type.py', 'tools/web_notranslate.py', 'site/screensaver/**', 'tools/web_screensaver.py', 'tools/screensaver/**', 'tools/web_year.py', 'site/year/**', 'tools/web_bapa_now.py', 'tools/web_darshan.py', 'tools/web_festival.py', 'tools/web_places.py']
   workflow_call:   # website-hires (on main) rebuilds the site when a year of full size photos is in R2
 concurrency: website-deploy
 jobs:
@@ -42,6 +42,8 @@ jobs:
           mkdir out && rsync -a --exclude README.md live/ out/
           gh release download legacy-auto -p more.json -D out/then-and-now 2>/dev/null || echo '[]' > out/then-and-now/more.json   # weekly Legacy pairs (Darpan: just go live, 28 Oct)
           gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
+          # a place that is a year or a date ('2004, Los Angeles', '15 June 2012') becomes its town on every page (Darpan's Today, 19 June)
+          python3 tools/web_places.py --db bapas.db
           # Bapa's own pages (Today, Calendar, share pictures) show only photos with Bapa in them; Search keeps every photo
           # (Darpan, 25 Oct 2026: "anything Bapa specific should only have pictures of Bapa on there")
           # Darpan, 25 Oct 2026: chosen by face with the On this day rules (tools/web_faces.py): only photos where Bapa's face is
@@ -57,6 +59,7 @@ jobs:
           gh release download people-faces -p people-faces.json || echo '{}' > people-faces.json   # Who was with Bapa, by face
           # Bapa through the years (its own thread builds it into release faces-mockup; Darpan: "okay go live")
           gh release download faces-mockup -p faces-site.tgz && tar -xzf faces-site.tgz -C out
+          python3 tools/web_places.py --page out/through-the-years/index.html   # its places too, as put right in bapas.db
           test -f out/through-the-years/index.html
           # The home page, On this day (site/day.html and tools/web_day.py, merged here from claude/project-thread-2nuqbl)
           python3 tools/web_day.py --db bapa.db --site day --photos-url https://photos.bapas-diary.com/ --search-url /search/ > /dev/null
