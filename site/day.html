@@ -481,7 +481,7 @@ function render() {
   everyPhoto = [];
   const n = D.years.reduce((s, Y) => s + Y.p.length + (Y.t || []).length, 0);
   const shown = D.years.filter(Y => Y.p.length || (Y.t || []).length).length;
-  $('count').textContent = n ? `${shown} years and ${n.toLocaleString()} photos from this day. Each card fades through all of its year's photos. Tap a card to see them all.`
+  $('count').textContent = n ? `${shown} years and ${n.toLocaleString()} photos from this day.`
                              : `${years.length} years remembered on this day.`;
   if (window.MOCK && MOCK.note && MOCK.note(D.date)) $('mocknote').innerHTML = `<p class="mocknote">${MOCK.note(D.date)}</p>`;
 
