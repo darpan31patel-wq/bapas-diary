@@ -150,6 +150,8 @@ def build(a):
             if not Y.get('t'):
                 Y.pop('t', None); Y.pop('trip', None)
             Y['d'] = date
+            if re.fullmatch(r'\d{4}', (Y.get('place') or '').strip()):   # a few channel posts give the year where the town goes
+                Y['place'] = ''
             Y.pop('day', None)   # the stories stay on their own date's page; the card says only what its photos show
             out['years'].append(Y)
             out['cal'][str(y)] = (D.get('cal') or {}).get(str(y)) or [F['ti'], F['title'], '']
