@@ -3,7 +3,7 @@ name: Festival mockup fetch (test branch only, never ship)
 on:
   push:
     branches: [claude/project-thread-lcbb5g]
-    paths: ['.github/workflows/festfetch.yml']
+    paths: ['.github/workflows/festfetch.yml', 'preview/fest/want.txt']
 
 permissions:
   contents: write
@@ -11,30 +11,26 @@ permissions:
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - name: Diwali list and photos from the website (run 2)
+      - name: Every festival list, and the photos asked for in want.txt (run 3)
         run: |
-          mkdir -p preview/fest/diwali
-          curl -sSfL -o preview/fest/diwali.json https://bapas-diary.com/data/fest/diwali.json
-          python3 - <<'P' > urls.txt
-          import json
-          d = json.load(open('preview/fest/diwali.json'))
-          for y in d['years']:
-              for p in y['p'][:4]:
-                  print(f"{y['y']}\t{p[0]}\t{p[1]}")
-          P
-          i=0
-          while IFS=$'\t' read -r y alb f; do
-            i=$((i+1)); o="preview/fest/diwali/$y-$i-${f##*/}"; [ -e "$o" ] && continue
-            for z in l o m; do curl -sSfL -o "$o" "https://photos.bapas-diary.com/$z/$alb/$f" && break || echo "miss $z $y $alb $f"; done
-          done < urls.txt
-          ls preview/fest/diwali | wc -l
+          mkdir -p preview/fest/json preview/fest/img
+          for k in diwali annakut janmashtami holi fuldol gurupurnima harinom vasant rathyatra raksha sharad psm msm; do
+            curl -sSfL -o "preview/fest/json/$k.json" "https://bapas-diary.com/data/fest/$k.json" || echo "miss $k"
+          done
+          touch preview/fest/want.txt
+          while IFS=$'\t' read -r alb f; do
+            [ -z "$f" ] && continue
+            o="preview/fest/img/$alb-${f##*/}"; [ -e "$o" ] && continue
+            for z in m l o; do curl -sSfL -o "$o" "https://photos.bapas-diary.com/$z/$alb/$f" && break; done || echo "miss $alb $f"
+          done < preview/fest/want.txt
+          ls preview/fest/img | wc -l
       - name: Save to the branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add preview/fest
-          git commit -q -m "Festival mockup photos [skip ci]"
+          git commit -q -m "Festival mockup photos [skip ci]" || exit 0
           git pull -q --rebase origin "${GITHUB_REF_NAME}" && git push -q
