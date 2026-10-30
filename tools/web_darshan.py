@@ -1,7 +1,7 @@
 """The Darshan tab's BAPS calendar words (Darpan, 29 Oct 2026: "yes" to the murti darshan archive, "split by design or
 colour or festivals"). Website only; run by .github/workflows/website-deploy.yml on the built site, after live/ is copied.
 
-Writes out/darshan/cal.js: for every day from 2025 on that the BAPS calendar has, the Indian date and the day's festival
+Writes out/darshan/cal.js: for every day from September 2022 on (the older days, from the murti channel) that the BAPS calendar has, the Indian date and the day's festival
 (the calendar's festival, else a smrutiparva, jayanti, ekadashi, punam or other special day from its notes), for the
 day squares and the By festival view. The photos and their colours come from photos.bapas-diary.com/darshan/archive.js,
 written each morning by the screensaver darshan robot (tools/screensaver/darshan_archive.py).
@@ -36,7 +36,7 @@ def main():
     a = ap.parse_args()
     db = sqlite3.connect(a.db)
     cal = {}
-    for d, ind, fest, notes in db.execute("SELECT date, indian_date, festivals, notes FROM calendar WHERE date >= '2025-01-01' ORDER BY date"):
+    for d, ind, fest, notes in db.execute("SELECT date, indian_date, festivals, notes FROM calendar WHERE date >= '2022-09-01' ORDER BY date"):
         f = festival(fest, notes)
         cal[d] = [ind or '', f] if f else [ind or '']
     os.makedirs(os.path.join(a.out, 'darshan'), exist_ok=True)

@@ -219,6 +219,9 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
 }
 @media (prefers-reduced-motion: reduce) { .card, .tile .t, .strip button { transition: none; } }
 </style>
+<!-- the days before 2026, from the London Mandir Murti Darshan channel (Darpan, 30 Oct 2026: "save older darshan"):
+     its photos carry no murti names (t01, t02, ...), so these days are in By day, colour and festival, not By murti -->
+<script src="https://photos.bapas-diary.com/darshan/older.js"></script>
 <script src="https://photos.bapas-diary.com/darshan/archive.js"></script>
 <script src="/darshan/cal.js"></script>
 </head>
@@ -266,6 +269,7 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
   const MURTIS = [["ddm", "Central shrine"], ["ddm_c", "Central shrine, close"], ["gm", "Ghanshyam Maharaj"], ["gm_c", "Ghanshyam Maharaj, close"],
     ["hkm_c", "Harikrishna Maharaj"], ["varni", "Nilkanth Varni"], ["bm", "Bhagatji Maharaj"], ["sm", "Shastriji Maharaj"], ["ym", "Yogiji Maharaj"], ["psm", "Pramukh Swami Maharaj"]];
   const NAME = Object.fromEntries(MURTIS);
+  const nm = c => NAME[c] || "Murti darshan";   // an older day's photo has no murti name
   const COLOURS = { Red: "#c4182c", Pink: "#e0508f", Orange: "#ef7d1a", Yellow: "#f2c71c", Green: "#3f9a4a", Blue: "#2f5fc4", Purple: "#8a4fc0", White: "#f4efe4" };
   const $ = id => document.getElementById(id);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -274,7 +278,8 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
   const src = (size, D, code) => `${PHOTOS}${size}/${D.d.replace(/-/g, "")}/${code}.jpg`;
   const both = c => c.length > 1 ? `${c[0]} and ${c[1].toLowerCase()}` : c[0];
 
-  const DAYS = (window.DARSHAN_DAYS || []).filter(D => D && D.d && D.k && D.k.length).map(D => {
+  const MANDIR = window.DARSHAN_DAYS || [], FIRST = MANDIR.length ? MANDIR[0].d : "9999";
+  const DAYS = (window.DARSHAN_OLDER || []).filter(D => D && D.d < FIRST).concat(MANDIR).filter(D => D && D.d && D.k && D.k.length).map(D => {
     const [y, m, dd] = D.d.split("-").map(Number), cal = CAL[D.d] || [];
     return { d: D.d, k: D.k, c: (D.c && D.c.length ? D.c : ["White"]).filter(c => COLOURS[c]), i: cal[0] || "", f: cal[1] || "", w: WDL[new Date(y, m - 1, dd).getDay()] };
   });
@@ -289,15 +294,15 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
     const D = DAYS[day];
     if (!D.k.includes(code)) code = D.k[0];
     const big = $("big");
-    big.src = src("m", D, code); big.alt = `${NAME[code]}, Neasden mandir, ${nice(D.d)}`;
+    big.src = src("m", D, code); big.alt = `${nm(code)}, Neasden mandir, ${nice(D.d)}`;
     $("k-week").textContent = day === N - 1 ? `Latest · ${D.w}` : D.w;
     $("k-date").textContent = nice(D.d);
     $("k-ind").textContent = D.i;
     $("k-tags").innerHTML = (D.f ? `<span class="fest">${esc(D.f)}</span>` : "") +
       `<span class="col">${D.c.map(c => `<span class="dot" style="background:${COLOURS[c]}"></span>`).join("")}${both(D.c)} shringar</span>`;
-    $("k-murti").textContent = NAME[code];
+    $("k-murti").textContent = nm(code);
     $("strip").innerHTML = D.k.map(c =>
-      `<button class="${c === code ? "on" : ""}" data-c="${c}" title="${NAME[c]}" aria-label="${NAME[c]}"><img src="${src("s", D, c)}" alt="" loading="lazy"></button>`).join("");
+      `<button class="${c === code ? "on" : ""}" data-c="${c}" title="${nm(c)}" aria-label="${nm(c)}"><img src="${src("s", D, c)}" alt="" loading="lazy"></button>`).join("");
     $("prev").disabled = day === 0; $("next").disabled = day === N - 1;
     document.querySelectorAll("#grid .tile").forEach(t => t.classList.toggle("on", +t.dataset.day === day));
     requestAnimationFrame(spot);
