@@ -71,7 +71,7 @@ h1 { font: 600 clamp(32px, 5vw, 52px)/1.1 var(--lora-f); margin: 6px 0 6px; lett
 .seg button { padding: 9px 20px; border-radius: 999px; border: 1px solid rgba(217,164,65,.45); background: transparent; color: #e3c48e;
   font: 600 13px var(--poppins-f); letter-spacing: .08em; cursor: pointer; }
 .seg button.on { background: linear-gradient(#ffe296, #d9a441); color: #3b1219; border-color: transparent; }
-.chips { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin: 0 0 22px; min-height: 0; }
+.chips { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin: 0 0 30px; min-height: 0; }
 .chips:empty { display: none; }
 .chips button { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; border: 1px solid rgba(217,164,65,.35);
   background: rgba(22,5,9,.35); color: #ecd6ab; font: 500 13px var(--poppins-f); cursor: pointer; }
@@ -110,21 +110,46 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
   .seg button { padding: 8px 13px; font-size: 12px; letter-spacing: .03em; }
 }
 
-/* By day: each month as the Calendar page shows it (look C): ivory cards in a week grid, the date on a dark backing,
-   the festival in gold along the bottom, softly faded until the mouse comes near (else around the chosen day) */
-.cal-months { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 640px), 1fr)); gap: 34px clamp(28px, 4vw, 64px); }
-.cal-month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; align-content: start; }
-.cal-title { grid-column: 1 / -1; text-align: center; margin: 0 0 4px; font: 500 clamp(30px, 3.4vw, 46px)/1.1 var(--lora-f);
-  background: linear-gradient(180deg, #ffe296, #ce9840); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.cal-wkd { font: 700 12px var(--sans); letter-spacing: .22em; color: #c9a98a; text-align: center; text-transform: uppercase; padding-bottom: 2px; }
-.card { --q: 0; position: relative; display: flex; flex-direction: column; padding: 4px; border: 0; border-radius: 3px; cursor: pointer; text-align: center;
+/* By day, as the Calendar page (Darpan, 30 Oct 2026: "the same style as the calendar we have already, a scrolling bar
+   left to right with the dates underneath, I don't like this long format that you scroll down"): the months side by
+   side in five week rows, oldest on the left, scrolled sideways by wheel, drag, swipe or the arrows; the month's name
+   above fades as the months pass; under them a bar of the months to jump to. Look C: ivory cards, the date on a dark
+   backing, the festival in gold along the bottom, softly faded until the mouse comes near (else around the chosen day) */
+.dcal { --cw: 120px; --g: 8px; --mgap: clamp(28px, 4vw, 64px); }
+.mtitle { position: relative; height: clamp(40px, 6vh, 60px); margin: 0 0 6px; }
+.mtitle span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; white-space: nowrap;
+  font: 500 clamp(30px, 5vh, 52px)/1 var(--lora-f); background: linear-gradient(180deg, #ffe296, #ce9840); -webkit-background-clip: text; background-clip: text; color: transparent;
+  transition: opacity .7s ease, transform .7s ease; }
+.mtitle span.out { opacity: 0; transform: translateY(8px); }
+.dtrack { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; cursor: grab; outline: none; margin: 0 calc(-1 * max(16px, 2.2vw)); }
+.dtrack::-webkit-scrollbar { display: none; }
+.dtrack.drag { cursor: grabbing; }
+.dribbon { display: flex; align-items: center; gap: var(--mgap); width: max-content; padding-block: 4px 12px; }
+.dmonth { flex: none; width: calc(7 * var(--cw) + 6 * var(--g)); height: var(--mh, 500px); display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: 26px repeat(5, minmax(0, 1fr)); gap: var(--g); transition: opacity .25s linear; }
+.cal-wkd { font: 700 clamp(11px, 1.6vh, 14px) var(--sans); letter-spacing: .22em; color: #c9a98a; text-align: center; text-transform: uppercase; align-self: end; }
+.dmonth .empty { min-width: 0; border: 1px dashed rgba(234,223,200,.13); border-radius: 3px; }
+.dbar { display: flex; align-items: center; gap: 6px; max-width: 1180px; margin: 6px auto 0; padding: 6px; border: 1px solid rgba(206,152,64,.35); border-radius: 18px; background: rgba(22,5,9,.55); }
+.dmonths { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: safe center; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.dmonths::-webkit-scrollbar { display: none; }
+.dmonths .mo { flex: 0 1 96px; min-width: 52px; border: 0; background: none; padding: 7px 8px; border-radius: 12px; cursor: pointer;
+  font: 700 12px var(--sans); letter-spacing: .06em; color: #c9a98a; transition: background .25s, color .25s; }
+.dmonths .mo:hover { color: var(--gold-hi); background: rgba(206,152,64,.14); }
+.dmonths .mo.on { background: linear-gradient(180deg, #ffe296, #ce9840); color: #160509; }
+.dmonths .ymark { flex: none; font: 700 12px var(--sans); letter-spacing: .14em; color: #160509; background: #ce9840; border-radius: 10px; padding: 4px 9px; margin: 0 6px; }
+.jarr { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(206,152,64,.5); background: none; color: var(--gold-hi);
+  font: 600 22px/1 var(--lora-f); cursor: pointer; display: grid; place-items: center; padding: 0 0 3px; }
+.jarr:hover { background: rgba(206,152,64,.18); }
+.jarr:disabled { opacity: .3; cursor: default; }
+.dmonths .mo:focus-visible, .jarr:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 1px; }
+.card { --q: 0; position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 4px; border: 0; border-radius: 3px; cursor: pointer; text-align: center;
   background: linear-gradient(170deg, #f8f2e4, #eadfc8); color: #3a1a12;
   filter: grayscale(calc(.82 - .82 * var(--q))) brightness(calc(.55 + .45 * var(--q)));
   box-shadow: 0 4px 12px rgba(0,0,0,.3), 0 0 calc(30px * var(--q)) calc(6px * var(--q)) rgba(255,206,110,calc(.38 * var(--q))); transition: box-shadow .3s; }
 .card:hover, .card:focus-visible { z-index: 2; outline: none; filter: none;
   box-shadow: 0 0 0 2px #ffe296, 0 0 18px 4px rgba(255,214,120,.55), 0 0 42px 10px rgba(206,152,64,.35), 0 6px 16px rgba(0,0,0,.42); }
 .card.on { filter: none; box-shadow: 0 0 0 2px #ffe296, 0 6px 16px rgba(0,0,0,.42); }
-.card .win { position: relative; width: 100%; aspect-ratio: 2755 / 2480; overflow: hidden; background: #2a0a10; }
+.card .win { position: relative; flex: 1; min-height: 0; width: 100%; overflow: hidden; background: #2a0a10; }
 .card .num { position: absolute; left: 3px; top: 3px; font: 600 clamp(14px, 1.5vw, 22px)/1 var(--lora-f); color: #f8f2e4; text-shadow: 0 1px 3px rgba(0,0,0,.6);
   padding: .12em .28em .16em; border-radius: .3em; background: rgba(22,5,9,.5); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
 .card .cfest { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 5px 4px; font: 700 clamp(8px, .72vw, 10.5px)/1.2 var(--sans); letter-spacing: .06em;
@@ -133,11 +158,25 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
 .card.blank .win { display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, #fbf6ea, #e9dcc0); }
 .card.blank .bnum { font: 600 clamp(20px, 2.4vw, 36px)/1 var(--lora-f); color: #6e1424; opacity: .55; }
 @media (max-width: 760px) {
-  .cal-month { gap: 4px; }
   .cal-wkd { font-size: 9px; letter-spacing: .1em; }
   .card { padding: 2px; }
   .card .num { font-size: 12px; left: 2px; top: 2px; }
-  .cal-month .card .cfest { display: none; }
+  .dmonth .card .cfest { display: none; }
+  .dtrack { margin: 0 -16px; }
+  .dbar { padding: 4px; } .jarr { width: 30px; height: 30px; }
+  .dmonths .mo { min-width: 44px; padding: 8px 6px; font-size: 11.5px; }
+}
+
+/* By colour, festival and murti: each colour, or each month, in its own softly framed section with room around it
+   (Darpan, 30 Oct 2026: "when you see everything together, it's all too crowded, please slightly split up each section") */
+.sect { margin: 0 0 clamp(30px, 3.6vw, 52px); padding: clamp(14px, 1.8vw, 24px) clamp(14px, 2vw, 28px) clamp(18px, 2.2vw, 30px);
+  border: 1px solid rgba(217,164,65,.22); border-radius: 18px; background: rgba(22,5,9,.34); box-shadow: 0 18px 40px rgba(0,0,0,.22); }
+.sect h3.group { margin: 0 0 18px; }
+.sect .grid { gap: 20px 16px; }
+@media (max-width: 760px) {
+  .sect { padding: 12px 10px 16px; border-radius: 14px; }
+  .sect h3.group { margin-bottom: 12px; font-size: 19px; }
+  .sect .grid { gap: 14px 8px; }
 }
 .card .cfest { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .card.future { background: none; border: 1.5px dashed rgba(255,226,150,.6); padding: 3px; box-shadow: none; filter: none; }
@@ -239,7 +278,7 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
     document.querySelectorAll("#grid .tile").forEach(t => t.classList.toggle("on", +t.dataset.day === day));
     requestAnimationFrame(spot);
   }
-  const go = i => { day = i; showDay(); try { history.replaceState(null, "", "#" + DAYS[i].d); } catch (e) {} };
+  const go = i => { day = i; showDay(); if (view === "day" && R) goMonth(R.months.findIndex(mo => mo.dataset.m === DAYS[i].d.slice(0, 7)), true); try { history.replaceState(null, "", "#" + DAYS[i].d); } catch (e) {} };
   $("strip").addEventListener("click", e => { const b = e.target.closest("button"); if (b) { code = b.dataset.c; showDay(); } });
   $("prev").onclick = () => { if (day > 0) go(day - 1); };
   $("next").onclick = () => { if (day < N - 1) go(day + 1); };
@@ -255,58 +294,130 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
 
   function render() {
     let chips = "", html = "";
+    const first = i => DAYS[i].k.includes("ddm") ? "ddm" : DAYS[i].k[0];
+    const fday = i => DAYS[i].f ? `<i class="f">${esc(DAYS[i].f)}</i>` : "";
+    // a framed section of tiles, one for each colour or month
+    const sect = (head, list) => `<section class="sect"><h3 class="group">${head}</h3><div class="grid${view === "fest" ? " wide" : ""}">${list}</div></section>`;
+    const byMonth = (list, head, each) => {
+      const months = [...new Set(list.map(i => DAYS[i].d.slice(0, 7)))];
+      return months.map(m => { const l = list.filter(i => DAYS[i].d.startsWith(m)), [y, mm] = m.split("-").map(Number);
+        return sect(`${MON[mm - 1]} ${y} <small>${head(l.length)}</small>`, l.map(each).join("")); }).join("");
+    };
     if (view === "day") {
-      // each month as the Calendar page shows it
-      const months = [...new Set(DAYS.map(D => D.d.slice(0, 7)))].reverse();
-      html += `<div class="cal-months">`;
+      // the months side by side as on the Calendar page, a sixth week wrapping into the empty boxes of the first
+      const months = [...new Set(DAYS.map(D => D.d.slice(0, 7)))];
+      html += `<div class="dcal"><div class="mtitle" aria-live="polite"><span id="t0"></span><span id="t1" class="out"></span></div>` +
+        `<div class="dtrack" id="dtrack" tabindex="0" aria-label="The days, scroll sideways"><div class="dribbon" id="dribbon">`;
       months.forEach(m => {
-        const [y, mm] = m.split("-").map(Number), first = new Date(y, mm - 1, 1).getDay(), len = new Date(y, mm, 0).getDate();
-        html += `<div class="cal-month"><h3 class="cal-title">${MON[mm - 1]} ${y}</h3>` + WD.map(w => `<div class="cal-wkd">${w}</div>`).join("");
-        for (let k = 0; k < first; k++) html += `<div></div>`;
+        const [y, mm] = m.split("-").map(Number), start = new Date(y, mm - 1, 1).getDay(), len = new Date(y, mm, 0).getDate(), cells = Array(35).fill(`<div class="empty"></div>`);
         for (let dd = 1; dd <= len; dd++) {
-          const iso = `${m}-${String(dd).padStart(2, "0")}`, i = BY[iso];
-          if (i == null) { html += `<div class="card blank${iso > DAYS[N - 1].d ? " future" : ""}"><div class="win"><span class="bnum">${dd}</span></div></div>`; continue; }
-          const D = DAYS[i], c = D.k.includes("ddm") ? "ddm" : D.k[0];
-          html += `<button class="card tile" data-day="${i}" data-code="${c}" aria-label="${nice(D.d)}${D.f ? ", " + esc(D.f) : ""}"><div class="win"><img src="${src("s", D, c)}" alt="" loading="lazy"><span class="num">${dd}</span>${D.f ? `<span class="cfest">${esc(D.f)}</span>` : ""}</div></button>`;
+          const iso = `${m}-${String(dd).padStart(2, "0")}`, i = BY[iso], p = (start + dd - 1) % 35;
+          if (i == null) { cells[p] = `<div class="card blank${iso > DAYS[N - 1].d ? " future" : ""}"><div class="win"><span class="bnum">${dd}</span></div></div>`; continue; }
+          const D = DAYS[i];
+          cells[p] = `<button class="card tile" data-day="${i}" data-code="${first(i)}" aria-label="${nice(D.d)}${D.f ? ", " + esc(D.f) : ""}"><div class="win"><img src="${src("s", D, first(i))}" alt="" loading="lazy" draggable="false"><span class="num">${dd}</span>${D.f ? `<span class="cfest">${esc(D.f)}</span>` : ""}</div></button>`;
         }
-        html += `</div>`;
+        html += `<div class="dmonth" data-m="${m}">` + WD.map(w => `<div class="cal-wkd">${w}</div>`).join("") + cells.join("") + `</div>`;
       });
-      html += `</div>`;
+      let yr = 0;
+      html += `</div></div><div class="dbar"><button class="jarr" id="mprev" type="button" aria-label="Month before">&#8249;</button><div class="dmonths" id="dmonths" role="group" aria-label="Months">` +
+        months.map((m, j) => { const [y, mm] = m.split("-").map(Number), mark = y !== yr ? `<span class="ymark">${y}</span>` : ""; yr = y;
+          return `${mark}<button class="mo" type="button" data-j="${j}" title="${MON[mm - 1]} ${y}">${MON[mm - 1].slice(0, 3)}</button>`; }).join("") +
+        `</div><button class="jarr" id="mnext" type="button" aria-label="Month after">&#8250;</button></div></div>`;
     } else if (view === "colour") {
-      // a day shows under both of its main colours
+      // a day shows under both of its main colours, each colour in its own section
       const counts = {}; DAYS.forEach(D => D.c.forEach(c => counts[c] = (counts[c] || 0) + 1));
       const list = Object.keys(COLOURS).filter(c => counts[c]);
       if (chip && !counts[chip]) chip = null;
       chips = `<button data-c="" class="${chip ? "" : "on"}">All colours</button>` + list.map(c =>
         `<button data-c="${c}" class="${chip === c ? "on" : ""}"><span class="dot" style="background:${COLOURS[c]}"></span>${c} <small>${counts[c]}</small></button>`).join("");
       (chip ? [chip] : list).forEach(c => {
-        html += `<h3 class="group"><span class="dot big" style="background:${COLOURS[c]}"></span>${c} <small>${counts[c]} ${counts[c] === 1 ? "day" : "days"}</small></h3><div class="grid">`;
-        newest().filter(i => DAYS[i].c.includes(c)).forEach(i => html += tile(i, DAYS[i].k.includes("ddm") ? "ddm" : DAYS[i].k[0], short(DAYS[i].d), DAYS[i].f ? `<i class="f">${esc(DAYS[i].f)}</i>` : ""));
-        html += "</div>";
+        html += sect(`<span class="dot big" style="background:${COLOURS[c]}"></span>${c} <small>${counts[c]} ${counts[c] === 1 ? "day" : "days"}</small>`,
+          newest().filter(i => DAYS[i].c.includes(c)).map(i => tile(i, first(i), short(DAYS[i].d), fday(i))).join(""));
       });
     } else if (view === "fest") {
+      // each month's festivals in their own section
       const list = newest().filter(i => DAYS[i].f);
-      html += list.length ? `<div class="grid wide">` + list.map(i => tile(i, DAYS[i].k.includes("ddm") ? "ddm" : DAYS[i].k[0], DAYS[i].f, `<i>${nice(DAYS[i].d)}${DAYS[i].i ? " · " + esc(DAYS[i].i) : ""}</i>`)).join("") + "</div>"
+      html += list.length ? byMonth(list, n => `${n} ${n === 1 ? "festival" : "festivals"}`, i => tile(i, first(i), DAYS[i].f, `<i>${nice(DAYS[i].d)}${DAYS[i].i ? " · " + esc(DAYS[i].i) : ""}</i>`))
         : `<p class="none">No festival days yet.</p>`;
     } else {
       const c = chip || "gm_c";
       chips = MURTIS.map(([k, name]) => `<button data-c="${k}" class="${c === k ? "on" : ""}">${name}</button>`).join("");
-      html += `<h3 class="group">${NAME[c]} <small>day by day</small></h3><div class="grid">`;
-      newest().filter(i => DAYS[i].k.includes(c)).forEach(i => html += tile(i, c, short(DAYS[i].d), DAYS[i].f ? `<i class="f">${esc(DAYS[i].f)}</i>` : ""));
-      html += "</div>";
+      html += byMonth(newest().filter(i => DAYS[i].k.includes(c)), n => `${esc(NAME[c])} · ${n} ${n === 1 ? "day" : "days"}`, i => tile(i, c, short(DAYS[i].d), fday(i)));
     }
     $("chips").innerHTML = chips; $("grid").innerHTML = html;
     document.querySelectorAll("#grid .tile").forEach(t => t.classList.toggle("on", +t.dataset.day === day));
+    if (view === "day") ribbon();
     requestAnimationFrame(spot);
   }
+
+  // By day, the Calendar page's ribbon: five rows of days fill the height, every month the same width, the months fade
+  // by how far they are from the middle; the month in the middle names the title and lights up in the bar underneath
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let R = null, dragMoved = false;
+  function sizeRibbon() {
+    if (!R) return;
+    const W = R.track.clientWidth, g = Math.max(4, Math.min(10, innerHeight * .009)), h = Math.max(320, Math.min(780, innerHeight * .64));
+    const cw = Math.max(30, Math.min(((h - 26 - 5 * g) / 5) * 1.11, (W - 32 - 6 * g) / 7));
+    R.MW = 7 * cw + 6 * g;
+    const st = R.box.style; st.setProperty("--cw", cw + "px"); st.setProperty("--g", g + "px"); st.setProperty("--mh", 26 + 5 * g + 5 * (cw / 1.11) + "px");
+    const pad = Math.max(16, (W - R.MW) / 2); R.ribbon.style.paddingInline = pad + "px";
+    const m = R.months, n = m.length;
+    R.PAD = m[0].offsetLeft; R.GAP = n > 1 ? (m[n - 1].offsetLeft - m[0].offsetLeft) / (n - 1) - R.MW : 0;
+  }
+  function goMonth(j, smooth) {
+    if (!R) return;
+    const left = R.PAD + j * (R.MW + R.GAP) - (R.track.clientWidth - R.MW) / 2;
+    R.track.scrollTo({ left, behavior: smooth && !reduce ? "smooth" : "auto" });
+  }
+  let flip = 0;
+  function frame() {
+    R.tick = false;
+    const W = R.track.clientWidth, mid = R.track.scrollLeft + W / 2, n = R.months.length;
+    const j = Math.max(0, Math.min(n - 1, Math.round((mid - R.PAD - R.MW / 2) / (R.MW + R.GAP))));
+    R.months.forEach((mo, i) => { const c = R.PAD + i * (R.MW + R.GAP) + R.MW / 2, edge = Math.max(0, Math.abs(c - mid) - R.MW / 2);
+      mo.style.opacity = Math.max(.28, 1 - edge / (W * .55)).toFixed(3); });
+    if (j !== R.cur) {
+      R.cur = j; const [y, mm] = R.months[j].dataset.m.split("-").map(Number), t = [$("t0"), $("t1")];
+      t[1 - flip].textContent = `${MON[mm - 1]} ${y}`; t[1 - flip].classList.remove("out"); t[flip].classList.add("out"); flip = 1 - flip;
+      R.bar.querySelectorAll(".mo").forEach(b => { const on = +b.dataset.j === j; b.classList.toggle("on", on); if (on) b.scrollIntoView({ block: "nearest", inline: "nearest" }); });
+      $("mprev").disabled = j === 0; $("mnext").disabled = j === n - 1;
+    }
+    spot();
+  }
+  const kick = () => { if (R && !R.tick) { R.tick = true; requestAnimationFrame(frame); } };
+  function ribbon() {
+    const track = $("dtrack");
+    R = { box: track.parentNode, track, ribbon: $("dribbon"), bar: $("dmonths"), months: [...track.querySelectorAll(".dmonth")], cur: -1, tick: false };
+    flip = 0; sizeRibbon();
+    const want = R.months.findIndex(mo => mo.dataset.m === DAYS[day].d.slice(0, 7));
+    goMonth(want < 0 ? R.months.length - 1 : want, false); frame();
+    track.addEventListener("scroll", kick, { passive: true });
+    // the mouse wheel moves the days sideways, and the page on up or down once the first or last month is reached
+    track.addEventListener("wheel", e => {
+      if (e.ctrlKey || e.metaKey || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      const max = track.scrollWidth - track.clientWidth;
+      if ((e.deltaY < 0 && track.scrollLeft <= 0) || (e.deltaY > 0 && track.scrollLeft >= max - 1)) return;
+      track.scrollLeft += e.deltaY; e.preventDefault();
+    }, { passive: false });
+    track.addEventListener("keydown", e => { if (e.key === "ArrowLeft" || e.key === "ArrowRight") e.stopPropagation(); });
+    let down = null;
+    track.addEventListener("pointerdown", e => { if (e.pointerType !== "mouse") return; down = { x: e.clientX, s: track.scrollLeft }; dragMoved = false; });
+    track.addEventListener("pointermove", e => { if (!down) return; const dx = e.clientX - down.x; if (Math.abs(dx) > 4) { dragMoved = true; track.classList.add("drag"); } track.scrollLeft = down.s - dx; });
+    const up = () => { down = null; track.classList.remove("drag"); setTimeout(() => dragMoved = false, 0); };
+    track.addEventListener("pointerup", up); track.addEventListener("pointerleave", up);
+    R.bar.addEventListener("click", e => { const b = e.target.closest(".mo"); if (b) goMonth(+b.dataset.j, true); });
+    $("mprev").onclick = () => goMonth(Math.max(0, R.cur - 1), true);
+    $("mnext").onclick = () => goMonth(Math.min(R.months.length - 1, R.cur + 1), true);
+  }
+  addEventListener("resize", () => { if (view === "day" && R) { const j = R.cur; sizeRibbon(); goMonth(j, false); kick(); } });
   $("seg").addEventListener("click", e => {
     const b = e.target.closest("button"); if (!b) return;
-    view = b.dataset.v; chip = null;
+    view = b.dataset.v; chip = null; R = null;
     document.querySelectorAll("#seg button").forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-selected", x === b); }); render();
   });
   $("chips").addEventListener("click", e => { const b = e.target.closest("button"); if (b) { chip = b.dataset.c || null; render(); } });
   $("grid").addEventListener("click", e => {
-    const t = e.target.closest(".tile"); if (!t) return;
+    const t = e.target.closest(".tile"); if (!t || dragMoved) return;
     code = t.dataset.code; go(+t.dataset.day);
     scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   });
