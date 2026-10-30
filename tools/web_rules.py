@@ -30,7 +30,8 @@ from web_places import not_a_town, town_of
 
 HERE = R.HERE
 CARD_CHARS = 40   # a Today card's caption fits two lines in about this many letters (cards are 150 to 200 px wide)
-NEAR_DAYS = 7     # a day up to 7 days away may fill a year that has no photos on the date (make.py: 3; Darpan, 26 Oct 2026: "yes nearest day")
+NEAR_DAYS = 3     # a day up to 3 days away may fill a year that has no photos on the date (make.py: 3; Darpan, 26 Oct 2026: "yes nearest day";
+                  # 30 Oct 2026: 7 was too wide, "some of the pictures are very obviously not from that location or event", so 3 before and 3 after)
 TG_SAME_PERSON = .38   # make.py: the channel's photos are often old video stills of a younger Bapa
 TG_FACE_MIN = .1     # from 1999 on: a channel photo's face of Bapa is at least this part of the photo's height
 TG_FROM = 1950    # make.py: channel darshans of Bapa from this year (earlier ones are of the gurus before him)
