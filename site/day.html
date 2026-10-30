@@ -221,7 +221,7 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 .festhead p{margin:10px auto 0;max-width:62ch;font:500 italic clamp(16px,1.6vw,19px)/1.4 var(--serif);color:var(--cream);text-wrap:balance}
 .festhead .row{display:flex;justify-content:center;align-items:flex-end;gap:clamp(10px,2vw,26px)}
 .festhead .row svg{width:clamp(30px,3.4vw,44px);height:auto;overflow:visible}
-.festhead .row svg.thal{width:clamp(48px,5vw,68px)}
+.festhead .row svg.foot{width:clamp(48px,5vw,68px)}
 .festhead .row svg:nth-child(odd){transform:translateY(-6px)}
 .festday .label .fest,.festday .yhead .fest{display:none}   /* every card is the festival: no tag to say so */
 .sky{display:none}
@@ -236,10 +236,10 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
   radial-gradient(ellipse 70% 40% at 50% 100%,rgba(255,150,50,.16),transparent 70%),
   radial-gradient(ellipse 60% 30% at 50% 0%,rgba(120,80,200,.16),transparent 70%),
   linear-gradient(#0b0716,#1d0812 38%,var(--maroon-out)) no-repeat}
-.fest-diwali .card{background:linear-gradient(#2e0d17,#150409);border:1px solid #d9a441;
+.festday.fest-diwali .card{background:linear-gradient(#2e0d17,#150409);border:1px solid #d9a441;
   box-shadow:0 0 0 3px #150409,0 0 0 4px rgba(217,164,65,.55),0 12px 24px rgba(0,0,0,.5),0 0 38px rgba(255,170,60,.2)}
 .fest-diwali .card .label{color:var(--gold-hi)}
-.fest-diwali .card .yr{color:var(--gold-hi)}
+.festday.fest-diwali .card .yr{color:var(--gold-hi)}
 .fest-diwali .card .pl{color:var(--gold-soft)}
 .fest-diwali .card .ti,.fest-diwali .card .ev{color:var(--cream)}
 .fest-diwali .card .label::before{content:"";display:block;height:6px;margin:0 8% 8px;background:radial-gradient(circle,#d9a441 1.3px,transparent 1.8px) 50% 50%/9px 6px repeat-x;opacity:.8}
@@ -258,18 +258,25 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
   transform-origin:0 50%;transform:rotate(var(--a)) translateX(0);opacity:0;animation:fw var(--t,1.7s) cubic-bezier(.15,.7,.3,1) forwards;filter:drop-shadow(0 0 4px var(--c))}
 @keyframes fw{0%{opacity:1;transform:rotate(var(--a)) translateX(2px) scaleX(.3)}55%{opacity:1}100%{opacity:0;transform:rotate(var(--a)) translateX(var(--r)) translateY(14px) scaleX(1)}}
 
-/* Annakut and the New Year: warm saffron light, marigold garlands with mango leaves for the cords, falling marigold
-   petals, ivory frames edged in saffron with a thal of sweets at the foot */
-.page.fest-annakut{background:
-  radial-gradient(ellipse 70% 36% at 50% 0%,rgba(255,160,40,.26),transparent 70%),
-  radial-gradient(ellipse 90% 70% at 50% 30%,#4c1418,var(--maroon-out)) no-repeat}
-.fest-annakut .card{border:2px solid #e8891c;box-shadow:0 0 0 3px #fff3d6,0 0 0 4.5px #e8891c,0 12px 22px rgba(0,0,0,.45)}
-.fest-annakut .card .yr{color:#a23a10}
-.fest-annakut .card .deco.thal{width:clamp(46px,34%,68px);right:-18px;bottom:-14px;filter:drop-shadow(0 3px 3px rgba(0,0,0,.4))}
+/* The other festivals: ivory frames edged in the festival's colour (--fe), its year in a deeper shade (--fy), and a
+   little picture of the festival at the foot: a thal of sweets for Annakut, a pot of butter for Janmashtami, a
+   lotus for Guru Purnima, a chariot wheel for Rathyatra, a rakhi for Raksha Bandhan ... */
+.festday .card{border:2px solid var(--fe,#e8891c);box-shadow:0 0 0 3px #fff3d6,0 0 0 4.5px var(--fe,#e8891c),0 12px 22px rgba(0,0,0,.45)}
+.festday .card .yr{color:var(--fy,#a23a10)}
+.festday .card .deco.foot{width:clamp(46px,34%,68px);right:-18px;bottom:-14px;filter:drop-shadow(0 3px 3px rgba(0,0,0,.4))}
+.fire .flame{transform-origin:22px 34px}
+.ember{position:absolute;bottom:-20px;width:5px;height:5px;border-radius:50%;background:#ffb347;box-shadow:0 0 8px 2px rgba(255,120,30,.8);
+  animation:rise var(--t,9s) linear infinite;animation-delay:var(--d,0s)}
+@keyframes rise{0%{transform:translate(0,0);opacity:0}10%{opacity:1}100%{transform:translate(var(--s,20px),-80vh);opacity:0}}
+.puff{position:absolute;bottom:-200px;width:var(--w,160px);height:var(--w,160px);border-radius:50%;background:var(--c);filter:blur(34px);opacity:.3;
+  animation:rise var(--t,30s) linear infinite;animation-delay:var(--d,0s)}
+.star{position:absolute;width:2px;height:2px;border-radius:50%;background:#fff;box-shadow:0 0 4px #fff;animation:twinkle 3s ease-in-out infinite alternate;animation-delay:var(--d,0s)}
+.moon{position:absolute;top:clamp(80px,12vh,130px);right:6vw;width:clamp(70px,9vw,130px);aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle at 40% 38%,#fffdf3,#f3ead0 60%,#dccfa6);box-shadow:0 0 60px 20px rgba(255,248,220,.22),0 0 140px 60px rgba(255,248,220,.1)}
 .petal{position:absolute;top:-30px;width:12px;height:16px;border-radius:60% 60% 50% 50%/70% 70% 40% 40%;
-  background:radial-gradient(circle at 40% 30%,#ffd56a,#ff9f1c 60%,#d9650c);opacity:.75;animation:fall var(--t,16s) linear infinite;animation-delay:var(--d,0s)}
+  background:radial-gradient(circle at 40% 30%,rgba(255,255,255,.55),var(--c,#ff9f1c) 60%);opacity:.75;animation:fall var(--t,16s) linear infinite;animation-delay:var(--d,0s)}
 @keyframes fall{0%{transform:translate(0,-5vh) rotate(0)}50%{transform:translate(var(--s,30px),50vh) rotate(200deg)}100%{transform:translate(0,108vh) rotate(400deg)}}
-@media (prefers-reduced-motion:reduce){.diya .flame,.diya .glow,.bulb,.petal{animation:none}.fw{display:none}}
+@media (prefers-reduced-motion:reduce){.diya .flame,.diya .glow,.bulb,.petal,.star{animation:none}.fw,.ember,.puff{display:none}}
 </style>
 
 <nav class="site-menu" aria-label="Website tabs"><a href="/" class="on" aria-current="page">Today</a><a href="/calendar/">Calendar</a><a href="{{SEARCH}}">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/about/">About</a></nav>
@@ -279,6 +286,8 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
   <linearGradient id="fdf" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff6a00"/><stop offset=".55" stop-color="#ffc23a"/><stop offset="1" stop-color="#fff6c8"/></linearGradient>
   <linearGradient id="fdb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9733a"/><stop offset="1" stop-color="#7a2d12"/></linearGradient>
   <linearGradient id="fth" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe08a"/><stop offset=".6" stop-color="#d9a441"/><stop offset="1" stop-color="#8a5a12"/></linearGradient>
+  <linearGradient id="fsv" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f6fa"/><stop offset=".6" stop-color="#b8c2d0"/><stop offset="1" stop-color="#6b7688"/></linearGradient>
+  <linearGradient id="fcl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c4622d"/><stop offset="1" stop-color="#7a2d12"/></linearGradient>
   <radialGradient id="fld" cx=".35" cy=".3"><stop offset="0" stop-color="#ffe07a"/><stop offset=".7" stop-color="#ffa21f"/><stop offset="1" stop-color="#c66a0c"/></radialGradient>
 </defs></svg>
 <div class="wrap">
@@ -467,23 +476,84 @@ const festsOf = c => {
   return KEEP.filter(([, re]) => parts.some(x => re.test(x))).map(([name]) => name);
 };
 const festOf = c => festsOf(c).join(' · ');
-// Festival days (Darpan, 30 Oct 2026): on the day this year's BAPS calendar names Diwali or Annakut, the board shows every
-// year's Diwali (or Annakut) on its own Indian date, made by tools/web_festival.py, dressed for the festival: for Diwali
-// fireworks in the sky, strings of lights for cords and a diya at each card's foot; for Annakut marigold garlands, falling
-// petals and a thal of sweets. Only photos with Bapa, as on every Today card.
+// Festival days (Darpan, 30 Oct 2026): on the day this year's BAPS calendar names a festival, the board shows every
+// year's festival on its own Indian date, made by tools/web_festival.py, dressed for the festival (Diwali: fireworks,
+// strings of lights, a diya at each card's foot; Annakut: marigold garlands, falling petals, a thal of sweets; and so on
+// for each one, "I want to do that for all the festivals"). Only photos with Bapa, as on every Today card.
+// re: its name in the calendar; bg: the page's light; fe, fy: the frame's edge and year colours; sky, rope, foot below.
+const SAFFRON = 'radial-gradient(ellipse 70% 36% at 50% 0%,rgba(255,160,40,.26),transparent 70%),radial-gradient(ellipse 90% 70% at 50% 30%,#4c1418,var(--maroon-out)) no-repeat';
+const MOONLIT = 'radial-gradient(ellipse 50% 30% at 85% 0%,rgba(255,250,220,.18),transparent 70%),linear-gradient(#0d0b1c,#1d0b14 45%,var(--maroon-out)) no-repeat';
+const MARIGOLD = ['#ff9a1a', '#ff9a1a', '#ffc233'], ROSES = ['#e0245e', '#ff8fab'], JASMINE = ['#fffdf5', '#efe6cc'];
 const FESTIVE = {
-  diwali: {many: 'Diwalis', head: 'Diwali through the years', line: 'Every Diwali with Bapa, each year on its own Indian date. Happy Diwali 🪔'},
-  annakut: {many: 'Annakuts', head: 'Annakut through the years', line: 'Every Annakut with Bapa, the thal, the sweets and the offering, each year on its own Indian date. Nutan Varshabhinandan 🙏🏽'},
+  diwali: {re: /^diwali$/i, many: 'Diwalis', line: 'Every Diwali with Bapa, each year on its own Indian date. Happy Diwali 🪔',
+    sky: ['fireworks'], rope: ['bulbs'], foot: 'diyas'},
+  annakut: {re: /annakut/i, many: 'Annakuts', line: 'Every Annakut with Bapa, the thal, the sweets and the offering, each year on its own Indian date. Nutan Varshabhinandan 🙏🏽',
+    bg: SAFFRON, fe: '#e8891c', fy: '#a23a10', sky: ['fall', ['#ff9f1c', '#ffb020']], rope: ['beads', MARIGOLD, 1], foot: 'thal'},
+  janmashtami: {re: /janmashtami/i, line: 'Every Janmashtami with Bapa, each year on its own Indian date. Happy Janmashtami 🙏🏽',
+    bg: 'radial-gradient(ellipse 60% 35% at 50% 0%,rgba(80,120,220,.22),transparent 70%),linear-gradient(#070b1f,#12102a 40%,var(--maroon-out)) no-repeat',
+    fe: '#1f7a8c', fy: '#1b3f7a', sky: ['stars'], rope: ['feathers'], foot: 'matki'},
+  holi: {re: /^holi\b/i, line: 'Every Holi with Bapa, each year on its own Indian date. 🙏🏽',
+    bg: 'radial-gradient(ellipse 70% 40% at 50% 100%,rgba(255,110,30,.28),transparent 70%),linear-gradient(#140608,#2a0a0c 50%,var(--maroon-out)) no-repeat',
+    fe: '#e25822', fy: '#a8320f', sky: ['embers'], rope: ['beads', ['#ff6a00', '#ffb020']], foot: 'fire'},
+  fuldol: {re: /pushpadol|fuldol|dhuleti/i, line: 'Every Fuldol with Bapa, the colours and the flowers, each year on its own Indian date. 🙏🏽',
+    bg: 'radial-gradient(circle at 15% 20%,rgba(255,61,127,.2),transparent 40%),radial-gradient(circle at 85% 30%,rgba(255,212,0,.16),transparent 40%),radial-gradient(ellipse 90% 70% at 50% 30%,var(--maroon-in),var(--maroon-out)) no-repeat',
+    fe: '#e0457b', fy: '#a0204f', sky: ['puffs', ['#ff3d7f', '#ffd400', '#35c759', '#3db7ff', '#ff8a1a', '#b05cff']],
+    rope: ['beads', ['#ff3d7f', '#ffd400', '#35c759', '#3db7ff', '#ff8a1a']], foot: 'colours'},
+  gurupurnima: {re: /guru purnima/i, line: 'Every Guru Purnima with Bapa, each year on its own Indian date. 🙏🏽',
+    bg: MOONLIT, fe: '#c9a227', fy: '#7a5a0c', sky: ['moon'], rope: ['beads', JASMINE, 1], foot: 'lotus'},
+  harinom: {re: /hari-?nom|hari navmi|swaminarayan jayanti/i, line: "Every Swaminarayan Jayanti with Bapa, Shriji Maharaj's birthday, each year on its own Indian date. 🙏🏽",
+    bg: SAFFRON, fe: '#e8891c', fy: '#a23a10', sky: ['fall', ROSES], rope: ['beads', MARIGOLD, 1], foot: 'kalash'},
+  vasant: {re: /vasant panch/i, line: 'Every Vasant Panchami with Bapa, each year on its own Indian date. 🙏🏽',
+    bg: 'radial-gradient(ellipse 70% 36% at 50% 0%,rgba(255,215,0,.22),transparent 70%),radial-gradient(ellipse 90% 70% at 50% 30%,var(--maroon-in),var(--maroon-out)) no-repeat',
+    fe: '#e6b800', fy: '#8a6a00', sky: ['fall', ['#ffd400', '#ffe866']], rope: ['beads', ['#ffd400', '#ffe866', '#ffd400'], 1], foot: 'flowers'},
+  rathyatra: {re: /rath ?yatra/i, line: 'Every Rathyatra with Bapa, each year on its own Indian date. 🙏🏽',
+    fe: '#c0262d', fy: '#9b1c22', rope: ['flags', ['#c0262d', '#ffb020', '#2e7d32', '#1565c0', '#fff3d6']], foot: 'wheel'},
+  raksha: {re: /raksha ?bandhan/i, line: 'Every Raksha Bandhan with Bapa, each year on its own Indian date. 🙏🏽',
+    fe: '#d01f3c', fy: '#9b1c2e', sky: ['fall', ['#ffd56a', '#ff8fab']], rope: ['thread'], foot: 'rakhi'},
+  sharad: {re: /sharad pun|gunatitanand swami'?s birthday/i, line: "Every Sharad Punam with Bapa, Gunatitanand Swami's birthday, each year on its own Indian date. 🙏🏽",
+    bg: MOONLIT, fe: '#9aa8bd', fy: '#4a5568', sky: ['moon'], rope: ['beads', JASMINE, 1], foot: 'bowl'},
+  psm: {re: /pramukh swami maharaj('?s)? (janma )?jayanti(?! celebration)/i, line: 'Every birthday of Pramukh Swami Maharaj with Bapa, each year on its own Indian date. 🙏🏽',
+    bg: SAFFRON, fe: '#c9a227', fy: '#7a3a10', sky: ['fall', ['#e0245e', '#ff8fab', '#ffd56a']], rope: ['beads', ROSES, 1], foot: 'garland'},
+  msm: {re: /mahant swami maharaj('?s)? (janma )?jayanti(?! celebration)/i, line: 'Every birthday of Mahant Swami Maharaj with Bapa, each year on its own Indian date. 🙏🏽',
+    bg: SAFFRON, fe: '#c9a227', fy: '#7a3a10', sky: ['fall', ['#e0245e', '#ff8fab', '#ffd56a']], rope: ['beads', ROSES, 1], foot: 'garland'},
 };
-const festKey = c => { const f = festsOf(c); return f.includes('Diwali') ? 'diwali' : f.includes('Annakut') ? 'annakut' : ''; };
+const festKey = c => {
+  const parts = c ? [c[1], c[2]].filter(Boolean).join(';').split(/[;,\/]| and /).map(x => x.trim()).filter(Boolean) : [];
+  return Object.keys(FESTIVE).find(k => parts.some(x => FESTIVE[k].re.test(x))) || '';
+};
 const longDate = d => `${+d.slice(8)} ${MONTHS[+d.slice(5, 7) - 1]}`;   // '2014-10-23' -> '23 October'
 const DIYA = cls => `<svg class="diya ${cls}" viewBox="0 0 40 40" aria-hidden="true"><circle class="glow" cx="20" cy="15" r="14" fill="url(#fdg)"/>` +
   '<path class="flame" d="M20 3C22.5 9 25 12 25 16a5 5 0 0 1-10 0c0-4 2.5-7 5-13z" fill="url(#fdf)"/><path d="M3 22q17-3 34 0-2 12-17 13Q5 34 3 22z" fill="url(#fdb)"/>' +
   '<path d="M3 22q17 3 34 0" fill="none" stroke="#ffd27a" stroke-width="1.3"/><path d="M8 27h24" stroke="#ffd27a" stroke-width=".8" stroke-dasharray="1.5 2.5" opacity=".7"/></svg>';
-const THAL = cls => `<svg class="thal ${cls}" viewBox="0 0 56 36" aria-hidden="true"><ellipse cx="28" cy="29" rx="26" ry="6" fill="url(#fth)" stroke="#8a5a12" stroke-width=".8"/>` +
-  '<ellipse cx="28" cy="28" rx="20" ry="3.6" fill="#fff0b8" opacity=".45"/><path d="M41 27q8-7 13-3-6 5-13 3z" fill="#3f8a2e"/>' +
-  [[18, 24], [26.5, 24], [35, 24], [22.2, 17], [30.8, 17], [26.5, 10.3]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4.3" fill="url(#fld)" stroke="#b8620e" stroke-width=".5"/>`).join('') + '</svg>';
-const DRESS = {diwali: DIYA('deco l') + DIYA('deco r'), annakut: THAL('deco')};
+const ring = (n, cx, cy, rx, ry, r, cols) => Array.from({length: n}, (_, i) => { const a = i / n * 2 * Math.PI;
+  return `<circle cx="${(cx + rx * Math.cos(a)).toFixed(1)}" cy="${(cy + ry * Math.sin(a)).toFixed(1)}" r="${r}" fill="${cols[i % cols.length]}"/>`; }).join('');
+// a little picture of each festival, for the foot of every card and the row above the board's title
+const PICS = {
+  thal: ['0 0 56 36', '<ellipse cx="28" cy="29" rx="26" ry="6" fill="url(#fth)" stroke="#8a5a12" stroke-width=".8"/><ellipse cx="28" cy="28" rx="20" ry="3.6" fill="#fff0b8" opacity=".45"/><path d="M41 27q8-7 13-3-6 5-13 3z" fill="#3f8a2e"/>' +
+    [[18, 24], [26.5, 24], [35, 24], [22.2, 17], [30.8, 17], [26.5, 10.3]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4.3" fill="url(#fld)" stroke="#b8620e" stroke-width=".5"/>`).join('')],
+  matki: ['0 0 48 44', '<path d="M10 20q-5 11 4 18q10 6 20 0q9-7 4-18z" fill="url(#fcl)"/><rect x="13" y="14" width="22" height="7" rx="3" fill="#a8461c"/>' +
+    '<path d="M12 27q12 5 24 0" stroke="#ffd27a" stroke-width="2" fill="none" stroke-dasharray="2 2"/><ellipse cx="24" cy="14" rx="12" ry="3.6" fill="#fff8e6"/><path d="M15 13q9-10 18 0z" fill="#fffdf3"/>'],
+  lotus: ['0 0 56 38', '<path d="M28 4q8 12 0 26q-8-14 0-26z" fill="#f8a5c2"/><path d="M28 30q-4-16-14-20q-2 14 14 20z M28 30q4-16 14-20q2 14-14 20z" fill="#f06292"/>' +
+    '<path d="M28 31q-14-6-24-4q8 10 24 4z M28 31q14-6 24-4q-8 10-24 4z" fill="#ec407a"/><ellipse cx="28" cy="34" rx="17" ry="2.6" fill="#3f8a2e"/>'],
+  kalash: ['0 0 48 50', '<path d="M14 15q-6-6-10-4q4 6 10 4z M34 15q6-6 10-4q-4 6-10 4z M20 13q-4-8-8-8q2 8 8 8z M28 13q4-8 8-8q-2 8-8 8z" fill="#3f8a2e"/>' +
+    '<ellipse cx="24" cy="10" rx="7" ry="8" fill="#8a5a2b"/><rect x="16" y="15" width="16" height="5" rx="2" fill="url(#fth)"/>' +
+    '<path d="M16 20q-10 6-6 16q6 11 14 11q8 0 14-11q4-10-6-16z" fill="url(#fth)" stroke="#8a5a12" stroke-width=".8"/><path d="M11 29q13 5 26 0" stroke="#c0262d" stroke-width="2.4" fill="none"/>'],
+  wheel: ['0 0 44 44', Array.from({length: 8}, (_, i) => `<path d="M22 22L${(22 + 16 * Math.cos(i * Math.PI / 4)).toFixed(1)} ${(22 + 16 * Math.sin(i * Math.PI / 4)).toFixed(1)}" stroke="#8a3a12" stroke-width="2.2"/>`).join('') +
+    '<circle cx="22" cy="22" r="18" fill="none" stroke="#8a3a12" stroke-width="4.5"/><circle cx="22" cy="22" r="15.5" fill="none" stroke="#e6b450" stroke-width="1.4"/><circle cx="22" cy="22" r="4.5" fill="url(#fth)" stroke="#8a3a12"/>'],
+  rakhi: ['0 0 56 40', '<path d="M0 22q14-5 28 0t28 0" stroke="#d01f3c" stroke-width="2.4" fill="none"/>' + ring(8, 28, 21, 9, 9, 5, ['#ffb020', '#ffd56a']) +
+    '<circle cx="28" cy="21" r="6.5" fill="#d01f3c"/><circle cx="28" cy="21" r="3" fill="url(#fth)"/>'],
+  bowl: ['0 0 52 36', '<path d="M6 16q20 5 40 0q-3 17-20 17q-17 0-20-17z" fill="url(#fsv)"/><ellipse cx="26" cy="16" rx="20" ry="5" fill="#fffaf0"/>' +
+    '<circle cx="20" cy="15" r="1" fill="#f0a020"/><circle cx="29" cy="17" r="1" fill="#f0a020"/><circle cx="33" cy="14.5" r="1" fill="#3f8a2e"/><path d="M30 13l12-10" stroke="#9aa8bd" stroke-width="2.4" stroke-linecap="round"/>'],
+  colours: ['0 0 60 36', '<ellipse cx="30" cy="28" rx="28" ry="6" fill="url(#fth)" stroke="#8a5a12" stroke-width=".8"/><path d="M8 27q6-13 13 0z" fill="#ff3d7f"/>' +
+    '<path d="M22 27q8-16 16 0z" fill="#ffd400"/><path d="M39 27q6-13 13 0z" fill="#35c759"/><circle cx="14" cy="11" r="3" fill="#ff3d7f" opacity=".5"/><circle cx="30" cy="6" r="3.4" fill="#ffd400" opacity=".5"/><circle cx="46" cy="12" r="2.8" fill="#35c759" opacity=".5"/>'],
+  fire: ['0 0 44 44', '<circle class="glow" cx="22" cy="24" r="18" fill="url(#fdg)"/><path class="flame" d="M22 4C27 13 32 18 32 26a10 10 0 0 1-20 0c0-7 5-13 10-22z" fill="url(#fdf)"/>' +
+    '<rect x="6" y="33" width="32" height="5" rx="2.5" fill="#6b3a1c" transform="rotate(-12 22 35)"/><rect x="6" y="33" width="32" height="5" rx="2.5" fill="#5a2f15" transform="rotate(12 22 35)"/>'],
+  flowers: ['0 0 56 38', '<path d="M8 34q20-14 40 0" stroke="#3f8a2e" stroke-width="2" fill="none"/>' +
+    [[14, 22], [28, 14], [42, 22]].map(([x, y]) => ring(6, x, y, 5, 5, 4, ['#ffd400', '#ffe866']) + `<circle cx="${x}" cy="${y}" r="3.2" fill="#f08a00"/>`).join('')],
+  garland: ['0 0 52 44', ring(18, 26, 18, 18, 14, 3.6, ['#e0245e', '#ff8fab']) + '<path d="M26 32v8" stroke="#ffd56a" stroke-width="2"/><circle cx="26" cy="41" r="2.6" fill="#ffd56a"/>'],
+};
+const PIC = (k, cls) => `<svg class="foot ${k}${k === 'fire' ? ' diya' : ''} ${cls}" viewBox="${PICS[k][0]}" aria-hidden="true">${PICS[k][1]}</svg>`;
+const dressOf = k => FESTIVE[k].foot === 'diyas' ? DIYA('deco l') + DIYA('deco r') : PIC(FESTIVE[k].foot, 'deco');
 const tithiOf = c => c ? c[0] : '';
 // What each On this day post says beyond its one line (Darpan, 29 Oct 2026: "lots more information ... incorporate more"):
 // s = [year, place, line, {ti: Indian date, h: title, w: [paragraphs, or the UK diary's lines], l: 1 for a diary day}],
@@ -578,14 +648,17 @@ function render() {
   everyPhoto = [];
   const n = D.years.reduce((s, Y) => s + Y.p.length + (Y.t || []).length, 0);
   const shown = D.years.filter(Y => Y.p.length || (Y.t || []).length).length;
-  $('count').textContent = D.fest ? `${shown} ${FESTIVE[D.fest].many} and ${n.toLocaleString()} photos with Bapa.`
+  const F = D.fest && FESTIVE[D.fest];
+  $('count').textContent = F ? `${shown} ${F.many || 'years of ' + D.title} and ${n.toLocaleString()} photos with Bapa.`
                         : n ? `${shown} years and ${n.toLocaleString()} photos from this day.`
                              : `${years.length} years remembered on this day.`;
   const page = document.querySelector('.page');
-  page.classList.remove('festday', 'fest-diwali', 'fest-annakut');
-  if (D.fest) page.classList.add('festday', 'fest-' + D.fest);
-  $('festhead').innerHTML = D.fest ? `<div class="row">${(D.fest === 'diwali' ? [1, 2, 3, 4, 5].map(() => DIYA('')) : [1, 2, 3].map(() => THAL(''))).join('')}</div>` +
-    `<h2>${FESTIVE[D.fest].head}</h2><p>${FESTIVE[D.fest].line}</p>` : '';
+  [...page.classList].filter(c => c === 'festday' || c.startsWith('fest-')).forEach(c => page.classList.remove(c));
+  if (F) page.classList.add('festday', 'fest-' + D.fest);
+  page.style.background = F && F.bg || '';
+  page.style.setProperty('--fe', F && F.fe || ''); page.style.setProperty('--fy', F && F.fy || '');
+  $('festhead').innerHTML = F ? `<div class="row">${(F.foot === 'diyas' ? [1, 2, 3, 4, 5].map(() => DIYA('')) : [1, 2, 3].map(() => PIC(F.foot, ''))).join('')}</div>` +
+    `<h2>${esc(D.title)} through the years</h2><p>${esc(F.line)}</p>` : '';
   sky(D.fest);
   if (window.MOCK && MOCK.note && MOCK.note(D.date)) $('mocknote').innerHTML = `<p class="mocknote">${MOCK.note(D.date)}</p>`;
 
@@ -642,7 +715,7 @@ function card(y, {Y, place, stories}, want = true) {
     (ti ? `<div class="ti">${esc(ti)}</div>` : '') + (ev ? `<div class="ev">${esc(ev)}</div>` : '') +
     (fest ? `<div class="fest">${esc(fest)}</div>` : '');   // no "4 of 4" counter (Darpan, 26 Oct 2026)
   el.append(lab);
-  if (DAY.fest) el.insertAdjacentHTML('beforeend', DRESS[DAY.fest]);   // diyas at its feet, or a thal of sweets
+  if (DAY.fest) el.insertAdjacentHTML('beforeend', dressOf(DAY.fest));   // diyas at its feet, or a thal of sweets, a lotus ...
   const cap = document.createElement('div'); cap.className = 'cap';
   cap.textContent = photos.length ? '' : 'On this day';
   slot.append(el, cap); $('cards').append(slot);
@@ -889,50 +962,83 @@ function cords() {
   // in front of the cards, so the lights and flowers drape over the tops of the frames
   $('lights').innerHTML = DAY && DAY.fest ? Object.keys(rows).map(t => { const y = +t - 5; return dress(DAY.fest, y - D / 2, y + 1.5 * D, vw); }).join('') : '';
 }
-// on a festival day each rope is dressed: Diwali hangs a string of little lights along it, Annakut a marigold garland
-// with mango leaves (Darpan, 30 Oct 2026). The rope is a parabola, so x runs straight across and y follows the curve.
+// on a festival day each rope is dressed (Darpan, 30 Oct 2026): Diwali hangs a string of little lights along it, Annakut
+// a marigold garland with mango leaves, Guru Purnima jasmine, Janmashtami peacock feathers, Rathyatra flags, Raksha
+// Bandhan a rakhi thread. The rope is a parabola, so x runs straight across and y follows the curve.
 function dress(k, a, q, vw) {
   const at = x => { const t = x / vw; return (1 - t) * (1 - t) * a + 2 * (1 - t) * t * q + t * t * a; };
+  const [kind, C, leaves] = FESTIVE[k].rope || [];
   let out = '';
-  if (k === 'diwali') {
-    const C = ['#ffd36b', '#ff8a3d', '#ff5f7a', '#9fe3ff', '#b6ff8a', '#fff1c2'];
+  if (kind === 'bulbs') {
+    const B = ['#ffd36b', '#ff8a3d', '#ff5f7a', '#9fe3ff', '#b6ff8a', '#fff1c2'];
     for (let x = 14, i = 0; x < vw; x += 34, i++) {
-      const y = at(x) + 3, c = C[i % C.length];
+      const y = at(x) + 3, c = B[i % B.length];
       out += `<g class="bulb" style="animation-delay:-${(i * .37 % 2.4).toFixed(2)}s"><circle cx="${x}" cy="${y + 7}" r="9" fill="${c}" opacity=".22"/>` +
         `<rect x="${x - 2}" y="${y}" width="4" height="4" rx="1" fill="#3a2a18"/><ellipse cx="${x}" cy="${y + 8}" rx="3.4" ry="4.6" fill="${c}"/></g>`;
     }
-  } else {
+  } else if (kind === 'beads') {
     for (let x = 0, i = 0; x < vw + 8; x += 8, i++) {
       const y = at(x);
-      out += `<circle cx="${x}" cy="${y}" r="5.6" fill="${i % 3 === 1 ? '#ffc233' : '#ff9a1a'}" stroke="#c4580a" stroke-width=".8"/>`;
-      if (i % 15 === 7) out += `<path d="M${x} ${y + 4}q-5 9 0 16q5-7 0-16z" fill="#3f8a2e"/><path d="M${x} ${y + 6}v12" stroke="#2c6620" stroke-width=".8"/>`;
+      out += `<circle cx="${x}" cy="${y}" r="5.6" fill="${C[i % C.length]}" stroke="rgba(90,40,10,.45)" stroke-width=".8"/>`;
+      if (leaves && i % 15 === 7) out += `<path d="M${x} ${y + 4}q-5 9 0 16q5-7 0-16z" fill="#3f8a2e"/><path d="M${x} ${y + 6}v12" stroke="#2c6620" stroke-width=".8"/>`;
+    }
+  } else if (kind === 'flags') {
+    for (let x = 10, i = 0; x < vw; x += 30, i++) {
+      const y = at(x), y2 = at(x + 24);
+      out += `<path d="M${x} ${y}L${x + 24} ${y2}L${x + 12} ${(y + y2) / 2 + 22}z" fill="${C[i % C.length]}" stroke="rgba(0,0,0,.25)" stroke-width=".6"/>`;
+    }
+  } else if (kind === 'thread') {
+    const d = `M 0 ${a.toFixed(1)} Q ${vw / 2} ${q.toFixed(1)} ${vw} ${a.toFixed(1)}`;
+    out += `<path d="${d}" fill="none" stroke="#d01f3c" stroke-width="4"/><path d="${d}" fill="none" stroke="#ffd56a" stroke-width="1.6" stroke-dasharray="5 4"/>`;
+    for (let x = 70; x < vw; x += 150) out += `<g transform="translate(${x - 28} ${at(x) - 21})">${PICS.rakhi[1]}</g>`;
+  } else if (kind === 'feathers') {
+    for (let x = 0, i = 0; x < vw + 8; x += 9, i++) out += `<circle cx="${x}" cy="${at(x)}" r="3.4" fill="${i % 2 ? '#e6b450' : '#1f7a8c'}"/>`;
+    for (let x = 60, i = 0; x < vw; x += 140, i++) {
+      const y = at(x), r = i % 2 ? 8 : -8;
+      out += `<g transform="rotate(${r} ${x} ${y})"><path d="M${x} ${y}v40" stroke="#6b8f3a" stroke-width="1.4"/>` +
+        `<ellipse cx="${x}" cy="${y + 46}" rx="9" ry="12" fill="#2e8b57"/><ellipse cx="${x}" cy="${y + 47}" rx="6" ry="8" fill="#e6b450"/>` +
+        `<ellipse cx="${x}" cy="${y + 48}" rx="4" ry="5.4" fill="#1565c0"/><ellipse cx="${x}" cy="${y + 49}" rx="2" ry="2.8" fill="#0b2545"/></g>`;
     }
   }
   return out;
 }
 
 // the sky behind the board: Diwali's fireworks burst now and then at the sides and the top, where the cards leave it
-// showing; at Annakut marigold petals drift down. Still while the board is paused, and never with reduced motion.
+// showing; petals drift down at Annakut, Swaminarayan Jayanti, Vasant Panchami, the Jayantis; embers rise at Holi,
+// clouds of colour at Fuldol; the stars of Krishna's midnight; the full moon of Guru Purnima and Sharad Punam.
+// Still while the board is paused, and never with reduced motion.
 let skyTimer = null;
 function sky(k) {
   const s = $('sky');
   clearTimeout(skyTimer); s.innerHTML = '';
-  if (!k || reduce) return;
-  const r = (a, b) => a + Math.random() * (b - a);
-  if (k === 'annakut') {
-    for (let i = 0; i < 18; i++) {
-      const p = document.createElement('i'); p.className = 'petal';
-      p.style.left = r(0, 100).toFixed(1) + '%';
-      p.style.setProperty('--t', r(14, 26).toFixed(1) + 's'); p.style.setProperty('--d', -r(0, 26).toFixed(1) + 's');
-      p.style.setProperty('--s', r(-60, 60).toFixed(0) + 'px'); p.style.scale = r(.6, 1.2).toFixed(2);
-      s.append(p);
-    }
+  const [kind, C] = k && FESTIVE[k].sky || [];
+  if (!kind) return;
+  const r = (a, b) => a + Math.random() * (b - a), pick = L => L[Math.floor(Math.random() * L.length)];
+  const add = (cls, css, vars) => { const e = document.createElement('i'); e.className = cls; Object.assign(e.style, css);
+    Object.entries(vars || {}).forEach(([n, v]) => e.style.setProperty(n, v)); s.append(e); return e; };
+  if (kind === 'moon' || kind === 'stars') {   // still, so even with reduced motion
+    if (kind === 'moon') add('moon', {});
+    for (let i = 0; i < (kind === 'stars' ? 70 : 30); i++) add('star', {left: r(0, 100).toFixed(1) + '%', top: r(0, 70).toFixed(1) + '%', opacity: r(.3, .9).toFixed(2)}, {'--d': -r(0, 3).toFixed(1) + 's'});
     return;
   }
-  const C = ['#ffd36b', '#ff7a45', '#ff5f9e', '#8fd8ff', '#b8ff7a', '#fff3cf', '#c99bff'];
+  if (reduce) return;
+  if (kind === 'fall') {
+    for (let i = 0; i < 18; i++) add('petal', {left: r(0, 100).toFixed(1) + '%', scale: r(.6, 1.2).toFixed(2)},
+      {'--c': pick(C), '--t': r(14, 26).toFixed(1) + 's', '--d': -r(0, 26).toFixed(1) + 's', '--s': r(-60, 60).toFixed(0) + 'px'});
+    return;
+  }
+  if (kind === 'embers') {
+    for (let i = 0; i < 26; i++) add('ember', {left: r(0, 100).toFixed(1) + '%'}, {'--t': r(7, 14).toFixed(1) + 's', '--d': -r(0, 14).toFixed(1) + 's', '--s': r(-40, 40).toFixed(0) + 'px'});
+    return;
+  }
+  if (kind === 'puffs') {
+    for (let i = 0; i < 12; i++) add('puff', {left: r(-5, 95).toFixed(1) + '%'}, {'--c': pick(C), '--w': r(110, 220).toFixed(0) + 'px', '--t': r(24, 40).toFixed(1) + 's', '--d': -r(0, 40).toFixed(1) + 's', '--s': r(-60, 60).toFixed(0) + 'px'});
+    return;
+  }
+  const FW = ['#ffd36b', '#ff7a45', '#ff5f9e', '#8fd8ff', '#b8ff7a', '#fff3cf', '#c99bff'];
   const pop = () => {
     if (!document.hidden && !paused) {
-      const b = document.createElement('div'), side = Math.random() < .7, c = C[Math.floor(Math.random() * C.length)], n = 22, R = r(50, 120);
+      const b = document.createElement('div'), side = Math.random() < .7, c = pick(FW), n = 22, R = r(50, 120);
       b.className = 'fw';
       b.style.left = (side ? (Math.random() < .5 ? r(.02, .16) : r(.84, .98)) : r(.2, .8)) * innerWidth + 'px';
       b.style.top = (side ? r(.1, .7) : r(.04, .2)) * innerHeight + 'px';
