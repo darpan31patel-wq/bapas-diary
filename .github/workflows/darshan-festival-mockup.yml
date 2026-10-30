@@ -1,0 +1,44 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain.
+# Helper for the Darshan tab By festival mockup: packs the live Darshan page, its css, cal.js, archive.js and the small
+# photos of every festival day into the release `darshan-festival-mockup`. Reads only bapas-diary.com and its photo store.
+name: darshan-festival-mockup
+on:
+  push:
+    branches: ['claude/project-thread-oaru9r']
+    paths: ['.github/workflows/darshan-festival-mockup.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Live page and festival photos
+        run: |
+          mkdir -p m/darshan && cd m
+          curl -sfL https://bapas-diary.com/darshan/ -o darshan/index.html
+          curl -sfL https://bapas-diary.com/darshan/cal.js -o darshan/cal.js
+          curl -sfL https://photos.bapas-diary.com/darshan/archive.js -o archive.js
+          for f in $(grep -oE '(href|src)="/[^"/][^"]*\.(css|js)"' darshan/index.html | sed -E 's/.*="\/([^"]*)"/\1/' | sort -u); do
+            mkdir -p "$(dirname "$f")"; curl -sfL "https://bapas-diary.com/$f" -o "$f" || echo "missing $f"; done
+          python3 - <<'PY'
+          import json, re
+          cal = json.loads(re.search(r'=(\{.*\});', open('darshan/cal.js', encoding='utf-8').read(), re.S).group(1))
+          days = json.loads(re.search(r'=(\[.*\]);?', open('archive.js', encoding='utf-8').read(), re.S).group(1))
+          want = [D for D in days if len(cal.get(D['d'], [])) > 1] + days[-1:]
+          with open('want.txt', 'w') as fh:
+              for D in want:
+                  for k in D['k']:
+                      fh.write(f"s/{D['d'].replace('-', '')}/{k}.jpg\n")
+              fh.write(f"m/{days[-1]['d'].replace('-', '')}/{days[-1]['k'][0]}.jpg\n")
+              if 'ddm' in days[-1]['k']: fh.write(f"m/{days[-1]['d'].replace('-', '')}/ddm.jpg\n")
+          print(len(days), 'days,', len(want), 'wanted')
+          PY
+          while read -r p; do mkdir -p "photos/$(dirname "$p")"; curl -sfL "https://photos.bapas-diary.com/darshan/$p" -o "photos/$p" || echo "missing $p"; sleep 0.05; done < want.txt
+          echo "$(find photos -type f | wc -l) photos"; ls -R | head -20
+          cd .. && tar czf darshan-festival-mockup.tgz m
+          gh release view darshan-festival-mockup -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create darshan-festival-mockup -R "$GITHUB_REPOSITORY" --prerelease --title "Darshan festival mockup" --notes "Live Darshan page and festival photos for a website mockup. Not used by the daily picture."
+          gh release upload darshan-festival-mockup darshan-festival-mockup.tgz --clobber -R "$GITHUB_REPOSITORY"
