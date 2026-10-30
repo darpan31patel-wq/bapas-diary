@@ -1,10 +1,12 @@
 # Safety and speed settings Cloudflare Pages reads for bapas-diary.com (whole website review, 28 Oct 2026). Website only.
-# Every page: always the secure address, never shown inside another website's page, no camera, microphone or location.
+# Every page: always the secure address, never shown inside another website's page, no camera or microphone. Location only for
+# the site itself, so the Screensaver can ask once for the weather where the phone is (Darpan, 30 Oct 2026: "allow location for
+# the Screensaver only, so the phone asks once"); only the Screensaver ever asks.
 /*
   Strict-Transport-Security: max-age=31536000
   X-Frame-Options: SAMEORIGIN
   Content-Security-Policy: frame-ancestors 'self'; object-src 'none'; base-uri 'self'; upgrade-insecure-requests
-  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Permissions-Policy: camera=(), microphone=(), geolocation=(self), payment=(), usb=()
 
 # Fonts and the Search by photo model change rarely: a phone keeps them a week instead of asking again every visit
 /fonts/*
