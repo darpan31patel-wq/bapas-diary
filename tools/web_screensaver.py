@@ -30,7 +30,12 @@ DAYS, MOST = 10, 150   # as the kit: the 10 newest days with photos, at most 150
 TAGS = '<link rel="stylesheet" href="/screensaver/launch.css">\n<script src="/screensaver/launch.js" defer></script>\n'
 DIYA = ('<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c1.8 2.4 2.6 4 2.2 5.6-.3 1.3-1.3 2-2.2 2s-1.9-.7-2.2-2C9.4 6.5 10.2 4.9 12 2.5z"/>'
         '<path d="M2.5 12.5h19c-.6 4.2-4.6 7-9.5 7s-8.9-2.8-9.5-7z"/><rect x="9" y="20.2" width="6" height="1.6" rx=".8"/></svg>')
-BUTTON = f'<div class="ss-launch"><button type="button" id="screensaverButton" class="ss-big">{DIYA}Screensaver</button></div>\n'
+# beside it, Latest vicharan: the newest photos as a grid in Search, newest first (Darpan, 30 Oct 2026: "a latest
+# vicharan button ... so people can see the last downloaded pictures ... part of the search")
+GRID = ('<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.6"/><rect x="13" y="3" width="8" height="8" rx="1.6"/>'
+        '<rect x="3" y="13" width="8" height="8" rx="1.6"/><rect x="13" y="13" width="8" height="8" rx="1.6"/></svg>')
+BUTTON = (f'<div class="ss-launch"><button type="button" id="screensaverButton" class="ss-big">{DIYA}Screensaver</button>'
+          f'<a class="ss-big ss-latest" href="/search/#latest">{GRID}Latest vicharan</a></div>\n')
 
 
 def latest(db_path, schedule):
