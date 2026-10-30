@@ -27,13 +27,13 @@ FESTS = {
         cal=re.compile(r'^diwali$', re.I),
         words=re.compile(r'diwali|deepavali|chopda|sharda|lakshmi|\bdiya|\bdiva\b|\bdivas\b|\blamps?\b|fireworks|lit up|'
                          r'illuminat|lights?\b|rangoli', re.I),
-        tags={'fireworks', 'diya', 'lights', 'lit up at night', 'mandir at night', 'arti', 'rangoli'},
+        tags={'fireworks', 'diya', 'lights', 'lit up at night', 'mandir at night', 'arti', 'rangoli'}, strong={'fireworks', 'diya', 'rangoli'},
         keep_all=True),   # Chopda Pujan is Bapa's Diwali: every photo of the day stays, the festive ones first
     'annakut': dict(
         title='Annakut', old='Annakut and Bestu Varash (New Year)', ti='Kartak Sud Padvo',
         cal=re.compile(r'annakut', re.I),
         words=re.compile(r'annakut|thal\b|thaal|prasad|sweets|food|fruit|mithai|dishes|offer(s|ed|ing)? (the )?(annakut|thal)', re.I),
-        tags={'annakut', 'food', 'sweets', 'thal', 'fruit', 'dry fruits', 'vegetables', 'serving food', 'eating'},
+        tags={'annakut', 'food', 'sweets', 'thal', 'fruit', 'dry fruits', 'vegetables', 'serving food', 'eating'}, strong={'annakut', 'sweets', 'thal'},
         keep_all=False),  # "everything surrounding food": a year with food photos shows only those
 }
 NEAR = 1   # a year whose photos come from a nearby day (web_rules NEAR_DAYS) counts only when it is the next or last day
@@ -66,11 +66,11 @@ def festival_days(db, ask):
 
 
 def festive(p, F, tags):
-    """2 when the caption says the festival, 1 when the photo shows it (its deep tags), else 0."""
-    if F['words'].search(p[2] or '') or F['words'].search(p[5] if len(p) > 5 and isinstance(p[5], str) else ''):
-        return 2
+    """How much a photo is the festival, and whether its caption says it: the festival itself seen in it (its deep
+    tags: the annakut, sweets, diyas, fireworks) 4, its caption saying it 3, something near it seen (food, lights) 1."""
+    said = F['words'].search(p[2] or '') or F['words'].search(p[5] if len(p) > 5 and isinstance(p[5], str) else '')
     t = {x.strip() for x in tags.get(f'{p[0]}/{p[1]}', '').split(',')}
-    return 1 if t & F['tags'] else 0
+    return 3 * bool(said) + (4 if t & F['strong'] else 1 if t & F['tags'] else 0), bool(said)
 
 
 def build(a):
@@ -101,9 +101,10 @@ def build(a):
                     continue
             for part in ('p', 't'):
                 ps = Y.get(part) or []
-                score = [festive(p, F, tags) for p in ps]
+                rated = [festive(p, F, tags) for p in ps]
                 if part == 't':   # a trip's or a nearby day's photos: only those whose captions say this festival
-                    ps, score = [p for p, s in zip(ps, score) if s == 2], [2] * sum(s == 2 for s in score)
+                    ps, rated = [p for p, r in zip(ps, rated) if r[1]], [r for r in rated if r[1]]
+                score = [r[0] for r in rated]
                 order = sorted(range(len(ps)), key=lambda i: -score[i])   # stable: the best darshan first within each
                 ps = [ps[i] for i in order]
                 if not F['keep_all'] and sum(s > 0 for s in score) >= 2:
