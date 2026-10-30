@@ -1,0 +1,30 @@
+name: YouTube playlist list
+# Reads the BAPS Guruhari Darshan playlist (titles, dates, lengths) and matches each video to its diary day. No downloads.
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/project-thread-wydupi]
+    paths: [.github/workflows/youtube-playlist.yml]
+permissions:
+  contents: write
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -U yt-dlp
+      - name: Flat list
+        run: |
+          mkdir -p data/youtube
+          yt-dlp --flat-playlist --print "%(id)s	%(title)s	%(duration)s" \
+            "https://www.youtube.com/playlist?list=PLOX7n0cygMYA7GIUE7qs6pridW_xknWPo" > data/youtube/flat.tsv
+          wc -l data/youtube/flat.tsv; head -20 data/youtube/flat.tsv
+      - name: Match to diary days
+        run: python3 tools/youtube/match.py
+      - name: Save
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/youtube
+          git commit -m "YouTube playlist list [skip ci]" && git push

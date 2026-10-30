@@ -1,0 +1,32 @@
+name: Copy live Today page for the video mockup
+# Saves bapas-diary.com's Today page and what it loads, so the mockup is the real page. Reads only.
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/project-thread-wydupi]
+    paths: [.github/workflows/youtube-today-copy.yml]
+permissions:
+  contents: write
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copy
+        run: |
+          rm -rf mock/live && mkdir -p mock/live && cd mock/live
+          get() { mkdir -p "$(dirname ".$1")"; curl -sfL "https://bapas-diary.com$1" -o ".$1" && echo "ok $1" || echo "miss $1"; }
+          get /index.html
+          for d in 10-29 10-30 10-31 11-01; do get /data/day/$d.json; done
+          get /api/live
+          # everything the page and its scripts name on our own site
+          for round in 1 2; do
+            grep -rhoE "[\"'(](/[A-Za-z0-9_./-]+\.(css|js|json|svg|png|webmanifest|woff2?))" . | cut -c2- | sort -u | while read p; do [ -f ".$p" ] || get "$p"; done
+          done
+          grep -oE "data/fest/[A-Za-z0-9_-]+\.json" -r . | sort -u | head
+          find . -type f | head -100; du -sh .
+      - name: Save
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add mock && git commit -m "Live Today page copy for the video mockup [skip ci]" && git push
