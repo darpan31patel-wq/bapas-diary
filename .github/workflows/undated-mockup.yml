@@ -1,0 +1,27 @@
+# Undated photos (Darpan, 30 Oct 2026): pictures of the live Search with the undated photos put in only inside a test
+# browser (site/undated/mockup.js). Read only: nothing on the website changes.
+name: Undated photos mockup
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/project-thread-8ib4kr]
+    paths: [.github/workflows/undated-mockup.yml, site/undated/**, tools/undated_build.py]
+permissions:
+  contents: write
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          gh release download undated-build -p undated-photos.zip -p undated.json -p undated-tags.json -p same.json
+          python3 tools/undated_build.py --undated undated.json --tags undated-tags.json --same same.json --out undated-search.json
+          gh release upload undated-build undated-search.json --clobber
+          mkdir out && cd out && unzip -q ../undated-photos.zip 's/*' 'm/*' && cd ..
+          npm i -s playwright@1.49.1 > /dev/null && npx playwright install --with-deps chromium > /dev/null
+          node site/undated/mockup.js | tee undated-mockup.txt
+          zip -q undated-mockup.zip undated-*.jpg undated-mockup.txt
+          gh release upload undated-build undated-mockup.zip --clobber
