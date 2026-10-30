@@ -19,7 +19,6 @@ jobs:
       CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       BUCKET: bapas-diary-photos
       DARSHAN_ARCHIVE: darshan_archive.py
-      LIMIT: '5'
     steps:
       - uses: actions/checkout@v4
         with:
