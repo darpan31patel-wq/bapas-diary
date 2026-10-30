@@ -1,0 +1,141 @@
+# Website only, MOCKUP ONLY: deploys nothing. Builds the whole site exactly as website-deploy does (same steps, copied),
+# then packs Today (index.html and what it loads) for 30 and 31 Oct with the small R2 photos of those days into the
+# release `prasang-mockup`, so Claude can show Darpan the Prasang from today button on the real Today page.
+name: prasang-mockup
+on:
+  push:
+    branches: ['claude/project-thread-xrmlfo']
+    paths: ['.github/workflows/prasang-mockup.yml']
+permissions:
+  contents: write
+concurrency: prasang-mockup
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT: bapas-diary
+      DOMAIN: bapas-diary.com
+      CAL_COMMIT: 9d0e952d170abfdaecfea4548f714bccb2532a8e   # 8fab292 (tbkjl3: look C plus a day's photos in a box) plus the schedule's dates for the stay Bapa is in now and bigger festival words on tablets (branch claude/project-thread-q7xtjj)
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/cache@v4   # the Calendar's tiny looks of each photo, kept between runs
+        with:
+          path: calendar-looks.json
+          key: calendar-looks-${{ github.run_id }}
+          restore-keys: calendar-looks-
+      - name: Photo search (database from release database, photo tags from release website-mockup)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir out && rsync -a --exclude README.md live/ out/
+          gh release download legacy-auto -p more.json -D out/then-and-now 2>/dev/null || echo '[]' > out/then-and-now/more.json   # weekly Legacy pairs (Darpan: just go live, 28 Oct)
+          gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
+          # Bapa's own pages (Today, Calendar, share pictures) show only photos with Bapa in them; Search keeps every photo
+          # (Darpan, 25 Oct 2026: "anything Bapa specific should only have pictures of Bapa on there")
+          # Darpan, 25 Oct 2026: chosen by face with the On this day rules (tools/web_faces.py): only photos where Bapa's face is
+          # recognised, best darshan first; years whose faces are not looked at yet keep the caption based choice (is_bapa = 1)
+          pip install -q -r requirements.txt
+          mkdir faces && gh release download website-faces -p 'face2-*.json.gz' -D faces
+          python3 tools/web_faces.py pick --db bapas.db --faces faces --out bapa.db --top bapa-top.db
+          # the On this day picture's rules (Darpan, 25 Oct 2026, tools/web_rules.py): captions say what Bapa does
+          python3 tools/web_rules.py captions --db bapa.db --db bapa-top.db
+          python3 tools/web_rules.py calendar --db bapas.db --db bapa.db --db bapa-top.db   # the calendar days the picture shows
+          gh release download website-mockup -p tags.json
+          gh release download deep-tags -p deep-tags.json   # what is in each photo (Darpan: yes deep tags)
+          gh release download people-faces -p people-faces.json || echo '{}' > people-faces.json   # Who was with Bapa, by face
+          # Bapa through the years (its own thread builds it into release faces-mockup; Darpan: "okay go live")
+          gh release download faces-mockup -p faces-site.tgz && tar -xzf faces-site.tgz -C out
+          test -f out/through-the-years/index.html
+          # The home page, On this day (site/day.html and tools/web_day.py, merged here from claude/project-thread-2nuqbl)
+          python3 tools/web_day.py --db bapa.db --site day --photos-url https://photos.bapas-diary.com/ --search-url /search/ > /dev/null
+          python3 tools/web_faces.py order --db bapa.db --day day/data/day   # each year opens on its best darshan, centred on his face
+          # the picture's rules: whole head framed, nearby days only for an empty date, darshan before 1999, no story twice
+          gh release download website-rules -p tg-cards.json || echo '{}' > tg-cards.json
+          python3 tools/web_rules.py day --day day/data/day --db bapa.db --faces faces --tg tg-cards.json
+          # festival days: every year's Diwali and Annakut on its own Indian date, for Today on those days (Darpan, 30 Oct 2026)
+          python3 tools/web_festival.py --day day/data/day --db bapa.db --deep-tags deep-tags.json --out day/data/fest
+          python3 tools/web_prasang.py --posts telegram/prasang/posts.json --fresh --out day/data/prasang   # Prasang from today, a button on Today (Darpan, 30 Oct 2026)
+          rsync -a day/ out/ && test -f out/index.html && ls out/data/day | wc -l
+          # years with photos in R2: site/photo-years.txt plus every year website-hires has finished
+          { cat site/photo-years.txt; curl -fs https://photos.$DOMAIN/years.txt || true; } | grep -E '^[0-9]{4}$' | sort -un > photo-years.txt
+          echo "photo years: $(tr '\n' ' ' < photo-years.txt)"
+          # The scrolling years calendar (its own thread, branch pinned to the approved commit; Darpan: "perfect go live")
+          git fetch -q --depth 1 origin "$CAL_COMMIT" && mkdir calsrc && git archive "$CAL_COMMIT" tools/web_calendar.py site/calendar.html fonts | tar -x -C calsrc
+          git fetch -q --depth 1 origin refs/heads/database && git show FETCH_HEAD:crawl/schedule/latest.json > schedule.json || echo '{}' > schedule.json   # where Bapa will be (Future Vicharan)
+          python3 calsrc/tools/web_calendar.py --db bapa-top.db --site cal --photos-url https://photos.bapas-diary.com/ --search-url /search/ --photo-years photo-years.txt --pool bapa.db --sigs calendar-looks.json --faces faces --schedule schedule.json   # a different looking photo each day, and the days ahead (Darpan: yes perfect go live, 26 Oct)
+          python3 tools/web_rules.py calfaces --site cal --faces faces   # Bapa's whole head in each Calendar photo (Darpan, 25 Oct 2026)
+          rsync -a cal/ out/ && test -f out/calendar/index.html
+          # Year in review: one page for each whole year (/year/2025/ ...), Bapa in person only, towns from the Travels page (Darpan, 29 Oct 2026)
+          python3 tools/web_year.py --db bapa.db --faces faces --travels out/travels/index.html --out out
+          sqlite3 bapas.db 'SELECT count(*) FROM calendar'
+          # opens on 1999 while only 1999 photos are copied to R2 (site/photo-years.txt)
+          # Search by photo (Darpan: yes search by photo, 28 Oct 2026): the model, the code that runs it and the photo numbers, made by website-image-search
+          gh release download image-search -p image-search.tgz && tar -xzf image-search.tgz   # -> image/
+          python3 tools/build_search.py --db bapas.db --out out/search --tags tags.json --deep-tags deep-tags.json --people-faces people-faces.json --start-year today --image image
+          python3 tools/web_darshan.py --db bapas.db --out out   # the Darshan tab's Indian dates and festivals (Darpan: yes Darshan tab, 29 Oct)
+          python3 tools/site_menu.py out   # every page's tabs in the same order
+          # share look (Darpan: yes share look): WhatsApp preview picture, icons, per page titles and lines, home screen manifest
+          pip install -q pillow
+          python3 tools/web_share.py --out out
+          python3 tools/web_head.py --out out
+          python3 tools/web_seo.py --out out   # 404 page (Darpan: yes not found page), robots.txt, sitemap.xml
+          # favourites, share a day and the TV slideshow (Darpan: 3 yes, 4 yes, 1 yes)
+          python3 tools/web_dayshare.py --db bapa-top.db --out out --tags tags.json --photo-years photo-years.txt
+          python3 tools/web_extras.py --out out
+          python3 tools/web_player.py --out out   # full screen player for a TV on Today (Darpan: yes go live, 26 Oct)
+          python3 tools/web_phone.py --out out   # phone design: bottom tab bar, phone Today and Calendar (Darpan: yes)
+          python3 tools/web_rules.py look --out out   # the On this day picture's finish, look D, on the photos (Darpan: 2)
+          python3 tools/web_gujarati.py --out out   # English / Gujarati switch (Darpan: yes Gujarati)
+          python3 tools/web_tiny.py --out out   # Calendar squares use the tiny photo copies (whole website review, 28 Oct)
+          python3 tools/web_tablet.py --out out   # Calendar shows all seven days on an upright tablet (tablet check, 28 Oct)
+          python3 tools/web_secure.py --out out   # the globe's helper scripts from our own site (whole website review, 28 Oct)
+          python3 tools/web_type.py --out out   # Lora headings, Poppins subtitles, labels and buttons (Darpan, 28 Oct)
+          python3 tools/web_offline.py --out out --photo-years photo-years.txt   # works with no internet, Save for travelling (Darpan: yes offline)
+          python3 tools/web_gujarati.py --out out   # again, for the page the offline step just added
+          python3 tools/web_notranslate.py --out out   # browsers never translate our pages by themselves: Chrome made Bapa's Diary "Dad's diary" (Darpan, 28 Oct)
+          python3 tools/web_screensaver.py --out out --db bapa.db --schedule schedule.json   # Screensaver button on Today (Darpan: go live, 29 Oct); last, so the screensaver page keeps the kit's own look, no site fonts or Gujarati switch on it
+          python3 tools/web_bapa_now.py --out out   # Where is Bapa now, a small map card on Today from the schedule just written (Darpan: YES, 29 Oct)
+          du -sh out/*
+          if grep -rli 'telegram\|t\.me/' out --include='*.html'; then echo 'Telegram found: not deploying'; exit 1; fi   # never on the public site
+      - name: Pack Today for the mockup
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p pack/photos
+          cp -r out/index.html out/menu.css pack/ 2>/dev/null || true
+          for d in fonts gu phone extras offline screensaver art; do [ -d out/$d ] && cp -r out/$d pack/ || true; done
+          find out -maxdepth 1 -type f \( -name '*.css' -o -name '*.js' -o -name '*.json' -o -name '*.svg' -o -name '*.png' \) -exec cp {} pack/ \;
+          mkdir -p pack/data/day pack/data/prasang pack/data/fest
+          for m in 10-30 10-31; do cp out/data/day/$m.json pack/data/day/; cp out/data/prasang/$m.json pack/data/prasang/ || true; done
+          cp out/data/fest/*.json pack/data/fest/ 2>/dev/null || true
+          ls out; du -sh pack
+          python3 - <<'PY'
+          import json
+          keys = set()
+          for m in ('10-30', '10-31'):
+              D = json.load(open(f'pack/data/day/{m}.json'))
+              for Y in D['years']:
+                  for p in (Y.get('p') or [])[:6] + (Y.get('t') or [])[:2]:
+                      keys.add(p[0] + '/' + p[1])
+          open('keys.txt', 'w').write('\n'.join(sorted(keys)))
+          print(len(keys), 'photos')
+          PY
+          pip install -q pillow
+          while read -r k; do
+            mkdir -p "pack/photos/$(dirname "$k")"
+            curl -fsS --retry 3 -o "pack/photos/$k" "https://photos.$DOMAIN/s/$k" || echo "missing $k"
+          done < keys.txt
+          python3 - <<'PY'
+          import glob
+          from PIL import Image, ImageOps
+          for f in glob.glob('pack/photos/**/*.*', recursive=True):
+              try:
+                  im = ImageOps.exif_transpose(Image.open(f)).convert('RGB'); im.thumbnail((360, 360)); im.save(f, 'JPEG', quality=72)
+              except Exception as e:
+                  print('bad', f, e)
+          PY
+          du -sh pack; tar czf prasang-mockup.tgz pack
+          gh release view prasang-mockup >/dev/null 2>&1 || gh release create prasang-mockup --prerelease --title "Prasang mockup" --notes "Today page and photos for the Prasang from today mockup. Not used by the daily picture or the website."
+          gh release upload prasang-mockup prasang-mockup.tgz --clobber
