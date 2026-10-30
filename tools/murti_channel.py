@@ -6,8 +6,18 @@ about 11 photos a day, from 10 Sep 2022. The mandir's own site (darshan_copy.sh)
 channel does not, so each channel photo is given the name of the mandir photo it looks most like.
 
     python tools/murti_channel.py study posts.json out/      # checks the matching on days R2 has from the mandir; writes nothing to R2
+    python tools/murti_channel.py save posts.json            # the older days into R2 (Darpan, 30 Oct 2026: "web copies okay")
+
+The study (30 Oct 2026) found the channel's web copies are 450 x 800 and named right by look only 4 times in 10, so
+'save' keeps the channel's own order and names its photos t01, t02, ... (no murti names: these days are left out of
+By murti). For each day before 2026 that the Darshan tab does not have yet it writes
+    darshan/tg/YYYYMMDD/NN.jpg       the channel's photo as it is
+    darshan/s|m/YYYYMMDD/tNN.jpg     the Darshan page's small and big copies (the same file: already under 480 px wide)
+and darshan/older.js, the list the page adds before archive.js's days:
+    window.DARSHAN_OLDER = [{"d": "2022-09-10", "k": ["t01", ...], "c": ["Pink"]}, ...]
+It never writes archive.js or list.json (the screensaver robot's), and never asks londonmandir.baps.org for anything.
 """
-import collections, io, json, os, re, subprocess, sys, time, urllib.request
+import collections, hashlib, importlib.util, io, shutil, json, os, re, subprocess, sys, time, urllib.request
 from datetime import datetime, timedelta
 from PIL import Image, ImageOps
 
@@ -110,5 +120,71 @@ def study(posts_file, out):
         print('older day', d, len(ch[d]), 'photos')
 
 
+def save(posts_file, before='20260101'):
+    """See the top. Resumable: a day already in R2 (darshan/s/YYYYMMDD/) is left as it is."""
+    spec = importlib.util.spec_from_file_location('da', os.environ.get('DARSHAN_ARCHIVE', 'darshan_archive.py'))
+    da = importlib.util.module_from_spec(spec); spec.loader.exec_module(da)   # the Darshan tab's own colour reader
+    bucket = os.environ['BUCKET']
+    have = set()
+    for l in r2('ls', f's3://{bucket}/darshan/s/').splitlines():
+        if l.strip().startswith('PRE '):
+            have.add(l.split()[-1].strip('/'))
+    work = 'older'
+    old = []
+    try:
+        r2('cp', f's3://{bucket}/darshan/older.js', 'older-was.js', '--only-show-errors')
+        t = open('older-was.js', encoding='utf-8').read(); old = json.loads(t[t.index('['):t.rindex(']') + 1])
+    except Exception:
+        pass
+    ch = days(json.load(open(posts_file, encoding='utf-8')))
+    todo = [d for d in sorted(ch) if d < before and d not in have][:int(os.environ.get('LIMIT') or 10 ** 6)]
+    print('channel days before', before, sum(d < before for d in ch), '| already in R2', sum(d in have for d in ch if d < before), '| to save', len(todo))
+    out, n = list(old), 0
+
+    def flush():
+        if os.path.isdir(work):
+            subprocess.run(['aws', 's3', 'cp', work, f's3://{bucket}/darshan/', '--recursive', '--endpoint-url', os.environ['R2'],
+                            '--only-show-errors', '--content-type', 'image/jpeg', '--cache-control', 'public, max-age=31536000, immutable'], check=True)
+            shutil.rmtree(work)
+        js = 'window.DARSHAN_OLDER=' + json.dumps(sorted(out, key=lambda x: x['d']), separators=(',', ':')) + ';\n'
+        open('older.js', 'w', encoding='utf-8').write(js)
+        subprocess.run(['aws', 's3', 'cp', 'older.js', f's3://{bucket}/darshan/older.js', '--endpoint-url', os.environ['R2'], '--only-show-errors',
+                        '--content-type', 'application/javascript', '--cache-control', 'public, max-age=300'], check=True)
+        print('saved so far:', len(out), 'days,', n, 'photos', flush=True)
+
+    for j, d in enumerate(todo):
+        seen, keep, votes = set(), [], collections.Counter()
+        for u in ch[d]:
+            b = get(u)
+            time.sleep(.2)
+            if not b or hashlib.md5(b).hexdigest() in seen:
+                continue
+            seen.add(hashlib.md5(b).hexdigest())
+            try:
+                im = Image.open(io.BytesIO(b)).convert('RGB')
+            except Exception:
+                continue
+            keep.append(b)
+            for k, c in enumerate(da.colours(im)):
+                votes[c] += 2 - k
+        if not keep:
+            continue
+        codes = []
+        for i, b in enumerate(keep, 1):
+            for path in (f'tg/{d}/{i:02d}.jpg', f's/{d}/t{i:02d}.jpg', f'm/{d}/t{i:02d}.jpg'):
+                os.makedirs(os.path.dirname(f'{work}/{path}'), exist_ok=True)
+                open(f'{work}/{path}', 'wb').write(b)
+            codes.append(f't{i:02d}')
+        n += len(keep)
+        top = votes.most_common(2)
+        col = [top[0][0]] + ([top[1][0]] if len(top) > 1 and top[1][1] >= .5 * top[0][1] else []) if top else ['White']
+        iso = f'{d[:4]}-{d[4:6]}-{d[6:]}'
+        out = [x for x in out if x['d'] != iso] + [dict(d=iso, k=codes, c=col)]
+        if (j + 1) % 50 == 0:
+            flush()
+    flush()
+    print('done:', len(out), 'older days listed,', n, 'photos saved this run')
+
+
 if __name__ == '__main__':
-    {'study': study}[sys.argv[1]](*sys.argv[2:])
+    {'study': study, 'save': save}[sys.argv[1]](*sys.argv[2:])

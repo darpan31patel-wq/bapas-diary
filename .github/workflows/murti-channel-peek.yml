@@ -1,34 +1,35 @@
-# Helper for the "Add more Telegram channels" thread only (Darpan, 30 Oct 2026): the London Mandir Murti Darshan channel
-# for the Darshan tab's older days. This run only studies (reads R2 and the channel, writes nothing anywhere).
-# Touches nothing in the daily picture.
+# Helper for the "Add more Telegram channels" thread only (Darpan, 30 Oct 2026: "save older darshan", "web copies okay"):
+# the London Mandir Murti Darshan channel's days before 2026 into the website's photo store for the Darshan tab
+# (tools/murti_channel.py save: darshan/tg/, darshan/s/, darshan/m/ and darshan/older.js only; never archive.js or
+# list.json, never londonmandir.baps.org). Touches nothing in the daily picture.
 name: murti-channel-peek
 on:
   push:
     branches: [claude/project-thread-zlkxot]
     paths: ['.github/workflows/murti-channel-peek.yml']
 permissions:
-  actions: read
   contents: read
+concurrency: murti-channel-save
 jobs:
-  study:
+  save:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 340
     env:
       CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       BUCKET: bapas-diary-photos
+      DARSHAN_ARCHIVE: darshan_archive.py
+      LIMIT: '5'
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - uses: actions/download-artifact@v4
-        with:
-          name: murti-posts
-          run-id: 41094097411
-          github-token: ${{ github.token }}
-          path: murti
-      - name: R2 access (read only use here, kept out of the logs)
+      - name: The Darshan tab's colour reader (from the website branch, read only)
+        run: git show origin/claude/project-thread-eawr12:tools/screensaver/darshan_archive.py > darshan_archive.py
+      - name: R2 access (kept out of the logs)
         run: |
           pip install -q pillow
           id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
@@ -36,8 +37,7 @@ jobs:
           echo "::add-mask::$id"; echo "::add-mask::$key"
           { echo "AWS_ACCESS_KEY_ID=$id"; echo "AWS_SECRET_ACCESS_KEY=$key"
             echo "AWS_DEFAULT_REGION=auto"; echo "R2=https://$CF_ACCOUNT.r2.cloudflarestorage.com"; } >> "$GITHUB_ENV"
-      - run: python tools/murti_channel.py study murti/posts.json study
-      - uses: actions/upload-artifact@v4
-        with:
-          name: murti-study
-          path: study/*.jpg
+      - name: The channel's posts, fresh (its photo links do not last)
+        run: python tools/tg_fetch.py LondonMandirMurtiDarshan murti/posts.json | tail -2
+      - run: python tools/murti_channel.py save murti/posts.json
+      - run: cat older.js | head -c 1500
