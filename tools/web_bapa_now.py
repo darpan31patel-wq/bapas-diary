@@ -2,7 +2,10 @@
 showing Bapa's current town from his schedule. YES").
 
 A small card in the Today header: a little map with a gold dot on the town Bapa is staying in, the dates of the stay,
-what is on there today (the schedule's own times, local to the town) and where he goes next. No buttons or links.
+what is on there today (the schedule's own times, local to the town) and where he goes next. No buttons or links,
+except while BAPS is live on YouTube: then one more line says Live now and has a Watch live link to the
+webcast (Darpan, 30 Oct 2026: "Whenever there is a live webcast happening on this channel, please display it in this box,
+and make a link"; then "i want to keep all information, dont necessarily need the thumbnail"), asked of /api/live (functions/api/live.js) when the page opens and every two minutes.
 On computers it sits in the empty space to the right of the date, so the ropes stay where they are; on tablets and
 phones it is a slim strip under the Screensaver button.
 
@@ -143,6 +146,22 @@ CSS = r'''<style>
 }
 @media (min-width:1000px) and (max-width:1179px){.bapa-now .bn-next{display:none}}   /* iPads on their side: a shorter card */
 /* phones: one short strip, so the ropes stay close: the map, the town and its dates on one line, and today's event */
+/* BAPS live on YouTube (Darpan, 30 Oct 2026): the card stays exactly as it is, with one more line under it while BAPS is
+   live: a red Live now and a Watch live link (the webcast's own name shows on hover) to the webcast ("i want to keep all information") */
+.bapa-now .bn-live{display:none}
+.bapa-now.is-live .bn-live{display:flex;align-items:center;gap:8px;margin-top:6px;font:500 14px/1.3 var(--serif);color:var(--mist)}
+.bapa-now .bn-live b{flex:none;display:inline-flex;align-items:center;gap:6px;font:700 10.5px/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:#ff6b6b}
+.bapa-now .bn-live b::before{content:"";width:8px;height:8px;border-radius:50%;background:#ff4b4b;box-shadow:0 0 0 0 rgba(255,75,75,.6);animation:bn-onair 1.8s ease-out infinite}
+@keyframes bn-onair{to{box-shadow:0 0 0 7px rgba(255,75,75,0)}}
+@media (prefers-reduced-motion:reduce){.bapa-now .bn-live b::before{animation:none}}
+.bapa-now .bn-watch{flex:none;margin-left:auto;font:600 12px/1 var(--sans);color:#3d0e19;background:#d9a441;padding:6px 12px;border-radius:999px;text-decoration:none}
+.bapa-now .bn-watch:hover,.bapa-now .bn-watch:focus-visible{background:#ffe296}
+/* computers: the card sits in the empty space beside the date; while live it starts 10px higher (still under the menu),
+   so the extra line does not reach the words under the date */
+@media (min-width:1000px){.bapa-now.is-live{margin-top:-10px}.bapa-now.is-live .bn-live{margin-top:4px}.bapa-now.is-live .bn-watch{padding:5px 11px}}
+/* live while no stay is on the schedule: the card shows just that line */
+.bapa-now.no-stay svg,.bapa-now.no-stay .bn-lbl,.bapa-now.no-stay .bn-town,.bapa-now.no-stay .bn-dates,.bapa-now.no-stay .bn-today,.bapa-now.no-stay .bn-next{display:none}
+.bapa-now.no-stay .bn-live{margin-top:0}
 @media (max-width:600px){.bapa-now{margin-top:14px;padding:8px 12px 8px 8px;gap:10px}.bapa-now svg{width:64px;height:64px;border-radius:8px}
   .bapa-now .bn-lbl{font-size:9px}.bapa-now .bn-town{font-size:20px}.bapa-now .bn-town small{display:none}
   .bapa-now .bn-dates{display:inline;font-size:13.5px}.bapa-now .bn-town{display:inline;margin-right:8px}
@@ -152,7 +171,8 @@ CSS = r'''<style>
 
 HTML = '''<div class="bapa-now" id="bapaNow" hidden aria-live="polite">
   <svg viewBox="0 0 150 150" role="img" aria-label="Map"><path class="land"/><path class="route"/><circle class="next" r="4"/><circle class="glow" r="6"/><circle class="here" r="5.5"/></svg>
-  <div class="bn-words"><div class="bn-lbl">Where Bapa is now</div><div class="bn-town"></div><div class="bn-dates"></div><div class="bn-today"></div><div class="bn-next"></div></div>
+  <div class="bn-words"><div class="bn-lbl">Where Bapa is now</div><div class="bn-town"></div><div class="bn-dates"></div><div class="bn-today"></div><div class="bn-next"></div>
+    <div class="bn-live"><b>Live now</b><a class="bn-watch" target="_blank" rel="noopener">Watch live</a></div></div>
 </div>
 '''
 
@@ -171,7 +191,8 @@ JS = r'''<script>
   function draw() {
     const stays = S.stays;
     const i = stays.findIndex(s => { const d = dayIn(s.tz); return s.from <= d && d <= s.to; });
-    if (i < 0) { el.hidden = true; return; }
+    el.classList.toggle('no-stay', i < 0);
+    if (i < 0) { el.hidden = !onAir; return; }
     let s = stays[i], n = stays[i + 1];
     const today = dayIn(s.tz);
     // a day two stays share is the travel day: the new town counts once that day has its first event there
@@ -212,8 +233,23 @@ JS = r'''<script>
     svg.setAttribute('aria-label', `Map with ${s.city} marked` + (shows ? `, and ${n.city} next` : ''));
     el.hidden = false;
   }
+  // BAPS live on YouTube: a Live now line with a Watch live link while the channel is on air, the card as before when it is not
+  let onAir = null;
+  function live(v) {
+    onAir = v && v.live && /^[\w-]{11}$/.test(v.id) ? v : null;
+    el.classList.toggle('is-live', !!onAir);
+    if (onAir) {
+      q('.bn-watch').href = 'https://www.youtube.com/watch?v=' + onAir.id;
+      q('.bn-watch').title = onAir.title || '';   // the webcast's own name, on hover
+    }
+    draw();
+  }
+  const ask = () => fetch('/api/live', {cache: 'no-store'}).then(r => r.ok ? r.json() : null).then(live, () => {});
   draw();
+  ask();
   setInterval(draw, 60000);   // the event line moves on through the day, and the stay at midnight
+  setInterval(() => { if (!document.hidden) ask(); }, 120000);   // on air or off air within two minutes
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) ask(); });
 })();
 </script>
 '''
