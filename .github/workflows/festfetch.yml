@@ -3,7 +3,7 @@ name: Festival mockup fetch (test branch only, never ship)
 on:
   push:
     branches: [claude/project-thread-lcbb5g]
-    paths: ['.github/workflows/festfetch.yml', 'preview/fest/want.txt']
+    paths: ['.github/workflows/festfetch.yml', 'preview/fest/want.txt', 'preview/fest/chosen.txt']
 
 permissions:
   contents: write
@@ -14,19 +14,27 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - name: Every festival list, and the photos asked for in want.txt (run 3)
+      - name: Contact sheets of every candidate, and the chosen photos big (run 4)
         run: |
-          mkdir -p preview/fest/json preview/fest/img
-          for k in diwali annakut janmashtami holi fuldol gurupurnima harinom vasant rathyatra raksha sharad psm msm; do
-            curl -sSfL -o "preview/fest/json/$k.json" "https://bapas-diary.com/data/fest/$k.json" || echo "miss $k"
-          done
-          touch preview/fest/want.txt
+          pip install -q pillow
+          mkdir -p /tmp/th preview/fest/sheets preview/fest/img
+          touch preview/fest/want.txt preview/fest/chosen.txt
+          if [ "$(cat preview/fest/want.txt | md5sum)" != "$(cat preview/fest/sheets/.done 2>/dev/null)" ]; then
+            while IFS=$'\t' read -r alb f; do
+              [ -z "$f" ] && continue
+              curl -sSfL -o "/tmp/th/$alb-${f##*/}" "https://photos.bapas-diary.com/s/$alb/$f" || echo "miss $alb $f" &
+              while [ "$(jobs -r | wc -l)" -ge 12 ]; do sleep .1; done
+            done < preview/fest/want.txt
+            wait
+            ls /tmp/th | wc -l
+            python3 tools/fest_sheet.py /tmp/th preview/fest/sheets
+            cat preview/fest/want.txt | md5sum > preview/fest/sheets/.done
+          fi
           while IFS=$'\t' read -r alb f; do
             [ -z "$f" ] && continue
             o="preview/fest/img/$alb-${f##*/}"; [ -e "$o" ] && continue
-            for z in m l o; do curl -sSfL -o "$o" "https://photos.bapas-diary.com/$z/$alb/$f" && break; done || echo "miss $alb $f"
-          done < preview/fest/want.txt
-          ls preview/fest/img | wc -l
+            for z in l o m; do curl -sSfL -o "$o" "https://photos.bapas-diary.com/$z/$alb/$f" && break; done || echo "miss $alb $f"
+          done < preview/fest/chosen.txt
       - name: Save to the branch
         run: |
           git config user.name "github-actions[bot]"
