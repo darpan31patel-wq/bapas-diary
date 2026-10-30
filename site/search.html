@@ -117,7 +117,7 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 .day-head .when { font: 700 clamp(24px, 3vw, 32px)/1.1 var(--serif); color: var(--maroon); background: none; border: 0; padding: 0; cursor: pointer; }
 .day-head .when::before, .day-head .when::after { content: "\25C6"; font-size: .4em; color: var(--gold); vertical-align: middle; margin: 0 .9em; }
 .day-head .when:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; }
-.day-head.none .when { cursor: default; text-decoration: none; }   /* Date not known: nothing to open */
+.day-head.none .when { cursor: default; text-decoration: none; }   /* the darshan heading over the photos with no date: nothing to open */
 .day-head .tithi { order: 2; font: 700 11px var(--sans); letter-spacing: .24em; text-transform: uppercase; color: var(--gold-deep); }
 .day-head .fest { order: 1; font: 600 19px var(--serif); color: var(--ink); }
 .day-head .about { order: 3; color: var(--muted); font: italic 500 16px/1.4 var(--serif); max-width: 70ch; margin-inline: auto; }
@@ -405,7 +405,7 @@ function highlight(text, want) {
 
 function fillYears() {
   const y = $('year'), keep = y.value, list = [...new Set(items.map(p => p.y))].filter(v => v >= FIRST).sort((a, b) => a - b);
-  const none = items.some(p => p.u) ? '<option value="none">No date</option>' : '';
+  const none = items.some(p => p.u) ? '<option value="none">More darshan</option>' : '';
   y.innerHTML = '<option value="">Every year</option><option value="old">Before 1999</option>' + list.map(v => `<option>${v}</option>`).join('') + none;
   y.value = keep === 'old' || (keep === 'none' && none) || list.includes(+keep) ? keep : '';
 }
@@ -469,7 +469,7 @@ function render(byYear, want) {
   for (let y = FIRST; y <= last; y++) keys.push(String(y));
   if (byYear.none) keys.push('none');
   $('years').innerHTML = Object.keys(byYear).length ? keys.map(k => {
-    const n = byYear[k] || 0, label = k === 'old' ? 'Earlier' : k === 'none' ? 'No date' : k, name = k === 'old' ? 'Before 1999' : k === 'none' ? 'No date' : k;
+    const n = byYear[k] || 0, label = k === 'old' ? 'Earlier' : k === 'none' ? 'More' : k, name = k === 'old' ? 'Before 1999' : k === 'none' ? 'More darshan' : k;
     return `<button class="${k === year ? 'on' : ''}" data-y="${k}" title="${name}: ${n.toLocaleString()} found" aria-label="${name}: ${n.toLocaleString()} found"><span class="n">${n.toLocaleString()}</span><div class="col" style="height:${n ? Math.max(3, 62 * n / max) : 0}%"></div><span>${label}</span></button>`;
   }).join('') : '';
   if (!hits.length) {
@@ -481,7 +481,7 @@ function render(byYear, want) {
   }
   const nPhotos = hits.filter(h => h.kind === 'photo').length, nPosts = hits.filter(h => h.kind === 'post').length;
   const nDates = new Set(hits.filter(h => !h.u).map(h => h.d)).size, nNone = hits.filter(h => h.u).length;
-  $('count').innerHTML = nNone && nNone === hits.length && !picMode ? `<b>${nNone.toLocaleString()}</b> photo${nNone === 1 ? '' : 's'} with no date` : (latestOn() && !picMode ? '<span class="latest">Latest vicharan, newest first</span>' : '') + (picMode ? `<b>${nPhotos.toLocaleString()}</b> photos most like your picture, closest first` + (loaded < total ? ' (still loading)' : '') : `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'}${latestOn() ? '' : ` and <b>${nPosts.toLocaleString()}</b> On this day stor${nPosts === 1 ? 'y' : 'ies'}`} on <b>${nDates.toLocaleString()}</b> date${nDates === 1 ? '' : 's'}${nNone ? `, and <b>${nNone.toLocaleString()}</b> with no date` : ''}`
+  $('count').innerHTML = nNone && nNone === hits.length && !picMode ? `<b>${nNone.toLocaleString()}</b> darshan photo${nNone === 1 ? '' : 's'}` : (latestOn() && !picMode ? '<span class="latest">Latest vicharan, newest first</span>' : '') + (picMode ? `<b>${nPhotos.toLocaleString()}</b> photos most like your picture, closest first` + (loaded < total ? ' (still loading)' : '') : `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'}${latestOn() ? '' : ` and <b>${nPosts.toLocaleString()}</b> On this day stor${nPosts === 1 ? 'y' : 'ies'}`} on <b>${nDates.toLocaleString()}</b> date${nDates === 1 ? '' : 's'}${nNone ? `, and <b>${nNone.toLocaleString()}</b> more darshan` : ''}`
     + (loaded < total ? ' (still loading)' : ''));
   $('results').innerHTML = `<div class="${picMode ? 'grid' : 'days slim'}" id="cards"></div>`;
   shown = 0; lastDate = '';
@@ -501,7 +501,7 @@ var latestShown = false;
 
 // the date heading: what the BAPS calendar says about that day
 function dayHead(d, want, onlyCal) {
-  if (d === UNDATED) return '<div class="day-head none"><span class="when">Date not known</span></div>';
+  if (d === UNDATED) return '<div class="day-head none"><span class="when">Darshan</span></div>';
   const c = cal[d];
   const when = d.length === 10 ? (c ? `<span class="wd">${c.wd} </span>${longDate(d)}` : longDate(d)) : esc(d);
   const fest = c && c.fest ? c.fest : !c && window.festOn && festOn(d).length ? festOn(d).join(', ') : '';
@@ -528,13 +528,13 @@ function said(p, what) {
 }
 function photoCard(p, want, i) {
   const g = p.g, small = `${PHOTOS}s/${g[3]}/${p.file}`, medium = `${PHOTOS}m/${g[3]}/${p.file}`;
-  const when = p.u ? 'Date not known' : g[1] ? `${niceDate(g[0])} to ${niceDate(g[1])}` : niceDate(g[0]);
+  const when = p.u ? '' : g[1] ? `${niceDate(g[0])} to ${niceDate(g[1])}` : niceDate(g[0]);
   return `<article class="card" data-i="${i}" tabindex="0">
     <div class="pic"><img loading="lazy" src="${small}" alt="${esc(p.cap)}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'none',textContent:'Photo coming soon'}))"></div>
     <div class="txt">
-      ${window.picSame && picSame(p) ? '<span class="same">Closest match</span>' : ''}<p class="cap${p.cap ? '' : ' empty'}${!picMode && p.cap && hits[i - 1] && hits[i - 1].d === p.d && plain(hits[i - 1].cap) === plain(p.cap) ? ' said' : ''}">${p.cap ? highlight(p.cap, want) : 'Darshan'}</p>
-      <div class="date${said(p, 'date')}">${when}</div>
-      <div class="place${said(p, 'place')}">${highlight(g[2], want)}</div>
+      ${window.picSame && picSame(p) ? '<span class="same">Closest match</span>' : ''}<p class="cap${p.cap ? '' : ' empty'}${!picMode && !p.u && p.cap && hits[i - 1] && hits[i - 1].d === p.d && plain(hits[i - 1].cap) === plain(p.cap) ? ' said' : ''}">${p.cap ? highlight(p.cap, want) : 'Darshan'}</p>
+      ${p.u ? '' : `<div class="date${said(p, 'date')}">${when}</div>
+      <div class="place${said(p, 'place')}">${highlight(g[2], want)}</div>`}
     </div></article>`;
 }
 function postCard(p, want, i) {
@@ -663,8 +663,8 @@ function showBig(i) {
   at = i;
   const c = cal[p.d], day = c ? `${c.wd} ${longDate(p.d)}` : longDate(p.d);
   if (p.u) {
-    $('big-pic').innerHTML = `<img src="${PHOTOS}m/${p.g[3]}/${p.file}" alt="Darshan" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'soon',textContent:'Photo coming soon'}))">`;
-    $('big-info').innerHTML = '<div class="cap">Darshan</div><div class="meta">Date not known</div>';
+    $('big-pic').innerHTML = `<img src="${PHOTOS}m/${p.g[3]}/${p.file}" alt="${esc(p.cap || 'Darshan')}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'soon',textContent:'Photo coming soon'}))">`;
+    $('big-info').innerHTML = `<div class="cap">${esc(p.cap || 'Darshan')}</div>`;
   } else if (p.kind === 'photo') {
     const g = p.g, medium = `${PHOTOS}m/${g[3]}/${p.file}`;
     $('big-pic').innerHTML = `<img src="${medium}" alt="${esc(p.cap)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'soon',textContent:'Photo coming soon'}))">`;
@@ -782,7 +782,7 @@ async function load() {
   const nPhotos = Object.values(about.photos).reduce((a, b) => a + b, 0);
   // the years and the photo count follow the data, so they grow by themselves as photos are added
   $('sub').innerHTML = `Every vicharan photo on baps.org from ${about.years[0]} to ${about.years.at(-1)} <span class="count"><b>${nPhotos.toLocaleString()}</b> photos</span>`
-    + (about.undated ? `, and <b class="plain">${about.undated.toLocaleString()}</b> more darshan with no date.` : '.');
+    + (about.undated ? `, and <b class="plain">${about.undated.toLocaleString()}</b> more darshan photos.` : '.');
   $('q').value = 'annakut';
   const linked = fromLink();
   if (START_YEAR && !linked) $('q').value = '';
@@ -805,9 +805,9 @@ async function load() {
       return { kind: 'photo', y, g, d: g[0], city: g[2].split(',')[0].trim(), file, cap, tags, m, b: bapa === 1, hay: (cap + ' ' + g[2] + ' ' + tags + ' ' + mandirWords(m)).toLowerCase() };
     })))));
   // darshan with no date (Darpan, 30 Oct 2026): after every dated photo, never on a dated page (Today, Calendar)
-  const none = about.undated ? fetch('data/undated.json').then(r => r.json()).then(data => add(data.p.map(([file, tags]) =>
-    ({ kind: 'photo', u: 1, y: 0, g: ['', '', '', data.album], d: UNDATED, city: '', file, cap: '', tags: tags || '', m: '', b: true,
-       hay: ('darshan no date undated ' + (tags || '')).toLowerCase() })))).catch(() => add([])) : null;
+  const none = about.undated ? fetch('data/undated.json').then(r => r.json()).then(data => add(data.p.map(([file, tags, cap]) =>
+    ({ kind: 'photo', u: 1, y: 0, g: ['', '', '', data.album], d: UNDATED, city: '', file, cap: cap || 'Darshan', tags: tags || '', m: '', b: true,
+       hay: ('darshan ' + (cap || '') + ' ' + (tags || '')).toLowerCase() })))).catch(() => add([])) : null;
   await tg; await none;
   // 'today' opens with no filters at all; links from Today and the Calendar still pick their date
   // (Darpan, 30 Oct 2026: "no search filters as default please")

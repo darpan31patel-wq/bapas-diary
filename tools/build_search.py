@@ -13,7 +13,7 @@ Writes a folder that works as it is on any web host (Cloudflare Pages, or opened
   data/calendar.json  every BAPS calendar day, when the database has the calendar table:
                         [[date, weekday, vikram_samvat, indian_date, festivals, festival_about, notes, source], ...]
   data/undated.json   darshan with no date (Darpan, 30 Oct 2026), from --undated (release undated-build, tools/undated_build.py on branch 8ib4kr):
-                        {"album": "undated", "p": [[file, tags], ...]}, shown after every dated photo, never on a dated page
+                        {"album": "undated", "p": [[file, tags, caption], ...]}, shown after every dated photo, never on a dated page
   data/about.json     years, counts and when it was built
   data/people.json    the people the captions name, for Who was with Bapa (tools/search_people.py, site/search-people.js)
   data/people-faces.json  more photos of each of them, found by their face (tools/people_faces.py)
