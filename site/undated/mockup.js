@@ -47,10 +47,12 @@ const sizes = [['laptop', 1440, 900, 1, false], ['phone', 390, 844, 3, true]];
     await p.evaluate(() => { const e = document.getElementById('years'); e && e.scrollIntoView({ block: 'start' }); scrollBy(0, -90); });
     console.log(sz, 'garland:', await p.evaluate(() => document.getElementById('count')?.textContent.trim()));
     await shot('4-word-bars');
-    // 5. the end of those results: the "Date not known" heading after the last dated day
-    for (let i = 0; i < 40; i++) { await p.evaluate(() => scrollTo(0, document.body.scrollHeight)); await p.waitForTimeout(400); }
-    await p.evaluate(() => { const e = document.querySelector('.day-head.none'); e && e.scrollIntoView({ block: 'start' }); scrollBy(0, -260); });
-    await shot('5-word-end');
+    // 5. a word with "No date" picked: only the undated photos that have it
+    await p.selectOption('#year', 'none').catch(() => {});
+    await p.fill('#q', 'smiling'); await p.waitForTimeout(1500);
+    await p.evaluate(() => { const e = document.getElementById('years'); e && e.scrollIntoView({ block: 'start' }); scrollBy(0, -90); });
+    console.log(sz, 'smiling, no date:', await p.evaluate(() => document.getElementById('count')?.textContent.trim()));
+    await shot('5-word-no-date');
     await ctx.close();
   }
   await b.close();

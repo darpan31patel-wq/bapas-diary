@@ -28,6 +28,10 @@
   "  else if ($('order').value === 'new') hits.reverse();\n  if (!pic && $('order').value === 'new') hits = hits.filter(h => !h.u).concat(hits.filter(h => h.u));   // no date: always last\n"
  ],
  [
+  "  const year = $('year').value, max = Math.max(1, ...Object.values(byYear));\n  const last = Math.max(new Date().getFullYear(), ...Object.keys(byYear).filter(k => k !== 'old').map(Number));\n",
+  "  const year = $('year').value, max = Math.max(1, ...Object.values(byYear));\n  const last = Math.max(new Date().getFullYear(), ...Object.keys(byYear).filter(k => k !== 'old' && k !== 'none').map(Number));\n"
+ ],
+ [
   "  for (let y = FIRST; y <= last; y++) keys.push(String(y));\n",
   "  for (let y = FIRST; y <= last; y++) keys.push(String(y));\n  if (byYear.none) keys.push('none');\n"
  ],
@@ -37,11 +41,11 @@
  ],
  [
   "  const nPhotos = hits.filter(h => h.kind === 'photo').length, nPosts = hits.filter(h => h.kind === 'post').length;\n  const nDates = new Set(hits.map(h => h.d)).size;\n  $('count').innerHTML = (latestOn() && !picMode ? '<span class=\"latest\">Latest vicharan, newest first</span>' : '') + (picMode ? `<b>${nPhotos.toLocaleString()}</b> photos most like your picture, closest first` + (loaded < total ? ' (still loading)' : '') : `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'}${latestOn() ? '' : ` and <b>${nPosts.toLocaleString()}</b> On this day stor${nPosts === 1 ? 'y' : 'ies'}`} on <b>${nDates.toLocaleString()}</b> date${nDates === 1 ? '' : 's'}`\n",
-  "  const nPhotos = hits.filter(h => h.kind === 'photo').length, nPosts = hits.filter(h => h.kind === 'post').length;\n  const nDates = new Set(hits.filter(h => !h.u).map(h => h.d)).size, nNone = hits.filter(h => h.u).length;\n  $('count').innerHTML = (latestOn() && !picMode ? '<span class=\"latest\">Latest vicharan, newest first</span>' : '') + (picMode ? `<b>${nPhotos.toLocaleString()}</b> photos most like your picture, closest first` + (loaded < total ? ' (still loading)' : '') : `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'}${latestOn() ? '' : ` and <b>${nPosts.toLocaleString()}</b> On this day stor${nPosts === 1 ? 'y' : 'ies'}`} on <b>${nDates.toLocaleString()}</b> date${nDates === 1 ? '' : 's'}${nNone ? `, <b>${nNone.toLocaleString()}</b> of the photos with no date` : ''}`\n"
+  "  const nPhotos = hits.filter(h => h.kind === 'photo').length, nPosts = hits.filter(h => h.kind === 'post').length;\n  const nDates = new Set(hits.filter(h => !h.u).map(h => h.d)).size, nNone = hits.filter(h => h.u).length;\n  $('count').innerHTML = nNone && nNone === hits.length && !picMode ? `<b>${nNone.toLocaleString()}</b> photo${nNone === 1 ? '' : 's'} with no date` : (latestOn() && !picMode ? '<span class=\"latest\">Latest vicharan, newest first</span>' : '') + (picMode ? `<b>${nPhotos.toLocaleString()}</b> photos most like your picture, closest first` + (loaded < total ? ' (still loading)' : '') : `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'}${latestOn() ? '' : ` and <b>${nPosts.toLocaleString()}</b> On this day stor${nPosts === 1 ? 'y' : 'ies'}`} on <b>${nDates.toLocaleString()}</b> date${nDates === 1 ? '' : 's'}${nNone ? `, and <b>${nNone.toLocaleString()}</b> with no date` : ''}`\n"
  ],
  [
   "function dayHead(d, want, onlyCal) {\n",
-  "function dayHead(d, want, onlyCal) {\n  if (d === UNDATED) return '<div class=\"day-head none\"><span class=\"when\">Date not known</span>'\n    + '<div class=\"info\"><span class=\"stay\">Darshan from many years, the day each was taken not yet known</span></div></div>';\n"
+  "function dayHead(d, want, onlyCal) {\n  if (d === UNDATED) return '<div class=\"day-head none\"><span class=\"when\">Date not known</span>'\n    + '<div class=\"info\"><span class=\"stay\">The day each was taken is not known</span></div></div>';\n"
  ],
  [
   "  const g = p.g, small = `${PHOTOS}s/${g[3]}/${p.file}`, medium = `${PHOTOS}m/${g[3]}/${p.file}`;\n  const when = g[1] ? `${niceDate(g[0])} to ${niceDate(g[1])}` : niceDate(g[0]);\n",
