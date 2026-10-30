@@ -40,8 +40,8 @@
 
   // whole sentences built by the pages, English pattern -> Gujarati
   const P = [
-    [/^(\d[\d,]*) years and (\d[\d,]*) photos from this day\. Each card fades through all of its year's photos\. Tap a card to see them all\.$/,
-      m => `આ દિવસનાં ${m[1]} વર્ષ અને ${m[2]} ફોટા. દરેક કાર્ડમાં તે વર્ષના બધા ફોટા વારાફરતી આવે છે. બધા જોવા કાર્ડ પર ટૅપ કરો.`],
+    [/^(\d[\d,]*) years and (\d[\d,]*) photos from this day\.$/,
+      m => `આ દિવસનાં ${m[1]} વર્ષ અને ${m[2]} ફોટા.`],
     [/^(\d+) years remembered on this day\.$/, m => `આ દિવસનાં ${m[1]} વર્ષની સ્મૃતિ.`],
     [/^In (\d{4}) this date is$/, m => `${m[1]}માં આ તારીખે`],
     [/^Every photo from (.+)$/, m => `${tr(m[1])}ના બધા ફોટા`],
