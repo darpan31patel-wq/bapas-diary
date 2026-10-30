@@ -12,6 +12,8 @@ Writes a folder that works as it is on any web host (Cloudflare Pages, or opened
   data/stories.json   every On this day story (the Telegram channel posts, shown without any Telegram links): [[date, place, text, mandir?], ...]
   data/calendar.json  every BAPS calendar day, when the database has the calendar table:
                         [[date, weekday, vikram_samvat, indian_date, festivals, festival_about, notes, source], ...]
+  data/undated.json   darshan with no date (Darpan, 30 Oct 2026), from --undated (release undated-build, tools/undated_build.py on branch 8ib4kr):
+                        {"album": "undated", "p": [[file, tags], ...]}, shown after every dated photo, never on a dated page
   data/about.json     years, counts and when it was built
   data/people.json    the people the captions name, for Who was with Bapa (tools/search_people.py, site/search-people.js)
   data/people-faces.json  more photos of each of them, found by their face (tools/people_faces.py)
@@ -175,6 +177,7 @@ def main():
     ap.add_argument('--photos', default='https://photos.bapas-diary.com/', help='where the s/ and m/ photos are (R2)')
     ap.add_argument('--start-year', default='', help="the year the page opens on, or 'today' for this day in every year")
     ap.add_argument('--image', help='folder with the Search by photo model and photo numbers (release image-search)')
+    ap.add_argument('--undated', help='undated-search.json from release undated-build: the darshan with no date')
     a = ap.parse_args()
     os.makedirs(os.path.join(a.out, 'data'), exist_ok=True)
     db = sqlite3.connect(a.db)
@@ -243,9 +246,14 @@ def main():
            and len(f['more']) <= 3 * f['captioned']})   # far more found than captioned: young swamis near Bapa, often
                                                         # in masks, look alike, so the face alone is not sure enough
 
+    undated = json.load(open(a.undated)) if a.undated and os.path.exists(a.undated) else None
+    if undated:
+        write(os.path.join(a.out, 'data', 'undated.json'), undated)
+
     built = dict(db.execute("SELECT key, value FROM about"))
     write(os.path.join(a.out, 'data', 'about.json'),
-          {'built': built.get('built'), 'years': sorted(counts), 'photos': counts, 'stories': len(tg), 'calendar': len(cal)})
+          {'built': built.get('built'), 'years': sorted(counts), 'photos': counts, 'stories': len(tg), 'calendar': len(cal),
+           'undated': len(undated['p']) if undated else 0})
 
     body = open(PAGE, encoding='utf-8').read().replace('{{PHOTOS}}', a.photos).replace('{{START_YEAR}}', a.start_year)
     body += '\n<script>\n' + open(ASK, encoding='utf-8').read() + '</script>'

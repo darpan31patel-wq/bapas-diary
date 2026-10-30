@@ -117,6 +117,7 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 .day-head .when { font: 700 clamp(24px, 3vw, 32px)/1.1 var(--serif); color: var(--maroon); background: none; border: 0; padding: 0; cursor: pointer; }
 .day-head .when::before, .day-head .when::after { content: "\25C6"; font-size: .4em; color: var(--gold); vertical-align: middle; margin: 0 .9em; }
 .day-head .when:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; }
+.day-head.none .when { cursor: default; text-decoration: none; }   /* Date not known: nothing to open */
 .day-head .tithi { order: 2; font: 700 11px var(--sans); letter-spacing: .24em; text-transform: uppercase; color: var(--gold-deep); }
 .day-head .fest { order: 1; font: 600 19px var(--serif); color: var(--ink); }
 .day-head .about { order: 3; color: var(--muted); font: italic 500 16px/1.4 var(--serif); max-width: 70ch; margin-inline: auto; }
@@ -366,6 +367,7 @@ const MANDIR = {
 };
 const mandirWords = m => [...(m || '')].map(k => MANDIR[k][2]).join(' ');
 const PAGE = 60, FIRST = 1999;
+const UNDATED = '~';   // the date of a photo with no date: sorts after every real date
 const $ = id => document.getElementById(id);
 
 // One list of everything, kept in date order: baps.org photos (kind 'photo'), On this day stories (kind 'post'),
@@ -403,12 +405,13 @@ function highlight(text, want) {
 
 function fillYears() {
   const y = $('year'), keep = y.value, list = [...new Set(items.map(p => p.y))].filter(v => v >= FIRST).sort((a, b) => a - b);
-  y.innerHTML = '<option value="">Every year</option><option value="old">Before 1999</option>' + list.map(v => `<option>${v}</option>`).join('');
-  y.value = keep === 'old' || list.includes(+keep) ? keep : '';
+  const none = items.some(p => p.u) ? '<option value="none">No date</option>' : '';
+  y.innerHTML = '<option value="">Every year</option><option value="old">Before 1999</option>' + list.map(v => `<option>${v}</option>`).join('') + none;
+  y.value = keep === 'old' || (keep === 'none' && none) || list.includes(+keep) ? keep : '';
 }
 $('month').innerHTML = '<option value="">Every month</option>' + MONTHS.map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}">${m}</option>`).join('');
 $('day').innerHTML = '<option value="">Every day</option>' + Array.from({ length: 31 }, (_, i) => `<option value="${String(i + 1).padStart(2, '0')}">${i + 1}</option>`).join('');
-const yearKey = y => y < FIRST ? 'old' : String(y);
+const yearKey = y => y === 0 ? 'none' : y < FIRST ? 'old' : String(y);   // 0: a photo with no date (data/undated.json)
 
 function search() {
   $('day-view')?.remove();
@@ -430,6 +433,7 @@ function search() {
   hits = [];
   if (!pic && !asked && !want.length && !not.length && !year && !month && !day && !from && !to && !fest && !place && !act && !mandir) { render(byYear, want); return; }
   for (const r of items) {
+    if (r.u && (month || day || from || to || fest || place || mandir)) continue;
     if (month && r.d.slice(5, 7) !== month) continue;
     if (day && r.d.slice(8, 10) !== day) continue;
     if (from && r.d < from) continue;
@@ -442,7 +446,7 @@ function search() {
     if (pic && !pic.has(r)) continue;
     if (asked && !asked.keep(r)) continue;
     if (want.length || not.length) {
-      const hay = r.hay + ' ' + calWords(r.d);
+      const hay = r.u ? r.hay : r.hay + ' ' + calWords(r.d);
       if (!spell.alts.every(a => a.some(w => hay.includes(w))) || not.some(w => hay.includes(w))) continue;
     }
     const k = yearKey(r.y);
@@ -452,6 +456,7 @@ function search() {
   }
   if (pic) hits.sort((a, b) => pic.get(b) - pic.get(a));
   else if ($('order').value === 'new') hits.reverse();
+  if (!pic && $('order').value === 'new') hits = hits.filter(h => !h.u).concat(hits.filter(h => h.u));   // no date: always last
   lastWant = spell.flat;
   render(byYear, spell.flat);
   if (spell.note) $('count').insertAdjacentHTML('beforeend', `<span class="spelt">${spell.note}</span>`);
@@ -459,11 +464,12 @@ function search() {
 
 function render(byYear, want) {
   const year = $('year').value, max = Math.max(1, ...Object.values(byYear));
-  const last = Math.max(new Date().getFullYear(), ...Object.keys(byYear).filter(k => k !== 'old').map(Number));
+  const last = Math.max(new Date().getFullYear(), ...Object.keys(byYear).filter(k => k !== 'old' && k !== 'none').map(Number));
   const keys = byYear.old ? ['old'] : [];
   for (let y = FIRST; y <= last; y++) keys.push(String(y));
+  if (byYear.none) keys.push('none');
   $('years').innerHTML = Object.keys(byYear).length ? keys.map(k => {
-    const n = byYear[k] || 0, label = k === 'old' ? 'Earlier' : k, name = k === 'old' ? 'Before 1999' : k;
+    const n = byYear[k] || 0, label = k === 'old' ? 'Earlier' : k === 'none' ? 'No date' : k, name = k === 'old' ? 'Before 1999' : k === 'none' ? 'No date' : k;
     return `<button class="${k === year ? 'on' : ''}" data-y="${k}" title="${name}: ${n.toLocaleString()} found" aria-label="${name}: ${n.toLocaleString()} found"><span class="n">${n.toLocaleString()}</span><div class="col" style="height:${n ? Math.max(3, 62 * n / max) : 0}%"></div><span>${label}</span></button>`;
   }).join('') : '';
   if (!hits.length) {
@@ -474,8 +480,8 @@ function render(byYear, want) {
     return;
   }
   const nPhotos = hits.filter(h => h.kind === 'photo').length, nPosts = hits.filter(h => h.kind === 'post').length;
-  const nDates = new Set(hits.map(h => h.d)).size;
-  $('count').innerHTML = (latestOn() && !picMode ? '<span class="latest">Latest vicharan, newest first</span>' : '') + (picMode ? `<b>${nPhotos.toLocaleString()}</b> photos most like your picture, closest first` + (loaded < total ? ' (still loading)' : '') : `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'}${latestOn() ? '' : ` and <b>${nPosts.toLocaleString()}</b> On this day stor${nPosts === 1 ? 'y' : 'ies'}`} on <b>${nDates.toLocaleString()}</b> date${nDates === 1 ? '' : 's'}`
+  const nDates = new Set(hits.filter(h => !h.u).map(h => h.d)).size, nNone = hits.filter(h => h.u).length;
+  $('count').innerHTML = nNone && nNone === hits.length && !picMode ? `<b>${nNone.toLocaleString()}</b> photo${nNone === 1 ? '' : 's'} with no date` : (latestOn() && !picMode ? '<span class="latest">Latest vicharan, newest first</span>' : '') + (picMode ? `<b>${nPhotos.toLocaleString()}</b> photos most like your picture, closest first` + (loaded < total ? ' (still loading)' : '') : `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'}${latestOn() ? '' : ` and <b>${nPosts.toLocaleString()}</b> On this day stor${nPosts === 1 ? 'y' : 'ies'}`} on <b>${nDates.toLocaleString()}</b> date${nDates === 1 ? '' : 's'}${nNone ? `, and <b>${nNone.toLocaleString()}</b> with no date` : ''}`
     + (loaded < total ? ' (still loading)' : ''));
   $('results').innerHTML = `<div class="${picMode ? 'grid' : 'days slim'}" id="cards"></div>`;
   shown = 0; lastDate = '';
@@ -495,6 +501,7 @@ var latestShown = false;
 
 // the date heading: what the BAPS calendar says about that day
 function dayHead(d, want, onlyCal) {
+  if (d === UNDATED) return '<div class="day-head none"><span class="when">Date not known</span></div>';
   const c = cal[d];
   const when = d.length === 10 ? (c ? `<span class="wd">${c.wd} </span>${longDate(d)}` : longDate(d)) : esc(d);
   const fest = c && c.fest ? c.fest : !c && window.festOn && festOn(d).length ? festOn(d).join(', ') : '';
@@ -521,7 +528,7 @@ function said(p, what) {
 }
 function photoCard(p, want, i) {
   const g = p.g, small = `${PHOTOS}s/${g[3]}/${p.file}`, medium = `${PHOTOS}m/${g[3]}/${p.file}`;
-  const when = g[1] ? `${niceDate(g[0])} to ${niceDate(g[1])}` : niceDate(g[0]);
+  const when = p.u ? 'Date not known' : g[1] ? `${niceDate(g[0])} to ${niceDate(g[1])}` : niceDate(g[0]);
   return `<article class="card" data-i="${i}" tabindex="0">
     <div class="pic"><img loading="lazy" src="${small}" alt="${esc(p.cap)}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'none',textContent:'Photo coming soon'}))"></div>
     <div class="txt">
@@ -655,7 +662,10 @@ function showBig(i) {
   const p = hits[i]; if (!p) return;
   at = i;
   const c = cal[p.d], day = c ? `${c.wd} ${longDate(p.d)}` : longDate(p.d);
-  if (p.kind === 'photo') {
+  if (p.u) {
+    $('big-pic').innerHTML = `<img src="${PHOTOS}m/${p.g[3]}/${p.file}" alt="Darshan" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'soon',textContent:'Photo coming soon'}))">`;
+    $('big-info').innerHTML = '<div class="cap">Darshan</div><div class="meta">Date not known</div>';
+  } else if (p.kind === 'photo') {
     const g = p.g, medium = `${PHOTOS}m/${g[3]}/${p.file}`;
     $('big-pic').innerHTML = `<img src="${medium}" alt="${esc(p.cap)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'soon',textContent:'Photo coming soon'}))">`;
     $('big-info').innerHTML = `<div class="cap">${esc(p.cap || 'Darshan')}</div><div class="meta">${esc(g[1] ? niceDate(g[0]) + ' to ' + niceDate(g[1]) : niceDate(g[0]))} · ${esc(g[2])}</div>${p.m ? `<div class="mandir">${[...p.m].map(k => MANDIR[k][1]).join(' · ')}</div>` : ''}<hr><div class="when">${esc(day)}</div>${calInfo(p.d)}${p.d >= '1999' ? `<div><a class="go" href="/calendar/#${p.d}">Calendar &rsaquo;</a></div>` : ''}`;
@@ -768,10 +778,11 @@ function add(list) {
 }
 async function load() {
   const about = await (await fetch('data/about.json')).json();
-  total = about.years.length + 1 + (about.calendar ? 1 : 0);
+  total = about.years.length + 1 + (about.calendar ? 1 : 0) + (about.undated ? 1 : 0);
   const nPhotos = Object.values(about.photos).reduce((a, b) => a + b, 0);
   // the years and the photo count follow the data, so they grow by themselves as photos are added
-  $('sub').innerHTML = `Every vicharan photo on baps.org from ${about.years[0]} to ${about.years.at(-1)} <span class="count"><b>${nPhotos.toLocaleString()}</b> photos</span>.`;
+  $('sub').innerHTML = `Every vicharan photo on baps.org from ${about.years[0]} to ${about.years.at(-1)} <span class="count"><b>${nPhotos.toLocaleString()}</b> photos</span>`
+    + (about.undated ? `, and <b class="plain">${about.undated.toLocaleString()}</b> more darshan with no date.` : '.');
   $('q').value = 'annakut';
   const linked = fromLink();
   if (START_YEAR && !linked) $('q').value = '';
@@ -793,7 +804,11 @@ async function load() {
       const m = g[4] || '';
       return { kind: 'photo', y, g, d: g[0], city: g[2].split(',')[0].trim(), file, cap, tags, m, b: bapa === 1, hay: (cap + ' ' + g[2] + ' ' + tags + ' ' + mandirWords(m)).toLowerCase() };
     })))));
-  await tg;
+  // darshan with no date (Darpan, 30 Oct 2026): after every dated photo, never on a dated page (Today, Calendar)
+  const none = about.undated ? fetch('data/undated.json').then(r => r.json()).then(data => add(data.p.map(([file, tags]) =>
+    ({ kind: 'photo', u: 1, y: 0, g: ['', '', '', data.album], d: UNDATED, city: '', file, cap: '', tags: tags || '', m: '', b: true,
+       hay: ('darshan no date undated ' + (tags || '')).toLowerCase() })))).catch(() => add([])) : null;
+  await tg; await none;
   // 'today' opens with no filters at all; links from Today and the Calendar still pick their date
   // (Darpan, 30 Oct 2026: "no search filters as default please")
   if (START_YEAR && START_YEAR !== 'today' && !linked && !$('q').value.trim() && !$('year').value && !$('month').value) {   // unless they already started searching
