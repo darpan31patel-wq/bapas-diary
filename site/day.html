@@ -164,6 +164,10 @@ a.ss-big { text-decoration: none; }
 .fest{display:inline-block;margin-top:5px;max-width:100%;font:700 8.5px/1.25 var(--sans);letter-spacing:.14em;text-transform:uppercase;background:var(--maroon-ink);color:var(--gold-hi);padding:3px 7px;border-radius:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .of{margin-top:5px;font:700 8.5px/1 var(--sans);letter-spacing:.16em;color:rgba(110,20,36,.6);font-variant-numeric:tabular-nums}
 .cap{margin-top:11px;min-height:2.8em;width:100%;text-align:center;font:500 15px/1.35 var(--serif);color:var(--cream);transition:opacity 1.5s ease-in-out;text-wrap:balance;max-width:100%;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.slot .vid{display:inline-flex;align-items:center;gap:8px;margin-top:2px;padding:6px 13px 6px 7px;border:1px solid rgba(217,164,65,.6);border-radius:999px;background:rgba(0,0,0,.22);color:#ffe296;font:600 12.5px/1 Poppins,Arimo,sans-serif;letter-spacing:.04em;text-decoration:none;white-space:nowrap;transition:background .2s,border-color .2s}
+.slot .vid:hover,.slot .vid:focus-visible{background:rgba(217,164,65,.22);border-color:#ffe296}
+.slot .vid i{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#d9a441}
+.slot .vid i::before{content:"";margin-left:2px;border-left:7px solid #2a0d12;border-top:4.5px solid transparent;border-bottom:4.5px solid transparent}
 .cap.fade{opacity:0}
 /* a very faint golden glow around a frame while the mouse moves over it; with no mouse on any frame the glow drifts
    gently from year to year, 1999, 2000, 2001 ... to the last, then starts again (Darpan, 30 Oct 2026) */
@@ -731,6 +735,12 @@ function card(y, {Y, place, stories}, want = true) {
   const cap = document.createElement('div'); cap.className = 'cap';
   cap.textContent = photos.length ? '' : 'On this day';
   slot.append(el, cap); $('cards').append(slot);
+  if (Y && Y.v) {   // a BAPS video of this day on YouTube (tools/web_videos.py; Darpan, 30 Oct 2026)
+    const v = document.createElement('a'); v.className = 'vid'; v.target = '_blank'; v.rel = 'noopener';
+    v.href = 'https://www.youtube.com/watch?v=' + Y.v[0][0]; v.title = Y.v[0][1];
+    v.innerHTML = '<i aria-hidden="true"></i>Watch the video';
+    slot.append(v);
+  }
   Object.assign(c, {cap, of: lab.querySelector('.of'), ph});
   requestAnimationFrame(() => lean(c, c.rest));
   el.addEventListener('pointermove', e => nudge(c, e));
