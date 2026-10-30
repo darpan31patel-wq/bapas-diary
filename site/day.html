@@ -143,7 +143,7 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 .card::after{content:"";position:absolute;inset:-1px;pointer-events:none;opacity:0;transition:opacity 2.5s ease-in-out;
   box-shadow:0 0 14px 5px rgba(255,216,128,.46),0 0 40px 14px rgba(230,176,72,.22)}
 .card.glow::after{opacity:1}
-.card.hand::after{transition-duration:1.2s}
+.card.hand::after{transition-duration:.3s}   /* under the mouse it lights at once and follows it from frame to frame (Darpan, 30 Oct 2026) */
 /* the mouse resting on a caption for half a second opens it to the photo's whole caption, over whatever is below, so
    nothing on the page moves (Darpan, 30 Oct 2026) */
 .cap.open{position:relative;z-index:6;display:block;-webkit-line-clamp:unset;overflow:visible;margin-top:5px;padding:6px 9px 8px;
@@ -795,12 +795,13 @@ function swing() {
 let under = null, walkAt = -1, walkTimer = null;
 function glowOn(c) {
   under = c; clearTimeout(walkTimer); walkTimer = null;
-  cards.forEach(x => x.el.classList.toggle('glow', x === c));
+  cards.forEach(x => { x.el.classList.toggle('glow', x === c); if (x !== c) x.el.classList.remove('hand'); });
   c.el.classList.add('hand');
 }
 function glowOff(c) {
   if (under !== c) return;
-  under = null; c.el.classList.remove('glow', 'hand');
+  under = null; c.el.classList.remove('glow');
+  setTimeout(() => { if (under !== c) c.el.classList.remove('hand'); }, 400);   // goes out as quickly as it came, then the slow walk takes over
   walkAt = cards.indexOf(c);   // the walk carries on from the frame the mouse left
   clearTimeout(walkTimer); walkTimer = setTimeout(walk, 2000);
 }
