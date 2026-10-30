@@ -1,0 +1,39 @@
+name: Festival mockup fetch (test branch only, never ship)
+
+on:
+  push:
+    branches: [claude/project-thread-lcbb5g]
+    paths: ['.github/workflows/festfetch.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Diwali list and photos from the website (run 1)
+        run: |
+          mkdir -p preview/fest/diwali
+          curl -sSfL -o preview/fest/diwali.json https://bapas-diary.com/data/fest/diwali.json
+          python3 - <<'P' > urls.txt
+          import json
+          d = json.load(open('preview/fest/diwali.json'))
+          for y in d['years']:
+              for p in y['p'][:4]:
+                  print(f"{y['y']}\t{p[0]}\t{p[1]}")
+          P
+          i=0
+          while IFS=$'\t' read -r y alb f; do
+            i=$((i+1)); curl -sSfL -o "preview/fest/diwali/$y-$i-${f##*/}" "https://photos.bapas-diary.com/l/$alb/$f" || echo "miss $y $alb $f"
+          done < urls.txt
+          ls preview/fest/diwali | wc -l
+      - name: Save to the branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add preview/fest
+          git commit -q -m "Festival mockup photos [skip ci]"
+          git pull -q --rebase origin "${GITHUB_REF_NAME}" && git push -q
