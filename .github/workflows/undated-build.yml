@@ -1,0 +1,58 @@
+# Undated photos for Search (Darpan, 30 Oct 2026): the channel's photos from release undated-raw made ready (repeats
+# out, bars cut, a light touch up, the website's sizes), matched against the dated diary, sorted by what kind of picture
+# they are and tagged like the rest of Search. Everything lands in release undated-build with contact sheets to check
+# by eye. Website only: nothing here touches the daily picture, and nothing is fetched from baps.org.
+name: Undated photos build
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/project-thread-8ib4kr]
+    paths: [.github/workflows/undated-build.yml, tools/undated_process.py, tools/undated_check.py]
+permissions:
+  contents: write
+concurrency: undated-build
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Tools from the website branches
+        run: |
+          # the website's face check (eawr12) and the deep tags (vcys74), read as they are, never changed here
+          git show origin/claude/project-thread-eawr12:tools/web_bapa_rules.py > tools/web_bapa_rules.py
+          for f in deep_tags.py deep_words.py deep_words_big.py; do git show origin/claude/project-thread-vcys74:tools/$f > tools/$f; done
+          pip install -q --index-url https://download.pytorch.org/whl/cpu torch torchvision
+          pip install -q 'open_clip_torch>=2.31' 'timm>=1.0.15' transformers sentencepiece pillow numpy opencv-python-headless onnxruntime
+      - name: Make the photos ready
+        run: |
+          gh release download undated-raw -p undated-raw.zip
+          mkdir raw && cd raw && unzip -q ../undated-raw.zip && cd ..
+          python3 tools/undated_process.py raw out
+      - name: Match against the dated diary
+        run: |
+          gh release download image-search -p image-search.tgz && tar xzf image-search.tgz
+          python3 tools/undated_check.py match --photos out/s/undated --index image --out match.json
+      - name: Kinds and tags (SigLIP)
+        run: |
+          mkdir -p emb && cp -r out/s/undated emb-photos   # the s/ size, as the deep tags of every dated photo
+          python3 tools/deep_tags.py embed --photos emb-photos --out emb/emb-undated.npz
+          python3 tools/undated_check.py kinds --emb emb/emb-undated.npz --out kinds.json
+          gh release download deep-tags -p words.npz -p words-big.npz
+          python3 tools/deep_tags.py tags --emb emb --words words.npz --big words-big.npz --out undated-tags.json
+      - name: Contact sheets
+        run: python3 tools/undated_check.py sheets --photos out/s/undated --undated out/undated.json --match match.json --kinds kinds.json --out sheets
+      - name: Save to the release
+        run: |
+          cd out && zip -q -r ../undated-photos.zip o l m s && cd ..
+          cp out/undated.json .
+          cd sheets && zip -q ../undated-sheets.zip *.jpg && cd ..
+          gh release view undated-build >/dev/null 2>&1 || gh release create undated-build --target claude/project-thread-8ib4kr --title "Undated photos (ready)" --notes "The undated photos for Search, ready and checked. Website only."
+          gh release upload undated-build undated-photos.zip undated.json match.json kinds.json undated-tags.json emb/emb-undated.npz undated-sheets.zip --clobber
