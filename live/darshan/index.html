@@ -13,7 +13,7 @@
      2pm picture. The photos are the website's own copies (photos.bapas-diary.com/darshan/), saved each morning by the
      screensaver darshan robot, which also writes archive.js (the days, their photos and colours,
      tools/screensaver/darshan_archive.py); cal.js is the BAPS calendar's Indian date and festival for each day
-     (tools/web_darshan.py). Pramukh Swami Maharaj and Mahant Swami Maharaj always together at the top. -->
+     (tools/web_darshan.py). No portraits at the top (Darpan, 30 Oct 2026: take them and Jay Swaminarayan off this tab). -->
 <style>
 :root { --maroon-in: #42101c; --maroon-out: #160509; --ink: #3b1219; --gold-hi: #ffe296; --gold-deep: #a8742a; --gold-soft: #d9a441; --paper: #f3ead9;
   --title: Cinzel, Georgia, serif; --script: "Cormorant Garamond", Georgia, serif; --sans: Arimo, Arial, sans-serif;
@@ -25,29 +25,22 @@ body { margin: 0; color: #f3e6cc; font: 400 17px/1.6 var(--lora-f); background: 
   radial-gradient(ellipse 60% 40% at 50% 0%, rgba(255, 196, 110, .16), transparent 70%),
   radial-gradient(ellipse 110% 70% at 50% 15%, var(--maroon-in), var(--maroon-out)); }
 .top { text-align: center; }
-.jay { font: italic 600 clamp(24px, 3.2vw, 32px)/1.2 var(--script); color: var(--gold-hi); margin: 0 0 18px; text-shadow: 0 2px 6px rgba(0,0,0,.5); }
-.gurus { display: flex; justify-content: center; gap: clamp(14px, 3vw, 30px); margin: 0 auto 20px; }
-.gurus figure { margin: 0; }
-.ring { width: clamp(96px, 9vw, 130px); aspect-ratio: 4 / 5; border-radius: 999px 999px 14px 14px; padding: 4px;
-  background: linear-gradient(#ffe296, #a8742a); box-shadow: 0 0 0 7px rgba(217,164,65,.12), 0 16px 40px rgba(0,0,0,.55); }
-.ring img { display: block; width: 100%; height: 100%; border-radius: 999px 999px 10px 10px; object-fit: cover; }
-figcaption { margin-top: 10px; font: 600 10px/1.4 var(--poppins-f); letter-spacing: .18em; text-transform: uppercase; color: var(--gold-soft); }
 h1 { font: 600 clamp(32px, 5vw, 52px)/1.1 var(--lora-f); margin: 6px 0 6px; letter-spacing: .02em;
   background: linear-gradient(#ffe296, #ce9840); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 2px 2px rgba(0,0,0,.45)); }
 .lede { margin: 0 0 18px; text-wrap: balance; font: 400 14px var(--poppins-f); letter-spacing: .06em; color: #cfae78; }
 
-/* the chosen day: big photo left, words and the day's ten photos right, the whole width */
-.feature { display: grid; grid-template-columns: auto minmax(320px, 1fr); grid-template-areas: "big top" "big side"; grid-template-rows: auto 1fr;
-  column-gap: clamp(22px, 3vw, 48px); row-gap: 14px; align-items: start; margin: 0 0 44px; }
-.feature .top { grid-area: top; } .bigwrap { grid-area: big; } .side { grid-area: side; }
-.bigwrap { position: relative; }
-.big { display: block; height: min(calc(100vh - 110px), 54vw); width: auto; max-width: 100%; aspect-ratio: 2755 / 2480; object-fit: cover; border-radius: 14px; background-color: #2a0a10;
+/* the chosen day, down the middle (Darpan, 30 Oct 2026: no Jay Swaminarayan or the two portraits; "Murti Darshan" at the
+   top in the centre, then the main image, then all the other pictures underneath, then the calendar) */
+.feature { display: flex; flex-direction: column; align-items: center; gap: 14px; margin: 0 0 48px; }
+.bigwrap { position: relative; width: min(100%, calc((100vh - 230px) * 2755 / 2480), 1100px); }
+.big { display: block; width: 100%; height: auto; aspect-ratio: 2755 / 2480; object-fit: cover; border-radius: 14px; background-color: #2a0a10;
   box-shadow: 0 0 0 1px rgba(255,226,150,.5), 0 0 0 7px rgba(217,164,65,.14), 0 24px 60px rgba(0,0,0,.6); transition: opacity .5s; }
 .arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 46px; height: 46px; border-radius: 50%; border: 1px solid rgba(255,226,150,.6);
   background: rgba(22,5,9,.6); color: var(--gold-hi); font: 400 30px/1 var(--lora-f); cursor: pointer; }
 .arrow.prev { left: 12px; } .arrow.next { right: 12px; }
 .arrow:disabled { opacity: .25; cursor: default; }
-.side { text-align: left; }
+.side { width: min(100%, 1100px); text-align: center; }
+.side .tags { justify-content: center; }
 .kicker { margin: 0; font: 600 12px var(--poppins-f); letter-spacing: .24em; text-transform: uppercase; color: var(--gold-soft); }
 .date { margin: 4px 0 2px; font: 600 clamp(30px, 3.6vw, 48px)/1.1 var(--lora-f); color: var(--gold-hi); }
 .indian { margin: 0 0 12px; font: italic 500 20px var(--script); color: #e9cf9d; }
@@ -58,7 +51,7 @@ h1 { font: 600 clamp(32px, 5vw, 52px)/1.1 var(--lora-f); margin: 6px 0 6px; lett
   border: 1px solid rgba(217,164,65,.45); }
 .dot { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(255,255,255,.35); }
 .mname { margin: 0 0 10px; font: 500 13px var(--poppins-f); letter-spacing: .1em; text-transform: uppercase; color: #cfae78; }
-.strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.strip { display: grid; grid-template-columns: repeat(10, 1fr); gap: 8px; }
 .strip button { padding: 0; border: 0; border-radius: 8px; aspect-ratio: 2755 / 2480; overflow: hidden; background: #2a0a10; cursor: pointer;
   box-shadow: 0 0 0 1px rgba(217,164,65,.35); opacity: .78; transition: opacity .2s, box-shadow .2s; }
 .strip img { display: block; width: 100%; height: 100%; object-fit: cover; }
@@ -93,14 +86,11 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
 .tile i.f { color: var(--gold-hi); }
 
 @media (max-width: 900px) {
-  .feature { grid-template-columns: minmax(0, 1fr); grid-template-areas: "top" "big" "side"; }
-  .big { height: auto; width: 100%; }
   .bigwrap { width: 100%; }
-  .side { text-align: center; } .tags { justify-content: center; }
+  .strip { grid-template-columns: repeat(5, 1fr); }
 }
 @media (max-width: 760px) {
   .page { padding-top: 58px; }
-  .gurus { margin-bottom: 12px; } .ring { width: 92px; }
   .strip { gap: 6px; }
   .lede { letter-spacing: .02em; font-size: 13px; white-space: normal; }
   .grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -200,11 +190,6 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
 
 <section class="feature" aria-label="The chosen day">
 <header class="top">
-  <p class="jay">Jay Swaminarayan</p>
-  <div class="gurus">
-    <figure><div class="ring"><img src="/about/img/psm.jpg" alt="Pramukh Swami Maharaj"></div><figcaption>Pramukh Swami Maharaj</figcaption></figure>
-    <figure><div class="ring"><img src="/about/img/msm.jpg" alt="Mahant Swami Maharaj"></div><figcaption>Mahant Swami Maharaj</figcaption></figure>
-  </div>
   <h1>Murti Darshan</h1>
   <p class="lede">Every morning's shringar at Neasden mandir, kept day by day</p>
 </header>
@@ -379,7 +364,7 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
     if (j !== R.cur) {
       R.cur = j; const [y, mm] = R.months[j].dataset.m.split("-").map(Number), t = [$("t0"), $("t1")];
       t[1 - flip].textContent = `${MON[mm - 1]} ${y}`; t[1 - flip].classList.remove("out"); t[flip].classList.add("out"); flip = 1 - flip;
-      R.bar.querySelectorAll(".mo").forEach(b => { const on = +b.dataset.j === j; b.classList.toggle("on", on); if (on) b.scrollIntoView({ block: "nearest", inline: "nearest" }); });
+      R.bar.querySelectorAll(".mo").forEach(b => { const on = +b.dataset.j === j; b.classList.toggle("on", on); if (on) R.bar.scrollLeft = b.offsetLeft - R.bar.offsetLeft - (R.bar.clientWidth - b.offsetWidth) / 2; });   // only the bar moves, never the page
       $("mprev").disabled = j === 0; $("mnext").disabled = j === n - 1;
     }
     spot();
