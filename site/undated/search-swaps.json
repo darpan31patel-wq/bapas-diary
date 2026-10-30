@@ -1,7 +1,7 @@
 [
  [
   ".day-head .when:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; }\n",
-  ".day-head .when:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; }\n.day-head.none .when { cursor: default; text-decoration: none; }   /* Date not known: nothing to open */\n"
+  ".day-head .when:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; }\n.day-head.none .when { cursor: default; text-decoration: none; }   /* the darshan heading over the photos with no date: nothing to open */\n"
  ],
  [
   "const PAGE = 60, FIRST = 1999;\n",
@@ -9,7 +9,7 @@
  ],
  [
   "  const y = $('year'), keep = y.value, list = [...new Set(items.map(p => p.y))].filter(v => v >= FIRST).sort((a, b) => a - b);\n  y.innerHTML = '<option value=\"\">Every year</option><option value=\"old\">Before 1999</option>' + list.map(v => `<option>${v}</option>`).join('');\n  y.value = keep === 'old' || list.includes(+keep) ? keep : '';\n",
-  "  const y = $('year'), keep = y.value, list = [...new Set(items.map(p => p.y))].filter(v => v >= FIRST).sort((a, b) => a - b);\n  const none = items.some(p => p.u) ? '<option value=\"none\">No date</option>' : '';\n  y.innerHTML = '<option value=\"\">Every year</option><option value=\"old\">Before 1999</option>' + list.map(v => `<option>${v}</option>`).join('') + none;\n  y.value = keep === 'old' || (keep === 'none' && none) || list.includes(+keep) ? keep : '';\n"
+  "  const y = $('year'), keep = y.value, list = [...new Set(items.map(p => p.y))].filter(v => v >= FIRST).sort((a, b) => a - b);\n  const none = items.some(p => p.u) ? '<option value=\"none\">More darshan</option>' : '';\n  y.innerHTML = '<option value=\"\">Every year</option><option value=\"old\">Before 1999</option>' + list.map(v => `<option>${v}</option>`).join('') + none;\n  y.value = keep === 'old' || (keep === 'none' && none) || list.includes(+keep) ? keep : '';\n"
  ],
  [
   "$('day').innerHTML = '<option value=\"\">Every day</option>' + Array.from({ length: 31 }, (_, i) => `<option value=\"${String(i + 1).padStart(2, '0')}\">${i + 1}</option>`).join('');\nconst yearKey = y => y < FIRST ? 'old' : String(y);\n",
@@ -37,23 +37,27 @@
  ],
  [
   "  $('years').innerHTML = Object.keys(byYear).length ? keys.map(k => {\n    const n = byYear[k] || 0, label = k === 'old' ? 'Earlier' : k, name = k === 'old' ? 'Before 1999' : k;\n",
-  "  $('years').innerHTML = Object.keys(byYear).length ? keys.map(k => {\n    const n = byYear[k] || 0, label = k === 'old' ? 'Earlier' : k === 'none' ? 'No date' : k, name = k === 'old' ? 'Before 1999' : k === 'none' ? 'No date' : k;\n"
+  "  $('years').innerHTML = Object.keys(byYear).length ? keys.map(k => {\n    const n = byYear[k] || 0, label = k === 'old' ? 'Earlier' : k === 'none' ? 'More' : k, name = k === 'old' ? 'Before 1999' : k === 'none' ? 'More darshan' : k;\n"
  ],
  [
   "  const nPhotos = hits.filter(h => h.kind === 'photo').length, nPosts = hits.filter(h => h.kind === 'post').length;\n  const nDates = new Set(hits.map(h => h.d)).size;\n  $('count').innerHTML = (latestOn() && !picMode ? '<span class=\"latest\">Latest vicharan, newest first</span>' : '') + (picMode ? `<b>${nPhotos.toLocaleString()}</b> photos most like your picture, closest first` + (loaded < total ? ' (still loading)' : '') : `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'}${latestOn() ? '' : ` and <b>${nPosts.toLocaleString()}</b> On this day stor${nPosts === 1 ? 'y' : 'ies'}`} on <b>${nDates.toLocaleString()}</b> date${nDates === 1 ? '' : 's'}`\n",
-  "  const nPhotos = hits.filter(h => h.kind === 'photo').length, nPosts = hits.filter(h => h.kind === 'post').length;\n  const nDates = new Set(hits.filter(h => !h.u).map(h => h.d)).size, nNone = hits.filter(h => h.u).length;\n  $('count').innerHTML = nNone && nNone === hits.length && !picMode ? `<b>${nNone.toLocaleString()}</b> photo${nNone === 1 ? '' : 's'} with no date` : (latestOn() && !picMode ? '<span class=\"latest\">Latest vicharan, newest first</span>' : '') + (picMode ? `<b>${nPhotos.toLocaleString()}</b> photos most like your picture, closest first` + (loaded < total ? ' (still loading)' : '') : `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'}${latestOn() ? '' : ` and <b>${nPosts.toLocaleString()}</b> On this day stor${nPosts === 1 ? 'y' : 'ies'}`} on <b>${nDates.toLocaleString()}</b> date${nDates === 1 ? '' : 's'}${nNone ? `, and <b>${nNone.toLocaleString()}</b> with no date` : ''}`\n"
+  "  const nPhotos = hits.filter(h => h.kind === 'photo').length, nPosts = hits.filter(h => h.kind === 'post').length;\n  const nDates = new Set(hits.filter(h => !h.u).map(h => h.d)).size, nNone = hits.filter(h => h.u).length;\n  $('count').innerHTML = nNone && nNone === hits.length && !picMode ? `<b>${nNone.toLocaleString()}</b> darshan photo${nNone === 1 ? '' : 's'}` : (latestOn() && !picMode ? '<span class=\"latest\">Latest vicharan, newest first</span>' : '') + (picMode ? `<b>${nPhotos.toLocaleString()}</b> photos most like your picture, closest first` + (loaded < total ? ' (still loading)' : '') : `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'}${latestOn() ? '' : ` and <b>${nPosts.toLocaleString()}</b> On this day stor${nPosts === 1 ? 'y' : 'ies'}`} on <b>${nDates.toLocaleString()}</b> date${nDates === 1 ? '' : 's'}${nNone ? `, and <b>${nNone.toLocaleString()}</b> more darshan` : ''}`\n"
  ],
  [
   "function dayHead(d, want, onlyCal) {\n",
-  "function dayHead(d, want, onlyCal) {\n  if (d === UNDATED) return '<div class=\"day-head none\"><span class=\"when\">Date not known</span></div>';\n"
+  "function dayHead(d, want, onlyCal) {\n  if (d === UNDATED) return '<div class=\"day-head none\"><span class=\"when\">Darshan</span></div>';\n"
  ],
  [
   "  const g = p.g, small = `${PHOTOS}s/${g[3]}/${p.file}`, medium = `${PHOTOS}m/${g[3]}/${p.file}`;\n  const when = g[1] ? `${niceDate(g[0])} to ${niceDate(g[1])}` : niceDate(g[0]);\n",
-  "  const g = p.g, small = `${PHOTOS}s/${g[3]}/${p.file}`, medium = `${PHOTOS}m/${g[3]}/${p.file}`;\n  const when = p.u ? 'Date not known' : g[1] ? `${niceDate(g[0])} to ${niceDate(g[1])}` : niceDate(g[0]);\n"
+  "  const g = p.g, small = `${PHOTOS}s/${g[3]}/${p.file}`, medium = `${PHOTOS}m/${g[3]}/${p.file}`;\n  const when = p.u ? '' : g[1] ? `${niceDate(g[0])} to ${niceDate(g[1])}` : niceDate(g[0]);\n"
+ ],
+ [
+  "    <div class=\"txt\">\n      ${window.picSame && picSame(p) ? '<span class=\"same\">Closest match</span>' : ''}<p class=\"cap${p.cap ? '' : ' empty'}${!picMode && p.cap && hits[i - 1] && hits[i - 1].d === p.d && plain(hits[i - 1].cap) === plain(p.cap) ? ' said' : ''}\">${p.cap ? highlight(p.cap, want) : 'Darshan'}</p>\n      <div class=\"date${said(p, 'date')}\">${when}</div>\n      <div class=\"place${said(p, 'place')}\">${highlight(g[2], want)}</div>\n",
+  "    <div class=\"txt\">\n      ${window.picSame && picSame(p) ? '<span class=\"same\">Closest match</span>' : ''}<p class=\"cap${p.cap ? '' : ' empty'}${!picMode && !p.u && p.cap && hits[i - 1] && hits[i - 1].d === p.d && plain(hits[i - 1].cap) === plain(p.cap) ? ' said' : ''}\">${p.cap ? highlight(p.cap, want) : 'Darshan'}</p>\n      ${p.u ? '' : `<div class=\"date${said(p, 'date')}\">${when}</div>\n      <div class=\"place${said(p, 'place')}\">${highlight(g[2], want)}</div>`}\n"
  ],
  [
   "  const c = cal[p.d], day = c ? `${c.wd} ${longDate(p.d)}` : longDate(p.d);\n  if (p.kind === 'photo') {\n",
-  "  const c = cal[p.d], day = c ? `${c.wd} ${longDate(p.d)}` : longDate(p.d);\n  if (p.u) {\n    $('big-pic').innerHTML = `<img src=\"${PHOTOS}m/${p.g[3]}/${p.file}\" alt=\"Darshan\" onerror=\"this.replaceWith(Object.assign(document.createElement('div'),{className:'soon',textContent:'Photo coming soon'}))\">`;\n    $('big-info').innerHTML = '<div class=\"cap\">Darshan</div><div class=\"meta\">Date not known</div>';\n  } else if (p.kind === 'photo') {\n"
+  "  const c = cal[p.d], day = c ? `${c.wd} ${longDate(p.d)}` : longDate(p.d);\n  if (p.u) {\n    $('big-pic').innerHTML = `<img src=\"${PHOTOS}m/${p.g[3]}/${p.file}\" alt=\"${esc(p.cap || 'Darshan')}\" onerror=\"this.replaceWith(Object.assign(document.createElement('div'),{className:'soon',textContent:'Photo coming soon'}))\">`;\n    $('big-info').innerHTML = `<div class=\"cap\">${esc(p.cap || 'Darshan')}</div>`;\n  } else if (p.kind === 'photo') {\n"
  ],
  [
   "  const about = await (await fetch('data/about.json')).json();\n  total = about.years.length + 1 + (about.calendar ? 1 : 0);\n",
@@ -61,10 +65,10 @@
  ],
  [
   "  // the years and the photo count follow the data, so they grow by themselves as photos are added\n  $('sub').innerHTML = `Every vicharan photo on baps.org from ${about.years[0]} to ${about.years.at(-1)} <span class=\"count\"><b>${nPhotos.toLocaleString()}</b> photos</span>.`;\n",
-  "  // the years and the photo count follow the data, so they grow by themselves as photos are added\n  $('sub').innerHTML = `Every vicharan photo on baps.org from ${about.years[0]} to ${about.years.at(-1)} <span class=\"count\"><b>${nPhotos.toLocaleString()}</b> photos</span>`\n    + (about.undated ? `, and <b class=\"plain\">${about.undated.toLocaleString()}</b> more darshan with no date.` : '.');\n"
+  "  // the years and the photo count follow the data, so they grow by themselves as photos are added\n  $('sub').innerHTML = `Every vicharan photo on baps.org from ${about.years[0]} to ${about.years.at(-1)} <span class=\"count\"><b>${nPhotos.toLocaleString()}</b> photos</span>`\n    + (about.undated ? `, and <b class=\"plain\">${about.undated.toLocaleString()}</b> more darshan photos.` : '.');\n"
  ],
  [
   "    })))));\n  await tg;\n",
-  "    })))));\n  // darshan with no date (Darpan, 30 Oct 2026): after every dated photo, never on a dated page (Today, Calendar)\n  const none = about.undated ? fetch('data/undated.json').then(r => r.json()).then(data => add(data.p.map(([file, tags]) =>\n    ({ kind: 'photo', u: 1, y: 0, g: ['', '', '', data.album], d: UNDATED, city: '', file, cap: '', tags: tags || '', m: '', b: true,\n       hay: ('darshan no date undated ' + (tags || '')).toLowerCase() })))).catch(() => add([])) : null;\n  await tg; await none;\n"
+  "    })))));\n  // darshan with no date (Darpan, 30 Oct 2026): after every dated photo, never on a dated page (Today, Calendar)\n  const none = about.undated ? fetch('data/undated.json').then(r => r.json()).then(data => add(data.p.map(([file, tags, cap]) =>\n    ({ kind: 'photo', u: 1, y: 0, g: ['', '', '', data.album], d: UNDATED, city: '', file, cap: cap || 'Darshan', tags: tags || '', m: '', b: true,\n       hay: ('darshan ' + (cap || '') + ' ' + (tags || '')).toLowerCase() })))).catch(() => add([])) : null;\n  await tg; await none;\n"
  ]
 ]

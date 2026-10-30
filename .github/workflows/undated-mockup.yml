@@ -17,8 +17,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          gh release download undated-build -p undated-photos.zip -p undated.json -p undated-tags.json -p same.json
-          python3 tools/undated_build.py --undated undated.json --tags undated-tags.json --same same.json --out undated-search.json
+          gh release download undated-build -p undated-photos.zip -p undated.json -p undated-tags.json -p same.json -p emb-undated.npz
+          gh release download deep-tags -p words.npz
+          git fetch -q origin claude/project-thread-vcys74 && git show FETCH_HEAD:tools/deep_words.py > tools/deep_words.py
+          pip install -q numpy
+          python3 tools/undated_build.py --undated undated.json --tags undated-tags.json --same same.json --emb emb-undated.npz --words words.npz --out undated-search.json
           gh release upload undated-build undated-search.json --clobber
           mkdir out && cd out && unzip -q ../undated-photos.zip 's/*' 'm/*' && cd ..
           npm i -s playwright@1.49.1 > /dev/null && npx playwright install --with-deps chromium > /dev/null

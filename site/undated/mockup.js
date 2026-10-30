@@ -32,7 +32,7 @@ const sizes = [['laptop', 1440, 900, 1, false], ['phone', 390, 844, 3, true]];
     const shot = async name => { await p.waitForTimeout(2500); await p.screenshot({ path: `undated-${sz}-${name}.jpg`, type: 'jpeg', quality: 80 }); };
     // 1. the top: the line under the title with the new count
     await p.evaluate(() => scrollTo(0, 0)); await shot('1-top');
-    // 2. "No date" picked in the year list: every undated photo
+    // 2. "More darshan" picked in the year list: every new photo
     await p.selectOption('#year', 'none').catch(e => console.log('year', e.message));
     await p.evaluate(() => { const e = document.getElementById('count'); e && e.scrollIntoView({ block: 'start' }); scrollBy(0, -90); });
     console.log(sz, 'no date:', await p.evaluate(() => document.getElementById('count')?.textContent.trim()));
@@ -47,12 +47,12 @@ const sizes = [['laptop', 1440, 900, 1, false], ['phone', 390, 844, 3, true]];
     await p.evaluate(() => { const e = document.getElementById('years'); e && e.scrollIntoView({ block: 'start' }); scrollBy(0, -90); });
     console.log(sz, 'garland:', await p.evaluate(() => document.getElementById('count')?.textContent.trim()));
     await shot('4-word-bars');
-    // 5. a word with "No date" picked: only the undated photos that have it
+    // 5. a word with "More darshan" picked: only the new photos that have it
     await p.selectOption('#year', 'none').catch(() => {});
     await p.fill('#q', 'smiling'); await p.waitForTimeout(1500);
     await p.evaluate(() => { const e = document.getElementById('years'); e && e.scrollIntoView({ block: 'start' }); scrollBy(0, -90); });
-    console.log(sz, 'smiling, no date:', await p.evaluate(() => document.getElementById('count')?.textContent.trim()));
-    await shot('5-word-no-date');
+    console.log(sz, 'smiling, more darshan:', await p.evaluate(() => document.getElementById('count')?.textContent.trim()));
+    await shot('5-word-more');
     await ctx.close();
   }
   await b.close();
