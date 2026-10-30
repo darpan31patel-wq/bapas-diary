@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Murti Darshan · Bapa's Diary</title>
+<meta name="description" content="Every morning's murti darshan at BAPS Shri Swaminarayan Mandir, Neasden, kept day by day: look back by day, colour, festival or murti.">
+<link rel="stylesheet" href="/menu.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Arimo:wght@400;700&display=swap">
+<!-- The Darshan tab (Darpan, 29 Oct 2026: "yes" to the murti darshan archive, "split by design or colour or festivals",
+     "can the bottom date section be in similar style to our other calendar page"). Website only, nothing in the daily
+     2pm picture. The photos are the website's own copies (photos.bapas-diary.com/darshan/), saved each morning by the
+     screensaver darshan robot, which also writes archive.js (the days, their photos and colours,
+     tools/screensaver/darshan_archive.py); cal.js is the BAPS calendar's Indian date and festival for each day
+     (tools/web_darshan.py). Pramukh Swami Maharaj and Mahant Swami Maharaj always together at the top. -->
+<style>
+:root { --maroon-in: #42101c; --maroon-out: #160509; --ink: #3b1219; --gold-hi: #ffe296; --gold-deep: #a8742a; --gold-soft: #d9a441; --paper: #f3ead9;
+  --title: Cinzel, Georgia, serif; --script: "Cormorant Garamond", Georgia, serif; --sans: Arimo, Arial, sans-serif;
+  --lora-f: var(--lora, Lora, Georgia, serif); --poppins-f: var(--poppins, Poppins, Arimo, Arial, sans-serif); }
+* { box-sizing: border-box; }
+html { background: var(--maroon-out); color-scheme: dark; }
+body { margin: 0; color: #f3e6cc; font: 400 17px/1.6 var(--lora-f); background: var(--maroon-out); }
+.page { min-height: 100vh; padding: 64px max(16px, 2.2vw) 60px; overflow-x: clip; background:
+  radial-gradient(ellipse 60% 40% at 50% 0%, rgba(255, 196, 110, .16), transparent 70%),
+  radial-gradient(ellipse 110% 70% at 50% 15%, var(--maroon-in), var(--maroon-out)); }
+.top { text-align: center; }
+.jay { font: italic 600 clamp(24px, 3.2vw, 32px)/1.2 var(--script); color: var(--gold-hi); margin: 0 0 18px; text-shadow: 0 2px 6px rgba(0,0,0,.5); }
+.gurus { display: flex; justify-content: center; gap: clamp(14px, 3vw, 30px); margin: 0 auto 20px; }
+.gurus figure { margin: 0; }
+.ring { width: clamp(96px, 9vw, 130px); aspect-ratio: 4 / 5; border-radius: 999px 999px 14px 14px; padding: 4px;
+  background: linear-gradient(#ffe296, #a8742a); box-shadow: 0 0 0 7px rgba(217,164,65,.12), 0 16px 40px rgba(0,0,0,.55); }
+.ring img { display: block; width: 100%; height: 100%; border-radius: 999px 999px 10px 10px; object-fit: cover; }
+figcaption { margin-top: 10px; font: 600 10px/1.4 var(--poppins-f); letter-spacing: .18em; text-transform: uppercase; color: var(--gold-soft); }
+h1 { font: 600 clamp(32px, 5vw, 52px)/1.1 var(--lora-f); margin: 6px 0 6px; letter-spacing: .02em;
+  background: linear-gradient(#ffe296, #ce9840); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 2px 2px rgba(0,0,0,.45)); }
+.lede { margin: 0 0 18px; text-wrap: balance; font: 400 14px var(--poppins-f); letter-spacing: .06em; color: #cfae78; }
+
+/* the chosen day: big photo left, words and the day's ten photos right, the whole width */
+.feature { display: grid; grid-template-columns: auto minmax(320px, 1fr); grid-template-areas: "big top" "big side"; grid-template-rows: auto 1fr;
+  column-gap: clamp(22px, 3vw, 48px); row-gap: 14px; align-items: start; margin: 0 0 44px; }
+.feature .top { grid-area: top; } .bigwrap { grid-area: big; } .side { grid-area: side; }
+.bigwrap { position: relative; }
+.big { display: block; height: min(calc(100vh - 110px), 54vw); width: auto; max-width: 100%; aspect-ratio: 2755 / 2480; object-fit: cover; border-radius: 14px; background-color: #2a0a10;
+  box-shadow: 0 0 0 1px rgba(255,226,150,.5), 0 0 0 7px rgba(217,164,65,.14), 0 24px 60px rgba(0,0,0,.6); transition: opacity .5s; }
+.arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 46px; height: 46px; border-radius: 50%; border: 1px solid rgba(255,226,150,.6);
+  background: rgba(22,5,9,.6); color: var(--gold-hi); font: 400 30px/1 var(--lora-f); cursor: pointer; }
+.arrow.prev { left: 12px; } .arrow.next { right: 12px; }
+.arrow:disabled { opacity: .25; cursor: default; }
+.side { text-align: left; }
+.kicker { margin: 0; font: 600 12px var(--poppins-f); letter-spacing: .24em; text-transform: uppercase; color: var(--gold-soft); }
+.date { margin: 4px 0 2px; font: 600 clamp(30px, 3.6vw, 48px)/1.1 var(--lora-f); color: var(--gold-hi); }
+.indian { margin: 0 0 12px; font: italic 500 20px var(--script); color: #e9cf9d; }
+.tags { margin: 0 0 18px; display: flex; flex-wrap: wrap; gap: 8px; }
+.fest { display: inline-block; padding: 5px 14px; border-radius: 999px; font: 600 12.5px var(--poppins-f); letter-spacing: .04em; color: #3b1219;
+  background: linear-gradient(#ffe296, #d9a441); }
+.col { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: 999px; font: 500 12.5px var(--poppins-f); color: #f3e6cc;
+  border: 1px solid rgba(217,164,65,.45); }
+.dot { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(255,255,255,.35); }
+.mname { margin: 0 0 10px; font: 500 13px var(--poppins-f); letter-spacing: .1em; text-transform: uppercase; color: #cfae78; }
+.strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.strip button { padding: 0; border: 0; border-radius: 8px; aspect-ratio: 2755 / 2480; overflow: hidden; background: #2a0a10; cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(217,164,65,.35); opacity: .78; transition: opacity .2s, box-shadow .2s; }
+.strip img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.strip button:hover { opacity: 1; }
+.strip button.on { opacity: 1; box-shadow: 0 0 0 2px var(--gold-hi), 0 6px 16px rgba(0,0,0,.5); }
+
+/* looking back */
+.browse { border-top: 1px solid rgba(217,164,65,.25); padding-top: 26px; }
+.seg { display: flex; justify-content: center; gap: 6px; margin: 0 auto 18px; flex-wrap: wrap; }
+.seg button { padding: 9px 20px; border-radius: 999px; border: 1px solid rgba(217,164,65,.45); background: transparent; color: #e3c48e;
+  font: 600 13px var(--poppins-f); letter-spacing: .08em; cursor: pointer; }
+.seg button.on { background: linear-gradient(#ffe296, #d9a441); color: #3b1219; border-color: transparent; }
+.chips { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin: 0 0 22px; min-height: 0; }
+.chips:empty { display: none; }
+.chips button { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; border: 1px solid rgba(217,164,65,.35);
+  background: rgba(22,5,9,.35); color: #ecd6ab; font: 500 13px var(--poppins-f); cursor: pointer; }
+.chips button.on { border-color: var(--gold-hi); background: rgba(217,164,65,.2); color: #fff3cf; }
+.chips small { opacity: .7; }
+h3.group { display: flex; align-items: center; gap: 12px; margin: 26px 0 12px; font: 600 22px var(--lora-f); color: var(--gold-hi); }
+h3.group::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(217,164,65,.5), transparent); }
+h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #cfae78; text-transform: uppercase; }
+.grid { display: grid; align-items: start; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.grid.wide { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+.tile { display: block; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; color: inherit; }
+.tile .t { display: block; width: 100%; aspect-ratio: 2755 / 2480; overflow: hidden; border-radius: 9px; background: #2a0a10;
+  box-shadow: 0 0 0 1px rgba(217,164,65,.3), 0 8px 20px rgba(0,0,0,.45); transition: transform .2s, box-shadow .2s; }
+.tile .t img, .card .win img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.tile:hover .t { transform: translateY(-2px); box-shadow: 0 0 0 2px var(--gold-hi), 0 12px 26px rgba(0,0,0,.5); }
+.tile.on .t { box-shadow: 0 0 0 2px var(--gold-hi), 0 0 18px rgba(255,226,150,.35); }
+.tile b { display: block; margin-top: 7px; font: 600 15px var(--lora-f); color: #f6e3bb; }
+.tile i { display: block; font: normal 500 11.5px/1.35 var(--poppins-f); color: #cfae78; letter-spacing: .02em; }
+.tile i.f { color: var(--gold-hi); }
+
+@media (max-width: 900px) {
+  .feature { grid-template-columns: minmax(0, 1fr); grid-template-areas: "top" "big" "side"; }
+  .big { height: auto; width: 100%; }
+  .bigwrap { width: 100%; }
+  .side { text-align: center; } .tags { justify-content: center; }
+}
+@media (max-width: 760px) {
+  .page { padding-top: 58px; }
+  .gurus { margin-bottom: 12px; } .ring { width: 92px; }
+  .strip { gap: 6px; }
+  .lede { letter-spacing: .02em; font-size: 13px; white-space: normal; }
+  .grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .grid.wide { grid-template-columns: repeat(2, 1fr); }
+  .tile b { font-size: 13px; } .tile i { font-size: 10.5px; }
+  .arrow { width: 38px; height: 38px; font-size: 24px; }
+  .seg button { padding: 8px 13px; font-size: 12px; letter-spacing: .03em; }
+}
+
+/* By day: each month as the Calendar page shows it (look C): ivory cards in a week grid, the date on a dark backing,
+   the festival in gold along the bottom, softly faded until the mouse comes near (else around the chosen day) */
+.cal-months { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 640px), 1fr)); gap: 34px clamp(28px, 4vw, 64px); }
+.cal-month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; align-content: start; }
+.cal-title { grid-column: 1 / -1; text-align: center; margin: 0 0 4px; font: 500 clamp(30px, 3.4vw, 46px)/1.1 var(--lora-f);
+  background: linear-gradient(180deg, #ffe296, #ce9840); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.cal-wkd { font: 700 12px var(--sans); letter-spacing: .22em; color: #c9a98a; text-align: center; text-transform: uppercase; padding-bottom: 2px; }
+.card { --q: 0; position: relative; display: flex; flex-direction: column; padding: 4px; border: 0; border-radius: 3px; cursor: pointer; text-align: center;
+  background: linear-gradient(170deg, #f8f2e4, #eadfc8); color: #3a1a12;
+  filter: grayscale(calc(.82 - .82 * var(--q))) brightness(calc(.55 + .45 * var(--q)));
+  box-shadow: 0 4px 12px rgba(0,0,0,.3), 0 0 calc(30px * var(--q)) calc(6px * var(--q)) rgba(255,206,110,calc(.38 * var(--q))); transition: box-shadow .3s; }
+.card:hover, .card:focus-visible { z-index: 2; outline: none; filter: none;
+  box-shadow: 0 0 0 2px #ffe296, 0 0 18px 4px rgba(255,214,120,.55), 0 0 42px 10px rgba(206,152,64,.35), 0 6px 16px rgba(0,0,0,.42); }
+.card.on { filter: none; box-shadow: 0 0 0 2px #ffe296, 0 6px 16px rgba(0,0,0,.42); }
+.card .win { position: relative; width: 100%; aspect-ratio: 2755 / 2480; overflow: hidden; background: #2a0a10; }
+.card .num { position: absolute; left: 3px; top: 3px; font: 600 clamp(14px, 1.5vw, 22px)/1 var(--lora-f); color: #f8f2e4; text-shadow: 0 1px 3px rgba(0,0,0,.6);
+  padding: .12em .28em .16em; border-radius: .3em; background: rgba(22,5,9,.5); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+.card .cfest { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 5px 4px; font: 700 clamp(8px, .72vw, 10.5px)/1.2 var(--sans); letter-spacing: .06em;
+  color: #ffe296; background: linear-gradient(0deg, rgba(22,5,9,.92), rgba(22,5,9,0)); text-wrap: balance; }
+.card.blank { cursor: default; }
+.card.blank .win { display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, #fbf6ea, #e9dcc0); }
+.card.blank .bnum { font: 600 clamp(20px, 2.4vw, 36px)/1 var(--lora-f); color: #6e1424; opacity: .55; }
+@media (max-width: 760px) {
+  .cal-month { gap: 4px; }
+  .cal-wkd { font-size: 9px; letter-spacing: .1em; }
+  .card { padding: 2px; }
+  .card .num { font-size: 12px; left: 2px; top: 2px; }
+  .cal-month .card .cfest { display: none; }
+}
+.card .cfest { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card.future { background: none; border: 1.5px dashed rgba(255,226,150,.6); padding: 3px; box-shadow: none; filter: none; }
+.card.future .win { background: radial-gradient(circle at 50% 40%, #fdf9f0, #efe4cc); opacity: .92; border-radius: 2px; }
+.card.future .bnum { color: #a0702c; opacity: 1; }
+.dot.big { width: 16px; height: 16px; }
+.col .dot + .dot { margin-left: -4px; }
+.none { margin: 40px auto; text-align: center; font: 400 16px var(--poppins-f); color: #cfae78; }
+#big-box .none { padding: 80px 20px; }
+/* the mandir's own colours: no On this day photo finish on these murti photos */
+.page img { filter: none !important; }
+@media (prefers-reduced-motion: reduce) { .card, .tile .t, .strip button { transition: none; } }
+</style>
+<script src="https://photos.bapas-diary.com/darshan/archive.js"></script>
+<script src="/darshan/cal.js"></script>
+</head>
+<body>
+<nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a href="/calendar/">Calendar</a><a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/then-and-now/">Legacy</a><a class="on" href="/darshan/" aria-current="page">Darshan</a><a href="/about/">About</a></nav>
+<div class="page">
+
+
+<section class="feature" aria-label="The chosen day">
+<header class="top">
+  <p class="jay">Jay Swaminarayan</p>
+  <div class="gurus">
+    <figure><div class="ring"><img src="/about/img/psm.jpg" alt="Pramukh Swami Maharaj"></div><figcaption>Pramukh Swami Maharaj</figcaption></figure>
+    <figure><div class="ring"><img src="/about/img/msm.jpg" alt="Mahant Swami Maharaj"></div><figcaption>Mahant Swami Maharaj</figcaption></figure>
+  </div>
+  <h1>Murti Darshan</h1>
+  <p class="lede">Every morning's shringar at Neasden mandir, kept day by day</p>
+</header>
+  <div class="bigwrap" id="big-box">
+    <button class="arrow prev" id="prev" aria-label="Day before">&#8249;</button>
+    <img class="big" id="big" alt="">
+    <button class="arrow next" id="next" aria-label="Day after">&#8250;</button>
+  </div>
+  <div class="side">
+    <p class="kicker" id="k-week"></p>
+    <h2 class="date" id="k-date"></h2>
+    <p class="indian" id="k-ind"></p>
+    <p class="tags" id="k-tags"></p>
+    <p class="mname" id="k-murti"></p>
+    <div class="strip" id="strip"></div>
+  </div>
+</section>
+
+<section class="browse" aria-label="Look back">
+  <div class="seg" id="seg" role="group" aria-label="Look back">
+    <button data-v="day" class="on">By day</button><button data-v="colour">By colour</button><button data-v="fest">By festival</button><button data-v="murti">By murti</button>
+  </div>
+  <div class="chips" id="chips"></div>
+  <div id="grid"></div>
+</section>
+</div>
+
+<script>
+(function () {
+  const PHOTOS = "https://photos.bapas-diary.com/darshan/";
+  const CAL = window.DARSHAN_CAL || {};
+  const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], WDL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const MON = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  // the mandir's ten photos each morning, in its own order
+  const MURTIS = [["ddm", "Central shrine"], ["ddm_c", "Central shrine, close"], ["gm", "Ghanshyam Maharaj"], ["gm_c", "Ghanshyam Maharaj, close"],
+    ["hkm_c", "Harikrishna Maharaj"], ["varni", "Nilkanth Varni"], ["bm", "Bhagatji Maharaj"], ["sm", "Shastriji Maharaj"], ["ym", "Yogiji Maharaj"], ["psm", "Pramukh Swami Maharaj"]];
+  const NAME = Object.fromEntries(MURTIS);
+  const COLOURS = { Red: "#c4182c", Pink: "#e0508f", Orange: "#ef7d1a", Yellow: "#f2c71c", Green: "#3f9a4a", Blue: "#2f5fc4", Purple: "#8a4fc0", White: "#f4efe4" };
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const nice = d => { const [y, m, dd] = d.split("-"); return `${+dd} ${MON[m - 1]} ${y}`; };
+  const short = d => { const [, m, dd] = d.split("-"); return `${+dd} ${MON[m - 1].slice(0, 3)}`; };
+  const src = (size, D, code) => `${PHOTOS}${size}/${D.d.replace(/-/g, "")}/${code}.jpg`;
+  const both = c => c.length > 1 ? `${c[0]} and ${c[1].toLowerCase()}` : c[0];
+
+  const DAYS = (window.DARSHAN_DAYS || []).filter(D => D && D.d && D.k && D.k.length).map(D => {
+    const [y, m, dd] = D.d.split("-").map(Number), cal = CAL[D.d] || [];
+    return { d: D.d, k: D.k, c: (D.c && D.c.length ? D.c : ["White"]).filter(c => COLOURS[c]), i: cal[0] || "", f: cal[1] || "", w: WDL[new Date(y, m - 1, dd).getDay()] };
+  });
+  const N = DAYS.length;
+  if (!N) { $("big-box").innerHTML = `<p class="none">The darshan photos are not loading just now. Please try again in a few minutes.</p>`; return; }
+  const BY = {}; DAYS.forEach((D, i) => BY[D.d] = i);
+  let day = N - 1, code = DAYS[N - 1].k[0], view = "day", chip = null;
+  const fromHash = () => { const h = location.hash.slice(1); if (BY[h] != null) { day = BY[h]; if (!DAYS[day].k.includes(code)) code = DAYS[day].k[0]; return true; } return false; };
+  fromHash();
+
+  function showDay() {
+    const D = DAYS[day];
+    if (!D.k.includes(code)) code = D.k[0];
+    const big = $("big");
+    big.src = src("m", D, code); big.alt = `${NAME[code]}, Neasden mandir, ${nice(D.d)}`;
+    $("k-week").textContent = day === N - 1 ? `Latest · ${D.w}` : D.w;
+    $("k-date").textContent = nice(D.d);
+    $("k-ind").textContent = D.i;
+    $("k-tags").innerHTML = (D.f ? `<span class="fest">${esc(D.f)}</span>` : "") +
+      `<span class="col">${D.c.map(c => `<span class="dot" style="background:${COLOURS[c]}"></span>`).join("")}${both(D.c)} shringar</span>`;
+    $("k-murti").textContent = NAME[code];
+    $("strip").innerHTML = D.k.map(c =>
+      `<button class="${c === code ? "on" : ""}" data-c="${c}" title="${NAME[c]}" aria-label="${NAME[c]}"><img src="${src("s", D, c)}" alt="" loading="lazy"></button>`).join("");
+    $("prev").disabled = day === 0; $("next").disabled = day === N - 1;
+    document.querySelectorAll("#grid .tile").forEach(t => t.classList.toggle("on", +t.dataset.day === day));
+    requestAnimationFrame(spot);
+  }
+  const go = i => { day = i; showDay(); try { history.replaceState(null, "", "#" + DAYS[i].d); } catch (e) {} };
+  $("strip").addEventListener("click", e => { const b = e.target.closest("button"); if (b) { code = b.dataset.c; showDay(); } });
+  $("prev").onclick = () => { if (day > 0) go(day - 1); };
+  $("next").onclick = () => { if (day < N - 1) go(day + 1); };
+  addEventListener("keydown", e => {
+    if (e.target.closest && e.target.closest("input, textarea")) return;
+    if (e.key === "ArrowLeft") $("prev").click(); if (e.key === "ArrowRight") $("next").click();
+  });
+  addEventListener("hashchange", () => { if (fromHash()) showDay(); });
+
+  const tile = (i, c, label, extra) =>
+    `<button class="tile" data-day="${i}" data-code="${c}"><span class="t"><img src="${src("s", DAYS[i], c)}" alt="" loading="lazy"></span><b>${esc(label)}</b>${extra || ""}</button>`;
+  const newest = () => DAYS.map((D, i) => i).reverse();
+
+  function render() {
+    let chips = "", html = "";
+    if (view === "day") {
+      // each month as the Calendar page shows it
+      const months = [...new Set(DAYS.map(D => D.d.slice(0, 7)))].reverse();
+      html += `<div class="cal-months">`;
+      months.forEach(m => {
+        const [y, mm] = m.split("-").map(Number), first = new Date(y, mm - 1, 1).getDay(), len = new Date(y, mm, 0).getDate();
+        html += `<div class="cal-month"><h3 class="cal-title">${MON[mm - 1]} ${y}</h3>` + WD.map(w => `<div class="cal-wkd">${w}</div>`).join("");
+        for (let k = 0; k < first; k++) html += `<div></div>`;
+        for (let dd = 1; dd <= len; dd++) {
+          const iso = `${m}-${String(dd).padStart(2, "0")}`, i = BY[iso];
+          if (i == null) { html += `<div class="card blank${iso > DAYS[N - 1].d ? " future" : ""}"><div class="win"><span class="bnum">${dd}</span></div></div>`; continue; }
+          const D = DAYS[i], c = D.k.includes("ddm") ? "ddm" : D.k[0];
+          html += `<button class="card tile" data-day="${i}" data-code="${c}" aria-label="${nice(D.d)}${D.f ? ", " + esc(D.f) : ""}"><div class="win"><img src="${src("s", D, c)}" alt="" loading="lazy"><span class="num">${dd}</span>${D.f ? `<span class="cfest">${esc(D.f)}</span>` : ""}</div></button>`;
+        }
+        html += `</div>`;
+      });
+      html += `</div>`;
+    } else if (view === "colour") {
+      // a day shows under both of its main colours
+      const counts = {}; DAYS.forEach(D => D.c.forEach(c => counts[c] = (counts[c] || 0) + 1));
+      const list = Object.keys(COLOURS).filter(c => counts[c]);
+      if (chip && !counts[chip]) chip = null;
+      chips = `<button data-c="" class="${chip ? "" : "on"}">All colours</button>` + list.map(c =>
+        `<button data-c="${c}" class="${chip === c ? "on" : ""}"><span class="dot" style="background:${COLOURS[c]}"></span>${c} <small>${counts[c]}</small></button>`).join("");
+      (chip ? [chip] : list).forEach(c => {
+        html += `<h3 class="group"><span class="dot big" style="background:${COLOURS[c]}"></span>${c} <small>${counts[c]} ${counts[c] === 1 ? "day" : "days"}</small></h3><div class="grid">`;
+        newest().filter(i => DAYS[i].c.includes(c)).forEach(i => html += tile(i, DAYS[i].k.includes("ddm") ? "ddm" : DAYS[i].k[0], short(DAYS[i].d), DAYS[i].f ? `<i class="f">${esc(DAYS[i].f)}</i>` : ""));
+        html += "</div>";
+      });
+    } else if (view === "fest") {
+      const list = newest().filter(i => DAYS[i].f);
+      html += list.length ? `<div class="grid wide">` + list.map(i => tile(i, DAYS[i].k.includes("ddm") ? "ddm" : DAYS[i].k[0], DAYS[i].f, `<i>${nice(DAYS[i].d)}${DAYS[i].i ? " · " + esc(DAYS[i].i) : ""}</i>`)).join("") + "</div>"
+        : `<p class="none">No festival days yet.</p>`;
+    } else {
+      const c = chip || "gm_c";
+      chips = MURTIS.map(([k, name]) => `<button data-c="${k}" class="${c === k ? "on" : ""}">${name}</button>`).join("");
+      html += `<h3 class="group">${NAME[c]} <small>day by day</small></h3><div class="grid">`;
+      newest().filter(i => DAYS[i].k.includes(c)).forEach(i => html += tile(i, c, short(DAYS[i].d), DAYS[i].f ? `<i class="f">${esc(DAYS[i].f)}</i>` : ""));
+      html += "</div>";
+    }
+    $("chips").innerHTML = chips; $("grid").innerHTML = html;
+    document.querySelectorAll("#grid .tile").forEach(t => t.classList.toggle("on", +t.dataset.day === day));
+    requestAnimationFrame(spot);
+  }
+  $("seg").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    view = b.dataset.v; chip = null;
+    document.querySelectorAll("#seg button").forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-selected", x === b); }); render();
+  });
+  $("chips").addEventListener("click", e => { const b = e.target.closest("button"); if (b) { chip = b.dataset.c || null; render(); } });
+  $("grid").addEventListener("click", e => {
+    const t = e.target.closest(".tile"); if (!t) return;
+    code = t.dataset.code; go(+t.dataset.day);
+    scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  });
+
+  // the Calendar page's look C: every day softly faded, the days near the mouse (else around the chosen day) come up in colour
+  let spotXY = null, raf = 0;
+  function spot() {
+    raf = 0; let p = spotXY;
+    if (!p) { const on = document.querySelector("#grid .card.on"); if (on) { const r = on.getBoundingClientRect(); p = [r.left + r.width / 2, r.top + r.height / 2]; } }
+    document.querySelectorAll("#grid .card").forEach(c => {
+      let q = 0;
+      if (p) { const r = c.getBoundingClientRect(), d = Math.hypot((r.left + r.width / 2 - p[0]) / (r.width * 1.08 * 2.5), (r.top + r.height / 2 - p[1]) / (r.height * 1.08));
+        q = Math.max(0, Math.min(1, (1.4 - d) / .6)); q = q * q * (3 - 2 * q); }
+      c.style.setProperty("--q", q.toFixed(3));
+    });
+  }
+  const spotAt = p => { spotXY = p; if (!raf) raf = requestAnimationFrame(spot); };
+  $("grid").addEventListener("pointermove", e => { if (e.pointerType === "mouse") spotAt([e.clientX, e.clientY]); }, { passive: true });
+  $("grid").addEventListener("pointerleave", () => spotAt(null));
+
+  render(); showDay();
+})();
+</script>
+</body>
+</html>

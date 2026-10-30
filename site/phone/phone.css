@@ -43,6 +43,8 @@
   /* Then and now, the 6th tab (Darpan, 26 Oct 2026: "yes then and now tab"): two frames side by side */
   nav.site-menu a[href="/then-and-now/"] { font-size: 0; --ph-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Crect x='2.5' y='5' width='8' height='14' rx='1.8'/%3E%3Crect x='13.5' y='5' width='8' height='14' rx='1.8'/%3E%3Cpath d='M12 3v18' stroke-dasharray='1.5 2'/%3E%3C/svg%3E"); }
   nav.site-menu a[href="/then-and-now/"]::after { content: "Legacy"; font-size: 11px; white-space: nowrap; }
+  /* Darshan, the 7th tab (Darpan, 29 Oct 2026: "yes" to the murti darshan archive): a lotus */
+  nav.site-menu a[href="/darshan/"] { --ph-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 4c2.2 2.4 3 5.4 0 10-3-4.6-2.2-7.6 0-10zM12 14c-1-3.4-4-6-7.5-6.4.2 3.8 3.2 6.2 7.5 6.4zM12 14c1-3.4 4-6 7.5-6.4-.2 3.8-3.2 6.2-7.5 6.4zM4 18h16'/%3E%3C/svg%3E"); }
 
   /* the top strip, in the 46px every page already keeps free for the old menu */
   .ph-top { position: absolute; z-index: 55; top: env(safe-area-inset-top, 0px); left: 0; right: 0; height: 46px; display: flex; align-items: center; justify-content: space-between;
