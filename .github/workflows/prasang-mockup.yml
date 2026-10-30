@@ -108,13 +108,13 @@ jobs:
           for d in fonts gu phone extras offline screensaver art; do [ -d out/$d ] && cp -r out/$d pack/ || true; done
           find out -maxdepth 1 -type f \( -name '*.css' -o -name '*.js' -o -name '*.json' -o -name '*.svg' -o -name '*.png' \) -exec cp {} pack/ \;
           mkdir -p pack/data/day pack/data/prasang pack/data/fest
-          for m in 10-30 10-31; do cp out/data/day/$m.json pack/data/day/; cp out/data/prasang/$m.json pack/data/prasang/ || true; done
+          for m in 10-29 11-01; do cp out/data/day/$m.json pack/data/day/; cp out/data/prasang/$m.json pack/data/prasang/ || true; done
           cp out/data/fest/*.json pack/data/fest/ 2>/dev/null || true
           ls out; du -sh pack
           python3 - <<'PY'
           import json
           keys = set()
-          for m in ('10-30', '10-31'):
+          for m in ("10-29", "11-01"):
               D = json.load(open(f'pack/data/day/{m}.json'))
               for Y in D['years']:
                   for p in (Y.get('p') or [])[:6] + (Y.get('t') or [])[:2]:

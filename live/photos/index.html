@@ -60,7 +60,6 @@ h1 { margin: 0; font: 600 clamp(30px, 5vw, 50px)/1.1 var(--title); letter-spacin
 .tell .paras p { margin: 0; padding-top: 7px; font: 400 15px/1.55 var(--serif); color: var(--paper); opacity: .88; break-inside: avoid; }
 .prasang { margin: 14px 0 4px; }   /* Prasang from this day (Darpan, 30 Oct 2026), under the day's photos */
 .prasang .tell { margin: 12px 0 0; }
-.prasang .ref { font: 700 11px var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--gold); opacity: 1; }
 .tell ul { margin: 6px 0 0; padding: 0; list-style: none; max-width: 70ch; }
 .tell li { position: relative; margin: 0 0 4px; padding-left: 16px; font: 400 15px/1.45 var(--serif); opacity: .9; }
 .tell li::before { content: ""; position: absolute; left: 2px; top: .62em; width: 5px; height: 5px; border-radius: 50%; background: var(--gold); }
@@ -166,13 +165,12 @@ const tail = line => String(line || '').replace(/^[^:]{0,60}\bin [^:]+:\s*/, '')
 const prasangFiles = {};
 async function tell(k, s) {
   const md = k.slice(5), y = +k.slice(0, 4);
-  // the prasang posted on this very date (from 2023), a gold button under the photos that opens it (Darpan, 30 Oct 2026)
+  // Mahant Swami Maharaj's prasang from this very date, a gold button under the photos that opens it (Darpan, 30 Oct 2026)
   (prasangFiles[md] = prasangFiles[md] || fetch(`/data/prasang/${md}.json`).then(r => r.ok ? r.json() : []).catch(() => [])).then(P => {
     const p = P.filter(x => x[0] === y);
     if (!p.length || !s.isConnected) return;
     s.querySelector('.grid').insertAdjacentHTML('afterend', `<div class="prasang"><button class="pill solid" type="button" aria-expanded="false">Prasang from this day</button>` +
-      p.map(([, title, w, ref]) => `<div class="tell" hidden><p class="line"><b>Prasang</b>${esc(title)}</p><div class="paras">${w.map(t => `<p>${esc(t)}</p>`).join('')}` +
-        (ref ? `<p class="ref">Vachanamrut ${esc(ref)}</p>` : '') + '</div></div>').join('') + '</div>');
+      p.map(([, title, w]) => `<div class="tell" hidden><p class="line"><b>Prasang</b>${esc(title)}</p><div class="paras">${w.map(t => `<p>${esc(t)}</p>`).join('')}</div></div>`).join('') + '</div>');
     const b = s.querySelector('.prasang button');
     b.onclick = () => { const open = b.getAttribute('aria-expanded') !== 'true'; b.setAttribute('aria-expanded', open); s.querySelectorAll('.prasang .tell').forEach(t => t.hidden = !open); };
   });

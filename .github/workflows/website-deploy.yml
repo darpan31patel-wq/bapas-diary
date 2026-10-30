@@ -66,7 +66,7 @@ jobs:
           python3 tools/web_rules.py day --day day/data/day --db bapa.db --faces faces --tg tg-cards.json
           # festival days: every year's Diwali and Annakut on its own Indian date, for Today on those days (Darpan, 30 Oct 2026)
           python3 tools/web_festival.py --day day/data/day --db bapa.db --deep-tags deep-tags.json --out day/data/fest
-          python3 tools/web_prasang.py --posts telegram/prasang/posts.json --fresh --out day/data/prasang   # Prasang from today, a button on Today (Darpan, 30 Oct 2026)
+          python3 tools/web_prasang.py --posts telegram/prasang/mms-prasangs.json --out day/data/prasang   # Prasang from today, a button on Today (Darpan, 30 Oct 2026)
           rsync -a day/ out/ && test -f out/index.html && ls out/data/day | wc -l
           # years with photos in R2: site/photo-years.txt plus every year website-hires has finished
           { cat site/photo-years.txt; curl -fs https://photos.$DOMAIN/years.txt || true; } | grep -E '^[0-9]{4}$' | sort -un > photo-years.txt
