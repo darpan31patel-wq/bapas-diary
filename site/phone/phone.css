@@ -60,9 +60,7 @@
   .bd-toast { bottom: calc(var(--ph-bar) + 14px); }
 
   /* Today */
-  .datebar .pill, .controls .pill, .controls select { min-height: 44px; }
-  .datebar { gap: 8px 6px; }   /* Back to today, when shown, goes on its own line under the three */
-  .datebar .pill { padding-inline: 12px; letter-spacing: .08em; white-space: nowrap; }
+  .controls .pill, .controls select { min-height: 44px; }
   .page .sub { letter-spacing: .24em; padding-left: .24em; white-space: nowrap; }
   .page .sub::before, .page .sub::after { width: 28px; }
   .ph-switch { display: flex; gap: 4px; padding: 4px; margin: 18px auto 0; max-width: 420px; border-radius: 16px; border: 1px solid rgba(217, 164, 65, .35); }
@@ -103,8 +101,6 @@
   .viewer .vcap div { color: #d9a441; font-size: 11px; }
   .viewer .vnav { padding-inline: 12px; }
   .viewer .pill { min-height: 48px; padding-inline: 18px; }
-  .picker { z-index: 70; }
-  .picker .months button { width: 44px; height: 44px; }
 
   /* Calendar: the months scroll up and down on a phone (phone.js draws them; the sideways ribbon stays on computers) */
   html.ph-cal .app { display: none; }
