@@ -166,9 +166,8 @@ CSS = r'''<style>
 @media (prefers-reduced-motion:reduce){.bapa-now .bn-live b::before{animation:none}}
 .bapa-now .bn-watch{flex:none;margin-left:auto;font:600 12px/1 var(--sans);color:#3d0e19;background:#d9a441;padding:6px 12px;border-radius:999px;text-decoration:none}
 .bapa-now .bn-watch:hover,.bapa-now .bn-watch:focus-visible{background:#ffe296}
-/* computers: the card sits in the empty space beside the date; while live it starts 10px higher (still under the menu),
-   so the extra line does not reach the words under the date */
-@media (min-width:1000px){.bapa-now.is-live{margin-top:-10px}.bapa-now.is-live .bn-live{margin-top:4px}.bapa-now.is-live .bn-watch{padding:5px 11px}}
+/* computers: a slimmer line, so the card (and the matching card beside it) grows as little as possible */
+@media (min-width:1000px){.bapa-now.is-live .bn-live{margin-top:4px}.bapa-now.is-live .bn-watch{padding:5px 11px}}
 /* live while no stay is on the schedule: the card shows just that line */
 .bapa-now.no-stay svg,.bapa-now.no-stay .bn-lbl,.bapa-now.no-stay .bn-town,.bapa-now.no-stay .bn-dates,.bapa-now.no-stay .bn-today,.bapa-now.no-stay .bn-next{display:none}
 .bapa-now.no-stay .bn-live{margin-top:0}
