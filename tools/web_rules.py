@@ -26,6 +26,7 @@ import argparse, collections, datetime, glob, gzip, hashlib, io, json, os, re, s
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import web_bapa_rules as R
+from web_places import not_a_town, town_of
 
 HERE = R.HERE
 CARD_CHARS = 40   # a Today card's caption fits two lines in about this many letters (cards are 150 to 200 px wide)
@@ -266,12 +267,12 @@ NOT_A_PLACE = re.compile(r'\b(morning|evening|afternoon|puja|sabha|arti|aarti|vi
 
 def known_places(db):
     """Every town Bapa's photos name, and the places file's towns, longest first."""
-    names = {(p or '').split(',')[0].strip() for (p,) in db.execute('SELECT DISTINCT place FROM photos')}
+    names = {town_of(p) for (p,) in db.execute('SELECT DISTINCT place FROM photos')}
     try:
         names |= set(json.load(open(os.path.join(HERE, 'places.json'), encoding='utf-8')))
     except (OSError, ValueError):
         pass
-    return sorted((n for n in names if len(n) > 2 and not NOT_A_PLACE.search(n)), key=len, reverse=True)
+    return sorted((n for n in names if len(n) > 2 and not NOT_A_PLACE.search(n) and not not_a_town(n)), key=len, reverse=True)
 
 
 def tidy_place(text, known):
@@ -385,7 +386,7 @@ def day(a):
                         rows = sorted(rows, key=rank)
                         n = 2 * NEAR_DAYS
                         rows = rows[i * len(rows) // n:(i + 1) * len(rows) // n] or rows[i % len(rows):i % len(rows) + 1]
-                        years[y] = {'y': y, 'place': (rows[0][4] or '').split(',')[0].strip(), 'p': [],
+                        years[y] = {'y': y, 'place': town_of(rows[0][4]), 'p': [],
                                     'trip': [d.isoformat(), d.isoformat()], 't': [r[:4] for r in rows]}
                         have.add(y)
                         stats['near_added'] += 1
@@ -443,7 +444,7 @@ def day(a):
                 B.pop('t', None); B.pop('trip', None); B['tg'] = 1
             if y not in years:
                 stats['tg_years'] += 1
-            Y = years.setdefault(y, {'y': y, 'place': (place or '').split(',')[0].strip(), 'p': [], 'tg': 1})
+            Y = years.setdefault(y, {'y': y, 'place': town_of(place), 'p': [], 'tg': 1})
             cap = R.undate(cap) or ('Darshan' if cap else '')   # 'On Saturday 30 July' under a 30 July card says nothing new (Darpan, 28 Oct 2026)
             Y['p'].append([al, key, cap, 1, box, card_caption(cap)])
         for Y in years.values():

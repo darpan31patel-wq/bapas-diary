@@ -25,6 +25,7 @@ import argparse, datetime, io, json, os, re, sqlite3, sys, time
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path[:0] = [HERE, os.path.join(HERE, 'tools')]
+from web_places import town_of   # never a year as the town: '2004, Los Angeles' is Los Angeles (Darpan's Today, 19 June)
 
 TRIP_DAYS = 14   # photos dated "24 to 27 Oct" show on those days; a longer range only on its first day (Darpan, 26 Oct
                  # 2026: 14 days, not 7). Each day of a trip gets its own share of the trip's photos, in the album's order,
@@ -37,7 +38,7 @@ def day_data(db, mmdd):
     years = {}
 
     def year(y, place):
-        return years.setdefault(y, {'y': y, 'place': (place or '').split(',')[0].strip(), 'p': []})
+        return years.setdefault(y, {'y': y, 'place': town_of(place), 'p': []})
 
     rows = db.execute("SELECT year, place, album, file, caption, is_bapa FROM photos WHERE substr(date, 6) = ? "
                       "ORDER BY date, album, file", (mmdd,))
@@ -89,7 +90,7 @@ def day_data(db, mmdd):
             "SELECT channel, date, place, line, headline, data FROM tg_events WHERE substr(date, 6) = ? ORDER BY date", (mmdd,)):
         if not (line or headline):
             continue
-        s = [int(d[:4]), (place or '').split(',')[0].strip(), line or headline or '']
+        s = [int(d[:4]), town_of(place), line or headline or '']
         more = post_more(db, ch, data, d, line or headline)
         if more:
             s.append(more)
