@@ -73,3 +73,19 @@ nav.site-menu a.on { color: #fff3cf; background: rgba(255, 211, 107, .16); borde
   nav.site-menu a[href="/through-the-years/"] { font-size: 0; }
   nav.site-menu a[href="/through-the-years/"]::after { content: "Years"; font-size: 11px; }
 }
+/* Darpan, 30 Oct 2026: "when the browser is a bit wider, please spread the names out a little bit more ... it looks like just
+   a long line of words right now" and "they need to be slightly adjusted a little bit up" (the names sat low in the bar).
+   Computers and tablets: the names sit in the middle of the bar, top to bottom, level with the Aa and language buttons.
+   Computers (1200px and wider): each tab is its own soft gold outlined button, with more room between them the wider the
+   screen; the page you are on stays the brightest one. The room kept each side is now just what the Aa and language buttons
+   need (180px, was 236px), so at 1200 to 1350px About no longer runs under the Aa button */
+@media (min-width: 761px) {
+  nav.site-menu { align-items: center; padding-bottom: 0; }
+}
+@media (min-width: 1200px) {
+  nav.site-menu { padding-left: 180px; padding-right: 180px; gap: 0 clamp(8px, 5vw - 52px, 56px); }
+  nav.site-menu a { letter-spacing: .14em; padding: 7px 14px 6px; border: 1px solid rgba(217, 164, 65, .32); border-radius: 999px;
+    background: rgba(255, 211, 107, .04); transition: color .2s, background-color .2s, border-color .2s; }
+  nav.site-menu a:hover { background: rgba(255, 211, 107, .10); border-color: rgba(255, 211, 107, .6); }
+  nav.site-menu a.on { padding: 7px 14px 6px; }
+}
