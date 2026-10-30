@@ -45,7 +45,7 @@
  ],
  [
   "function dayHead(d, want, onlyCal) {\n",
-  "function dayHead(d, want, onlyCal) {\n  if (d === UNDATED) return '<div class=\"day-head none\"><span class=\"when\">Date not known</span>'\n    + '<div class=\"info\"><span class=\"stay\">The day each was taken is not known</span></div></div>';\n"
+  "function dayHead(d, want, onlyCal) {\n  if (d === UNDATED) return '<div class=\"day-head none\"><span class=\"when\">Date not known</span></div>';\n"
  ],
  [
   "  const g = p.g, small = `${PHOTOS}s/${g[3]}/${p.file}`, medium = `${PHOTOS}m/${g[3]}/${p.file}`;\n  const when = g[1] ? `${niceDate(g[0])} to ${niceDate(g[1])}` : niceDate(g[0]);\n",

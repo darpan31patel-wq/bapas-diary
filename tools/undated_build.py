@@ -29,6 +29,8 @@ DROP = {
     'u0520', 'u0738', 'u0834', 'u1670', 'u0801',
     # buildings and scenery with no one to see
     'u0069', 'u0485', 'u0618', 'u1434', 'u1436', 'u1657', 'u0721',
+    # Bapa hidden (only the top of his turban shows)
+    'u0006',
 }
 
 
