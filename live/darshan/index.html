@@ -178,11 +178,21 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
 #big-box .none { padding: 80px 20px; }
 /* the mandir's own colours: no On this day photo finish on these murti photos */
 .page img { filter: none !important; }
-/* By festival: first only the festivals, a button for each, by month; a tap shows that festival's darshan, every murti
-   (Darpan, 30 Oct 2026: "don't show all the pictures, just give all the buttons and all the festivals. And when you click
-   on that button, it will show all the pictures relevant to that") */
-.fbtns { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
-.fbtn { display: flex; flex-direction: column; justify-content: center; gap: 4px; min-height: 74px; padding: 12px 16px; border-radius: 14px;
+/* By festival: a timeline of the Indian year, Kartak to Aso, with a button for each festival that comes every year, no dates
+   and no photos; a tap shows that festival's darshan from every year the archive has (Darpan, 30 Oct 2026: "don't show all
+   the pictures, just give all the buttons"; "I want festivals for the whole year that are repeated every year. So it doesn't
+   need to be the date with it... maybe like a timeline situation... where you click on them and it will show you all the
+   pictures for that festival") */
+.tline { position: relative; max-width: 1500px; margin: 0 auto; padding-left: 8px; }
+.tline::before { content: ""; position: absolute; left: 172px; top: 10px; bottom: 10px; width: 2px;
+  background: linear-gradient(rgba(217,164,65,.05), rgba(217,164,65,.6) 6%, rgba(217,164,65,.6) 94%, rgba(217,164,65,.05)); }
+.tmonth { position: relative; display: grid; grid-template-columns: 150px 1fr; gap: 0 44px; padding: 0 0 clamp(22px, 2.4vw, 34px); }
+.tmonth::before { content: ""; position: absolute; left: 158px; top: 9px; width: 14px; height: 14px; border-radius: 50%;
+  background: linear-gradient(#ffe296, #d9a441); box-shadow: 0 0 0 4px rgba(22,5,9,.9), 0 0 14px rgba(255,226,150,.4); }
+.tmonth h3 { margin: 0; text-align: right; font: 600 22px/1.2 var(--lora-f); color: var(--gold-hi); }
+.tmonth h3 small { display: block; margin-top: 3px; font: 500 11px var(--poppins-f); letter-spacing: .12em; text-transform: uppercase; color: #cfae78; }
+.fbtns { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.fbtn { display: flex; flex-direction: column; justify-content: center; gap: 4px; min-height: 66px; padding: 11px 16px; border-radius: 14px;
   border: 1px solid rgba(217,164,65,.4); background: rgba(22,5,9,.45); color: #f6e3bb; text-align: left; cursor: pointer;
   transition: background .2s, border-color .2s, transform .2s; }
 .fbtn b { font: 600 16px/1.25 var(--lora-f); color: #f6e3bb; }
@@ -194,10 +204,16 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
 .fback button:hover { border-color: var(--gold-hi); color: #fff3cf; }
 .seg { scroll-margin-top: 76px; }
 .fhead { text-align: center; margin: 0 0 22px; }
-.fhead h3 { margin: 0; font: 600 clamp(24px, 2.6vw, 34px)/1.2 var(--lora-f); color: var(--gold-hi); }
+.fhead h3 { margin: 0; font: 600 clamp(24px, 2.6vw, 34px)/1.2 var(--lora-f); color: var(--gold-hi); text-wrap: balance; }
+.fhead p { margin: 6px 0 0; font: 500 12px var(--poppins-f); letter-spacing: .12em; text-transform: uppercase; color: #cfae78; }
 @media (max-width: 760px) {
+  .tline { padding-left: 0; }
+  .tline::before { left: 7px; }
+  .tmonth { grid-template-columns: 1fr; gap: 10px; padding-left: 30px; }
+  .tmonth::before { left: 1px; top: 6px; }
+  .tmonth h3 { text-align: left; font-size: 19px; } .tmonth h3 small { display: inline; margin-left: 8px; }
   .fbtns { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .fbtn { min-height: 64px; padding: 10px 12px; border-radius: 12px; }
+  .fbtn { min-height: 58px; padding: 9px 12px; border-radius: 12px; }
   .fbtn b { font-size: 14px; } .fbtn i { font-size: 10.5px; }
 }
 @media (prefers-reduced-motion: reduce) { .card, .tile .t, .strip button { transition: none; } }
@@ -299,6 +315,35 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
     `<button class="tile" data-day="${i}" data-code="${c}"><span class="t"><img src="${src("s", DAYS[i], c)}" alt="" loading="lazy"></span><b>${esc(label)}</b>${extra || ""}</button>`;
   const newest = () => DAYS.map((D, i) => i).reverse();
 
+  // the Indian months from the Gujarati new year, and roughly when each falls
+  const IMONTHS = [["Kartak", "Oct to Nov"], ["Magshar", "Nov to Dec"], ["Posh", "Dec to Jan"], ["Maha", "Jan to Feb"], ["Fagan", "Feb to Mar"],
+    ["Chaitra", "Mar to Apr"], ["Vaishakh", "Apr to May"], ["Jeth", "May to Jun"], ["Ashadh", "Jun to Jul"], ["Shravan", "Jul to Aug"],
+    ["Bhadarvo", "Aug to Sep"], ["Aso", "Sep to Oct"]];
+  const TITHI = ["Padvo", "Bij", "Trij", "Choth", "Pancham", "Chhath", "Satam", "Atham", "Nom", "Dasham", "Ekadashi", "Baras", "Teras", "Chaudas", "Punam"];
+  // where an Indian date ("Adhik Jeth Sud Pancham", "Aso Vad Chaudas/Amas") falls in the year: month, then Sud or Vad, then tithi
+  const ipos = ind => { const w = (ind || "").replace(/^Adhik /, "").split(/[ /]+/), m = IMONTHS.findIndex(x => x[0] === w[0]);
+    if (m < 0) return null; const t = TITHI.indexOf(w[2]); return { m, at: m * 30 + (w[1] === "Vad" ? 15 : 0) + (t < 0 ? 14 : t) }; };
+  // not festivals: the calendar's eclipses, shraddh days, full and new moons and national days
+  const NOT_FEST = new Set(["Eclipse", "Shraddh", "Punam", "Amas", "Republic Day", "Independence Day"]);
+  let FESTS = null;
+  function festivals() {
+    if (FESTS) return FESTS;
+    const by = {};
+    DAYS.forEach((D, i) => (D.f || "").split(/\s*;\s*/).forEach(n => { if (n && !NOT_FEST.has(n)) (by[n] = by[n] || []).push(i); }));
+    const most = a => { const c = {}; a.forEach(x => c[x] = (c[x] || 0) + 1); const [k, n] = Object.entries(c).sort((x, y) => y[1] - x[1])[0] || []; return n > a.length / 2 ? k : ""; };
+    FESTS = Object.entries(by).map(([name, list]) => {
+      // a day with no Indian date goes by its English month (November is about Kartak)
+      const years = new Set(list.map(i => DAYS[i].d.slice(0, 4))).size, ps = list.map(i => ipos(DAYS[i].i) ||
+        { m: (+DAYS[i].d.slice(5, 7) + 1) % 12, at: ((+DAYS[i].d.slice(5, 7) + 1) % 12) * 30 + 15 }).sort((a, b) => a.at - b.at);
+      const mid = ps[ps.length >> 1], every = list.length > 3 * years;
+      // a guru's day kept on its English date shows that date; a festival on its tithi shows the usual tithi
+      const md = most(list.map(i => DAYS[i].d.slice(5))), ind = most(list.map(i => DAYS[i].i.split("/")[0].replace(/^Adhik /, "")));
+      const when = every ? "" : md && list.length > 1 ? `${+md.slice(3)} ${MON[+md.slice(0, 2) - 1]}` : ind || (list.length === 1 ? DAYS[list[0]].i : "");
+      return { name, list, years, days: list.length, when, month: every ? -1 : mid.m, at: every ? 999 : mid.at };
+    }).sort((a, b) => a.at - b.at || a.name.localeCompare(b.name));
+    return FESTS;
+  }
+
   function render() {
     let chips = "", html = "";
     const first = i => DAYS[i].k.includes("ddm") ? "ddm" : DAYS[i].k[0];
@@ -342,22 +387,34 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
           newest().filter(i => DAYS[i].c.includes(c)).map(i => tile(i, first(i), short(DAYS[i].d), fday(i))).join(""));
       });
     } else if (view === "fest") {
-      // first a button for each festival, each month's in its own section; a tap shows only that festival's days, all their murtis
-      const list = newest().filter(i => DAYS[i].f);
-      if (chip && !list.some(i => DAYS[i].f === chip)) chip = null;
-      if (!list.length) html += `<p class="none">No festival days yet.</p>`;
+      // the Indian year as a timeline, Kartak to Aso: each festival once, in the month it usually falls, with its tithi (or
+      // its English date, for a guru's day kept on one) and how many years of darshan there are; a tap shows them all
+      const F = festivals();
+      if (chip && !F.some(f => f.name === chip)) chip = null;
+      if (!F.length) html += `<p class="none">No festival days yet.</p>`;
       else if (!chip) {
-        const seen = new Set(), once = list.filter(i => !seen.has(DAYS[i].f) && seen.add(DAYS[i].f));
-        const months = [...new Set(once.map(i => DAYS[i].d.slice(0, 7)))];
-        html += months.map(m => { const l = once.filter(i => DAYS[i].d.startsWith(m)), [y, mm] = m.split("-").map(Number);
-          return `<section class="sect"><h3 class="group">${MON[mm - 1]} ${y} <small>${l.length} ${l.length === 1 ? "festival" : "festivals"}</small></h3><div class="fbtns">` +
-            l.map(i => { const more = list.filter(j => DAYS[j].f === DAYS[i].f).length - 1;   // a festival on more than one day has one button, at its newest day
-              return `<button class="fbtn" type="button" data-f="${esc(DAYS[i].f)}"><b>${esc(DAYS[i].f)}</b><i>${short(DAYS[i].d)}${more ? ` and ${more} earlier ${more === 1 ? "day" : "days"}` : DAYS[i].i ? " · " + esc(DAYS[i].i) : ""}</i></button>`; }).join("") +
-            `</div></section>`; }).join("");
+        html += `<div class="tline">` + IMONTHS.map(([m, eng], j) => {
+          const l = F.filter(f => f.month === j); if (!l.length) return "";
+          return `<section class="tmonth"><h3>${m}<small>${eng}</small></h3><div class="fbtns">` + l.map(f =>
+            `<button class="fbtn" type="button" data-f="${esc(f.name)}"><b>${esc(f.name)}</b><i>${esc(f.when)}${f.when ? " · " : ""}${f.years} ${f.years === 1 ? "year" : "years"}</i></button>`).join("") +
+            `</div></section>`; }).join("") + `</div>`;
+        const every = F.filter(f => f.month < 0);
+        if (every.length) html += `<div class="tline"><section class="tmonth"><h3>Every month</h3><div class="fbtns">` + every.map(f =>
+          `<button class="fbtn" type="button" data-f="${esc(f.name)}"><b>${esc(f.name)}</b><i>${f.days} days · ${f.years} ${f.years === 1 ? "year" : "years"}</i></button>`).join("") + `</div></section></div>`;
       } else {
-        html += `<div class="fback"><button type="button" data-back="1">&#8249; All festivals</button></div><div class="fhead"><h3>${esc(chip)}</h3></div>` +
-          list.filter(i => DAYS[i].f === chip).map(i => sect(`${nice(DAYS[i].d)}${DAYS[i].i ? ` <small>${esc(DAYS[i].i)}</small>` : ""}`,
-            DAYS[i].k.map(c => tile(i, c, NAME[c])).join(""))).join("");
+        const f = F.find(f => f.name === chip), list = f.list.slice().reverse();   // newest year first
+        html += `<div class="fback"><button type="button" data-back="1">&#8249; All festivals</button></div><div class="fhead"><h3>${esc(chip)}</h3>${f.when ? `<p>${esc(f.when)}</p>` : ""}</div>`;
+        if (f.month < 0) {
+          // a day of every month: one photo a day, each year in its own section
+          [...new Set(list.map(i => DAYS[i].d.slice(0, 4)))].forEach(y => {
+            const l = list.filter(i => DAYS[i].d.startsWith(y));
+            html += sect(`${y} <small>${l.length} ${l.length === 1 ? "day" : "days"}</small>`, l.map(i => tile(i, first(i), short(DAYS[i].d), DAYS[i].i ? `<i>${esc(DAYS[i].i)}</i>` : "")).join(""));
+          });
+        } else {
+          // each year's festival day with all its photos
+          html += list.map(i => sect(`${DAYS[i].d.slice(0, 4)} <small>${short(DAYS[i].d)}${DAYS[i].i ? " · " + esc(DAYS[i].i) : ""}</small>`,
+            DAYS[i].k.map(c => tile(i, c, NAME[c] || "")).join(""))).join("");
+        }
       }
     } else {
       const c = chip || "gm_c";
