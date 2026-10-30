@@ -1,38 +1,43 @@
-# Helper for the "Add more Telegram channels" thread only (Darpan, 30 Oct 2026): reads the public channel
-# t.me/s/LondonMandirMurtiDarshan and reports how far back its Neasden murti darshan goes. Writes nothing anywhere
-# (no R2, no database, no website); the post list is kept as a run artifact. Touches nothing in the daily picture.
+# Helper for the "Add more Telegram channels" thread only (Darpan, 30 Oct 2026): the London Mandir Murti Darshan channel
+# for the Darshan tab's older days. This run only studies (reads R2 and the channel, writes nothing anywhere).
+# Touches nothing in the daily picture.
 name: murti-channel-peek
 on:
   push:
     branches: [claude/project-thread-zlkxot]
     paths: ['.github/workflows/murti-channel-peek.yml']
+permissions:
+  actions: read
+  contents: read
 jobs:
-  peek:
+  study:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 60
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BUCKET: bapas-diary-photos
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python tools/tg_fetch.py LondonMandirMurtiDarshan murti/posts.json | tail -5
-      - name: Summary
-        run: |
-          python - <<'PY'
-          import collections, json
-          ps = json.load(open('murti/posts.json'))
-          print('posts', len(ps), 'photos', sum(p['photos'] for p in ps), 'videos', sum(p['videos'] for p in ps))
-          days = collections.Counter((p['posted'] or '')[:10] for p in ps)
-          print('first', min(days), 'last', max(days), 'days with posts', len(days))
-          yrs = collections.Counter(d[:4] for d in days)
-          print('days per year', sorted(yrs.items()))
-          per = collections.Counter()
-          for p in ps: per[(p['posted'] or '')[:4]] += p['photos']
-          print('photos per year', sorted(per.items()))
-          for p in ps[:6] + ps[len(ps)//2:len(ps)//2+4] + ps[-6:]:
-              print('---', p['id'], p['posted'], 'photos', p['photos'], 'videos', p['videos'], repr(p['text'][:200]), p['images'][:1])
-          PY
-      - uses: actions/upload-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           name: murti-posts
-          path: murti/posts.json
+          run-id: 41094097411
+          github-token: ${{ github.token }}
+          path: murti
+      - name: R2 access (read only use here, kept out of the logs)
+        run: |
+          pip install -q pillow
+          id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
+          key=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1)
+          echo "::add-mask::$id"; echo "::add-mask::$key"
+          { echo "AWS_ACCESS_KEY_ID=$id"; echo "AWS_SECRET_ACCESS_KEY=$key"
+            echo "AWS_DEFAULT_REGION=auto"; echo "R2=https://$CF_ACCOUNT.r2.cloudflarestorage.com"; } >> "$GITHUB_ENV"
+      - run: python tools/murti_channel.py study murti/posts.json study
+      - uses: actions/upload-artifact@v4
+        with:
+          name: murti-study
+          path: study/*.jpg
