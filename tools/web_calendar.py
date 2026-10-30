@@ -45,7 +45,9 @@ def _date(s):
 
 
 def schedule(path, today):
-    """{date: [place, what happens]} for the days after today, from the saved vicharan schedule page."""
+    """{date: [place, what happens]} for every day the saved vicharan schedule page lists. The days after today are the
+    FUTURE VICHARAN; the days up to today give their place to the stay too, so the Calendar's stay has the same dates as
+    Where Bapa is now on Today (Darpan, 30 Oct 2026: "make them use the same dates")."""
     try:
         lines = [x.strip() for x in json.load(open(path, encoding='utf-8'))['text'].splitlines() if x.strip()]
     except Exception as e:
@@ -72,8 +74,8 @@ def schedule(path, today):
     for d, by in events.items():
         if d in out:
             out[d][1] = ' · '.join(x for e in by.values() for x in e)   # a moving day: "Viday · Aagman"
-    out = {d: v for d, v in out.items() if d > today.isoformat()}
-    print(f'vicharan: {len(out)} days ahead, {sum(1 for v in out.values() if v[1])} with something happening')
+    print(f'vicharan: {sum(1 for d in out if d > today.isoformat())} days ahead, '
+          f'{sum(1 for d, v in out.items() if v[1] and d > today.isoformat())} with something happening')
     return out
 
 
@@ -127,7 +129,7 @@ def build(db, today, photo_years, vary=None, ahead=None):
                 if what:
                     vich[k] = what
             else:
-                pl = place.get(k) or (trip.get(k) or [''])[0]
+                pl = (ahead or {}).get(k, [''])[0] or place.get(k) or (trip.get(k) or [''])[0]   # the schedule's town first
                 ph = photo.get(k) or (trip.get(k) or [None, None])[1]
                 row = cal.get(k, ['', '', '']) + [pl]
                 if ph and y in photo_years:

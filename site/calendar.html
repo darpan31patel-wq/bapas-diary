@@ -144,6 +144,13 @@ footer{padding-block:4px 10px;padding-left:max(16px,env(safe-area-inset-left,0px
 .card:focus-visible,.ribbon.picking .card.lit,.card.want{filter:none}
 @media (max-width:600px){.hint{display:none}}
 @media (prefers-reduced-motion:reduce){.mtitle span,.month{transition:none}}
+/* tablets (iPads and Android tablets, held either way): the festival words in the squares a little bigger, they were
+   only 6 to 9px (Darpan, 30 Oct 2026: "make them a little bigger on tablets") */
+@media (hover:none) and (pointer:coarse) and (min-width:761px){
+.fest{font-size:calc(clamp(7.5px,1.15vh,10px) * var(--z) * 1.3);letter-spacing:.04em}
+.strip{font-size:calc(clamp(7px,1.05vh,9.5px) * var(--z) * 1.3);letter-spacing:.04em}
+.tday{font-size:calc(clamp(7px,1.05vh,9px) * var(--z) * 1.2)}
+}
 </style>
 
 <nav class="site-menu stay" aria-label="Website tabs"><a href="/">Today</a><a href="/calendar/" class="on" aria-current="page">Calendar</a><a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/about/">About</a></nav>
@@ -320,7 +327,7 @@ function buildJourney(){
       const day=i+1;
       if(!p){if(++gap>3)lastP=null;return}
       const fut=!!FUT&&`${k}-${pad2(day)}`>=FUT;   // the coming stays start afresh after today, marked FUTURE VICHARAN
-      if(cur&&p===lastP&&cur.fut===fut){cur.k1=k;cur.d1=day;gap=0}
+      if(cur&&p===lastP&&(cur.fut===fut||fut)){cur.k1=k;cur.d1=day;gap=0}   /* the stay Bapa is in now carries on past today as one */
       else{
         if(fut&&!futMark){futMark=el('span','fmark','Future vicharan'); frag.appendChild(futMark); lastY=y}
         else if(y!==lastY){const ym=el('span','ymark',String(y)); ym.dataset.y=y; frag.appendChild(ym); lastY=y}
