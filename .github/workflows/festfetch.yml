@@ -14,7 +14,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - name: Contact sheets of every candidate, and the chosen photos big (run 4)
+      - name: Contact sheets of every candidate, and the chosen photos big (run 5)
         run: |
           pip install -q pillow
           mkdir -p /tmp/th preview/fest/sheets preview/fest/img
