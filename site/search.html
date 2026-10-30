@@ -787,10 +787,10 @@ async function load() {
       return { kind: 'photo', y, g, d: g[0], city: g[2].split(',')[0].trim(), file, cap, tags, m, b: bapa === 1, hay: (cap + ' ' + g[2] + ' ' + tags + ' ' + mandirWords(m)).toLowerCase() };
     })))));
   await tg;
-  if (START_YEAR && !linked && !$('q').value.trim() && !$('year').value && !$('month').value) {   // unless they already started searching
-    // 'today' opens on this day in every year (Darpan, 28 Oct 2026: "why does it automatically go to 1999?")
-    if (START_YEAR === 'today') { const t = new Date(); $('month').value = String(t.getMonth() + 1).padStart(2, '0'); $('day').value = String(t.getDate()).padStart(2, '0'); }
-    else $('year').value = START_YEAR;
+  // 'today' opens with no filters at all; links from Today and the Calendar still pick their date
+  // (Darpan, 30 Oct 2026: "no search filters as default please")
+  if (START_YEAR && START_YEAR !== 'today' && !linked && !$('q').value.trim() && !$('year').value && !$('month').value) {   // unless they already started searching
+    $('year').value = START_YEAR;
     search();
   }
 }
