@@ -51,6 +51,7 @@ self.addEventListener('fetch', e => {
   const u = new URL(r.url);
   if (u.origin === location.origin) {
     if (u.pathname === '/sw.js') return;
+    if (u.pathname.startsWith('/api/')) return;   // answers that are only true now, like whether BAPS is live: never a saved copy
     if (u.pathname.startsWith('/search/image/')) return;   // Search by photo's 60 MB model and numbers: never kept on the phone (website review, 28 Oct 2026)
     if (r.mode === 'navigate') return e.respondWith(page(r));
     if (/\.(jpe?g|png|webp|gif|svg|woff2?|ttf)$/i.test(u.pathname)) return e.respondWith(savedFirst(r, 'bd-site'));
