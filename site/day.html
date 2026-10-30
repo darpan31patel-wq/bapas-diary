@@ -141,7 +141,7 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 /* a very faint golden glow around a frame while the mouse moves over it; with no mouse on any frame the glow drifts
    gently from year to year, 1999, 2000, 2001 ... to the last, then starts again (Darpan, 30 Oct 2026) */
 .card::after{content:"";position:absolute;inset:-1px;pointer-events:none;opacity:0;transition:opacity 2.5s ease-in-out;
-  box-shadow:0 0 20px 4px rgba(255,216,128,.3),0 0 56px 16px rgba(230,176,72,.14)}
+  box-shadow:0 0 14px 5px rgba(255,216,128,.46),0 0 40px 14px rgba(230,176,72,.22)}
 .card.glow::after{opacity:1}
 .card.hand::after{transition-duration:1.2s}
 /* the mouse resting on a caption for half a second opens it to the photo's whole caption, over whatever is below, so
