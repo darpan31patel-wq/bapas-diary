@@ -47,6 +47,10 @@ h1 { margin: 0; font: 600 clamp(30px, 5vw, 50px)/1.1 var(--title); letter-spacin
 .grid button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 2px; }
 /* what the day's On this day posts say (Darpan, 29 Oct 2026: "YES go live", the same as on Today): the Indian date, the
    occasion, and the whole story or everything Bapa did that day */
+/* one day: the box's title already says the place, date and photo count, so the day line only carries its Indian date,
+   centred under the title (Darpan, 30 Oct 2026: "drop the repeated line") */
+.day h2.solo { justify-content: center; border-bottom: 0; padding-bottom: 0; margin-top: -4px; }
+.day h2.solo:empty { display: none; }
 .day h2 .ti { font: italic 400 16px var(--serif); letter-spacing: 0; text-transform: none; color: var(--paper); }
 .tell { margin: 0 0 12px; }
 .tell .line { margin: 0; font: italic 500 17px/1.45 var(--serif); color: var(--paper); max-width: 70ch; }
@@ -115,13 +119,16 @@ async function load() {
   const lists = await Promise.all(years.map(y => fetch(`/search/data/${y}.json`).then(r => r.ok ? r.json() : null).catch(() => null)));
   lists.forEach(data => {
     if (!data) return;
-    data.p.forEach(([gi, file, cap]) => {
+    data.p.forEach(([gi, file, cap, tags, bapa]) => {
       const g = data.g[gi], a = g[0], b = g[1] || a;
       if (b < from || a > to) return;   // an album over several days goes on its first day inside these days
       const d = a < from ? from : a;
-      (byDay[d] = byDay[d] || []).push({ g, file, cap, d });
+      (byDay[d] = byDay[d] || []).push({ g, file, cap, d, bapa: bapa ? 1 : 0 });
     });
   });
+  // each day starts with the photos Bapa is in, then the rest (murtis, the hall, the mandir) in their own order
+  // (Darpan, 30 Oct 2026: "start with Bapa's photos")
+  Object.values(byDay).forEach(list => list.sort((a, b) => b.bapa - a.bapa));
   const keys = Object.keys(byDay).sort();
   all = keys.flatMap(k => byDay[k]);
   if (!all.length) { $('count').textContent = 'No photos from these days yet.'; return; }
@@ -130,7 +137,8 @@ async function load() {
   keys.forEach(k => {
     const s = document.createElement('section'); s.className = 'day';
     const places = [...new Set(byDay[k].map(p => p.g[2].split(',')[0].trim()))].join(' · ');
-    s.innerHTML = `<h2>${WD[dt(k).getUTCDay()]} ${nice(k, true)} <small>${esc(places)} · ${byDay[k].length} ${byDay[k].length === 1 ? 'photo' : 'photos'}</small></h2>`;
+    s.innerHTML = from === to ? '<h2 class="solo"></h2>' :
+      `<h2>${WD[dt(k).getUTCDay()]} ${nice(k, true)} <small>${esc(places)} · ${byDay[k].length} ${byDay[k].length === 1 ? 'photo' : 'photos'}</small></h2>`;
     const grid = document.createElement('div'); grid.className = 'grid';
     byDay[k].forEach(p => {
       const n = i++, b = document.createElement('button'); b.type = 'button';
