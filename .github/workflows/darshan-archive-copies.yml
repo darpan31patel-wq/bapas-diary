@@ -1,0 +1,31 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, and never fetches
+# from the mandir's site or www.baps.org. One off, for the Darshan tab (Darpan, 29 Oct 2026: "yes"): makes the small
+# copies of every saved darshan day in R2 and the archive's list (tools/screensaver/darshan_archive.py), so the page opens
+# with all the saved months; afterwards the screensaver darshan robot does each new day. Runs only when this file
+# changes on its own branch.
+name: darshan-archive-copies
+on:
+  push:
+    branches: ['claude/project-thread-kpc64t']
+    paths: ['.github/workflows/darshan-archive-copies.yml']
+concurrency: darshan-archive-copies
+jobs:
+  copies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BUCKET: bapas-diary-photos
+    steps:
+      - uses: actions/checkout@v4
+      - name: R2 access (kept out of the logs)
+        run: |
+          pip install -q pillow
+          id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
+          key=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1)
+          echo "::add-mask::$id"; echo "::add-mask::$key"
+          { echo "AWS_ACCESS_KEY_ID=$id"; echo "AWS_SECRET_ACCESS_KEY=$key"
+            echo "AWS_DEFAULT_REGION=auto"; echo "R2=https://$CF_ACCOUNT.r2.cloudflarestorage.com"; } >> "$GITHUB_ENV"
+      - name: Small copies and the archive's list
+        run: python3 tools/screensaver/darshan_archive.py --minutes 280
