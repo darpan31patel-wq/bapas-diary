@@ -4,7 +4,7 @@ showing Bapa's current town from his schedule. YES").
 A small card in the Today header: a little map with a gold dot on the town Bapa is staying in, the dates of the stay,
 what is on there today (the schedule's own times, local to the town) and where he goes next. No buttons or links,
 except while BAPS is live on YouTube: then one more line says Live now and has a Watch live link to the
-webcast (Darpan, 30 Oct 2026: "Whenever there is a live webcast happening on this channel, please display it in this box,
+webcast, and while a webcast is announced it says Upcoming webcast, its day and time, with a link to it (Darpan, 30 Oct 2026: "Whenever there is a live webcast happening on this channel, please display it in this box,
 and make a link"; then "i want to keep all information, dont necessarily need the thumbnail"), asked of /api/live (functions/api/live.js) when the page opens and every two minutes.
 On computers it sits in the empty space to the right of the date, so the ropes stay where they are; on tablets and
 phones it is a slim strip under the Screensaver button.
@@ -148,16 +148,27 @@ CSS = r'''<style>
 /* phones: one short strip, so the ropes stay close: the map, the town and its dates on one line, and today's event */
 /* BAPS live on YouTube (Darpan, 30 Oct 2026): the card stays exactly as it is, with one more line under it while BAPS is
    live: a red Live now and a Watch live link (the webcast's own name shows on hover) to the webcast ("i want to keep all information") */
+.bapa-now .bn-when:empty{display:none}
 .bapa-now .bn-live{display:none}
-.bapa-now.is-live .bn-live{display:flex;align-items:center;gap:8px;margin-top:6px;font:500 14px/1.3 var(--serif);color:var(--mist)}
+.bapa-now.is-live .bn-live,.bapa-now.is-soon .bn-live{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px;font:500 14px/1.3 var(--serif);color:var(--mist)}
 .bapa-now .bn-live b{flex:none;display:inline-flex;align-items:center;gap:6px;font:700 10.5px/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:#ff6b6b}
 .bapa-now .bn-live b::before{content:"";width:8px;height:8px;border-radius:50%;background:#ff4b4b;box-shadow:0 0 0 0 rgba(255,75,75,.6);animation:bn-onair 1.8s ease-out infinite}
+/* a webcast the channel has announced (Darpan, 30 Oct 2026: "also, show if there is an upcoming webcast as soon as the
+   channel shows this"): the same line in gold, with its day and time, and a quieter link */
+.bapa-now.is-soon .bn-live b{color:var(--gold-soft)}
+.bapa-now.is-soon .bn-live b::before{background:transparent;border:1.5px solid var(--gold-soft);width:6px;height:6px;animation:none}
+.bapa-now .bn-go{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 8px;color:inherit;text-decoration:none}
+.bapa-now .bn-when{color:var(--cream);white-space:nowrap}
+/* one short line: the word Webcast and its day and time, the whole line a link to it on YouTube */
+.bapa-now.is-soon .bn-watch{display:none}
+.bapa-now.is-soon .bn-go:hover .bn-when,.bapa-now.is-soon .bn-go:focus-visible .bn-when{text-decoration:underline;text-decoration-color:var(--gold-soft);text-underline-offset:3px}
+.bapa-now.is-soon .bn-when::after{content:" ›";color:var(--gold-soft)}
 @keyframes bn-onair{to{box-shadow:0 0 0 7px rgba(255,75,75,0)}}
 @media (prefers-reduced-motion:reduce){.bapa-now .bn-live b::before{animation:none}}
 .bapa-now .bn-watch{flex:none;margin-left:auto;font:600 12px/1 var(--sans);color:#3d0e19;background:#d9a441;padding:6px 12px;border-radius:999px;text-decoration:none}
 .bapa-now .bn-watch:hover,.bapa-now .bn-watch:focus-visible{background:#ffe296}
 /* computers: a slimmer line, so the card (and the matching card beside it) grows as little as possible */
-@media (min-width:1000px){.bapa-now.is-live .bn-live{margin-top:4px}.bapa-now.is-live .bn-watch{padding:5px 11px}}
+@media (min-width:1000px){.bapa-now .bn-live{margin-top:4px!important}.bapa-now .bn-watch{padding:5px 11px}}
 /* live while no stay is on the schedule: the card shows just that line */
 .bapa-now.no-stay svg,.bapa-now.no-stay .bn-lbl,.bapa-now.no-stay .bn-town,.bapa-now.no-stay .bn-dates,.bapa-now.no-stay .bn-today,.bapa-now.no-stay .bn-next{display:none}
 .bapa-now.no-stay .bn-live{margin-top:0}
@@ -171,7 +182,7 @@ CSS = r'''<style>
 HTML = '''<div class="bapa-now" id="bapaNow" hidden aria-live="polite">
   <svg viewBox="0 0 150 150" role="img" aria-label="Map"><path class="land"/><path class="route"/><circle class="next" r="4"/><circle class="glow" r="6"/><circle class="here" r="5.5"/></svg>
   <div class="bn-words"><div class="bn-lbl">Where Bapa is now</div><div class="bn-town"></div><div class="bn-dates"></div><div class="bn-today"></div><div class="bn-next"></div>
-    <div class="bn-live"><b>Live now</b><a class="bn-watch" target="_blank" rel="noopener">Watch live</a></div></div>
+    <div class="bn-live"><a class="bn-go" target="_blank" rel="noopener"><b>Live now</b><span class="bn-when"></span></a><a class="bn-watch" target="_blank" rel="noopener">Watch live</a></div></div>
 </div>
 '''
 
@@ -191,7 +202,7 @@ JS = r'''<script>
     const stays = S.stays;
     const i = stays.findIndex(s => { const d = dayIn(s.tz); return s.from <= d && d <= s.to; });
     el.classList.toggle('no-stay', i < 0);
-    if (i < 0) { el.hidden = !onAir; return; }
+    if (i < 0) { el.hidden = !(onAir || soon); soonLine(); return; }
     let s = stays[i], n = stays[i + 1];
     const today = dayIn(s.tz);
     // a day two stays share is the travel day: the new town counts once that day has its first event there
@@ -203,6 +214,8 @@ JS = r'''<script>
     // "make them use the same dates"); the stay itself still runs to its last day for the travel day switch above
     const prev = d => new Date(Date.parse(d + 'T12:00:00Z') - 864e5).toISOString().slice(0, 10);
     const upto = x => { const after = stays[stays.indexOf(x) + 1]; return after && after.from === x.to && today < x.to ? prev(x.to) : x.to; };
+    tz = s.tz;
+    soonLine();
     const map = S.maps[s.city];
     q('.bn-town').innerHTML = `${esc(s.city)}<small>${esc(s.country)}</small>`;
     q('.bn-dates').textContent = `${nice(s.from)} to ${nice(upto(s))}`;
@@ -232,14 +245,32 @@ JS = r'''<script>
     svg.setAttribute('aria-label', `Map with ${s.city} marked` + (shows ? `, and ${n.city} next` : ''));
     el.hidden = false;
   }
-  // BAPS live on YouTube: a Live now line with a Watch live link while the channel is on air, the card as before when it is not
-  let onAir = null;
+  // BAPS live on YouTube: a Live now line with a Watch live link while the channel is on air; while it has a webcast
+  // announced, an Upcoming webcast line with its day and time; the card as before when there is neither
+  let onAir = null, soon = null, tz = null;
+  function soonLine() {
+    if (!soon) return;
+    // in the town's own time, as the card's other times; on this phone or computer's time when there is no stay
+    const zone = tz || undefined, label = tz === 'Asia/Kolkata' ? ' IST' : tz === 'Europe/London' ? ' UK time' : tz ? ' local time' : '';
+    const at = new Date(soon.start * 1000), day = d => new Intl.DateTimeFormat('en-CA', {timeZone: zone}).format(d);
+    const t = new Intl.DateTimeFormat('en-GB', {timeZone: zone, hour: 'numeric', minute: '2-digit', hourCycle: 'h12'}).format(at)
+      .replace(':', '.').replace(/\s?([ap])\.?m\.?/i, (_, x) => ` ${x.toLowerCase()}m`);
+    const today = day(new Date()), tomorrow = day(new Date(Date.now() + 864e5));
+    const d = day(at) === today ? 'Today' : day(at) === tomorrow ? 'Tomorrow'
+      : new Intl.DateTimeFormat('en-GB', {timeZone: zone, weekday: 'short', day: 'numeric', month: 'short'}).format(at).replace(',', '');
+    q('.bn-when').textContent = at <= Date.now() ? 'Starting soon' : `${d}, ${t}${label}`;
+  }
   function live(v) {
-    onAir = v && v.live && /^[\w-]{11}$/.test(v.id) ? v : null;
+    const ok = x => x && /^[\w-]{11}$/.test(x.id);
+    onAir = v && v.live && ok(v) ? v : null;
+    soon = !onAir && v && ok(v.next) && v.next.start > 0 ? v.next : null;
     el.classList.toggle('is-live', !!onAir);
-    if (onAir) {
-      q('.bn-watch').href = 'https://www.youtube.com/watch?v=' + onAir.id;
-      q('.bn-watch').title = onAir.title || '';   // the webcast's own name, on hover
+    el.classList.toggle('is-soon', !!soon);
+    const w = onAir || soon;
+    if (w) {
+      q('.bn-live b').textContent = onAir ? 'Live now' : 'Webcast';
+      el.querySelectorAll('.bn-live a').forEach(a => { a.href = 'https://www.youtube.com/watch?v=' + w.id; a.title = w.title || ''; });   // its own name, on hover
+      q('.bn-when').textContent = '';
     }
     draw();
   }
