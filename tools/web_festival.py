@@ -35,7 +35,42 @@ FESTS = {
         words=re.compile(r'annakut|thal\b|thaal|prasad|sweets|food|fruit|mithai|dishes|offer(s|ed|ing)? (the )?(annakut|thal)', re.I),
         tags={'annakut', 'food', 'sweets', 'thal', 'fruit', 'dry fruits', 'vegetables', 'serving food', 'eating'}, strong={'annakut', 'sweets', 'thal'},
         keep_all=False),  # "everything surrounding food": a year with food photos shows only those
+    # the other festivals (Darpan, 30 Oct 2026: "I want to do that for all the festivals"): every photo of the day stays,
+    # the ones that show or say the festival first
+    'janmashtami': dict(title='Janmashtami', old='Janmashtami', ti='Shravan Vad Atham', cal=re.compile(r'janmashtami', re.I),
+        words=re.compile(r'janmashtami|krishna|krushna|matki|dahi.?handi|cradle|paranu|midnight', re.I),
+        tags={'murti', 'arti', 'night'}, strong={'peacock feathers'}),
+    'holi': dict(title='Holi', old='Holi', ti='Fagan Sud Punam', cal=re.compile(r'^holi\b', re.I),
+        words=re.compile(r'\bholi\b|holika|bonfire|fire', re.I), tags={'night', 'arti'}, strong=set()),
+    'fuldol': dict(title='Fuldol', old='Pushpadolotsav (Dhuleti)', ti='Fagan Vad Padvo', cal=re.compile(r'pushpadol|fuldol|dhuleti', re.I),
+        words=re.compile(r'fuldol|pushpadol|dhuleti|colou?rs?|rang|sprinkl|swing|hindol|petals', re.I),
+        tags={'showering flowers', 'petals', 'flowers', 'flower decoration'}, strong={'showering flowers', 'petals'}),
+    'gurupurnima': dict(title='Guru Purnima', old='Guru Purnima', ti='Ashadh Sud Punam', cal=re.compile(r'guru purnima', re.I),
+        words=re.compile(r'guru ?purnima|guru ?pujan|pujan|garland|vandan|guru parampara', re.I),
+        tags={'garland', 'puja', 'flowers'}, strong={'garland'}),
+    'harinom': dict(title='Swaminarayan Jayanti', old='Swaminarayan Jayanti (Hari Navmi)', ti='Chaitra Sud Nom',
+        cal=re.compile(r'hari-?nom|hari navmi|swaminarayan jayanti', re.I),
+        words=re.compile(r'jayanti|hari ?n(o|av)m|ram ?navmi|cradle|paranu|birthday|janma', re.I),
+        tags={'arti', 'flowers', 'garland'}, strong={'cake'}),
+    'vasant': dict(title='Vasant Panchami', old='Vasant Panchmi', ti='Maha Sud Pancham', cal=re.compile(r'vasant panch', re.I),
+        words=re.compile(r'vasant|panchmi|panchami|shikshapatri|brahmanand|nishkulanand|spring', re.I),
+        tags={'yellow flowers', 'flowers', 'book'}, strong={'yellow flowers'}),
+    'rathyatra': dict(title='Rathyatra', old='Rathyatra', ti='Ashadh Sud Bij', cal=re.compile(r'rath ?yatra', re.I),
+        words=re.compile(r'rath|chariot|yatra|pull', re.I), tags={'procession', 'flags'}, strong={'chariot'}),
+    'raksha': dict(title='Raksha Bandhan', old='Raksha Bandhan', ti='Shravan Sud Punam', cal=re.compile(r'raksha ?bandhan', re.I),
+        words=re.compile(r'raksha|rakhi|nadachhadi|thread', re.I), tags=set(), strong=set()),
+    'sharad': dict(title='Sharad Punam', old="Gunatitanand Swami's Birthday (Sharad Punam)", ti='Aso Sud Punam',
+        cal=re.compile(r"sharad pun|gunatitanand swami'?s birthday", re.I),
+        words=re.compile(r'sharad|punam|gunatitanand|dudh|pauva|moon', re.I), tags={'night', 'sweets'}, strong=set()),
+    'psm': dict(title="Pramukh Swami Maharaj's Jayanti", old="Pramukh Swami Maharaj's Jayanti", ti='Magshar Sud Atham',
+        cal=re.compile(r"pramukh swami maharaj('?s)? (janma )?jayanti(?! celebration)", re.I),
+        words=re.compile(r'jayanti|birthday|janma|cake', re.I), tags={'garland', 'flowers', 'cake'}, strong={'cake'}),
+    'msm': dict(title="Mahant Swami Maharaj's Jayanti", old="Mahant Swami Maharaj's Jayanti", ti='Bhadarvo Vad Nom',
+        cal=re.compile(r"mahant swami maharaj('?s)? (janma )?jayanti(?! celebration)", re.I), since=2016,   # his own birthdays as Bapa
+        words=re.compile(r'jayanti|birthday|janma|cake', re.I), tags={'garland', 'flowers', 'cake'}, strong={'cake'}),
 }
+for F in FESTS.values():
+    F.setdefault('keep_all', True)
 NEAR = 1   # a year whose photos come from a nearby day (web_rules NEAR_DAYS) counts only when it is the next or last day
 
 
@@ -83,7 +118,7 @@ def build(a):
         out = {'date': 'fest', 'fest': k, 'title': F['title'], 'years': [], 'cal': {}, 'stories': []}
         files = {}
         for y, date in sorted(days.items()):
-            if date[:4] >= str(datetime.date.today().year + 1):
+            if date[:4] >= str(datetime.date.today().year + 1) or y < F.get('since', 0):
                 continue
             mmdd = date[5:]
             if mmdd not in files:
