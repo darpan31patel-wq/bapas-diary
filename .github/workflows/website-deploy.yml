@@ -6,7 +6,7 @@ name: website-deploy
 on:
   push:
     branches: ['claude/**']
-    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/search-people.js', 'site/search-image.js', 'tools/search_people.py', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'tools/web_offline.py', 'tools/web_secure.py', 'tools/web_tiny.py', 'tools/web_tablet.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', 'functions/**', 'site/weekly/**', '.github/workflows/website-deploy.yml', 'tools/web_type.py', 'tools/web_notranslate.py', 'site/screensaver/**', 'tools/web_screensaver.py', 'tools/screensaver/**', 'tools/web_year.py', 'site/year/**', 'tools/web_bapa_now.py', 'tools/web_darshan.py', 'tools/web_festival.py']
+    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/search-people.js', 'site/search-image.js', 'tools/search_people.py', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'tools/web_offline.py', 'tools/web_secure.py', 'tools/web_tiny.py', 'tools/web_tablet.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', 'functions/**', 'site/weekly/**', '.github/workflows/website-deploy.yml', 'tools/web_type.py', 'tools/web_notranslate.py', 'site/screensaver/**', 'tools/web_screensaver.py', 'tools/screensaver/**', 'tools/web_year.py', 'site/year/**', 'tools/web_bapa_now.py', 'tools/web_darshan.py', 'tools/web_festival.py', 'tools/web_prasang.py', 'telegram/prasang/**']
   workflow_call:   # website-hires (on main) rebuilds the site when a year of full size photos is in R2
 concurrency: website-deploy
 jobs:
@@ -66,6 +66,7 @@ jobs:
           python3 tools/web_rules.py day --day day/data/day --db bapa.db --faces faces --tg tg-cards.json
           # festival days: every year's Diwali and Annakut on its own Indian date, for Today on those days (Darpan, 30 Oct 2026)
           python3 tools/web_festival.py --day day/data/day --db bapa.db --deep-tags deep-tags.json --out day/data/fest
+          python3 tools/web_prasang.py --posts telegram/prasang/posts.json --fresh --out day/data/prasang   # Prasang from today, a button on Today (Darpan, 30 Oct 2026)
           rsync -a day/ out/ && test -f out/index.html && ls out/data/day | wc -l
           # years with photos in R2: site/photo-years.txt plus every year website-hires has finished
           { cat site/photo-years.txt; curl -fs https://photos.$DOMAIN/years.txt || true; } | grep -E '^[0-9]{4}$' | sort -un > photo-years.txt
