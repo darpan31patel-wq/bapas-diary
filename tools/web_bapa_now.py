@@ -126,16 +126,16 @@ CSS = r'''<style>
 .bapa-now .bn-dates{margin-top:3px;font:500 15px/1.3 var(--serif);color:var(--cream)}
 .bapa-now .bn-today,.bapa-now .bn-next{margin-top:3px;font:500 14px/1.3 var(--serif);color:var(--mist);text-wrap:balance}
 .bapa-now .bn-today b,.bapa-now .bn-next b{font-weight:700;color:var(--cream)}
-/* computers and iPads on their side (from 1000px): a full card on the right of the big date, under the Screensaver and
-   email buttons; where it sits is the Today page's own layout (site/day.html, Darpan, 30 Oct 2026: a calmer top) */
+/* computers and iPads on their side (from 1000px): to the right of the date, matching the Screensaver card on the left;
+   where it sits is the Today page's own layout (site/day.html, Darpan, 30 Oct 2026: a calmer top) */
 @media (min-width:1000px){
-  .bapa-now{width:clamp(360px,30vw,460px);max-width:none;padding:12px 18px 12px 12px;gap:16px}
+  .bapa-now{width:clamp(330px,28vw,420px);max-width:none;padding:12px 18px 12px 12px;gap:16px}
   .bapa-now svg{width:clamp(110px,9vw,136px);height:clamp(110px,9vw,136px)}
   .bapa-now .bn-town{font-size:clamp(26px,2.2vw,32px)}
   .bapa-now .bn-next{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 }
 @media (min-width:1000px) and (max-width:1359px){
-  .bapa-now{width:340px;padding:10px 14px 10px 10px;gap:12px}
+  .bapa-now{width:300px;padding:10px 14px 10px 10px;gap:12px}
   .bapa-now svg{width:100px;height:100px}
   .bapa-now .bn-town{font-size:25px}
   .bapa-now .bn-dates{font-size:14px}

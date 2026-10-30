@@ -93,8 +93,8 @@ def main():
     s = open(p, encoding='utf-8').read()
     if '/screensaver/launch.js' not in s:
         s = s.replace('</head>', TAGS + '</head>', 1) if '</head>' in s else s.replace('</title>', '</title>\n' + TAGS, 1)
-        assert s.count('</header>') == 1, 'the Today page has no header'
-        s = s.replace('</header>', BUTTON + '</header>', 1)   # inside the header, so on computers it can sit beside the date
+        assert s.count('<!--screensaver-->') == 1, 'the Today page has no place for the button'
+        s = s.replace('<!--screensaver-->', BUTTON, 1)   # in the header's left card, after the email sign up (site/day.html)
         open(p, 'w', encoding='utf-8').write(s)
     print('screensaver: button on index.html')
 
