@@ -43,6 +43,8 @@
     [/^(\d[\d,]*) years and (\d[\d,]*) photos from this day\.$/,
       m => `આ દિવસનાં ${m[1]} વર્ષ અને ${m[2]} ફોટા.`],
     [/^(\d+) years remembered on this day\.$/, m => `આ દિવસનાં ${m[1]} વર્ષની સ્મૃતિ.`],
+    [/^(\d+) Diwalis and (\d[\d,]*) photos with Bapa\.$/, m => `બાપા સાથેની ${m[1]} દિવાળી અને ${m[2]} ફોટા.`],   // festival days (30 Oct 2026)
+    [/^(\d+) Annakuts and (\d[\d,]*) photos with Bapa\.$/, m => `બાપા સાથેના ${m[1]} અન્નકૂટ અને ${m[2]} ફોટા.`],
     [/^In (\d{4}) this date is$/, m => `${m[1]}માં આ તારીખે`],
     [/^Every photo from (.+)$/, m => `${tr(m[1])}ના બધા ફોટા`],
     [/^(\d[\d,]*) photos?, year by year$/, m => `${m[1]} ફોટા, વર્ષ પ્રમાણે`],
