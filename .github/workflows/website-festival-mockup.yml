@@ -1,0 +1,44 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, deploys nothing.
+# Packs the small R2 photos listed in .github/festival-mockup-keys.txt (the festival day cards' first photos) into the
+# release `festival-mockup`, so Claude can make a private mockup of Today on Diwali and Annakut (the mockup can't load
+# photos from R2 directly). Photos come from photos.bapas-diary.com only, never baps.org.
+name: website-festival-mockup
+on:
+  push:
+    branches: ['claude/project-thread-miv0tn']
+    paths: ['.github/workflows/website-festival-mockup.yml', '.github/festival-mockup-keys.txt']
+permissions:
+  contents: write
+concurrency: website-festival-mockup
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Festival cards' photos
+        run: |
+          pip install -q pillow
+          mkdir -p photos
+          while read -r k; do
+            [ -n "$k" ] || continue
+            mkdir -p "photos/$(dirname "$k")"
+            curl -fsS --retry 3 -o "photos/$k" "https://photos.bapas-diary.com/s/$k" || echo "missing $k"
+          done < .github/festival-mockup-keys.txt
+          python3 - <<'PY'
+          import glob
+          from PIL import Image, ImageOps
+          for f in glob.glob('photos/**/*.*', recursive=True):
+              try:
+                  im = ImageOps.exif_transpose(Image.open(f)).convert('RGB')
+                  im.thumbnail((420, 420))
+                  im.save(f, 'JPEG', quality=74)
+              except Exception as e:
+                  print('bad', f, e)
+          PY
+          echo "$(find photos -type f | wc -l) photos, $(du -sh photos | cut -f1)"
+          tar czf festival-mockup.tgz photos
+          gh release view festival-mockup >/dev/null 2>&1 || \
+            gh release create festival-mockup --prerelease --title "Festival day mockup" --notes "Small photos for the Today festival day mockup. Not used by the daily picture or the website."
+          gh release upload festival-mockup festival-mockup.tgz --clobber
