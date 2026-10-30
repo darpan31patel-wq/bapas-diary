@@ -128,8 +128,11 @@ def scan(a):
                   f'{missing} not in R2, {time.time() - t0:.0f}s', flush=True)
     with gzip.open(a.out, 'wt') as f:
         json.dump(out, f, separators=(',', ':'))
-    if i == n - 1:   # the year's last shard: remember how many photos the year had, so new ones bring it back (plan)
-        open(f'count-{y}.txt', 'w').write(f'{db.execute("SELECT count(*) FROM photos WHERE year = ?", (y,)).fetchone()[0]}\n')
+    if i == n - 1:   # the year's last shard: remember how many of the year's photos were looked at, so new ones bring it back (plan)
+        # photos not in R2 yet (the newest days, before the high res copy reaches them) are not counted, so the shard is
+        # looked at again each evening until they are there too (30 Oct 2026: 28 October was in the database, not yet in R2)
+        seen = db.execute("SELECT count(*) FROM photos WHERE year = ?", (y,)).fetchone()[0] - missing
+        open(f'count-{y}.txt', 'w').write(f'{seen}\n')
 
 
 def load_faces(folder):
