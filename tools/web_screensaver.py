@@ -27,7 +27,13 @@ import common, schedule as schedule_page   # noqa: E402  (the kit's schedule rea
 SRC = os.path.join(HERE, 'site', 'screensaver')
 FILES = ('index.html', 'sw.js', 'launch.js', 'launch.css')
 DAYS, MOST = 10, 150   # as the kit: the 10 newest days with photos, at most 150 a day spread through the day
-TAGS = '<link rel="stylesheet" href="/screensaver/launch.css">\n<script src="/screensaver/launch.js" defer></script>\n'
+# /screensaver/launch.css?v=its own fingerprint, like /menu.css: a browser that kept an old copy of the button styles
+# showed the three Today buttons all gold with the old email line under them after the colours changed (Darpan, 30 Oct
+# 2026: "why is there an underline... I don't understand")
+def tags():
+    import hashlib
+    v = hashlib.sha1(open(os.path.join(SRC, 'launch.css'), 'rb').read() + open(os.path.join(SRC, 'launch.js'), 'rb').read()).hexdigest()[:10]
+    return f'<link rel="stylesheet" href="/screensaver/launch.css?v={v}">\n<script src="/screensaver/launch.js?v={v}" defer></script>\n'
 DIYA = ('<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c1.8 2.4 2.6 4 2.2 5.6-.3 1.3-1.3 2-2.2 2s-1.9-.7-2.2-2C9.4 6.5 10.2 4.9 12 2.5z"/>'
         '<path d="M2.5 12.5h19c-.6 4.2-4.6 7-9.5 7s-8.9-2.8-9.5-7z"/><rect x="9" y="20.2" width="6" height="1.6" rx=".8"/></svg>')
 # beside it, Latest vicharan: the newest photos as a grid in Search, newest first (Darpan, 30 Oct 2026: "a latest
@@ -97,7 +103,7 @@ def main():
     p = os.path.join(a.out, 'index.html')
     s = open(p, encoding='utf-8').read()
     if '/screensaver/launch.js' not in s:
-        s = s.replace('</head>', TAGS + '</head>', 1) if '</head>' in s else s.replace('</title>', '</title>\n' + TAGS, 1)
+        s = s.replace('</head>', tags() + '</head>', 1) if '</head>' in s else s.replace('</title>', '</title>\n' + tags(), 1)
         assert s.count('<!--screensaver-->') == 1, 'the Today page has no place for the button'
         s = s.replace('<!--screensaver-->', BUTTON, 1)   # in the header's left card, after the email sign up (site/day.html)
         open(p, 'w', encoding='utf-8').write(s)
