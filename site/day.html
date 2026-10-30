@@ -211,10 +211,77 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 .yhead .caps{font-size:12.5px}
 .yhead a,.story-line b,.yeargroup .tripnote{font-size:12px}
 .label .fest{font-size:11px}
+
+/* Festival days (Darpan, 30 Oct 2026: "special cards for the Diwali days ... the Diwali card can have like diwas around it
+   and fireworks ... the Annakut day should be everything surrounding food"). On the day this year's BAPS calendar says
+   is Diwali or Annakut, the board shows every year's festival on its own Indian date, in the festival's own dress. */
+.festhead{display:none}
+.festday .festhead{display:block;position:relative;text-align:center;margin:clamp(26px,3.4vw,44px) auto 0;grid-column:1/-1}
+#festhead h2{font-family:var(--lora,var(--serif))!important;margin:10px 0 0;font:700 clamp(30px,4.4vw,52px)/1.05 var(--serif);color:var(--gold-hi);text-wrap:balance;text-shadow:0 0 22px rgba(255,190,90,.35)}
+.festhead p{margin:10px auto 0;max-width:62ch;font:500 italic clamp(16px,1.6vw,19px)/1.4 var(--serif);color:var(--cream);text-wrap:balance}
+.festhead .row{display:flex;justify-content:center;align-items:flex-end;gap:clamp(10px,2vw,26px)}
+.festhead .row svg{width:clamp(30px,3.4vw,44px);height:auto;overflow:visible}
+.festhead .row svg.thal{width:clamp(48px,5vw,68px)}
+.festhead .row svg:nth-child(odd){transform:translateY(-6px)}
+.festday .label .fest,.festday .yhead .fest{display:none}   /* every card is the festival: no tag to say so */
+.sky{display:none}
+.festday .sky{display:block;position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.festday .wrap{position:relative;z-index:1}
+.lights{z-index:2}
+.festday .card .deco{position:absolute;pointer-events:none;z-index:3}
+
+/* Diwali: a night sky with fireworks, strings of lights for the cords, and dark lacquered frames with a diya burning
+   at each foot */
+.page.fest-diwali{background:
+  radial-gradient(ellipse 70% 40% at 50% 100%,rgba(255,150,50,.16),transparent 70%),
+  radial-gradient(ellipse 60% 30% at 50% 0%,rgba(120,80,200,.16),transparent 70%),
+  linear-gradient(#0b0716,#1d0812 38%,var(--maroon-out)) no-repeat}
+.fest-diwali .card{background:linear-gradient(#2e0d17,#150409);border:1px solid #d9a441;
+  box-shadow:0 0 0 3px #150409,0 0 0 4px rgba(217,164,65,.55),0 12px 24px rgba(0,0,0,.5),0 0 38px rgba(255,170,60,.2)}
+.fest-diwali .card .label{color:var(--gold-hi)}
+.fest-diwali .card .yr{color:var(--gold-hi)}
+.fest-diwali .card .pl{color:var(--gold-soft)}
+.fest-diwali .card .ti,.fest-diwali .card .ev{color:var(--cream)}
+.fest-diwali .card .label::before{content:"";display:block;height:6px;margin:0 8% 8px;background:radial-gradient(circle,#d9a441 1.3px,transparent 1.8px) 50% 50%/9px 6px repeat-x;opacity:.8}
+.fest-diwali .card .deco.diya{width:clamp(30px,22%,44px);bottom:-14px}
+.fest-diwali .card .deco.l{left:-14px}
+.fest-diwali .card .deco.r{right:-14px}
+.diya .flame{transform-origin:20px 19px;animation:flicker 1.3s ease-in-out infinite alternate}
+.diya .glow{animation:glow 2.6s ease-in-out infinite alternate}
+.diya:nth-of-type(2n) .flame{animation-duration:1.05s;animation-delay:-.4s}
+@keyframes flicker{0%{transform:scale(1,1) rotate(-2deg)}35%{transform:scale(.94,1.08) rotate(2deg)}70%{transform:scale(1.04,.95) rotate(-1deg)}100%{transform:scale(.97,1.05) rotate(1.5deg)}}
+@keyframes glow{from{opacity:.65}to{opacity:1}}
+.bulb{animation:twinkle 2.4s ease-in-out infinite alternate}
+@keyframes twinkle{from{opacity:.45}to{opacity:1}}
+.fw{position:absolute;width:0;height:0}
+.fw i{position:absolute;left:0;top:0;width:var(--len,22px);height:2.4px;border-radius:2px;background:linear-gradient(90deg,transparent,var(--c));
+  transform-origin:0 50%;transform:rotate(var(--a)) translateX(0);opacity:0;animation:fw var(--t,1.7s) cubic-bezier(.15,.7,.3,1) forwards;filter:drop-shadow(0 0 4px var(--c))}
+@keyframes fw{0%{opacity:1;transform:rotate(var(--a)) translateX(2px) scaleX(.3)}55%{opacity:1}100%{opacity:0;transform:rotate(var(--a)) translateX(var(--r)) translateY(14px) scaleX(1)}}
+
+/* Annakut and the New Year: warm saffron light, marigold garlands with mango leaves for the cords, falling marigold
+   petals, ivory frames edged in saffron with a thal of sweets at the foot */
+.page.fest-annakut{background:
+  radial-gradient(ellipse 70% 36% at 50% 0%,rgba(255,160,40,.26),transparent 70%),
+  radial-gradient(ellipse 90% 70% at 50% 30%,#4c1418,var(--maroon-out)) no-repeat}
+.fest-annakut .card{border:2px solid #e8891c;box-shadow:0 0 0 3px #fff3d6,0 0 0 4.5px #e8891c,0 12px 22px rgba(0,0,0,.45)}
+.fest-annakut .card .yr{color:#a23a10}
+.fest-annakut .card .deco.thal{width:clamp(46px,34%,68px);right:-18px;bottom:-14px;filter:drop-shadow(0 3px 3px rgba(0,0,0,.4))}
+.petal{position:absolute;top:-30px;width:12px;height:16px;border-radius:60% 60% 50% 50%/70% 70% 40% 40%;
+  background:radial-gradient(circle at 40% 30%,#ffd56a,#ff9f1c 60%,#d9650c);opacity:.75;animation:fall var(--t,16s) linear infinite;animation-delay:var(--d,0s)}
+@keyframes fall{0%{transform:translate(0,-5vh) rotate(0)}50%{transform:translate(var(--s,30px),50vh) rotate(200deg)}100%{transform:translate(0,108vh) rotate(400deg)}}
+@media (prefers-reduced-motion:reduce){.diya .flame,.diya .glow,.bulb,.petal{animation:none}.fw{display:none}}
 </style>
 
 <nav class="site-menu" aria-label="Website tabs"><a href="/" class="on" aria-current="page">Today</a><a href="/calendar/">Calendar</a><a href="{{SEARCH}}">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/about/">About</a></nav>
-<div class="page"><div class="wrap">
+<div class="page"><div class="sky" id="sky" aria-hidden="true"></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+  <radialGradient id="fdg"><stop offset="0" stop-color="#ffcf6b" stop-opacity=".75"/><stop offset="1" stop-color="#ff8a00" stop-opacity="0"/></radialGradient>
+  <linearGradient id="fdf" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff6a00"/><stop offset=".55" stop-color="#ffc23a"/><stop offset="1" stop-color="#fff6c8"/></linearGradient>
+  <linearGradient id="fdb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9733a"/><stop offset="1" stop-color="#7a2d12"/></linearGradient>
+  <linearGradient id="fth" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe08a"/><stop offset=".6" stop-color="#d9a441"/><stop offset="1" stop-color="#8a5a12"/></linearGradient>
+  <radialGradient id="fld" cx=".35" cy=".3"><stop offset="0" stop-color="#ffe07a"/><stop offset=".7" stop-color="#ffa21f"/><stop offset="1" stop-color="#c66a0c"/></radialGradient>
+</defs></svg>
+<div class="wrap">
 
   <div class="datebar">
     <button class="pill" id="prev" type="button"></button>
@@ -322,9 +389,11 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
   </header>
 
   <div class="loading" id="loading">Opening the diary</div>
+  <div class="festhead" id="festhead"></div>
   <div class="board" id="board" hidden>
     <svg class="cords" id="cords" aria-hidden="true"></svg>
     <div class="cards" id="cards"></div>
+    <svg class="cords lights" id="lights" aria-hidden="true"></svg>
   </div>
 
   <div class="controls" id="controls" hidden>
@@ -369,6 +438,7 @@ const SRC = {
   photo: p => '{{PHOTOS}}s/' + p[0] + '/' + p[1],
   big: p => '{{PHOTOS}}m/' + p[0] + '/' + p[1],
   search: d => '{{SEARCH}}#' + (d.length === 5 ? 'day=' : 'date=') + d,   // '10-24' every year on this date, '2014-10-24' one day
+  fest: k => fetch('{{DATA}}../fest/' + k + '.json').then(r => { if (!r.ok) throw r.status; return r.json(); }),   // tools/web_festival.py
 };
 if (window.MOCK) Object.assign(SRC, window.MOCK);
 
@@ -397,6 +467,23 @@ const festsOf = c => {
   return KEEP.filter(([, re]) => parts.some(x => re.test(x))).map(([name]) => name);
 };
 const festOf = c => festsOf(c).join(' · ');
+// Festival days (Darpan, 30 Oct 2026): on the day this year's BAPS calendar names Diwali or Annakut, the board shows every
+// year's Diwali (or Annakut) on its own Indian date, made by tools/web_festival.py, dressed for the festival: for Diwali
+// fireworks in the sky, strings of lights for cords and a diya at each card's foot; for Annakut marigold garlands, falling
+// petals and a thal of sweets. Only photos with Bapa, as on every Today card.
+const FESTIVE = {
+  diwali: {many: 'Diwalis', head: 'Diwali through the years', line: 'Every Diwali with Bapa, each year on its own Indian date. Happy Diwali 🪔'},
+  annakut: {many: 'Annakuts', head: 'Annakut through the years', line: 'Every Annakut with Bapa, the thal, the sweets and the offering, each year on its own Indian date. Nutan Varshabhinandan 🙏🏽'},
+};
+const festKey = c => { const f = festsOf(c); return f.includes('Diwali') ? 'diwali' : f.includes('Annakut') ? 'annakut' : ''; };
+const longDate = d => `${+d.slice(8)} ${MONTHS[+d.slice(5, 7) - 1]}`;   // '2014-10-23' -> '23 October'
+const DIYA = cls => `<svg class="diya ${cls}" viewBox="0 0 40 40" aria-hidden="true"><circle class="glow" cx="20" cy="15" r="14" fill="url(#fdg)"/>` +
+  '<path class="flame" d="M20 3C22.5 9 25 12 25 16a5 5 0 0 1-10 0c0-4 2.5-7 5-13z" fill="url(#fdf)"/><path d="M3 22q17-3 34 0-2 12-17 13Q5 34 3 22z" fill="url(#fdb)"/>' +
+  '<path d="M3 22q17 3 34 0" fill="none" stroke="#ffd27a" stroke-width="1.3"/><path d="M8 27h24" stroke="#ffd27a" stroke-width=".8" stroke-dasharray="1.5 2.5" opacity=".7"/></svg>';
+const THAL = cls => `<svg class="thal ${cls}" viewBox="0 0 56 36" aria-hidden="true"><ellipse cx="28" cy="29" rx="26" ry="6" fill="url(#fth)" stroke="#8a5a12" stroke-width=".8"/>` +
+  '<ellipse cx="28" cy="28" rx="20" ry="3.6" fill="#fff0b8" opacity=".45"/><path d="M41 27q8-7 13-3-6 5-13 3z" fill="#3f8a2e"/>' +
+  [[18, 24], [26.5, 24], [35, 24], [22.2, 17], [30.8, 17], [26.5, 10.3]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4.3" fill="url(#fld)" stroke="#b8620e" stroke-width=".5"/>`).join('') + '</svg>';
+const DRESS = {diwali: DIYA('deco l') + DIYA('deco r'), annakut: THAL('deco')};
 const tithiOf = c => c ? c[0] : '';
 // What each On this day post says beyond its one line (Darpan, 29 Oct 2026: "lots more information ... incorporate more"):
 // s = [year, place, line, {ti: Indian date, h: title, w: [paragraphs, or the UK diary's lines], l: 1 for a diary day}],
@@ -459,6 +546,13 @@ async function open(mmdd, push) {
   try { data = await SRC.day(mmdd); } catch (e) { $('loading').textContent = 'This day could not be opened. Please try again in a moment.'; return; }
   if (showing !== mmdd) return;
   DAY = pastOnly(data);
+  const key = festKey(data.cal && data.cal[now.getFullYear()]);
+  if (key) try {   // a festival day: every year's festival, each on its own Indian date, never this year's own
+    const F = await SRC.fest(key), y = now.getFullYear();
+    if (showing !== mmdd) return;
+    F.years = F.years.filter(Y => Y.y < y);
+    if (F.years.length) DAY = Object.assign({}, F, {date: data.date, fest: key, cal: Object.assign({}, F.cal, {[y]: data.cal[y]}), stories: []});
+  } catch (e) {}   // its festival page could not be opened: the date as on any other day
   $('loading').hidden = true;
   render();
 }
@@ -484,8 +578,15 @@ function render() {
   everyPhoto = [];
   const n = D.years.reduce((s, Y) => s + Y.p.length + (Y.t || []).length, 0);
   const shown = D.years.filter(Y => Y.p.length || (Y.t || []).length).length;
-  $('count').textContent = n ? `${shown} years and ${n.toLocaleString()} photos from this day.`
+  $('count').textContent = D.fest ? `${shown} ${FESTIVE[D.fest].many} and ${n.toLocaleString()} photos with Bapa.`
+                        : n ? `${shown} years and ${n.toLocaleString()} photos from this day.`
                              : `${years.length} years remembered on this day.`;
+  const page = document.querySelector('.page');
+  page.classList.remove('festday', 'fest-diwali', 'fest-annakut');
+  if (D.fest) page.classList.add('festday', 'fest-' + D.fest);
+  $('festhead').innerHTML = D.fest ? `<div class="row">${(D.fest === 'diwali' ? [1, 2, 3, 4, 5].map(() => DIYA('')) : [1, 2, 3].map(() => THAL(''))).join('')}</div>` +
+    `<h2>${FESTIVE[D.fest].head}</h2><p>${FESTIVE[D.fest].line}</p>` : '';
+  sky(D.fest);
   if (window.MOCK && MOCK.note && MOCK.note(D.date)) $('mocknote').innerHTML = `<p class="mocknote">${MOCK.note(D.date)}</p>`;
 
   $('cards').innerHTML = ''; $('groups').innerHTML = '';
@@ -500,7 +601,8 @@ function render() {
   years.filter(y => !hasPhotos(byYear[y])).forEach(y => group(y, null, byYear[y].place, DAY.cal && DAY.cal[y], byYear[y].stories));
   [...$('groups').children].sort((a, b) => a.id.slice(1) - b.id.slice(1)).forEach(g => $('groups').append(g));
   $('board').hidden = $('controls').hidden = false;
-  $('search-day').href = SRC.search(D.date);
+  $('search-day').href = D.fest ? '{{SEARCH}}#q=' + encodeURIComponent(D.title) : SRC.search(D.date);
+  $('search-day').textContent = D.fest ? 'Search ' + D.title : 'Search this date';
   $('all-title').textContent = `Every photo from ${D.title}`;
   $('all-count').textContent = n ? `${n.toLocaleString()} photos, year by year` : 'No photos on this day yet';
   $('all').hidden = !n;
@@ -533,13 +635,14 @@ function card(y, {Y, place, stories}, want = true) {
   }
   el.innerHTML = '<div class="peg"></div>';
   el.append(ph);
-  const fest = festOf(cal), ti = tithiOf(cal) || dayTi(Y, stories), ev = occasion(Y, stories, photos);
+  const fest = festOf(cal), ti = Y && Y.d ? longDate(Y.d) : tithiOf(cal) || dayTi(Y, stories), ev = occasion(Y, stories, photos);
   const lab = document.createElement('div'); lab.className = 'label';
   // the Indian date from the post itself in years the BAPS calendar doesn't cover, and the day's occasion (29 Oct 2026)
   lab.innerHTML = `<div class="yr">${y}</div><div class="pl">${esc(where || '')}</div>` +
     (ti ? `<div class="ti">${esc(ti)}</div>` : '') + (ev ? `<div class="ev">${esc(ev)}</div>` : '') +
     (fest ? `<div class="fest">${esc(fest)}</div>` : '');   // no "4 of 4" counter (Darpan, 26 Oct 2026)
   el.append(lab);
+  if (DAY.fest) el.insertAdjacentHTML('beforeend', DRESS[DAY.fest]);   // diyas at its feet, or a thal of sweets
   const cap = document.createElement('div'); cap.className = 'cap';
   cap.textContent = photos.length ? '' : 'On this day';
   slot.append(el, cap); $('cards').append(slot);
@@ -766,7 +869,7 @@ function cords() {
   } else { grid.style.gridTemplateColumns = ''; cards.forEach(c => c.slot.style.gridColumn = ''); }
   cards.forEach(c => lean(c, c.rest + (c.a || 0)));   // the cards changed size: each caption swings from the new peg height
   const b = board.getBoundingClientRect(), D = wide ? Math.min(64, vw * .032) : 0;
-  svg.style.left = -b.left + 'px'; svg.style.width = vw + 'px';
+  svg.style.left = $('lights').style.left = -b.left + 'px'; svg.style.width = $('lights').style.width = vw + 'px';
   $('cards').style.paddingTop = (16 + D / 2) + 'px';
   cards.forEach(c => {
     rows[c.slot.offsetTop] = 1;
@@ -783,6 +886,67 @@ function cords() {
         `<path d="${d}" fill="none" stroke="#7a5228" stroke-width="5" stroke-dasharray="2.2 3.6" opacity=".75"/>` +
         `<path d="${d}" fill="none" stroke="#f1d9a8" stroke-width="1.2" stroke-dasharray="3.6 2.2" stroke-dashoffset="1" opacity=".55" transform="translate(0 -1.3)"/></g>`;
     }).join('');
+  // in front of the cards, so the lights and flowers drape over the tops of the frames
+  $('lights').innerHTML = DAY && DAY.fest ? Object.keys(rows).map(t => { const y = +t - 5; return dress(DAY.fest, y - D / 2, y + 1.5 * D, vw); }).join('') : '';
+}
+// on a festival day each rope is dressed: Diwali hangs a string of little lights along it, Annakut a marigold garland
+// with mango leaves (Darpan, 30 Oct 2026). The rope is a parabola, so x runs straight across and y follows the curve.
+function dress(k, a, q, vw) {
+  const at = x => { const t = x / vw; return (1 - t) * (1 - t) * a + 2 * (1 - t) * t * q + t * t * a; };
+  let out = '';
+  if (k === 'diwali') {
+    const C = ['#ffd36b', '#ff8a3d', '#ff5f7a', '#9fe3ff', '#b6ff8a', '#fff1c2'];
+    for (let x = 14, i = 0; x < vw; x += 34, i++) {
+      const y = at(x) + 3, c = C[i % C.length];
+      out += `<g class="bulb" style="animation-delay:-${(i * .37 % 2.4).toFixed(2)}s"><circle cx="${x}" cy="${y + 7}" r="9" fill="${c}" opacity=".22"/>` +
+        `<rect x="${x - 2}" y="${y}" width="4" height="4" rx="1" fill="#3a2a18"/><ellipse cx="${x}" cy="${y + 8}" rx="3.4" ry="4.6" fill="${c}"/></g>`;
+    }
+  } else {
+    for (let x = 0, i = 0; x < vw + 8; x += 8, i++) {
+      const y = at(x);
+      out += `<circle cx="${x}" cy="${y}" r="5.6" fill="${i % 3 === 1 ? '#ffc233' : '#ff9a1a'}" stroke="#c4580a" stroke-width=".8"/>`;
+      if (i % 15 === 7) out += `<path d="M${x} ${y + 4}q-5 9 0 16q5-7 0-16z" fill="#3f8a2e"/><path d="M${x} ${y + 6}v12" stroke="#2c6620" stroke-width=".8"/>`;
+    }
+  }
+  return out;
+}
+
+// the sky behind the board: Diwali's fireworks burst now and then at the sides and the top, where the cards leave it
+// showing; at Annakut marigold petals drift down. Still while the board is paused, and never with reduced motion.
+let skyTimer = null;
+function sky(k) {
+  const s = $('sky');
+  clearTimeout(skyTimer); s.innerHTML = '';
+  if (!k || reduce) return;
+  const r = (a, b) => a + Math.random() * (b - a);
+  if (k === 'annakut') {
+    for (let i = 0; i < 18; i++) {
+      const p = document.createElement('i'); p.className = 'petal';
+      p.style.left = r(0, 100).toFixed(1) + '%';
+      p.style.setProperty('--t', r(14, 26).toFixed(1) + 's'); p.style.setProperty('--d', -r(0, 26).toFixed(1) + 's');
+      p.style.setProperty('--s', r(-60, 60).toFixed(0) + 'px'); p.style.scale = r(.6, 1.2).toFixed(2);
+      s.append(p);
+    }
+    return;
+  }
+  const C = ['#ffd36b', '#ff7a45', '#ff5f9e', '#8fd8ff', '#b8ff7a', '#fff3cf', '#c99bff'];
+  const pop = () => {
+    if (!document.hidden && !paused) {
+      const b = document.createElement('div'), side = Math.random() < .7, c = C[Math.floor(Math.random() * C.length)], n = 22, R = r(50, 120);
+      b.className = 'fw';
+      b.style.left = (side ? (Math.random() < .5 ? r(.02, .16) : r(.84, .98)) : r(.2, .8)) * innerWidth + 'px';
+      b.style.top = (side ? r(.1, .7) : r(.04, .2)) * innerHeight + 'px';
+      for (let i = 0; i < n; i++) {
+        const e = document.createElement('i');
+        e.style.setProperty('--a', (i * 360 / n + r(-4, 4)).toFixed(1) + 'deg'); e.style.setProperty('--r', (R * r(.75, 1.1)).toFixed(0) + 'px');
+        e.style.setProperty('--c', c); e.style.setProperty('--len', r(14, 26).toFixed(0) + 'px');
+        b.append(e);
+      }
+      s.append(b); setTimeout(() => b.remove(), 2200);
+    }
+    skyTimer = setTimeout(pop, r(600, 1800));
+  };
+  skyTimer = setTimeout(pop, 400);
 }
 addEventListener('resize', () => requestAnimationFrame(cords));
 new ResizeObserver(() => requestAnimationFrame(cords)).observe($('cards'));
@@ -792,10 +956,10 @@ document.fonts && document.fonts.ready.then(cords);
 function group(y, Y, where, cal, stories) {
   if (!Y && !stories.length) return;
   const g = document.createElement('section'); g.className = 'yeargroup'; g.id = 'y' + y;
-  const fest = festOf(cal), ti = tithiOf(cal) || dayTi(Y, stories);
+  const fest = festOf(cal), ti = Y && Y.d ? longDate(Y.d) : tithiOf(cal) || dayTi(Y, stories), day = Y && Y.d || y + '-' + DAY.date;
   g.innerHTML = `<div class="yhead"><h3>${y}</h3><span class="caps">${esc(where || '')}</span>` +
     (ti ? `<span class="it">${esc(ti)}</span>` : '') + (fest ? `<span class="fest">${esc(fest)}</span>` : '') +
-    `<a class="go" href="${esc(SRC.search(y + '-' + DAY.date))}">See more &rsaquo;</a></div>` +
+    `<a class="go" href="${esc(SRC.search(day))}">See more &rsaquo;</a></div>` +
     told(Y, stories).map(t => storyHTML(...t)).join('');
   const add = (list, note) => {
     if (!list || !list.length) return;
@@ -803,7 +967,7 @@ function group(y, Y, where, cal, stories) {
     const grid = document.createElement('div'); grid.className = 'thumbs';
     list.forEach(p => {
       const i = everyPhoto.length;
-      everyPhoto.push({p, y, where, cal, trip: note ? Y.trip : null, ti: !cal && dayTi(Y, stories), more: storyShort(Y, stories, p[2])});
+      everyPhoto.push({p, y, d: Y && Y.d, where, cal, trip: note ? Y.trip : null, ti: !cal && dayTi(Y, stories), more: storyShort(Y, stories, p[2])});
       const b = document.createElement('button'); b.className = 'thumb'; b.type = 'button';
       const url = SRC.photo(p);
       b.innerHTML = `<span class="im">${url ? `<img loading="lazy" decoding="async" alt="${esc(p[2])}" src="${esc(url)}" style="object-position:${focus(p)}">` : ''}</span><small>${esc(p[2] || 'Darshan')}</small>`;
@@ -829,14 +993,14 @@ function view(i, play) {
   if (!everyPhoto.length) return;
   if ($('viewer').hidden) { lastFocus = document.activeElement; $('viewer').hidden = false; document.body.style.overflow = 'hidden'; $('vclose').focus(); }
   vi = (i + everyPhoto.length) % everyPhoto.length;
-  const {p, y, where, cal, trip, ti, more} = everyPhoto[vi];
+  const {p, y, d, where, cal, trip, ti, more} = everyPhoto[vi];
   const url = SRC.big(p) || SRC.photo(p);
-  const when = trip ? tripText(trip) + ' ' + y : `${DAY.title} ${y}`;
+  const when = trip ? tripText(trip) + ' ' + y : d ? `${longDate(d)} ${y}` : `${DAY.title} ${y}`;
   const none = `<div class="none">${esc(p[2] || 'Darshan')}</div>`;
   $('vstage').innerHTML = `<figure class="vframe" style="margin:0">${url ? `<img alt="${esc(p[2])}" src="${esc(url)}">` : none}` +
     `<figcaption class="vcap"><p>${esc(p[2] || 'Darshan')}</p><div>${esc([when, where, (cal && cal[0]) || ti, festOf(cal)].filter(Boolean).join(' · '))}</div>` +
     (more ? `<p class="vday">${esc(more)}</p>` : '') +
-    `<a class="go" href="${esc(trip && trip[0] !== trip[1] ? `{{SEARCH}}#place=${encodeURIComponent(String(where || '').split(',')[0])}&from=${trip[0]}&to=${trip[1]}` : SRC.search(trip ? trip[0] : y + '-' + DAY.date))}">See more &rsaquo;</a></figcaption></figure>`;
+    `<a class="go" href="${esc(trip && trip[0] !== trip[1] ? `{{SEARCH}}#place=${encodeURIComponent(String(where || '').split(',')[0])}&from=${trip[0]}&to=${trip[1]}` : SRC.search(trip ? trip[0] : d || y + '-' + DAY.date))}">See more &rsaquo;</a></figcaption></figure>`;
   const img = $('vstage').querySelector('img');
   if (img) img.onerror = () => img.outerHTML = none;
   $('vpos').textContent = `${vi + 1} of ${everyPhoto.length}`;
