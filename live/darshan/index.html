@@ -351,7 +351,8 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
         const months = [...new Set(once.map(i => DAYS[i].d.slice(0, 7)))];
         html += months.map(m => { const l = once.filter(i => DAYS[i].d.startsWith(m)), [y, mm] = m.split("-").map(Number);
           return `<section class="sect"><h3 class="group">${MON[mm - 1]} ${y} <small>${l.length} ${l.length === 1 ? "festival" : "festivals"}</small></h3><div class="fbtns">` +
-            l.map(i => `<button class="fbtn" type="button" data-f="${esc(DAYS[i].f)}"><b>${esc(DAYS[i].f)}</b><i>${short(DAYS[i].d)}${DAYS[i].i ? " · " + esc(DAYS[i].i) : ""}</i></button>`).join("") +
+            l.map(i => { const more = list.filter(j => DAYS[j].f === DAYS[i].f).length - 1;   // a festival on more than one day has one button, at its newest day
+              return `<button class="fbtn" type="button" data-f="${esc(DAYS[i].f)}"><b>${esc(DAYS[i].f)}</b><i>${short(DAYS[i].d)}${more ? ` and ${more} earlier ${more === 1 ? "day" : "days"}` : DAYS[i].i ? " · " + esc(DAYS[i].i) : ""}</i></button>`; }).join("") +
             `</div></section>`; }).join("");
       } else {
         html += `<div class="fback"><button type="button" data-back="1">&#8249; All festivals</button></div><div class="fhead"><h3>${esc(chip)}</h3></div>` +
