@@ -143,7 +143,8 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 .card::after{content:"";position:absolute;inset:-1px;pointer-events:none;opacity:0;transition:opacity 2.5s ease-in-out;
   box-shadow:0 0 14px 5px rgba(255,216,128,.46),0 0 40px 14px rgba(230,176,72,.22)}
 .card.glow::after{opacity:1}
-.card.hand::after{transition-duration:.3s}   /* under the mouse it lights at once and follows it from frame to frame (Darpan, 30 Oct 2026) */
+.card.hand::after{transition-duration:.3s}
+.card.snap::after{transition:none;opacity:0}   /* under the mouse it lights at once and follows it from frame to frame (Darpan, 30 Oct 2026) */
 /* the mouse resting on a caption for half a second opens it to the photo's whole caption, over whatever is below, so
    nothing on the page moves (Darpan, 30 Oct 2026) */
 .cap.open{position:relative;z-index:6;display:block;-webkit-line-clamp:unset;overflow:visible;margin-top:5px;padding:6px 9px 8px;
@@ -795,8 +796,13 @@ function swing() {
 let under = null, walkAt = -1, walkTimer = null;
 function glowOn(c) {
   under = c; clearTimeout(walkTimer); walkTimer = null;
-  cards.forEach(x => { x.el.classList.toggle('glow', x === c); if (x !== c) x.el.classList.remove('hand'); });
-  c.el.classList.add('hand');
+  // whatever else was lit, or half way through a slow fade, goes out at once, and this frame starts its quick fade in
+  // fresh (a running slow fade would otherwise carry on at its own pace), so the light is seen to move with the mouse
+  cards.forEach(x => { if (x !== c) { x.el.classList.remove('glow', 'hand'); x.el.classList.add('snap'); } });
+  if (!c.el.classList.contains('hand')) { c.el.classList.remove('glow'); c.el.classList.add('snap'); }
+  void c.el.offsetWidth;
+  cards.forEach(x => x.el.classList.remove('snap'));
+  c.el.classList.add('hand', 'glow');
 }
 function glowOff(c) {
   if (under !== c) return;
