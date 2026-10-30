@@ -197,6 +197,7 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
   transition: background .2s, border-color .2s, transform .2s; }
 .fbtn b { font: 600 16px/1.25 var(--lora-f); color: #f6e3bb; }
 .fbtn i { font: normal 500 11.5px/1.3 var(--poppins-f); letter-spacing: .03em; color: #cfae78; }
+.fbtn i span { white-space: nowrap; }
 .fbtn:hover, .fbtn:focus-visible { border-color: var(--gold-hi); background: rgba(217,164,65,.16); transform: translateY(-1px); }
 .fback { display: flex; justify-content: center; margin: 0 0 22px; }
 .fback button { padding: 9px 20px; border-radius: 999px; border: 1px solid rgba(217,164,65,.45); background: rgba(22,5,9,.35); color: #e3c48e;
@@ -337,8 +338,8 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
         { m: (+DAYS[i].d.slice(5, 7) + 1) % 12, at: ((+DAYS[i].d.slice(5, 7) + 1) % 12) * 30 + 15 }).sort((a, b) => a.at - b.at);
       const mid = ps[ps.length >> 1], every = list.length > 3 * years;
       // a guru's day kept on its English date shows that date; a festival on its tithi shows the usual tithi
-      const md = most(list.map(i => DAYS[i].d.slice(5))), ind = most(list.map(i => DAYS[i].i.split("/")[0].replace(/^Adhik /, "")));
-      const when = every ? "" : md && list.length > 1 ? `${+md.slice(3)} ${MON[+md.slice(0, 2) - 1]}` : ind || (list.length === 1 ? DAYS[list[0]].i : "");
+      const md = most(list.map(i => DAYS[i].d.slice(5))), ind = most(list.map(i => DAYS[i].i.replace(/^Adhik /, ""))) || DAYS[list[list.length - 1]].i.replace(/^Adhik /, "");
+      const when = every ? "" : md && list.length > 1 ? `${+md.slice(3)} ${MON[+md.slice(0, 2) - 1]}` : ind;
       return { name, list, years, days: list.length, when, month: every ? -1 : mid.m, at: every ? 999 : mid.at };
     }).sort((a, b) => a.at - b.at || a.name.localeCompare(b.name));
     return FESTS;
@@ -396,11 +397,11 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
         html += `<div class="tline">` + IMONTHS.map(([m, eng], j) => {
           const l = F.filter(f => f.month === j); if (!l.length) return "";
           return `<section class="tmonth"><h3>${m}<small>${eng}</small></h3><div class="fbtns">` + l.map(f =>
-            `<button class="fbtn" type="button" data-f="${esc(f.name)}"><b>${esc(f.name)}</b><i>${esc(f.when)}${f.when ? " · " : ""}${f.years} ${f.years === 1 ? "year" : "years"}</i></button>`).join("") +
+            `<button class="fbtn" type="button" data-f="${esc(f.name)}"><b>${esc(f.name)}</b><i>${esc(f.when)}${f.when ? " · " : ""}<span>${f.years} ${f.years === 1 ? "year" : "years"}</span></i></button>`).join("") +
             `</div></section>`; }).join("") + `</div>`;
         const every = F.filter(f => f.month < 0);
         if (every.length) html += `<div class="tline"><section class="tmonth"><h3>Every month</h3><div class="fbtns">` + every.map(f =>
-          `<button class="fbtn" type="button" data-f="${esc(f.name)}"><b>${esc(f.name)}</b><i>${f.days} days · ${f.years} ${f.years === 1 ? "year" : "years"}</i></button>`).join("") + `</div></section></div>`;
+          `<button class="fbtn" type="button" data-f="${esc(f.name)}"><b>${esc(f.name)}</b><i>${f.days} days · <span>${f.years} ${f.years === 1 ? "year" : "years"}</span></i></button>`).join("") + `</div></section></div>`;
       } else {
         const f = F.find(f => f.name === chip), list = f.list.slice().reverse();   // newest year first
         html += `<div class="fback"><button type="button" data-back="1">&#8249; All festivals</button></div><div class="fhead"><h3>${esc(chip)}</h3>${f.when ? `<p>${esc(f.when)}</p>` : ""}</div>`;
