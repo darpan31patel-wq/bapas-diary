@@ -24,7 +24,7 @@ def fresh(posts):
     import time
     import tg_fetch
     have, before, new = {p['id'] for p in posts}, None, {}
-    for _ in range(40):
+    for _ in range(40 if have else 400):
         pg = tg_fetch.Page()
         pg.feed(tg_fetch.get(f'https://t.me/s/{CHANNEL}' + (f'?before={before}' if before else '')))
         if not pg.posts:
@@ -63,7 +63,7 @@ def main():
     ap.add_argument('--out', required=True)
     ap.add_argument('--fresh', action='store_true', help='add the newest posts from the channel first')
     a = ap.parse_args()
-    posts = json.load(open(a.posts, encoding='utf-8'))
+    posts = json.load(open(a.posts, encoding='utf-8')) if os.path.exists(a.posts) else []   # none saved: all from the channel
     if a.fresh:
         try:
             posts = fresh(posts)
