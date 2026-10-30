@@ -83,6 +83,8 @@ select, input[type=date], .clear { font: 700 12px var(--sans); letter-spacing: .
 .years button.on span, .years button:hover span { color: var(--maroon); }
 .status { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding-block: 16px 4px; color: var(--muted); font: italic 500 17px var(--serif); text-align: center; }
 .status b { color: var(--maroon); font-style: normal; font-variant-numeric: tabular-nums; }
+/* the Latest vicharan view (#latest, the button on Today): its name in gold capitals above the count */
+#count .latest { display: block; margin-bottom: 6px; font: 700 13px var(--sans); font-style: normal; letter-spacing: .24em; text-transform: uppercase; color: var(--gold-deep); }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); column-gap: clamp(14px, 2vw, 28px); row-gap: 30px; padding-block: 8px 24px; align-items: start; }
 @media (max-width: 520px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; } }
 /* a photo is an ivory polaroid hanging straight: the picture in a thick frame, the caption written on the frame */
@@ -434,6 +436,7 @@ function search() {
     if (place && !(r.kind === 'photo' ? r.city === place || (place === linkPlace && r.g[2].split(',').some(c => c.trim().toLowerCase().startsWith(lp))) : (r.place || '').includes(place))) continue;
     if (act && !(r.tags && r.tags.split(', ').includes(act))) continue;
     if (mandir && !(r.m || '').includes(mandir)) continue;
+    if (r.kind === 'day' && latestOn()) continue;
     if (pic && !pic.has(r)) continue;
     if (asked && !asked.keep(r)) continue;
     if (want.length || not.length) {
@@ -470,8 +473,8 @@ function render(byYear, want) {
   }
   const nPhotos = hits.filter(h => h.kind === 'photo').length, nPosts = hits.filter(h => h.kind === 'post').length;
   const nDates = new Set(hits.map(h => h.d)).size;
-  $('count').innerHTML = picMode ? `<b>${nPhotos.toLocaleString()}</b> photos most like your picture, closest first` + (loaded < total ? ' (still loading)' : '') : `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'} and <b>${nPosts.toLocaleString()}</b> On this day stor${nPosts === 1 ? 'y' : 'ies'} on <b>${nDates.toLocaleString()}</b> date${nDates === 1 ? '' : 's'}`
-    + (loaded < total ? ' (still loading)' : '');
+  $('count').innerHTML = (latestOn() && !picMode ? '<span class="latest">Latest vicharan, newest first</span>' : '') + (picMode ? `<b>${nPhotos.toLocaleString()}</b> photos most like your picture, closest first` + (loaded < total ? ' (still loading)' : '') : `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'} and <b>${nPosts.toLocaleString()}</b> On this day stor${nPosts === 1 ? 'y' : 'ies'} on <b>${nDates.toLocaleString()}</b> date${nDates === 1 ? '' : 's'}`
+    + (loaded < total ? ' (still loading)' : ''));
   $('results').innerHTML = `<div class="${picMode ? 'grid' : 'days slim'}" id="cards"></div>`;
   shown = 0; lastDate = '';
   perDay = new Map(); hits.forEach(h => { if (h.kind !== 'day') perDay.set(h.d, (perDay.get(h.d) || 0) + 1); });
@@ -802,10 +805,22 @@ function placeOption(pl) {   // a place from a link: picked in the list, added t
   if (![...$('place').options].some(o => o.value === pl)) $('place').innerHTML += `<option value="${esc(pl)}">${esc(pl)}</option>`;
   $('place').value = pl;
 }
+// #latest is the Latest vicharan button on Today (Darpan, 30 Oct 2026: "a button so people can see the latest pictures"):
+// the last 30 days of photos, newest first, without the calendar's days that have no photos yet.
+var latest = null;
+const latestOn = () => latest && $('from').value === latest[0] && $('to').value === latest[1] && $('order').value === 'new';
 function fromLink() {
   const h = new URLSearchParams(location.hash.slice(1));
-  if (!['date', 'day', 'q', 'mandir', 'place', 'from'].some(k => h.has(k))) return false;
+  if (!['date', 'day', 'q', 'mandir', 'place', 'from', 'latest'].some(k => h.has(k))) return false;
   ['q', 'fest', 'place', 'act', 'mandir', 'year', 'month', 'day', 'from', 'to'].forEach(id => $(id).value = '');
+  if (h.has('latest')) {
+    const iso = t => new Date(t - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+    latest = [iso(Date.now() - 30 * 864e5), iso(Date.now())];
+    [$('from').value, $('to').value] = latest;
+    $('order').value = 'new';
+    linkPlace = '';
+    return true;
+  }
   const date = h.get('date') || '', day = h.get('day') || '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(date)) $('from').value = $('to').value = date;
   if (/^\d{2}-\d{2}$/.test(day)) { $('month').value = day.slice(0, 2); $('day').value = day.slice(3); }

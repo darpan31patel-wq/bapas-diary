@@ -1,6 +1,6 @@
 /* The Screensaver button on the Today page, the "entering screensaver state" box over the page gone soft, and the
    full screen frame (Darpan, 29 Oct 2026). Website only. Colours and fonts are the Today page's own. */
-.ss-launch { display: flex; justify-content: center; margin: clamp(14px, 2vw, 26px) 0 0; }
+.ss-launch { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 14px; margin: clamp(14px, 2vw, 26px) 0 0; }
 .ss-big {
   display: inline-flex; align-items: center; gap: 12px; padding: 16px 34px; border-radius: 999px; cursor: pointer;
   font: 700 14px/1 var(--sans); letter-spacing: .2em; text-transform: uppercase;
@@ -10,7 +10,10 @@
 }
 .ss-big:hover { transform: translateY(-1px); box-shadow: 0 10px 28px rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .45); }
 .ss-big svg { width: 22px; height: 22px; fill: currentColor; flex: none; }
+a.ss-big { text-decoration: none; }
 @media (max-width: 600px) { .ss-big { padding: 15px 26px; font-size: 13px; } }
+/* the two buttons the same width when they sit one above the other */
+@media (max-width: 600px) { .ss-launch { flex-direction: column; align-items: center; } .ss-launch .ss-big { box-sizing: border-box; width: min(100%, 300px); justify-content: center; } }
 
 /* the page goes soft behind the question */
 .ss-asking .page, .ss-asking .site-menu { filter: blur(10px) brightness(.55); transition: filter .5s ease; }
