@@ -1,0 +1,13 @@
+# One off check (30 Oct 2026, website only): the live webcast answer on bapas-diary.com and the Today page's live line.
+name: live-probe
+on:
+  push:
+    branches: [claude/project-thread-o8zj9c]
+    paths: [.github/workflows/live-probe.yml]
+jobs:
+  look:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          for i in 1 2; do curl -s -w ' %{http_code}\n' https://bapas-diary.com/api/live; curl -sI https://bapas-diary.com/api/live | grep -i 'cache-control\|cf-cache'; done
+          curl -s https://bapas-diary.com/ | grep -o 'class="bn-live"[^<]*<a class="bn-go"\|/api/live\|is-soon' | sort | uniq -c
