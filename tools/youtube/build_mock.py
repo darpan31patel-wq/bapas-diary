@@ -33,34 +33,32 @@ shim = '''<script>(()=>{const F=%s;const get=u=>{try{u=new URL(u,location.href).
 const f0=window.fetch.bind(window);window.fetch=(u,o)=>{const t=get(typeof u==='string'?u:u.url);return t!=null?Promise.resolve(new Response(t,{status:200,headers:{'Content-Type':'application/json'}})):Promise.resolve(new Response('',{status:404}))};
 const op=XMLHttpRequest.prototype.open,sd=XMLHttpRequest.prototype.send;XMLHttpRequest.prototype.open=function(m,u,...r){this._u=u;return op.call(this,m,'data:application/json,{}',...r)};
 XMLHttpRequest.prototype.send=function(){const t=get(this._u);if(t!=null){Object.defineProperty(this,'status',{value:200});Object.defineProperty(this,'responseText',{value:t});return}return sd.call(this)};
-if(navigator.serviceWorker)try{navigator.serviceWorker.register=()=>Promise.reject()}catch(e){}})();</script>''' % json.dumps(files)
+if(navigator.serviceWorker)try{navigator.serviceWorker.register=()=>Promise.reject()}catch(e){}})();</script>'''
 
-# the videos for these days, by year
+# the change itself, as in site/day.html: the same CSS and code, taken from there
+day = Path('site/day.html').read_text()
+css = day[day.index('.slot .vid{'):day.index('\n', day.index('.slot .vid i::before{')) + 1]
+css += day[day.index('.yhead .vgo{'):day.index('\n', day.index('.go.vgo:hover i::before')) + 1]
+helper = day[day.index('// a BAPS video of that day on YouTube'):day.index('// every photo of the day, year by year')]
+for old, new in [
+    ("slot.append(el, cap); $('cards').append(slot);", "slot.append(el, cap); $('cards').append(slot);\n  if (Y && Y.v) slot.insertAdjacentHTML('beforeend', watchVideo(Y.v, 'vid'));"),
+    ("See more &rsaquo;</a></div>` +", "See more &rsaquo;</a>${Y && Y.v ? watchVideo(Y.v, 'go vgo') : ''}</div>` +"),
+    ("trip: note ? Y.trip : null,", "trip: note ? Y.trip : null, v: !note && Y && Y.v,"),
+    ("const {p, y, d, where, cal, trip, ti, more} = everyPhoto[vi];", "const {p, y, d, where, cal, trip, ti, more, v} = everyPhoto[vi];"),
+    ("See more &rsaquo;</a></figcaption></figure>`;", "See more &rsaquo;</a>${v ? ' ' + watchVideo(v, 'go vgo') : ''}</figcaption></figure>`;"),
+    ("// every photo of the day, year by year\n", helper + "// every photo of the day, year by year\n"),
+]:
+    assert html.count(old) == 1, old
+    html = html.replace(old, new)
+html = html.replace('</head>', '<style>' + css + '</style></head>', 1)
+# the day files with their videos, as tools/web_videos.py writes them
 vids = json.load(open('data/youtube/days.json'))
-V = {}
-for date, lst in vids.items():
-    if date[5:] in DAYS:
-        V.setdefault(date[5:], {})[date[:4]] = [[v['id'], v['title']] for v in lst]
-video = '''<style>
-.slot .vid{display:inline-flex;align-items:center;gap:8px;margin-top:2px;padding:6px 13px 6px 7px;border:1px solid rgba(217,164,65,.6);border-radius:999px;
-  background:rgba(0,0,0,.22);color:#ffe296;font:600 12.5px/1 Poppins,Arimo,sans-serif;letter-spacing:.04em;text-decoration:none;white-space:nowrap;transition:background .2s,border-color .2s}
-.slot .vid:hover,.slot .vid:focus-visible{background:rgba(217,164,65,.22);border-color:#ffe296}
-.slot .vid i{display:grid;place-items:center;width:20px;height:20px;border-radius:50%%;background:#d9a441}
-.slot .vid i::before{content:"";margin-left:2px;border-left:7px solid #2a0d12;border-top:4.5px solid transparent;border-bottom:4.5px solid transparent}
-.slot{text-align:center}
-</style><script>
-/* A gold "Watch the video" under each year's card when BAPS posted a video of that day on YouTube
-   (data/youtube/days.json, matched by the date in each video's title). Opens the video on YouTube. */
-const VIDEOS=%s;
-function vid(slot,y){const d=(VIDEOS[DAY.date]||{})[y];if(!d)return;
-  const a=document.createElement('a');a.className='vid';a.target='_blank';a.rel='noopener';
-  a.href='https://www.youtube.com/watch?v='+d[0][0];a.title=d[0][1];
-  a.innerHTML='<i aria-hidden="true"></i>Watch the video';
-  slot.append(a);}
-</script>''' % json.dumps(V)
-html = html.replace('slot.append(el, cap); $(\'cards\').append(slot);', "slot.append(el, cap); vid(slot, y); $('cards').append(slot);", 1)
-assert 'vid(slot, y)' in html
-html = html.replace('<head>', '<head>' + shim, 1)
-html = html.replace('</head>', video + '</head>', 1)
+for d in DAYS:
+    day_ = json.loads(files[f'/data/day/{d}.json'])
+    for Y in day_['years']:
+        v = vids.get(Y.get('d') or f"{Y['y']}-{day_['date']}")
+        if v: Y['v'] = [[x['id'], x['title']] for x in v]
+    files[f'/data/day/{d}.json'] = json.dumps(day_, ensure_ascii=False)
+html = html.replace('<head>', '<head>' + shim % json.dumps(files), 1)
 Path(out_path).write_text(html)
-print(out_path, len(html) // 1024, 'KB;', {d: sorted(V.get(d, {})) for d in DAYS})
+print(out_path, len(html) // 1024, 'KB')

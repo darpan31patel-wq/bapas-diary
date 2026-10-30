@@ -205,6 +205,12 @@ a.ss-big { text-decoration: none; }
 .go:hover,.go:focus-visible{background:var(--go,var(--gold-soft));color:var(--go-on,var(--maroon-out));outline:none}
 .vcap{--go:var(--maroon-ink);--go-on:var(--gold-hi)}
 .vcap .go{margin-top:9px}
+.yhead .vgo{margin-left:8px}
+.go.vgo{display:inline-flex;align-items:center;gap:7px;padding-left:7px}
+.go.vgo i{display:grid;place-items:center;width:17px;height:17px;border-radius:50%;background:var(--go,var(--gold-soft))}
+.go.vgo i::before{content:"";margin-left:2px;border-left:6px solid var(--go-on,var(--maroon-out));border-top:4px solid transparent;border-bottom:4px solid transparent}
+.go.vgo:hover i,.go.vgo:focus-visible i{background:var(--go-on,var(--maroon-out))}
+.go.vgo:hover i::before,.go.vgo:focus-visible i::before{border-left-color:var(--go,var(--gold-soft))}
 .story-line{margin:12px 0 0;font:500 16px/1.45 var(--serif);font-style:italic;color:var(--cream);max-width:70ch}
 .story-line b{font-style:normal;font:700 10px var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--gold-soft);margin-right:8px}
 .day-story .paras{max-width:70ch}
@@ -735,12 +741,7 @@ function card(y, {Y, place, stories}, want = true) {
   const cap = document.createElement('div'); cap.className = 'cap';
   cap.textContent = photos.length ? '' : 'On this day';
   slot.append(el, cap); $('cards').append(slot);
-  if (Y && Y.v) {   // a BAPS video of this day on YouTube (tools/web_videos.py; Darpan, 30 Oct 2026)
-    const v = document.createElement('a'); v.className = 'vid'; v.target = '_blank'; v.rel = 'noopener';
-    v.href = 'https://www.youtube.com/watch?v=' + Y.v[0][0]; v.title = Y.v[0][1];
-    v.innerHTML = '<i aria-hidden="true"></i>Watch the video';
-    slot.append(v);
-  }
+  if (Y && Y.v) slot.insertAdjacentHTML('beforeend', watchVideo(Y.v, 'vid'));
   Object.assign(c, {cap, of: lab.querySelector('.of'), ph});
   requestAnimationFrame(() => lean(c, c.rest));
   el.addEventListener('pointermove', e => nudge(c, e));
@@ -1154,6 +1155,12 @@ addEventListener('resize', () => requestAnimationFrame(cords));
 new ResizeObserver(() => requestAnimationFrame(cords)).observe($('cards'));
 document.fonts && document.fonts.ready.then(cords);
 
+// a BAPS video of that day on YouTube (tools/web_videos.py), under the card, in the year's heading and in the wide view
+// (Darpan, 30 Oct 2026: "add video link to everywhere relevant on the page, for the specific dates")
+function watchVideo(v, cls) {
+  return `<a class="${cls}" href="https://www.youtube.com/watch?v=${encodeURIComponent(v[0][0])}" target="_blank" rel="noopener" title="${esc(v[0][1])}"><i aria-hidden="true"></i>Watch the video</a>`;
+}
+
 // every photo of the day, year by year
 function group(y, Y, where, cal, stories) {
   if (!Y && !stories.length) return;
@@ -1161,7 +1168,7 @@ function group(y, Y, where, cal, stories) {
   const fest = festOf(cal), ti = Y && Y.d ? longDate(Y.d) : tithiOf(cal) || dayTi(Y, stories), day = Y && Y.d || y + '-' + DAY.date;
   g.innerHTML = `<div class="yhead"><h3>${y}</h3><span class="caps">${esc(where || '')}</span>` +
     (ti ? `<span class="it">${esc(ti)}</span>` : '') + (fest ? `<span class="fest">${esc(fest)}</span>` : '') +
-    `<a class="go" href="${esc(SRC.search(day))}">See more &rsaquo;</a></div>` +
+    `<a class="go" href="${esc(SRC.search(day))}">See more &rsaquo;</a>${Y && Y.v ? watchVideo(Y.v, 'go vgo') : ''}</div>` +
     told(Y, stories).map(t => storyHTML(...t)).join('');
   const add = (list, note) => {
     if (!list || !list.length) return;
@@ -1169,7 +1176,7 @@ function group(y, Y, where, cal, stories) {
     const grid = document.createElement('div'); grid.className = 'thumbs';
     list.forEach(p => {
       const i = everyPhoto.length;
-      everyPhoto.push({p, y, d: Y && Y.d, where, cal, trip: note ? Y.trip : null, ti: !cal && dayTi(Y, stories), more: storyShort(Y, stories, p[2])});
+      everyPhoto.push({p, y, d: Y && Y.d, where, cal, trip: note ? Y.trip : null, v: !note && Y && Y.v, ti: !cal && dayTi(Y, stories), more: storyShort(Y, stories, p[2])});
       const b = document.createElement('button'); b.className = 'thumb'; b.type = 'button';
       const url = SRC.photo(p);
       b.innerHTML = `<span class="im">${url ? `<img loading="lazy" decoding="async" alt="${esc(p[2])}" src="${esc(url)}" style="object-position:${focus(p)}">` : ''}</span><small>${esc(p[2] || 'Darshan')}</small>`;
@@ -1195,14 +1202,14 @@ function view(i, play) {
   if (!everyPhoto.length) return;
   if ($('viewer').hidden) { lastFocus = document.activeElement; $('viewer').hidden = false; document.body.style.overflow = 'hidden'; $('vclose').focus(); }
   vi = (i + everyPhoto.length) % everyPhoto.length;
-  const {p, y, d, where, cal, trip, ti, more} = everyPhoto[vi];
+  const {p, y, d, where, cal, trip, ti, more, v} = everyPhoto[vi];
   const url = SRC.big(p) || SRC.photo(p);
   const when = trip ? tripText(trip) + ' ' + y : d ? `${longDate(d)} ${y}` : `${DAY.title} ${y}`;
   const none = `<div class="none">${esc(p[2] || 'Darshan')}</div>`;
   $('vstage').innerHTML = `<figure class="vframe" style="margin:0">${url ? `<img alt="${esc(p[2])}" src="${esc(url)}">` : none}` +
     `<figcaption class="vcap"><p>${esc(p[2] || 'Darshan')}</p><div>${esc([when, where, (cal && cal[0]) || ti, festOf(cal)].filter(Boolean).join(' · '))}</div>` +
     (more ? `<p class="vday">${esc(more)}</p>` : '') +
-    `<a class="go" href="${esc(trip && trip[0] !== trip[1] ? `{{SEARCH}}#place=${encodeURIComponent(String(where || '').split(',')[0])}&from=${trip[0]}&to=${trip[1]}` : SRC.search(trip ? trip[0] : d || y + '-' + DAY.date))}">See more &rsaquo;</a></figcaption></figure>`;
+    `<a class="go" href="${esc(trip && trip[0] !== trip[1] ? `{{SEARCH}}#place=${encodeURIComponent(String(where || '').split(',')[0])}&from=${trip[0]}&to=${trip[1]}` : SRC.search(trip ? trip[0] : d || y + '-' + DAY.date))}">See more &rsaquo;</a>${v ? ' ' + watchVideo(v, 'go vgo') : ''}</figcaption></figure>`;
   const img = $('vstage').querySelector('img');
   if (img) img.onerror = () => img.outerHTML = none;
   $('vpos').textContent = `${vi + 1} of ${everyPhoto.length}`;
