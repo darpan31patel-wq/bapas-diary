@@ -44,7 +44,7 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 .sub::after{transform:scaleX(-1)}
 .tithi{margin:clamp(16px,2.4vw,32px) auto 0;font:500 clamp(17px,2vw,21px)/1.4 var(--serif);color:var(--cream);text-wrap:balance;max-width:44ch}
 .tithi b{font-weight:700;color:var(--gold-hi)}
-.count{margin:clamp(10px,1.4vw,18px) auto 0;font:500 16.5px/1.45 var(--serif);color:var(--cream);max-width:60ch;text-wrap:balance}
+.count{margin:clamp(10px,1.4vw,18px) auto 0;font:500 19px/1.45 var(--serif);color:var(--cream);max-width:60ch;text-wrap:balance}
 @media (min-width:1000px){.count{max-width:none}}   /* one line across on computers, brighter (Darpan, 26 Oct 2026: too faint) */
 
 /* Computers and iPads on their side (from 1000px): a calmer top (Darpan, 30 Oct 2026: "Too much going on in a small
@@ -55,43 +55,48 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
    zoomed) the cards would not fit beside the date, so the page keeps the one tall column phones have (Darpan, 30 Oct
    2026: the cards ran off the screen and the tithi was off centre). */
 @media (min-width:1000px){
-  html:not([style^="zoom"]):not([style*=" zoom"]) .wrap{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);column-gap:24px;align-items:start}
+  /* One band, no gaps: the two cards fill their whole columns right up to the date, and run the full height of the date
+     block (date, subtitle, tithi, count), whose lines sit in the middle of that height; the three buttons share the left
+     card's height equally, the map fills the right one (Darpan, 30 Oct 2026: "i dont like all this deadspace, rethink"). */
+  html:not([style^="zoom"]):not([style*=" zoom"]) .wrap{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);grid-template-rows:1fr auto auto auto auto 1fr;column-gap:clamp(20px,2.4vw,36px);align-items:start}
   html:not([style^="zoom"]):not([style*=" zoom"]) .wrap>*{grid-column:1/-1}
   html:not([style^="zoom"]):not([style*=" zoom"]) header{display:contents}
   html:not([style^="zoom"]):not([style*=" zoom"]) header>*{grid-column:2}
-  html:not([style^="zoom"]):not([style*=" zoom"]) h1{grid-row:2;margin-top:clamp(10px,1.2vw,18px);font-size:clamp(58px,5.6vw,80px)}
+  html:not([style^="zoom"]):not([style*=" zoom"]) h1{grid-row:2;margin-top:0;font-size:clamp(58px,5.6vw,80px)}
   html:not([style^="zoom"]):not([style*=" zoom"]) .sub{grid-row:3;margin-top:12px}
-  html:not([style^="zoom"]):not([style*=" zoom"]) .count,html:not([style^="zoom"]):not([style*=" zoom"]) .yir,html:not([style^="zoom"]):not([style*=" zoom"]) #mocknote{grid-column:1/-1;justify-self:center}
+  html:not([style^="zoom"]):not([style*=" zoom"]) .yir,html:not([style^="zoom"]):not([style*=" zoom"]) #mocknote{grid-column:1/-1;justify-self:center}
   html:not([style^="zoom"]):not([style*=" zoom"]) .tithi{grid-row:4;margin:10px auto 0}
-  html:not([style^="zoom"]):not([style*=" zoom"]) .count{grid-row:5;margin:12px 0 0;font-size:15.5px}
-  html:not([style^="zoom"]):not([style*=" zoom"]) .yir{grid-row:6}
-  html:not([style^="zoom"]):not([style*=" zoom"]) #mocknote{grid-row:7}
-  html:not([style^="zoom"]):not([style*=" zoom"]) header .bapa-now{grid-area:1/3/5/4;justify-self:end;align-self:stretch;margin:0;max-width:100%;min-width:0}
-  html:not([style^="zoom"]):not([style*=" zoom"]) header .side{grid-area:1/1/5/2;justify-self:start;align-self:stretch;width:clamp(330px,28vw,420px);max-width:100%;min-width:0;display:flex;flex-direction:column;
-    justify-content:center;align-items:center;gap:14px;padding:12px 18px;background:rgba(0,0,0,.22);border:1px solid rgba(217,164,65,.38);
+  html:not([style^="zoom"]):not([style*=" zoom"]) .count{grid-row:5;margin:12px auto 0;font-size:19px;white-space:nowrap}
+  html:not([style^="zoom"]):not([style*=" zoom"]) .yir{grid-row:7}
+  html:not([style^="zoom"]):not([style*=" zoom"]) #mocknote{grid-row:8}
+  html:not([style^="zoom"]):not([style*=" zoom"]) header .bapa-now{grid-area:1/3/7/4;justify-self:stretch;align-self:stretch;width:auto;margin:0;max-width:none;min-width:0;padding:14px 22px 14px 16px;gap:clamp(16px,2vw,28px)}
+  html:not([style^="zoom"]):not([style*=" zoom"]) header .bapa-now svg{width:clamp(120px,11vw,164px);height:clamp(120px,11vw,164px)}
+  html:not([style^="zoom"]):not([style*=" zoom"]) header .side{grid-area:1/1/7/2;justify-self:stretch;align-self:stretch;width:auto;min-width:0;display:flex;flex-direction:column;
+    justify-content:stretch;align-items:stretch;gap:10px;padding:14px 18px;background:rgba(0,0,0,.22);border:1px solid rgba(217,164,65,.38);
     border-radius:14px;box-shadow:0 8px 20px rgba(0,0,0,.25);position:relative}
-  html:not([style^="zoom"]):not([style*=" zoom"]) header .side-lbl{display:block;font:700 10px/1.2 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--gold-soft)}
-  html:not([style^="zoom"]):not([style*=" zoom"]) header .ss-launch{order:1;margin:0;flex-direction:column;align-items:stretch;gap:10px;align-self:stretch}
-  html:not([style^="zoom"]):not([style*=" zoom"]) header .ss-big{padding:12px 26px;font-size:12.5px;justify-content:center}
+  html:not([style^="zoom"]):not([style*=" zoom"]) header .ss-launch{order:1;margin:0;flex:2 1 0;display:flex;flex-direction:column;align-items:stretch;gap:10px;align-self:stretch}
+  html:not([style^="zoom"]):not([style*=" zoom"]) header .ss-big{flex:1 1 0;display:flex;padding:10px 26px;font-size:13px;justify-content:center;align-items:center}
   html:not([style^="zoom"]):not([style*=" zoom"]) header .ss-big svg{width:18px;height:18px}
-  html:not([style^="zoom"]):not([style*=" zoom"]) header .remind{order:2;margin:0;max-width:none;padding:0;align-self:stretch;display:flex;flex-direction:column}
-  html:not([style^="zoom"]):not([style*=" zoom"]) header .remind .rm-open{padding:12px 26px;font-size:12.5px}
+  html:not([style^="zoom"]):not([style*=" zoom"]) header .remind{order:2;margin:0;flex:1 1 0;max-width:none;padding:0;align-self:stretch;display:flex;flex-direction:column}
+  html:not([style^="zoom"]):not([style*=" zoom"]) header .remind .rm-open{flex:1 1 0;display:flex;justify-content:center;align-items:center;padding:10px 26px;font-size:13px}
   html:not([style^="zoom"]):not([style*=" zoom"]) header .remind .rm-open svg{width:18px;height:18px}
   html:not([style^="zoom"]):not([style*=" zoom"]) header .remind form{position:absolute;left:0;top:calc(100% + 10px);z-index:5;width:420px;margin:0;padding:14px;background:#2a0a12;
     border:1px solid rgba(217,164,65,.38);border-radius:14px;box-shadow:0 10px 24px rgba(0,0,0,.45)}
   html:not([style^="zoom"]):not([style*=" zoom"]) .board{margin-top:18px}
 }
-@media (min-width:1000px) and (max-width:1359px){html:not([style^="zoom"]):not([style*=" zoom"]) header .side{width:300px}
+@media (min-width:1000px) and (max-width:1359px){
   html:not([style^="zoom"]):not([style*=" zoom"]) header .ss-big,html:not([style^="zoom"]):not([style*=" zoom"]) header .remind .rm-open{padding:12px 16px;font-size:12px;letter-spacing:.1em}}
-/* iPads on their side: narrower cards, so the date between them has room */
+/* iPads on their side: tighter buttons, so the date between the cards has room */
 @media (min-width:1000px) and (max-width:1179px){
-  html:not([style^="zoom"]):not([style*=" zoom"]) header .side{width:260px}
   html:not([style^="zoom"]):not([style*=" zoom"]) header .ss-big,html:not([style^="zoom"]):not([style*=" zoom"]) header .remind .rm-open{padding:11px 12px;font-size:11.5px;letter-spacing:.06em}
   html:not([style^="zoom"]):not([style*=" zoom"]) header .bapa-now .bn-town small{display:none}
+  html:not([style^="zoom"]):not([style*=" zoom"]) header .bapa-now svg{width:96px;height:96px}
+  html:not([style^="zoom"]):not([style*=" zoom"]) header .bapa-now{padding:12px 14px 12px 12px;gap:14px}
+  html:not([style^="zoom"]):not([style*=" zoom"]) header .bapa-now .bn-words{overflow:hidden}
+  html:not([style^="zoom"]):not([style*=" zoom"]) header .bapa-now .bn-live{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 }
 /* phones and upright tablets: the email and Screensaver buttons stay just where they were */
 .side{display:contents}
-.side-lbl{display:none}
 
 /* board */
 .board{position:relative;margin-top:30px}
@@ -307,8 +312,8 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
     </script>
     <div id="mocknote"></div>
 <!-- Computers: the left card, Screensaver and the email sign up (Darpan, 30 Oct 2026); on phones only its insides show.
-     Three distinct buttons, one above the other: Screensaver, Latest vicharan, Daily darshan emails (Darpan, 30 Oct 2026) -->
-<div class="side"><span class="side-lbl">Watch or receive darshan</span>
+     Three distinct buttons, one above the other: Screensaver, Latest vicharan, Email Me (Darpan, 30 Oct 2026; 18:43 no card title, "Email Me") -->
+<div class="side">
 <!--screensaver-->
 <!-- The small "On this day" email sign up on the Today page (Darpan, 26 Oct 2026: "a small sign up so people get
      today's darshan link each morning"). Website only. Goes inside the Today page's <header>, after #count.
@@ -339,7 +344,7 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
     .remind :focus-visible { outline: 2px solid #ffe296; outline-offset: 2px; }
     @media (max-width: 600px) { .remind { padding: 0 16px; } .remind .rm-row { flex-direction: column; } .remind input[type=email], .remind button[type=submit] { flex: none; width: 100%; } }
   </style>
-  <button class="rm-open" type="button" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5h18a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1zm1.2 2.1v.3l7.8 5.4 7.8-5.4v-.3zm0 2.7v6.2h15.6v-6.2L12 15.7z"/></svg>Daily darshan emails</button>
+  <button class="rm-open" type="button" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5h18a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1zm1.2 2.1v.3l7.8 5.4 7.8-5.4v-.3zm0 2.7v6.2h15.6v-6.2L12 15.7z"/></svg>Email Me</button>
   <form hidden>
     <div class="rm-row">
       <label class="rm-hp" aria-hidden="true">Leave this empty <input name="website" tabindex="-1" autocomplete="off"></label>
