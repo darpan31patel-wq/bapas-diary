@@ -139,3 +139,4 @@ jobs:
           du -sh pack; tar czf prasang-mockup.tgz pack
           gh release view prasang-mockup >/dev/null 2>&1 || gh release create prasang-mockup --prerelease --title "Prasang mockup" --notes "Today page and photos for the Prasang from today mockup. Not used by the daily picture or the website."
           gh release upload prasang-mockup prasang-mockup.tgz --clobber
+# run 2: 29 Oct and 1 Nov, the days around today that have prasangs
