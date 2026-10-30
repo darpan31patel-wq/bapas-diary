@@ -192,10 +192,9 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 
 /* choose a day */
 /* Prasang from today (Darpan, 30 Oct 2026): a small gold button under the day's photos opens the prasangs of this date */
-.prasang-row{display:flex;justify-content:center;margin-top:26px}
+.prasang-row{display:flex;justify-content:center;margin-top:34px}
 .prasang-row+.controls{margin-top:14px}
-.prasang-box{width:min(640px,100%);max-height:min(86vh,100%);overflow:auto;padding:22px clamp(18px,4vw,34px) 18px;overscroll-behavior:contain}
-.prasang-box .pdate{margin:6px 0 0;text-align:center;color:rgba(110,20,36,.7)}
+.pbox.prasang-box{width:min(680px,100%);max-height:min(86vh,calc(100dvh - 150px));overflow:auto;padding:22px clamp(18px,4vw,34px) 18px;overscroll-behavior:contain}
 .prasang-box article{margin-top:18px;padding-top:16px;border-top:1px solid var(--ivory-edge)}
 .prasang-box article .caps{color:rgba(110,20,36,.7)}
 .prasang-box h3{margin:6px 0 8px;font:700 21px/1.25 var(--serif);text-wrap:balance}
@@ -446,7 +445,6 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 <div class="picker" id="prasang" hidden role="dialog" aria-modal="true" aria-labelledby="prasang-title">
   <div class="pbox prasang-box">
     <h2 id="prasang-title">Prasang from today</h2>
-    <p class="caps pdate" id="prasang-date"></p>
     <div id="prasang-list"></div>
     <button class="pill" id="prasang-close" type="button">Close</button>
   </div>
@@ -595,10 +593,9 @@ async function prasangs(mmdd) {
 }
 $('prasang-btn').onclick = () => {
   const d = nice(showing);
-  $('prasang-date').textContent = d;
   $('prasang-list').innerHTML = PRASANG.map(([y, title, said, ref]) => `<article><div class="caps">${esc(d)} ${y}</div><h3>${esc(title)}</h3>` +
     said.map(t => `<p>${esc(t)}</p>`).join('') + (ref ? `<p class="ref">Vachanamrut ${esc(ref)}</p>` : '') + '</article>').join('');
-  $('prasang').hidden = false; $('prasang-list').parentNode.scrollTop = 0; $('prasang-close').focus();
+  $('prasang').hidden = false; $('prasang-close').focus({preventScroll: true}); $('prasang-list').parentNode.scrollTop = 0;
 };
 $('prasang-close').onclick = () => { $('prasang').hidden = true; $('prasang-btn').focus(); };
 $('prasang').addEventListener('click', e => { if (e.target === $('prasang')) $('prasang-close').click(); });
