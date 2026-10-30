@@ -189,9 +189,13 @@ JS = r'''<script>
       const ev = S.days[today] || [], now = minsIn(n.tz);
       if (ev.some(e => /aagman|swagat/i.test(e.what) && e.from.split(':')[0] * 60 + +e.from.split(':')[1] <= now)) { s = n; n = stays[i + 2]; }
     }
+    // a travel day counts for the town he arrives in, as on the Calendar, so both show the same dates (Darpan, 30 Oct 2026:
+    // "make them use the same dates"); the stay itself still runs to its last day for the travel day switch above
+    const prev = d => new Date(Date.parse(d + 'T12:00:00Z') - 864e5).toISOString().slice(0, 10);
+    const upto = x => { const after = stays[stays.indexOf(x) + 1]; return after && after.from === x.to && today < x.to ? prev(x.to) : x.to; };
     const map = S.maps[s.city];
     q('.bn-town').innerHTML = `${esc(s.city)}<small>${esc(s.country)}</small>`;
-    q('.bn-dates').textContent = `${nice(s.from)} to ${nice(s.to)}`;
+    q('.bn-dates').textContent = `${nice(s.from)} to ${nice(upto(s))}`;
     // today's events there, in the town's own time: the one on now, else the next one, else tomorrow's first
     const mins = minsIn(s.tz), when = s.tz === 'Asia/Kolkata' ? 'IST' : s.tz === 'Europe/London' ? 'UK time' : 'local time';
     const ev = (S.days[today] || []).filter(e => e.what);
@@ -200,7 +204,7 @@ JS = r'''<script>
     const line = (head, e) => `<b>${head}:</b> <span>${esc(e.what)}</span>, <span>${clock(e.from).slice(-2) === clock(e.to).slice(-2) ? clock(e.from).slice(0, -3) : clock(e.from)} to ${clock(e.to)} ${when}</span>`;
     q('.bn-today').innerHTML = on ? line('Now', on) : next ? line(m(next) >= 720 ? 'This evening' : 'Today', next) : '';
     q('.bn-today').hidden = !(on || next);
-    q('.bn-next').innerHTML = n ? `<b>Next:</b> <span>${esc(n.city)}</span>, <span>${n.from.slice(0, 7) === n.to.slice(0, 7) ? +n.from.slice(8) : short(n.from)} to ${short(n.to)}</span>` : '';
+    q('.bn-next').innerHTML = n ? `<b>Next:</b> <span>${esc(n.city)}</span>, <span>${n.from.slice(0, 7) === upto(n).slice(0, 7) ? +n.from.slice(8) : short(n.from)} to ${short(upto(n))}</span>` : '';
     q('.bn-next').hidden = !n;
     // the map: the town in the middle, a dotted line towards the next town when it is on the map
     const svg = q('svg');
