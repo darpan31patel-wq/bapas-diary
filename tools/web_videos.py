@@ -5,7 +5,7 @@ video of that day"). Website only: nothing here touches the daily 2pm picture.
 The BAPS YouTube playlist of Guruhari Darshan videos (tools/youtube/match.py) gives each video the day(s) in its title,
 data/youtube/days.json. This puts them on each year of the Today day files and the festival files, as "v":
 [[YouTube id, title], ...], for the year's own date (a festival year's "d", otherwise that year on the page's date).
-The page shows a gold "Watch the video" under that year's card, opening the first one on YouTube.
+The page shows a gold "Video Darshan" under that year's card, opening the first one on YouTube.
 
     python3 tools/web_videos.py --videos data/youtube/days.json out/data/day out/data/fest
 """
