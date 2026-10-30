@@ -25,7 +25,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PROJECT: bapas-diary
       DOMAIN: bapas-diary.com
-      CAL_COMMIT: 8fab292e87adf172e3a7dcdf659eb12f45cd8f7f   # claude/project-thread-tbkjl3: 737b25f (look C) plus a day's photos in a box over the Calendar
+      CAL_COMMIT: 9d0e952d170abfdaecfea4548f714bccb2532a8e   # 8fab292 (tbkjl3: look C plus a day's photos in a box) plus the schedule's dates for the stay Bapa is in now and bigger festival words on tablets (branch claude/project-thread-q7xtjj)
     steps:
       - uses: actions/checkout@v4
         with:

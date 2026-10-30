@@ -237,7 +237,7 @@
         keys.forEach(k => { const y = k.slice(0, 4); places(k).forEach((p, i) => {
           if (!p) { if (++gap > 3) lastP = null; return; }
           const fut = !!FUT && `${k}-${pad2(i + 1)}` >= FUT;   // the coming stays start afresh after today
-          if (cur && p === lastP && cur.fut === fut) { cur.k1 = k; cur.d1 = i + 1; gap = 0; }
+          if (cur && p === lastP && (cur.fut === fut || fut)) { cur.k1 = k; cur.d1 = i + 1; gap = 0; }   // the stay Bapa is in now carries on past today as one, as on Today
           else {
             if (fut && !futMark) { jrow.append(el('span', 'ph-fmark', 'Future vicharan')); futMark = true; lastY = y; }
             else if (y !== lastY) { const m = el('span', 'ph-ymark', y); m.dataset.y = y; jrow.append(m); lastY = y; }
