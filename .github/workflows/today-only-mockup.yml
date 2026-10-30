@@ -1,0 +1,43 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, and never fetches
+# from www.baps.org. For the "Today shows today only" mockup: opens the live Today page once on a computer and once on a
+# phone and records everything it loads (HAR files) into the release `today-only-mockup`, so Claude can show Darpan the
+# real page with the day buttons taken away. Runs only when this file changes on its own branch, or by hand.
+name: today-only-mockup
+on:
+  push:
+    branches: ['claude/project-thread-obu4ah']
+    paths: ['.github/workflows/today-only-mockup.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Record the live Today page
+        run: |
+          npm i -s playwright@1.48.2 >/dev/null && npx playwright install --with-deps chromium >/dev/null
+          cat > rec.js <<'JS'
+          const {chromium, devices} = require('playwright');
+          (async () => {
+            const b = await chromium.launch();
+            for (const [name, opt] of [['computer', {viewport: {width: 1440, height: 900}}], ['phone', devices['iPhone 13']]]) {
+              const c = await b.newContext({...opt, timezoneId: 'Europe/London', recordHar: {path: `today-${name}.har`, content: 'embed'}});
+              const p = await c.newPage();
+              await p.goto('https://bapas-diary.com/', {waitUntil: 'networkidle', timeout: 90000});
+              await p.waitForTimeout(8000);
+              await p.mouse.wheel(0, 4000); await p.waitForTimeout(4000);
+              await c.close();
+            }
+            await b.close();
+          })();
+          JS
+          node rec.js && ls -la *.har && tar czf today-only-mockup.tgz *.har
+      - name: Into the release
+        run: |
+          gh release view today-only-mockup -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create today-only-mockup -R "$GITHUB_REPOSITORY" --prerelease --title "Today only mockup pack" --notes "The live Today page as it loads, for the Today only mockup. Not used by the daily picture or the website."
+          gh release upload today-only-mockup today-only-mockup.tgz --clobber -R "$GITHUB_REPOSITORY"
