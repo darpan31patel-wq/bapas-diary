@@ -1,0 +1,44 @@
+# Undated photos for Search (Darpan, 30 Oct 2026): copies every photo of the public Telegram channel he gave into the
+# release "undated-raw", for the touch up and tagging step. Website only: nothing here touches the daily picture.
+name: Undated photos fetch
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/project-thread-8ib4kr]
+    paths: [.github/workflows/undated-fetch.yml]
+permissions:
+  contents: write
+concurrency: undated-fetch
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Read the channel
+        run: |
+          python tools/tg_fetch.py pramukhswamimaharaj posts.json
+          python -c "import json; p=json.load(open('posts.json')); print(len(p), 'posts,', sum(len(x['images']) for x in p), 'photos,', sum(x['videos'] for x in p), 'videos,', min(x['posted'] or 'z' for x in p), 'to', max(x['posted'] or '' for x in p))"
+      - name: Download the photos
+        run: python tools/undated_fetch.py posts.json raw
+      - name: Save to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python -c "from PIL import Image" 2>/dev/null || pip install -q pillow
+          python - <<'PY'
+          from PIL import Image
+          import glob, collections
+          sizes = collections.Counter()
+          for f in glob.glob('raw/*.jpg'):
+              w, h = Image.open(f).size; sizes[(max(w, h) // 200) * 200] += 1
+          print('longest side (rounded down to 200):', sorted(sizes.items()))
+          PY
+          cp posts.json raw/
+          cd raw && zip -q -r ../undated-raw.zip . && cd ..
+          ls -la undated-raw.zip
+          gh release view undated-raw >/dev/null 2>&1 || gh release create undated-raw --target claude/project-thread-8ib4kr --title "Undated photos (raw copy)" --notes "Photos from the Telegram channel for undated Search. Website only."
+          gh release upload undated-raw undated-raw.zip --clobber
