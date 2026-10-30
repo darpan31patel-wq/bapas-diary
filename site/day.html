@@ -140,15 +140,18 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
 .cap.fade{opacity:0}
 /* a very faint golden glow around a frame while the mouse moves over it; with no mouse on any frame the glow drifts
    gently from year to year, 1999, 2000, 2001 ... to the last, then starts again (Darpan, 30 Oct 2026) */
-.card::after{content:"";position:absolute;inset:-1px;pointer-events:none;opacity:0;transition:opacity 1.8s ease-in-out;
-  box-shadow:0 0 22px 5px rgba(255,216,128,.5),0 0 64px 18px rgba(230,176,72,.24)}
-.card.glow::after{opacity:1;transition-duration:.9s}
-.card.glow.hand::after{transition-duration:.45s}
+.card::after{content:"";position:absolute;inset:-1px;pointer-events:none;opacity:0;transition:opacity 2.5s ease-in-out;
+  box-shadow:0 0 20px 4px rgba(255,216,128,.3),0 0 56px 16px rgba(230,176,72,.14)}
+.card.glow::after{opacity:1}
+.card.hand::after{transition-duration:1.2s}
 /* the mouse resting on a caption for half a second opens it to the photo's whole caption, over whatever is below, so
    nothing on the page moves (Darpan, 30 Oct 2026) */
 .cap.open{position:relative;z-index:6;display:block;-webkit-line-clamp:unset;overflow:visible;margin-top:5px;padding:6px 9px 8px;
   background:rgba(48,8,18,.94);border:1px solid rgba(217,164,65,.38);border-radius:3px;box-shadow:0 8px 20px rgba(0,0,0,.45)}
 .slot.lift{z-index:7}
+/* the same half second rest on the occasion line in the frame (cut to two lines) shows the whole line, over the frame */
+.evpop{position:absolute;left:3.5%;right:3.5%;z-index:5;padding:3px 5px 5px;background:linear-gradient(var(--ivory-top),var(--ivory-bot));
+  border:1px solid var(--ivory-edge);border-radius:2px;box-shadow:0 6px 16px rgba(0,0,0,.35);font:500 12.5px/1.25 var(--serif);color:var(--maroon-ink);text-wrap:balance;overflow-wrap:anywhere}
 
 .controls{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:28px;align-items:center}
 .controls select{font:700 11px var(--sans);letter-spacing:.1em;text-transform:uppercase;background:rgba(0,0,0,.25);color:var(--gold-hi);border:1px solid rgba(217,164,65,.45);border-radius:999px;padding:9px 12px;cursor:pointer}
@@ -709,6 +712,21 @@ function card(y, {Y, place, stories}, want = true) {
   el.addEventListener('pointerleave', e => { if (e.pointerType !== 'touch') glowOff(c); });
   cap.addEventListener('pointerenter', e => { if (e.pointerType !== 'touch') c.capWait = setTimeout(() => capOpen(c), 500); });
   cap.addEventListener('pointerleave', () => { clearTimeout(c.capWait); capClose(c); });
+  const evEl = lab.querySelector('.ev');   // the occasion line in the frame opens the same way (Darpan, 30 Oct 2026: "a caption on the 1992 card that's on the photo frame")
+  if (evEl) {   // the card swings when brushed, so what counts is where the mouse last was, not the line slipping from under it
+    const evClose = () => { clearTimeout(c.evWait); c.evWait = null; if (c.evPop) { c.evPop.remove(); c.evPop = null; } };
+    el.addEventListener('pointermove', e => {
+      const on = e.pointerType !== 'touch' && (e.target === evEl || e.target === c.evPop);
+      if (!on) return evClose();
+      if (c.evPop || c.evWait) return;
+      c.evWait = setTimeout(() => {
+        c.evWait = null;
+        c.evPop = document.createElement('div'); c.evPop.className = 'evpop'; c.evPop.textContent = evEl.textContent;
+        c.evPop.style.top = (evEl.offsetTop - 4) + 'px'; el.append(c.evPop);
+      }, 500);
+    });
+    el.addEventListener('pointerleave', evClose);
+  }
   const close = p => !!(p[4] && p[4][7]);   // want: this card opens on a close up (true) or an activity photo (false)
   const first = photos.findIndex(p => p[3] && close(p) === want);
   if (photos.length) show(c, first >= 0 ? first : Math.max(0, photos.findIndex(p => p[3])), true);   // open on a darshan of Bapa
@@ -771,7 +789,8 @@ function swing() {
 // The golden glow (Darpan, 30 Oct 2026: "a very faint glow, golden glow, when the mouse moves through each frame ... If
 // there's no mouse on any of the frames, I want the golden glow to like gently fade through the year"). The mouse's
 // frame glows straight away; once the mouse has been off every frame for a couple of seconds, the glow walks the years
-// again in order, one frame fading out as the next fades in, and starts again at the first year after the last. Frames
+// again in order, a new frame every 2.5 seconds, each one fading in over 2.5 seconds and out over the next 2.5 while the
+// one after fades in, so the light is always moving (Darpan, 30 Oct 2026). It starts again at the first year after the last. Frames
 // off the screen are passed over, so on a phone the glow is always somewhere you can see.
 let under = null, walkAt = -1, walkTimer = null;
 function glowOn(c) {
@@ -795,7 +814,7 @@ function walk() {
     cards.forEach((x, i) => x.el.classList.toggle('glow', i === k));
     if (k >= 0) walkAt = k;
   }
-  walkTimer = setTimeout(walk, reduce ? 3600 : 2600);
+  walkTimer = setTimeout(walk, reduce ? 3600 : 2500);   // a new frame every 2.5 s, each glow 2.5 s in and 2.5 s out: about 5 s a frame, always moving
 }
 // the caption opens over the page: it keeps its place in the row (a negative margin takes back the height it gains), and
 // its card lifts above the cards below. The card holds its photo while the caption is open, so the words stay with it.
@@ -803,7 +822,7 @@ function capOpen(c) {
   const p = c.photos[c.k];
   if (!p || c.open) return;
   const full = p[2] || p[5] || '';
-  if (!full || (full === c.cap.textContent && c.cap.scrollHeight <= c.cap.clientHeight + 1)) return;   // nothing more to show
+  if (!full) return;
   c.h0 = c.cap.offsetHeight; c.open = true;
   c.cap.textContent = full; c.cap.classList.add('open'); c.slot.classList.add('lift');
   capFit(c);
