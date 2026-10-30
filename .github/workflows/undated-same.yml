@@ -1,0 +1,30 @@
+# Undated photos (Darpan, 30 Oct 2026): which of them are already in the diary with their date. The nearest dated
+# photos (release undated-build, match.json) checked point by point (tools/undated_check.py same), with contact sheets.
+# Website only: reads the small R2 copies, touches nothing else.
+name: Undated photos same check
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/project-thread-8ib4kr]
+    paths: [.github/workflows/undated-same.yml]
+permissions:
+  contents: write
+jobs:
+  same:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: |
+          pip install -q pillow numpy opencv-python-headless
+          gh release download undated-build -p undated-photos.zip -p match.json -p undated.json -p kinds.json
+          unzip -q undated-photos.zip 's/*'
+          python3 tools/undated_check.py same --photos s/undated --match match.json --out same.json
+          python3 tools/undated_check.py sheets --photos s/undated --undated undated.json --match match.json --kinds kinds.json --same same.json --out sheets
+          cd sheets && zip -q ../undated-same-sheets.zip *.jpg && cd ..
+          gh release upload undated-build same.json undated-same-sheets.zip --clobber

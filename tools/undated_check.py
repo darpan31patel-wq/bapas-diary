@@ -2,6 +2,7 @@
 (.github/workflows/undated-build.yml), where the R2 copies of the dated photos can be reached.
 
     python3 tools/undated_check.py match --photos out/s/undated --index image --out match.json
+    python3 tools/undated_check.py same --photos out/s/undated --match match.json --out same.json
     python3 tools/undated_check.py kinds --emb emb-undated.npz --out kinds.json
     python3 tools/undated_check.py sheets --photos out/s/undated --undated out/undated.json --match match.json --kinds kinds.json --out sheets
 
@@ -59,6 +60,55 @@ def match(a):
     json.dump(out, open(a.out, 'w'), separators=(',', ':'))
 
 
+def same(a):
+    """The nearest dated photos (match) checked point by point: ORB corners in both, matched, and the share that agree
+    on one shift and scale (RANSAC). The same photo, even cropped or touched up, keeps many agreeing points; a photo
+    of the same moment from a step to the side keeps few. Writes {photo: [ALBUM/FILE, points that agree, distance]}."""
+    import cv2, numpy as np
+    from PIL import Image
+    m = json.load(open(a.match))
+    orb = cv2.ORB_create(1500)
+    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+
+    def feats(im):
+        g = cv2.cvtColor(np.array(im.convert('RGB')), cv2.COLOR_RGB2GRAY)
+        return orb.detectAndCompute(g, None)
+
+    def agree(f1, f2):
+        (k1, d1), (k2, d2) = f1, f2
+        if d1 is None or d2 is None or len(k1) < 8 or len(k2) < 8:
+            return 0
+        ms = bf.match(d1, d2)
+        if len(ms) < 8:
+            return 0
+        p1 = np.float32([k1[x.queryIdx].pt for x in ms]); p2 = np.float32([k2[x.trainIdx].pt for x in ms])
+        _, inl = cv2.estimateAffinePartial2D(p1, p2, method=cv2.RANSAC, ransacReprojThreshold=4)
+        return int(inl.sum()) if inl is not None else 0
+
+    def remote(k):
+        for wait in (2, 10, 0):
+            try:
+                req = urllib.request.Request(PHOTOS + 's/' + urllib.parse.quote(k), headers={'User-Agent': 'bapas-diary-undated'})
+                return Image.open(io.BytesIO(urllib.request.urlopen(req, timeout=30).read()))
+            except Exception:
+                import time; time.sleep(wait)
+        return None
+    out = {}
+    from concurrent.futures import ThreadPoolExecutor
+    todo = [(f, k, d) for f, v in m.items() for k, d in v if d < a.max]
+    with ThreadPoolExecutor(16) as ex:
+        ims = dict(zip([(f, k) for f, k, _ in todo], ex.map(lambda t: remote(t[1]), todo)))
+    for f, k, d in todo:
+        im = ims[(f, k)]
+        if im is None:
+            continue
+        n = agree(feats(Image.open(os.path.join(a.photos, f))), feats(im))
+        if f not in out or n > out[f][1]:
+            out[f] = [k, n, d]
+    json.dump(out, open(a.out, 'w'), separators=(',', ':'))
+    print(len(out), 'checked,', sum(1 for v in out.values() if v[1] >= 30), 'with 30 or more points that agree')
+
+
 def kinds(a):
     import numpy as np
     from deep_tags import probs
@@ -100,6 +150,15 @@ def sheets(a):
         for f, (k, dist) in pairs:
             cells += [(local(f), f), (remote(k), f'{dist} {k}'[:24])]
         sheet(cells, f'match-{lo:03d}.jpg')
+    if a.same and os.path.exists(a.same):
+        sm = json.load(open(a.same))
+        for lo, hi in ((0, 10), (10, 20), (20, 30), (30, 50), (50, 1000)):
+            pairs = sorted(((f, v) for f, v in sm.items() if lo <= v[1] < hi), key=lambda x: -x[1][1])[:30]
+            cells = []
+            for f, (k, n, d) in pairs:
+                cells += [(local(f), f), (remote(k), f'{n}pt {k}'[:24])]
+            sheet(cells, f'same-{lo:03d}.jpg')
+        return
     k = json.load(open(a.kinds))
     for w in KINDS:
         top = sorted(k, key=lambda f: -k[f][w])[:96]
@@ -114,8 +173,10 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest='cmd', required=True)
     s = sub.add_parser('match'); s.add_argument('--photos'); s.add_argument('--index'); s.add_argument('--out')
+    s = sub.add_parser('same'); s.add_argument('--photos'); s.add_argument('--match'); s.add_argument('--out')
+    s.add_argument('--max', type=int, default=200)
     s = sub.add_parser('kinds'); s.add_argument('--emb'); s.add_argument('--out')
     s = sub.add_parser('sheets'); s.add_argument('--photos'); s.add_argument('--undated'); s.add_argument('--match')
-    s.add_argument('--kinds'); s.add_argument('--out')
+    s.add_argument('--kinds'); s.add_argument('--same'); s.add_argument('--out')
     a = ap.parse_args()
     globals()[a.cmd](a)
