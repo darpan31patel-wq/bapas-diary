@@ -164,7 +164,11 @@ CSS = r'''<style>
 .bapa-now.is-soon .bn-go:hover .bn-when,.bapa-now.is-soon .bn-go:focus-visible .bn-when{text-decoration:underline;text-decoration-color:var(--gold-soft);text-underline-offset:3px}
 .bapa-now.is-soon .bn-when::after{content:" ›";color:var(--gold-soft)}
 @keyframes bn-onair{to{box-shadow:0 0 0 7px rgba(255,75,75,0)}}
-@media (prefers-reduced-motion:reduce){.bapa-now .bn-live b::before{animation:none}}
+/* on air: the whole Live now line breathes very gently, so you know it is live right now (Darpan, 31 Oct 2026:
+   "very light flashing so you know its live right now") */
+.bapa-now.is-live .bn-live{animation:bn-breathe 2.6s ease-in-out infinite}
+@keyframes bn-breathe{0%,100%{opacity:1}50%{opacity:.62}}
+@media (prefers-reduced-motion:reduce){.bapa-now .bn-live b::before{animation:none}.bapa-now.is-live .bn-live{animation:none}}
 .bapa-now .bn-watch{flex:none;margin-left:auto;font:600 12px/1 var(--sans);color:#3d0e19;background:#d9a441;padding:6px 12px;border-radius:999px;text-decoration:none}
 .bapa-now .bn-watch:hover,.bapa-now .bn-watch:focus-visible{background:#ffe296}
 /* computers: a slimmer line, so the card (and the matching card beside it) grows as little as possible */
