@@ -10,7 +10,7 @@ permissions:
 jobs:
   shoot:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 31
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -20,7 +20,7 @@ jobs:
       - name: The website branch with the change
         run: |
           git worktree add web origin/claude/project-thread-eawr12
-          cd web && git -c user.name=x -c user.email=x@x am -q ../mockup/murti-older/darshan-older-days.patch
+          cd web && git -c user.name=x -c user.email=x@x am -3 -q ../mockup/murti-older/darshan-older-days.patch
       - name: The Darshan tab's calendar words from the database
         run: |
           gh release download database -p bapas.db.gz

@@ -1,4 +1,4 @@
-From 2c4b87565b73807e308a228f618b129a91117598 Mon Sep 17 00:00:00 2001
+From 30f6b82dc86debce365a72ec3c0c84f1d5169337 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Fri, 30 Oct 2026 19:03:58 +0000
 Subject: [PATCH] Darshan tab: the days before 2026 from the London Mandir
@@ -14,11 +14,11 @@ Claude-Session: https://claude.ai/code/session_014XiN8UWkLjw2j7VjdkWxfp
  2 files changed, 11 insertions(+), 6 deletions(-)
 
 diff --git a/live/darshan/index.html b/live/darshan/index.html
-index 00806a9..a57e4b9 100644
+index 4517a37..c2b9811 100644
 --- a/live/darshan/index.html
 +++ b/live/darshan/index.html
-@@ -180,6 +180,9 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
- .page img { filter: none !important; }
+@@ -219,6 +219,9 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
+ }
  @media (prefers-reduced-motion: reduce) { .card, .tile .t, .strip button { transition: none; } }
  </style>
 +<!-- the days before 2026, from the London Mandir Murti Darshan channel (Darpan, 30 Oct 2026: "save older darshan"):
@@ -27,7 +27,7 @@ index 00806a9..a57e4b9 100644
  <script src="https://photos.bapas-diary.com/darshan/archive.js"></script>
  <script src="/darshan/cal.js"></script>
  </head>
-@@ -227,6 +230,7 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
+@@ -266,6 +269,7 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
    const MURTIS = [["ddm", "Central shrine"], ["ddm_c", "Central shrine, close"], ["gm", "Ghanshyam Maharaj"], ["gm_c", "Ghanshyam Maharaj, close"],
      ["hkm_c", "Harikrishna Maharaj"], ["varni", "Nilkanth Varni"], ["bm", "Bhagatji Maharaj"], ["sm", "Shastriji Maharaj"], ["ym", "Yogiji Maharaj"], ["psm", "Pramukh Swami Maharaj"]];
    const NAME = Object.fromEntries(MURTIS);
@@ -35,7 +35,7 @@ index 00806a9..a57e4b9 100644
    const COLOURS = { Red: "#c4182c", Pink: "#e0508f", Orange: "#ef7d1a", Yellow: "#f2c71c", Green: "#3f9a4a", Blue: "#2f5fc4", Purple: "#8a4fc0", White: "#f4efe4" };
    const $ = id => document.getElementById(id);
    const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-@@ -235,7 +239,8 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
+@@ -274,7 +278,8 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
    const src = (size, D, code) => `${PHOTOS}${size}/${D.d.replace(/-/g, "")}/${code}.jpg`;
    const both = c => c.length > 1 ? `${c[0]} and ${c[1].toLowerCase()}` : c[0];
  
@@ -45,7 +45,7 @@ index 00806a9..a57e4b9 100644
      const [y, m, dd] = D.d.split("-").map(Number), cal = CAL[D.d] || [];
      return { d: D.d, k: D.k, c: (D.c && D.c.length ? D.c : ["White"]).filter(c => COLOURS[c]), i: cal[0] || "", f: cal[1] || "", w: WDL[new Date(y, m - 1, dd).getDay()] };
    });
-@@ -250,15 +255,15 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
+@@ -289,15 +294,15 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
      const D = DAYS[day];
      if (!D.k.includes(code)) code = D.k[0];
      const big = $("big");
