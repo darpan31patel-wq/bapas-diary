@@ -10,8 +10,9 @@ CRAWL = '/mnt/project-files/bapas-diary-crawl/'
 
 # tiers, best first: what makes a photo clearly from this festival
 FEST = {
-    'diwali': [r'firework|fireworks|fatak', r'\bdiyas?\b|\blamps?\b|deepmala|deep ?pr|lights? (a|the)', r'chopda|sharda|lakshmi|account books?|vahi|ledger', r'diwali|deepavali'],
-    'annakut': [r'annakut|annakoot|\bthal\b', r'new year|nutan varsh|bestu', r'govardhan'],
+    # Darpan 31 Oct 2026: Diwali = Bapa with fireworks or lighting lamps, else celebrating; Annakut = Bapa with LOTS of food, not a small thal
+    'diwali': [r'firework|fatak|sparkler', r'lights? (a|the)\b.{0,20}(lamp|divo|diya|diva)|holds? a (diwali )?lamp|\bdiyas?\b|\bdivos?\b|\bdivas?\b|\blamps?\b|deepmala|deep ?pr', r'chopda.{0,20}arti|sanctif|shower|account books?|chopda|sharda|lakshmi|vahi|ledger', r'diwali|deepavali'],
+    'annakut': [r'annakut (arti|darshan|utsav|celebration)|darshan of (the )?annakut|annakut (offered|for celebration|before)|observes (the |various )?(decorative )?annakut|annakut (items|offerings)|engrossed|grand annakut|delicacies', r'annakut|annakoot|new year', r'\bthal\b|govardhan'],
     'janmashtami': [r'janmashtami|janmotsav|krishna janm|\bmatki|dahi.?handi|paranu|cradle|nand mahotsav|panjari', r'krishna|thakorji.{0,20}swing|jhule|hindol'],
     'holi': [r'\bholi\b|holika|bonfire|\bfire\b', r'colou?rs?'],
     'fuldol': [r'colou?rs?|\brang|pichkari|gulal|sprinkl|spray', r'fuldol|pushpadol|dhuleti|phuldol', r'flowers? petals|showers? flowers'],
@@ -65,17 +66,21 @@ def bapa_in(c):
 
 
 def main():
+    import sys
+    only, cap = sys.argv[1:] or None, 16 if sys.argv[1:] else 8   # named festivals: a wider look, 16 a year, merged into cands.json
     names = files()
     out, want = {}, []
     for f in sorted(glob.glob(os.path.join(HERE, 'preview', 'fest', 'json', '*.json'))):
         fest = json.load(open(f, encoding='utf-8'))
+        if only and fest['fest'] not in only:
+            continue
         k = fest['fest']; tiers = [re.compile(t, re.I) for t in FEST[k]]
         name_re = tiers[0]
         years = []
         for y in fest['years']:
             d = datetime.date.fromisoformat(y['d'])
             seen, cands = set(), []
-            for off in (0, -1, 1):
+            for off in ((0, -1, 1, -2, 2) if only else (0, -1, 1)):
                 for album, stem, c in day_lines(d + datetime.timedelta(days=off)):
                     fn = names.get((album, stem.lower()))
                     if not fn or (album, fn) in seen:
@@ -97,13 +102,16 @@ def main():
                     continue
                 caps[x['c']] = caps.get(x['c'], 0) + 1
                 keep.append(x)
-                if len(keep) >= 8:
+                if len(keep) >= cap:
                     break
             years.append(dict(y=y['y'], d=y['d'], place=y.get('place', ''), c=keep))
             want += [f"{x['a']}\t{x['f']}" for x in keep]
         out[k] = dict(title=fest['title'], years=years)
         print(k, sum(1 for y in years if y['c'] and y['c'][0]['t'] < 9), 'of', len(years), 'years have a festival caption')
-    json.dump(out, open(os.path.join(HERE, 'preview', 'fest', 'cands.json'), 'w'), indent=0)
+    path = os.path.join(HERE, 'preview', 'fest', 'cands.json')
+    if only:
+        out = {**json.load(open(path)), **out}
+    json.dump(out, open(path, 'w'), indent=0)
     open(os.path.join(HERE, 'preview', 'fest', 'want.txt'), 'w').write('\n'.join(dict.fromkeys(want)) + '\n')
     print(len(set(want)), 'photos wanted')
 

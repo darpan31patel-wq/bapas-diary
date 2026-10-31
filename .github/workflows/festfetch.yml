@@ -14,7 +14,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - name: Contact sheets of every candidate, and the chosen photos big (run 6)
+      - name: Contact sheets of every candidate, and the chosen photos big (run 7)
         run: |
           pip install -q pillow
           mkdir -p /tmp/th preview/fest/sheets preview/fest/img
@@ -27,7 +27,7 @@ jobs:
             done < preview/fest/want.txt
             wait
             ls /tmp/th | wc -l
-            python3 tools/fest_sheet.py /tmp/th preview/fest/sheets
+            python3 tools/fest_sheet.py /tmp/th preview/fest/sheets $(cat preview/fest/only.txt 2>/dev/null)
             cat preview/fest/want.txt | md5sum > preview/fest/sheets/.done
           fi
           while IFS=$'\t' read -r alb f; do
