@@ -339,46 +339,6 @@ a.ss-big { text-decoration: none; }
 .thumb small{display:block;padding:5px 2px 6px;font:500 11.5px/1.25 var(--serif);color:var(--maroon-ink);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 
-/* A day with Bapa (tools/web_dayflow.py; Darpan, 31 Oct 2026). A: this date's fullest day with each guru, side by side,
-   from morning puja to evening arti. B: Bapa's day, every part of it and everything the diary shows him doing then. */
-.dflow{margin-top:56px;border-top:1px solid rgba(217,164,65,.22);padding-top:30px}
-.dflow>h2{margin:0;text-align:center;font:700 clamp(28px,4vw,42px)/1.1 var(--serif);color:var(--gold-hi);text-wrap:balance}
-.dflow>p{text-align:center;color:var(--mist);margin:8px auto 0;font-size:15px;max-width:70ch;text-wrap:balance}
-.dcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:22px 46px;margin-top:26px}
-.dcol{min-width:0}
-.dhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;padding-bottom:10px;border-bottom:1px solid rgba(217,164,65,.18)}
-.dhead .caps{color:var(--gold-soft);flex-basis:100%}
-.dhead h3{margin:0;font:700 clamp(24px,2.6vw,30px)/1.05 var(--serif);color:var(--gold-hi)}
-.dhead .it{font:500 18px var(--serif);font-style:italic;color:var(--cream)}
-.dhead .go{margin-left:auto}
-.dline{list-style:none;margin:6px 0 0;padding:0;position:relative}
-.dline::before{content:"";position:absolute;left:106px;top:14px;bottom:14px;width:2px;background:linear-gradient(var(--gold-soft),rgba(217,164,65,.25))}
-.dm{display:grid;grid-template-columns:84px 22px 96px minmax(0,1fr);align-items:center;gap:0 12px;padding:9px 0}
-.dm .when{font:700 10px/1.25 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--gold-soft);text-align:right}
-.dm .dot{width:12px;height:12px;border-radius:50%;background:var(--gold-hi);box-shadow:0 0 0 4px rgba(217,164,65,.22);justify-self:center}
-.dm .ph{display:block;padding:4px 4px 0;background:linear-gradient(var(--ivory-top),var(--ivory-bot));box-shadow:0 4px 8px rgba(0,0,0,.35)}
-.dm .ph img{display:block;width:100%;aspect-ratio:1;object-fit:cover;background:var(--maroon-deep)}
-.dm .ph i{display:block;height:8px}
-.dm p{margin:0;font:500 17px/1.35 var(--serif);color:var(--cream);text-wrap:pretty}
-.dm p small{display:block;font:700 10px/1.4 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--gold-soft);margin-bottom:3px}
-.dm.same .when{visibility:hidden}
-/* B */
-.dparts{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:18px;margin-top:26px}
-.dpart{min-width:0;padding:14px 14px 6px;border:1px solid rgba(217,164,65,.22);border-radius:6px;background:rgba(0,0,0,.14)}
-.dpart.now{border-color:var(--gold-hi);box-shadow:0 0 0 1px var(--gold-hi),0 0 24px rgba(255,226,150,.18)}
-.dpart>h3{margin:0;font:700 24px/1.1 var(--serif);color:var(--gold-hi);display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
-.dpart>h3 .caps{font-size:9.5px;background:var(--gold-hi);color:var(--maroon-out);padding:4px 7px;border-radius:999px;letter-spacing:.14em}
-.dact{padding:12px 0;border-top:1px solid rgba(217,164,65,.14)}
-.dpart>h3+.dact{border-top:0;margin-top:4px}
-.dact h4{margin:0;font:700 18px/1.2 var(--serif);color:var(--cream)}
-.dact .caps{display:block;color:var(--gold-soft);font-size:9.5px;margin-top:4px}
-.dpair{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
-.dpair figure{margin:0;padding:4px 4px 0;background:linear-gradient(var(--ivory-top),var(--ivory-bot));box-shadow:0 4px 8px rgba(0,0,0,.35);min-width:0}
-.dpair img{display:block;width:100%;aspect-ratio:1;object-fit:cover;background:var(--maroon-deep)}
-.dpair figcaption{padding:4px 1px 5px;font:500 11px/1.25 var(--serif);color:var(--maroon-ink);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-@media (max-width:1180px){.dparts{grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}}
-@media (max-width:560px){.dflow{padding-inline:max(14px,env(safe-area-inset-left,0px)) max(14px,env(safe-area-inset-right,0px))}.dm{grid-template-columns:62px 18px 78px minmax(0,1fr);gap:0 9px}.dline::before{left:79px}.dm p{font-size:15.5px}.dhead .go{margin-left:0}}
-
 /* the wide view and the slideshow */
 .viewer{position:fixed;inset:0;z-index:60;background:rgba(14,3,6,.96);display:grid;grid-template-rows:auto minmax(0,1fr) auto;padding:calc(10px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .vtop{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -609,7 +569,6 @@ a.ss-big { text-decoration: none; }
   </div>
 
   <div class="dw" id="dw" hidden></div>
-  <section class="dflow" id="dflow" hidden></section>
 
   <section class="all" id="all" hidden>
     <h2 id="all-title"></h2>
@@ -803,7 +762,6 @@ async function open(mmdd, push) {
   } catch (e) {}   // its festival page could not be opened: the date as on any other day
   $('loading').hidden = true;
   render();
-  dayFlow(mmdd);
 }
 
 function render() {
@@ -1583,43 +1541,6 @@ addEventListener('keydown', e => {
   else if (e.key === 'ArrowLeft') view(vi - 1);
 });
 // today only: a date in the address (an old shared link, #10-24) is dropped and today opens
-// A day with Bapa (tools/web_dayflow.py, Darpan, 31 Oct 2026). Which one shows: 'a' one real day on this date with
-// each guru, 'b' Bapa's day with everything he does in each part of it, 'ab' both, one under the other.
-const DAYFLOW = window.DAYFLOW || 'b';   // Darpan, 31 Oct 2026: Bapa's day (B) "go live, nothing else"
-const DF_PARTS = ['Early morning', 'Morning', 'Midday', 'Afternoon', 'Evening'];
-const DF_GURU = {psm: 'Pramukh Swami Maharaj', msm: 'Mahant Swami Maharaj'};
-const dflowGet = f => SRC.dflow ? SRC.dflow(f) : fetch('{{DATA}}../dayflow/' + f + '.json').then(r => { if (!r.ok) throw r.status; return r.json(); });
-const dfImg = (m, cls) => `<img${cls ? ` class="${cls}"` : ''} src="${esc(SRC.photo(m.k.split('/')))}" loading="lazy" decoding="async" alt="${esc(m.c)}" style="object-position:${m.fx * 100}% ${m.fy * 100}%">`;
-const dfDate = d => `${+d.slice(8)} ${MONTHS[+d.slice(5, 7) - 1]} ${d.slice(0, 4)}`;
-async function dayFlow(mmdd) {
-  const box = $('dflow'); box.hidden = true; box.innerHTML = '';
-  let html = '';
-  if (DAYFLOW.includes('a')) try {
-    const A = await dflowGet(mmdd);
-    if (showing !== mmdd) return;
-    const same = A.days.every(x => x.date.slice(5) === mmdd);
-    html += `<h2>A day with Bapa</h2><p>${same ? 'This date' : 'Days near this date'}, from morning puja to evening arti, with Pramukh Swami Maharaj and with Mahant Swami Maharaj.</p><div class="dcols">` +
-      A.days.map(x => `<div class="dcol"><div class="dhead"><span class="caps">${DF_GURU[x.g]}</span><h3>${dfDate(x.date)}</h3><span class="it">${esc(x.place)}</span>
-        <a class="go" href="${esc(SRC.search(x.date))}">See more &rsaquo;</a></div><ol class="dline">` +
-        x.m.map((m, i) => `<li class="dm${i && x.m[i - 1].p === m.p ? ' same' : ''}"><span class="when">${DF_PARTS[m.p]}</span><span class="dot"></span><span class="ph">${dfImg(m)}<i></i></span><p>${esc(m.c)}</p></li>`).join('') +
-        `</ol></div>`).join('') + `</div>`;
-  } catch (e) {}
-  if (DAYFLOW.includes('b')) try {
-    const B = await dflowGet('day');
-    if (showing !== mmdd) return;
-    // the part of the day it is now in India, where Bapa is most days (no clock times in the photos: the usual order)
-    const h = (new Date().getUTCHours() + 5.5 + new Date().getUTCMinutes() / 60) % 24;
-    const nowPart = h >= 4 && h < 8 ? 0 : h >= 8 && h < 11.5 ? 1 : h >= 11.5 && h < 14 ? 2 : h >= 14 && h < 17.5 ? 3 : h >= 17.5 && h < 22 ? 4 : -1;
-    const doy = Math.floor((Date.UTC(2001, +mmdd.slice(0, 2) - 1, +mmdd.slice(3)) - Date.UTC(2001, 0, 1)) / 864e5);
-    const pickOf = (l, n) => l.length ? l[(doy * 7 + n * 5) % l.length] : null;   // a different photo each day of the year
-    const fig = m => m ? `<figure>${dfImg(m)}<figcaption>${m.d.slice(0, 4)} · ${esc(m.pl)}</figcaption></figure>` : '';
-    html += `<h2>Bapa's day</h2><p>Everything the diary shows Bapa doing, in the usual order of his day, from ${B.days.toLocaleString()} days of photos with Pramukh Swami Maharaj and Mahant Swami Maharaj.</p><div class="dparts">` +
-      DF_PARTS.map((name, i) => `<div class="dpart${i === nowPart ? ' now' : ''}"><h3>${name}${i === nowPart ? '<span class="caps">Now in India</span>' : ''}</h3>` +
-        B.acts.filter(a => a.part === i).map(a => `<div class="dact"><h4>${esc(a.t)}</h4><span class="caps">On ${a.days.toLocaleString()} days · ${a.y0} to ${a.y1}</span>
-          <div class="dpair">${fig(pickOf(a.psm, 0) || pickOf(a.msm, 1))}${fig(pickOf(a.msm, 0))}</div></div>`).join('') + `</div>`).join('') + `</div>`;
-  } catch (e) {}
-  if (html) { box.innerHTML = html; box.hidden = false; }
-}
 addEventListener('hashchange', () => { if (/^#\d\d-\d\d$/.test(location.hash)) open(TODAY, true); });
 
 open(TODAY, true);
