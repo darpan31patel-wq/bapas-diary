@@ -1,0 +1,55 @@
+# Pictures of the Where Bapa is now card as it will look with the webcast line under Today (Darpan, 31 Oct 2026), taken
+# on the live page on the runner. Runs only on the mockup branch, never deploys anything.
+name: Webcast card mockup
+on:
+  push:
+    branches: [claude/project-thread-eawr12-mockup]
+    paths: [.github/workflows/webcast-card-mockup.yml]
+permissions:
+  contents: write
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip -q install playwright && python3 -m playwright install --with-deps chromium >/dev/null
+      - name: Pictures
+        run: |
+          mkdir -p shots
+          python3 - <<'PY'
+          from playwright.sync_api import sync_playwright
+          CSS = """.bapa-now.is-soon .bn-live.bn-under{margin:2px 0 0 6px!important;padding-left:10px;border-left:2px solid rgba(217,164,65,.5)}
+          .bapa-now .bn-live:not([hidden])+.bn-next{margin-top:5px}"""
+          SWAP = "const l=document.querySelector('.bapa-now .bn-live'),n=document.querySelector('.bapa-now .bn-next');n.before(l);"
+          def card(pg, name, under, text):
+              pg.evaluate(SWAP)
+              pg.evaluate("""([u,t])=>{const el=document.querySelector('.bapa-now');el.classList.add('is-soon');el.classList.remove('is-live');
+                el.querySelector('.bn-live b').textContent='Webcast';el.querySelector('.bn-live').classList.toggle('bn-under',u);el.querySelector('.bn-when').textContent=t;}""", [under, text])
+              pg.wait_for_timeout(400)
+              box = pg.locator('.bapa-now').bounding_box()
+              pad = 14
+              pg.screenshot(path=f'shots/{name}.jpg', type='jpeg', quality=88, clip={'x': max(0, box['x']-pad), 'y': max(0, box['y']-pad), 'width': box['width']+2*pad, 'height': box['height']+2*pad})
+          with sync_playwright() as p:
+              b = p.chromium.launch()
+              for w, h, dpr, tag in [(1600, 1000, 1, 'computer'), (390, 844, 2, 'phone')]:
+                  pg = b.new_page(viewport={'width': w, 'height': h}, device_scale_factor=dpr)
+                  try: pg.goto('https://bapas-diary.com/', wait_until='networkidle', timeout=25000)
+                  except Exception: pass
+                  pg.wait_for_timeout(4000)
+                  box = pg.locator('.bapa-now').bounding_box()
+                  pad = 14
+                  pg.screenshot(path=f'shots/{tag}-now.jpg', type='jpeg', quality=88, clip={'x': max(0, box['x']-pad), 'y': max(0, box['y']-pad), 'width': box['width']+2*pad, 'height': box['height']+2*pad})
+                  pg.add_style_tag(content=CSS)
+                  card(pg, f'{tag}-today', True, '6.15 am IST')
+                  card(pg, f'{tag}-tomorrow', False, 'Tomorrow, 6.15 am IST')
+                  pg.close()
+              b.close()
+          PY
+          ls -la shots
+      - name: Keep them
+        run: |
+          gh release delete webcast-card-mockup -y --cleanup-tag -R "$GITHUB_REPOSITORY" 2>/dev/null || true
+          gh release create webcast-card-mockup shots/*.jpg -R "$GITHUB_REPOSITORY" --title "Webcast card mockup pictures" --notes "Mockup pictures only, not part of the website" --target "$GITHUB_SHA"
