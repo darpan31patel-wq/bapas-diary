@@ -18,7 +18,7 @@ body { margin: 0; }
   --gold-hi: #ffe296; --gold: #d9a441; --gold-deep: #a8742a; --paper: #f3ead9; --muted: #c9b79a;
   --title: Cinzel, "Trajan Pro", Georgia, serif; --serif: Lora, Georgia, "Times New Roman", serif;
   --script: "Cormorant Garamond", Garamond, Georgia, serif; --sans: Arimo, Arial, Helvetica, sans-serif;
-  --fade: 5s;   /* Darpan, 31 Oct 2026: the same slow, clean dissolve as Today */
+  --fade: 3s;   /* Darpan, 31 Oct 2026: "legacy fade can be speed up by 40%" (was 5 s) */
   color-scheme: dark;
 }
 html, body { min-height: 100%; }
@@ -89,7 +89,7 @@ button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 3px; }
 @media (max-width: 560px) { .cap { font-size: 12px; } }
 /* Windows with "show animations" off asks for less motion: a shorter fade, never a hard cut (Darpan, 31 Oct 2026: "on
    windows chrome the legacy pictures just cut, they dont fade") */
-@media (prefers-reduced-motion: reduce) { :root { --fade: 2.5s; } }
+@media (prefers-reduced-motion: reduce) { :root { --fade: 1.5s; } }
 /* Easier to read on a phone: the smallest words a little bigger (website review, 28 Oct 2026) */
 .seam { width: clamp(48px, 7vw, 92px); }
 .seam .years { width: clamp(46px, 6.4vw, 78px); }
