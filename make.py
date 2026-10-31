@@ -523,6 +523,9 @@ def remember(day, photos):
     json.dump(s, open(SHOWN_FILE, 'w'), indent=1)
 
 
+STORY_BOOST = 60   # a photo of the moment the channel remembers for that year: ahead of every other photo, behind only Darpan's own pin (100)
+
+
 def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
     """Per year, a photo where Bapa is recognised, chosen by Darpan's rule (18 Oct 2026): a photo is either a
     really nice action shot or a close up of Bapa. An action shot only counts when what he is doing stays in
@@ -537,7 +540,10 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
     unless that would leave fewer than five; then they're kept and shown whole so he isn't cropped out.
     aspect is the frame's width / height (0.69 for the tall live cards, 1.33 for wide ones)."""
     rnd = random.Random(seed)
-    cands = {}
+    cands, stories = {}, {}
+    for e in (tg_events(f'{day:%m-%d}') if day else []):   # the channel's story for each year of this day
+        if not e.get('channel') and not e.get('guru'):
+            stories.setdefault(int(e['date'][:4]), []).append(e)
     for x in items:
         if 'path' not in x:
             continue
@@ -591,6 +597,7 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
         lst.append((s_close, s_doing, x))
         if len(lst) > 16:   # keep memory down: only the best few of each kind stay
             pinned = [v for v in lst if (w := PICKS.get(seed, {}).get(str(x['y']))) and isinstance(w, str) and w.lower() in (v[2].get('c') or '').lower()]
+            pinned += [v for v in lst if any(tells(v[2], e) for e in stories.get(x['y'], []))]   # and so does a photo of the channel's story
             keep_ids = {id(v) for v in sorted(lst, key=lambda v: -v[0])[:8] + sorted(lst, key=lambda v: -v[1])[:8] + pinned}   # Darpan's pin always stays
             lst[:] = [v for v in lst if id(v) in keep_ids]
     years = sorted(cands)
@@ -636,6 +643,13 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
                     cands[y][j] = (v[0] - loss, v[1] - loss, v[2])
                     if same_moment or v[1] - loss < NICE_MIN:   # and it no longer jumps the queue as a nice action shot
                         v[2]['nice'] = False
+    if day:   # Darpan, 31 Oct 2026: when Today in BAPS History tells of that year's day (2020: the Nenpur murti pratishtha),
+        # a photo of that very moment is the year's card, shown as the moment (not a close crop), ahead of everyday photos
+        for y, es in stories.items():
+            for j, v in enumerate(cands.get(y, [])):
+                if v[2]['face'] and not v[2].get('tg') and any(tells(v[2], e) for e in es):
+                    cands[y][j] = (v[0] + STORY_BOOST, v[1] + STORY_BOOST, v[2])
+                    v[2].update(nice=True, special=True)
     for y, want in PICKS.get(seed, {}).items():   # Darpan's own choice for a year wins outright
         for j, v in enumerate(cands.get(int(y), [])):
             if want.lower() in (v[2].get('c') or '').lower():
