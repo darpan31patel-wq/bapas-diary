@@ -492,7 +492,7 @@ SAY.update({   # 31 Oct 2026 picks: Diwali lamps and fireworks, Annakut with the
     ('annakut', 2006): 'Arti before a grand annakut', ('annakut', 2008): 'Arti of the New Year annakut',
     ('annakut', 2009): 'New Year annakut arti', ('annakut', 2010): 'Annakut arti in the Akshar Deri', ('annakut', 2012): 'Arti of the annakut',
     ('annakut', 2013): 'The New Year annakut before him', ('annakut', 2014): 'Darshan of the annakut', ('annakut', 2015): 'Engrossed in the annakut darshan',
-    ('annakut', 2017): 'Sees the decorated annakut offerings', ('annakut', 2018): 'New Year’s Day annakut arti', ('annakut', 2019): 'Arti of the Gondal annakut',
+    ('annakut', 2017): 'Arti before the London annakut', ('annakut', 2018): 'New Year’s Day annakut arti', ('annakut', 2019): 'Arti of the Gondal annakut',
     ('annakut', 2020): 'Annakut arti for Thakorji', ('annakut', 2021): 'Arti before the annakut', ('annakut', 2022): 'Annakut arti with the sadhus',
     ('annakut', 2023): 'Annakut arti on New Year’s Day', ('annakut', 2024): 'Waves the annakut arti', ('annakut', 2025): 'Arti of the grand annakut',
 })
