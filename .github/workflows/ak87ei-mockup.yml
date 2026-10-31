@@ -51,6 +51,7 @@ jobs:
               for name, w, h, mob in (('computer', 1600, 1000, False), ('phone', 390, 844, True)):
                   ctx = br.new_context(viewport={'width': w, 'height': h}, device_scale_factor=2 if mob else 1, is_mobile=mob, has_touch=mob)
                   p = ctx.new_page()
+                  p.on('pageerror', lambda e: print('PAGE ERROR', e))
                   p.goto(B + '/travels/mandirs/'); p.wait_for_timeout(4500); eager(p)
                   p.screenshot(path=f'shots/mandirs-{name}.jpg', quality=82)
                   p.goto(B + '/travels/places/'); p.wait_for_timeout(3000)
@@ -79,7 +80,7 @@ jobs:
               br.close()
           PY
           ls -la shots
-          cp build-log.txt shots/ ; cp out/data/dayflow/10-31.json out/data/dayflow/day.json shots/ && cp out/travels/mandirs/index.html shots/mandirs.html
+          cp build-log.txt shots/ ; cp out/travels/mandirs/index.html shots/mandirs.html; cp out/data/dayflow/10-31.json out/data/dayflow/day.json shots/ || true; ls out/data/dayflow | wc -l
           gh release view ak87ei-mockup >/dev/null 2>&1 || gh release create ak87ei-mockup --prerelease --title "Mandirs and A day with Bapa mockup" --notes "Pictures of two new website pieces, for a mockup. Not used by the daily picture or the website."
           gh release upload ak87ei-mockup shots/* --clobber
       - name: The logs, when something failed
