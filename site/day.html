@@ -208,7 +208,7 @@ a.ss-big { text-decoration: none; }
   transform-origin:50% 90%;animation:flicker 1.2s ease-in-out infinite alternate}
 .board.dipa .tstar i{display:none}
 .dipas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:2}
-.dipas .diya{position:absolute;width:32px;height:32px;margin:-28px 0 0 -16px;overflow:visible;filter:drop-shadow(0 2px 2px rgba(0,0,0,.45))}
+.dipas .diya{position:absolute;width:40px;height:40px;margin:-35px 0 0 -20px;overflow:visible;filter:drop-shadow(0 2px 2px rgba(0,0,0,.45))}
 .dipas .diya .glow{opacity:.45;transform-origin:20px 15px;transition:opacity 1.6s ease,transform 1.6s ease;animation:none}
 .dipas .diya .flame{transform:scale(.72);transform-box:fill-box;transform-origin:50% 100%;transition:transform 1.4s ease;animation:none}
 .dipas .diya.on .glow{opacity:1;transform:scale(1.9)}
@@ -220,10 +220,10 @@ a.ss-big { text-decoration: none; }
 @media (prefers-reduced-motion:reduce){.board.dipa .tstar::after{animation:none}}
 .nyglow{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
 .nyglow b{position:absolute;width:var(--w,300px);height:var(--w,300px);margin:calc(var(--w,300px) / -2) 0 0 calc(var(--w,300px) / -2);border-radius:50%;
-  background:radial-gradient(circle,var(--c,rgba(255,214,120,.5)) 0,rgba(255,170,70,.18) 35%,transparent 68%);opacity:0;
+  background:radial-gradient(circle,var(--c,rgba(255,214,120,.6)) 0,rgba(255,170,70,.24) 34%,transparent 68%);opacity:0;
   animation:bloom var(--t,5s) ease-out forwards}
 .nyglow b::after{content:"";position:absolute;inset:30%;border-radius:50%;background:radial-gradient(circle,rgba(255,250,230,.55),transparent 70%)}
-@keyframes bloom{0%{opacity:0;transform:scale(.35)}22%{opacity:.85}100%{opacity:0;transform:scale(1.15)}}
+@keyframes bloom{0%{opacity:0;transform:scale(.35)}20%{opacity:1}100%{opacity:0;transform:scale(1.2)}}
 .page.newyear .wrap{position:relative;z-index:1}
 
 /* The Diwali days' own sections under the board (Darpan, 31 Oct 2026): Bapa's Diwali every year, his New Year ashirwad,
@@ -1395,19 +1395,19 @@ function newYearGlow(on) {
   let g = document.querySelector('.nyglow');
   if (!on || reduce) { if (g) g.remove(); return; }
   if (!g) { g = document.createElement('div'); g.className = 'nyglow'; g.setAttribute('aria-hidden', 'true'); document.querySelector('.page').prepend(g); }
-  const C = ['rgba(255,214,120,.6)', 'rgba(255,170,90,.55)', 'rgba(255,140,170,.45)', 'rgba(205,175,255,.42)', 'rgba(255,238,175,.6)'];
+  const C = ['rgba(255,214,120,.75)', 'rgba(255,170,90,.7)', 'rgba(255,140,170,.6)', 'rgba(205,175,255,.55)', 'rgba(255,238,175,.75)'];
   const r = (a, z) => a + Math.random() * (z - a);
   const bloom = () => {
     if (!document.hidden && !paused) {
       const b = document.createElement('b'), side = Math.random() < .75;
       b.style.left = (side ? (Math.random() < .5 ? r(2, 17) : r(83, 98)) : r(22, 78)).toFixed(1) + '%';
       b.style.top = (side ? r(12, 78) : r(4, 20)).toFixed(1) + '%';
-      b.style.setProperty('--w', Math.round(r(200, 420)) + 'px');
+      b.style.setProperty('--w', Math.round(r(240, 480)) + 'px');
       b.style.setProperty('--c', C[Math.floor(Math.random() * C.length)]);
       b.style.setProperty('--t', r(4.8, 6.8).toFixed(1) + 's');
       g.append(b); setTimeout(() => b.remove(), 7200);
     }
-    glowTimer = setTimeout(bloom, r(1500, 3200));
+    glowTimer = setTimeout(bloom, r(1100, 2600));
   };
   glowTimer = setTimeout(bloom, 600);
 }
