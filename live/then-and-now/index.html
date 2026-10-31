@@ -18,7 +18,7 @@ body { margin: 0; }
   --gold-hi: #ffe296; --gold: #d9a441; --gold-deep: #a8742a; --paper: #f3ead9; --muted: #c9b79a;
   --title: Cinzel, "Trajan Pro", Georgia, serif; --serif: Lora, Georgia, "Times New Roman", serif;
   --script: "Cormorant Garamond", Garamond, Georgia, serif; --sans: Arimo, Arial, Helvetica, sans-serif;
-  --fade: 3s;
+  --fade: 5s;   /* Darpan, 31 Oct 2026: the same slow, clean dissolve as Today */
   color-scheme: dark;
 }
 html, body { min-height: 100%; }
@@ -53,7 +53,7 @@ figure { margin: 0; display: grid; grid-template-rows: auto 1fr; gap: 10px; min-
 .frame .layer.on { opacity: 1; }
 .frame .bg { position: absolute; inset: -20px; background-size: cover; background-position: center; filter: blur(18px) brightness(.45); }
 .frame img { position: relative; width: 100%; height: 100%; object-fit: contain; display: block; }
-/* Darpan, 26 Oct 2026: every change of pair fades slowly, over 3 seconds; the words fade out and back in over the same time */
+/* Darpan, 26 Oct 2026: every change of pair fades slowly (3 seconds then, 5 from 31 Oct 2026); the words fade out and back in over the same time */
 .soft { transition: opacity calc(var(--fade) / 2) ease-in-out; }
 .soft.out { opacity: 0; }
 figcaption { text-align: center; display: grid; gap: 2px; align-content: start; }
@@ -87,7 +87,9 @@ button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 3px; }
 .note { max-width: 62ch; margin: 6px auto 0; text-align: center; font: 400 13px/1.6 var(--sans); color: var(--muted);
   border-top: 1px solid rgba(217,164,65,.25); padding-top: 16px; }
 @media (max-width: 560px) { .cap { font-size: 12px; } }
-@media (prefers-reduced-motion: reduce) { :root { --fade: 0s; } }
+/* Windows with "show animations" off asks for less motion: a shorter fade, never a hard cut (Darpan, 31 Oct 2026: "on
+   windows chrome the legacy pictures just cut, they dont fade") */
+@media (prefers-reduced-motion: reduce) { :root { --fade: 2.5s; } }
 /* Easier to read on a phone: the smallest words a little bigger (website review, 28 Oct 2026) */
 .seam { width: clamp(48px, 7vw, 92px); }
 .seam .years { width: clamp(46px, 6.4vw, 78px); }
