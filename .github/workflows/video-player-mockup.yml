@@ -1,0 +1,53 @@
+# Pictures of the in page Video Darshan player on the real live pages (Darpan, 31 Oct 2026), taken on the runner because
+# bapas-diary.com cannot be reached from the build box. Runs only on the mockup branch, never deploys anything.
+name: Video player mockup
+on:
+  push:
+    branches: [claude/project-thread-eawr12-mockup]
+    paths: [.github/workflows/video-player-mockup.yml]
+permissions:
+  contents: write
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip -q install playwright && python3 -m playwright install --with-deps chromium >/dev/null
+      - name: Pictures
+        run: |
+          mkdir -p shots
+          python3 - <<'PY'
+          from playwright.sync_api import sync_playwright
+          JS = open('tools/mockups/video.js').read(); CSS = open('tools/mockups/video.css').read()
+          def arm(pg):
+              pg.add_style_tag(content=CSS); pg.add_script_tag(content=JS)
+          def shot(pg, url, sel, name, wait=3500, scroll=None):
+              pg.goto(url, wait_until='networkidle'); pg.wait_for_timeout(wait)
+              if scroll: pg.evaluate(scroll); pg.wait_for_timeout(600)
+              arm(pg)
+              a = pg.locator(sel).first
+              if a.count() == 0: print('no link on', url); return
+              a.scroll_into_view_if_needed(); pg.wait_for_timeout(300)
+              pg.screenshot(path=f'shots/{name}-before.jpg', type='jpeg', quality=80)
+              a.click(); pg.wait_for_timeout(4500)
+              pg.screenshot(path=f'shots/{name}.jpg', type='jpeg', quality=82)
+              pg.keyboard.press('Escape'); pg.wait_for_timeout(900)
+              pg.screenshot(path=f'shots/{name}-after.jpg', type='jpeg', quality=80)
+          with sync_playwright() as p:
+              b = p.chromium.launch()
+              pg = b.new_page(viewport={'width': 1600, 'height': 1000}, device_scale_factor=1)
+              shot(pg, 'https://bapas-diary.com/', 'a[href*="youtube.com/watch"]', 'today')
+              shot(pg, 'https://bapas-diary.com/photos/', 'a[href*="youtube.com/watch"]', 'calendar', wait=4000)
+              shot(pg, 'https://bapas-diary.com/travels/', 'a[href*="youtube.com/watch"]', 'travels', wait=4000)
+              ph = b.new_page(viewport={'width': 390, 'height': 844}, device_scale_factor=2)
+              shot(ph, 'https://bapas-diary.com/', 'a[href*="youtube.com/watch"]', 'phone', wait=4000)
+              b.close()
+          PY
+          ls -la shots
+      - name: Keep them
+        run: |
+          gh release delete video-player-mockup -y --cleanup-tag -R "$GITHUB_REPOSITORY" 2>/dev/null || true
+          gh release create video-player-mockup shots/*.jpg -R "$GITHUB_REPOSITORY" --title "Video player mockup pictures" --notes "Mockup pictures only, not part of the website" --target "$GITHUB_SHA"
