@@ -127,7 +127,7 @@ function draw() {
 $('grid').addEventListener('click', e => {
   const c = e.target.closest('.card'); if (!c || e.target.closest('[data-fav]')) return;
   const all = shared() || B.fav.list(), m = moment(all[[...$('grid').children].indexOf(c)].k);
-  if (m) return void window.open(`https://www.youtube.com/watch?v=${m.id}&t=${m.t}s`, '_blank', 'noopener');
+  if (m) return void (window.BapaVideo ? BapaVideo.play(m.id, m.t, all[[...$('grid').children].indexOf(c)].c || '') : window.open(`https://www.youtube.com/watch?v=${m.id}&t=${m.t}s`, '_blank', 'noopener'));
   const list = all.filter(f => !moment(f.k)), i = Math.max(0, list.indexOf(all[[...$('grid').children].indexOf(c)]));
   B.slideshow([...list.slice(i), ...list.slice(0, i)].map(B.photoOf), 'My favourites');
 });
