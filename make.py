@@ -1709,12 +1709,12 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None):
         if nrows == 2:
             per = [m - m // 2, m // 2]
         else:
-            best = min(range(0, m // 2 + 1), key=lambda sd: (max(2 * -(-sd // 2) + 2, m - 2 * sd), abs(m - 2 * sd - sd - 2)))
+            best = min(range(0, m // 2 + 1), key=lambda sd: (max(sd + 2, m - 2 * sd), abs(m - 3 * sd - 2)))
             per = [best, best, m - 2 * best]
         rows, k = [], 0
         for c in per:
             rows.append(rest[k:k + c]); k += c
-        cols = max([2 * -(-len(r) // 2) + 2 for r in rows[:2]] + [len(r) for r in rows[2:]])
+        cols = max([len(r) + 2 for r in rows[:2]] + [len(r) for r in rows[2:]])
     else:
         per = [n // nrows + (1 if i < n % nrows else 0) for i in range(nrows)]
         rows, k = [], 0
@@ -1753,24 +1753,27 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None):
             sag = lambda xp: y_top - px(4) + px(SAG) * 4 * (xp / W) * (1 - xp / W)                    # the cord dips a little in the middle
         rope(img, [(xp, sag(xp)) for xp in range(0, W + 1, 4)])   # drawn before the cards, so it always runs behind them
         later = []   # pegs and captions go on after the whole row, so a card swinging over its neighbour never hides them
-        if r == 0 and hero:   # where the top cord runs at the hero's middle and its two pegs
-            hq = {cx: sag(cx) + px(4) for cx in (W / 2 - .3 * hcard.CW, W / 2, W / 2 + .3 * hcard.CW)}
+        if r == 0 and hero:   # the top two cords' cards and the hero centred as one block (Darpan, 31 Oct 2026: no dead space at one side)
+            L = len(row) // 2
+            hx0 = (W - (len(row) + 2) * card.CW - (len(row) + 1) * gap) / 2   # the left edge of the block's first place
+            hx = hx0 + L * (card.CW + gap) + card.CW + gap / 2                  # the hero's middle, over places L and L + 1
+            hq = {cx: sag(cx) + px(4) for cx in (hx - .3 * hcard.CW, hx, hx + .3 * hcard.CW)}
         if r == 1 and hero:   # hung from the top cord, put on now so the second cord runs behind it
             hung = hcard.hang(hcard.make(hero))
-            qy = hq[W / 2]
-            img.paste(hung, (int(W / 2 - hung.width / 2), int(qy + hcard.CH / 2 - hung.height / 2)), hung)
+            qy = hq[hx]
+            img.paste(hung, (int(hx - hung.width / 2), int(qy + hcard.CH / 2 - hung.height / 2)), hung)
             for cx, cy in hq.items():
-                if cx != W / 2:
+                if cx != hx:
                     later.append(lambda cx=cx, cy=cy: peg(img, cx, cy, s, short=.72))
             if lay.get('pill') and shown_caption(hero):
                 tag, pos = under_card(hero, hcard, gap, cf_a, lh_a, 'W2', rnd)
-                later.append(lambda tag=tag, by=qy + hcard.CH: img.paste(tag, (int(W / 2 - tag.width / 2), int(by + px(6))), tag))
+                later.append(lambda tag=tag, by=qy + hcard.CH: img.paste(tag, (int(hx - tag.width / 2), int(by + px(6))), tag))
         x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
         slots = list(range(len(row)))
-        if hero and r < 2:   # either side of the hero: the left half ends a gap before it, the right half starts a gap after it
-            L = len(row) // 2
-            slots = [c - L for c in range(L)] + [c - L + 2 for c in range(L, len(row))]
-            x0 = W / 2 - card.CW - gap / 2   # the left edge of the hero's first place
+        if hero and r < 2:   # either side of the hero, in the same places on both cords
+            Lr = min(L, len(row))
+            slots = [L - Lr + c for c in range(Lr)] + [L + 2 + c - Lr for c in range(Lr, len(row))]
+            x0 = hx0
         for c, x in enumerate(row):
             cx = x0 + slots[c] * (card.CW + gap) + card.CW / 2
             if lay.get('straight'):   # every card hangs straight down from its peg on the curved cord (Darpan 18 Oct 2026: any swing looked messy)

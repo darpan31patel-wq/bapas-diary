@@ -458,14 +458,14 @@ function drawDay(ctx, pack, o, hits) {
     else {
       let best = 0, cost = [1e9, 1e9];
       for (let sd = 0; sd <= Math.floor(m / 2); sd++) {
-        const c2 = [Math.max(2 * Math.ceil(sd / 2) + 2, m - 2 * sd), Math.abs(m - 3 * sd - 2)];
+        const c2 = [Math.max(sd + 2, m - 2 * sd), Math.abs(m - 3 * sd - 2)];
         if (c2[0] < cost[0] || (c2[0] === cost[0] && c2[1] < cost[1])) { cost = c2; best = sd }
       }
       per = [best, best, m - 2 * best];
     }
     const rest = cards.filter(x => x !== hero); let k = 0;
     per.forEach(c => { rows.push(rest.slice(k, k + c)); k += c });
-    cols = Math.max(...rows.slice(0, 2).map(r => 2 * Math.ceil(r.length / 2) + 2), ...rows.slice(2).map(r => r.length));
+    cols = Math.max(...rows.slice(0, 2).map(r => r.length + 2), ...rows.slice(2).map(r => r.length));
   } else {
     per = Array.from({ length: nrows }, (_, i) => Math.floor(n / nrows) + (i < n % nrows ? 1 : 0));
     let k = 0; per.forEach(c => { rows.push(cards.slice(k, k + c)); k += c });
@@ -486,7 +486,7 @@ function drawDay(ctx, pack, o, hits) {
   if (nrows > 1) { pitch += Math.max(0, bottom - top - block) / (nrows - 1); block = (nrows - 1) * pitch + CH + below }
   const first = top + Math.max(0, (bottom - top - block) / 2), s = PW / 220;
   const rnd = mulberry(1025);
-  let sag0 = null;
+  let sag0 = null, L = 0, hx0 = 0, hx = W / 2;
   const caption = (x, cx, by, maxw) => {   // the caption on its dark pill under a card
     const { lines, size } = fitCaption(ctx, x.caption, maxw, 2, o.capSize);
     const lh2 = size * 1.2; ctx.font = `500 ${size}px ${SERIF}`;
@@ -499,23 +499,26 @@ function drawDay(ctx, pack, o, hits) {
   rows.forEach((row, r) => {
     const yTop = first + r * pitch;
     const sag = xp => yTop - 4 - o.sag * (1 - 4 * (xp / W) * (1 - xp / W));
-    if (r === 0) sag0 = sag;
+    if (r === 0) {   // the top two cords' cards and the hero centred as one block (Darpan, 31 Oct 2026)
+      sag0 = sag; L = Math.floor(row.length / 2);
+      hx0 = (W - (row.length + 2) * CW - (row.length + 1) * gap) / 2; hx = hx0 + L * (CW + gap) + CW + gap / 2;
+    }
     if (o.cord > 0) rope(ctx, Array.from({ length: W / 8 + 1 }, (_, i) => [i * 8, sag(i * 8)]), o.cord);
     let x0 = (W - (row.length * CW + (row.length - 1) * gap)) / 2, slots = row.map((_, c) => c);
     const later = [];
     if (hero && r === 1) {   // hung from the top cord, drawn now so the second cord runs behind it
       const HW = 2 * CW + gap, HH = pitch + CH, hPW = HW / (1 + 2 * B_), hB = Math.max(6, hPW * B_), hBB = Math.max(6, hPW * BB_);
-      const qy = sag0(W / 2) + 4;
-      ctx.save(); ctx.translate(W / 2, qy); drawPolaroid(ctx, hero, -HW / 2, 0, hPW, HH - hB - hBB, hB, hBB, o); ctx.restore();
-      hits.push({ key: hero.y, x: W / 2 - HW / 2, y: qy, w: HW, h: HH });
-      [-.3, .3].forEach(d => later.push(() => { if (o.pegs) peg(ctx, W / 2 + d * HW, sag0(W / 2 + d * HW) + 4, s, o.peg, .72) }));
+      const qy = sag0(hx) + 4;
+      ctx.save(); ctx.translate(hx, qy); drawPolaroid(ctx, hero, -HW / 2, 0, hPW, HH - hB - hBB, hB, hBB, o); ctx.restore();
+      hits.push({ key: hero.y, x: hx - HW / 2, y: qy, w: HW, h: HH });
+      [-.3, .3].forEach(d => later.push(() => { if (o.pegs) peg(ctx, hx + d * HW, sag0(hx + d * HW) + 4, s, o.peg, .72) }));
       const txt = o.captions === 'none' || (o.captions === 'special' && !hero.c.special) ? '' : hero.caption;
-      if (txt) later.push(() => caption(hero, W / 2, qy + HH + 6, HW - 40));
+      if (txt) later.push(() => caption(hero, hx, qy + HH + 6, HW - 40));
     }
     if (hero && r < 2) {   // either side of the hero
-      const L = Math.floor(row.length / 2);
-      slots = row.map((_, c) => c < L ? c - L : c - L + 2);
-      x0 = W / 2 - CW - gap / 2;
+      const Lr = Math.min(L, row.length);
+      slots = row.map((_, c) => c < Lr ? L - Lr + c : L + 2 + c - Lr);
+      x0 = hx0;
     }
     row.forEach((x, c) => {
       const cx = x0 + slots[c] * (CW + gap) + CW / 2;
