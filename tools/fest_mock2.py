@@ -24,7 +24,7 @@ DAY = {'diwali': '2026-11-08', 'annakut': '2026-11-10', 'janmashtami': '2027-08-
 MARIGOLD, ROSES, JASMINE = [(255, 159, 28), (255, 190, 40), (240, 120, 20)], [(224, 36, 94), (255, 143, 171), (255, 213, 106)], [(255, 252, 240), (245, 240, 220)]
 DRESS = {   # night/top tint, glow colour, sky, rope, foot picture
     'diwali': dict(top=(10, 8, 26), glow=(150, 80, 20), sky=('fireworks',), rope=('bulbs',), foot='diya'),
-    'annakut': dict(glow=(190, 100, 20), rope=('sweets',), foot='laddus'),   # light touch: laddus on the marigold cord, a full thali on each card
+    'annakut': dict(glow=(190, 100, 20), rope=('sweets',), foot=None),   # light touch: laddus on the marigold cord, a full thali on each card
     'janmashtami': dict(top=(8, 12, 40), glow=(60, 90, 180), sky=('stars',), rope=('beads', [(31, 122, 140), (27, 63, 122), (80, 170, 90)]), foot='matki'),
     'fuldol': dict(glow=(170, 40, 90), sky=('puffs', [(255, 61, 127), (255, 212, 0), (53, 199, 89), (61, 183, 255), (255, 138, 26), (176, 92, 255)]),
                    rope=('beads', [(255, 61, 127), (255, 212, 0), (53, 199, 89), (61, 183, 255), (255, 138, 26)]), foot='gulal'),
@@ -433,7 +433,7 @@ def rope_for(k):
 
 def dressed(k, make_card):
     """The usual card, then its band redrawn: the festival's little picture at each foot corner, year and town between."""
-    draw = PICS[DRESS[k]['foot']]
+    draw = PICS.get(DRESS[k].get('foot'))
 
     def go(self, x, num=None):
         card = make_card(self, x, num)
@@ -442,10 +442,11 @@ def dressed(k, make_card):
         for j in range(B + PH + 1, CH - 1):
             t = j / CH
             d.line((1, j, CW - 2, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(make.IVORY_TOP, make.IVORY_BOTTOM)) + (255,))
-        s = round(min(BB * .9, PW * .16))
-        pic = hi(s, draw)
-        y = round(B + PH + (BB - s) / 2)
-        card.alpha_composite(pic, (round(B * .6), y)); card.alpha_composite(pic, (CW - s - round(B * .6), y))
+        s = round(min(BB * .9, PW * .16)) if draw else 0
+        if draw:
+            pic = hi(s, draw)
+            y = round(B + PH + (BB - s) / 2)
+            card.alpha_composite(pic, (round(B * .6), y)); card.alpha_composite(pic, (CW - s - round(B * .6), y))
         yf, yt = make.garamond(min(PW * .15, BB * .62), 700), str(x['y'])
         pl = make.place(x).upper()
         pf, track = make.arimo_bold(min(PW * .06, BB * .25)), PW * .012
@@ -545,7 +546,7 @@ def main():
             row = make.ROWS[-1]
             room = row['x0'] - px(40)
             if room > px(120):
-                h = round(min(row['CH'] * 1.05, room * 1.5)); w = round(min(room, h / 1.3))
+                w = round(room); h = round(min(row['CH'] * 1.15, w * 1.45))
                 for i, cx in enumerate((row['x0'] / 2, W - row['x0'] / 2)):
                     disp = fest_food.display(w, h, seed=i)
                     img = img.convert('RGBA'); img.alpha_composite(disp, (int(cx - w / 2), int(row['y'] + row['CH'] - h)))

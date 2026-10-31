@@ -78,18 +78,53 @@ def katli_stack(img, cx, base, w, n):
     d.polygon([(cx - w * .2, base - (n - 1) * h - h * .5), (cx, base - (n - 1) * h - h * .5 - w * .07), (cx + w * .2, base - (n - 1) * h - h * .5), (cx, base - (n - 1) * h - h * .5 + w * .07)], fill=(232, 236, 240))
 
 
+def jalebi_heap(img, cx, base, w, seed):
+    """A heap of jalebis on a brass plate."""
+    d = ImageDraw.Draw(img); rnd = random.Random(seed)
+    plate(d, cx, base + w * .04, w * 1.15)
+    for k in range(14):
+        r = w * .13
+        x = cx + rnd.uniform(-.38, .38) * w * (1 - k / 18); y = base - r * .5 - (k / 14) ** .8 * w * .45
+        pts = [(x + math.cos(t) * r * t / 12, y + math.sin(t) * r * t / 12 * .7) for t in [i / 6 for i in range(3, 72)]]
+        d.line(pts, fill=(190, 85, 8), width=max(2, int(w * .045)), joint='curve')
+        d.line(pts, fill=(255, 158, 28), width=max(1, int(w * .03)), joint='curve')
+        d.line(pts, fill=(255, 210, 110), width=max(1, int(w * .01)), joint='curve')
+
+
+def bowl(img, cx, base, w, col, seed):
+    """A brass bowl heaped with something (shrikhand, halwa, dry fruit)."""
+    d = ImageDraw.Draw(img); rnd = random.Random(seed)
+    d.pieslice((cx - w / 2, base - w * .55, cx + w / 2, base + w * .35), 0, 180, fill=(176, 120, 36), outline=(120, 78, 20))
+    d.ellipse((cx - w / 2, base - w * .22, cx + w / 2, base - w * .02), fill=(150, 100, 30))
+    d.pieslice((cx - w * .46, base - w * .5, cx + w * .46, base + w * .1), 180, 360, fill=col)
+    for _ in range(int(w * .12)):
+        x, y = cx + rnd.uniform(-.35, .35) * w, base - w * .12 - rnd.uniform(0, .16) * w; r = w * .025
+        d.ellipse((x - r, y - r, x + r, y + r), fill=rnd.choice([(150, 95, 40), (120, 170, 60), (240, 230, 210)]))
+
+
+LADDU = [((240, 150, 30), [(255, 195, 80), (200, 110, 20)]), ((110, 40, 18), None), ((250, 215, 60), [(255, 240, 140), (220, 170, 30)]),
+         ((235, 130, 170), [(255, 190, 210)]), ((140, 190, 90), [(190, 225, 140)]), ((245, 235, 215), [(255, 250, 240)])]
+
+
 def display(w, h, seed=0):
-    """An annakut corner: a tall sweet tower behind, laddu pyramids and kaju katli in front, drawn at 2x and shrunk."""
+    """A full annakut corner, like the real ones: tall sweet towers at the back, pyramids of laddus, pedas and
+    jamuns in the middle, jalebis, kaju katli and bowls in front, every row overlapping the one behind it."""
     k = 2; W, H = w * k, h * k
     img = Image.new('RGBA', (W, H), (0, 0, 0, 0))
-    unit = W / 4
-    tower(img, W * .5, H * .62, unit * 1.5, 7, seed)
-    pyramid(img, W * .2, H * .8, unit * .17, 4, (240, 150, 30), [(255, 195, 80), (200, 110, 20)], seed)
-    pyramid(img, W * .8, H * .8, unit * .17, 4, (110, 40, 18), None, seed + 1)
-    katli_stack(img, W * .5, H * .93, unit * 1.1, 4)
+    rnd = random.Random(seed)
+    u = W / 3.2
+    for i, fx in enumerate((.18, .5, .82)):   # back: towers, the middle one tallest
+        tower(img, W * fx, H * (.5 if i == 1 else .56), u * (1.05 if i == 1 else .85), 8 if i == 1 else 6, seed * 3 + i)
+    for i, fx in enumerate((.1, .36, .64, .9)):   # middle: pyramids
+        col, dots = LADDU[(i + seed) % len(LADDU)]
+        pyramid(img, W * fx, H * .74, u * .1, 4 + (i % 2), col, dots, seed + i)
+    jalebi_heap(img, W * .22, H * .88, u * 1.1, seed)
+    katli_stack(img, W * .52, H * .9, u * .8, 5)
+    bowl(img, W * .8, H * .9, u * .8, (250, 225, 120), seed)
+    for i, fx in enumerate((.04, .96)):   # little laddu heaps at the front corners
+        col, dots = LADDU[(i + 2 + seed) % len(LADDU)]
+        pyramid(img, W * fx, H * .97, u * .07, 3, col, dots, seed + 9 + i)
     sh = Image.new('RGBA', img.size, (0, 0, 0, 0))
     sh.putalpha(img.getchannel('A').filter(ImageFilter.GaussianBlur(k * 6)).point(lambda v: v * .5))
     out = Image.new('RGBA', img.size, (0, 0, 0, 0)); out.alpha_composite(sh, (k * 4, k * 6)); out.alpha_composite(img)
     return out.resize((w, h), Image.LANCZOS)
-
-
