@@ -155,20 +155,19 @@ def main():
         both = []
         for psm in (True, False):
             pick = None
-            # a whole day (five kinds of moment at least) as near this date as can be, within two weeks; else the
-            # fullest day of three kinds or more within a month
-            for kinds, reach in ((5, 15), (3, 31)):
-                for gap in range(0, reach):
-                    near = {(base + datetime.timedelta(days=s * gap)).strftime('%m-%d') for s in (1, -1)}
-                    ds = [d for m in near for d in by_mmdd.get(m, []) if (d < PSM_UNTIL) == psm
-                          and len({r['do'] for r in days[d] if r['do']}) >= kinds]
-                    if ds:   # the day that gives the most moments, then the fullest
-                        pick = max(ds, key=lambda d: (min(len(moments(d)['m']), 8), full[d]))
-                        if len(moments(pick)['m']) >= kinds:
-                            break
-                        pick = None
-                if pick:
+            # a whole day (five moments or more) as near this date as can be, within two weeks; else the day with the
+            # most moments within a month, the nearest of those
+            for gap in range(0, 15):
+                near = {(base + datetime.timedelta(days=s * gap)).strftime('%m-%d') for s in (1, -1)}
+                ds = [d for m in near for d in by_mmdd.get(m, []) if (d < PSM_UNTIL) == psm and len(moments(d)['m']) >= 5]
+                if ds:
+                    pick = max(ds, key=lambda d: (min(len(moments(d)['m']), 8), full[d]))
                     break
+            if not pick:
+                ds = [(gap, d) for gap in range(0, 31) for m in {(base + datetime.timedelta(days=s * gap)).strftime('%m-%d') for s in (1, -1)}
+                      for d in by_mmdd.get(m, []) if (d < PSM_UNTIL) == psm and len(moments(d)['m']) >= 3]
+                if ds:
+                    pick = max(ds, key=lambda x: (min(len(moments(x[1])['m']), 8), -x[0]))[1]
             if pick:
                 both.append(dict(moments(pick), g='psm' if psm else 'msm'))
         if len(both) == 2:   # never one guru without the other
