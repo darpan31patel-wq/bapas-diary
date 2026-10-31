@@ -1926,12 +1926,29 @@ def unframe(items):
 tg_rank = lambda e: (bool(e.get('special')), not e.get('channel'), e.get('reposts', 1), -int(e['date'][:4]))   # Today in BAPS History leads, the UK diary follows
 
 
+TELL_DAYS = 360   # a word on fewer days of the year than this (murti, not performs or blesses) ties a card to a story
+
+
+def tells(x, e):
+    """True when the card x shows the channel's story e: the card is the channel's own photo of that day and town, or
+    a photo of that day and town whose caption shares one of the story's uncommon words ('pratishtha', 'murti').
+    Darpan, 31 Oct 2026: 2020's Nenpur card showed 'Blesses the PhD thesis', so the murti pratishtha of that same
+    day was in neither the footer nor his caption; a card of the same day and town is not enough."""
+    town = lambda p: re.split(r'[,(]', p or '')[0].strip().lower()
+    if x.get('d', '')[:10] != e['date'][:10] or town(x.get('p')) != town(e.get('place')):
+        return False
+    if x.get('tg') or (x.get('post') and x.get('post') == e.get('url')):
+        return True
+    words = lambda c: {w for v in caption_words(c) for w in v.split('-') if w}   # 'Murti-Pratishtha' is two words
+    story = words(f"{e.get('line') or ''} {e.get('card') or ''}") - words(e.get('place'))
+    days = word_days()
+    return any(SPECIAL.search(w) or days.get(w, 0) < TELL_DAYS for w in story & words(x.get("c")))
+
+
 def tg_story(evs, photos):
     """The story for the history line: never one a card already tells (Darpan, 19 Oct 2026: the older darshan card
-    comes first, the line must say something different), so not a story from the same day and town as a card."""
-    town = lambda p: re.split(r'[,(]', p or '')[0].strip().lower()
-    shown = {(x.get('d', '')[:10], town(x.get('p'))) for x in photos}
-    left = [e for e in evs if (e['date'], town(e.get('place'))) not in shown and not e.get('channel')]   # the footer stays Today in BAPS History
+    comes first, the line must say something different)."""
+    left = [e for e in evs if not any(tells(x, e) for x in photos) and not e.get('channel')]   # the footer stays Today in BAPS History
     return max(left, key=tg_rank, default=None)
 
 
@@ -2351,10 +2368,10 @@ def main():
     # Darpan, 20 Oct 2026: a story the picture already tells (its history line, or a card) is not told again under
     # his 2pm caption; the caption only carries the day's other stories, and nothing when there are none
     town = lambda e: (e['date'][:10], re.split(r'[,(]', e.get('place') or '')[0].strip().lower())
-    pictured = {town({'date': x.get('d', ''), 'place': x.get('p')}) for x in photos} | ({town(story)} if story else set())
+    pictured = {town(story)} if story else set()   # the footer's story, and any story a card shows (tells)
     pictured |= {(f'{x["y"]}', town({'date': '', 'place': x.get('p')})[1]) for x in photos}   # a year's card in that town already shows the UK diary's day
     cards = {x.get('post') for x in photos if x.get('post')}   # a UK diary day whose photo is a card (its town may read differently)
-    left = [e for e in tg_evs if town(e) not in pictured and e.get('url') not in cards
+    left = [e for e in tg_evs if town(e) not in pictured and e.get('url') not in cards and not any(tells(x, e) for x in photos)
             and not (e.get('channel') and (e['date'][:4], town(e)[1]) in pictured)]
     told = max(left, key=tg_rank, default=None)
     every = None
