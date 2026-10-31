@@ -1585,7 +1585,7 @@ addEventListener('keydown', e => {
 // today only: a date in the address (an old shared link, #10-24) is dropped and today opens
 // A day with Bapa (tools/web_dayflow.py, Darpan, 31 Oct 2026). Which one shows: 'a' one real day on this date with
 // each guru, 'b' Bapa's day with everything he does in each part of it, 'ab' both, one under the other.
-const DAYFLOW = window.DAYFLOW || 'a';
+const DAYFLOW = window.DAYFLOW || 'b';   // Darpan, 31 Oct 2026: Bapa's day (B) "go live, nothing else"
 const DF_PARTS = ['Early morning', 'Morning', 'Midday', 'Afternoon', 'Evening'];
 const DF_GURU = {psm: 'Pramukh Swami Maharaj', msm: 'Mahant Swami Maharaj'};
 const dflowGet = f => SRC.dflow ? SRC.dflow(f) : fetch('{{DATA}}../dayflow/' + f + '.json').then(r => { if (!r.ok) throw r.status; return r.json(); });

@@ -91,9 +91,7 @@ jobs:
           rsync -a cal/ out/ && test -f out/calendar/index.html
           # Year in review: one page for each whole year (/year/2025/ ...), Bapa in person only, towns from the Travels page (Darpan, 29 Oct 2026)
           python3 tools/web_year.py --db bapa.db --faces faces --travels out/travels/index.html --out out
-          # Mandirs Bapa opened: every murti pratishtha on a globe and a timeline, a third Travels view (Darpan, 31 Oct 2026)
-          python3 tools/web_mandirs.py --db bapa.db --faces faces --travels out/travels/index.html --out out
-          # A day with Bapa on Today, under the polaroids: this date from morning puja to evening arti (Darpan, 31 Oct 2026)
+          # Bapa's day on Today, under the polaroids: every part of his day and what he does in it (Darpan, 31 Oct 2026: "go live, nothing else")
           python3 tools/web_dayflow.py --db bapa.db --faces faces --out out/data/dayflow
           sqlite3 bapas.db 'SELECT count(*) FROM calendar'
           # opens on 1999 while only 1999 photos are copied to R2 (site/photo-years.txt)
