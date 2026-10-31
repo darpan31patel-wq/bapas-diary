@@ -472,12 +472,12 @@ ORIG_TRIM = make.trim_bars
 make.trim_bars = lambda im, face: (im, face) if getattr(im, 'notrim', False) else ORIG_TRIM(im, face)
 FACE = {('diwali', 2025): (140, 280, 90, 120), ('diwali', 2020): (810, 140, 120, 160)}   # side views the face finder misses (x, y, w, h in the photo)
 
-SAY.update({('annakut', 2005): 'New Year’s blessings to all'})   # the second big card (Darpan 31 Oct 2026: one all food, one New Year blessings)
+
 SAY.update({   # 31 Oct 2026 picks: Diwali lamps and fireworks, Annakut with the whole spread of food
     ('diwali', 1990): 'Diwali puja darshan', ('diwali', 2006): 'Morning puja among Diwali divas', ('diwali', 2013): 'Performs the Diwali arti',
     ('diwali', 2017): 'Lights a divo', ('diwali', 2019): 'Blesses the mandir account books', ('diwali', 2020): 'Lights divas for Diwali',
     ('diwali', 2022): 'Lights a Diwali lamp', ('diwali', 2023): 'Lights a lamp on Diwali', ('diwali', 2018): 'Lights the lamp in the Akshar Deri',
-    ('annakut', 1990): 'Annakut utsav', ('annakut', 2001): 'Sees the annakut being made', ('annakut', 2004): 'Annakut arti of Thakorji',
+    ('annakut', 1990): 'Annakut utsav', ('annakut', 2001): 'Sees the annakut being made', ('annakut', 2004): 'Annakut arti of Thakorji', ('annakut', 2005): 'Performs the annakut arti',
     ('annakut', 2006): 'Arti before a grand annakut', ('annakut', 2008): 'Arti of the New Year annakut',
     ('annakut', 2009): 'New Year annakut arti', ('annakut', 2010): 'Annakut arti in the Akshar Deri', ('annakut', 2012): 'Arti of the annakut',
     ('annakut', 2013): 'The New Year annakut before him', ('annakut', 2014): 'Darshan of the annakut', ('annakut', 2015): 'Engrossed in the annakut darshan',

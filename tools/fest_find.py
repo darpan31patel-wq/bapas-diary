@@ -11,7 +11,8 @@ CRAWL = '/mnt/project-files/bapas-diary-crawl/'
 # tiers, best first: what makes a photo clearly from this festival
 FEST = {
     # Darpan 31 Oct 2026: Diwali = Bapa with fireworks or lighting lamps, else celebrating; Annakut = Bapa with LOTS of food, not a small thal
-    'diwali': [r'firework|fatak|sparkler', r'lights? (a|the)\b.{0,20}(lamp|divo|diya|diva)|holds? a (diwali )?lamp|\bdiyas?\b|\bdivos?\b|\bdivas?\b|\blamps?\b|deepmala|deep ?pr', r'chopda.{0,20}arti|sanctif|shower|account books?|chopda|sharda|lakshmi|vahi|ledger', r'diwali|deepavali'],
+    'diwali': [r'firework|fatak|sparkl', r'lights? (a|the|divas|lamps)|holds? a (diwali )?lamp|\bdiyas?\b|\bdivos?\b|\bdivas?\b|\blamps?\b|deepmala|deep ?pr|lakshmi|dhan ?teras|festive lights|dome lights|beyond the lights|\blit\b|illumin|candle',
+               r'chopda.{0,20}arti|arti on diwali|performs arti', r'sanctif|shower|account books?|chopda|sharda|vahi|ledger|rangoli|decorat', r'diwali|deepavali'],
     'annakut': [r'annakut (arti|darshan|utsav|celebration)|darshan of (the )?annakut|annakut (offered|for celebration|before)|observes (the |various )?(decorative )?annakut|annakut (items|offerings)|engrossed|grand annakut|delicacies', r'annakut|annakoot|new year', r'\bthal\b|govardhan'],
     'janmashtami': [r'janmashtami|janmotsav|krishna janm|\bmatki|dahi.?handi|paranu|cradle|nand mahotsav|panjari', r'krishna|thakorji.{0,20}swing|jhule|hindol'],
     'holi': [r'\bholi\b|holika|bonfire|\bfire\b', r'colou?rs?'],
@@ -67,7 +68,7 @@ def bapa_in(c):
 
 def main():
     import sys
-    only, cap = sys.argv[1:] or None, 16 if sys.argv[1:] else 8   # named festivals: a wider look, 16 a year, merged into cands.json
+    only, cap = sys.argv[1:] or None, 24 if sys.argv[1:] else 8   # named festivals: a wider look, 16 a year, merged into cands.json
     names = files()
     out, want = {}, []
     for f in sorted(glob.glob(os.path.join(HERE, 'preview', 'fest', 'json', '*.json'))):
@@ -80,13 +81,17 @@ def main():
         for y in fest['years']:
             d = datetime.date.fromisoformat(y['d'])
             seen, cands = set(), []
-            for off in ((0, -1, 1, -2, 2) if only else (0, -1, 1)):
+            for off in ((0, -1, 1, -2, 2, -3, 3, -4, 4, -5, -6) if only else (0, -1, 1)):
                 for album, stem, c in day_lines(d + datetime.timedelta(days=off)):
                     fn = names.get((album, stem.lower()))
                     if not fn or (album, fn) in seen:
                         continue
                     t = next((i for i, r in enumerate(tiers) if r.search(c)), None)
                     if t is None or (off and not any(r.search(c) for r in tiers[:2])):
+                        if not (only and off == 0 and bapa_in(c)):   # a wide look also keeps every photo of Bapa on the day itself
+                            continue
+                        t = 9
+                    if False:
                         continue
                     seen.add((album, fn))
                     cands.append(dict(a=album, f=fn, c=c, t=t, bapa=bapa_in(c), off=off))
