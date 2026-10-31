@@ -1,0 +1,38 @@
+name: YouTube channel list
+# Website only. Lists every video on the BAPS YouTube channel (uploads, live streams, and every playlist), titles only,
+# so Video Darshan days missing from the Guruhari Darshan playlist can be found. No downloads, no baps.org.
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/project-thread-ah5qa6]
+    paths: [.github/workflows/youtube-channel.yml]
+permissions:
+  contents: write
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -U yt-dlp
+      - name: Channel tabs and playlists
+        run: |
+          mkdir -p data/youtube/channel
+          cd data/youtube/channel
+          for tab in videos streams shorts; do
+            yt-dlp --flat-playlist --print "%(id)s	%(title)s	%(duration)s" "https://www.youtube.com/@BAPS/$tab" > $tab.tsv || true
+            echo "$tab: $(wc -l < $tab.tsv)"
+          done
+          yt-dlp --flat-playlist --print "%(id)s	%(title)s	%(playlist_count)s" "https://www.youtube.com/@BAPS/playlists" > playlists.tsv || true
+          echo "playlists: $(wc -l < playlists.tsv)"
+          : > in-playlists.tsv
+          cut -f1 playlists.tsv | while read p; do
+            yt-dlp --flat-playlist --print "$p	%(id)s	%(title)s	%(duration)s" "https://www.youtube.com/playlist?list=$p" >> in-playlists.tsv || true
+          done
+          echo "playlist entries: $(wc -l < in-playlists.tsv)"
+      - name: Save
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/youtube/channel
+          git commit -m "YouTube channel list [skip ci]" && git push
