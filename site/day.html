@@ -195,7 +195,7 @@ a.ss-big { text-decoration: none; }
 @keyframes tstwinkle{0%,100%{transform:scale(.75) rotate(0deg);opacity:.65}50%{transform:scale(1.15) rotate(18deg);opacity:1}}
 .paused .tstar i{animation-play-state:paused}
 .card::after{content:"";position:absolute;inset:-1px;pointer-events:none;opacity:var(--g,0);
-  box-shadow:calc(var(--gx,0) * 12px) 0 14px 5px rgba(255,230,156,.9),calc(var(--gx,0) * 22px) 0 40px 14px rgba(242,186,72,.45)}
+  box-shadow:calc(var(--gx,0) * 8px) 0 8px 2px rgba(255,236,170,1),calc(var(--gx,0) * 14px) 0 22px 6px rgba(246,192,80,.7)}
 /* the mouse resting on a caption for half a second opens it to the photo's whole caption, over whatever is below, so
    nothing on the page moves (Darpan, 30 Oct 2026) */
 .cap.open{position:relative;z-index:6;display:block;-webkit-line-clamp:unset;overflow:visible;margin-top:5px;padding:6px 9px 8px;
@@ -806,7 +806,7 @@ function nudge(c, e) {   // only ever moves when someone brushes it, so it stays
   c.lastX = e.clientX;
   const low = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
   // a clockwise turn swings the bottom to the left, so a push to the right turns it the other way: it goes where it was hit
-  c.v = Math.max(-.22, Math.min(.22, (c.v || 0) - Math.max(-1, Math.min(1, dx / 30)) * (.3 + low) * .07)); c.damp = 0;
+  c.v = Math.max(-.22, Math.min(.22, (c.v || 0) - Math.max(-1, Math.min(1, dx / 30)) * (.3 + low) * .07)); c.damp = c.spring = c.push = 0;
   c.a = c.a || 0;
   if (!swinging.size) requestAnimationFrame(swing);
   swinging.add(c);
@@ -835,15 +835,23 @@ function lean(c, deg) {   // the card and its caption turn together on the peg, 
   c.slot.style.transform = `rotate(${deg}deg)`;
 }
 addEventListener('resize', () => cards.forEach(c => lean(c, c.rest + (c.a || 0))));
-function swing() {
-  swinging.forEach(c => {
-    c.v += -c.a * .0033;   // the peg pulls it back towards hanging (one swing there and back takes about two seconds)
+// The swing runs in steps of a sixtieth of a second whatever the screen's refresh rate, so it moves the same on a 120 Hz
+// Mac or iPad as on a 60 Hz screen (Darpan, 31 Oct 2026: "the movement of the frames is a little off").
+let swingAt = 0, swingLeft = 0;
+function swing(t) {
+  if (!swingAt || t - swingAt > 200) swingAt = t - 1000 / 60;
+  swingLeft += t - swingAt; swingAt = t;
+  for (; swingLeft >= 1000 / 60; swingLeft -= 1000 / 60) swinging.forEach(c => {
+    if (c.push) { const d = Math.sign(c.push) * Math.min(Math.abs(c.push), .0025); c.v += d; c.push -= d; if (Math.abs(c.push) < 1e-4) c.push = 0; }   // the star's touch, eased in
+    c.v += -c.a * (c.spring || .0033);   // the peg pulls it back towards hanging (one swing there and back takes about two seconds; after the star's touch, about three and a half)
     c.v *= c.damp || .992;   // and each swing is a little smaller than the last (slower to settle after the star's touch)
     c.a = Math.max(-4, Math.min(4, c.a + c.v));
-    lean(c, (c.rest + c.a).toFixed(3));
-    if (Math.abs(c.a) < .01 && Math.abs(c.v) < .002) { c.a = c.v = 0; c.damp = 0; lean(c, c.rest); swinging.delete(c); }
   });
-  if (swinging.size) requestAnimationFrame(swing);
+  swinging.forEach(c => {
+    lean(c, (c.rest + c.a).toFixed(3));
+    if (!c.push && Math.abs(c.a) < .01 && Math.abs(c.v) < .001) { c.a = c.v = 0; c.damp = c.spring = 0; lean(c, c.rest); swinging.delete(c); }
+  });
+  if (swinging.size) requestAnimationFrame(swing); else swingAt = 0;
 }
 
 // The frame under the mouse glows fully straight away, and goes back to the star's light when the mouse leaves
@@ -898,7 +906,7 @@ function star(t) {
   // smaller and slower than the last until it hangs still again
   if (behind && behind.hit !== SKY.pass && !reduce && !paused) {
     behind.hit = SKY.pass;
-    behind.v = (behind.v || 0) - .075; behind.a = behind.a || 0; behind.damp = .9965;
+    behind.push = -.04; behind.a = behind.a || 0; behind.v = behind.v || 0; behind.spring = .0011; behind.damp = .996;   // a soft, slow swing
     if (!swinging.size) requestAnimationFrame(swing);
     swinging.add(behind);
   }
