@@ -1,0 +1,122 @@
+diff --git a/live/darshan/index.html b/live/darshan/index.html
+index c2b9811..4ba88b6 100644
+--- a/live/darshan/index.html
++++ b/live/darshan/index.html
+@@ -58,6 +58,39 @@ h1 { font: 600 clamp(32px, 5vw, 52px)/1.1 var(--lora-f); margin: 6px 0 6px; lett
+ .strip button:hover { opacity: 1; }
+ .strip button.on { opacity: 1; box-shadow: 0 0 0 2px var(--gold-hi), 0 6px 16px rgba(0,0,0,.5); }
+ 
++/* Computers (Darpan, 31 Oct 2026: "I don't like the dead space on the left and right ... a grid format for all the
++   pictures of that day ... when you hover over it with the mouse, the picture expands, so it's much larger than the rest"):
++   the day's photos in a grid edge to edge, five across, the murti's name along the foot; the one under the mouse grows
++   to about one and two thirds its size over its neighbours (from the corner it sits in, so it never leaves the screen);
++   a click opens it full size over the page. The day arrows sit either side of the date. Phones keep the big photo + strip. */
++@media (min-width: 1000px) {
++  .feature { position: relative; }
++  .bigwrap { position: static; width: 100%; height: 0; }
++  .big { display: none; }
++  .arrow { top: 196px; transform: none; width: 52px; height: 52px; font-size: 34px; }
++  .arrow.prev { left: 0; } .arrow.next { right: 0; }
++  .arrow:hover:not(:disabled) { background: rgba(217,164,65,.25); }
++  .side { width: 100%; }
++  .mname { display: none; }
++  .strip { grid-template-columns: repeat(5, 1fr); gap: 16px; margin-top: 6px; }
++  .strip button { --ox: center; --oy: center; position: relative; opacity: 1; border-radius: 12px; transform-origin: var(--ox) var(--oy);
++    box-shadow: 0 0 0 1px rgba(217,164,65,.35), 0 10px 24px rgba(0,0,0,.4); transition: transform .4s cubic-bezier(.2,.7,.2,1), box-shadow .4s, z-index 0s .4s; }
++  .strip button:nth-child(5n+1) { --ox: left; } .strip button:nth-child(5n) { --ox: right; }
++  .strip button:nth-child(-n+5) { --oy: top; } .strip button:nth-child(n+6) { --oy: bottom; }
++  .strip button:hover { transform: scale(1.66); z-index: 5; transition-delay: 0s; box-shadow: 0 0 0 2px var(--gold-hi), 0 0 0 9px rgba(217,164,65,.14), 0 34px 80px rgba(0,0,0,.75); }
++  .strip button.on { box-shadow: 0 0 0 1px rgba(217,164,65,.35), 0 10px 24px rgba(0,0,0,.4); }
++  .strip button.on:hover { box-shadow: 0 0 0 2px var(--gold-hi), 0 0 0 9px rgba(217,164,65,.14), 0 34px 80px rgba(0,0,0,.75); }
++  .strip .nm { display: block; position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 10px 8px; text-align: center; font: 600 11.5px var(--poppins-f);
++    letter-spacing: .12em; text-transform: uppercase; color: #f6e3bb; background: linear-gradient(transparent, rgba(22,5,9,.78)); pointer-events: none; }
++  .strip button:hover .nm { font-size: 8px; padding-bottom: 6px; }
++}
++.strip .nm { display: none; }
++/* the photo full size over the page (computers), Escape or a click closes it, the arrow keys move along the day's photos */
++.lb { position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; padding: 24px; background: rgba(12,3,6,.9); cursor: zoom-out; }
++.lb.open { display: flex; }
++.lb img { max-width: 100%; max-height: 100%; border-radius: 10px; box-shadow: 0 0 0 1px rgba(255,226,150,.5), 0 30px 90px rgba(0,0,0,.8); }
++.lb figcaption { position: absolute; left: 0; right: 0; bottom: 14px; text-align: center; font: 500 13px var(--poppins-f); letter-spacing: .1em; text-transform: uppercase; color: #e9cf9d; }
++
+ /* looking back */
+ .browse { border-top: 1px solid rgba(217,164,65,.25); padding-top: 26px; }
+ .seg { display: flex; justify-content: center; gap: 6px; margin: 0 auto 18px; flex-wrap: wrap; }
+@@ -163,6 +196,10 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
+   border: 1px solid rgba(217,164,65,.22); border-radius: 18px; background: rgba(22,5,9,.34); box-shadow: 0 18px 40px rgba(0,0,0,.22); }
+ .sect h3.group { margin: 0 0 18px; }
+ .sect .grid { gap: 20px 16px; }
++.sect h4.year { display: flex; align-items: center; gap: 10px; margin: 22px 0 10px; font: 600 16px var(--poppins-f); letter-spacing: .08em; color: #e9cf9d; }
++.sect h4.year::after { content: ""; flex: 1; height: 1px; background: rgba(217,164,65,.22); }
++.sect h4.year small { font: 500 11px var(--poppins-f); letter-spacing: .1em; text-transform: uppercase; color: #cfae78; }
++.sect h3.group + h4.year { margin-top: 0; }
+ @media (max-width: 760px) {
+   .sect { padding: 12px 10px 16px; border-radius: 14px; }
+   .sect h3.group { margin-bottom: 12px; font-size: 19px; }
+@@ -250,6 +287,8 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
+   </div>
+ </section>
+ 
++<figure class="lb" id="lb" aria-label="The photo, full size"><img alt=""><figcaption></figcaption></figure>
++
+ <section class="browse" aria-label="Look back">
+   <div class="seg" id="seg" role="group" aria-label="Look back">
+     <button data-v="day" class="on">By day</button><button data-v="colour">By colour</button><button data-v="fest">By festival</button><button data-v="murti">By murti</button>
+@@ -282,7 +321,7 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
+   const DAYS = (window.DARSHAN_OLDER || []).filter(D => D && D.d < FIRST).concat(MANDIR).filter(D => D && D.d && D.k && D.k.length).map(D => {
+     const [y, m, dd] = D.d.split("-").map(Number), cal = CAL[D.d] || [];
+     return { d: D.d, k: D.k, c: (D.c && D.c.length ? D.c : ["White"]).filter(c => COLOURS[c]), i: cal[0] || "", f: cal[1] || "", w: WDL[new Date(y, m - 1, dd).getDay()] };
+-  });
++  }).sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : 0);   // in date order whatever order the lists came in
+   const N = DAYS.length;
+   if (!N) { $("big-box").innerHTML = `<p class="none">The darshan photos are not loading just now. Please try again in a few minutes.</p>`; return; }
+   const BY = {}; DAYS.forEach((D, i) => BY[D.d] = i);
+@@ -302,17 +341,30 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
+       `<span class="col">${D.c.map(c => `<span class="dot" style="background:${COLOURS[c]}"></span>`).join("")}${both(D.c)} shringar</span>`;
+     $("k-murti").textContent = nm(code);
+     $("strip").innerHTML = D.k.map(c =>
+-      `<button class="${c === code ? "on" : ""}" data-c="${c}" title="${nm(c)}" aria-label="${nm(c)}"><img src="${src("s", D, c)}" alt="" loading="lazy"></button>`).join("");
++      `<button class="${c === code ? "on" : ""}" data-c="${c}" title="${nm(c)}" aria-label="${nm(c)}"><img src="${src("s", D, c)}" alt="" loading="lazy"><span class="nm">${nm(c)}</span></button>`).join("");
+     $("prev").disabled = day === 0; $("next").disabled = day === N - 1;
+     document.querySelectorAll("#grid .tile").forEach(t => t.classList.toggle("on", +t.dataset.day === day));
+     requestAnimationFrame(spot);
+   }
+   const go = i => { day = i; showDay(); if (view === "day" && R) goMonth(R.months.findIndex(mo => mo.dataset.m === DAYS[i].d.slice(0, 7)), true); try { history.replaceState(null, "", "#" + DAYS[i].d); } catch (e) {} };
+-  $("strip").addEventListener("click", e => { const b = e.target.closest("button"); if (b) { code = b.dataset.c; showDay(); } });
++  const WIDE = matchMedia("(min-width: 1000px)");
++  const lb = $("lb"), lbimg = lb.querySelector("img"), lbcap = lb.querySelector("figcaption");
++  const lbShow = () => { const D = DAYS[day]; lbimg.src = src("m", D, code); lbimg.alt = `${nm(code)}, Neasden mandir, ${nice(D.d)}`; lbcap.textContent = `${nm(code)} · ${nice(D.d)}`; };
++  const lbOpen = () => { lbShow(); lb.classList.add("open"); document.body.style.overflow = "hidden"; };
++  const lbClose = () => { lb.classList.remove("open"); document.body.style.overflow = ""; };
++  lb.addEventListener("click", lbClose);
++  $("strip").addEventListener("click", e => { const b = e.target.closest("button"); if (b) { code = b.dataset.c; showDay(); if (WIDE.matches) lbOpen(); } });
+   $("prev").onclick = () => { if (day > 0) go(day - 1); };
+   $("next").onclick = () => { if (day < N - 1) go(day + 1); };
+   addEventListener("keydown", e => {
+     if (e.target.closest && e.target.closest("input, textarea")) return;
++    if (lb.classList.contains("open")) {   // along the day's photos, not the days
++      const k = DAYS[day].k, j = k.indexOf(code);
++      if (e.key === "Escape") lbClose();
++      else if (e.key === "ArrowLeft" && j > 0) { code = k[j - 1]; showDay(); lbShow(); }
++      else if (e.key === "ArrowRight" && j < k.length - 1) { code = k[j + 1]; showDay(); lbShow(); }
++      return;
++    }
+     if (e.key === "ArrowLeft") $("prev").click(); if (e.key === "ArrowRight") $("next").click();
+   });
+   addEventListener("hashchange", () => { if (fromHash()) showDay(); });
+@@ -388,9 +440,13 @@ h3.group small { font: 500 12px var(--poppins-f); letter-spacing: .1em; color: #
+       if (chip && !counts[chip]) chip = null;
+       chips = `<button data-c="" class="${chip ? "" : "on"}">All colours</button>` + list.map(c =>
+         `<button data-c="${c}" class="${chip === c ? "on" : ""}"><span class="dot" style="background:${COLOURS[c]}"></span>${c} <small>${counts[c]}</small></button>`).join("");
++      // each colour's days by year, newest year first, newest day first (Darpan, 31 Oct 2026: "not separated by year")
+       (chip ? [chip] : list).forEach(c => {
+-        html += sect(`<span class="dot big" style="background:${COLOURS[c]}"></span>${c} <small>${counts[c]} ${counts[c] === 1 ? "day" : "days"}</small>`,
+-          newest().filter(i => DAYS[i].c.includes(c)).map(i => tile(i, first(i), short(DAYS[i].d), fday(i))).join(""));
++        const l = newest().filter(i => DAYS[i].c.includes(c)), years = [...new Set(l.map(i => DAYS[i].d.slice(0, 4)))];
++        html += `<section class="sect"><h3 class="group"><span class="dot big" style="background:${COLOURS[c]}"></span>${c} <small>${counts[c]} ${counts[c] === 1 ? "day" : "days"}</small></h3>` +
++          years.map(y => { const yl = l.filter(i => DAYS[i].d.startsWith(y));
++            return `<h4 class="year">${y} <small>${yl.length} ${yl.length === 1 ? "day" : "days"}</small></h4><div class="grid">${yl.map(i => tile(i, first(i), short(DAYS[i].d), fday(i))).join("")}</div>`; }).join("") +
++          `</section>`;
+       });
+     } else if (view === "fest") {
+       // the Indian year as a timeline, Kartak to Aso: each festival once, in the month it usually falls, with its tithi (or

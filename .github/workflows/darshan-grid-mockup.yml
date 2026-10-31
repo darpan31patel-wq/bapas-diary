@@ -1,0 +1,52 @@
+# Pictures of the Darshan tab as it will look with the computer grid (Darpan, 31 Oct 2026), taken on the runner because
+# the photo store cannot be reached from the build box. Runs only on the mockup branch, never deploys anything.
+name: Darshan grid mockup
+on:
+  push:
+    branches: [claude/project-thread-eawr12-mockup]
+    paths: [.github/workflows/darshan-grid-mockup.yml]
+permissions:
+  contents: write
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip -q install playwright && python3 -m playwright install --with-deps chromium >/dev/null
+      - name: Pictures
+        run: |
+          mkdir -p www/darshan shots
+          cp live/menu.css www/menu.css
+          git apply tools/mockups/darshan-grid.patch && cp live/darshan/index.html www/darshan/index.html
+          curl -sf https://bapas-diary.com/darshan/cal.js -o www/darshan/cal.js || echo 'window.DARSHAN_CAL={}' > www/darshan/cal.js
+          (cd www && python3 -m http.server 8765 >/dev/null 2>&1 &)
+          sleep 2
+          python3 - <<'PY'
+          from playwright.sync_api import sync_playwright
+          with sync_playwright() as p:
+              b = p.chromium.launch()
+              pg = b.new_page(viewport={"width": 1600, "height": 1000}, device_scale_factor=1)
+              pg.goto("http://localhost:8765/darshan/", wait_until="networkidle")
+              pg.wait_for_timeout(2500)
+              pg.screenshot(path="shots/computer.jpg", type="jpeg", quality=82, full_page=False)
+              pg.hover(".strip button:nth-child(3)"); pg.wait_for_timeout(900)
+              pg.screenshot(path="shots/hover.jpg", type="jpeg", quality=82, full_page=False)
+              pg.click(".strip button:nth-child(3)"); pg.wait_for_timeout(1500)
+              pg.screenshot(path="shots/full.jpg", type="jpeg", quality=82, full_page=False)
+              pg.keyboard.press("Escape"); pg.wait_for_timeout(300)
+              pg.click("#seg button[data-v=colour]"); pg.wait_for_timeout(1500)
+              pg.evaluate("document.querySelector('.browse').scrollIntoView()"); pg.wait_for_timeout(500)
+              pg.screenshot(path="shots/colour.jpg", type="jpeg", quality=82, full_page=False)
+              ph = b.new_page(viewport={"width": 390, "height": 844}, device_scale_factor=2)
+              ph.goto("http://localhost:8765/darshan/", wait_until="networkidle"); ph.wait_for_timeout(2500)
+              ph.screenshot(path="shots/phone.jpg", type="jpeg", quality=80, full_page=False)
+              b.close()
+          PY
+          ls -la shots
+      - name: Keep them
+        run: |
+          gh release delete darshan-grid-mockup -y --cleanup-tag -R "$GITHUB_REPOSITORY" 2>/dev/null || true
+          gh release create darshan-grid-mockup shots/*.jpg -R "$GITHUB_REPOSITORY" --title "Darshan grid mockup pictures" --notes "Mockup pictures only, not part of the website" --target "$GITHUB_SHA"
