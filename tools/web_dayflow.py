@@ -144,6 +144,8 @@ def main():
     for d in full:
         by_mmdd[d[5:]].append(d)
     wrote = 0
+    seen = {}
+    moments = lambda d: seen[d] if d in seen else seen.setdefault(d, one_day(d, days[d]))
     for mmdd in want:
         try:
             import datetime
@@ -160,13 +162,15 @@ def main():
                     near = {(base + datetime.timedelta(days=s * gap)).strftime('%m-%d') for s in (1, -1)}
                     ds = [d for m in near for d in by_mmdd.get(m, []) if (d < PSM_UNTIL) == psm
                           and len({r['do'] for r in days[d] if r['do']}) >= kinds]
-                    if ds:
-                        pick = max(ds, key=lambda d: full[d])
-                        break
+                    if ds:   # the day that gives the most moments, then the fullest
+                        pick = max(ds, key=lambda d: (min(len(moments(d)['m']), 8), full[d]))
+                        if len(moments(pick)['m']) >= kinds:
+                            break
+                        pick = None
                 if pick:
                     break
             if pick:
-                both.append(dict(one_day(pick, days[pick]), g='psm' if psm else 'msm'))
+                both.append(dict(moments(pick), g='psm' if psm else 'msm'))
         if len(both) == 2:   # never one guru without the other
             json.dump(dict(days=both), open(os.path.join(a.out, mmdd + '.json'), 'w'), ensure_ascii=False, separators=(',', ':'))
             wrote += 1
