@@ -33,7 +33,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 
     await tryit('search', async () => {
       const p = await open('/search/#date=2017-10-19', { wait: 6000 });
-      await p.locator('[data-i]').first().click(); await wait(3000); await shot(p, '1-search-big-photo');
+      const c = p.locator('[data-i]').filter({ hasText: /Swami|Swamishri/ }); await (await c.count() ? c.nth(1) : p.locator('[data-i]').first()).click(); await wait(3000); await shot(p, '1-search-big-photo');
     });
     await tryit('calendar', async () => {
       const p = await open('/calendar/#2017-10', { wait: 6000 });
@@ -43,14 +43,16 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     });
     await tryit('photos', async () => { const p = await open('/photos/#date=2025-10-20', { wait: 5000 }); await shot(p, '2b-calendar-day-diwali-2025'); });
     for (const [k, when] of [['diwali', '2026-11-08T09:00:00Z'], ['annakut', '2026-11-10T09:00:00Z']])
-      await tryit(k, async () => { const p = await open('/', { clock: when, wait: 8000 }); await shot(p, `3-today-${k}`); await shot(p, `3-today-${k}-whole`, true); });
-    await tryit('travels', async () => { const p = await open('/travels/', { wait: 8000 }); await shot(p, '4-travels-journey'); });
+      await tryit(k, async () => { const p = await open('/', { clock: when, wait: 8000 }); await shot(p, `3-today-${k}`);
+        await p.evaluate(() => { const v = [...document.querySelectorAll('a.vid')].pop(); if (v) v.scrollIntoView({ block: 'center' }); }); await wait(2500); await shot(p, `3-today-${k}-video`); });
+    await tryit('travels', async () => { const p = await open('/travels/', { wait: 8000 }); await p.locator('.yr[data-y="2017"]').first().click(); await wait(6000); await shot(p, '4-travels-journey'); });
     await tryit('places', async () => {
       const p = await open('/travels/places/#place=Gondal', { wait: 8000 });
+      await p.evaluate(() => { const v = document.querySelector('.vv a'); if (v) v.closest('.visit').scrollIntoView({ block: 'center' }); }); await wait(2000);
       await shot(p, '4b-travels-places-gondal');
     });
-    await tryit('latest', async () => { const p = await open('/search/#latest', { wait: 7000 }); await p.evaluate(() => scrollTo(0, 0)); await wait(800); await shot(p, '5-latest-vicharan'); });
-    await tryit('latest-live', async () => { const p = await open('/search/#latest', { wait: 7000, live: true }); await p.evaluate(() => scrollTo(0, 0)); await wait(800); await shot(p, '5b-latest-vicharan-with-live-webcast'); });
+    await tryit('latest', async () => { const p = await open('/search/#latest', { wait: 7000 }); await p.evaluate(() => document.getElementById('count').scrollIntoView({ block: 'center' })); await wait(1500); await shot(p, '5-latest-vicharan'); });
+    await tryit('latest-live', async () => { const p = await open('/search/#latest', { wait: 7000, live: true }); await p.evaluate(() => document.getElementById('count').scrollIntoView({ block: 'center' })); await wait(1500); await shot(p, '5b-latest-vicharan-with-live-webcast'); });
     for (const e of ['daily', 'email']) await tryit(e, async () => {
       if (!fs.existsSync(`weekly/${e}.html`)) return;
       const ctx = await b.newContext({ viewport: mobile ? vp : { width: 760, height: 1000 }, deviceScaleFactor: mobile ? 2 : 1 });
