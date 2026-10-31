@@ -1687,6 +1687,9 @@ def hero_of(photos):
 ANNIVERSARY = (25, 40, 50, 60, 75)   # a card exactly this many years ago gets a '★ 50 years ago today' tab (Darpan, 29 Oct 2026, idea 4)
 
 
+ROWS = []
+
+
 def compose_wide(photos, day, seed, style, history=None, title=None, cal=None):
     """Three (W1, W2) or four (W3) cords of wide cards, every year on the day, sized to fill the picture."""
     lay = WIDE[style]
@@ -1769,6 +1772,9 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None):
                 tag, pos = under_card(hero, hcard, gap, cf_a, lh_a, 'W2', rnd)
                 later.append(lambda tag=tag, by=qy + hcard.CH: img.paste(tag, (int(hx - tag.width / 2), int(by + px(6))), tag))
         x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
+        if r == 0:
+            ROWS.clear()
+        ROWS.append(dict(x0=x0, x1=W - x0, y=y_top, CH=card.CH + below, CW=card.CW, n=len(row)))   # where each row sits, for decorations in the free space
         slots = list(range(len(row)))
         if hero and r < 2:   # either side of the hero: the left half ends a gap before it, the right half starts a gap after it
             slots = [c - L for c in range(L)] + [c - L + 2 for c in range(L, len(row))]

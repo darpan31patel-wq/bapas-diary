@@ -12,6 +12,7 @@ from PIL import Image, ImageDraw, ImageFilter
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 import make_hero as make
+import fest_food
 from make_hero import W, H, px
 
 FEST = os.path.join(ROOT, 'preview', 'fest')
@@ -23,7 +24,7 @@ DAY = {'diwali': '2026-11-08', 'annakut': '2026-11-10', 'janmashtami': '2027-08-
 MARIGOLD, ROSES, JASMINE = [(255, 159, 28), (255, 190, 40), (240, 120, 20)], [(224, 36, 94), (255, 143, 171), (255, 213, 106)], [(255, 252, 240), (245, 240, 220)]
 DRESS = {   # night/top tint, glow colour, sky, rope, foot picture
     'diwali': dict(top=(10, 8, 26), glow=(150, 80, 20), sky=('fireworks',), rope=('bulbs',), foot='diya'),
-    'annakut': dict(glow=(190, 100, 20), rope=('sweets',), foot='thali'),   # light touch: laddus on the marigold cord, a full thali on each card
+    'annakut': dict(glow=(190, 100, 20), rope=('sweets',), foot='laddus'),   # light touch: laddus on the marigold cord, a full thali on each card
     'janmashtami': dict(top=(8, 12, 40), glow=(60, 90, 180), sky=('stars',), rope=('beads', [(31, 122, 140), (27, 63, 122), (80, 170, 90)]), foot='matki'),
     'fuldol': dict(glow=(170, 40, 90), sky=('puffs', [(255, 61, 127), (255, 212, 0), (53, 199, 89), (61, 183, 255), (255, 138, 26), (176, 92, 255)]),
                    rope=('beads', [(255, 61, 127), (255, 212, 0), (53, 199, 89), (61, 183, 255), (255, 138, 26)]), foot='gulal'),
@@ -187,6 +188,10 @@ def puri(im, d, s):
 SWEETS = [laddu, jalebi, katli, jamun, samosa, puri]
 
 
+def laddus(im, d, s):
+    fest_food.pyramid(im, s * .5, s * .78, s * .085, 4, (240, 150, 30), [(255, 195, 80), (200, 110, 20)], 1)
+
+
 def thali(im, d, s):
     """A full steel thali: dal, shaak, kadhi and kheer in katoris, rice, puris and a laddu."""
     d.ellipse((s * .02, s * .2, s * .98, s * .98), fill=(176, 182, 190), outline=(120, 126, 134), width=max(1, s // 50))
@@ -279,7 +284,7 @@ def garland(im, d, s):
     d.ellipse((s * .44, s * .86, s * .56, s * .98), fill=(255, 213, 106))
 
 
-PICS = dict(diya=diya, thal=thal, matki=matki, gulal=gulal, lotus=lotus, kalash=kalash, flowers=flowers, wheel=wheel, rakhi=rakhi, garland=garland, thali=thali)
+PICS = dict(diya=diya, thal=thal, matki=matki, gulal=gulal, lotus=lotus, kalash=kalash, flowers=flowers, wheel=wheel, rakhi=rakhi, garland=garland, thali=thali, laddus=laddus)
 
 
 def burst(d, cx, cy, R, col, rnd):
@@ -410,7 +415,7 @@ def rope_for(k):
                 d.ellipse((x - r * .5, y - r * .6, x - r * .05, y - r * .15), fill=tuple(min(255, v + 60) for v in c))
         elif kind[0] == 'sweets':
             d = ImageDraw.Draw(img)
-            icons = [hi(round(px(30)), laddu)]
+            icons = [fest_food.ball(round(px(13)), (240, 150, 30), [(255, 195, 80), (200, 110, 20)], 3)]
             for x, y, i in marks:
                 if i % 6 == 0:
                     ic = icons[0]
@@ -536,6 +541,14 @@ def main():
         name = NAMES[k]
         line = f'One darshan from each {name}, {photos[0]["y"]} to {photos[-1]["y"]}, each year on its own day'
         img = make.compose_wide(photos, day, seed=k, style='W2', title=f'Every {name}', cal=(line, ''))
+        if k == 'annakut':   # Darpan 31 Oct 2026: stacked food in the free corners beside the bottom row
+            row = make.ROWS[-1]
+            room = row['x0'] - px(40)
+            if room > px(120):
+                h = round(min(row['CH'] * 1.05, room * 1.5)); w = round(min(room, h / 1.3))
+                for i, cx in enumerate((row['x0'] / 2, W - row['x0'] / 2)):
+                    disp = fest_food.display(w, h, seed=i)
+                    img = img.convert('RGBA'); img.alpha_composite(disp, (int(cx - w / 2), int(row['y'] + row['CH'] - h)))
         img.convert('RGB').save(os.path.join(dest, f'every-{k}.jpg'), quality=90)
         print(k, len(photos), 'years, special card', next((x['y'] for x in photos if x.get('hero')), None))
 
