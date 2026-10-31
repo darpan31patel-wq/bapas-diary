@@ -23,7 +23,7 @@ DAY = {'diwali': '2026-11-08', 'annakut': '2026-11-10', 'janmashtami': '2027-08-
 MARIGOLD, ROSES, JASMINE = [(255, 159, 28), (255, 190, 40), (240, 120, 20)], [(224, 36, 94), (255, 143, 171), (255, 213, 106)], [(255, 252, 240), (245, 240, 220)]
 DRESS = {   # night/top tint, glow colour, sky, rope, foot picture
     'diwali': dict(top=(10, 8, 26), glow=(150, 80, 20), sky=('fireworks',), rope=('bulbs',), foot='diya'),
-    'annakut': dict(glow=(190, 100, 20), sky=('sweets',), rope=('sweets',), foot='thali'),
+    'annakut': dict(glow=(190, 100, 20), rope=('sweets',), foot='thali'),   # light touch: laddus on the marigold cord, a full thali on each card
     'janmashtami': dict(top=(8, 12, 40), glow=(60, 90, 180), sky=('stars',), rope=('beads', [(31, 122, 140), (27, 63, 122), (80, 170, 90)]), foot='matki'),
     'fuldol': dict(glow=(170, 40, 90), sky=('puffs', [(255, 61, 127), (255, 212, 0), (53, 199, 89), (61, 183, 255), (255, 138, 26), (176, 92, 255)]),
                    rope=('beads', [(255, 61, 127), (255, 212, 0), (53, 199, 89), (61, 183, 255), (255, 138, 26)]), foot='gulal'),
@@ -410,10 +410,10 @@ def rope_for(k):
                 d.ellipse((x - r * .5, y - r * .6, x - r * .05, y - r * .15), fill=tuple(min(255, v + 60) for v in c))
         elif kind[0] == 'sweets':
             d = ImageDraw.Draw(img)
-            icons = [hi(round(px(24)), f) for f in SWEETS]
+            icons = [hi(round(px(30)), laddu)]
             for x, y, i in marks:
-                if i % 7 == 0:
-                    ic = icons[(i // 7) % len(icons)]
+                if i % 6 == 0:
+                    ic = icons[0]
                     img.paste(ic, (int(x - ic.width / 2), int(y + px(2))), ic)
                 else:
                     c = MARIGOLD[i % len(MARIGOLD)]; r = px(8)
@@ -463,6 +463,19 @@ def dressed(k, make_card):
 
 CROP = {}
 FACE = {('diwali', 2025): (140, 280, 90, 120)}   # side views the face finder misses (x, y, w, h in the photo)
+
+SAY.update({   # 31 Oct 2026 picks: Diwali lamps and fireworks, Annakut with the whole spread of food
+    ('diwali', 1990): 'Diwali puja darshan', ('diwali', 2006): 'Morning puja among Diwali divas', ('diwali', 2013): 'Performs the Diwali arti',
+    ('diwali', 2017): 'Lights a divo', ('diwali', 2019): 'Blesses the mandir account books', ('diwali', 2020): 'Lights divas for Diwali',
+    ('diwali', 2022): 'Lights a Diwali lamp', ('diwali', 2023): 'Lights a lamp on Diwali', ('diwali', 2018): 'Lights the lamp in the Akshar Deri',
+    ('annakut', 1990): 'Annakut utsav', ('annakut', 2001): 'Sees the annakut being made', ('annakut', 2004): 'Annakut arti of Thakorji',
+    ('annakut', 2005): 'Performs the annakut arti', ('annakut', 2006): 'Arti before a grand annakut', ('annakut', 2008): 'Arti of the New Year annakut',
+    ('annakut', 2009): 'New Year annakut arti', ('annakut', 2010): 'Annakut arti in the Akshar Deri', ('annakut', 2012): 'Arti of the annakut',
+    ('annakut', 2013): 'The New Year annakut before him', ('annakut', 2014): 'Darshan of the annakut', ('annakut', 2015): 'Engrossed in the annakut darshan',
+    ('annakut', 2017): 'Sees the decorated annakut offerings', ('annakut', 2018): 'New Year’s Day annakut arti', ('annakut', 2019): 'Arti of the Gondal annakut',
+    ('annakut', 2020): 'Annakut arti for Thakorji', ('annakut', 2021): 'Arti before the annakut', ('annakut', 2022): 'Annakut arti with the sadhus',
+    ('annakut', 2023): 'Annakut arti on New Year’s Day', ('annakut', 2024): 'Waves the annakut arti', ('annakut', 2025): 'Arti of the grand annakut',
+})
 
 def tidy_town(t):
     t = re.sub(r'\s*\(.*?\)', '', (t or '').split(',')[0]).strip()
