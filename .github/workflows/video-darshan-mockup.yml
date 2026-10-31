@@ -1,0 +1,55 @@
+# Mockup only, never part of the website: shots of the Video Darshan links on the real bapas-diary.com pages, and a
+# check whether the BAPS videos carry chapters (Darpan, 31 Oct 2026). Reads the live site, YouTube watch pages and the
+# public releases; changes nothing, sends nothing (the emails are only made into files, never given to Resend).
+name: video-darshan-mockup
+on:
+  push:
+    branches: [claude/project-thread-3fcod4]
+    paths: [.github/workflows/video-darshan-mockup.yml, mockup/video-darshan/**]
+permissions:
+  contents: write
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Chapters in the videos?
+        run: bash mockup/video-darshan/chapters.sh Iz3ay9FHu3g 7-Gz37eQs08 ldOeu3pmWxI EeYqMau_lXk R7MoOKrkJx4 $(cut -f1 data/youtube/flat.tsv | shuf -n 8 --random-source=data/youtube/flat.tsv) || true
+      - name: The live pages with the change applied
+        run: |
+          mkdir -p pages vids fest
+          get() { curl -fsS "https://bapas-diary.com$1" -o "$2"; }
+          base=fefed155
+          for x in "/search/ site/search.html search" "/photos/ live/photos/index.html photos" "/travels/ live/travels/index.html travels" "/travels/places/ live/travels/places/index.html places"; do
+            set -- $x
+            get "$1" "pages/$3.html"
+            git diff "$base" HEAD -- "$2" > "$3.patch"
+            if patch --fuzz=3 "pages/$3.html" "$3.patch"; then echo "$3: change applied"; else echo "$3: PATCH FAILED"; fi
+          done
+          for k in diwali annakut; do get "/data/fest/$k.json" "fest/$k.json"; done
+          mkdir -p site-out && python3 tools/web_videos.py --videos data/youtube/days.json --site site-out fest
+          cp site-out/data/videos/* vids/ && cat vids/latest.json
+      - name: The emails, made into files only (nothing is sent)
+        run: |
+          pip install -q pillow numpy opencv-python-headless
+          git show origin/claude/project-thread-e6fvpc:tools/web_weekly.py > /dev/null 2>&1 || git fetch -q origin claude/project-thread-e6fvpc
+          mkdir -p em/tools && git show origin/claude/project-thread-e6fvpc:tools/web_weekly.py > em/tools/web_weekly.py
+          (cd em && patch -p1 < ../mockup/video-darshan/email-video-darshan.patch)
+          gh release download database -p bapas.db.gz && gunzip bapas.db.gz
+          mkdir -p faces facetools && git archive fefed155 tools/web_faces.py tools/web_bapa_rules.py | tar -x -C facetools
+          gh release download website-faces -p 'face2-*.json.gz' -D faces
+          python3 facetools/tools/web_faces.py pick --db bapas.db --faces faces --out bapa.db || cp bapas.db bapa.db
+          python3 em/tools/web_weekly.py --db bapa.db --out weekly --no-photos --videos data/youtube/days.json --week 2026-11-08 || true
+          python3 em/tools/web_weekly.py --db bapas.db --out weekly --daily 2026-10-31 --videos data/youtube/days.json || true
+          ls weekly
+      - name: Shots
+        run: |
+          npm i -s playwright@1.48.2 && npx playwright install --with-deps chromium > /dev/null
+          node mockup/video-darshan/shoot.js
+          tar czf video-darshan-mockup.tgz shots pages weekly/*.html
+          gh release view video-darshan-mockup >/dev/null 2>&1 || gh release create video-darshan-mockup --prerelease --title "Video Darshan mockup" --notes "Mockup shots only. Not used by the website or the daily picture."
+          gh release upload video-darshan-mockup video-darshan-mockup.tgz --clobber

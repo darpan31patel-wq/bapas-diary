@@ -1,0 +1,173 @@
+From 927b72c7002a5e84cfd3b109d5769e1bf5ee78ff Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 31 Oct 2026 13:33:46 +0000
+Subject: [PATCH] Darshan emails: the day's gold Video Darshan link in the 8 am
+ and Sunday emails (Darpan, 31 Oct 2026) [skip ci]
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_014XiN8UaiD3CkrPytnYjUwx
+---
+ tools/web_weekly.py | 78 +++++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 72 insertions(+), 6 deletions(-)
+
+diff --git a/tools/web_weekly.py b/tools/web_weekly.py
+index 82a70265..0178a750 100644
+--- a/tools/web_weekly.py
++++ b/tools/web_weekly.py
+@@ -16,6 +16,12 @@ When the week has a big day (Diwali, either Bapa's birthday, Guru Purnima and so
+ "Special this week" part adds more of both Bapas from that festival in earlier years; festivals move with the Indian
+ calendar, so those photos are found through the calendar's dates for the festival, not the same English date.
+ 
++Video Darshan (Darpan, 31 Oct 2026: "add the day's Video Darshan link to the 8am and Sunday emails"): each day carries
++a gold Video Darshan link to BAPS's own YouTube video of that day in a year gone by, the same link as on the website's
++Today. The videos come from the website's own list (bapas-diary.com/data/videos/YEAR.json, made by tools/web_videos.py
++on the website branch); the year of a photo shown that day goes first, otherwise the most recent year with a video.
++If the list cannot be read, the email simply goes without the link.
++
+ The email's pictures are cut to 4:3 and saved to weekly/e/WEEK/ for R2 (the workflow uploads them), so every email
+ app shows them the same size. weekly/email.html is the email; weekly/week.json says what was picked.
+ """
+@@ -172,6 +178,55 @@ def cut(album, file, out_path, width):
+     im.save(out_path, 'JPEG', quality=82, optimize=True, progressive=True)
+ 
+ 
++VIDEO_YEARS = {}
++
++
++def videos_of(year, local=None):
++    """{date: [YouTube id, title]} for one year: the website's own list, or a days.json given with --videos."""
++    if year not in VIDEO_YEARS:
++        got = {}
++        try:
++            if local:
++                full = VIDEO_YEARS.setdefault('all', json.load(open(local)))
++                got = {d: [v[0]['id'], v[0]['title']] for d, v in full.items() if d[:4] == str(year) and v}
++            else:
++                with urllib.request.urlopen(urllib.request.Request(f'{SITE}data/videos/{year}.json', headers={'User-Agent': UA}), timeout=30) as r:
++                    got = json.loads(r.read())
++        except Exception as e:   # no list, no link: the email still goes
++            if not isinstance(e, urllib.error.HTTPError) or e.code != 404:
++                print(f'Video Darshan list for {year} not read: {e}', flush=True)
++        VIDEO_YEARS[year] = got
++    return VIDEO_YEARS[year]
++
++
++def day_video(date, first_years=(), local=None):
++    """BAPS's video of this day (MM-DD of date) in a year gone by: (year, id, title), or None. The years of the photos
++    shown that day first, then the newest year that has one."""
++    md, this = date[5:], int(date[:4])
++    years = [int(y) for y in first_years if y] + list(range(this - 1, 1999, -1))
++    for y in dict.fromkeys(years):
++        v = videos_of(y, local).get(f'{y}-{md}')
++        if v:
++            return y, v[0], v[1]
++    return None
++
++
++def video_button(v, small=False):
++    """The gold Video Darshan link, as on the website: a gold disc with a play mark, then the words and the year."""
++    if not v:
++        return ''
++    y, vid, title = v
++    disc = (f'<span style="display:inline-block;width:18px;height:18px;line-height:18px;border-radius:50%;background:{C["gold"]};'
++            f'color:#3d0e19;font-size:9px;text-align:center;vertical-align:middle;margin-right:7px">&#9654;</span>')
++    href = f'https://www.youtube.com/watch?v={urllib.request.quote(vid)}'
++    if small:
++        return (f'<a href="{href}" title="{esc(title)}" style="color:{C["amber"]};text-decoration:none;white-space:nowrap">'
++                f'{disc}Video Darshan {y}</a>')
++    return (f'<a href="{href}" title="{esc(title)}" style="display:inline-block;font:700 13px {SANS};color:{C["maroon"]};'
++            f'border:1.5px solid {C["gold"]};background:#fff6df;padding:8px 18px 8px 9px;border-radius:999px;text-decoration:none">'
++            f'{disc}<span style="vertical-align:middle">Video Darshan · {y}</span></a>')
++
++
+ def nice(iso, fmt='%A %-d %B'):
+     return datetime.date.fromisoformat(iso).strftime(fmt)
+ 
+@@ -197,7 +252,7 @@ def esc(s):
+     return (s or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
+ 
+ 
+-def render(data, img):
++def render(data, img, videos=None):
+     """The email, in plain tables with the styles written on each part, the way every email app reads it."""
+     days = data['days']
+     first, last = days[0]['date'], days[-1]['date']
+@@ -219,13 +274,14 @@ def render(data, img):
+             cells.append(photo_cell(d[k], name, img[(d['date'], k)], big, link))
+         return f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>{"".join(cells)}</tr></table>'
+ 
++    videos = videos or {}
+     parts = []
+     today = days[0]
+     if today['psm'] and today['msm']:
+         parts.append(f'''<tr><td style="padding:0 17px 22px;border-bottom:1px solid {C["line"]}">
+ {'' if daily else f'<div style="font:700 11px {SANS};letter-spacing:2px;text-transform:uppercase;color:{C["maroon"]};padding:0 5px">Today · {nice(today["date"])}</div>'}
+ <div style="padding:0 5px">{cal_line(today)}</div>{pair(today, True)}
+-<div style="text-align:center;padding-top:16px"><a href="{SITE}day/{today["date"][5:]}/" style="display:inline-block;font:700 13px {SANS};color:#3d0e19;background:{C["gold"]};padding:11px 20px;border-radius:999px;text-decoration:none">Open {nice(today["date"], "%-d %B")} in Bapa's Diary</a></div></td></tr>''')
++<div style="text-align:center;padding-top:16px">{f'<div style="padding-bottom:10px">{video_button(videos.get(today["date"]))}</div>' if videos.get(today["date"]) else ''}<a href="{SITE}day/{today["date"][5:]}/" style="display:inline-block;font:700 13px {SANS};color:#3d0e19;background:{C["gold"]};padding:11px 20px;border-radius:999px;text-decoration:none">Open {nice(today["date"], "%-d %B")} in Bapa's Diary</a></div></td></tr>''')
+ 
+     for s in data['special']:
+         rows = []
+@@ -245,7 +301,7 @@ def render(data, img):
+     for d in rest:
+         parts.append(f'''<tr><td style="padding:12px 17px 18px;border-bottom:1px solid {C["line"]}">
+ <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:0 5px;font:600 19px {SERIF};color:{C["ink"]}">{nice(d["date"])}</td>
+-<td align="right" style="padding:0 5px;font:700 12px {SANS}"><a href="{SITE}day/{d["date"][5:]}/" style="color:{C["maroon"]};text-decoration:none">See the day ›</a></td></tr></table>
++<td align="right" style="padding:0 5px;font:700 12px {SANS}">{video_button(videos.get(d["date"]), True) + ' &nbsp; ' if videos.get(d["date"]) else ''}<a href="{SITE}day/{d["date"][5:]}/" style="color:{C["maroon"]};text-decoration:none">See the day ›</a></td></tr></table>
+ <div style="padding:0 5px">{cal_line(d)}</div>{pair(d, False)}</td></tr>''')
+ 
+     pre = f"This week's darshan of Pramukh Swami Maharaj and Mahant Swami Maharaj, {span}."
+@@ -273,7 +329,7 @@ Reply to this email to write to us. <a href="{{{{{{RESEND_UNSUBSCRIBE_URL}}}}}}"
+ </table></td></tr></table></body></html>'''
+ 
+ 
+-def render_picture(day, cal, pic, full, special=None):
++def render_picture(day, cal, pic, full, special=None, video=None):
+     """The morning email as Darpan asked (26 Oct 2026: "can we not just send out our 2pm picture"): that day's Bapa's
+     Diary picture itself, read from the daily run's finished picture, never changing anything in that chain."""
+     link = f'{SITE}day/{day.isoformat()[5:]}/'
+@@ -303,6 +359,7 @@ Here is today in Bapa's Diary.</td></tr>
+ <tr><td style="padding:0 14px 6px"><a href="{full}"><img src="{pic}" width="572" alt="Today in Bapa's Diary: Pramukh Swami Maharaj and Mahant Swami Maharaj on this day over the years" style="display:block;width:100%;height:auto;border:0;border-radius:6px"></a>
+ <div style="font:12px {SANS};color:{C["muted"]};text-align:center;padding:6px 0 0">Tap the picture to see it full size</div></td></tr>
+ {extra}
++{f'<tr><td align="center" style="padding:16px 18px 0">{video_button(video)}</td></tr>' if video else ''}
+ <tr><td align="center" style="padding:16px 18px 24px"><a href="{link}" style="display:inline-block;font:700 13px {SANS};color:#3d0e19;background:{C["gold"]};padding:11px 20px;border-radius:999px;text-decoration:none">Open {nice(day.isoformat(), "%-d %B")} in Bapa's Diary</a></td></tr>
+ <tr><td align="center" style="padding:18px 22px 26px;font:12px/1.6 {SANS};color:{C["muted"]};border-top:1px solid {C["line"]}">
+ <div style="font:italic 600 20px {SERIF};color:{C["maroon"]};padding-bottom:6px">Jay Swaminarayan</div>
+@@ -389,6 +446,7 @@ def main():
+     ap.add_argument('--broadcast', action='store_true', help='send to everyone signed up, at 10 am UK time')
+     ap.add_argument('--upload', help='command that sends --out/e/ to R2, run before anything is sent')
+     ap.add_argument('--no-photos', action='store_true', help='link the R2 photos as they are (quick look, no cutting)')
++    ap.add_argument('--videos', help="read the Video Darshan list from this days.json instead of the website (a mockup)")
+     a = ap.parse_args()
+ 
+     today = datetime.datetime.now(UK).date()
+@@ -419,7 +477,13 @@ def main():
+             add(('special', p[3]), p, 268)
+             add(('special', m[3]), m, 268)
+ 
+-    html = render(data, img)
++    videos = {}
++    for d in data['days']:
++        v = day_video(d['date'], [(d[k] or [''])[0][:4] for k in ('msm', 'psm')], a.videos)
++        if v:
++            videos[d['date']] = v
++    print(f'Video Darshan on {len(videos)} of {len(data["days"])} days', flush=True)
++    html = render(data, img, videos)
+     os.makedirs(a.out, exist_ok=True)
+     stem = 'daily' if a.daily else 'email'
+     open(os.path.join(a.out, stem + '.html'), 'w', encoding='utf-8').write(html)
+@@ -450,7 +514,9 @@ def send_picture(a, day):
+     name = day.isoformat() + ('' if os.path.basename(pic).startswith('bapas-diary') else '-backup')   # a backup never takes the real one's name
+     img, full = picture_files(pic, a.out, name)
+     extra = picture_files(special, a.out, name + '-special') if special else None
+-    html = render_picture(day, cal, img, full, extra)
++    video = day_video(day.isoformat(), (), a.videos)
++    print('Video Darshan:', f'{video[0]}, {video[2]}' if video else 'none for this day', flush=True)
++    html = render_picture(day, cal, img, full, extra, video)
+     os.makedirs(a.out, exist_ok=True)
+     open(os.path.join(a.out, 'daily.html'), 'w', encoding='utf-8').write(html)
+     subject = f"Today's darshan · {nice(day.isoformat(), '%A %-d %B')}"
+-- 
+2.43.0
+
