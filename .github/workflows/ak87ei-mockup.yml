@@ -28,17 +28,21 @@ jobs:
           open('build.sh', 'w').write('set -e\n' + env + step['run'])
           PY
           echo '{}' > calendar-looks.json
-          bash build.sh 2>&1 | tail -60
-          grep -o 'mandirs: .*' -r /dev/null || true
+          bash build.sh > build-log.txt 2>&1 || { tail -80 build-log.txt; exit 1; }
+          grep -E '^(mandirs|dayflow):' build-log.txt || true
           ls out/travels/mandirs out/data/dayflow | head
       - name: Pictures of the pages
         run: |
           pip install -q playwright && python3 -m playwright install --with-deps chromium > /dev/null
           (cd out && python3 -m http.server 8000 > /dev/null 2>&1 &) && sleep 2
           mkdir shots
-          python3 - <<'PY'
+          python3 - <<'PY' 2>&1 | tee shots/shots-log.txt
           from playwright.sync_api import sync_playwright
           B = 'http://localhost:8000'
+          import traceback
+          def safe(f):
+              try: f()
+              except Exception: traceback.print_exc()
           def eager(p):
               p.evaluate("document.querySelectorAll('img[loading=lazy]').forEach(i => i.loading = 'eager')")
               p.wait_for_timeout(2500)
@@ -54,10 +58,12 @@ jobs:
                   p.goto(B + '/travels/mandirs/#place=Sarangpur'); p.reload(); p.wait_for_timeout(4500); eager(p)
                   p.screenshot(path=f'shots/mandirs-town-{name}.jpg', quality=82)
                   p.goto(B + '/travels/mandirs/'); p.reload(); p.wait_for_timeout(3500)
-                  if mob: p.click('#grab'); p.wait_for_timeout(600)
-                  p.click('.years button:has-text("2025")'); p.wait_for_timeout(800)
-                  p.click('.ev:has-text("Sydney") .vt'); p.wait_for_timeout(3000); eager(p)
-                  p.screenshot(path=f'shots/mandirs-sydney-{name}.jpg', quality=82)
+                  def sydney():
+                      if mob: p.click('#grab'); p.wait_for_timeout(600)
+                      p.click('.years button:has-text("2025")', timeout=5000); p.wait_for_timeout(800)
+                      p.click('.ev:has-text("Sydney") .vt', timeout=5000); p.wait_for_timeout(3000); eager(p)
+                      p.screenshot(path=f'shots/mandirs-sydney-{name}.jpg', quality=82)
+                  safe(sydney)
                   for v in ('a', 'b'):
                       c2 = br.new_context(viewport={'width': w, 'height': h}, device_scale_factor=2 if mob else 1, is_mobile=mob, has_touch=mob)
                       c2.add_init_script(f"window.DAYFLOW = '{v}'")
@@ -66,14 +72,19 @@ jobs:
                       q.evaluate("document.getElementById('dflow').scrollIntoView()"); eager(q)
                       q.evaluate("scrollBy(0, -260)"); q.wait_for_timeout(1500)
                       q.screenshot(path=f'shots/today-{v}-{name}-top.jpg', quality=82)
-                      el = q.locator('#dflow')
-                      el.screenshot(path=f'shots/today-{v}-{name}.jpg', quality=82)
+                      safe(lambda: q.locator('#dflow').screenshot(path=f'shots/today-{v}-{name}.jpg', quality=82, timeout=15000))
                       print(v, name, q.evaluate("document.getElementById('dflow').hidden"), q.evaluate("document.querySelectorAll('#dflow img').length"))
                       c2.close()
                   ctx.close()
               br.close()
           PY
           ls -la shots
-          cp out/data/dayflow/10-31.json out/data/dayflow/day.json shots/ && cp out/travels/mandirs/index.html shots/mandirs.html
+          cp build-log.txt shots/ ; cp out/data/dayflow/10-31.json out/data/dayflow/day.json shots/ && cp out/travels/mandirs/index.html shots/mandirs.html
           gh release view ak87ei-mockup >/dev/null 2>&1 || gh release create ak87ei-mockup --prerelease --title "Mandirs and A day with Bapa mockup" --notes "Pictures of two new website pieces, for a mockup. Not used by the daily picture or the website."
           gh release upload ak87ei-mockup shots/* --clobber
+      - name: The logs, when something failed
+        if: failure()
+        run: |
+          gh release view ak87ei-mockup >/dev/null 2>&1 || gh release create ak87ei-mockup --prerelease --title "Mandirs and A day with Bapa mockup" --notes "Mockup only."
+          tail -200 build-log.txt > fail-log.txt 2>/dev/null || echo none > fail-log.txt
+          gh release upload ak87ei-mockup fail-log.txt shots/shots-log.txt --clobber || gh release upload ak87ei-mockup fail-log.txt --clobber
