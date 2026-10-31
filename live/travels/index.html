@@ -66,6 +66,14 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .cap { margin-top: 12px; font-size: 15px; font-weight: 300; color: var(--ink); min-height: 3em; }
 .where { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
 .where .tn { margin-top: 0; }
+/* Video Darshan beside See more (Darpan, 31 Oct 2026: "a video link on each stay, so a journey can be watched as well as
+   seen"): BAPS's own YouTube video from the stay's days, with the small gold play disc it has on Today */
+.tns { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+.tn.vgo { display: inline-flex; align-items: center; gap: 8px; padding-left: 8px; }
+.tn.vgo i { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--gold); }
+.tn.vgo i::before { content: ""; margin-left: 2px; border-left: 6px solid var(--night); border-top: 4px solid transparent; border-bottom: 4px solid transparent; }
+.tn.vgo:hover i, .tn.vgo:focus-visible i { background: var(--night); }
+.tn.vgo:hover i::before, .tn.vgo:focus-visible i::before { border-left-color: var(--gold); }
 .stats { clear: both; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
 .stats b { display: block; font-weight: 600; font-size: 22px; font-variant-numeric: tabular-nums; }
 .stats small { color: var(--mist); font-size: 12px; }
@@ -238,7 +246,7 @@ body.dragging { -webkit-user-select: none; user-select: none; }
   <div class="status" id="status">In</div>
   <div class="place" id="place">Ahmedabad</div>
   <div class="where"><div><span class="country" id="country">India</span> <span class="dates" id="dates"></span></div>
-  <a class="tn" id="more" href="/search/" hidden>See more &rsaquo;</a></div>
+  <span class="tns"><a class="tn" id="more" href="/search/" hidden>See more &rsaquo;</a><a class="tn vgo" id="vid" href="https://www.youtube.com/" target="_blank" rel="noopener" hidden><i aria-hidden="true"></i>Video Darshan</a></span></div>
   <div class="stats">
     <div><b id="sStops">1</b><small>places this year</small></div>
     <div><b id="sCountries">1</b><small>countries</small></div>
@@ -483,6 +491,19 @@ body.dragging { -webkit-user-select: none; user-select: none; }
   // Story card
   const $ = id => document.getElementById(id);
   let shown = -1, shownFly = null;
+  // the stay's first Video Darshan, from /data/videos/YYYY.json (tools/web_videos.py)
+  const VIDS = {};
+  const vidYear = y => VIDS[y] = VIDS[y] || fetch(`/data/videos/${y}.json`).then(r => r.ok ? r.json() : {}).catch(() => ({}));
+  async function stayVideo(s) {
+    let v = null;
+    for (let y = +s.a.slice(0, 4); y <= +s.b.slice(0, 4) && !v; y++) {
+      const all = await vidYear(y), d = Object.keys(all).filter(k => k >= s.a && k <= s.b).sort()[0];
+      if (d) v = all[d];
+    }
+    if (!v || stops[shown] !== s || shownFly) return;   // the journey has moved on meanwhile
+    $('vid').href = `https://www.youtube.com/watch?v=${encodeURIComponent(v[0])}`; $('vid').title = v[1];
+    $('vid').setAttribute('aria-label', `Video Darshan: ${v[1]}`); $('vid').hidden = false;
+  }
   function story(st) {
     if (st.i === shown && st.flying === shownFly) return; shown = st.i; shownFly = st.flying;
     const s = stops[st.i], n = stops[st.i + 1], tot = totals[st.i];
@@ -509,6 +530,8 @@ body.dragging { -webkit-user-select: none; user-select: none; }
     }
     // See more: every photo of this stay in Search, like the See more buttons on Today (Darpan, 28 Oct 2026)
     $('more').hidden = st.flying;
+    $('vid').hidden = true;
+    if (!st.flying) stayVideo(s);
     if (!st.flying) { $('more').href = `/search/#place=${encodeURIComponent(s.p)}&from=${s.a}&to=${s.b}`; $('more').setAttribute('aria-label', `See more photos from ${s.name}, ${fmtRange(s.a, s.b)} ${s.year}`); }
     // no caption sentence on the card (Darpan, 28 Oct 2026: "not relevant or needed, get rid")
     const t2 = st.flying ? totals[st.i + 1] : tot;
