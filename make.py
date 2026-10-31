@@ -2192,17 +2192,21 @@ def tg_caption(ev, evs=None):
     return text + '\n'
 
 
-def compose_special(ev, day):
+def compose_special(ev, day, lead=None):
     """Idea 3: on a big day in BAPS history, a second picture of that day's story: the channel's lead photo large,
-    four more beside it under the story, in the daily picture's colours."""
-    urls = tg_photos(ev['posts'])[:5]
+    four more beside it under the story, in the daily picture's colours. lead: the year card's own photo of the
+    moment (baps.org), shown large first when the special picture comes from a story the card shows."""
+    urls = tg_photos(ev['posts'])[:8]
     cache = os.path.join(HERE, '.cache')
-    ims = []
+    ims = [lead.convert('RGB')] if lead is not None else []
     for u in urls:
         x = {'i': u, 'y': 0}
         download_all([x], cache)
         if 'path' in x:
-            ims.append(Image.open(x['path']).convert('RGB'))
+            im = Image.open(x['path']).convert('RGB')
+            if np.asarray(im.convert('L').resize((64, 64)), dtype=float).std() >= 25:   # not a plain night sky or a blank frame
+                ims.append(im)
+    ims = ims[:5]
     if not ims:
         return None
     img = background(); dr = ImageDraw.Draw(img)
@@ -2239,7 +2243,7 @@ def compose_special(ev, day):
     for line in wrap(dr, ev.get('headline') or ev['line'], hf, tw, 2):
         gold_text(img, (x0, y - px(60)), line, hf); y += px(72)
     y += px(20)
-    for line in wrap(dr, ev.get('story') or ev.get('whatsapp') or ev['line'], bf, tw, 7):
+    for line in wrap(dr, (ev.get('whatsapp') if lead is not None else None) or ev.get('story') or ev.get('whatsapp') or ev['line'], bf, tw, 7):
         dr.text((x0, y), line, font=bf, fill=CAPTION_IVORY, anchor='ls'); y += px(50)
     small = ims[1:5]
     top = round(max(px(620), y + px(40)))
@@ -2388,7 +2392,7 @@ def main():
     left = [e for e in tg_evs if town(e) not in pictured and e.get('url') not in cards and not any(tells(x, e) for x in photos)
             and not (e.get('channel') and (e['date'][:4], town(e)[1]) in pictured)]
     told = max(left, key=tg_rank, default=None)
-    every = None
+    every, story_lead = None, None
     if not special:   # a big festival with no special day in BAPS history: one darshan from each year's own festival day
         try:
             sp, every = every_festival(day, a.cache)
@@ -2403,6 +2407,7 @@ def main():
         shown_stories = [e for e in tg_evs if not e.get('channel') and not e.get('guru') and e.get('posts')
                          and any(tells(x, e, RARE_DAYS) for x in photos)]
         special = max(shown_stories, key=tg_rank, default=None)
+        story_lead = next((x['im'] for x in photos if special and x.get('im') is not None and tells(x, special, RARE_DAYS)), None)
     cal = cal_caption(day, every)
     text = cal + (('\n' if cal else '') + tg_caption(told, left) if told else '')
     if text.strip():
@@ -2420,7 +2425,7 @@ def main():
                 os.path.join(a.out, 'bapas-diary-backup.png'), optimize=True)
         print('  flagged:', ', '.join(str(x['y']) for x in unsure))
     if special:
-        sp = compose_special(special, day)
+        sp = compose_special(special, day, lead=story_lead)
         if sp:
             sp.save(os.path.join(a.out, 'bapas-diary-special.png'), optimize=True)
             sp.save(os.path.join(a.out, 'bapas-diary-special.jpg'), quality=95, optimize=True)
