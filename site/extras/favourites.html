@@ -53,6 +53,9 @@ main { padding-block: 30px 70px; }
 .card .pic img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; object-position: 50% 25%; background: #e8dcc2; }
 .card .when { display: block; text-align: center; font: 700 17px/1.2 var(--serif); color: var(--maroon); padding: 9px 4px 2px; text-wrap: balance; }
 .card .pl { display: block; text-align: center; font: italic 500 15px/1.3 var(--serif); color: var(--muted); padding: 0 4px 10px; }
+.card .vm img { object-position: 50% 50%; }
+.card .vm .play { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(217, 164, 65, .92); box-shadow: 0 4px 12px rgba(0, 0, 0, .4); }
+.card .vm .play::before { content: ""; position: absolute; left: 18px; top: 14px; border-left: 15px solid #2a0d12; border-top: 9px solid transparent; border-bottom: 9px solid transparent; }
 .empty { text-align: center; max-width: 40ch; margin: 30px auto; font-style: italic; color: var(--muted); text-wrap: balance; }
 .empty a { color: var(--maroon); }
 </style>
@@ -79,9 +82,16 @@ function shared() {
   if (!m) return null;
   return decodeURIComponent(m[1]).split('|').map(x => { const [k, d] = x.split('~'); return { k, d: d || '', p: '', c: '' }; }).filter(i => /\//.test(i.k));
 }
+// a kept video moment (yt:ID@SECONDS, Darpan 31 Oct 2026: "yes moments"): the video's own picture, the moment's name
+// and the video's title; tapping it opens the video at that second
+const moment = k => { const m = /^yt:([\w-]{11})@(\d+)$/.exec(k || ''); return m && { id: m[1], t: +m[2] }; };
+const clock = t => (t >= 3600 ? Math.floor(t / 3600) + ':' + String(Math.floor(t / 60) % 60).padStart(2, '0') : Math.floor(t / 60)) + ':' + String(t % 60).padStart(2, '0');
 function card(f) {
   const a = document.createElement('article'); a.className = 'card'; a.tabIndex = 0;
-  a.innerHTML = `<div class="pic"><img loading="lazy" alt="${esc(f.c || 'Darshan')}" src="${B.PHOTOS}s/${esc(f.k)}"></div>` +
+  const m = moment(f.k);
+  a.innerHTML = m ? `<div class="pic vm"><img loading="lazy" alt="${esc(f.c || 'Video Darshan')}" src="https://i.ytimg.com/vi/${m.id}/hqdefault.jpg"><span class="play"></span></div>` +
+      `<span class="when">${esc(f.p || 'Video moment')} · ${clock(m.t)}</span><span class="pl">${esc(f.c || 'Video Darshan')}</span>`
+    : `<div class="pic"><img loading="lazy" alt="${esc(f.c || 'Darshan')}" src="${B.PHOTOS}s/${esc(f.k)}"></div>` +
     `<span class="when">${esc(B.niceDate(f.d) || 'Darshan')}</span>${f.p ? `<span class="pl">${esc(f.p)}</span>` : '<span class="pl"></span>'}`;
   const h = document.createElement('button'); h.type = 'button'; h.className = 'bd-heart';
   h.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.3 3 4.5 6.7 4.5c2.2 0 3.6 1.2 5.3 3.1 1.7-1.9 3.1-3.1 5.3-3.1 3.7 0 5.8 3.8 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>';
@@ -107,7 +117,7 @@ function draw() {
   $('btns').replaceChildren(...(list.length ? [
     album ? button('Keep them all', true, () => { B.fav.addAll(album); B.toast('All kept in your favourites 💛', ['See them', '/favourites/']); })
           : button('Share this album', true, () => shareAlbum(list)),
-    button('Play as slideshow', false, () => B.slideshow(list.map(B.photoOf), album ? 'Shared with you' : 'My favourites')),
+    button('Play as slideshow', false, () => B.slideshow(list.filter(f => !moment(f.k)).map(B.photoOf), album ? 'Shared with you' : 'My favourites')),
   ] : []));
   $('empty').hidden = list.length > 0;
   if (keys !== shownKeys) { $('grid').replaceChildren(...list.map(card)); shownKeys = keys; }
@@ -116,7 +126,9 @@ function draw() {
 // tapping a photo plays from that one
 $('grid').addEventListener('click', e => {
   const c = e.target.closest('.card'); if (!c || e.target.closest('[data-fav]')) return;
-  const list = shared() || B.fav.list(), i = [...$('grid').children].indexOf(c);
+  const all = shared() || B.fav.list(), m = moment(all[[...$('grid').children].indexOf(c)].k);
+  if (m) return void window.open(`https://www.youtube.com/watch?v=${m.id}&t=${m.t}s`, '_blank', 'noopener');
+  const list = all.filter(f => !moment(f.k)), i = Math.max(0, list.indexOf(all[[...$('grid').children].indexOf(c)]));
   B.slideshow([...list.slice(i), ...list.slice(0, i)].map(B.photoOf), 'My favourites');
 });
 $('grid').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.classList.contains('card')) e.target.click(); });

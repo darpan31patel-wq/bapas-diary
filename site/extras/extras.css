@@ -111,3 +111,17 @@ nav.site-menu, .ph-top { zoom: calc(1 / var(--bd-zoom, 1)); }
 
 /* Easier to read on a phone: the smallest words a little bigger (website review, 28 Oct 2026) */
 .bd-share span, .bd-favlink span { font-size: 12px }
+
+/* video moments (Darpan, 31 Oct 2026): the chapters of a Video Darshan, beside its link, each with a heart */
+.bd-moments { position: fixed; z-index: 400; min-width: 220px; max-width: min(340px, calc(100vw - 16px)); max-height: 60vh; overflow: auto; padding: 8px 6px;
+  background: linear-gradient(#2a0b12, #1a060b); border: 1px solid rgba(217, 164, 65, .55); border-radius: 12px; box-shadow: 0 14px 32px rgba(0, 0, 0, .55); }
+.bd-mh { padding: 2px 10px 6px; font: 700 10.5px var(--bd-sans); letter-spacing: .2em; text-transform: uppercase; color: var(--bd-gold-soft); }
+.bd-mr { display: flex; align-items: center; gap: 4px; }
+.bd-mr a { flex: 1; display: flex; gap: 10px; align-items: baseline; padding: 7px 10px; border-radius: 8px; color: var(--bd-cap); text-decoration: none; font: 500 16px/1.3 var(--bd-serif); }
+.bd-mr a:hover, .bd-mr a:focus-visible { background: rgba(217, 164, 65, .18); color: var(--bd-gold-hi); outline: none; }
+.bd-mt { flex: none; min-width: 3.4em; font: 700 12px var(--bd-sans); color: var(--bd-gold-soft); font-variant-numeric: tabular-nums; }
+.bd-mheart { flex: none; width: 32px; height: 32px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--bd-gold-soft); cursor: pointer; }
+.bd-mheart:hover, .bd-mheart:focus-visible { background: rgba(217, 164, 65, .18); outline: none; }
+.bd-mheart[aria-pressed="true"] { color: #ff5a64; }
+.bd-mheart svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; }
+.bd-mheart[aria-pressed="true"] svg { fill: currentColor; }
