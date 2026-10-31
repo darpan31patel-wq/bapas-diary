@@ -472,12 +472,13 @@ ORIG_TRIM = make.trim_bars
 make.trim_bars = lambda im, face: (im, face) if getattr(im, 'notrim', False) else ORIG_TRIM(im, face)
 FACE = {('diwali', 2025): (140, 280, 90, 120), ('diwali', 2020): (810, 140, 120, 160)}   # side views the face finder misses (x, y, w, h in the photo)
 
+SAY.update({('annakut', 2005): 'New Year’s blessings to all'})   # the second big card (Darpan 31 Oct 2026: one all food, one New Year blessings)
 SAY.update({   # 31 Oct 2026 picks: Diwali lamps and fireworks, Annakut with the whole spread of food
     ('diwali', 1990): 'Diwali puja darshan', ('diwali', 2006): 'Morning puja among Diwali divas', ('diwali', 2013): 'Performs the Diwali arti',
     ('diwali', 2017): 'Lights a divo', ('diwali', 2019): 'Blesses the mandir account books', ('diwali', 2020): 'Lights divas for Diwali',
     ('diwali', 2022): 'Lights a Diwali lamp', ('diwali', 2023): 'Lights a lamp on Diwali', ('diwali', 2018): 'Lights the lamp in the Akshar Deri',
     ('annakut', 1990): 'Annakut utsav', ('annakut', 2001): 'Sees the annakut being made', ('annakut', 2004): 'Annakut arti of Thakorji',
-    ('annakut', 2005): 'Performs the annakut arti', ('annakut', 2006): 'Arti before a grand annakut', ('annakut', 2008): 'Arti of the New Year annakut',
+    ('annakut', 2006): 'Arti before a grand annakut', ('annakut', 2008): 'Arti of the New Year annakut',
     ('annakut', 2009): 'New Year annakut arti', ('annakut', 2010): 'Annakut arti in the Akshar Deri', ('annakut', 2012): 'Arti of the annakut',
     ('annakut', 2013): 'The New Year annakut before him', ('annakut', 2014): 'Darshan of the annakut', ('annakut', 2015): 'Engrossed in the annakut darshan',
     ('annakut', 2017): 'Sees the decorated annakut offerings', ('annakut', 2018): 'New Year’s Day annakut arti', ('annakut', 2019): 'Arti of the Gondal annakut',
@@ -496,6 +497,9 @@ def photos_for(k):
     out = []
     for y in cands['years']:
         l = picks['p'].get(str(y['y']))
+        h2 = picks.get('hero2')   # a second big card (Annakut: New Year blessings), taking that year's place
+        if h2 and y['y'] == h2[0]:
+            l = h2[1]
         if not l:
             continue
         x = y['c'][ord(l) - 97]
@@ -514,7 +518,7 @@ def photos_for(k):
         c = x['c']
         c = 'Swamishri ' + c if c[:1].islower() else c
         say = SAY.get((k, y['y']))
-        p = dict(y=y['y'], d=y['d'], im=im, face=face, c=c, town=tidy_town(y.get('place')), crop=CROP.get((k, y['y']), 'frame'), hero=y['y'] == picks['hero'])
+        p = dict(y=y['y'], d=y['d'], im=im, face=face, c=c, town=tidy_town(y.get('place')), crop=CROP.get((k, y['y']), 'frame'), hero=y['y'] == picks['hero'] or bool(h2 and y['y'] == h2[0]))
         p['cap'] = say or ORIG_CAPTION(p)
         out.append(p)
     seen = {}
@@ -533,7 +537,7 @@ def main():
     BASE_BG, PLAIN_ROPE, ORIG_CAPTION, base_make = make.background, make.rope, make.caption, make.WideCard.make
     make.place = lambda x: x.get('town', '')
     make.hero_sharp = lambda im: True
-    make.hero_of = lambda photos: next((x for x in photos if x.get('hero')), None)
+    make.hero_of = lambda photos: [x for x in photos if x.get('hero')] or None
     make.ANNIVERSARY = ()
     for k in keys:
         make.caption = ORIG_CAPTION
@@ -554,7 +558,7 @@ def main():
                     disp = fest_food.display(w, h, seed=i)
                     img = img.convert('RGBA'); img.alpha_composite(disp, (int(cx - w / 2), int(row['y'] + row['CH'] - h)))
         img.convert('RGB').save(os.path.join(dest, f'every-{k}.jpg'), quality=90)
-        print(k, len(photos), 'years, special card', next((x['y'] for x in photos if x.get('hero')), None))
+        print(k, len(photos), 'years, special cards', [x['y'] for x in photos if x.get('hero')])
 
 
 if __name__ == '__main__':
