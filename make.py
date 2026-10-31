@@ -1632,6 +1632,7 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None):
     lay = WIDE[style]
     rnd = random.Random(seed)
     img = background(); dr = ImageDraw.Draw(img)
+    festive = diwali_week(day) and not (title or '').startswith('Every')   # the daily picture only; the festival pictures have their own dress
     if lay.get('oneline'):
         header_line(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
     elif lay.get('one_title'):
@@ -1670,8 +1671,10 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None):
         else:
             sag = lambda xp: y_top - px(4) + px(SAG) * 4 * (xp / W) * (1 - xp / W)                    # the cord dips a little in the middle
         rope(img, [(xp, sag(xp)) for xp in range(0, W + 1, 4)])   # drawn before the cards, so it always runs behind them
-        later = []   # pegs and captions go on after the whole row, so a card swinging over its neighbour never hides them
         x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
+        if festive:
+            cord_lights(img, sag, r)
+        later = []   # pegs and captions go on after the whole row, so a card swinging over its neighbour never hides them
         for c, x in enumerate(row):
             cx = x0 + c * (card.CW + gap) + card.CW / 2
             if lay.get('straight'):   # every card hangs straight down from its peg on the curved cord (Darpan 18 Oct 2026: any swing looked messy)
@@ -1694,9 +1697,76 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None):
                 later.append(lambda tag=tag, bx=bx, by=by: img.paste(tag, (int(bx - tag.width / 2), int(by + px(6))), tag))
         for f in later:
             f()
+    if festive:
+        corner_diyas(img)
     if not lay.get('oneline'):
         footer(img, small=lay.get('compact', False), history=history, cal=cal)
     return img
+
+
+# Darpan, 31 Oct 2026 (idea 2, 'yes'): from Vagh Baras to Bhai Beej the daily picture keeps its usual photos but wears a
+# light Diwali touch: small warm lights along the cords (only where the cord shows, never over a photo) and a lit diya
+# in each top corner beside the title. The festival pictures (Every Diwali, Every Annakut) have their own dress.
+DIWALI_FROM, DIWALI_TO = 'Vagh Baras', 'Bhai Beej'
+
+
+def diwali_week(day):
+    day = datetime.date.fromisoformat(str(day)[:10])
+    back = any(DIWALI_FROM in festivals(day - datetime.timedelta(days=k)) for k in range(0, 8))
+    ahead = any(DIWALI_TO in festivals(day + datetime.timedelta(days=k)) for k in range(0, 8))
+    return back and ahead
+
+
+LIGHTS = [(255, 196, 92), (255, 150, 52), (255, 222, 140)]   # warm amber, deep orange, soft gold: the maroon and gold palette
+
+
+def cord_lights(img, sag, row):
+    """A string of small glowing bulbs along one cord, drawn before the cards so the cards cover any behind them."""
+    step, r = px(46), px(4.2)
+    glow = Image.new('RGBA', img.size, (0, 0, 0, 0)); gd = ImageDraw.Draw(glow)
+    bulbs = []
+    k = 0
+    x = step / 2 + (row % 2) * step / 2
+    while x < W:
+        y = sag(x) + px(9)   # hanging just under the cord
+        col = LIGHTS[k % len(LIGHTS)]
+        gd.ellipse((x - r * 3.4, y - r * 3.4, x + r * 3.4, y + r * 3.4), fill=col + (95,))
+        bulbs.append((x, y, col)); x += step; k += 1
+    glow = glow.filter(ImageFilter.GaussianBlur(r * 1.6))
+    img.alpha_composite(glow) if img.mode == 'RGBA' else img.paste(glow, (0, 0), glow)
+    d = ImageDraw.Draw(img)
+    for x, y, col in bulbs:
+        d.line((x, y - px(8), x, y - r), fill=(70, 46, 22), width=max(1, round(px(1.2))))   # the little wire up to the cord
+        d.ellipse((x - r, y - r, x + r, y + r), fill=col)
+        d.ellipse((x - r * .45, y - r * .55, x + r * .1, y - r * .05), fill=(255, 245, 215))   # the bright core
+
+
+def diya(img, cx, cy, s):
+    """A small clay diya with its flame, base centred at (cx, cy), about 70 * s layout px wide."""
+    S = px(s)
+    glow = Image.new('RGBA', img.size, (0, 0, 0, 0)); gd = ImageDraw.Draw(glow)
+    gd.ellipse((cx - 70 * S, cy - 120 * S, cx + 70 * S, cy + 10 * S), fill=(255, 170, 60, 110))
+    glow = glow.filter(ImageFilter.GaussianBlur(28 * S))
+    img.alpha_composite(glow) if img.mode == 'RGBA' else img.paste(glow, (0, 0), glow)
+    d = ImageDraw.Draw(img)
+    d.chord((cx - 36 * S, cy - 30 * S, cx + 36 * S, cy + 8 * S), 0, 180, fill=(150, 66, 30))       # the bowl
+    d.chord((cx - 32 * S, cy - 26 * S, cx + 32 * S, cy + 2 * S), 0, 180, fill=(184, 88, 38))
+    d.polygon([(cx + 30 * S, cy - 11 * S), (cx + 46 * S, cy - 16 * S), (cx + 32 * S, cy - 4 * S)], fill=(150, 66, 30))   # the spout
+    d.ellipse((cx - 36 * S, cy - 16 * S, cx + 36 * S, cy - 6 * S), fill=(120, 50, 22))             # the rim, oil inside
+    for k, dx in enumerate((-20, -6, 8, 22)):
+        d.ellipse((cx + dx * S - 3 * S, cy - 3 * S, cx + dx * S + 3 * S, cy + 3 * S), fill=(232, 176, 80))   # painted dots
+    fx, fy = cx + 38 * S, cy - 18 * S
+    d.ellipse((fx - 9 * S, fy - 20 * S, fx + 9 * S, fy + 2 * S), fill=(255, 140, 30))
+    d.polygon([(fx - 9 * S, fy - 9 * S), (fx, fy - 44 * S), (fx + 9 * S, fy - 9 * S)], fill=(255, 140, 30))
+    d.ellipse((fx - 5 * S, fy - 14 * S, fx + 5 * S, fy + 1 * S), fill=(255, 220, 120))
+    d.polygon([(fx - 5 * S, fy - 7 * S), (fx, fy - 30 * S), (fx + 5 * S, fy - 7 * S)], fill=(255, 220, 120))
+    d.ellipse((fx - 2 * S, fy - 10 * S, fx + 2 * S, fy - 1 * S), fill=(255, 250, 230))
+
+
+def corner_diyas(img):
+    """A lit diya in each top corner, in the free space beside the title."""
+    for cx in (px(330), W - px(350)):
+        diya(img, cx, px(96), 1.1)
 
 
 ROPE = 7   # how thick the cord is, in pixels (Darpan, 19 Oct 2026: thicker, and always behind the photos; was a 2px line)
@@ -2393,7 +2463,8 @@ def main():
             and not (e.get('channel') and (e['date'][:4], town(e)[1]) in pictured)]
     told = max(left, key=tg_rank, default=None)
     every, story_lead = None, None
-    if not special:   # a big festival with no special day in BAPS history: one darshan from each year's own festival day
+    wins = 'Diwali' in festivals(day)   # Darpan, 31 Oct 2026 (idea 1, 'yes'): Diwali's own picture wins over the channel's story, which goes in the caption
+    if not special or wins:   # a big festival with no special day in BAPS history: one darshan from each year's own festival day
         try:
             sp, every = every_festival(day, a.cache)
             if sp:
@@ -2401,6 +2472,10 @@ def main():
                 sp.save(os.path.join(a.out, 'bapas-diary-special.jpg'), quality=95, optimize=True)
         except Exception as e:
             print('  no festival picture:', e)
+    if special and every:   # the story's special picture gives way: its story leads the caption instead
+        print('  story', special['date'], special.get('headline'), 'goes in the caption: Every', every[0], 'is the special picture')
+        left = [special] + [e for e in left if e is not special]
+        told, special = special, None
     if not special and not os.path.exists(os.path.join(a.out, 'bapas-diary-special.png')):
         # Darpan, 31 Oct 2026 ('make special cards for all these events'): a day whose year card shows a story Today in
         # BAPS History remembers (2020's Nenpur murti pratishtha) gets that story's special picture too
