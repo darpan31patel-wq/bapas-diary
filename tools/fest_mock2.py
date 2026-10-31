@@ -23,7 +23,7 @@ DAY = {'diwali': '2026-11-08', 'annakut': '2026-11-10', 'janmashtami': '2027-08-
        'harinom': '2027-04-15', 'vasant': '2027-02-11', 'rathyatra': '2027-07-05', 'raksha': '2027-08-17', 'psm': '2026-12-07', 'msm': '2027-09-13'}
 MARIGOLD, ROSES, JASMINE = [(255, 159, 28), (255, 190, 40), (240, 120, 20)], [(224, 36, 94), (255, 143, 171), (255, 213, 106)], [(255, 252, 240), (245, 240, 220)]
 DRESS = {   # night/top tint, glow colour, sky, rope, foot picture
-    'diwali': dict(top=(10, 8, 26), glow=(150, 80, 20), sky=('fireworks',), rope=('bulbs',), foot='diya'),
+    'diwali': dict(top=(10, 8, 26), glow=(150, 80, 20), sky=('fireworks',), rope=('bulbs',), foot='diya', diyas=True),
     'annakut': dict(glow=(190, 100, 20), rope=('sweets',), foot=None),   # light touch: laddus on the marigold cord, a full thali on each card
     'janmashtami': dict(top=(8, 12, 40), glow=(60, 90, 180), sky=('stars',), rope=('beads', [(31, 122, 140), (27, 63, 122), (80, 170, 90)]), foot='matki'),
     'fuldol': dict(glow=(170, 40, 90), sky=('puffs', [(255, 61, 127), (255, 212, 0), (53, 199, 89), (61, 183, 255), (255, 138, 26), (176, 92, 255)]),
@@ -306,7 +306,8 @@ def sky(img, spec, rnd):
     corners = [(.06, .1, 120), (.17, .06, 80), (.94, .1, 125), (.83, .06, 78), (.035, .45, 70), (.965, .5, 72), (.03, .85, 60), (.97, .88, 60)]
     if kind == 'fireworks':
         cols = [(255, 205, 90), (255, 120, 170), (120, 220, 255), (255, 150, 60), (190, 255, 140)]
-        for i, (fx, fy, r) in enumerate(corners[:6]):
+        spots = corners[:6] + [(.26, .07, 55), (.74, .07, 55), (.1, .3, 60), (.9, .3, 60), (.05, .68, 62), (.95, .7, 62), (.025, .92, 45), (.975, .92, 45), (.12, .12, 40), (.88, .13, 40)]
+        for i, (fx, fy, r) in enumerate(spots):   # Darpan 31 Oct 2026: more fireworks in the background
             burst(d, W * fx, H * fy, px(r), cols[i % len(cols)], rnd)
     elif kind == 'stars':
         for _ in range(420):
@@ -370,7 +371,17 @@ def background_for(k):
         g = np.clip(1 - np.hypot((xx - .5) / .6, (yy - 1.05) / .34), 0, 1) ** 1.5
         a = a + np.array(spec['glow']) * g * .55
         img = Image.fromarray(a.clip(0, 255).astype('uint8'))
-        return sky(img, spec.get('sky'), random.Random(k))
+        img = sky(img, spec.get('sky'), random.Random(k))
+        if spec.get('diyas'):   # a row of lit diyas along the bottom edge, either side of the footer line (Darpan 31 Oct 2026)
+            img = img.convert('RGBA')
+            s_ = round(px(34)); ic = hi(s_, diya)
+            x = px(30)
+            while x < W - px(30):
+                if x < W * .27 or x > W * .73:
+                    img.alpha_composite(ic, (int(x), int(H - s_ - px(8))))
+                x += px(58)
+            img = img.convert('RGB')
+        return img
     return bg
 
 

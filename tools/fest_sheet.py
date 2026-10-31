@@ -12,7 +12,7 @@ TW, TH, LAB = 300, 225, 38
 for k, fest in json.load(open('preview/fest/cands.json')).items():
     if only and k not in only:
         continue
-    years, per, lines = fest['years'], (6 if only else 12), (2 if only else 1)
+    years, per, lines = fest['years'], (4 if only else 12), (3 if only else 1)
     for part in range(0, len(years), per):
         ys = years[part:part + per]
         img = Image.new('RGB', (110 + 8 * TW, len(ys) * lines * (TH + LAB)), (30, 30, 30)); d = ImageDraw.Draw(img)
