@@ -124,9 +124,24 @@ jobs:
       - name: Deploy to Pages
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          MISSED_KEY: ${{ secrets.MISSED_KEY }}
         run: |
           # the email sign up (/api/weekly, functions/ next to out/) needs the Resend key as a Pages secret (Darpan: ALL GOOD, 26 Oct)
           if [ -n "$RESEND_API_KEY" ]; then printf %s "$RESEND_API_KEY" | npx --yes wrangler@3.114.0 pages secret put RESEND_API_KEY --project-name "$PROJECT" > /dev/null && echo "Resend key: set"; fi
+          # searches that found nothing (/api/missed, Darpan 31 Oct 2026) are kept in a KV store bound as MISSED; made and bound here
+          # when the token allows it, else a one line note says what to do by hand. Never stops the deploy.
+          api() { curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' "$@"; }
+          KV=https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces
+          NS=$(api "$KV?per_page=100" | jq -r '.result[]? | select(.title=="missed-searches") | .id' | head -1)
+          [ -n "$NS" ] || NS=$(api -X POST "$KV" -d '{"title":"missed-searches"}' | jq -r '.result.id // empty')
+          if [ -n "$NS" ]; then
+            ok=$(api -X PATCH "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJECT" \
+              -d "{\"deployment_configs\":{\"production\":{\"kv_namespaces\":{\"MISSED\":{\"namespace_id\":\"$NS\"}}},\"preview\":{\"kv_namespaces\":{\"MISSED\":{\"namespace_id\":\"$NS\"}}}}}" | jq -r .success)
+            echo "missed searches store: bound as MISSED ($ok)"
+          else
+            echo "missed searches store: the token cannot make a KV store. By hand: Cloudflare, Storage & Databases, KV, create 'missed-searches'; then Workers & Pages, $PROJECT, Settings, Bindings, add KV binding MISSED to it."
+          fi
+          if [ -n "$MISSED_KEY" ]; then printf %s "$MISSED_KEY" | npx --yes wrangler@3.114.0 pages secret put MISSED_KEY --project-name "$PROJECT" > /dev/null && echo "missed searches word: set"; else echo "missed searches word: add a GitHub secret MISSED_KEY (any word) to read them at /missed/"; fi
           npx --yes wrangler@3.114.0 pages deploy out --project-name "$PROJECT" --branch main --commit-dirty=true
       - name: bapas-diary.com and www point at the site
         run: |

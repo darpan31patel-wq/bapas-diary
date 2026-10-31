@@ -435,6 +435,19 @@ $('month').innerHTML = '<option value="">Every month</option>' + MONTHS.map((m, 
 $('day').innerHTML = '<option value="">Every day</option>' + Array.from({ length: 31 }, (_, i) => `<option value="${String(i + 1).padStart(2, '0')}">${i + 1}</option>`).join('');
 const yearKey = y => y === 0 ? 'none' : y < FIRST ? 'old' : String(y);   // 0: a photo with no date (data/undated.json)
 
+// a search that finds nothing is saved, just the words and the day, once the typing has settled for two seconds and
+// nothing has turned up (Darpan, 31 Oct 2026: "when searches something that provides no searches, can we save those searches?")
+let missedTimer = null, missedLast = '';
+function missed(q) {
+  clearTimeout(missedTimer);
+  q = (q || '').replace(/\s+/g, ' ').trim();
+  if (q.length < 2 || q === missedLast) return;
+  missedTimer = setTimeout(() => {
+    if ($('q').value.replace(/\s+/g, ' ').trim() !== q || $('results').children.length) return;   // still nothing for these words
+    missedLast = q;
+    try { fetch('/api/missed', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({q, page: 'search'}), keepalive: true}).catch(() => {}); } catch (e) {}
+  }, 2000);
+}
 function search() {
   $('day-view')?.remove();
   marks();
@@ -499,8 +512,10 @@ function render(byYear, want) {
     $('count').innerHTML = asked ? `Nothing found${loaded < total ? ' yet, still loading' : ''}.` : 'Type a word or pick a date to start.';
     $('results').innerHTML = '';
     $('more').hidden = true;
+    if (asked && loaded >= total) missed($('q').value);
     return;
   }
+  missed('');
   const nPhotos = hits.filter(h => h.kind === 'photo').length, nPosts = hits.filter(h => h.kind === 'post').length;
   const nDates = new Set(hits.filter(h => !h.u).map(h => h.d)).size, nNone = hits.filter(h => h.u).length;
   $('count').innerHTML = nNone && nNone === hits.length && !picMode ? `<b>${nNone.toLocaleString()}</b> darshan photo${nNone === 1 ? '' : 's'}` : (latestOn() && !picMode ? '<span class="latest">Latest vicharan, newest first</span>' + latestVideo() : '') + (picMode ? `<b>${nPhotos.toLocaleString()}</b> photos most like your picture, closest first` + (loaded < total ? ' (still loading)' : '') : `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'}${latestOn() ? '' : ` and <b>${nPosts.toLocaleString()}</b> On this day stor${nPosts === 1 ? 'y' : 'ies'}`} on <b>${nDates.toLocaleString()}</b> date${nDates === 1 ? '' : 's'}${nNone ? `, and <b>${nNone.toLocaleString()}</b> more darshan` : ''}`
