@@ -136,11 +136,11 @@ a.ss-big { text-decoration: none; }
 .peg::after{content:"";position:absolute;left:1px;right:1px;top:12px;height:3px;background:#3a2210;opacity:.7}
 .photo{position:relative;aspect-ratio:3/4;max-width:100%;overflow:hidden;background:var(--maroon-deep)}
 /* each photo sits on its own layer with its softened fill; the next photo's layer fades in on top of the one showing,
-   which stays fully there until it is covered, so the change is a clean dissolve with no dark dip in the middle
+   which stays fully there until it is covered, so the change is a clean dissolve with no dark dip in the middle; 5.5 s and the caption fades with it (Darpan, 31 Oct 2026: "make the fades 2-3 seconds longer so it's cleaner")
    (Darpan, 28 Oct 2026: some pictures weren't fading or changing as expected) */
 .photo .layer{position:absolute;inset:0;opacity:0;z-index:0}
 .photo .layer.on{opacity:1}
-.photo .layer.top{z-index:1;transition:opacity 3s ease-in-out}
+.photo .layer.top{z-index:1;transition:opacity 5.5s ease-in-out}
 .photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 /* and it never sits still: each photo drifts slowly closer to Bapa's face and back, out of step with the others, so the
    board feels alive between the changes (Darpan, 28 Oct 2026) */
@@ -151,8 +151,8 @@ a.ss-big { text-decoration: none; }
    has to zoom out is filled with the photo's own colours, softened (make.fill) */
 .photo img.placed{inset:auto;max-width:none;object-fit:fill}
 .photo img.bg{inset:-8%;width:116%;height:116%;object-fit:cover;filter:blur(12px) brightness(.72)}
-.photo .words{position:absolute;inset:0;z-index:2;display:grid;place-items:center;padding:12%;background:radial-gradient(circle at 50% 40%,#5a1626,var(--maroon-deep));transition:opacity 3s ease-in-out}
-.photo .words p{margin:0;font:500 clamp(14px,1.3vw,16px)/1.35 var(--serif);font-style:italic;color:var(--gold-hi);text-align:center;text-wrap:balance;overflow-wrap:anywhere;transition:opacity 1.5s ease-in-out}
+.photo .words{position:absolute;inset:0;z-index:2;display:grid;place-items:center;padding:12%;background:radial-gradient(circle at 50% 40%,#5a1626,var(--maroon-deep));transition:opacity 5.5s ease-in-out}
+.photo .words p{margin:0;font:500 clamp(14px,1.3vw,16px)/1.35 var(--serif);font-style:italic;color:var(--gold-hi);text-align:center;text-wrap:balance;overflow-wrap:anywhere;transition:opacity 2.75s ease-in-out}
 .photo .words.off{opacity:0}
 .photo.story{display:grid;place-items:center;padding:12%;background:radial-gradient(circle at 50% 40%,#5a1626,var(--maroon-deep))}
 .photo.story p{margin:0;font:500 clamp(14px,1.3vw,16px)/1.35 var(--serif);font-style:italic;color:var(--gold-hi);text-wrap:balance}
@@ -163,7 +163,7 @@ a.ss-big { text-decoration: none; }
 .ev{margin-top:4px;font:500 12.5px/1.25 var(--serif);text-wrap:balance;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .fest{display:inline-block;margin-top:5px;max-width:100%;font:700 8.5px/1.25 var(--sans);letter-spacing:.14em;text-transform:uppercase;background:var(--maroon-ink);color:var(--gold-hi);padding:3px 7px;border-radius:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .of{margin-top:5px;font:700 8.5px/1 var(--sans);letter-spacing:.16em;color:rgba(110,20,36,.6);font-variant-numeric:tabular-nums}
-.cap{margin-top:11px;min-height:2.8em;width:100%;text-align:center;font:500 15px/1.35 var(--serif);color:var(--cream);transition:opacity 1.5s ease-in-out;text-wrap:balance;max-width:100%;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.cap{margin-top:11px;min-height:2.8em;width:100%;text-align:center;font:500 15px/1.35 var(--serif);color:var(--cream);transition:opacity 2.75s ease-in-out;text-wrap:balance;max-width:100%;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .slot .vid{display:inline-flex;align-items:center;gap:8px;margin-top:2px;padding:6px 13px 6px 7px;border:1px solid rgba(217,164,65,.6);border-radius:999px;background:rgba(0,0,0,.22);color:#ffe296;font:600 12.5px/1 Poppins,Arimo,sans-serif;letter-spacing:.04em;text-decoration:none;white-space:nowrap;transition:background .2s,border-color .2s}
 .slot .vid:hover,.slot .vid:focus-visible{background:rgba(217,164,65,.22);border-color:#ffe296}
 .slot .vid i{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#d9a441}
@@ -450,7 +450,7 @@ a.ss-big { text-decoration: none; }
   <div class="controls" id="controls" hidden>
     <button class="pill" id="pause" type="button">Pause</button>
     <label for="speed">Speed</label>
-    <select id="speed"><option value="2000">Slow</option><option value="1000" selected>Gentle</option><option value="700">Quick</option></select>
+    <select id="speed"><option value="3000">Slow</option><option value="1500" selected>Gentle</option><option value="1000">Quick</option></select>
     <button class="pill" id="slideshow" type="button">Slideshow</button>
     <a class="pill" id="search-day" target="_blank" rel="noopener">Search this date</a>
   </div>
@@ -927,12 +927,12 @@ function show(c, k, first) {
       const t = w.querySelector('p');
       if (missing && t.textContent && !w.classList.contains('off')) {   // a caption already in the frame fades into the next
         t.style.opacity = 0;
-        setTimeout(() => { t.textContent = p[2] || 'Darshan'; t.style.opacity = 1; }, 1500);
+        setTimeout(() => { t.textContent = p[2] || 'Darshan'; t.style.opacity = 1; }, 2750);
       } else if (missing) t.textContent = p[2] || 'Darshan';
       w.classList.toggle('off', !missing);
     }
     c.cap.classList.add('fade');
-    setTimeout(() => { c.cap.textContent = c.open ? p[2] || p[5] : p[5] || p[2]; c.cap.classList.remove('fade'); if (c.open) capFit(c); }, first ? 0 : 1500);
+    setTimeout(() => { c.cap.textContent = c.open ? p[2] || p[5] : p[5] || p[2]; c.cap.classList.remove('fade'); if (c.open) capFit(c); }, first ? 0 : 2750);
   };
   if (!url) return done(true);
   // the hidden layer takes the next photo; it only fades in once the photo is fully loaded and ready to paint, so a
@@ -955,7 +955,7 @@ function show(c, k, first) {
     setTimeout(() => {   // covered: the old photo goes, and this card may change again
       if (ticket !== c.ticket) return;
       old.classList.remove('on'); layer.classList.remove('top'); c.busy = false;
-    }, reduce ? 1300 : 3100);
+    }, reduce ? 1300 : 5600);
   };
   next.onload = () => (next.decode ? next.decode().catch(() => {}) : Promise.resolve()).then(() => requestAnimationFrame(swap));
   next.onerror = () => { if (ticket !== c.ticket) return; clearTimeout(wait); c.busy = false; done(true); };
@@ -966,7 +966,7 @@ function show(c, k, first) {
 
 // The board is always moving: every second one of the cards on the screen starts fading to its next photo, the one that
 // has waited longest going first, so the fades follow one another and never start together (Darpan, 28 Oct 2026: "in the
-// first second, a picture should fade. The next second, another picture"). A card rests at least four seconds
+// first second, a picture should fade. The next second, another picture"). A card rests at least seven seconds
 // between changes, and cards off the screen wait until they are seen. A year with a single photo keeps it, drifting gently.
 const inView = new Set();
 const watch = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => {
@@ -975,7 +975,7 @@ const watch = 'IntersectionObserver' in window ? new IntersectionObserver(es => 
 }), {threshold: .35}) : null;
 let last = null;
 function beat() {
-  const rest = 4000 * (reduce ? 1.6 : 1), t = Date.now();
+  const rest = 7000 * (reduce ? 1.6 : 1), t = Date.now();   // each photo stays a good while (Darpan, 31 Oct 2026: "keep the pictures on for a little bit longer")
   const ready = cards.filter(c => c.photos.length > 1 && !c.busy && !c.open && t - c.at >= rest && c !== last && (!watch || inView.has(c)) && (!c.pre || c.pre.complete))   // next photo already here, so the fade starts on the beat
     .sort((a, b) => a.at - b.at);
   const c = ready[Math.floor(Math.random() * Math.min(3, ready.length))];   // one of the three that waited longest
