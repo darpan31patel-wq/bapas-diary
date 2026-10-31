@@ -169,6 +169,9 @@ CSS = r'''<style>
 .bapa-now .bn-watch:hover,.bapa-now .bn-watch:focus-visible{background:#ffe296}
 /* computers: a slimmer line, so the card (and the matching card beside it) grows as little as possible */
 @media (min-width:1000px){.bapa-now .bn-live{margin-top:4px!important}.bapa-now .bn-watch{padding:5px 11px}}
+/* today's webcast belongs to the Today line: tucked under it with a thin gold edge (Darpan, 31 Oct 2026) */
+.bapa-now.is-soon .bn-live.bn-under{margin:2px 0 0 6px!important;padding-left:10px;border-left:2px solid rgba(217,164,65,.5)}
+.bapa-now .bn-live:not([hidden])+.bn-next{margin-top:5px}
 /* live while no stay is on the schedule: the card shows just that line */
 .bapa-now.no-stay svg,.bapa-now.no-stay .bn-lbl,.bapa-now.no-stay .bn-town,.bapa-now.no-stay .bn-dates,.bapa-now.no-stay .bn-today,.bapa-now.no-stay .bn-next{display:none}
 .bapa-now.no-stay .bn-live{margin-top:0}
@@ -181,8 +184,9 @@ CSS = r'''<style>
 
 HTML = '''<div class="bapa-now" id="bapaNow" hidden aria-live="polite">
   <svg viewBox="0 0 150 150" role="img" aria-label="Map"><path class="land"/><path class="route"/><circle class="next" r="4"/><circle class="glow" r="6"/><circle class="here" r="5.5"/></svg>
-  <div class="bn-words"><div class="bn-lbl">Where Bapa is now</div><div class="bn-town"></div><div class="bn-dates"></div><div class="bn-today"></div><div class="bn-next"></div>
-    <div class="bn-live"><a class="bn-go" target="_blank" rel="noopener"><b>Live now</b><span class="bn-when"></span></a><a class="bn-watch" target="_blank" rel="noopener">Watch live</a></div></div>
+  <div class="bn-words"><div class="bn-lbl">Where Bapa is now</div><div class="bn-town"></div><div class="bn-dates"></div><div class="bn-today"></div>
+    <div class="bn-live"><a class="bn-go" target="_blank" rel="noopener"><b>Live now</b><span class="bn-when"></span></a><a class="bn-watch" target="_blank" rel="noopener">Watch live</a></div>
+    <div class="bn-next"></div></div>
 </div>
 '''
 
@@ -215,7 +219,6 @@ JS = r'''<script>
     const prev = d => new Date(Date.parse(d + 'T12:00:00Z') - 864e5).toISOString().slice(0, 10);
     const upto = x => { const after = stays[stays.indexOf(x) + 1]; return after && after.from === x.to && today < x.to ? prev(x.to) : x.to; };
     tz = s.tz;
-    soonLine();
     const map = S.maps[s.city];
     q('.bn-town').innerHTML = `${esc(s.city)}<small>${esc(s.country)}</small>`;
     q('.bn-dates').textContent = `${nice(s.from)} to ${nice(upto(s))}`;
@@ -227,6 +230,7 @@ JS = r'''<script>
     const line = (head, e) => `<b>${head}:</b> <span>${esc(e.what)}</span>, <span>${clock(e.from).slice(-2) === clock(e.to).slice(-2) ? clock(e.from).slice(0, -3) : clock(e.from)} to ${clock(e.to)} ${when}</span>`;
     q('.bn-today').innerHTML = on ? line('Now', on) : next ? line(m(next) >= 720 ? 'This evening' : 'Today', next) : '';
     q('.bn-today').hidden = !(on || next);
+    soonLine();   // after the Today line, which today's webcast tucks under
     q('.bn-next').innerHTML = n ? `<b>Next:</b> <span>${esc(n.city)}</span>, <span>${n.from.slice(0, 7) === upto(n).slice(0, 7) ? +n.from.slice(8) : short(n.from)} to ${short(upto(n))}</span>` : '';
     q('.bn-next').hidden = !n;
     // the map: the town in the middle, a dotted line towards the next town when it is on the map
@@ -258,7 +262,11 @@ JS = r'''<script>
     const today = day(new Date()), tomorrow = day(new Date(Date.now() + 864e5));
     const d = day(at) === today ? 'Today' : day(at) === tomorrow ? 'Tomorrow'
       : new Intl.DateTimeFormat('en-GB', {timeZone: zone, weekday: 'short', day: 'numeric', month: 'short'}).format(at).replace(',', '');
-    q('.bn-when').textContent = at <= Date.now() ? 'Starting soon' : `${d}, ${t}${label}`;
+    // today's webcast sits as part of the Today block, tucked under it with a gold edge, and does not say Today again
+    // (Darpan, 31 Oct 2026: "Webcast and NEXT need to be swapped, webcast and TODAY lines need to be linked somehow")
+    const under = day(at) === today && !q('.bn-today').hidden && !el.classList.contains('no-stay') && at > Date.now();
+    q('.bn-live').classList.toggle('bn-under', under);
+    q('.bn-when').textContent = at <= Date.now() ? 'Starting soon' : under ? `${t}${label}` : `${d}, ${t}${label}`;
   }
   function live(v) {
     const ok = x => x && /^[\w-]{11}$/.test(x.id);
