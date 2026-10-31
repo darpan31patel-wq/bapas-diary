@@ -1,0 +1,22 @@
+# Check only, never part of the website: asks the live bapas-diary.com/api/chapters about some BAPS videos
+# (video moments, Darpan 31 Oct 2026). Reads only.
+name: video-chapters-check
+on:
+  push:
+    branches: [claude/project-thread-3fcod4]
+    paths: [.github/workflows/video-chapters-check.yml]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          ids="Iz3ay9FHu3g 7-Gz37eQs08 ldOeu3pmWxI EeYqMau_lXk R7MoOKrkJx4 $(cut -f1 data/youtube/flat.tsv | head -40 | tr '\n' ' ') $(cut -f1 data/youtube/flat.tsv | shuf -n 40 --random-source=data/youtube/flat.tsv | tr '\n' ' ')"
+          n=0; w=0
+          for id in $ids; do
+            r=$(curl -s "https://bapas-diary.com/api/chapters?v=$id"); n=$((n+1))
+            c=$(printf %s "$r" | jq '.ch | length' 2>/dev/null || echo err)
+            [ "$c" != 0 ] && [ "$c" != err ] && w=$((w+1))
+            echo "$id $c $(printf %s "$r" | head -c 200)"
+          done
+          echo "RESULT: $w of $n videos have chapters"
