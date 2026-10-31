@@ -63,6 +63,7 @@ h1 { font: 600 clamp(32px, 5vw, 52px)/1.1 var(--lora-f); margin: 6px 0 6px; lett
    the day's photos in a grid edge to edge, five across, the murti's name along the foot; the one under the mouse grows
    to about one and two thirds its size over its neighbours (from the corner it sits in, so it never leaves the screen);
    a click opens it full size over the page. The day arrows sit either side of the date. Phones keep the big photo + strip. */
+.strip .nm { display: none; }
 @media (min-width: 1000px) {
   .feature { position: relative; }
   .bigwrap { position: static; width: 100%; height: 0; }
@@ -84,7 +85,6 @@ h1 { font: 600 clamp(32px, 5vw, 52px)/1.1 var(--lora-f); margin: 6px 0 6px; lett
     letter-spacing: .12em; text-transform: uppercase; color: #f6e3bb; background: linear-gradient(transparent, rgba(22,5,9,.78)); pointer-events: none; }
   .strip button:hover .nm { font-size: 8px; padding-bottom: 6px; }
 }
-.strip .nm { display: none; }
 /* the photo full size over the page (computers), Escape or a click closes it, the arrow keys move along the day's photos */
 .lb { position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; padding: 24px; background: rgba(12,3,6,.9); cursor: zoom-out; }
 .lb.open { display: flex; }
