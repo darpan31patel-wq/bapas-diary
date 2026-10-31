@@ -62,6 +62,19 @@ h1 { margin: 0; font: 600 clamp(30px, 5vw, 50px)/1.1 var(--title); letter-spacin
 .tell li { position: relative; margin: 0 0 4px; padding-left: 16px; font: 400 15px/1.45 var(--serif); opacity: .9; }
 .tell li::before { content: ""; position: absolute; left: 2px; top: .62em; width: 5px; height: 5px; border-radius: 50%; background: var(--gold); }
 .note { text-align: center; color: var(--muted); font-style: italic; margin: 50px 0; }
+/* Video Darshan (Darpan, 31 Oct 2026: "the same gold link on a Calendar day"): BAPS's own YouTube video of the day, the
+   same gold link as on Today, under the day's title (or beside each day's heading when several days are shown) */
+.vids { margin-top: 10px; }
+.vids:empty { display: none; }
+.go { display: inline-block; padding: 6px 13px; border: 1px solid var(--gold); border-radius: 999px; color: var(--gold); font: 600 11.5px/1.2 var(--sans);
+  letter-spacing: .08em; text-transform: uppercase; text-decoration: none; white-space: nowrap; }
+.go:hover, .go:focus-visible { background: var(--gold); color: var(--maroon-out); outline: none; }
+.go.vgo { display: inline-flex; align-items: center; gap: 7px; padding-left: 7px; }
+.go.vgo i { display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: var(--gold); }
+.go.vgo i::before { content: ""; margin-left: 2px; border-left: 6px solid var(--maroon-out); border-top: 4px solid transparent; border-bottom: 4px solid transparent; }
+.go.vgo:hover i, .go.vgo:focus-visible i { background: var(--maroon-out); }
+.go.vgo:hover i::before, .go.vgo:focus-visible i::before { border-left-color: var(--gold); }
+.day h2 .go { align-self: center; }
 @media (max-width: 760px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; } .day h2 { font-size: 19px; } }
 /* the photo big */
 .big { position: fixed; inset: 0; z-index: 80; background: rgba(10, 2, 4, .97); display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
@@ -82,7 +95,7 @@ h1 { margin: 0; font: 600 clamp(30px, 5vw, 50px)/1.1 var(--title); letter-spacin
 <body>
 <nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a href="/calendar/">Calendar</a><a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/then-and-now/">Legacy</a><a href="/about/">About</a></nav>
 <main>
-  <header><h1 id="title">Photos</h1><div class="when" id="when"></div><div class="count" id="count">Opening the photos…</div></header>
+  <header><h1 id="title">Photos</h1><div class="when" id="when"></div><div class="count" id="count">Opening the photos…</div><div class="vids" id="vids"></div></header>
   <div id="days"></div>
 </main>
 <div class="big" id="big" hidden role="dialog" aria-modal="true" aria-label="Photo">
@@ -131,7 +144,7 @@ async function load() {
   Object.values(byDay).forEach(list => list.sort((a, b) => b.bapa - a.bapa));
   const keys = Object.keys(byDay).sort();
   all = keys.flatMap(k => byDay[k]);
-  if (!all.length) { $('count').textContent = 'No photos from these days yet.'; return; }
+  if (!all.length) { $('count').textContent = 'No photos from these days yet.'; videos(from, to, []); return; }
   $('count').textContent = `${all.length.toLocaleString()} ${all.length === 1 ? 'photo' : 'photos'}`;
   let i = 0;
   keys.forEach(k => {
@@ -153,6 +166,17 @@ async function load() {
     s.append(grid); $('days').append(s);
     if (keys.length <= 31) tell(k, s);
   });
+  videos(from, to, keys);
+}
+
+// each day's Video Darshan, from /data/videos/YYYY.json (tools/web_videos.py): the day's first BAPS video on YouTube
+async function videos(from, to, keys) {
+  const link = v => `<a class="go vgo" href="https://www.youtube.com/watch?v=${encodeURIComponent(v[0])}" target="_blank" rel="noopener" title="${esc(v[1])}"><i aria-hidden="true"></i>Video Darshan</a>`;
+  const all = {};
+  for (let y = +from.slice(0, 4); y <= +to.slice(0, 4); y++)
+    Object.assign(all, await fetch(`/data/videos/${y}.json`).then(r => r.ok ? r.json() : {}).catch(() => ({})));
+  if (from === to) { if (all[from]) $('vids').innerHTML = link(all[from]); return; }
+  document.querySelectorAll('#days .day').forEach((s, i) => { const v = all[keys[i]]; if (v) s.querySelector('h2').insertAdjacentHTML('beforeend', link(v)); });
 }
 
 // The day's own On this day words, from Today's day file (/data/day/MM-DD.json): its BAPS calendar Indian date, or the

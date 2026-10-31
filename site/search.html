@@ -87,6 +87,18 @@ select, input[type=date], .clear { font: 700 12px var(--sans); letter-spacing: .
 #years { scroll-margin-top: 20px; }
 @media (min-width: 761px) and (min-height: 701px) { #years { scroll-margin-top: 130px; } }   /* under the menu and the search bar */
 #count .latest { display: block; margin-bottom: 6px; font: 700 13px var(--sans); font-style: normal; letter-spacing: .24em; text-transform: uppercase; color: var(--gold-deep); }
+/* under it, the newest Video Darshan on the BAPS channel, and BAPS's live webcast while one is on (Darpan, 31 Oct 2026) */
+#count .latest-v { flex-basis: 100%; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 12px; margin: -2px 0 6px; font: italic 500 15px var(--serif); color: var(--muted); }
+#count .latest-v:empty { display: none; }
+#count .go { display: inline-block; padding: 6px 13px; border: 1px solid var(--gold-deep); border-radius: 999px; color: var(--gold-deep); background: var(--paper-hi); font: 600 11.5px/1.2 var(--sans); font-style: normal; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; white-space: nowrap; }
+#count .go:hover, #count .go:focus-visible { background: var(--gold-deep); color: var(--paper-hi); outline: none; }
+#count .go.vgo i { background: var(--gold-deep); }
+#count .go.vgo i::before { border-left-color: var(--paper-hi); }
+#count .go.vgo:hover i, #count .go.vgo:focus-visible i { background: var(--paper-hi); }
+#count .go.vgo:hover i::before, #count .go.vgo:focus-visible i::before { border-left-color: var(--gold-deep); }
+#count .lv-live { display: inline-flex; align-items: center; gap: 8px; }
+#count .lv-live b { display: inline-flex; align-items: center; gap: 6px; font: 700 10.5px/1 var(--sans); font-style: normal; letter-spacing: .16em; text-transform: uppercase; color: #c62828; }
+#count .lv-live b::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #e53935; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); column-gap: clamp(14px, 2vw, 28px); row-gap: 30px; padding-block: 8px 24px; align-items: start; }
 @media (max-width: 520px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; } }
 /* a photo is an ivory polaroid hanging straight: the picture in a thick frame, the caption written on the frame */
@@ -141,6 +153,15 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 .big-info .meta { color: var(--gold-soft); opacity: 1; }
 .big-info .go { display: inline-block; margin-top: 4px; padding: 6px 13px; border: 1px solid var(--gold-soft); border-radius: 999px; color: var(--gold-soft); font: 600 11.5px/1.2 var(--sans); letter-spacing: .08em; text-transform: uppercase; text-decoration: none; }
 .big-info .go:hover, .big-info .go:focus-visible { background: var(--gold-soft); color: var(--maroon-out); outline: none; }   /* the Calendar button (Darpan, 28 Oct 2026) */
+.big-info .gos { display: flex; flex-wrap: wrap; gap: 8px; }
+.big-info .gos:empty { display: none; }
+.big-info .gos .go { margin-top: 4px; }
+/* the Video Darshan link, as on Today: a small gold play disc before the words (Darpan, 31 Oct 2026) */
+.go.vgo { display: inline-flex; align-items: center; gap: 7px; padding-left: 7px; }
+.go.vgo i { display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: var(--gold-soft); }
+.go.vgo i::before { content: ""; margin-left: 2px; border-left: 6px solid var(--maroon-out); border-top: 4px solid transparent; border-bottom: 4px solid transparent; }
+.go.vgo:hover i, .go.vgo:focus-visible i { background: var(--maroon-out); }
+.go.vgo:hover i::before, .go.vgo:focus-visible i::before { border-left-color: var(--gold-soft); }
 .big-info .badge { color: var(--gold-soft); }
 .big-info .when { font: 700 26px var(--serif); color: var(--gold-hi); }
 .big-info .tithi { font: 700 11px var(--sans); letter-spacing: .22em; text-transform: uppercase; color: var(--gold-soft); }
@@ -481,7 +502,7 @@ function render(byYear, want) {
   }
   const nPhotos = hits.filter(h => h.kind === 'photo').length, nPosts = hits.filter(h => h.kind === 'post').length;
   const nDates = new Set(hits.filter(h => !h.u).map(h => h.d)).size, nNone = hits.filter(h => h.u).length;
-  $('count').innerHTML = nNone && nNone === hits.length && !picMode ? `<b>${nNone.toLocaleString()}</b> darshan photo${nNone === 1 ? '' : 's'}` : (latestOn() && !picMode ? '<span class="latest">Latest vicharan, newest first</span>' : '') + (picMode ? `<b>${nPhotos.toLocaleString()}</b> photos most like your picture, closest first` + (loaded < total ? ' (still loading)' : '') : `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'}${latestOn() ? '' : ` and <b>${nPosts.toLocaleString()}</b> On this day stor${nPosts === 1 ? 'y' : 'ies'}`} on <b>${nDates.toLocaleString()}</b> date${nDates === 1 ? '' : 's'}${nNone ? `, and <b>${nNone.toLocaleString()}</b> more darshan` : ''}`
+  $('count').innerHTML = nNone && nNone === hits.length && !picMode ? `<b>${nNone.toLocaleString()}</b> darshan photo${nNone === 1 ? '' : 's'}` : (latestOn() && !picMode ? '<span class="latest">Latest vicharan, newest first</span>' + latestVideo() : '') + (picMode ? `<b>${nPhotos.toLocaleString()}</b> photos most like your picture, closest first` + (loaded < total ? ' (still loading)' : '') : `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'}${latestOn() ? '' : ` and <b>${nPosts.toLocaleString()}</b> On this day stor${nPosts === 1 ? 'y' : 'ies'}`} on <b>${nDates.toLocaleString()}</b> date${nDates === 1 ? '' : 's'}${nNone ? `, and <b>${nNone.toLocaleString()}</b> more darshan` : ''}`
     + (loaded < total ? ' (still loading)' : ''));
   $('results').innerHTML = `<div class="${picMode ? 'grid' : 'days slim'}" id="cards"></div>`;
   shown = 0; lastDate = '';
@@ -498,6 +519,22 @@ function render(byYear, want) {
   if (latestOn() && !latestShown) { latestShown = true; $('years').scrollIntoView({ block: 'start' }); }
 }
 var latestShown = false;
+// The newest Video Darshan (data/videos/latest.json, made with the site) and, while BAPS is live on YouTube, the same
+// Live now and Watch live as the Where Bapa is now card on Today (/api/live). Asked once; the count line is drawn
+// again on every search, so the finished line is kept and put back each time.
+var latestVid = null;
+function latestVideo() {
+  if (latestVid === null) {
+    latestVid = '';
+    const json = u => fetch(u, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null);
+    Promise.all([json('/data/videos/latest.json'), json('/api/live')]).then(([v, live]) => {
+      latestVid = (v && v.id ? `${videoLink([v.id, v.title])}<span>${esc(longDate(v.d))}</span>` : '') +
+        (live && live.live && live.id ? `<span class="lv-live"><b>Live now</b><a class="go" href="https://www.youtube.com/watch?v=${encodeURIComponent(live.id)}" target="_blank" rel="noopener" title="${esc(live.title || '')}">Watch live</a></span>` : '');
+      const el = document.getElementById('latest-v'); if (el) el.innerHTML = latestVid;
+    });
+  }
+  return `<span class="latest-v" id="latest-v">${latestVid}</span>`;
+}
 
 // the date heading: what the BAPS calendar says about that day
 function dayHead(d, want, onlyCal) {
@@ -658,6 +695,23 @@ function calInfo(d) {
     + (c.fest ? `<div class="fest">${esc(c.fest)}</div>` : '')
     + (c.about || c.notes ? `<div class="about">${esc([c.about, c.notes].filter(Boolean).join('\n'))}</div>` : '');
 }
+// Video Darshan (Darpan, 31 Oct 2026: "the same gold link ... on the big photo in Search"): BAPS's own YouTube video of the
+// photo's day, the same link as on Today. data/videos/YYYY.json (tools/web_videos.py) has each day's first video; an
+// album over several days opens the first video inside those days.
+const VIDS = {};
+const vidYear = y => VIDS[y] = VIDS[y] || fetch(`/data/videos/${y}.json`).then(r => r.ok ? r.json() : {}).catch(() => ({}));
+async function videoIn(a, b) {
+  for (let y = +a.slice(0, 4); y <= +b.slice(0, 4); y++) {
+    const v = await vidYear(y), d = Object.keys(v).filter(k => k >= a && k <= b).sort()[0];
+    if (d) return v[d];
+  }
+  return null;
+}
+const videoLink = v => `<a class="go vgo" href="https://www.youtube.com/watch?v=${encodeURIComponent(v[0])}" target="_blank" rel="noopener" title="${esc(v[1])}"><i aria-hidden="true"></i>Video Darshan</a>`;
+async function bigVideo(p) {
+  const g = p.g, v = await videoIn(g[0] || p.d, g[1] || g[0] || p.d);
+  if (v && hits[at] === p && $('big-go')) $('big-go').insertAdjacentHTML('beforeend', videoLink(v));
+}
 function showBig(i) {
   const p = hits[i]; if (!p) return;
   at = i;
@@ -668,7 +722,8 @@ function showBig(i) {
   } else if (p.kind === 'photo') {
     const g = p.g, medium = `${PHOTOS}m/${g[3]}/${p.file}`;
     $('big-pic').innerHTML = `<img src="${medium}" alt="${esc(p.cap)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'soon',textContent:'Photo coming soon'}))">`;
-    $('big-info').innerHTML = `<div class="cap">${esc(p.cap || 'Darshan')}</div><div class="meta">${esc(g[1] ? niceDate(g[0]) + ' to ' + niceDate(g[1]) : niceDate(g[0]))} · ${esc(g[2])}</div>${p.m ? `<div class="mandir">${[...p.m].map(k => MANDIR[k][1]).join(' · ')}</div>` : ''}<hr><div class="when">${esc(day)}</div>${calInfo(p.d)}${p.d >= '1999' ? `<div><a class="go" href="/calendar/#${p.d}">Calendar &rsaquo;</a></div>` : ''}`;
+    $('big-info').innerHTML = `<div class="cap">${esc(p.cap || 'Darshan')}</div><div class="meta">${esc(g[1] ? niceDate(g[0]) + ' to ' + niceDate(g[1]) : niceDate(g[0]))} · ${esc(g[2])}</div>${p.m ? `<div class="mandir">${[...p.m].map(k => MANDIR[k][1]).join(' · ')}</div>` : ''}<hr><div class="when">${esc(day)}</div>${calInfo(p.d)}<div class="gos" id="big-go">${p.d >= '1999' ? `<a class="go" href="/calendar/#${p.d}">Calendar &rsaquo;</a>` : ''}</div>`;
+    bigVideo(p);
   } else {
     $('big-pic').innerHTML = `<div class="story">${esc(p.text)}</div>`;
     $('big-info').innerHTML = `<span class="badge">On this day</span>${p.m ? `<div class="mandir">${[...p.m].map(k => MANDIR[k][1]).join(' · ')}</div>` : ''}${p.place ? `<div class="meta">${esc(p.place)}</div>` : ''}<hr><div class="when">${esc(day)}</div>${calInfo(p.d)}`;
