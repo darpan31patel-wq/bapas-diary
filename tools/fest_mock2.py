@@ -468,7 +468,9 @@ def dressed(k, make_card):
 # ------------------------------------------------------------------ the photos
 
 CROP = {}
-FACE = {('diwali', 2025): (140, 280, 90, 120)}   # side views the face finder misses (x, y, w, h in the photo)
+ORIG_TRIM = make.trim_bars
+make.trim_bars = lambda im, face: (im, face) if getattr(im, 'notrim', False) else ORIG_TRIM(im, face)
+FACE = {('diwali', 2025): (140, 280, 90, 120), ('diwali', 2020): (810, 140, 120, 160)}   # side views the face finder misses (x, y, w, h in the photo)
 
 SAY.update({   # 31 Oct 2026 picks: Diwali lamps and fireworks, Annakut with the whole spread of food
     ('diwali', 1990): 'Diwali puja darshan', ('diwali', 2006): 'Morning puja among Diwali divas', ('diwali', 2013): 'Performs the Diwali arti',
@@ -501,6 +503,7 @@ def photos_for(k):
         if not os.path.exists(path):
             print('  missing', k, y['y'], path); continue
         im = Image.open(path).convert('RGB'); iw, ih = im.size
+        im.notrim = (k, y['y']) in FACE   # night photos: the dark sky is not a black bar to cut away
         box = x.get('box')
         if (k, y['y']) in FACE:
             face = FACE[(k, y['y'])]
