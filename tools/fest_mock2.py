@@ -23,7 +23,7 @@ DAY = {'diwali': '2026-11-08', 'annakut': '2026-11-10', 'janmashtami': '2027-08-
 MARIGOLD, ROSES, JASMINE = [(255, 159, 28), (255, 190, 40), (240, 120, 20)], [(224, 36, 94), (255, 143, 171), (255, 213, 106)], [(255, 252, 240), (245, 240, 220)]
 DRESS = {   # night/top tint, glow colour, sky, rope, foot picture
     'diwali': dict(top=(10, 8, 26), glow=(150, 80, 20), sky=('fireworks',), rope=('bulbs',), foot='diya'),
-    'annakut': dict(glow=(190, 100, 20), sky=('petals', MARIGOLD), rope=('beads', MARIGOLD), foot='thal'),
+    'annakut': dict(glow=(190, 100, 20), sky=('sweets',), rope=('sweets',), foot='thali'),
     'janmashtami': dict(top=(8, 12, 40), glow=(60, 90, 180), sky=('stars',), rope=('beads', [(31, 122, 140), (27, 63, 122), (80, 170, 90)]), foot='matki'),
     'fuldol': dict(glow=(170, 40, 90), sky=('puffs', [(255, 61, 127), (255, 212, 0), (53, 199, 89), (61, 183, 255), (255, 138, 26), (176, 92, 255)]),
                    rope=('beads', [(255, 61, 127), (255, 212, 0), (53, 199, 89), (61, 183, 255), (255, 138, 26)]), foot='gulal'),
@@ -145,6 +145,63 @@ def thal(im, d, s):
     d.polygon([(s * .78, s * .74), (s * .98, s * .62), (s * .9, s * .78)], fill=(63, 138, 46))
 
 
+# Annakut (Darpan 31 Oct 2026: every Annakut design must be Indian food): laddu, jalebi, kaju katli, gulab jamun, samosa, puri, a full thali
+def laddu(im, d, s):
+    d.ellipse((s * .12, s * .12, s * .88, s * .88), fill=(240, 150, 30), outline=(190, 105, 15), width=max(1, s // 40))
+    rnd = random.Random(s)
+    for _ in range(40):
+        x, y, r = rnd.uniform(.25, .75) * s, rnd.uniform(.25, .75) * s, s * .025
+        d.ellipse((x - r, y - r, x + r, y + r), fill=rnd.choice([(255, 190, 70), (205, 115, 20)]))
+    d.ellipse((s * .26, s * .22, s * .44, s * .36), fill=(255, 205, 110))
+
+
+def jalebi(im, d, s):
+    pts = [(s * .5 + math.cos(t) * s * .045 * t, s * .5 + math.sin(t) * s * .045 * t) for t in [i / 8 for i in range(4, 82)]]
+    d.line(pts, fill=(200, 95, 10), width=max(2, s // 9), joint='curve')
+    d.line(pts, fill=(255, 160, 30), width=max(1, s // 14), joint='curve')
+    d.line(pts, fill=(255, 205, 100), width=max(1, s // 40), joint='curve')
+
+
+def katli(im, d, s):
+    d.polygon([(s * .5, s * .12), (s * .9, s * .5), (s * .5, s * .88), (s * .1, s * .5)], fill=(236, 222, 196), outline=(190, 170, 140))
+    d.polygon([(s * .5, s * .26), (s * .74, s * .5), (s * .5, s * .74), (s * .26, s * .5)], fill=(225, 228, 232))
+
+
+def jamun(im, d, s):
+    d.ellipse((s * .14, s * .2, s * .86, s * .86), fill=(95, 35, 15), outline=(60, 20, 8))
+    d.ellipse((s * .3, s * .3, s * .5, s * .45), fill=(170, 85, 40))
+
+
+def samosa(im, d, s):
+    d.polygon([(s * .5, s * .1), (s * .92, s * .86), (s * .08, s * .86)], fill=(214, 150, 60), outline=(150, 95, 30))
+    d.polygon([(s * .5, s * .1), (s * .6, s * .86), (s * .08, s * .86)], fill=(232, 175, 80))
+    for x in (.35, .55, .7):
+        d.ellipse((s * x - s * .02, s * .6, s * x + s * .02, s * .64), fill=(150, 95, 30))
+
+
+def puri(im, d, s):
+    d.ellipse((s * .08, s * .22, s * .92, s * .82), fill=(225, 160, 60), outline=(170, 105, 30), width=max(1, s // 40))
+    d.ellipse((s * .22, s * .3, s * .7, s * .6), fill=(245, 195, 100))
+
+
+SWEETS = [laddu, jalebi, katli, jamun, samosa, puri]
+
+
+def thali(im, d, s):
+    """A full steel thali: dal, shaak, kadhi and kheer in katoris, rice, puris and a laddu."""
+    d.ellipse((s * .02, s * .2, s * .98, s * .98), fill=(176, 182, 190), outline=(120, 126, 134), width=max(1, s // 50))
+    d.ellipse((s * .08, s * .26, s * .92, s * .92), fill=(214, 218, 224))
+    for x, y, c in [(.3, .4, (240, 190, 40)), (.52, .36, (95, 140, 40)), (.74, .44, (250, 230, 160)), (.76, .68, (245, 240, 225))]:
+        r = s * .11
+        d.ellipse((s * x - r, s * y - r, s * x + r, s * y + r), fill=(160, 166, 174))
+        d.ellipse((s * x - r * .8, s * y - r * .8, s * x + r * .8, s * y + r * .8), fill=c)
+    d.ellipse((s * .2, s * .56, s * .5, s * .84), fill=(250, 250, 244))   # rice
+    for x, y in [(.52, .7), (.58, .78)]:
+        d.ellipse((s * x - s * .09, s * y - s * .07, s * x + s * .09, s * y + s * .07), fill=(225, 160, 60), outline=(170, 105, 30))
+    r = s * .07
+    d.ellipse((s * .3 - r, s * .7 - r - s * .02, s * .3 + r, s * .7 + r - s * .02), fill=(240, 150, 30))
+
+
 def matki(im, d, s):
     d.ellipse((s * .14, s * .36, s * .86, s * .96), fill=(176, 80, 36))
     d.ellipse((s * .2, s * .42, s * .5, s * .62), fill=(205, 110, 60))
@@ -222,7 +279,7 @@ def garland(im, d, s):
     d.ellipse((s * .44, s * .86, s * .56, s * .98), fill=(255, 213, 106))
 
 
-PICS = dict(diya=diya, thal=thal, matki=matki, gulal=gulal, lotus=lotus, kalash=kalash, flowers=flowers, wheel=wheel, rakhi=rakhi, garland=garland)
+PICS = dict(diya=diya, thal=thal, matki=matki, gulal=gulal, lotus=lotus, kalash=kalash, flowers=flowers, wheel=wheel, rakhi=rakhi, garland=garland, thali=thali)
 
 
 def burst(d, cx, cy, R, col, rnd):
@@ -269,6 +326,16 @@ def sky(img, spec, rnd):
             pts = [(x + math.cos(a + t) * r * (1 if k % 2 == 0 else .45), y + math.sin(a + t) * r * (1 if k % 2 == 0 else .45))
                    for k, t in enumerate((0, math.pi / 2, math.pi, 3 * math.pi / 2))]
             d.polygon(pts, fill=c + (rnd.randint(150, 230),))
+    elif kind == 'sweets':
+        icons = [hi(round(px(z)), f) for f in SWEETS for z in (26, 32)]
+        layer = layer.convert('RGBA')
+        for _ in range(36):   # a light scatter in the side margins only, so the photos stay the thing you see
+            x = rnd.choice((rnd.uniform(0, W * .025), rnd.uniform(W * .975, W)))
+            y = rnd.uniform(H * .05, H * .95)
+            ic = rnd.choice(icons).rotate(rnd.uniform(0, 360), expand=True)
+            ic.putalpha(ic.getchannel('A').point(lambda v: v * .7))
+            layer.alpha_composite(ic, (int(x - ic.width / 2) % W, int(y - ic.height / 2) % H))
+        d = ImageDraw.Draw(layer)
     elif kind == 'puffs':
         for i, (fx, fy, r) in enumerate(corners):
             for k in range(5):
@@ -317,7 +384,7 @@ def rope_for(k):
             return
         PLAIN_ROPE(img, pts, w)
         layer = Image.new('RGBA', img.size, (0, 0, 0, 0)); d = ImageDraw.Draw(layer)
-        step = px({'bulbs': 46, 'beads': 20, 'flags': 64}[kind[0]])
+        step = px({'bulbs': 46, 'beads': 20, 'flags': 64, 'sweets': 20}[kind[0]])
         marks, acc, i = [], 0, 0
         for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
             acc += math.hypot(x1 - x0, y1 - y0)
@@ -341,6 +408,16 @@ def rope_for(k):
                 c = kind[1][i % len(kind[1])]; r = px(9)
                 d.ellipse((x - r, y - r, x + r, y + r), fill=c, outline=tuple(max(0, v - 60) for v in c))
                 d.ellipse((x - r * .5, y - r * .6, x - r * .05, y - r * .15), fill=tuple(min(255, v + 60) for v in c))
+        elif kind[0] == 'sweets':
+            d = ImageDraw.Draw(img)
+            icons = [hi(round(px(24)), f) for f in SWEETS]
+            for x, y, i in marks:
+                if i % 7 == 0:
+                    ic = icons[(i // 7) % len(icons)]
+                    img.paste(ic, (int(x - ic.width / 2), int(y + px(2))), ic)
+                else:
+                    c = MARIGOLD[i % len(MARIGOLD)]; r = px(8)
+                    d.ellipse((x - r, y - r, x + r, y + r), fill=c, outline=tuple(max(0, v - 60) for v in c))
         elif kind[0] == 'flags':
             d = ImageDraw.Draw(img)
             for x, y, i in marks:
