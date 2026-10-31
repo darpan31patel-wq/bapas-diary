@@ -14,6 +14,10 @@ Writes a folder that works as it is on any web host (Cloudflare Pages, or opened
                         [[date, weekday, vikram_samvat, indian_date, festivals, festival_about, notes, source], ...]
   data/undated.json   darshan with no date (Darpan, 30 Oct 2026), from --undated (release undated-build, tools/undated_build.py on branch 8ib4kr):
                         {"album": "undated", "p": [[file, tags, caption], ...]}, shown after every dated photo, never on a dated page
+  data/moments.json   the tagged moments of BAPS videos (Darpan, 31 Oct 2026), from --moments (data/video-moments, made by
+                      tools/video_moments.py): [[date, youtube id, at, end, text, tags, place, bapa], ...] at and end in seconds;
+                      each opens its video on YouTube at its own second. moments/ID/AT.jpg is the frame on its card, and
+                      data/moments/ID.json ({"ch": [[at, text], ...]}) gives the gold Video Darshan links their moments too
   data/about.json     years, counts and when it was built
   data/people.json    the people the captions name, for Who was with Bapa (tools/search_people.py, site/search-people.js)
   data/people-faces.json  more photos of each of them, found by their face (tools/people_faces.py)
@@ -178,6 +182,7 @@ def main():
     ap.add_argument('--start-year', default='', help="the year the page opens on, or 'today' for this day in every year")
     ap.add_argument('--image', help='folder with the Search by photo model and photo numbers (release image-search)')
     ap.add_argument('--undated', help='undated-search.json from release undated-build: the darshan with no date')
+    ap.add_argument('--moments', help='data/video-moments: the tagged moments of BAPS videos (tools/video_moments.py)')
     a = ap.parse_args()
     os.makedirs(os.path.join(a.out, 'data'), exist_ok=True)
     db = sqlite3.connect(a.db)
@@ -250,10 +255,25 @@ def main():
     if undated:
         write(os.path.join(a.out, 'data', 'undated.json'), undated)
 
+    moments = []
+    if a.moments and os.path.isdir(a.moments):
+        os.makedirs(os.path.join(a.out, 'data', 'moments'), exist_ok=True)
+        for f in sorted(os.listdir(a.moments)):
+            if not f.endswith('.json'):
+                continue
+            v = json.load(open(os.path.join(a.moments, f), encoding='utf-8'))
+            vid = v['id']
+            moments += [[v['date'], vid, at, end, text, tags, v.get('place', ''), bapa] for at, end, text, tags, bapa in v['m']]
+            write(os.path.join(a.out, 'data', 'moments', f'{vid}.json'), {'ch': [[at, text] for at, _, text, _, _ in v['m']]})
+            if os.path.isdir(os.path.join(a.moments, vid)):
+                shutil.copytree(os.path.join(a.moments, vid), os.path.join(a.out, 'moments', vid), dirs_exist_ok=True)
+        moments.sort(key=lambda m: (m[0], m[1], m[2]))
+        write(os.path.join(a.out, 'data', 'moments.json'), moments)
+
     built = dict(db.execute("SELECT key, value FROM about"))
     write(os.path.join(a.out, 'data', 'about.json'),
           {'built': built.get('built'), 'years': sorted(counts), 'photos': counts, 'stories': len(tg), 'calendar': len(cal),
-           'undated': len(undated['p']) if undated else 0})
+           'undated': len(undated['p']) if undated else 0, 'moments': len(moments)})
 
     body = open(PAGE, encoding='utf-8').read().replace('{{PHOTOS}}', a.photos).replace('{{START_YEAR}}', a.start_year)
     body += '\n<script>\n' + open(ASK, encoding='utf-8').read() + '</script>'

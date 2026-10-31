@@ -340,7 +340,10 @@
   const CH = {};
   const isVideo = a => a && a.matches('a[href*="youtube.com/watch"]') && /Video Darshan|વિડિયો દર્શન/.test(a.textContent);
   const vidOf = a => { try { return new URL(a.href).searchParams.get('v'); } catch (e) { return null; } };
-  const chapters = id => CH[id] = CH[id] || fetch('/api/chapters?v=' + encodeURIComponent(id)).then(r => r.ok ? r.json() : {}).then(j => (CH[id].list = j.ch || [])).catch(() => (CH[id].list = []));
+  // a video with no chapters of its own offers the moments tagged for Search instead (tools/video_moments.py, Darpan 31 Oct 2026)
+  const ask = u => fetch(u).then(r => r.ok ? r.json() : {}).then(j => j.ch || []).catch(() => []);
+  const chapters = id => CH[id] = CH[id] || ask('/api/chapters?v=' + encodeURIComponent(id))
+    .then(l => l.length > 1 ? l : ask('/search/data/moments/' + encodeURIComponent(id) + '.json')).then(l => (CH[id].list = l));
   const clock = t => (t >= 3600 ? Math.floor(t / 3600) + ':' + pad(Math.floor(t / 60) % 60) : Math.floor(t / 60)) + ':' + pad(t % 60);
   let pop = null, popFor = null, popWait = null;
   function shut() { if (pop) { pop.remove(); pop = null; popFor = null; } }
