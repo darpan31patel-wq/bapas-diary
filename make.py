@@ -2397,6 +2397,12 @@ def main():
                 sp.save(os.path.join(a.out, 'bapas-diary-special.jpg'), quality=95, optimize=True)
         except Exception as e:
             print('  no festival picture:', e)
+    if not special and not os.path.exists(os.path.join(a.out, 'bapas-diary-special.png')):
+        # Darpan, 31 Oct 2026 ('make special cards for all these events'): a day whose year card shows a story Today in
+        # BAPS History remembers (2020's Nenpur murti pratishtha) gets that story's special picture too
+        shown_stories = [e for e in tg_evs if not e.get('channel') and not e.get('guru') and e.get('posts')
+                         and any(tells(x, e, RARE_DAYS) for x in photos)]
+        special = max(shown_stories, key=tg_rank, default=None)
     cal = cal_caption(day, every)
     text = cal + (('\n' if cal else '') + tg_caption(told, left) if told else '')
     if text.strip():
