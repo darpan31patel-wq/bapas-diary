@@ -332,6 +332,56 @@
     document.body ? go() : document.addEventListener('DOMContentLoaded', go);
   }
 
+  // ---- video moments (Darpan, 31 Oct 2026: "yes moments") -------------------------------------------------------------
+  // Every gold Video Darshan link on the site (Today, Calendar, Search, Travels) keeps opening its video on YouTube. When
+  // the video has chapters (YouTube's own, or the times written in its description, read by /api/chapters), the link also
+  // offers them: a small list beside it (on a computer when the mouse rests on it, on a phone at the first tap), each
+  // opening the video at that second, with a heart that keeps the moment in My favourites. Nothing else is added.
+  const CH = {};
+  const isVideo = a => a && a.matches('a[href*="youtube.com/watch"]') && /Video Darshan|વિડિયો દર્શન/.test(a.textContent);
+  const vidOf = a => { try { return new URL(a.href).searchParams.get('v'); } catch (e) { return null; } };
+  const chapters = id => CH[id] = CH[id] || fetch('/api/chapters?v=' + encodeURIComponent(id)).then(r => r.ok ? r.json() : {}).then(j => (CH[id].list = j.ch || [])).catch(() => (CH[id].list = []));
+  const clock = t => (t >= 3600 ? Math.floor(t / 3600) + ':' + pad(Math.floor(t / 60) % 60) : Math.floor(t / 60)) + ':' + pad(t % 60);
+  let pop = null, popFor = null, popWait = null;
+  function shut() { if (pop) { pop.remove(); pop = null; popFor = null; } }
+  function moments(a, list) {
+    shut();
+    const id = vidOf(a), title = a.title || '';
+    pop = el('div', 'bd-moments'); popFor = a; pop.setAttribute('role', 'menu'); pop.setAttribute('aria-label', 'Moments in this video');
+    pop.innerHTML = `<div class="bd-mh">Moments</div>` + [[0, 'From the start']].concat(list.filter(c => c[0] > 0)).map(([t, name]) =>
+      `<div class="bd-mr"><a role="menuitem" href="https://www.youtube.com/watch?v=${encodeURIComponent(id)}${t ? '&t=' + t + 's' : ''}" target="_blank" rel="noopener">` +
+      `<span class="bd-mt">${clock(t)}</span>${esc(name)}</a>` +
+      (t ? `<button type="button" class="bd-mheart" data-fav="yt:${esc(id)}@${t}" data-date="" data-place="${esc(name)}" data-cap="${esc(title)}">${HEART}</button>` : '') + '</div>').join('');
+    document.body.append(pop); sync();
+    const r = a.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
+    pop.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left)) + 'px';
+    pop.style.top = (r.bottom + h + 8 < innerHeight ? r.bottom + 6 : Math.max(8, r.top - h - 6)) + 'px';
+    pop.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') popWait = setTimeout(shut, 400); });
+    pop.addEventListener('pointerenter', () => clearTimeout(popWait));
+  }
+  const look = root => (root.querySelectorAll ? root.querySelectorAll('a[href*="youtube.com/watch"]') : []).forEach(a => { if (isVideo(a)) { const id = vidOf(a); if (id) chapters(id); } });
+  const watchLinks = () => { look(document); new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => n.nodeType === 1 && (isVideo(n) ? chapters(vidOf(n)) : look(n))))).observe(document.body, { childList: true, subtree: true }); };
+  document.body ? watchLinks() : document.addEventListener('DOMContentLoaded', watchLinks);
+  document.addEventListener('pointerover', e => {
+    const a = e.target.closest && e.target.closest('a'); if (e.pointerType !== 'mouse' || !isVideo(a)) return;
+    clearTimeout(popWait);
+    if (popFor === a) return;
+    popWait = setTimeout(() => { const id = vidOf(a); chapters(id).then(list => { if (list.length > 1 && a.matches(':hover')) moments(a, list); }); }, 350);
+  });
+  document.addEventListener('pointerout', e => {
+    const a = e.target.closest && e.target.closest('a'); if (e.pointerType !== 'mouse' || !isVideo(a)) return;
+    clearTimeout(popWait); if (popFor === a) popWait = setTimeout(shut, 400);
+  });
+  document.addEventListener('click', e => {   // a phone: the first tap on a link with moments shows them; the list's first line plays it
+    const a = e.target.closest && e.target.closest('a');
+    if (pop && !e.target.closest('.bd-moments') && popFor !== a) shut();
+    if (!isVideo(a) || popFor === a || matchMedia('(hover: hover)').matches) return;
+    const c = CH[vidOf(a)];
+    if (c && c.list && c.list.length > 1) { e.preventDefault(); moments(a, c.list); }
+  });
+  addEventListener('keydown', e => { if (e.key === 'Escape') shut(); });
+  addEventListener('scroll', shut, { passive: true });
+
   window.BapaDiary = { fav, shareDay, slideshow, photoOf, toast, niceDate, PHOTOS };
   const ready = () => {
     const path = location.pathname;
