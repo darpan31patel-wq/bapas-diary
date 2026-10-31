@@ -22,6 +22,8 @@ PAGES = ['index.html', os.path.join('search', 'index.html'),
 VIDEO_PAGES = PAGES + [os.path.join('photos', 'index.html'), os.path.join('travels', 'index.html'),
                        os.path.join('travels', 'places', 'index.html')]
 VIDEO_TAGS = '<link rel="stylesheet" href="/video.css?v=VIDEO_V">\n<script src="/video.js?v=VIDEO_V" defer></script>\n'
+# those three also get the video moments list from extras.js (nothing else from it: no hearts, no text size button)
+MOMENTS_TAGS = '<link rel="stylesheet" href="/extras.css">\n<script src="/extras.js" data-only="moments" defer></script>\n'
 # the chosen text size is set before the page is drawn, so the page never jumps
 SIZE = ("<script>try{var z=+localStorage.getItem('bapas-diary-text');"
         "if(z>1)document.documentElement.style.zoom=z}catch(e){}</script>\n")
@@ -57,7 +59,7 @@ def main():
         s = open(p, encoding='utf-8').read()
         if '/video.js' in s:
             continue
-        tags = VIDEO_TAGS.replace('VIDEO_V', video_v)
+        tags = ('' if '/extras.js' in s else MOMENTS_TAGS) + VIDEO_TAGS.replace('VIDEO_V', video_v)
         s = s.replace('</head>', tags + '</head>', 1) if '</head>' in s else s.replace('</title>', '</title>\n' + tags, 1)
         open(p, 'w', encoding='utf-8').write(s)
         print('video: added to', page)
