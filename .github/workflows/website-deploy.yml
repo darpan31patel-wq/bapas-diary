@@ -42,6 +42,8 @@ jobs:
           mkdir out && rsync -a --exclude README.md live/ out/
           gh release download legacy-auto -p more.json -D out/then-and-now 2>/dev/null || echo '[]' > out/then-and-now/more.json   # weekly Legacy pairs (Darpan: just go live, 28 Oct)
           gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
+          # before 13 Aug 2016 Swamishri is Pramukh Swami Maharaj: mends 335 1999 captions that said Mahant Swami Maharaj (Darpan, 31 Oct 2026)
+          python3 tools/guru_names.py --db bapas.db
           # a place that is a year or a date ('2004, Los Angeles', '15 June 2012') becomes its town on every page (Darpan's Today, 19 June)
           python3 tools/web_places.py --db bapas.db
           # Bapa's own pages (Today, Calendar, share pictures) show only photos with Bapa in them; Search keeps every photo

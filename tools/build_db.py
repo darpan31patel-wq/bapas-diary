@@ -169,9 +169,9 @@ def load(folder, fixes=None):
             if not span and fx['dates'].get(p['p']):
                 span = text_dates(fx['dates'][p['p']]['f'], y)
             rows = continued(p['rows'], span[0] if span else datetime.date(y, 7, 1))
-            if y <= 2016 and re.search(r"Mahant Swami Maharaj'?s Vicharan", p.get('t', ''), re.I) and (y < 2016 or (span and span[1] < PSM_TO_MSM)):
-                # before 13 Aug 2016 'Swamishri' on Mahant Swami's own vicharan pages is him, not Bapa: the caption says so
-                rows = [(a, f, re.sub(r'^Swamishri\b', 'Mahant Swami Maharaj', c)) for a, f, c in rows]
+            # 'Swamishri' is left as it is. baps.org files 36 pages of 1999 under "HH Mahant Swami Maharaj's Vicharan" though they
+            # are Pramukh Swami Maharaj's tours, and before 13 Aug 2016 Swamishri is always Pramukh Swami Maharaj. Turning it into
+            # 'Mahant Swami Maharaj' there (24 Oct 2026) put the wrong guru's name on 335 photos (Darpan, 31 Oct 2026).
             place = place_of(p.get('t', ''))
             for album, file, cap in rows:
                 key = (album, file)
