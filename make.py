@@ -597,7 +597,7 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
         lst.append((s_close, s_doing, x))
         if len(lst) > 16:   # keep memory down: only the best few of each kind stay
             pinned = [v for v in lst if (w := PICKS.get(seed, {}).get(str(x['y']))) and isinstance(w, str) and w.lower() in (v[2].get('c') or '').lower()]
-            pinned += [v for v in lst if any(tells(v[2], e) for e in stories.get(x['y'], []))]   # and so does a photo of the channel's story
+            pinned += [v for v in lst if any(tells(v[2], e, RARE_DAYS) for e in stories.get(x['y'], []))]   # and so does a photo of the channel's story
             keep_ids = {id(v) for v in sorted(lst, key=lambda v: -v[0])[:8] + sorted(lst, key=lambda v: -v[1])[:8] + pinned}   # Darpan's pin always stays
             lst[:] = [v for v in lst if id(v) in keep_ids]
     years = sorted(cands)
@@ -647,7 +647,7 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
         # a photo of that very moment is the year's card, shown as the moment (not a close crop), ahead of everyday photos
         for y, es in stories.items():
             for j, v in enumerate(cands.get(y, [])):
-                if v[2]['face'] and not v[2].get('tg') and any(tells(v[2], e) for e in es):
+                if v[2]['face'] and not v[2].get('tg') and any(tells(v[2], e, RARE_DAYS) for e in es):
                     cands[y][j] = (v[0] + STORY_BOOST, v[1] + STORY_BOOST, v[2])
                     v[2].update(nice=True, special=True)
     for y, want in PICKS.get(seed, {}).items():   # Darpan's own choice for a year wins outright
@@ -1943,7 +1943,7 @@ tg_rank = lambda e: (bool(e.get('special')), not e.get('channel'), e.get('repost
 TELL_DAYS = 360   # a word on fewer days of the year than this (murti, not performs or blesses) ties a card to a story
 
 
-def tells(x, e):
+def tells(x, e, limit=None):
     """True when the card x shows the channel's story e: the card is the channel's own photo of that day and town, or
     a photo of that day and town whose caption shares one of the story's uncommon words ('pratishtha', 'murti').
     Darpan, 31 Oct 2026: 2020's Nenpur card showed 'Blesses the PhD thesis', so the murti pratishtha of that same
@@ -1956,7 +1956,7 @@ def tells(x, e):
     words = lambda c: {w for v in caption_words(c) for w in v.split('-') if w}   # 'Murti-Pratishtha' is two words
     story = words(f"{e.get('line') or ''} {e.get('card') or ''}") - words(e.get('place'))
     days = word_days()
-    return any(SPECIAL.search(w) or days.get(w, 0) < TELL_DAYS for w in story & words(x.get("c")))
+    return any(SPECIAL.search(w) or days.get(w, 0) < (limit or TELL_DAYS) for w in story & words(x.get("c")))
 
 
 def tg_story(evs, photos):
