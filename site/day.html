@@ -194,6 +194,97 @@ a.ss-big { text-decoration: none; }
     linear-gradient(0deg,transparent,rgba(255,246,214,.95) 50%,transparent) center/1.5px 100% no-repeat}
 @keyframes tstwinkle{0%,100%{transform:scale(.75) rotate(0deg);opacity:.65}50%{transform:scale(1.15) rotate(18deg);opacity:1}}
 .paused .tstar i{animation-play-state:paused}
+/* Diwali sparkle (Darpan, 31 Oct 2026: "for those five days the travelling star becomes gentle diya lights along the
+   ropes, with a soft firework glow on New Year"). From Dhanteras to Bhai Bij the star is a little diya flame, and a clay
+   diya sits on each rope in every gap between the frames, burning low; as the flame drifts past, each one brightens and
+   then settles back. On the New Year's day soft blooms of firework light open and fade behind the board. Only on those
+   days by this year's BAPS calendar; the star comes back by itself the day after. With reduced motion nothing flickers
+   and no blooms open. */
+.board.dipa .tstar::before{left:-80px;top:-80px;width:160px;height:160px;
+  background:radial-gradient(circle,rgba(255,236,190,.7) 0,rgba(255,180,80,.42) 11%,rgba(240,120,40,.16) 30%,rgba(200,80,30,.05) 50%,transparent 70%)}
+.board.dipa .tstar::after{left:-4.5px;top:-13px;width:9px;height:15px;border-radius:50% 50% 50% 50%/62% 62% 38% 38%;
+  background:radial-gradient(ellipse at 50% 72%,#fff 0,#fff3c4 32%,#ffc04a 62%,#ff7a1a 100%);
+  box-shadow:0 0 5px 2px rgba(255,236,170,.95),0 0 14px 5px rgba(255,160,60,.6),0 0 26px 9px rgba(240,110,30,.28);
+  transform-origin:50% 90%;animation:flicker 1.2s ease-in-out infinite alternate}
+.board.dipa .tstar i{display:none}
+.dipas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:2}
+.dipas .diya{position:absolute;width:32px;height:32px;margin:-28px 0 0 -16px;overflow:visible;filter:drop-shadow(0 2px 2px rgba(0,0,0,.45))}
+.dipas .diya .glow{opacity:.45;transform-origin:20px 15px;transition:opacity 1.6s ease,transform 1.6s ease;animation:none}
+.dipas .diya .flame{transform:scale(.72);transform-box:fill-box;transform-origin:50% 100%;transition:transform 1.4s ease;animation:none}
+.dipas .diya.on .glow{opacity:1;transform:scale(1.9)}
+.dipas .diya.on .flame{transform:scale(1.12)}
+.dipas .diya.on{filter:drop-shadow(0 2px 2px rgba(0,0,0,.45)) drop-shadow(0 0 7px rgba(255,170,60,.75))}
+.dipas .diya i{display:none}
+@media (prefers-reduced-motion:no-preference){.dipas .diya .flame{animation:dflick 1.4s ease-in-out infinite alternate}.dipas .diya:nth-child(3n) .flame{animation-duration:1.1s;animation-delay:-.5s}}
+@keyframes dflick{0%{scale:1 1}50%{scale:.92 1.08}100%{scale:1.04 .96}}
+@media (prefers-reduced-motion:reduce){.board.dipa .tstar::after{animation:none}}
+.nyglow{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.nyglow b{position:absolute;width:var(--w,300px);height:var(--w,300px);margin:calc(var(--w,300px) / -2) 0 0 calc(var(--w,300px) / -2);border-radius:50%;
+  background:radial-gradient(circle,var(--c,rgba(255,214,120,.5)) 0,rgba(255,170,70,.18) 35%,transparent 68%);opacity:0;
+  animation:bloom var(--t,5s) ease-out forwards}
+.nyglow b::after{content:"";position:absolute;inset:30%;border-radius:50%;background:radial-gradient(circle,rgba(255,250,230,.55),transparent 70%)}
+@keyframes bloom{0%{opacity:0;transform:scale(.35)}22%{opacity:.85}100%{opacity:0;transform:scale(1.15)}}
+.page.newyear .wrap{position:relative;z-index:1}
+
+/* The Diwali days' own sections under the board (Darpan, 31 Oct 2026): Bapa's Diwali every year, his New Year ashirwad,
+   the Annakut gallery. Full width, the same ivory frames and gold as the board. */
+.dw{margin-top:56px}
+.dw>section{border-top:1px solid rgba(217,164,65,.22);padding-top:30px;margin-top:46px}
+.dw>section:first-child{margin-top:0}
+.dw h2{margin:0;text-align:center;font:700 clamp(28px,4vw,42px)/1.1 var(--lora,var(--serif));color:var(--gold-hi);text-wrap:balance;text-shadow:0 0 22px rgba(255,190,90,.3)}
+.dw .lede{text-align:center;color:var(--cream);margin:10px auto 0;max-width:64ch;font:500 italic clamp(16px,1.5vw,18px)/1.45 var(--serif);text-wrap:balance}
+.dw .frame{display:block;padding:6px 6px 0;background:linear-gradient(var(--ivory-top),var(--ivory-bot));box-shadow:0 6px 14px rgba(0,0,0,.4);min-width:0}
+.dw .frame .im{display:block;aspect-ratio:4/3;background:var(--maroon-deep);overflow:hidden}
+.dw .frame img{width:100%;height:100%;object-fit:cover;display:block}
+.dw .frame small{display:block;padding:6px 3px 7px;font:500 12.5px/1.3 var(--serif);color:var(--maroon-ink);text-align:center;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dw .yr{font:700 clamp(34px,3.6vw,46px)/1 var(--lora,var(--serif));color:var(--gold-hi)}
+.dw .where{font:700 12px/1.3 var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--gold-soft)}
+.dw .it{font:500 italic 16px/1.4 var(--serif);color:var(--cream)}
+.dw .links{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+/* Bapa's Diwali, every year: a frame a year, two side by side on a computer, down the page from 1999 */
+.dwyears{margin-top:30px;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,640px),1fr));gap:22px}
+.dwrow{display:grid;grid-template-columns:clamp(150px,11vw,190px) minmax(0,1fr);gap:clamp(14px,1.6vw,24px);align-items:center;
+  padding:16px clamp(12px,1.4vw,20px);border:1px solid rgba(217,164,65,.24);border-radius:6px;background:linear-gradient(90deg,rgba(0,0,0,.26),rgba(60,14,24,.16));scroll-margin-top:16px}
+.dwrow .when{text-align:center}
+.dwrow .when .diya{width:34px;height:34px;display:block;margin:0 auto 6px;overflow:visible}
+.dwrow .when .it{margin-top:6px}
+.dwrow .when .g{margin-top:8px;font:500 italic 14px/1.3 var(--serif);color:var(--mist)}
+.dwrow .links{justify-content:center}
+.dwrow .ph{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.dwrow .ph .frame:nth-child(3){display:none}
+.dwrow .ph.n1{grid-template-columns:minmax(0,1fr)}
+.dwrow .ph.n1 .im{aspect-ratio:8/5}
+.dwrow .chop{display:inline-block;margin-top:9px;font:700 10px/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--maroon-out);background:var(--gold-soft);padding:5px 9px;border-radius:999px}
+@media (max-width:560px){.dwrow{grid-template-columns:1fr}}
+/* New Year ashirwad: a tile a year, his darshan that year, playing in the page's own video frame */
+.ashis{margin-top:30px;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,210px),1fr));gap:18px}
+.ashi{position:relative;display:block;text-decoration:none;color:inherit}
+.ashi .frame .im{aspect-ratio:1}
+.ashi .play{position:absolute;left:50%;top:calc(6px + (100% - 6px) * .36);transform:translate(-50%,-50%);width:54px;height:54px;border-radius:50%;
+  background:rgba(22,5,9,.72);border:1.5px solid var(--gold-hi);display:grid;place-items:center;box-shadow:0 0 18px rgba(255,190,90,.45);transition:transform .3s ease,background .3s ease}
+.ashi .play::before{content:"";margin-left:5px;border-left:15px solid var(--gold-hi);border-top:9px solid transparent;border-bottom:9px solid transparent}
+.ashi:hover .play,.ashi:focus-visible .play{transform:translate(-50%,-50%) scale(1.08);background:rgba(217,164,65,.85)}
+.ashi:hover .play::before,.ashi:focus-visible .play::before{border-left-color:var(--maroon-out)}
+.ashi .t{display:block;padding:7px 4px 9px;text-align:center;color:var(--maroon-ink)}
+.ashi .t b{display:block;font:700 26px/1 var(--lora,var(--serif));color:var(--maroon-ink)}
+.ashi .t span{display:block;margin-top:4px;font:700 10px/1.35 var(--sans);letter-spacing:.14em;text-transform:uppercase}
+.ashi .t em{display:block;margin-top:3px;font:500 italic 13px/1.3 var(--serif)}
+.ashi .im.none{display:grid;place-items:center;background:radial-gradient(circle at 50% 42%,#5a1626,var(--maroon-deep))}
+.ashi .im.none .diya{width:64px;height:64px;overflow:visible}
+.page.newyear .ashis .ashi:last-child .frame{box-shadow:0 0 0 2px var(--gold-hi),0 0 26px rgba(255,190,90,.45)}
+/* Annakut gallery: one band a place, its years side by side; Bapa's own darshan of the annakut edged in gold */
+.anplaces{margin-top:28px;display:grid;gap:30px}
+.anplace h3{margin:0 0 12px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;font:700 clamp(24px,2.4vw,30px)/1 var(--lora,var(--serif));color:var(--gold-hi)}
+.anplace h3 span{font:700 11.5px var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--gold-soft)}
+.anyears{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(min(78vw,300px),auto);gap:22px;overflow-x:auto;padding:4px 2px 14px;scrollbar-color:rgba(217,164,65,.5) transparent;overscroll-behavior-x:contain}
+.anyear{display:flex;flex-direction:column;gap:8px;min-width:0}
+.anyear .head{display:flex;align-items:center;gap:10px}
+.anyear .head b{font:700 22px/1 var(--lora,var(--serif));color:var(--gold-hi)}
+.anyear .head .go{margin-left:auto}
+.anyear .ps{display:grid;grid-auto-flow:column;grid-auto-columns:clamp(132px,10vw,168px);gap:10px}
+.anyear .frame .im{aspect-ratio:1}
+.anyear .frame.bapa{background:linear-gradient(#fff3d0,#f0d79a);box-shadow:0 0 0 2px var(--gold-soft),0 6px 14px rgba(0,0,0,.4)}
+.anyear .frame.bapa small{color:#7a2a10}
 .card::after{content:"";position:absolute;inset:-1px;pointer-events:none;opacity:var(--g,0);
   box-shadow:calc(var(--gx,0) * 8px) 0 8px 2px rgba(255,236,170,1),calc(var(--gx,0) * 14px) 0 22px 6px rgba(246,192,80,.7)}
 /* the mouse resting on a caption for half a second opens it to the photo's whole caption, over whatever is below, so
@@ -466,6 +557,7 @@ a.ss-big { text-decoration: none; }
     <div class="tstars" id="stars" aria-hidden="true"><div class="tstar" id="star"><i></i></div></div>
     <div class="cards" id="cards"></div>
     <svg class="cords lights" id="lights" aria-hidden="true"></svg>
+    <div class="dipas" id="dipas" aria-hidden="true"></div>
   </div>
 
   <div class="controls" id="controls" hidden>
@@ -475,6 +567,8 @@ a.ss-big { text-decoration: none; }
     <button class="pill" id="slideshow" type="button">Slideshow</button>
     <a class="pill" id="search-day" target="_blank" rel="noopener">Search this date</a>
   </div>
+
+  <div class="dw" id="dw" hidden></div>
 
   <section class="all" id="all" hidden>
     <h2 id="all-title"></h2>
@@ -502,6 +596,7 @@ const SRC = {
   big: p => '{{PHOTOS}}m/' + p[0] + '/' + p[1],
   search: d => '{{SEARCH}}#' + (d.length === 5 ? 'day=' : 'date=') + d,   // '10-24' every year on this date, '2014-10-24' one day
   fest: k => fetch('{{DATA}}../fest/' + k + '.json').then(r => { if (!r.ok) throw r.status; return r.json(); }),   // tools/web_festival.py
+  season: () => fetch('{{DATA}}../fest/season.json').then(r => { if (!r.ok) throw r.status; return r.json(); }),   // tools/web_diwali.py
 };
 if (window.MOCK) Object.assign(SRC, window.MOCK);
 
@@ -722,6 +817,7 @@ function render() {
   $('all-title').textContent = `Every photo from ${D.title}`;
   $('all-count').textContent = n ? `${n.toLocaleString()} photos, year by year` : 'No photos on this day yet';
   $('all').hidden = !n;
+  sparkle();
   requestAnimationFrame(cords);
   start();
 }
@@ -911,9 +1007,11 @@ function star(t) {
     swinging.add(behind);
   }
   const y = row.base + sag(SKY.x), b = $('board').getBoundingClientRect();
-  el.style.transform = `translate(${SKY.x.toFixed(1)}px,${(y - b.top).toFixed(1)}px)`;
+  const yb = DIPA ? ropeAt(row.k, SKY.x, vw) - 9 : y - b.top;   // Diwali days: the flame rides along the rope itself
+  el.style.transform = `translate(${SKY.x.toFixed(1)}px,${yb.toFixed(1)}px)`;
   el.classList.add('on');
   light(row, SKY.x);
+  if (DIPA) lightDiyas(row.k, SKY.x, t);
 }
 // each frame's glow from where the star is: brightest with the star behind its middle, nothing once the star is
 // about a frame's width away, leaning to the star's side; the mouse's frame fully lit
@@ -1132,6 +1230,7 @@ function cords() {
     }).join('');
   // in front of the cards, so the lights and flowers drape over the tops of the frames
   $('lights').innerHTML = DAY && DAY.fest ? Object.keys(rows).map(t => { const y = +t - 5; return dress(DAY.fest, y - D / 2, y + 1.5 * D, vw); }).join('') : '';
+  dipas(vw, D);
 }
 // on a festival day each rope is dressed (Darpan, 30 Oct 2026): Diwali hangs a string of little lights along it, Annakut
 // a marigold garland with mango leaves, Guru Purnima jasmine, Janmashtami peacock feathers, Rathyatra flags, Raksha
@@ -1233,6 +1332,125 @@ document.fonts && document.fonts.ready.then(cords);
 // (Darpan, 30 Oct 2026: "add video link to everywhere relevant on the page, for the specific dates")
 function watchVideo(v, cls) {
   return `<a class="${cls}" href="https://www.youtube.com/watch?v=${encodeURIComponent(v[0][0])}" target="_blank" rel="noopener" title="${esc(v[0][1])}"><i aria-hidden="true"></i>Video Darshan</a>`;
+}
+
+// The Diwali days (Darpan, 31 Oct 2026, see .dipas above): Dhanteras, the New Year (Annakut and Bestu Varash) and Bhai
+// Bij of each year, by the BAPS calendar in the diary (calendar/baps-calendar.csv, which runs to 2027), as month-day.
+// From the first to the last of them the star is a diya flame and the ropes carry diyas; the New Year's day has its
+// soft firework glow; and the three Diwali sections open under the board.
+const DIWALI_DAYS = {2026: ['11-06', '11-10', '11-11'], 2027: ['10-27', '10-30', '10-31']};
+let DIPA = false, DIYAS = [];
+function diwaliDays() {
+  const d = DIWALI_DAYS[now.getFullYear()];
+  if (showing !== TODAY || !d || TODAY < d[0] || TODAY > d[2]) return null;
+  return {newYear: TODAY === d[1], after: TODAY >= d[1]};
+}
+function sparkle() {
+  const S = diwaliDays(), page = document.querySelector('.page');
+  DIPA = !!S;
+  $('board').classList.toggle('dipa', DIPA);
+  page.classList.toggle('newyear', !!(S && S.newYear));
+  newYearGlow(S && S.newYear);
+  $('dw').hidden = true; $('dw').innerHTML = '';
+  if (!S) return;
+  const mmdd = showing;
+  SRC.season().then(J => { if (showing === mmdd) seasonSections(J, S); }).catch(() => {});
+}
+// the rope's height across the board at x, as cords() draws it
+function ropeAt(k, x, vw) {
+  const y = k - 5, a = y - ropeSag / 2, q = y + 1.5 * ropeSag, u = x / vw;
+  return (1 - u) * (1 - u) * a + 2 * (1 - u) * u * q + u * u * a;
+}
+// a diya on each rope in every gap between the frames, and one at each end where the rope has room
+function dipas(vw, D) {
+  const box = $('dipas');
+  box.style.left = $('stars').style.left; box.style.width = vw + 'px';
+  DIYAS = [];
+  if (!DIPA || !cards.length) { box.innerHTML = ''; return; }
+  const rows = {};
+  cards.forEach(c => (rows[c.slot.offsetTop] = rows[c.slot.offsetTop] || []).push(c.slot.getBoundingClientRect()));
+  Object.keys(rows).forEach(t => {
+    const r = rows[t].sort((p, q) => p.left - q.left), xs = [];
+    if (r[0].left > 60) xs.push(r[0].left / 2);
+    for (let i = 1; i < r.length; i++) xs.push((r[i - 1].right + r[i].left) / 2);
+    if (vw - r[r.length - 1].right > 60) xs.push((r[r.length - 1].right + vw) / 2);
+    xs.forEach(x => DIYAS.push({k: +t, x, y: ropeAt(+t, x, vw), till: 0}));
+  });
+  box.innerHTML = DIYAS.map(d => DIYA('').replace('<svg ', `<svg style="left:${d.x.toFixed(1)}px;top:${d.y.toFixed(1)}px" `)).join('');
+  [...box.children].forEach((e, i) => DIYAS[i].el = e);
+}
+// the flame brightens each diya it passes, which then settles back to burning low after a few seconds
+function lightDiyas(k, x, t) {
+  DIYAS.forEach(d => {
+    if (d.k === k && Math.abs(d.x - x) < 26) d.till = t + 3400;
+    const on = d.till > t;
+    if (on !== !!d.on) { d.on = on; d.el.classList.toggle('on', on); }
+  });
+}
+// New Year's day: soft blooms of firework light open now and then at the sides and the top, where the cards leave the
+// sky showing, and fade; held still by Pause, and none with reduced motion
+let glowTimer = null;
+function newYearGlow(on) {
+  clearTimeout(glowTimer);
+  let g = document.querySelector('.nyglow');
+  if (!on || reduce) { if (g) g.remove(); return; }
+  if (!g) { g = document.createElement('div'); g.className = 'nyglow'; g.setAttribute('aria-hidden', 'true'); document.querySelector('.page').prepend(g); }
+  const C = ['rgba(255,214,120,.6)', 'rgba(255,170,90,.55)', 'rgba(255,140,170,.45)', 'rgba(205,175,255,.42)', 'rgba(255,238,175,.6)'];
+  const r = (a, z) => a + Math.random() * (z - a);
+  const bloom = () => {
+    if (!document.hidden && !paused) {
+      const b = document.createElement('b'), side = Math.random() < .75;
+      b.style.left = (side ? (Math.random() < .5 ? r(2, 17) : r(83, 98)) : r(22, 78)).toFixed(1) + '%';
+      b.style.top = (side ? r(12, 78) : r(4, 20)).toFixed(1) + '%';
+      b.style.setProperty('--w', Math.round(r(200, 420)) + 'px');
+      b.style.setProperty('--c', C[Math.floor(Math.random() * C.length)]);
+      b.style.setProperty('--t', r(4.8, 6.8).toFixed(1) + 's');
+      g.append(b); setTimeout(() => b.remove(), 7200);
+    }
+    glowTimer = setTimeout(bloom, r(1500, 3200));
+  };
+  glowTimer = setTimeout(bloom, 600);
+}
+// The three Diwali sections under the board (Darpan, 31 Oct 2026: "Bapa's Diwali every year 1999 to 2025, Chopda pujan
+// and where he was, as one scroll with the festival video for each year", "his New Year blessings from each year in one
+// place, playing inside the page", "the annakut spreads from every mandir and year, with Bapa's annakut darshan, grouped
+// by place"). Each video opens in the page's own video frame. From the New Year on, the ashirwad comes first.
+const guruOn = d => d && d < '2016-08-13' ? 'Pramukh Swami Maharaj' : 'Mahant Swami Maharaj';   // Swamishri, by the date
+function seasonSections(J, S) {
+  const y0 = now.getFullYear();
+  const at = p => p[4] && p[4].length > 1 ? `${Math.round(p[4][0] * 100)}% ${Math.round(p[4][1] * 100)}%` : '50% 45%';
+  const frame = (p, cls) => `<span class="frame${cls ? ' ' + cls : ''}"><span class="im"><img loading="lazy" decoding="async" src="${esc(SRC.photo(p))}" alt="${esc(p[2] || '')}" style="object-position:${at(p)}"></span><small>${esc(p[2] || '')}</small></span>`;
+  const full = d => d ? `${+d.slice(8)} ${MONTHS[+d.slice(5, 7) - 1]} ${d.slice(0, 4)}` : '';
+  const more = d => d ? `<a class="go" href="${esc(SRC.search(d))}">See more &rsaquo;</a>` : '';
+  const diwali = (J.diwali || []).filter(r => r.y < y0 && r.p.length);
+  const ashi = (J.ashirwad || []).filter(r => r.y < y0);
+  const ann = (J.annakut || []).map(P => Object.assign({}, P, {years: P.years.filter(Y => Y.y < y0 || Y.d < now.toISOString().slice(0, 10))})).filter(P => P.years.length);
+  const out = {};
+  if (diwali.length) out.diwali = `<section id="dw-diwali"><h2>Bapa's Diwali, every year</h2>` +
+    `<p class="lede">Where Bapa was each Diwali from ${diwali[0].y} to ${diwali[diwali.length - 1].y}, the Chopda Pujan and the darshan of the day. Happy Diwali 🪔</p><div class="dwyears">` +
+    diwali.map(r => `<article class="dwrow" id="dw-${r.y}"><div class="when">${DIYA('')}<div class="yr">${r.y}</div>` +
+      `<div class="where">${esc(r.place || '')}</div><div class="it">${full(r.d)}</div><div class="g">${esc(guruOn(r.d))}</div>` +
+      `${r.chopda ? '<span class="chop">Chopda Pujan</span>' : ''}<div class="links">${r.v ? watchVideo([r.v], 'go vgo') : ''}${more(r.d)}</div></div>` +
+      `<div class="ph n${Math.min(2, r.p.length)}">${r.p.slice(0, 2).map(p => frame(p)).join('')}</div></article>`).join('') + '</div></section>';
+  if (ashi.length) out.ashi = `<section id="dw-ashirwad"><h2>Bapa's New Year ashirwad</h2>` +
+    `<p class="lede">The New Year blessings of Pramukh Swami Maharaj and Mahant Swami Maharaj, year by year. Tap a year to watch it here. Nutan Varshabhinandan 🙏🏽</p><div class="ashis">` +
+    ashi.map(r => `<a class="ashi" href="https://www.youtube.com/watch?v=${encodeURIComponent(r.v[0])}" target="_blank" rel="noopener" title="${esc(r.v[1])}">` +
+      `<span class="frame"><span class="im${r.p.length ? '' : ' none'}">${r.p.length ? `<img loading="lazy" decoding="async" src="${esc(SRC.photo(r.p[0]))}" alt="${esc(r.p[0][2] || '')}" style="object-position:${at(r.p[0])}">` : DIYA('')}</span>` +
+      `<span class="t"><b>${r.y}</b><span>${esc(r.place || 'New Year')}</span><em>${esc(guruOn(r.d || r.y + '-11-01'))}</em></span></span><span class="play" aria-hidden="true"></span></a>`).join('') + '</div></section>';
+  if (ann.length) {
+    const big = ann.filter(P => P.years.length > 1), rest = ann.filter(P => P.years.length === 1);
+    const year = (Y, label) => `<div class="anyear"><div class="head"><b>${label}</b>${more(Y.d)}</div><div class="ps">` +
+      Y.b.map(p => frame(p, 'bapa')).join('') + Y.s.map(p => frame(p)).join('') + '</div></div>';
+    const band = (name, items, n) => `<div class="anplace"><h3>${esc(name)} <span>${n}</span></h3><div class="anyears">${items}</div></div>`;
+    out.ann = `<section id="dw-annakut"><h2>Annakut gallery</h2>` +
+      `<p class="lede">The annakut offered at every mandir, year by year, place by place. The gold frames are Bapa's own darshan of the annakut.</p><div class="anplaces">` +
+      big.map(P => band(P.place, P.years.slice().reverse().map(Y => year(Y, Y.y)).join(''), `${P.years.length} years`)).join('') +
+      (rest.length ? band('More mandirs', rest.map(P => year(P.years[0], `${esc(P.place)} ${P.years[0].y}`)).join(''), `${rest.length} places`) : '') +
+      '</div></section>';
+  }
+  const order = S.after ? ['ashi', 'ann', 'diwali'] : ['diwali', 'ashi', 'ann'];
+  $('dw').innerHTML = order.map(k => out[k] || '').join('');
+  $('dw').hidden = !$('dw').innerHTML;
 }
 
 // every photo of the day, year by year
