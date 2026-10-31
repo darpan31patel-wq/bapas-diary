@@ -22,6 +22,10 @@
 .bd-acts { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 10px; }
 .bd-pill { display: inline-flex; align-items: center; gap: 8px; font: 700 11px var(--bd-sans); letter-spacing: .14em; text-transform: uppercase; padding: 10px 14px; border-radius: 999px;
   border: 1px solid rgba(217, 164, 65, .45); background: rgba(0, 0, 0, .28); color: var(--bd-gold-hi); cursor: pointer; }
+/* the heart pill's label grows from Favourite to In favourites when tapped; keep the pill as wide as the longer one
+   so the buttons beside it never move (Darpan, 31 Oct 2026: "why does the tabs change at the top") */
+.bd-pill .bd-t { display: inline-block; text-align: center; }
+.bd-pill .bd-t::after { content: "In favourites"; display: block; height: 0; overflow: hidden; visibility: hidden; }
 .bd-pill.bd-heart[aria-pressed="true"] { background: var(--bd-cap); color: var(--bd-heart); border-color: var(--bd-cap); }
 
 /* Search: share on each date heading, My favourites in the header, Play these */
