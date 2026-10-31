@@ -186,10 +186,10 @@ a.ss-big { text-decoration: none; }
 .tstar.on{opacity:1}
 .tstar::before{content:"";position:absolute;left:-90px;top:-90px;width:180px;height:180px;border-radius:50%;
   background:radial-gradient(circle,rgba(255,248,222,.75) 0,rgba(255,226,140,.42) 10%,rgba(244,190,80,.16) 28%,rgba(226,160,56,.05) 48%,transparent 70%)}
-.tstar::after{content:"";position:absolute;left:-5px;top:-5px;width:10px;height:10px;border-radius:50%;
+.tstar::after{content:"";position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%;
   background:radial-gradient(circle,#fff 0,#fffbe8 40%,#ffe08a 75%,#f5c057 100%);
-  box-shadow:0 0 6px 2px rgba(255,250,225,1),0 0 16px 6px rgba(255,214,110,.75),0 0 32px 12px rgba(240,176,60,.35)}
-.tstar i{position:absolute;left:-26px;top:-26px;width:52px;height:52px;animation:tstwinkle 3.4s ease-in-out infinite;
+  box-shadow:0 0 4.5px 1.5px rgba(255,250,225,1),0 0 12px 4.5px rgba(255,214,110,.75),0 0 24px 9px rgba(240,176,60,.35)}
+.tstar i{position:absolute;left:-20px;top:-20px;width:40px;height:40px;animation:tstwinkle 3.4s ease-in-out infinite;
   background:linear-gradient(90deg,transparent,rgba(255,246,214,.95) 50%,transparent) center/100% 1.5px no-repeat,
     linear-gradient(0deg,transparent,rgba(255,246,214,.95) 50%,transparent) center/1.5px 100% no-repeat}
 @keyframes tstwinkle{0%,100%{transform:scale(.75) rotate(0deg);opacity:.65}50%{transform:scale(1.15) rotate(18deg);opacity:1}}
@@ -901,7 +901,7 @@ function star(t) {
   const inside = row.cards.some(c => c.box && c.box.right < SKY.x) && row.cards.some(c => c.box && c.box.left > SKY.x);
   const want = behind || !inside ? 1 : .3;   // off the ends of the rope it keeps its usual pace
   SKY.pace = (SKY.pace || want) + (want - (SKY.pace || want)) * Math.min(1, dt * 6);
-  if (!paused) SKY.x += dt * Math.max(70, vw / 13) * SKY.pace * (reduce ? .7 : 1);
+  if (!paused) SKY.x += dt * Math.max(49, vw / 18.6) * SKY.pace * (reduce ? .7 : 1);   // 30% slower (Darpan, 31 Oct 2026 16:41)
   // the star touches the edge of a frame: the frame gives way to the right and swings gently on its peg, each swing
   // smaller and slower than the last until it hangs still again
   if (behind && behind.hit !== SKY.pass && !reduce && !paused) {
