@@ -153,12 +153,17 @@ def main():
         both = []
         for psm in (True, False):
             pick = None
-            for gap in range(0, 15):
-                near = {(base + datetime.timedelta(days=s * gap)).strftime('%m-%d') for s in (1, -1)}
-                ds = [d for m in near for d in by_mmdd.get(m, []) if (d < PSM_UNTIL) == psm]
-                ds = [d for d in ds if len({r['do'] for r in days[d] if r['do']}) >= 5]   # a whole day: five kinds of moment at least
-                if ds:
-                    pick = max(ds, key=lambda d: full[d])
+            # a whole day (five kinds of moment at least) as near this date as can be, within two weeks; else the
+            # fullest day of three kinds or more within a month
+            for kinds, reach in ((5, 15), (3, 31)):
+                for gap in range(0, reach):
+                    near = {(base + datetime.timedelta(days=s * gap)).strftime('%m-%d') for s in (1, -1)}
+                    ds = [d for m in near for d in by_mmdd.get(m, []) if (d < PSM_UNTIL) == psm
+                          and len({r['do'] for r in days[d] if r['do']}) >= kinds]
+                    if ds:
+                        pick = max(ds, key=lambda d: full[d])
+                        break
+                if pick:
                     break
             if pick:
                 both.append(dict(one_day(pick, days[pick]), g='psm' if psm else 'msm'))

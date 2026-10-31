@@ -4,7 +4,118 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!--MENULINK-->
-<style>/*MENUCSS*/
+<style>/*MENUCSS*/</style>
+<title>Mandirs Bapa Opened</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Mukta:wght@300;400;600&display=swap">
+<style>
+/* Travels, Mandirs view: every murti pratishtha in the diary as a gold dot on the globe (bigger = more pratishthas
+   in that town) and a timeline in the panel, oldest first, each with its photo of Bapa and a gold See more into Search.
+   Same look as the Journey and Places views: night sky, gold route colour, Marcellus and Mukta. */
+:root {
+  --night: #0d1330; --sea: #0e1636; --land: #3a4c86; --gold: #f2b544; --saffron: #e8772e;
+  --ink: #f4efe4; --mist: #a9b1d6; --card: rgba(13,19,48,.86); --line: rgba(169,177,214,.22);
+  --display: "Marcellus", "Palatino Linotype", Georgia, serif;
+  --body: "Mukta", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; overflow: hidden; background: var(--night); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.5; }
+button { font: inherit; color: inherit; }
+#globe { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+#globe.drag { cursor: grabbing; }
+
+/* Journey | Places switch, just under the site menu */
+.views { position: fixed; z-index: 6; top: calc(56px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
+  display: flex; padding: 4px; gap: 4px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); }
+.views a { padding: 7px 20px; border-radius: 999px; color: var(--mist); text-decoration: none; font-size: 15px; }
+.views a.on { background: var(--gold); color: var(--night); font-weight: 600; }
+
+.panel { position: fixed; z-index: 4; left: max(24px, env(safe-area-inset-left, 0px)); top: calc(110px + env(safe-area-inset-top, 0px)); bottom: 24px;
+  width: min(410px, 38vw); display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); overflow: hidden; }
+.scroll { flex: 1; overflow-y: auto; padding: 20px 22px 22px; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.grab { display: none; }
+h1 { font: 400 30px/1.15 var(--display); margin: 0; text-wrap: balance; }
+.lead { color: var(--mist); margin: 6px 0 14px; font-size: 15px; text-wrap: balance; }
+.find { width: 100%; padding: 11px 14px; font: 400 17px var(--body); color: var(--ink); background: rgba(255,255,255,.06);
+  border: 1.5px solid var(--line); border-radius: 10px; }
+.find:focus { outline: none; border-color: var(--gold); }
+.find::placeholder { color: var(--mist); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 6px; }
+.chips button { border: 1px solid var(--line); background: transparent; color: var(--ink); padding: 5px 12px; border-radius: 999px; font-size: 14px; cursor: pointer; }
+.chips button:hover, .chips button.on { border-color: var(--gold); color: var(--gold); }
+.list { list-style: none; margin: 8px 0 0; padding: 0; }
+.list li button { width: 100%; display: flex; align-items: baseline; gap: 10px; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--line);
+  padding: 10px 2px; cursor: pointer; }
+.list li button:hover .nm { color: var(--gold); }
+.nm { font: 400 19px var(--display); flex: 1; min-width: 0; }
+.nm small { font: 400 13px var(--body); color: var(--mist); margin-left: 6px; }
+.cnt { color: var(--mist); font-size: 14px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cnt b { color: var(--gold); font-weight: 600; }
+
+/* one place */
+.back { background: none; border: 0; color: var(--mist); padding: 0; font-size: 14px; cursor: pointer; margin-bottom: 8px; }
+.back:hover { color: var(--gold); }
+.pname { font: 400 38px/1.1 var(--display); margin: 0; text-wrap: balance; }
+.pcountry { color: var(--saffron); font-weight: 600; }
+.gurus { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0 4px; }
+.guru { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 12px 8px 10px; border-radius: 12px; background: rgba(255,255,255,.04); border: 1px solid var(--line); }
+.guru img { width: 68px; height: 68px; border-radius: 50%; object-fit: cover; object-position: 50% 18%; box-shadow: 0 0 0 2px var(--gold); }
+.guru .who { font-size: 13px; line-height: 1.25; margin-top: 8px; color: var(--ink); text-wrap: balance; }
+.guru .how { font-size: 13px; color: var(--mist); margin-top: 3px; }
+.guru .how b { color: var(--gold); font-weight: 600; font-size: 16px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: center; }
+.stats b { display: block; font-weight: 600; font-size: 24px; font-variant-numeric: tabular-nums; }
+.stats small { color: var(--mist); font-size: 12px; }
+.all { display: block; width: 100%; margin: 16px 0 6px; padding: 13px 16px; border: 0; border-radius: 12px; background: var(--gold); color: var(--night);
+  font-weight: 600; font-size: 16px; text-align: center; text-decoration: none; cursor: pointer; }
+.all:hover { filter: brightness(1.08); }
+.tn { display: block; text-align: center; padding: 10px; border: 1.5px solid var(--gold); border-radius: 12px; color: var(--gold); text-decoration: none; font-weight: 600; }
+.tn:hover { background: rgba(242,181,68,.12); }
+.vh { display: flex; justify-content: space-between; align-items: baseline; margin: 18px 0 4px; }
+.vh h2 { font: 400 20px var(--display); margin: 0; }
+.vh button { background: none; border: 0; color: var(--mist); font-size: 14px; cursor: pointer; padding: 0; }
+.vh button:hover { color: var(--gold); }
+.yr { font: 400 22px var(--display); color: var(--gold); margin: 14px 0 2px; }
+.visit { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.tile { flex: none; width: 64px; height: 64px; border-radius: 10px; overflow: hidden; background: var(--sea) center/cover no-repeat; box-shadow: 0 0 0 1.5px rgba(242,181,68,.6); }
+.vb { flex: 1; min-width: 0; }
+.vd { font-weight: 600; font-size: 16px; }
+.vm { color: var(--mist); font-size: 13px; }
+.vc { font-size: 14px; font-weight: 300; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.vl { display: inline-block; margin-top: 4px; color: var(--gold); font-size: 14px; text-decoration: none; }
+.vl:hover { text-decoration: underline; }
+
+.zoom { position: fixed; z-index: 4; right: max(20px, env(safe-area-inset-right, 0px)); bottom: 24px; display: flex; flex-direction: column; gap: 8px; }
+.zoom button { width: 48px; height: 48px; border-radius: 50%; border: 1.5px solid var(--gold); background: var(--card); color: var(--gold); font-size: 24px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
+.zoom button:hover { background: rgba(242,181,68,.15); }
+.hint { position: fixed; z-index: 3; right: 88px; bottom: 30px; color: var(--mist); font-size: 14px; text-align: right; pointer-events: none; transition: opacity .6s; }
+.mock { position: fixed; z-index: 4; right: max(20px, env(safe-area-inset-right, 0px)); top: calc(62px + env(safe-area-inset-top, 0px)); font-size: 12px; color: var(--mist); background: var(--card); border: 1px solid var(--line); padding: 4px 10px; border-radius: 999px; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+@media (max-width: 760px) {
+  .views { top: calc(52px + env(safe-area-inset-top, 0px)); }
+  .views a { padding: 6px 16px; font-size: 14px; }
+  .panel { left: 0; right: 0; width: auto; top: auto; bottom: 0; height: 46%; border-radius: 18px 18px 0 0; border-bottom: 0; transition: height .3s ease; }
+  .panel.tall { height: calc(100% - 100px - env(safe-area-inset-top, 0px)); }
+  .grab { display: block; flex: none; width: 100%; height: 26px; background: none; border: 0; cursor: pointer; position: relative; }
+  .grab::after { content: ""; position: absolute; left: 50%; top: 10px; width: 44px; height: 5px; margin-left: -22px; border-radius: 3px; background: var(--line); }
+  .scroll { padding: 0 16px calc(18px + env(safe-area-inset-bottom, 0px)); }
+  h1 { font-size: 24px; }
+  .pname { font-size: 30px; }
+  .zoom { bottom: calc(46% + 12px); right: 12px; }
+  .zoom button { width: 42px; height: 42px; font-size: 21px; }
+  .hint, .mock { display: none; }
+  .panel.tall ~ .zoom { display: none; }
+  /* with the phone tab bar at the bottom (site/phone), the panel sits on top of it */
+  html.ph-travels .panel { bottom: var(--ph-bar, 0px); height: calc(46% - var(--ph-bar, 0px)); }
+  html.ph-travels .panel.tall { height: calc(100% - 100px - env(safe-area-inset-top, 0px) - var(--ph-bar, 0px)); }
+  html.ph-travels .zoom { bottom: calc(46% + 12px); }
+}
+
 /* the timeline */
 .years { display: flex; gap: 6px; overflow-x: auto; margin: 12px -2px 4px; padding: 2px 2px 8px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 .years button { flex: none; border: 1px solid var(--line); background: transparent; color: var(--ink); padding: 4px 11px; border-radius: 999px; font-size: 14px; cursor: pointer; font-variant-numeric: tabular-nums; }
