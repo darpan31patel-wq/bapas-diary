@@ -184,12 +184,12 @@ a.ss-big { text-decoration: none; }
 .tstars{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden}
 .tstar{position:absolute;left:0;top:0;width:0;height:0;opacity:0;transition:opacity 1.2s ease;will-change:transform}
 .tstar.on{opacity:1}
-.tstar::before{content:"";position:absolute;left:-90px;top:-90px;width:180px;height:180px;border-radius:50%;
-  background:radial-gradient(circle,rgba(255,248,222,.75) 0,rgba(255,226,140,.42) 10%,rgba(244,190,80,.16) 28%,rgba(226,160,56,.05) 48%,transparent 70%)}
-.tstar::after{content:"";position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%;
+.tstar::before{content:"";position:absolute;left:-60px;top:-60px;width:120px;height:120px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,248,222,.8) 0,rgba(255,226,140,.45) 12%,rgba(244,190,80,.14) 30%,rgba(226,160,56,.03) 48%,transparent 62%)}
+.tstar::after{content:"";position:absolute;left:-3px;top:-3px;width:6px;height:6px;border-radius:50%;
   background:radial-gradient(circle,#fff 0,#fffbe8 40%,#ffe08a 75%,#f5c057 100%);
-  box-shadow:0 0 4.5px 1.5px rgba(255,250,225,1),0 0 12px 4.5px rgba(255,214,110,.75),0 0 24px 9px rgba(240,176,60,.35)}
-.tstar i{position:absolute;left:-20px;top:-20px;width:40px;height:40px;animation:tstwinkle 3.4s ease-in-out infinite;
+  box-shadow:0 0 3px 1px rgba(255,250,225,1),0 0 8px 3px rgba(255,214,110,.8),0 0 14px 5px rgba(240,176,60,.35)}
+.tstar i{position:absolute;left:-15px;top:-15px;width:30px;height:30px;animation:tstwinkle 3.4s ease-in-out infinite;
   background:linear-gradient(90deg,transparent,rgba(255,246,214,.95) 50%,transparent) center/100% 1.5px no-repeat,
     linear-gradient(0deg,transparent,rgba(255,246,214,.95) 50%,transparent) center/1.5px 100% no-repeat}
 @keyframes tstwinkle{0%,100%{transform:scale(.75) rotate(0deg);opacity:.65}50%{transform:scale(1.15) rotate(18deg);opacity:1}}
@@ -906,7 +906,7 @@ function star(t) {
   // smaller and slower than the last until it hangs still again
   if (behind && behind.hit !== SKY.pass && !reduce && !paused) {
     behind.hit = SKY.pass;
-    behind.push = -.04; behind.a = behind.a || 0; behind.v = behind.v || 0; behind.spring = .0011; behind.damp = .996;   // a soft, slow swing
+    behind.a = behind.a || 0; behind.v = (behind.v || 0) - .03; behind.push = 0; behind.spring = .0011; behind.damp = .996;   // the frame moves the instant the star touches it (Darpan, 31 Oct 2026 20:37), then a soft, slow swing
     if (!swinging.size) requestAnimationFrame(swing);
     swinging.add(behind);
   }
