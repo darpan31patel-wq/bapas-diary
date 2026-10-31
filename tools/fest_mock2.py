@@ -478,7 +478,7 @@ def dressed(k, make_card):
 
 # ------------------------------------------------------------------ the photos
 
-CROP = {}
+CROP = {('diwali', 1990): 'whole', ('diwali', 2008): 'whole'}   # the lamps and the lit deri must stay in the frame
 ORIG_TRIM = make.trim_bars
 make.trim_bars = lambda im, face: (im, face) if getattr(im, 'notrim', False) else ORIG_TRIM(im, face)
 FACE = {('diwali', 2025): (140, 280, 90, 120), ('diwali', 2020): (810, 140, 120, 160)}   # side views the face finder misses (x, y, w, h in the photo)
@@ -496,6 +496,15 @@ SAY.update({   # 31 Oct 2026 picks: Diwali lamps and fireworks, Annakut with the
     ('annakut', 2020): 'Annakut arti for Thakorji', ('annakut', 2021): 'Arti before the annakut', ('annakut', 2022): 'Annakut arti with the sadhus',
     ('annakut', 2023): 'Annakut arti on New Year’s Day', ('annakut', 2024): 'Waves the annakut arti', ('annakut', 2025): 'Arti of the grand annakut',
 })
+
+SAY.update({   # 31 Oct 2026, Darpan: Diwali = lights and fireworks with Bapa, as many years as possible
+    ('diwali', 1990): 'Diwali morning puja', ('diwali', 1997): 'Morning puja under Diwali lights', ('diwali', 1998): 'Diwali puja darshan',
+    ('diwali', 2004): 'Arti on Diwali day', ('diwali', 2005): 'Arti with a coconut and sugarcane divo', ('diwali', 2006): 'Morning puja among Diwali divas',
+    ('diwali', 2008): 'Darshan in the lit Akshar Deri', ('diwali', 2009): 'Divas at the Yogi Smruti Mandir', ('diwali', 2010): 'Arrives at the Akshar Deri on Diwali night',
+    ('diwali', 2013): 'Performs the Diwali arti', ('diwali', 2014): 'Lakshmi Pujan on Dhan Teras', ('diwali', 2015): 'Performs the Lakshmi Pujan',
+    ('diwali', 2017): 'Lights a divo', ('diwali', 2019): 'Fireworks welcome Bapa', ('diwali', 2020): 'Lights divas for Diwali',
+})
+TOWN = {('diwali', 2019): 'Rajkot'}   # the photo's own town when it is from a nearby day
 
 def tidy_town(t):
     t = re.sub(r'\s*\(.*?\)', '', (t or '').split(',')[0]).strip()
@@ -529,7 +538,7 @@ def photos_for(k):
         c = x['c']
         c = 'Swamishri ' + c if c[:1].islower() else c
         say = SAY.get((k, y['y']))
-        p = dict(y=y['y'], d=y['d'], im=im, face=face, c=c, town=tidy_town(y.get('place')), crop=CROP.get((k, y['y']), 'frame'), hero=y['y'] == picks['hero'] or bool(h2 and y['y'] == h2[0]))
+        p = dict(y=y['y'], d=y['d'], im=im, face=face, c=c, town=TOWN.get((k, y['y'])) or tidy_town(y.get('place')), crop=CROP.get((k, y['y']), 'frame'), hero=y['y'] == picks['hero'] or bool(h2 and y['y'] == h2[0]))
         p['cap'] = say or ORIG_CAPTION(p)
         out.append(p)
     seen = {}
