@@ -2,7 +2,7 @@
 
 Reads data/youtube/flat.tsv (the Guruhari Darshan playlist, newest first) and, when present,
 data/youtube/channel/*.tsv (every other video on the BAPS channel), and writes data/youtube/days.json (date -> videos,
-the shortest, most exact video first) and data/youtube/undated.json.
+a Guruhari Darshan video first, then the shortest, most exact) and data/youtube/undated.json.
 
 Days come from each title. Every way the channel writes them is read (Darpan, 31 Oct 2026, after 31 October 2016,
 2017 and 2018 showed no Video Darshan though the videos are there):
@@ -126,7 +126,7 @@ def read(path):
     return rows
 
 
-def place(rows):
+def place(rows, festivals=True):
     """Dated days per video, and festival days for undated ones from their dated neighbours (rows are newest first)."""
     got = [(v, t, s, dates(t)) for v, t, s in rows]
     out = []
@@ -136,7 +136,9 @@ def place(rows):
             older = next((max(x[3]) for x in got[i + 1:] if x[3]), None)
             lo = older - dt.timedelta(10) if older else None
             hi = newer + dt.timedelta(10) if newer else None
-            if lo and hi and lo <= hi and (hi - lo).days <= 60:
+            if not festivals:
+                f = None
+            elif lo and hi and lo <= hi and (hi - lo).days <= 60:
                 f = festival_day(t, lo, hi)
             elif re.search(r'\b20\d\d\b', t):
                 f = festival_day(t, None, None)
@@ -151,7 +153,7 @@ lists = [place(read(os.path.join(YT, 'flat.tsv')))]
 ch = os.path.join(YT, 'channel')
 for f in ('videos.tsv', 'streams.tsv'):   # the channel's own pages, newest first
     if os.path.exists(os.path.join(ch, f)):
-        lists.append(place(read(os.path.join(ch, f))))
+        lists.append(place(read(os.path.join(ch, f)), festivals=False))
 if os.path.exists(os.path.join(ch, 'in-playlists.tsv')):   # every channel playlist, each in its own order
     per = {}
     for l in open(os.path.join(ch, 'in-playlists.tsv'), encoding='utf-8'):
@@ -159,25 +161,31 @@ if os.path.exists(os.path.join(ch, 'in-playlists.tsv')):   # every channel playl
         if len(p) >= 3:
             per.setdefault(p[0], []).append(p[1:])
     for p, rows in per.items():
-        lists.append(place([(r[0], r[1], r[2] if len(r) > 2 else '') for r in rows if r[1] not in ('NA', '[Private video]', '[Deleted video]')]))
+        lists.append(place([(r[0], r[1], r[2] if len(r) > 2 else '') for r in rows if r[1] not in ('NA', '[Private video]', '[Deleted video]')], festivals=False))
 
-# Only Guruhari Darshan style videos of Bapa from the wider channel: dated in the title or a festival with Bapa
-BAPA = re.compile(r'guruhari darshan|mahant swami|pramukh swami|swamishri|bapa\b', re.I)
+# From the wider channel only videos of Bapa dated in their title (a festival there may be at any mandir, without him):
+# Guruhari Darshan and Guruhari Ashirwad (his blessings), and Pramukh Swami Maharaj's own visits and blessings in his
+# lifetime. Talks and films about Bapa ("Pramukh Swami Maharaj: Living by Example, 19 Dec 2020") are left out.
+SERIES = re.compile(r'guruhari (darshan|ashirwad|ashirvad)', re.I)
+PSM = re.compile(r"pramukh swami|swamishri", re.I)
+PSM_LAST = dt.date(2016, 8, 12)   # not the final darshan of 13 Aug 2016
 vids, seen, undated = {}, {}, []
 for n, rows in enumerate(lists):
     for v, t, s, ds in rows:
-        if n and not BAPA.search(t):
-            continue
+        if n and not SERIES.search(t):
+            ds = {d for d in ds if d <= PSM_LAST} if PSM.search(t) else set()
+            if not ds:
+                continue
         if ds:
             seen.setdefault(v, (t, s, set()))[2].update(ds)
-        elif v not in seen:
+        elif not n:
             undated.append(t)
 for v, (t, s, ds) in seen.items():
     for d in ds:
         vids.setdefault(d, []).append((len(ds), v, t, s))
 undated = sorted({t for t in undated if not any(t == x[0] for x in seen.values())})
 out = {d.isoformat(): [{'id': v, 'title': t, 'secs': int(s) if s.isdigit() else None}
-                       for _, v, t, s in sorted(x, key=lambda r: r[0])] for d, x in sorted(vids.items())}
+                       for _, v, t, s in sorted(x, key=lambda r: (not re.search('guruhari darshan', r[2], re.I), r[0]))] for d, x in sorted(vids.items())}
 json.dump(out, open(os.path.join(YT, 'days.json'), 'w'), ensure_ascii=False, indent=0)
 json.dump(undated, open(os.path.join(YT, 'undated.json'), 'w'), ensure_ascii=False, indent=1)
 print(len(out), 'days,', len(seen), 'videos,', len(undated), 'undated')
