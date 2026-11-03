@@ -1220,7 +1220,7 @@ def place(x):
     return town_of(x.get('p'))
 
 
-def nearby_town(y, when, reach=10):
+def nearby_town(y, when, reach=3):   # Darpan, 3 Nov 2026: only 3 days before or after the actual day (was 10)
     """Where Bapa was on the nearest day of year y to `when` (a date) that names a town: the vicharan pages, then the
     day lists, a day before and a day after, then two, and so on."""
     for k in range(1, reach + 1):

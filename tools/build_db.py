@@ -6,12 +6,13 @@ one file per day of the year, listing every captioned photo of Bapa on that day 
 A photo's date comes from its file name when it carries one (2014_10_16_..., y091016-..., 20111016-...),
 otherwise from its page title or address (16 October 2014, 15 to 23 January 1999, ...).
 Every dated photo is kept (make.py picks). If a year has nothing on the exact day, the nearest day of the same trip stands in
-(a range page covering the day, else the closest dated photo within NEAR days), so most years still get a photo.
+(a trip page covering the day, else the closest dated photo), never more than NEAR days away (Darpan, 3 Nov 2026: only
+3 days before or after the actual day). A trip page's photos carry no day of their own, so it counts only when its whole
+trip lies within NEAR days of the day.
 """
 import argparse, collections, datetime, glob, json, os, re, sys
 
-NEAR = 3          # a nearby day of the same trip stands in for a missing one
-NEAR_FAR = 7      # and when a year would otherwise be missing from the day, up to a week
+NEAR = 3          # a nearby day of the same trip stands in for a missing one, at most 3 days before or after (was up to a week)
 MONTHS = 'january february march april may june july august september october november december'.split()
 MON = '(' + '|'.join(MONTHS) + ')'
 ORD = r'(?:st|nd|rd|th)?'
@@ -207,17 +208,14 @@ def build(years):
             if day in exact:
                 days[mmdd][y] = (day, exact[day]); stats['exact'] += 1
                 continue
-            cover = [x for x in ranged if x[1][0] <= day <= x[1][1]]
+            far = lambda x: max(abs((x[1][0] - day).days), abs((x[1][1] - day).days))   # the furthest day a trip page's photo could be from
+            cover = [x for x in ranged if x[1][0] <= day <= x[1][1] and far(x) <= NEAR]
             if cover:
                 days[mmdd][y] = (day, cover); stats['range'] += 1
                 continue
             gap = lambda x: min(abs((x[1][0] - day).days), abs((x[1][1] - day).days))
-            near = near_r = []
-            for reach in (NEAR, NEAR_FAR):
-                near = [t for t in dated if abs((t - day).days) <= reach]
-                near_r = [x for x in ranged if gap(x) <= reach]
-                if near or near_r:
-                    break
+            near = [t for t in dated if abs((t - day).days) <= NEAR]
+            near_r = [x for x in ranged if far(x) <= NEAR]
             if near or near_r:
                 tg = min((abs((t - day).days) for t in near), default=99)
                 rg = min((gap(x) for x in near_r), default=99)
