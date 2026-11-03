@@ -163,14 +163,14 @@ function studioCode() {
   console.log('Paste this into the Studio:  ' + url + '#' + key);
 }
 
-/** A picture from the Studio. {key, mode: 'replace' | 'new', date: 'yyyy-MM-dd', png, jpg (base64)} */
+/** A picture from the Studio. {key, mode: 'replace' | 'new', date: 'yyyy-MM-dd', png, jpg (base64), caption, whole} */
 function doPost(e) {
   const answer = o => ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
   try {
     const p = JSON.parse(e.postData.contents);
     const key = PropertiesService.getScriptProperties().getProperty('STUDIO_KEY');
     if (!key || p.key !== key) return answer({ ok: false, error: 'The Studio code is wrong. Run studioCode in the script and paste the new line into the Studio.' });
-    if (p.mode === 'ping') return answer({ ok: true, mode: 'ping', version: 2 });   // the Studio's "Check the connection"
+    if (p.mode === 'ping') return answer({ ok: true, mode: 'ping', version: 3 });   // the Studio's "Check the connection"
     const when = new Date(p.date + 'T12:00:00Z');
     const day = Utilities.formatDate(when, TZ, 'd MMMM yyyy');
     const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
@@ -188,7 +188,16 @@ function doPost(e) {
       if (oldJpg) oldJpg.setTrashed(true);
       folder.createFile(png.setName(day + '.png')).setDescription('from the Studio');
       if (jpg) folder.createFile(jpg.setName(day + ' photo.jpg')).setDescription('from the Studio');
-      return answer({ ok: true, mode: 'replace', folder: FOLDER_NAME, name: day + '.png', when2pm: when2pm, time: Utilities.formatDate(new Date(), TZ, 'HH:mm') });
+      // the 2pm caption you changed in the Studio (Darpan, 3 Nov 2026): '<day> caption.txt' holds the words under your top
+      // line and Day n; '<day> whole caption.txt' is the whole caption when you ticked "Replace my whole caption"
+      let caption = false;
+      if (typeof p.caption === 'string') {
+        [' caption.txt', ' whole caption.txt'].forEach(n => { const old = alive_(folder, day + n); if (old) old.setTrashed(true); });
+        const text = p.caption.trim();
+        if (text) folder.createFile(day + (p.whole ? ' whole caption.txt' : ' caption.txt'), text, MimeType.PLAIN_TEXT).setDescription('from the Studio');
+        caption = true;
+      }
+      return answer({ ok: true, mode: 'replace', folder: FOLDER_NAME, name: day + '.png', when2pm: when2pm, caption: caption, time: Utilities.formatDate(new Date(), TZ, 'HH:mm') });
     }
     const found = DriveApp.getFoldersByName(STUDIO_NAME);
     const out = found.hasNext() ? found.next() : DriveApp.createFolder(STUDIO_NAME);

@@ -131,10 +131,20 @@ def main():
         thumbs(ims, [c['face'] for c in cands], os.path.join(out, f'{w["year"]}-thumbs.jpg'))
         years.append(dict(year=w['year'], mode=w['mode'], cands=cands, thumbs=f'{w["year"]}-thumbs.jpg'))
     cal = make.cal_footer(day)
+    # the words the morning run puts under Darpan's 2pm WhatsApp caption (caption.txt), so the Studio can show and change them
+    town = lambda e: (e['date'][:10], make.re.split(r'[,(]', e.get('place') or '')[0].strip().lower())
+    pictured = {town(story)} if story else set()
+    pictured |= {(f'{x["y"]}', town({'date': '', 'place': x.get('p')})[1]) for x in photos}
+    cards = {x.get('post') for x in photos if x.get('post')}
+    left = [e for e in tg_evs if town(e) not in pictured and e.get('url') not in cards and not any(make.tells(x, e) for x in photos)
+            and not (e.get('channel') and (e['date'][:4], town(e)[1]) in pictured)]
+    told = max(left, key=make.tg_rank, default=None)
+    wa = make.cal_caption(day, None)
+    wa = wa + (('\n' if wa else '') + make.tg_caption(told, left) if told else '')
     pack = dict(date=str(day), title=make.cal_title(day) or f'{day.day} {day:%B}', subtitle='in Bapa’s Diary',
                 footer=make.FOOTER, cal_line=cal[0] if cal else '', tomorrow=cal[1] if cal else '',
                 story=dict(year=story['date'][:4], line=story.get('line', '')) if story else None,
-                years=years, cell=CELL, cols=COLS, every=True, made=datetime.datetime.utcnow().isoformat(timespec='minutes') + 'Z')
+                whatsapp=wa.strip(), years=years, cell=CELL, cols=COLS, every=True, made=datetime.datetime.utcnow().isoformat(timespec='minutes') + 'Z')
     json.dump(pack, open(os.path.join(out, 'pack.json'), 'w'), indent=1, ensure_ascii=False)
     print(f'{day}: {len(years)} years, {sum(len(y["cands"]) for y in years)} photos -> {out}')
 
