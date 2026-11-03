@@ -1,0 +1,54 @@
+# Pictures of the Search page's line under the title with four wordings (Darpan, 3 Nov 2026), taken on the live page on
+# the runner. Runs only on the mockup branch, never deploys anything.
+name: Search line mockup
+on:
+  push:
+    branches: [claude/project-thread-eawr12-mockup]
+    paths: [.github/workflows/search-line-mockup.yml]
+permissions:
+  contents: write
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip -q install playwright && python3 -m playwright install --with-deps chromium >/dev/null
+      - name: Pictures
+        run: |
+          mkdir -p shots
+          python3 - <<'PY'
+          from playwright.sync_api import sync_playwright
+          OPTS = {
+            'a': "Search through <span class=\"count\"><b>{all}</b> photos</span> to find any moment in Bapa's diary.",
+            'b': "<span class=\"count\"><b>{all}</b> photos</span> of Bapa from {y0} to today. Type a word or pick a date to find a moment.",
+            'c': "Find any moment in Bapa's diary: <span class=\"count\"><b>{all}</b> photos</span>, {y0} to {y1}, and growing every day.",
+            'd': "Every moment in Bapa's diary, <span class=\"count\"><b>{n}</b> vicharan photos</span> and {u} darshan photos. Search them all.",
+          }
+          with sync_playwright() as p:
+              b = p.chromium.launch()
+              for w, h, dpr, tag in [(1400, 900, 1, 'computer'), (390, 844, 2, 'phone')]:
+                  pg = b.new_page(viewport={'width': w, 'height': h}, device_scale_factor=dpr)
+                  try: pg.goto('https://bapas-diary.com/search/', wait_until='networkidle', timeout=25000)
+                  except Exception: pass
+                  pg.wait_for_timeout(4000)
+                  about = pg.evaluate("fetch('data/about.json').then(r=>r.json())")
+                  n = sum(about['photos'].values()); u = about.get('undated', 0)
+                  vals = dict(all=f'{n+u:,}', n=f'{n:,}', u=f'{u:,}', y0=about['years'][0], y1=about['years'][-1])
+                  box = pg.locator('header, .top, h1').first.bounding_box() or {'y': 0}
+                  clip = {'x': 0, 'y': 0, 'width': w, 'height': min(h, 300 if tag == 'computer' else 420)}
+                  pg.screenshot(path=f'shots/{tag}-now.jpg', type='jpeg', quality=88, clip=clip)
+                  for k, t in OPTS.items():
+                      pg.evaluate("t => { document.getElementById('sub').innerHTML = t }", t.format(**vals))
+                      pg.wait_for_timeout(300)
+                      pg.screenshot(path=f'shots/{tag}-{k}.jpg', type='jpeg', quality=88, clip=clip)
+                  pg.close()
+              b.close()
+          PY
+          ls -la shots
+      - name: Keep them
+        run: |
+          gh release delete search-line-mockup -y --cleanup-tag -R "$GITHUB_REPOSITORY" 2>/dev/null || true
+          gh release create search-line-mockup shots/*.jpg -R "$GITHUB_REPOSITORY" --title "Search line mockup pictures" --notes "Mockup pictures only, not part of the website" --target "$GITHUB_SHA"
