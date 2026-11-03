@@ -1672,6 +1672,8 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None):
             sag = lambda xp: y_top - px(4) + px(SAG) * 4 * (xp / W) * (1 - xp / W)                    # the cord dips a little in the middle
         rope(img, [(xp, sag(xp)) for xp in range(0, W + 1, 4)])   # drawn before the cards, so it always runs behind them
         x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
+        if festive:
+            cord_lights(img, sag, r)
         later = []   # pegs and captions go on after the whole row, so a card swinging over its neighbour never hides them
         for c, x in enumerate(row):
             cx = x0 + c * (card.CW + gap) + card.CW / 2
@@ -1703,8 +1705,8 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None):
 
 
 # Darpan, 31 Oct 2026 (idea 2, 'yes'): from Vagh Baras to Bhai Beej the daily picture keeps its usual photos but wears a
-# light Diwali touch: a lit diya in each top corner beside the title (Darpan, 3 Nov 2026: no lights on the cords,
-# 'diyas as design is fine'). The festival pictures (Every Diwali, Every Annakut) have their own dress.
+# light Diwali touch: small warm lights along the cords (only where the cord shows, never over a photo) and a lit diya
+# in each top corner beside the title. The festival pictures (Every Diwali, Every Annakut) have their own dress.
 DIWALI_FROM, DIWALI_TO = 'Vagh Baras', 'Bhai Beej'
 
 
