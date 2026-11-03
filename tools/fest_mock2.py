@@ -507,7 +507,7 @@ SAY.update({   # 31 Oct 2026, Darpan: Diwali = lights and fireworks with Bapa, a
 SAY.update({   # 3 Nov 2026: the eight years the website list had missed (found with the Diwali week thread)
     ('diwali', 1999): 'Sanctifies the account books', ('diwali', 2000): 'Before a swastik of divas', ('diwali', 2001): 'Diwali morning puja',
     ('diwali', 2002): 'Diwali blessings under the lamps', ('diwali', 2003): 'Arti on New Year’s Day', ('diwali', 2007): 'Darshan at the decorated Akshar Deri',
-    ('diwali', 2016): 'Performs the Diwali arti', ('diwali', 2021): 'Evening arti among the Diwali lights',
+    ('diwali', 2016): 'His first Diwali arti as guru', ('diwali', 2021): 'Evening arti among the Diwali lights',
 })
 TOWN = {('diwali', 2019): 'Rajkot'}   # the photo's own town when it is from a nearby day
 
