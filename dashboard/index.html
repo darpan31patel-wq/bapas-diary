@@ -55,6 +55,9 @@ button { font: inherit; color: inherit }
 .status.ok { color: var(--ok) }
 .status.warn { color: var(--saffron) }
 .hint { color: var(--muted); font-size: 12.5px; margin: 0 }
+.any { color: var(--muted); font-size: 13px; display: inline-flex; align-items: center; gap: 6px }
+.want { border: 1px solid var(--line); background: var(--panel-2); border-radius: 12px; padding: 14px 16px; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center }
+.want p { margin: 0; flex: 1 1 280px; font-size: 14px }
 .compare summary { cursor: pointer; color: var(--muted); font-size: 13px }
 .compare img { width: 100%; border-radius: 6px; border: 1px solid var(--line); margin-top: 8px }
 /* the small editor that opens on a card */
@@ -143,6 +146,7 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
   </div>
   <select id="pick" aria-label="Which day"></select>
   <select id="pick-opt" aria-label="Kind of poster" hidden></select>
+  <label class="any" id="any-l">or any date <input type="date" id="any" min="2000-01-01" max="2100-12-31" aria-label="Any date"></label>
   <span class="spacer"></span>
   <button class="chip" id="drive-chip">Connect Google Drive</button>
   <button class="btn primary" id="exp-open">Export…</button>
@@ -150,6 +154,7 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
 <div class="work">
   <main class="stage">
     <div class="meta" id="meta">Loading photos…</div>
+    <div class="want" id="want" hidden><p id="want-p"></p><button class="btn primary" id="want-go" type="button">Get this day’s photos ready</button></div>
     <div class="easel" id="easel">
       <canvas id="view" width="2796" height="1290" aria-label="Live preview of the picture. Click a card to change it."></canvas>
       <div class="fe" id="fe" hidden></div>
@@ -188,6 +193,25 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
       <div class="row3" style="display:flex;gap:8px;flex-wrap:wrap"><input type="text" id="drive-code" placeholder="https://script.google.com/macros/s/…/exec#…" aria-label="Studio code from your script" style="flex:1 1 260px;min-width:0"><button class="btn" id="drive-save" type="button">Connect</button></div>
     </div>
     <p class="status" id="drv-status" role="status"></p>
+    <div class="acts"><button class="btn" value="cancel">Close</button></div>
+  </form>
+</dialog>
+<dialog id="ghd" aria-labelledby="ghd-h">
+  <form method="dialog" class="in">
+    <h2 id="ghd-h">Make photos for any date</h2>
+    <div id="ghd-on" hidden><p class="status ok">● Connected on this device. The Studio can get any date’s photos ready.</p>
+      <div class="acts" style="justify-content:flex-start"><button class="btn" id="gh-off" type="button">Disconnect</button></div></div>
+    <div id="ghd-off">
+      <p class="hint" style="font-size:13.5px">Once on each device, so the Studio may ask GitHub to make a day’s photos:</p>
+      <ol class="hint" style="font-size:13.5px;padding-left:20px;margin:6px 0">
+        <li>Open <a id="gh-new" target="_blank" rel="noopener" href="https://github.com/settings/personal-access-tokens/new?name=Bapa%27s+Diary+Studio&amp;description=Lets+the+Studio+make+photos+for+any+date&amp;expires_in=none&amp;actions=write&amp;contents=read">this GitHub page</a> (signed in as you).</li>
+        <li>Under <b>Repository access</b> choose <b>Only select repositories</b> and pick <b>bapas-diary</b>.</li>
+        <li>Check <b>Actions</b> says Read and write, then press <b>Generate token</b> and copy it.</li>
+        <li>Paste it here and press Connect.</li>
+      </ol>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><input type="password" id="gh-code" placeholder="github_pat_…" aria-label="GitHub key" style="flex:1 1 260px;min-width:0"><button class="btn" id="gh-save" type="button">Connect</button></div>
+    </div>
+    <p class="status" id="ghd-status" role="status"></p>
     <div class="acts"><button class="btn" value="cancel">Close</button></div>
   </form>
 </dialog>
@@ -830,7 +854,12 @@ function lookPane(p, o) {
 function build() {
   const day = S.mode === 'day', pack = P[S.mode], o = cur();
   document.querySelectorAll('.modes button').forEach(b => b.setAttribute('aria-pressed', String(b.id === 'mode-' + S.mode)));
-  const list = day ? INDEX.days.map(k => [k, longDate(k)]) : INDEX.months.map(k => [k, longMonth(k)]), now = day ? o.date : o.month;
+  const days = INDEX.days.includes(o.date) || !day ? INDEX.days : [...INDEX.days, o.date].sort();
+  const list = day ? days.map(k => [k, longDate(k)]) : INDEX.months.map(k => [k, longMonth(k)]), now = day ? o.date : o.month;
+  $('#any-l').hidden = !day; if (day) $('#any').value = o.date;
+  if (!day || !WANT) $('#want').hidden = true;
+  const waiting = day && !!WANT && !P.day;   // no old picture behind the 'being made' note
+  $('#easel').style.display = waiting ? 'none' : ''; $('#tip').style.display = waiting ? 'none' : ''; $('#exp-open').disabled = waiting;
   $('#pick').innerHTML = list.map(([k, l]) => `<option value="${k}" ${k === now ? 'selected' : ''}>${l}</option>`).join('');
   $('#pick').setAttribute('aria-label', day ? 'Which day' : 'Which month');
   $('#pick-opt').hidden = day;
@@ -838,9 +867,9 @@ function build() {
   const dc = driveCode(); $('#drive-chip').className = 'chip' + (dc ? ' on' : ''); $('#drive-chip').textContent = dc ? 'Drive connected' : 'Connect Google Drive';
   if (!TABS[S.mode].some(t => t[0] === S.tab)) S.tab = 'card';
   $('#tabs').innerHTML = TABS[S.mode].map(([k, l]) => `<button role="tab" data-t="${k}" aria-selected="${k === S.tab}">${l}</button>`).join('');
-  $('#compare').hidden = !day;
+  $('#compare').hidden = !day || waiting;
   $('#tip').textContent = day ? 'Click any card to change its photo, place or caption right there.' : 'Click any day to change its photo, place or caption right there.';
-  if (!pack) { $('#pane').innerHTML = '<p class="hint">Loading photos…</p>'; $('#meta').textContent = 'Loading photos…'; fe.hidden = true; wire(); return }
+  if (!pack) { $('#pane').innerHTML = '<p class="hint">' + (WANT ? 'The photos for this day are not ready yet.' : 'Loading photos…') + '</p>'; $('#meta').textContent = WANT ? longDate(WANT) : 'Loading photos…'; fe.hidden = true; wire(); return }
   selected();
   const total = (day ? pack.years : pack.days).reduce((s, g) => s + g.cands.length, 0);
   $('#meta').innerHTML = day ? `<b>${esc(pack.title)}</b><span>${dayCards(pack, o).length} of ${pack.years.length} years on the picture</span><span>${total} photos to choose from</span>`
@@ -901,12 +930,88 @@ async function load(kind) {
 }
 document.querySelectorAll('.modes button').forEach(b => b.addEventListener('click', () => {
   S.mode = b.id.slice(5); FE = false; $('#status').textContent = ''; build();
+  if (S.mode === 'day' && WANT) return showWant();
   if (!P[S.mode]) load(S.mode);
 }));
 $('#pick').addEventListener('change', e => {
   FE = false;
-  if (S.mode === 'day') { S.day.date = e.target.value; S.day.years = {}; S.day.sel = null } else { S.month.month = e.target.value; S.month.days = {}; S.month.sel = null }
+  if (S.mode === 'day') return openDate(e.target.value);
+  S.month.month = e.target.value; S.month.days = {}; S.month.sel = null;
   load(S.mode);
+});
+
+// ------------------------------------------------------------ any date (Darpan, 3 Nov 2026: 'create a picture for any date')
+// A day the Studio has no photos for yet is made on GitHub (studio.yml with that date, about 5 to 15 minutes);
+// the page waits for it and opens it, ready to edit like any other day. Needs a GitHub key kept on this device.
+const API = 'https://api.github.com/repos/darpan31patel-wq/bapas-diary';
+let WANT = null, WAIT = null;
+const ghKey = () => store.get('studio-gh') || '';
+const gh = (path, opt = {}) => fetch(API + path, Object.assign({}, opt, { cache: 'no-store', headers: Object.assign({ Authorization: 'Bearer ' + ghKey(), Accept: 'application/vnd.github+json' }, opt.headers || {}) }));
+async function freshIndex() {   // straight from GitHub, so a day made a minute ago shows (the plain address can lag 5 minutes)
+  if (!ghKey()) return false;
+  try {
+    const r = await gh('/contents/packs/index.json?ref=studio', { headers: { Accept: 'application/vnd.github.raw+json' } });
+    if (!r.ok) return false;
+    INDEX = await r.json(); ROOT = RAW; return true;
+  } catch (e) { return false }
+}
+const asked = () => store.get('studio-asked') || {};
+async function openDate(d) {
+  if (!d) return;
+  FE = false; S.mode = 'day'; S.day.date = d; S.day.years = {}; S.day.sel = null;
+  if (!INDEX.days.includes(d)) await freshIndex();
+  if (INDEX.days.includes(d)) { WANT = null; $('#want').hidden = true; return load('day') }
+  WANT = d; P.day = null; build(); showWant();
+  const when = asked()[d];
+  if (when && Date.now() - when < 45 * 60e3) waitFor(d);
+}
+function showWant(msg) {
+  if (!WANT) { $('#want').hidden = true; return }
+  const when = asked()[WANT], mins = when ? Math.round((Date.now() - when) / 60e3) : null, busy = when && Date.now() - when < 45 * 60e3;
+  $('#want-p').textContent = msg || (busy
+    ? `The photos for ${longDate(WANT)} are being made (asked ${mins < 1 ? 'just now' : mins + ' min ago'}). This usually takes 5 to 15 minutes; the day opens here by itself when they are ready, and you can then change any photo, place or words.`
+    : `There are no photos for ${longDate(WANT)} yet. Press the button and GitHub will pick them the same way the 2pm picture does (about 5 to 15 minutes). The day then opens here, ready to edit.`);
+  $('#want-go').hidden = !!busy;
+  $('#want-go').textContent = ghKey() ? 'Get this day’s photos ready' : 'Connect GitHub to make any date';
+  $('#want').hidden = false;
+}
+function waitFor(d) {
+  clearInterval(WAIT);
+  WAIT = setInterval(async () => {
+    if (WANT !== d) return clearInterval(WAIT);
+    if (await freshIndex() && INDEX.days.includes(d)) { clearInterval(WAIT); WANT = null; $('#want').hidden = true; load('day'); return }
+    if (Date.now() - (asked()[d] || 0) > 45 * 60e3) { clearInterval(WAIT); showWant(`The photos for ${longDate(d)} have not arrived after 45 minutes. Press the button to ask again.`); $('#want-go').hidden = false }
+    else showWant();
+  }, 30e3);
+}
+$('#want-go').addEventListener('click', async () => {
+  if (!ghKey()) return openGh();
+  const d = WANT, btn = $('#want-go'); btn.disabled = true;
+  try {
+    const r = await gh('/actions/workflows/studio.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main', inputs: { dates: d } }) });
+    if (r.status === 204) { const a = asked(); a[d] = Date.now(); store.set('studio-asked', a); showWant(); waitFor(d) }
+    else showWant(r.status === 401 ? 'GitHub did not accept the key on this device. Press Connect GitHub and paste a new one.'
+      : r.status === 403 || r.status === 404 ? 'The GitHub key cannot start the photo maker. Make a new key with Actions set to Read and write for bapas-diary.'
+      : `GitHub said no (${r.status}). Try again in a minute.`);
+    if (r.status === 401) { store.set('studio-gh', ''); $('#want-go').textContent = 'Connect GitHub to make any date' }
+  } catch (e) { showWant('Could not reach GitHub. Check the internet connection and try again.') }
+  finally { btn.disabled = false }
+});
+$('#any').addEventListener('change', e => { if (/^\d{4}-\d\d-\d\d$/.test(e.target.value)) openDate(e.target.value) });
+function openGh() {
+  const on = !!ghKey(); $('#ghd-on').hidden = !on; $('#ghd-off').hidden = on; $('#ghd-status').textContent = ''; $('#gh-code').value = ''; $('#ghd').showModal();
+}
+$('#gh-off').addEventListener('click', () => { store.set('studio-gh', ''); openGh(); showWant() });
+$('#gh-save').addEventListener('click', async () => {
+  const k = $('#gh-code').value.trim(), st = $('#ghd-status');
+  if (!k) return;
+  st.className = 'status'; st.textContent = 'Checking with GitHub…';
+  try {
+    const r = await fetch(API + '/actions/workflows/studio.yml', { headers: { Authorization: 'Bearer ' + k, Accept: 'application/vnd.github+json' } });
+    if (!r.ok) { st.className = 'status warn'; st.textContent = r.status === 401 ? 'GitHub did not accept that key. Copy it again (it starts github_pat_).' : 'That key cannot see bapas-diary. Under Repository access pick bapas-diary.'; return }
+    store.set('studio-gh', k); st.className = 'status ok'; st.textContent = 'Connected. You can now make any date.';
+    $('#ghd-on').hidden = false; $('#ghd-off').hidden = true; showWant();
+  } catch (e) { st.className = 'status warn'; st.textContent = 'Could not reach GitHub. Try again.' }
 });
 $('#pick-opt').addEventListener('change', e => { S.month.option = e.target.value; build() });
 
@@ -1074,6 +1179,8 @@ $('#exp-go').addEventListener('click', async () => {
     const today = todayLondon();
     if (S.day.date !== today && INDEX.days.includes(today)) { S.day.date = today; S.day.years = {}; S.day.sel = null }
     if (!INDEX.days.includes(S.day.date)) { S.day.date = INDEX.days.includes(today) ? today : INDEX.days.at(-1); S.day.years = {}; S.day.sel = null }
+    const want = new URLSearchParams(location.search).get('date');   // studio/?date=2026-11-23 opens that day
+    if (want && /^\d{4}-\d\d-\d\d$/.test(want) && want !== S.day.date) { S.mode = 'day'; return openDate(want) }
     if (!INDEX.months.includes(S.month.month)) { S.month.month = INDEX.months.at(-1); S.month.days = {}; S.month.sel = null }
     P[S.mode] = await loadPack(S.mode, S.mode === 'day' ? S.day.date : S.month.month); build();
     const other = S.mode === 'day' ? 'month' : 'day';
