@@ -788,6 +788,8 @@ def crop_to(im, face, w, h, mode='frame', at=.38):
     """A w:h window on the photo. 'frame': fills the frame around Bapa (face `at` of the way down).
     'close': a tight darshan, his head and shoulders filling the frame. 'whole', or no recognised face:
     the photo zoomed in as far as it can go without losing what he is doing (fill). His whole head stays in view in every mode."""
+    if mode == 'all':   # every bit of the photo (a pinned fireworks sky, which trim_bars would take for black bars), the gaps in its own softened colours
+        return fill(im, face, w, h, at, keep=1)
     im, face = trim_bars(im, face)
     iw, ih = im.size
     if not face or mode == 'whole':
@@ -2331,7 +2333,7 @@ def cal_caption(day, every=None):
 
 # Darpan, 30 Oct to 3 Nov 2026: an Every <festival> picture he has gone through year by year is kept as pins in
 # archive/fest/<festival>.json: {"name", "hero": year, "years": [{"y", "d", "p" town, "i" photo address, "alt" other
-# addresses, "c" caption as shown, "crop", "face" [x, y, w, h] at web size, "box" the website's face box}]}. Each
+# addresses, "c" caption as shown, "crop" (frame, whole or all), "face" [x, y, w, h] at web size, "box" the website's face box}]}. Each
 # festival wears its own dress (FEST_DRESS); Every Diwali: 29 years, Bapa with lights or fireworks (his yes, 3 Nov 2026).
 FEST_FILE = {'Diwali': 'diwali'}
 
