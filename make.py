@@ -6,7 +6,7 @@
 
 Writes out/bapas-diary.png and .jpg (2796 x 1290, iPhone landscape), out/date.txt and out/summary.txt.
 """
-import argparse, collections, concurrent.futures, datetime, glob, hashlib, json, os, random, re, shutil, sqlite3, subprocess, threading, time, urllib.parse, urllib.request
+import argparse, collections, concurrent.futures, datetime, glob, hashlib, json, math, os, random, re, shutil, sqlite3, subprocess, threading, time, urllib.parse, urllib.request
 from zoneinfo import ZoneInfo
 
 import cv2
@@ -1173,6 +1173,8 @@ def caption(x):
     """The caption without the name repeated on every card: 'Swamishri blesses all' becomes 'Blesses all'.
     Where dropping the name wouldn't read well ('Swamishri's divine gestures', 'Sadhus honour Swamishri'),
     the name becomes 'Bapa'."""
+    if x.get('cap'):   # a festival pin's caption (archive/fest), written to be shown as it is
+        return x['cap']
     if range_title(x.get('c')) is not None:   # only the album's dates: the card is a darshan
         return DARSHAN
     c = tidy(re.sub(r'\s+', ' ', x.get('c') or '').strip())
@@ -1627,8 +1629,10 @@ class WideCard(Card):
             d.text((x0 + yw + sp, y), text, font=cf, fill=CAPTION_IVORY, anchor='ls')
 
 
-def compose_wide(photos, day, seed, style, history=None, title=None, cal=None):
-    """Three (W1, W2) or four (W3) cords of wide cards, every year on the day, sized to fill the picture."""
+def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, hero=None):
+    """Three (W1, W2) or four (W3) cords of wide cards, every year on the day, sized to fill the picture.
+    `hero`: cards to hang bigger (each as wide as two cards, from the top cord down to the second row's foot),
+    the others either side of them (Darpan, 30 Oct 2026: 'do a special card' on the Every festival pictures)."""
     lay = WIDE[style]
     rnd = random.Random(seed)
     img = background(); dr = ImageDraw.Draw(img)
@@ -1640,11 +1644,27 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None):
         header(img, f'{day.day} {day:%B}', 'in Bapa’s Diary', compact=lay.get('compact', False))
     n = len(photos)
     nrows = max(1, min(lay['rows'], -(-n // (5 if lay['rows'] == 3 else 6))))
-    per = [n // nrows + (1 if i < n % nrows else 0) for i in range(nrows)]
-    rows, k = [], 0
-    for c in per:
-        rows.append(photos[k:k + c]); k += c
-    cols, M, gap, row_gap = per[0], px(lay['M']), px(lay['gap']), px(lay['row_gap'])
+    heroes = [x for x in (hero or []) if x in photos] if nrows >= 2 and n >= 6 else []
+    nh = len(heroes)
+    if heroes:   # each hero takes two places on each of the top two cords; the other cards sit either side of them
+        rest = [x for x in photos if not any(x is h for h in heroes)]
+        m = len(rest)
+        if nrows == 2:
+            per = [m - m // 2, m // 2]
+        else:   # the top two rows and the heroes as wide as the bottom row, so every row fills the picture
+            w = -(-(m + 4 * nh) // 3)
+            per = [w - 2 * nh, w - 2 * nh, m - 2 * (w - 2 * nh)]
+        rows, k = [], 0
+        for c in per:
+            rows.append(rest[k:k + c]); k += c
+        cols = max([len(r) + 2 * nh for r in rows[:2]] + [len(r) for r in rows[2:]])
+    else:
+        per = [n // nrows + (1 if i < n % nrows else 0) for i in range(nrows)]
+        rows, k = [], 0
+        for c in per:
+            rows.append(photos[k:k + c]); k += c
+        cols = per[0]
+    M, gap, row_gap = px(lay['M']), px(lay['gap']), px(lay['row_gap'])
     top_space, bottom_space = (px(156), H - px(44 + SAG)) if lay.get('oneline') or lay.get('compact') else (px(200), H - px(96))
     if lay.get('lift'):   # the cord's lowest point (the middle) sits at the top line and its ends rise into the free corners beside the title
         top_space, bottom_space = px(lay['lift']), H - px(46)
@@ -1663,6 +1683,14 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None):
         pitch += max(0, bottom_space - top_space - block) / (nrows - 1); block = (nrows - 1) * pitch + card.CH + below
     first = top_space + max(0, (bottom_space - top_space - block) / 2)
     s = card.PW / 220
+    if heroes:   # as wide as two cards and the gap between them, from the top cord down to the second row's cards' foot
+        HW, HH = 2 * card.CW + gap, pitch + card.CH
+        hp = HW / (card.CW / card.PW)
+        probe = WideCard(hp, 1, lay['band'])
+        hcard = WideCard(hp, (HH - probe.B - probe.BB) / probe.PW, lay['band'])
+        L = len(rows[0]) // 2   # cards left of the heroes on each of the top two cords; the block of cards and heroes is centred
+        bx0 = (W - (cols * card.CW + (cols - 1) * gap)) / 2
+        hxs = [bx0 + (L + 2 * i) * (card.CW + gap) + card.CW + gap / 2 for i in range(nh)]
     for r, row in enumerate(rows):
         y_top = first + r * pitch
         if lay.get('lift'):
@@ -1671,9 +1699,26 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None):
             sag = lambda xp: y_top - px(4) + px(SAG) * 4 * (xp / W) * (1 - xp / W)                    # the cord dips a little in the middle
         rope(img, [(xp, sag(xp)) for xp in range(0, W + 1, 4)])   # drawn before the cards, so it always runs behind them
         later = []   # pegs and captions go on after the whole row, so a card swinging over its neighbour never hides them
+        if r == 0 and heroes:   # where the top cord runs at each hero's middle and its two pegs
+            hqs = [{cx: sag(cx) + px(4) for cx in (hx - .3 * hcard.CW, hx, hx + .3 * hcard.CW)} for hx in hxs]
+        if r == 1 and heroes:   # hung from the top cord, put on now so the second cord runs behind them
+            for hx_card, hx, hq in zip(heroes, hxs, hqs):
+                hung = hcard.hang(hcard.make(hx_card))
+                qy = hq[hx]
+                img.paste(hung, (int(hx - hung.width / 2), int(qy + hcard.CH / 2 - hung.height / 2)), hung)
+                for cx, cy in hq.items():
+                    if cx != hx:
+                        later.append(lambda cx=cx, cy=cy: peg(img, cx, cy, s, short=.72))
+                if lay.get('pill') and shown_caption(hx_card):
+                    tag, pos = under_card(hx_card, hcard, gap, cf_a, lh_a, 'W2', rnd)
+                    later.append(lambda tag=tag, hx=hx, by=qy + hcard.CH: img.paste(tag, (int(hx - tag.width / 2), int(by + px(6))), tag))
         x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
+        slots = list(range(len(row)))
+        if heroes and r < 2:   # either side of the heroes: the left half ends a gap before them, the right half starts a gap after
+            slots = [c - L for c in range(L)] + [c - L + 2 * nh for c in range(L, len(row))]
+            x0 = hxs[0] - card.CW - gap / 2   # the left edge of the first hero's first place
         for c, x in enumerate(row):
-            cx = x0 + c * (card.CW + gap) + card.CW / 2
+            cx = x0 + slots[c] * (card.CW + gap) + card.CW / 2
             if lay.get('straight'):   # every card hangs straight down from its peg on the curved cord (Darpan 18 Oct 2026: any swing looked messy)
                 a, drop = 0, 0
             elif lay.get('playful'):   # a real line of photos: a few nearly straight, most swung a little, a couple swung well, some touching
@@ -2004,6 +2049,154 @@ BIG = {'Diwali': r'diwali|deepavali|chopda|sharda.?pujan|lakshmi.?pujan|account 
 FEST_MIN = 5
 
 
+# ---- the festival pictures' dress (Darpan, 30 Oct 2026): Every Diwali is a night sky with fireworks in the free
+# corners and down the sides, little coloured bulbs along each cord, a lit diya at the foot of every card, and a row of
+# diyas along the bottom edge either side of the footer line (31 Oct 2026: 'more fireworks in the background and diyas
+# along the bottom')
+FEST_DRESS = {'Diwali': dict(top=(10, 8, 26), glow=(150, 80, 20), fireworks=True, bulbs=True, foot='diya', diyas=True)}
+
+
+def drawn(size, draw):
+    """Draw at 4x on a clear square and shrink, so small pictures stay smooth."""
+    s = size * 4
+    im = Image.new('RGBA', (s, s), (0, 0, 0, 0))
+    draw(im, ImageDraw.Draw(im), s)
+    return im.resize((size, size), Image.LANCZOS)
+
+
+def draw_diya(im, d, s):
+    g = Image.new('RGBA', im.size, (0, 0, 0, 0))
+    ImageDraw.Draw(g).ellipse((s * .2, s * 0, s * .8, s * .6), fill=(255, 170, 40, 140))
+    im.alpha_composite(g.filter(ImageFilter.GaussianBlur(s * .07)))
+    d.polygon([(s * .5, s * .06), (s * .6, s * .3), (s * .6, s * .42), (s * .5, s * .5), (s * .4, s * .42), (s * .4, s * .3)], fill=(255, 150, 30))
+    d.polygon([(s * .5, s * .18), (s * .555, s * .34), (s * .5, s * .46), (s * .445, s * .34)], fill=(255, 238, 150))
+    d.chord((s * .08, s * .22, s * .92, s * .92), 0, 180, fill=(170, 70, 30))
+    d.chord((s * .14, s * .34, s * .86, s * .84), 0, 180, fill=(205, 100, 40))
+    d.ellipse((s * .08, s * .5, s * .92, s * .64), fill=(150, 55, 25))
+    d.ellipse((s * .14, s * .52, s * .86, s * .6), fill=(110, 40, 20))
+    d.line((s * .2, s * .72, s * .8, s * .72), fill=(255, 210, 120), width=s // 40)
+
+
+FEST_PICS = {'diya': draw_diya}
+
+
+def burst(d, cx, cy, R, col, rnd):
+    """One firework: streaks of sparks, brighter and bigger at their tips, drooping a little."""
+    n = rnd.randint(22, 30)
+    for i in range(n):
+        a = i / n * 2 * math.pi + rnd.uniform(-.05, .05); rr = R * rnd.uniform(.82, 1.05)
+        for k in range(9):
+            f = (k + 1) / 9
+            x, y = cx + math.cos(a) * rr * f, cy + math.sin(a) * rr * f + R * .12 * f * f
+            s = px(1.2 + 2.6 * f)
+            d.ellipse((x - s, y - s, x + s, y + s), fill=col + (int(60 + 190 * f),))
+
+
+def fest_background(spec, plain):
+    img = plain()
+    a = np.asarray(img).astype(np.float32)
+    hh, ww = a.shape[:2]
+    yy = np.linspace(0, 1, hh)[:, None, None]; xx = np.linspace(0, 1, ww)[None, :, None]
+    if spec.get('top'):   # night: dark at the top fading into the maroon by the middle
+        t = np.clip(1 - yy / .7, 0, 1) ** 1.2
+        a = a * (1 - t * .85) + np.array(spec['top']) * t * .85
+    g = np.clip(1 - np.hypot((xx - .5) / .6, (yy - 1.05) / .34), 0, 1) ** 1.5
+    a = a + np.array(spec['glow']) * g * .55
+    img = Image.fromarray(a.clip(0, 255).astype('uint8')).convert('RGBA')
+    rnd = random.Random('fest')
+    if spec.get('fireworks'):
+        layer = Image.new('RGBA', (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(layer)
+        cols = [(255, 205, 90), (255, 120, 170), (120, 220, 255), (255, 150, 60), (190, 255, 140)]
+        spots = [(.06, .1, 120), (.17, .06, 80), (.94, .1, 125), (.83, .06, 78), (.035, .45, 70), (.965, .5, 72), (.26, .07, 55), (.74, .07, 55),
+                 (.1, .3, 60), (.9, .3, 60), (.05, .68, 62), (.95, .7, 62), (.025, .92, 45), (.975, .92, 45), (.12, .12, 40), (.88, .13, 40)]
+        for i, (fx, fy, r) in enumerate(spots):
+            burst(d, W * fx, H * fy, px(r), cols[i % len(cols)], rnd)
+        g = layer.filter(ImageFilter.GaussianBlur(px(10)))
+        img.alpha_composite(g); img.alpha_composite(g); img.alpha_composite(layer)
+    if spec.get('diyas'):   # a row of lit diyas along the bottom edge, either side of the footer line
+        s_ = round(px(34)); ic = drawn(s_, draw_diya)
+        x = px(30)
+        while x < W - px(30):
+            if x < W * .27 or x > W * .73:
+                img.alpha_composite(ic, (int(x), int(H - s_ - px(8))))
+            x += px(58)
+    return img.convert('RGB')
+
+
+def lit_rope(img, pts, w=None):
+    """The usual jute cord with a little coloured bulb hanging every so often, each with its own glow."""
+    plain_rope(img, pts, w)
+    layer = Image.new('RGBA', img.size, (0, 0, 0, 0)); d = ImageDraw.Draw(layer)
+    step, marks, acc, i = px(46), [], 0, 0
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+        acc += math.hypot(x1 - x0, y1 - y0)
+        if acc >= step:
+            acc = 0; marks.append((x1, y1, i)); i += 1
+    cols = [(255, 70, 60), (255, 190, 40), (90, 220, 110), (80, 170, 255), (255, 110, 200)]
+    for x, y, i in marks:
+        r = px(13); c = cols[i % len(cols)]
+        d.ellipse((x - r, y + px(4) - r, x + r, y + px(4) + r), fill=c + (150,))
+    out = img.convert('RGBA'); out.alpha_composite(layer.filter(ImageFilter.GaussianBlur(px(9))))
+    d = ImageDraw.Draw(out)
+    for x, y, i in marks:
+        c = cols[i % len(cols)]; r = px(6.5)
+        d.rectangle((x - px(3), y, x + px(3), y + px(5)), fill=(60, 50, 40))
+        d.ellipse((x - r, y + px(4), x + r, y + px(4) + 2.4 * r), fill=c)
+        d.ellipse((x - r * .45, y + px(4) + r * .5, x - r * .05, y + px(4) + r * 1.2), fill=(255, 255, 255, 170))
+    img.paste(out.convert('RGB'))
+
+
+def dressed_card(draw, make_card):
+    """The usual wide card, then its band redrawn: the festival's little picture at each foot corner, year and town between."""
+    def go(self, x, num=None):
+        card = make_card(self, x, num)
+        B, PW, PH, BB, CW, CH = self.B, self.PW, self.PH, self.BB, self.CW, self.CH
+        d = ImageDraw.Draw(card)
+        for j in range(B + PH + 1, CH - 1):   # wipe the band back to plain ivory
+            t = j / CH
+            d.line((1, j, CW - 2, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(IVORY_TOP, IVORY_BOTTOM)) + (255,))
+        s = round(min(BB * .9, PW * .16))
+        pic = drawn(s, draw)
+        y = round(B + PH + (BB - s) / 2)
+        card.alpha_composite(pic, (round(B * .6), y)); card.alpha_composite(pic, (CW - s - round(B * .6), y))
+        yf, yt = garamond(min(PW * .15, BB * .62), 700), str(x['y'])
+        pl = place(x).upper()
+        pf, track = arimo_bold(min(PW * .06, BB * .25)), PW * .012
+        room = CW - 2 * (s + B) - (d.textlength(yt, font=yf) + PW * .035)
+        while pf.size > 8 and spaced(d, pl, pf, track) > room:
+            pf = arimo_bold(pf.size - 1)
+        yh = -d.textbbox((0, 0), yt, font=yf, anchor='ls')[1]
+        ph = -d.textbbox((0, 0), 'A', font=pf, anchor='ls')[1] if pl else 0
+        yw, pw_ = d.textlength(yt, font=yf), spaced(d, pl, pf, track)
+        sp = PW * .035 if pl else 0
+        x0 = (CW - (yw + sp + pw_)) / 2
+        base = B + PH + BB / 2 + yh / 2
+        d.text((x0, base), yt, font=yf, fill=YEAR_C2, anchor='ls')
+        draw_spaced(d, x0 + yw + sp, base - (yh - ph) / 2 - pf.getmetrics()[0], pl, pf, track, PLACE_C2)
+        return card
+    return go
+
+
+def fest_dressed(name, draw_picture):
+    """Draw the picture with the festival's dress on: its own background and cords, its little picture on every card."""
+    global background, rope, plain_rope
+    spec = FEST_DRESS.get(name)
+    if not spec:
+        return draw_picture()
+    saved = background, rope, WideCard.make
+    plain_rope = rope
+    try:
+        plain_background = saved[0]
+        background = lambda: fest_background(spec, plain_background)
+        if spec.get('bulbs'):
+            rope = lit_rope
+        if spec.get('foot'):
+            WideCard.make = dressed_card(FEST_PICS[spec['foot']], WideCard.make)
+        return draw_picture()
+    finally:
+        background, rope, WideCard.make = saved
+
+
 def cal_day(day):
     if not CALENDAR:
         try:
@@ -2136,12 +2329,72 @@ def cal_caption(day, every=None):
     return '\n'.join(lines) + '\n' if lines else ''
 
 
+# Darpan, 30 Oct to 3 Nov 2026: an Every <festival> picture he has gone through year by year is kept as pins in
+# archive/fest/<festival>.json: {"name", "hero": year, "years": [{"y", "d", "p" town, "i" photo address, "alt" other
+# addresses, "c" caption as shown, "crop", "face" [x, y, w, h] at web size, "box" the website's face box}]}. Each
+# festival wears its own dress (FEST_DRESS); Every Diwali: 29 years, Bapa with lights or fireworks (his yes, 3 Nov 2026).
+FEST_FILE = {'Diwali': 'diwali'}
+
+
+def fest_pins(name):
+    path = os.path.join(HERE, 'archive', 'fest', FEST_FILE.get(name, '') + '.json')
+    if not FEST_FILE.get(name) or not os.path.exists(path):
+        return None
+    return json.load(open(path, encoding='utf-8'))
+
+
+def pinned_photos(pins, cache):
+    """The pinned photos downloaded and opened, each with Bapa's face found (or the pin's own face box), sorted by year."""
+    items = [dict(y=r['y'], d=r['d'], p=r.get('p', ''), c=r['c'], cap=r['c'], i=r['i'], fday=r['d'], pin=r) for r in pins['years']]
+    download_all(items, cache)
+    for x in items:   # the website's own copy of a photo baps.org no longer serves (and the pre 1999 'early' ones)
+        for alt in x['pin'].get('alt', []):
+            if 'path' in x:
+                break
+            x['i'] = alt
+            download_all([x], cache)
+    photos = []
+    for x in items:
+        if 'path' not in x:
+            print(f'  pinned photo missing: {x["y"]} {x["i"]}')
+            continue
+        try:
+            im = Image.open(x['path']).convert('RGB')
+        except Exception:
+            continue
+        pin = x['pin']
+        if pin.get('face'):   # measured on the web size copy
+            k = im.width / 1200
+            face, sim = tuple(v * k for v in pin['face']), 1
+        elif pin.get('box'):   # the website's box: cx, cy, x, y, w, h as fractions
+            b = pin['box']
+            face, sim = (b[2] * im.width, b[3] * im.height, b[4] * im.width, b[5] * im.height), 1
+        else:
+            face, sim = bapa_face(im, x['d'])
+            if not face:
+                face, sim = bapa_face(im, x['d'], need=.38)
+        x.update(im=im, face=face, sim=sim, crop=pin.get('crop') or ('frame' if face else 'whole'), nice=True)
+        photos.append(x)
+    full_size(photos)
+    return sorted(photos, key=lambda x: x['y'])
+
+
 def every_festival(day, cache):
     """On a big day (BIG), a second picture: one photo from each year's own day (a festival's Indian date, a
     birthday's English date) whose caption says it is from it. Returns (picture, (name, first, last)) or (None, None)."""
     name = next((f for f in festivals(day) if f in BIG), None)
     if not name:
         return None, None
+    pins = fest_pins(name)
+    if pins:   # his own year by year choice of photos, one big card, the festival's dress
+        photos = pinned_photos(pins, cache)
+        if len(photos) < FEST_MIN:
+            return None, None
+        hero = [x for x in photos if x['y'] == pins.get('hero')]
+        line = f'One darshan from each {name}, {photos[0]["y"]} to {photos[-1]["y"]}, each year on its own day'
+        img = fest_dressed(name, lambda: compose_wide(photos, day, seed=name, style=LIVE_STYLE, title=f'Every {name}', cal=(line, ''), hero=hero))
+        print(f'  every {name} (pinned):', ', '.join(f'{x["y"]} ({x["fday"]})' for x in photos))
+        return img, (name, photos[0]['y'], photos[-1]['y'])
     cal_day(day)
     days = {}
     if name in FIXED.values():   # a birthday: the same English date every year, back to the first photos
