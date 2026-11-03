@@ -241,7 +241,7 @@ body { background: linear-gradient(#efdcd2, #f3e5d8) fixed; }
 .sub .count { white-space: nowrap; color: rgba(250, 241, 222, .62); }
 .sub .count::before { content: "("; }
 .sub .count::after { content: ")"; }
-.sub .count b { font: 700 21px var(--serif); letter-spacing: .02em; font-variant-numeric: lining-nums;
+.sub .count b, .sub .num { font: 700 21px var(--serif); letter-spacing: .02em; font-variant-numeric: lining-nums;
   background: linear-gradient(#ffe296, #ce9840); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .filters { gap: 8px; }
 .flabel { font-size: 10px; color: var(--muted); }
@@ -852,8 +852,9 @@ async function load() {
   total = about.years.length + 1 + (about.calendar ? 1 : 0) + (about.undated ? 1 : 0);
   const nPhotos = Object.values(about.photos).reduce((a, b) => a + b, 0);
   // the years and the photo count follow the data, so they grow by themselves as photos are added
-  $('sub').innerHTML = `Every vicharan photo on baps.org from ${about.years[0]} to ${about.years.at(-1)} <span class="count"><b>${nPhotos.toLocaleString()}</b> photos</span>`
-    + (about.undated ? `, and <b class="plain">${about.undated.toLocaleString()}</b> more darshan photos.` : '.');
+  // Darpan, 3 Nov 2026: one plain line; the darshan photos count in the total (the number keeps growing with the data)
+  const nAll = nPhotos + (about.undated || 0);
+  $('sub').innerHTML = `Search through <b class="num">${nAll.toLocaleString()}</b> photos to find any moment in Bapa's diary.`;
   $('q').value = 'annakut';
   const linked = fromLink();
   if (START_YEAR && !linked) $('q').value = '';
