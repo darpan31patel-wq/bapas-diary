@@ -1,0 +1,24 @@
+name: New Year photo fetch (test branch only, never ship)
+
+on:
+  push:
+    branches: [claude/project-thread-duf41o]
+    paths: ['preview/ny/want.txt']
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          while IFS=$'\t' read -r alb f; do
+            [ -z "$f" ] && continue
+            for z in o l m; do curl -sSfL -o "preview/ny/$z-$alb-$f" "https://photos.bapas-diary.com/$z/$alb/$f" && break; done || echo "miss $alb $f"
+          done < preview/ny/want.txt
+          ls -la preview/ny
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add preview/ny && git commit -q -m "New Year photos [skip ci]" && git push -q
