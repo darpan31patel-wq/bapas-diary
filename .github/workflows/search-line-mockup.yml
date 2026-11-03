@@ -22,10 +22,10 @@ jobs:
           python3 - <<'PY'
           from playwright.sync_api import sync_playwright
           OPTS = {
-            'a': "Search through <span class=\"count\"><b>{all}</b> photos</span> to find any moment in Bapa's diary.",
-            'b': "<span class=\"count\"><b>{all}</b> photos</span> of Bapa from {y0} to today. Type a word or pick a date to find a moment.",
-            'c': "Find any moment in Bapa's diary: <span class=\"count\"><b>{all}</b> photos</span>, {y0} to {y1}, and growing every day.",
-            'd': "Every moment in Bapa's diary, <span class=\"count\"><b>{n}</b> vicharan photos</span> and {u} darshan photos. Search them all.",
+            'a': "Search through <b class=\"num\">{all}</b> photos to find any moment in Bapa's diary.",
+            'b': "<b class=\"num\">{all}</b> photos of Bapa from {y0} to today. Type a word or pick a date to find a moment.",
+            'c': "Find any moment in Bapa's diary: <b class=\"num\">{all}</b> photos, {y0} to {y1}, and growing every day.",
+            'd': "Every moment in Bapa's diary, <b class=\"num\">{n}</b> vicharan photos and <b class=\"num\">{u}</b> darshan photos. Search them all.",
           }
           with sync_playwright() as p:
               b = p.chromium.launch()
@@ -34,6 +34,7 @@ jobs:
                   try: pg.goto('https://bapas-diary.com/search/', wait_until='networkidle', timeout=25000)
                   except Exception: pass
                   pg.wait_for_timeout(4000)
+                  pg.add_style_tag(content='.sub .num{font:700 21px var(--serif);letter-spacing:.02em;font-variant-numeric:lining-nums;background:linear-gradient(#ffe296,#ce9840);-webkit-background-clip:text;background-clip:text;color:transparent}')
                   about = pg.evaluate("fetch('data/about.json').then(r=>r.json())")
                   n = sum(about['photos'].values()); u = about.get('undated', 0)
                   vals = dict(all=f'{n+u:,}', n=f'{n:,}', u=f'{u:,}', y0=about['years'][0], y1=about['years'][-1])
