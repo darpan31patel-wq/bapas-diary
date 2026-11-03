@@ -2393,7 +2393,8 @@ def main():
             and not (e.get('channel') and (e['date'][:4], town(e)[1]) in pictured)]
     told = max(left, key=tg_rank, default=None)
     every, story_lead = None, None
-    if not special:   # a big festival with no special day in BAPS history: one darshan from each year's own festival day
+    wins = 'Diwali' in festivals(day)   # Darpan, 3 Nov 2026: Diwali's own picture wins over the channel's story, which goes in the caption
+    if not special or wins:   # a big festival with no special day in BAPS history: one darshan from each year's own festival day
         try:
             sp, every = every_festival(day, a.cache)
             if sp:
@@ -2401,6 +2402,10 @@ def main():
                 sp.save(os.path.join(a.out, 'bapas-diary-special.jpg'), quality=95, optimize=True)
         except Exception as e:
             print('  no festival picture:', e)
+    if special and every:   # the story's special picture gives way: its story leads the caption instead
+        print('  story', special['date'], special.get('headline'), 'goes in the caption: Every', every[0], 'is the special picture')
+        left = [special] + [e for e in left if e is not special]
+        told, special = special, None
     if not special and not os.path.exists(os.path.join(a.out, 'bapas-diary-special.png')):
         # Darpan, 31 Oct 2026 ('make special cards for all these events'): a day whose year card shows a story Today in
         # BAPS History remembers (2020's Nenpur murti pratishtha) gets that story's special picture too
