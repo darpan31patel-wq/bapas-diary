@@ -233,7 +233,7 @@ const DAY_DEFAULT = {
   date: '2026-10-25', photoStyle: 'auto', rows: 3, shape: .9, sag: 60, hang: 'straight', tilt: 1.5, gap: 10, peg: 'gloss', pegs: true, cord: 7,
   titleAuto: true, title: '', subtitle: 'in Bapa’s Diary', oneTitle: true, festTitle: true, showCal: true, showStory: true, showTomorrow: true,
   showFooter: true, footer: 'Darpan’s Smruti Project', captions: 'all', capSize: 21, showPlace: true, showYear: true, festTags: true,
-  look: 'classic', glow: .5, jali: .13, bright: 0, warmth: 0, polish: true, years: {}, sel: null,
+  look: 'classic', glow: .5, jali: .13, bright: 0, warmth: 0, polish: true, years: {}, sel: null, wa: {},
 };
 const MONTH_DEFAULT = {
   month: '2024-02', option: 'A', rows: 3, sag: 14, tilt: 1, pegs: true, titleAuto: true, title: '', subtitle: 'in Bapa’s Diary', showSub: true,
@@ -775,6 +775,7 @@ function paneCard() {
       ${seg('d-style', o.photoStyle, [['auto', 'As the daily run picks'], ['close', 'Close ups of Bapa'], ['action', 'What Bapa is doing']])}
       <p class="hint">Changing this resets every year’s photo choice. Places and captions you typed stay.</p></div>` : ''}`;
 }
+const waText = () => { const o = S.day, w = o.wa[o.date]; return w ? w.text : (P.day?.whatsapp || '') };
 function paneWords() {
   const day = S.mode === 'day', pack = P[S.mode], o = cur();
   const list = keys().map(k => {
@@ -802,7 +803,12 @@ function paneWords() {
       ${check('d-story', 'History story (On this day in…)', o.showStory)} ${check('d-cal', 'BAPS calendar line', o.showCal)}
       ${check('d-tom', 'Tomorrow’s festival in the corner', o.showTomorrow)} ${check('d-foot', 'Project name', o.showFooter)}
       ${o.showFooter ? text('d-footer', 'Name', o.footer) : ''}
-      <p class="hint">This day: ${pack.story ? `story from ${pack.story.year}` : 'no story'}, calendar “${esc(pack.cal_line || 'none')}”.</p></div>`;
+      <p class="hint">This day: ${pack.story ? `story from ${pack.story.year}` : 'no story'}, calendar “${esc(pack.cal_line || 'none')}”.</p></div>
+    <div class="group"><h3>2pm WhatsApp caption</h3>
+      <textarea id="d-wa" rows="6" aria-label="WhatsApp caption" placeholder="${o.wa[o.date]?.whole ? 'Your whole 2pm caption' : 'No extra words today'}" style="width:100%">${esc(waText())}</textarea>
+      ${check('d-wawhole', 'Replace my whole caption (top line and Day n too)', !!o.wa[o.date]?.whole)}
+      <div class="seg"><button class="btn small" id="d-wareset">Back to the automatic words</button></div>
+      <p class="hint">${o.wa[o.date] ? 'Changed. Goes out when you Export with “Use for the 2pm send”.' : 'These are the words that go under your top line and Day n at 2pm. Change them here, then Export with “Use for the 2pm send”.'}</p></div>`;
   return `
     <div class="group"><h3>Every day: place and caption</h3>
       <div class="words">${list}</div>
@@ -897,6 +903,9 @@ function wire() {
   on(p + '-resetall', 'click', () => { const keep = S.mode === 'day' ? { date: o.date } : { month: o.month, option: o.option }; S[S.mode] = Object.assign(structuredClone(S.mode === 'day' ? DAY_DEFAULT : MONTH_DEFAULT), keep); FE = false; build() });
   if (S.mode === 'day') {
     document.querySelectorAll('#d-style button').forEach(b => b.addEventListener('click', () => { o.photoStyle = b.dataset.v; Object.values(o.years).forEach(y => { delete y.pick; delete y.crop }); build() }));
+    on('d-wa', 'input', e => { const w = o.wa[o.date] || (o.wa[o.date] = { text: '', whole: false }); w.text = e.target.value; store.set('studio-settings-v1', { mode: S.mode, day: S.day, month: S.month }) });
+    on('d-wawhole', 'input', e => { const w = o.wa[o.date] || (o.wa[o.date] = { text: waText(), whole: false }); w.whole = e.target.checked; build() });
+    on('d-wareset', 'click', () => { delete o.wa[o.date]; build() });
     segOn('d-rows', 'rows', 1); segOn('d-hang', 'hang'); segOn('d-peg', 'peg'); segOn('d-caps', 'captions');
     bind('d-shape', 'shape', 1); bind('d-sag', 'sag', 1); bind('d-cord', 'cord', 1); bind('d-gap', 'gap', 1); bind('d-tilt', 'tilt', 1); bind('d-capsize', 'capSize', 1);
     bind('d-tauto', 'titleAuto', 0, 1); bind('d-title', 'title'); bind('d-festt', 'festTitle'); bind('d-one', 'oneTitle'); bind('d-sub', 'subtitle');
@@ -1054,8 +1063,10 @@ async function checkDrive() {   // true when the script is reachable, the code i
 }
 async function toBase64(blob) { const buf = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < buf.length; i += 32768) s += String.fromCharCode.apply(null, buf.subarray(i, i + 32768)); return btoa(s) }
 async function sendToDrive(mode, png, jpg) {
-  const ans = await askDrive({ mode, date: S.day.date, png: await toBase64(png), jpg: jpg ? await toBase64(jpg) : null });
+  const w = mode === 'replace' ? S.day.wa[S.day.date] : null;   // an edited 2pm caption goes with the picture
+  const ans = await askDrive(Object.assign({ mode, date: S.day.date, png: await toBase64(png), jpg: jpg ? await toBase64(jpg) : null }, w ? { caption: w.text, whole: !!w.whole } : {}));
   if (!ans.ok) throw new Error(ans.error);
+  if (w && !ans.caption) ans.captionNote = 'The picture is in, but your script is an older one, so the caption was not saved. Paste the newest script, then: ' + REDEPLOY;
   return ans;
 }
 function fillDrive() {
@@ -1140,7 +1151,7 @@ $('#exp-go').addEventListener('click', async () => {
       say('', `Sending it to your Bapa’s Diary folder (${((png.size + jpg.size) / 1e6).toFixed(0)} MB)…`);
       const ans = await sendToDrive('replace', png, jpg);
       const note = { ahead: 'It goes out at 2pm that day.', before: 'Today’s 2pm send will use this one.', after: 'Today’s 2pm send had already gone; the folder copy is updated.', past: 'That day had gone by; the folder copy is updated.' }[ans.when2pm] || '';
-      say('ok', `Done: ${ans.name} is in ${ans.folder} (${ans.time}). ${note}`);
+      if (ans.captionNote) say('warn', `${ans.name} is in ${ans.folder}. ${ans.captionNote}`); else say('ok', `Done: ${ans.name}${ans.caption ? ' and your 2pm caption are' : ' is'} in ${ans.folder} (${ans.time}). ${note}`);
       remember('Put in the Bapa’s Diary folder', ans.name);
     } catch (e) { say('warn', `Not put in the folder. ${(e && e.message) || e}`) } finally { btn.disabled = false; fillExport() }
     return;
