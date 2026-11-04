@@ -1,0 +1,34 @@
+# Website only (bapas-diary.com): the weekly private summary email for Darpan (Darpan, 4 Nov 2026: "yes" to a short
+# email every Monday with the last 7 days of visitors, countries, top tabs, missed searches and feedback).
+# Separate from the daily 2pm picture: it reads nothing from that chain, changes nothing in it, and fetches nothing
+# from baps.org. It only asks the website's own private answers (the Interaction page's) with the MISSED_KEY word,
+# and sends one email through Resend to hello@bapas-diary.com (or the SUMMARY_TO secret, if he adds one).
+# The repo is public, so this prints no numbers, searches or feedback, and keeps no copy of the email.
+# Timed runs only happen from main, so this file goes on main with Darpan's typed yes.
+name: summary-email
+on:
+  schedule:
+    - cron: '0 8 * * 1'   # Monday 08:00 UTC: 8 am UK in winter, 9 am in summer
+  workflow_dispatch:      # Actions, summary-email, Run workflow: sends this week's email now
+permissions:
+  contents: read
+concurrency:
+  group: summary-email
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools/web_summary.py
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Make the email and send it
+        env:
+          MISSED_KEY: ${{ secrets.MISSED_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          SUMMARY_TO: ${{ secrets.SUMMARY_TO }}
+        run: python3 tools/web_summary.py --send
