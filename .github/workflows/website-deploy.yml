@@ -67,13 +67,9 @@ jobs:
           python3 tools/web_day.py --db bapa.db --site day --photos-url https://photos.bapas-diary.com/ --search-url /search/ > /dev/null
           python3 tools/web_faces.py order --db bapa.db --day day/data/day   # each year opens on its best darshan, centred on his face
           # the picture's rules: whole head framed, nearby days only for an empty date, darshan before 1999, no story twice
-          # one off (4 Nov 2026, Today years, Darpan "yes push"): the list made by the new tg code (tg-cards-xes1hy.json, 2,743 darshans)
-          # becomes tg-cards.json, with the old list kept as tg-cards-before-5nov.json; done only once (skipped when the backup exists)
-          if gh release download website-rules -p tg-cards-xes1hy.json -O new-cards.json 2>/dev/null && ! gh release download website-rules -p tg-cards-before-5nov.json -O /dev/null 2>/dev/null; then
-            gh release download website-rules -p tg-cards.json -O tg-cards-before-5nov.json && gh release upload website-rules tg-cards-before-5nov.json && cp new-cards.json tg-cards.json && gh release upload website-rules tg-cards.json --clobber && echo "tg cards: new list in place, old one kept"
-          fi
-          rm -f new-cards.json tg-cards-before-5nov.json
-          gh release download website-rules -p tg-cards.json || echo '{}' > tg-cards.json
+          # (4 Nov 2026, Today years, Darpan "yes push") the list made by the new tg code, tg-cards-xes1hy.json (2,743 darshans, with the
+          # ones the 2pm picture used), is the one Today uses; the older tg-cards.json stays in the release untouched as the fallback
+          gh release download website-rules -p tg-cards-xes1hy.json -O tg-cards.json || gh release download website-rules -p tg-cards.json || echo '{}' > tg-cards.json
           python3 tools/web_rules.py day --day day/data/day --db bapa.db --faces faces --tg tg-cards.json
           # festival days: every year's Diwali and Annakut on its own Indian date, for Today on those days (Darpan, 30 Oct 2026)
           python3 tools/web_festival.py --day day/data/day --db bapa.db --deep-tags deep-tags.json --out day/data/fest
