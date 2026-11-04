@@ -18,7 +18,7 @@ jobs:
       PROJECT: bapas-diary
       DOMAIN: bapas-diary.com
       CAL_COMMIT: 9d0e952d170abfdaecfea4548f714bccb2532a8e
-      DAYS: '11-04 10-30 11-01'
+      DAYS: '11-04 10-30 11-02'
     steps:
       - uses: actions/checkout@v4
       - name: Build the site as website-deploy.yml does (no deploy)
@@ -63,6 +63,6 @@ jobs:
           import json, sys
           D = json.load(open('out/data/day/$d.json'))
           print('$d', [(Y['y'], Y['place']) for Y in D['years'] if Y['p'] or Y.get('t')])"; done
-          cp tg-cards.json shots/tg-cards-used.json; cp out/data/day/11-04.json out/data/day/10-30.json out/data/day/11-01.json shots/
+          cp tg-cards.json shots/tg-cards-used.json; cp out/data/day/11-04.json out/data/day/10-30.json out/data/day/11-02.json shots/
           gh release view today-mockup-xes1hy > /dev/null 2>&1 || gh release create today-mockup-xes1hy --prerelease --title 'Today mockup (website only)' --notes 'Pictures of the Today page before going live. Website only.'
           gh release upload today-mockup-xes1hy shots/* --clobber
