@@ -1631,10 +1631,14 @@ class WideCard(Card):
             d.text((x0 + yw + sp, y), text, font=cf, fill=CAPTION_IVORY, anchor='ls')
 
 
-def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, hero=None):
+ROWS = []   # where each cord's cards sit on the last picture drawn (x0, y, CH, CW, n), for a festival's decorations in the free space
+
+
+def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, hero=None, short_bottom=0):
     """Three (W1, W2) or four (W3) cords of wide cards, every year on the day, sized to fill the picture.
     `hero`: cards to hang bigger (each as wide as two cards, from the top cord down to the second row's foot),
-    the others either side of them (Darpan, 30 Oct 2026: 'do a special card' on the Every festival pictures)."""
+    the others either side of them (Darpan, 30 Oct 2026: 'do a special card' on the Every festival pictures).
+    `short_bottom`: that many fewer cards on the bottom cord, leaving its corners free for a festival's decorations."""
     lay = WIDE[style]
     rnd = random.Random(seed)
     img = background(); dr = ImageDraw.Draw(img)
@@ -1663,6 +1667,11 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
         cols = max([len(r) + 2 * nh for r in rows[:2]] + [len(r) for r in rows[2:]])
     else:
         per = [n // nrows + (1 if i < n % nrows else 0) for i in range(nrows)]
+        if short_bottom and nrows >= 2:
+            take = min(short_bottom, per[-1] - 1)
+            per[-1] -= take
+            for j in range(take):
+                per[min(range(nrows - 1), key=lambda r: per[r])] += 1   # the emptiest upper cord takes it
         rows, k = [], 0
         for c in per:
             rows.append(photos[k:k + c]); k += c
@@ -1694,6 +1703,7 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
         L = len(rows[0]) // 2   # cards left of the heroes on each of the top two cords; the block of cards and heroes is centred
         bx0 = (W - (cols * card.CW + (cols - 1) * gap)) / 2
         hxs = [bx0 + (L + 2 * i) * (card.CW + gap) + card.CW + gap / 2 for i in range(nh)]
+    ROWS.clear()
     for r, row in enumerate(rows):
         y_top = first + r * pitch
         if lay.get('lift'):
@@ -1744,6 +1754,7 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
                 later.append(lambda tag=tag, bx=bx, by=by: img.paste(tag, (int(bx - tag.width / 2), int(by + px(6))), tag))
         for f in later:
             f()
+        ROWS.append(dict(x0=x0 + min(slots) * (card.CW + gap), y=y_top, CH=card.CH + below, CW=card.CW, n=len(row)))
     if festive:
         corner_diyas(img)
     if not lay.get('oneline'):
@@ -2125,7 +2136,8 @@ FEST_MIN = 5
 # corners and down the sides, little coloured bulbs along each cord, a lit diya at the foot of every card, and a row of
 # diyas along the bottom edge either side of the footer line (31 Oct 2026: 'more fireworks in the background and diyas
 # along the bottom')
-FEST_DRESS = {'Diwali': dict(top=(10, 8, 26), glow=(150, 80, 20), fireworks=True, bulbs=True, foot='diya', diyas=True)}
+FEST_DRESS = {'Diwali': dict(top=(10, 8, 26), glow=(150, 80, 20), fireworks=True, bulbs=True, foot='diya', diyas=True),
+              'Annakut': dict(glow=(190, 100, 20), sweets=True, corners='food')}   # Darpan, 31 Oct 2026: Indian food only, stacked in the free corners, nothing on the cards
 
 
 def drawn(size, draw):
@@ -2218,8 +2230,45 @@ def lit_rope(img, pts, w=None):
     img.paste(out.convert('RGB'))
 
 
+MARIGOLD = [(255, 159, 28), (255, 190, 40), (240, 120, 20)]
+
+
+def sweets_rope(img, pts, w=None):
+    """The usual cord strung as a marigold garland, with a laddu every so often (Every Annakut)."""
+    plain_rope(img, pts, w)
+    import fest_food
+    d = ImageDraw.Draw(img)
+    step, marks, acc, i = px(20), [], 0, 0
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+        acc += math.hypot(x1 - x0, y1 - y0)
+        if acc >= step:
+            acc = 0; marks.append((x1, y1, i)); i += 1
+    laddu = fest_food.ball(round(px(13)), (240, 150, 30), [(255, 195, 80), (200, 110, 20)], 3)
+    for x, y, i in marks:
+        if i % 6 == 0:
+            img.paste(laddu, (int(x - laddu.width / 2), int(y + px(2))), laddu)
+        else:
+            c = MARIGOLD[i % len(MARIGOLD)]; r = px(8)
+            d.ellipse((x - r, y - r, x + r, y + r), fill=c, outline=tuple(max(0, v - 60) for v in c))
+
+
+def food_corners(img):
+    """Stacked annakut food (towers, laddu pyramids, jalebis, katli, bowls) in the free corners beside the bottom cord's cards."""
+    import fest_food
+    row = ROWS[-1]
+    room = row['x0'] - px(40)
+    if room <= px(120):
+        return img
+    w = round(min(room, row['CW'] * 1.6)); h = round(min(row['CH'] * .95, w * 1.45))   # never bigger than the cards (Darpan: the design must not take away from the photos)
+    out = img.convert('RGBA')
+    for i, cx in enumerate((row['x0'] / 2, W - row['x0'] / 2)):
+        out.alpha_composite(fest_food.display(w, h, seed=i), (int(cx - w / 2), int(row['y'] + row['CH'] - h)))
+    return out.convert('RGB')
+
+
 def dressed_card(draw, make_card):
-    """The usual wide card, then its band redrawn: the festival's little picture at each foot corner, year and town between."""
+    """The usual wide card, then its band redrawn: the festival's little picture at each foot corner (when it has one),
+    year and town between, the town smaller than on the daily picture (Darpan, 4 Nov 2026)."""
     def go(self, x, num=None):
         card = make_card(self, x, num)
         B, PW, PH, BB, CW, CH = self.B, self.PW, self.PH, self.BB, self.CW, self.CH
@@ -2227,13 +2276,14 @@ def dressed_card(draw, make_card):
         for j in range(B + PH + 1, CH - 1):   # wipe the band back to plain ivory
             t = j / CH
             d.line((1, j, CW - 2, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(IVORY_TOP, IVORY_BOTTOM)) + (255,))
-        s = round(min(BB * .9, PW * .16))
-        pic = drawn(s, draw)
-        y = round(B + PH + (BB - s) / 2)
-        card.alpha_composite(pic, (round(B * .6), y)); card.alpha_composite(pic, (CW - s - round(B * .6), y))
+        s = round(min(BB * .9, PW * .16)) if draw else 0
+        if draw:
+            pic = drawn(s, draw)
+            y = round(B + PH + (BB - s) / 2)
+            card.alpha_composite(pic, (round(B * .6), y)); card.alpha_composite(pic, (CW - s - round(B * .6), y))
         yf, yt = garamond(min(PW * .15, BB * .62), 700), str(x['y'])
         pl = place(x).upper()
-        pf, track = arimo_bold(min(PW * .06, BB * .25)), PW * .012
+        pf, track = arimo_bold(min(PW * .045, BB * .19)), PW * .012
         room = CW - 2 * (s + B) - (d.textlength(yt, font=yf) + PW * .035)
         while pf.size > 8 and spaced(d, pl, pf, track) > room:
             pf = arimo_bold(pf.size - 1)
@@ -2262,9 +2312,13 @@ def fest_dressed(name, draw_picture):
         background = lambda: fest_background(spec, plain_background)
         if spec.get('bulbs'):
             rope = lit_rope
-        if spec.get('foot'):
-            WideCard.make = dressed_card(FEST_PICS[spec['foot']], WideCard.make)
-        return draw_picture()
+        if spec.get('sweets'):
+            rope = sweets_rope
+        WideCard.make = dressed_card(FEST_PICS.get(spec.get('foot')), WideCard.make)
+        img = draw_picture()
+        if spec.get('corners') == 'food':
+            img = food_corners(img)
+        return img
     finally:
         background, rope, WideCard.make = saved
 
@@ -2429,7 +2483,7 @@ def cal_caption(day, every=None):
 # archive/fest/<festival>.json: {"name", "hero": year, "years": [{"y", "d", "p" town, "i" photo address, "alt" other
 # addresses, "c" caption as shown, "crop" (frame, whole or all), "face" [x, y, w, h] at web size, "box" the website's face box}]}. Each
 # festival wears its own dress (FEST_DRESS); Every Diwali: 29 years, Bapa with lights or fireworks (his yes, 3 Nov 2026).
-FEST_FILE = {'Diwali': 'diwali'}
+FEST_FILE = {'Diwali': 'diwali', 'Annakut': 'annakut'}
 
 
 def fest_pins(name):
@@ -2488,7 +2542,8 @@ def every_festival(day, cache):
             return None, None
         hero = [x for x in photos if x['y'] == pins.get('hero')]
         line = f'One darshan from each {name}, {photos[0]["y"]} to {photos[-1]["y"]}, each year on its own day'
-        img = fest_dressed(name, lambda: compose_wide(photos, day, seed=name, style=LIVE_STYLE, title=f'Every {name}', cal=(line, ''), hero=hero))
+        short = 1 if (FEST_DRESS.get(name) or {}).get('corners') and not hero else 0   # room for the food stacks beside the bottom cord
+        img = fest_dressed(name, lambda: compose_wide(photos, day, seed=name, style=LIVE_STYLE, title=f'Every {name}', cal=(line, ''), hero=hero, short_bottom=short))
         print(f'  every {name} (pinned):', ', '.join(f'{x["y"]} ({x["fday"]})' for x in photos))
         return img, (name, photos[0]['y'], photos[-1]['y'])
     cal_day(day)
