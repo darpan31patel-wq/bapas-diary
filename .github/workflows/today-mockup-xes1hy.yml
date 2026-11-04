@@ -46,7 +46,8 @@ jobs:
                                          ['phone', {viewport: {width: 390, height: 844}, deviceScaleFactor: 2, isMobile: true, hasTouch: true}]]) {
                 const p = await b.newPage(opt);
                 p.on('pageerror', e => console.log(d, name, 'pageerror', e.message));
-                await p.goto('http://localhost:8080/#' + d, {waitUntil: 'networkidle'});
+                await p.clock.setFixedTime(new Date(`2026-${d}T12:00:00Z`));   // Today only ever shows today, so the clock says that day
+                await p.goto('http://localhost:8080/', {waitUntil: 'networkidle'});
                 await p.waitForFunction(() => { const l = document.getElementById('loading'); return !l || l.hidden || !l.offsetParent; }, null, {timeout: 60000}).catch(() => console.log(d, name, 'still loading'));
                 for (let y = 0; y < 30; y++) { await p.mouse.wheel(0, 900); await p.waitForTimeout(250); }
                 await p.evaluate(() => window.scrollTo(0, 0));
