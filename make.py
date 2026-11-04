@@ -2090,7 +2090,7 @@ def tg_story(evs, photos):
 # anniversaries the English date; and only the days he kept (DAYS, FIXED) are shown.
 CALENDAR = {}
 # the calendar's festivals and notes Darpan kept, as they are shown (Indian date)
-DAYS = [(r'^diwali$', 'Diwali'), (r'annakut', 'Annakut'), (r'\bbestu', 'New Year'), (r'janmashtami', 'Janmashtami'),
+DAYS = [(r'^diwali$', 'Diwali'), (r'annakut', 'Annakut'), (r'\bbestu|^new year$', 'New Year'), (r'janmashtami', 'Janmashtami'),
         (r'guru purnima', 'Guru Purnima'), (r'vasant panch', 'Vasant Panchami'), (r'^holi', 'Holi'),
         (r'pushpadol|dhuleti', 'Pushpadolotsav'), (r'ram ?navm', 'Ram Navami'), (r'hari.?nom|swaminarayan jayanti', 'Swaminarayan Jayanti'),
         (r'rathyatra', 'Rathyatra'), (r'jal jhilani', 'Jal Jhilani Ekadashi'), (r'^prabodhini ekadashi$', 'Prabodhini Ekadashi'),
