@@ -144,6 +144,13 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
   .thumbs { grid-template-columns: repeat(3, 1fr) }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important } }
+/* autosave and the changes log (Darpan, 4 Nov 2026) */
+#autosave { margin: 4px 0 0; min-height: 1.2em }
+.why textarea { width: 100%; font: inherit; box-sizing: border-box }
+.log { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 10px; font-size: 14px }
+.log li b { color: var(--gold, #d9a441) }
+.log li p { margin: 2px 0 0 }
+.log .chg { opacity: .8 }
 </style>
 
 <header class="top">
@@ -169,7 +176,9 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
     </div>
     <p class="status" id="status" role="status"></p>
     <p class="hint" id="tip">Click any card in the picture to change its photo, place or words.</p>
+    <p class="hint" id="autosave" aria-live="polite"></p>
     <details class="compare" id="compare"><summary>Compare with the picture the morning run made</summary><img id="real" alt="The automatic run's picture for this date"></details>
+    <details class="compare" id="logbox"><summary>Changes log (what you changed and why)</summary><ol class="log" id="loglist"></ol></details>
   </main>
   <aside class="side">
     <div class="tabs" role="tablist" id="tabs"></div>
@@ -185,6 +194,9 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
     <div class="row" id="exp-size-row"><label for="exp-size">Size</label><select id="exp-size"></select></div>
     <label class="opt" id="opt-rep"><input type="radio" name="how" value="replace"><b id="opt-rep-b">Use for the 2pm send</b>
       <p id="opt-rep-p"></p></label>
+    <div class="row why"><label for="why">What did you change, and why?</label>
+      <textarea id="why" rows="3" placeholder="For example: 2007 swapped for a close up, Bapa’s face was too small"></textarea>
+      <p class="hint" id="why-auto"></p></div>
     <p class="status" id="exp-status" role="status"></p>
     <div class="last" id="last"></div>
     <div class="acts"><button class="btn" value="cancel" formnovalidate>Close</button><button class="btn primary" id="exp-go" type="button">Export</button></div>
@@ -241,7 +253,7 @@ const DAY_DEFAULT = {
   date: '2026-10-25', photoStyle: 'auto', rows: 3, shape: .9, sag: 60, hang: 'straight', tilt: 1.5, gap: 10, peg: 'gloss', pegs: true, cord: 7,
   titleAuto: true, title: '', subtitle: 'in Bapa’s Diary', oneTitle: true, festTitle: true, showCal: true, showStory: true, showTomorrow: true,
   showFooter: true, footer: 'Darpan’s Smruti Project', captions: 'all', capSize: 21, showPlace: true, showYear: true, festTags: true,
-  look: 'classic', glow: .5, jali: .13, bright: 0, warmth: 0, polish: true, years: {}, sel: null, wa: {},
+  look: 'classic', glow: .5, jali: .13, bright: 0, warmth: 0, polish: true, years: {}, sel: null, wa: {}, txt: {},
 };
 const MONTH_DEFAULT = {
   month: '2024-02', option: 'A', rows: 3, sag: 14, tilt: 1, pegs: true, titleAuto: true, title: '', subtitle: 'in Bapa’s Diary', showSub: true,
@@ -252,6 +264,21 @@ let S = { mode: 'day', tab: 'card', day: structuredClone(DAY_DEFAULT), month: st
 const saved = store.get('studio-settings-v1');
 if (saved) { S.day = Object.assign(structuredClone(DAY_DEFAULT), saved.day || {}); S.month = Object.assign(structuredClone(MONTH_DEFAULT), saved.month || {}); S.mode = saved.mode || 'day'; }
 // the photo packs: beside this page when it carries them (claude.ai), otherwise the studio branch on GitHub (tools/studio_packs.py)
+// every date (and month) keeps its own changes, so going to another day and back loses nothing (Darpan, 4 Nov 2026:
+// "remember when I make a change ... before I press save"). Kept on this device in studio-dates-v1.
+const PER = { day: ['years', 'titleAuto', 'title', 'txt'], month: ['days', 'titleAuto', 'title'] };
+const dkey = kind => kind + ':' + (kind === 'day' ? S.day.date : S.month.month);
+function stash(kind) {
+  const all = store.get('studio-dates-v1') || {}, o = S[kind];
+  delete all[dkey(kind)];
+  all[dkey(kind)] = Object.fromEntries(PER[kind].map(f => [f, o[f]]));
+  const ks = Object.keys(all); ks.slice(0, Math.max(0, ks.length - 150)).forEach(k => delete all[k]);   // the newest 150 days kept
+  return store.set('studio-dates-v1', all);
+}
+function unstash(kind) {
+  const was = (store.get('studio-dates-v1') || {})[dkey(kind)], D = kind === 'day' ? DAY_DEFAULT : MONTH_DEFAULT, o = S[kind];
+  PER[kind].forEach(f => { o[f] = structuredClone(was && f in was ? was[f] : D[f]) }); o.sel = null;
+}
 const RAW = 'https://raw.githubusercontent.com/darpan31patel-wq/bapas-diary/studio/packs/';
 let ROOT = '', INDEX = { days: [], months: [] };
 async function loadIndex() {
@@ -424,7 +451,7 @@ function dayCards(pack, o) {
     const pick = st.pick ?? defaultPick(y, o.photoStyle);
     const c = y.cands[pick] || y.cands[0];
     let mode = st.crop && st.crop !== 'auto' ? st.crop : autoCrop(c, o.photoStyle);
-    return { y: y.year, c, mode, zoom: st.zoom || 1, dx: st.dx || 0, dy: st.dy || 0, caption: st.caption ?? c.caption, place: st.place ?? c.place, fest: c.festival };
+    return { y: y.year, yl: st.ylabel ?? String(y.year), c, mode, zoom: st.zoom || 1, dx: st.dx || 0, dy: st.dy || 0, caption: st.caption ?? c.caption, place: st.place ?? c.place, fest: st.fest ?? c.festival };
   });
 }
 function defaultPick(y, style) {
@@ -441,6 +468,12 @@ function autoCrop(c, style) {
   if (style === 'action') return c.crop === 'close' ? 'frame' : c.crop;
   return c.crop || 'frame';
 }
+// the words at the bottom, as the pack has them or as Darpan typed them (Darpan, 4 Nov 2026: "adjust all the text")
+const T = (o, f, auto) => (o.txt && o.txt[f] != null) ? o.txt[f] : auto;
+const dayWords = (pack, o) => ({
+  cal: T(o, 'cal', pack.cal_line || ''), lead: T(o, 'lead', pack.story ? `On this day in ${pack.story.year}` : ''),
+  story: T(o, 'story', pack.story ? pack.story.line : ''), tomorrow: T(o, 'tomorrow', pack.tomorrow ? `Tomorrow: ${pack.tomorrow}` : ''),
+});
 function drawDay(ctx, pack, o, hits) {
   const W = 2796, H = 1290;
   background(ctx, W, H, o);
@@ -460,7 +493,7 @@ function drawDay(ctx, pack, o, hits) {
   const nrows = Math.max(1, Math.min(lay.rows, Math.ceil(n / (lay.rows === 3 ? 5 : lay.rows === 2 ? 4 : 6))));
   const per = Array.from({ length: nrows }, (_, i) => Math.floor(n / nrows) + (i < n % nrows ? 1 : 0));
   const cols = per[0], M = lay.M; let gap = o.gap;
-  const footerOn = o.showFooter || (o.showStory && pack.story) || o.showCal;
+  const footerOn = o.showFooter || (o.showStory && (pack.story || T(o, 'story', ''))) || o.showCal;
   const top = o.oneTitle ? 162 : 190, bottom = H - (footerOn ? 46 : 18);
   const lh = o.capSize * 1.2, below = o.captions !== 'none' ? 2 * lh + 22 : 0;
   const B_ = .035, BB_ = (o.showYear || o.showPlace) ? .17 : .035;
@@ -509,10 +542,11 @@ function drawDay(ctx, pack, o, hits) {
   });
   // footer
   ctx.textAlign = 'left';
-  const calLine = o.showCal ? pack.cal_line : '';
+  const wd = dayWords(pack, o), hasStory = !!(wd.lead || wd.story);
+  const calLine = o.showCal ? wd.cal : '';
   const name = o.showFooter ? (calLine ? `${calLine}   ·   ${o.footer}` : o.footer) : calLine;
-  if (o.showStory && pack.story) {
-    const lead = `On this day in ${pack.story.year}`, text = pack.story.line;
+  if (o.showStory && hasStory) {
+    const lead = wd.lead, text = wd.story;
     ctx.font = `500 24px ${SERIF}`; const fw = name ? ctx.measureText(name).width : 0;
     const room = W - 2 * (fw + 90); let sz = 30;
     const meas = () => { ctx.font = `700 ${sz}px ${SERIF}`; const lw = ctx.measureText(lead + '   ').width; ctx.font = `500 ${sz}px ${SERIF}`; return [lw, ctx.measureText(text).width] };
@@ -527,8 +561,8 @@ function drawDay(ctx, pack, o, hits) {
     ctx.fillStyle = 'rgb(226,184,104)'; ctx.fillText(name, (W - w) / 2, y);
     diamond(ctx, (W - w) / 2 - 28, y - 8, 5); diamond(ctx, (W + w) / 2 + 28, y - 8, 5);
   }
-  if (o.showTomorrow && o.showCal && pack.tomorrow && !(o.showStory && pack.story)) {
-    ctx.font = `500 24px ${SERIF}`; ctx.fillStyle = 'rgb(226,184,104)'; ctx.textAlign = 'right'; ctx.fillText(`Tomorrow: ${pack.tomorrow}`, W - 30, H - 15); ctx.textAlign = 'left';
+  if (o.showTomorrow && o.showCal && wd.tomorrow && !(o.showStory && hasStory)) {
+    ctx.font = `500 24px ${SERIF}`; ctx.fillStyle = 'rgb(226,184,104)'; ctx.textAlign = 'right'; ctx.fillText(wd.tomorrow, W - 30, H - 15); ctx.textAlign = 'left';
   }
 }
 function drawPolaroid(ctx, x, left, top, PW, PH, B, BB, o) {
@@ -551,7 +585,7 @@ function drawPolaroid(ctx, x, left, top, PW, PH, B, BB, o) {
     ctx.fillStyle = MAROON; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(x.fest, bx + pad + tw / 2, by + h / 2 + 1); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
   }
   // the band: '2024  GONDAL'
-  const yt = o.showYear ? String(x.y) : '', pl = o.showPlace ? (x.place || '').toUpperCase() : '';
+  const yt = o.showYear ? String(x.yl ?? x.y) : '', pl = o.showPlace ? (x.place || '').toUpperCase() : '';
   if (!yt && !pl) return;
   ctx.font = `700 ${PW * .15}px ${SERIF}`; const yw = yt ? ctx.measureText(yt).width : 0;
   let ps = PW * .065; ctx.font = `700 ${ps}px ${SANS}`; const track = PW * .012;
@@ -677,7 +711,8 @@ function render() {
     const h = FE && HITS.find(h => h.key === cur().sel);
     if (h) { ctx.save(); ctx.strokeStyle = GOLD; ctx.lineWidth = W / 400; ctx.strokeRect(h.x - 9, h.y - 9, h.w + 18, h.h + 18); ctx.restore() }
     placeEditor();
-    store.set('studio-settings-v1', { mode: S.mode, day: S.day, month: S.month });
+    const ok = store.set('studio-settings-v1', { mode: S.mode, day: S.day, month: S.month }) && stash(S.mode);
+    $('#autosave').textContent = ok ? `Every change is saved on this device as you go (${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}).` : '';
   });
 }
 // one card (a year of the daily picture, a day of the poster): its photos, your changes, and the photo, place and caption shown
@@ -707,6 +742,8 @@ function buildEditor() {
   fe.innerHTML = `<header><b>${esc(label(k))}</b><span class="hint">photo ${x.pick + 1} of ${n}</span><button class="x" id="fe-x" aria-label="Close">×</button></header>
     <label for="fe-place">Place on the card</label><input type="text" class="place" id="fe-place" data-f="place" data-k="${k}" value="${esc(x.place)}">
     <label for="fe-cap">Caption</label><textarea class="capedit" id="fe-cap" data-f="caption" data-k="${k}" rows="2">${esc(x.caption)}</textarea>
+    ${S.mode === 'day' ? `<label for="fe-yl">Year on the card</label><input type="text" id="fe-yl" data-f="ylabel" data-k="${k}" value="${esc(x.st.ylabel ?? k)}">
+    <label for="fe-fest">Festival tag on the photo (empty for none)</label><input type="text" id="fe-fest" data-f="fest" data-k="${k}" value="${esc(x.st.fest ?? (x.c && x.c.festival) ?? '')}">` : ''}
     <div class="row3"><button class="btn small" id="fe-prev" ${n < 2 ? 'disabled' : ''}>◀ Photo</button><button class="btn small" id="fe-next" ${n < 2 ? 'disabled' : ''}>Photo ▶</button>
       <button class="btn small" id="fe-all">See all ${n}</button>${S.mode === 'day' ? '<button class="btn small" id="fe-hide">Hide this year</button>' : ''}<button class="btn small" id="fe-reset">Reset</button></div>`;
   fe.hidden = false;
@@ -811,7 +848,9 @@ function paneWords() {
       ${check('d-story', 'History story (On this day in…)', o.showStory)} ${check('d-cal', 'BAPS calendar line', o.showCal)}
       ${check('d-tom', 'Tomorrow’s festival in the corner', o.showTomorrow)} ${check('d-foot', 'Project name', o.showFooter)}
       ${o.showFooter ? text('d-footer', 'Name', o.footer) : ''}
-      <p class="hint">This day: ${pack.story ? `story from ${pack.story.year}` : 'no story'}, calendar “${esc(pack.cal_line || 'none')}”.</p></div>
+      ${(() => { const wd = dayWords(pack, o); return text('d-t-cal', 'BAPS calendar line', wd.cal) + text('d-t-lead', 'Story start', wd.lead, 'On this day in 1999') + text('d-t-story', 'Story', wd.story) + text('d-t-tomorrow', 'Corner (tomorrow)', wd.tomorrow) })()}
+      <div class="seg"><button class="btn small" id="d-t-reset">Back to the automatic words</button></div>
+      <p class="hint">${Object.keys(o.txt || {}).length ? 'You changed some of these words for this day.' : 'These are the automatic words for this day. Type over any of them.'}</p></div>
     <div class="group"><h3>2pm WhatsApp caption</h3>
       <textarea id="d-wa" rows="6" aria-label="WhatsApp caption" placeholder="${o.wa[o.date]?.whole ? 'Your whole 2pm caption' : 'No extra words today'}" style="width:100%">${esc(waText())}</textarea>
       ${check('d-wawhole', 'Replace my whole caption (top line and Day n too)', !!o.wa[o.date]?.whole)}
@@ -917,6 +956,8 @@ function wire() {
     segOn('d-rows', 'rows', 1); segOn('d-hang', 'hang'); segOn('d-peg', 'peg'); segOn('d-caps', 'captions');
     bind('d-shape', 'shape', 1); bind('d-sag', 'sag', 1); bind('d-cord', 'cord', 1); bind('d-gap', 'gap', 1); bind('d-tilt', 'tilt', 1); bind('d-capsize', 'capSize', 1);
     bind('d-tauto', 'titleAuto', 0, 1); bind('d-title', 'title'); bind('d-festt', 'festTitle'); bind('d-one', 'oneTitle'); bind('d-sub', 'subtitle');
+    ['cal', 'lead', 'story', 'tomorrow'].forEach(f => on('d-t-' + f, 'input', e => { (o.txt = o.txt || {})[f] = e.target.value; render() }));
+    on('d-t-reset', 'click', () => { o.txt = {}; build() });
     bind('d-year', 'showYear'); bind('d-place', 'showPlace'); bind('d-fest', 'festTags'); bind('d-story', 'showStory'); bind('d-cal', 'showCal'); bind('d-tom', 'showTomorrow'); bind('d-foot', 'showFooter', 0, 1); bind('d-footer', 'footer');
     document.querySelectorAll('.w-on').forEach(b => b.addEventListener('change', () => { bag(b.dataset.k).on = b.checked; b.closest('.w').classList.toggle('off', !b.checked); render(); $('#meta').querySelector('span').textContent = `${dayCards(P.day, o).length} of ${P.day.years.length} years on the picture` }));
     const setAll = f => { P.day.years.forEach(y => { bag(y.year).on = f(y.year) }); build() };
@@ -952,7 +993,7 @@ document.querySelectorAll('.modes button').forEach(b => b.addEventListener('clic
 $('#pick').addEventListener('change', e => {
   FE = false;
   if (S.mode === 'day') return openDate(e.target.value);
-  S.month.month = e.target.value; S.month.days = {}; S.month.sel = null;
+  if (P.month) stash('month'); S.month.month = e.target.value; unstash('month');
   load(S.mode);
 });
 
@@ -974,7 +1015,7 @@ async function freshIndex() {   // straight from GitHub, so a day made a minute 
 const asked = () => store.get('studio-asked') || {};
 async function openDate(d) {
   if (!d) return;
-  FE = false; S.mode = 'day'; S.day.date = d; S.day.years = {}; S.day.sel = null;
+  FE = false; S.mode = 'day'; if (P.day) stash('day'); S.day.date = d; unstash('day');
   if (!INDEX.days.includes(d)) await freshIndex();
   if (INDEX.days.includes(d)) { WANT = null; $('#want').hidden = true; return load('day') }
   WANT = d; P.day = null; build(); showWant();
@@ -1133,6 +1174,8 @@ function fillExport() {
   const rp = how() === 'replace';
   $('#exp-size-row').hidden = rp;
   $('#exp-go').textContent = rp ? 'Put it in the folder' : day && dc ? 'Download and copy to Drive' : 'Download';
+  const ch = changes();
+  $('#why-auto').textContent = ch.length ? 'You changed: ' + ch.slice(0, 8).join('; ') + (ch.length > 8 ? `; and ${ch.length - 8} more` : '') + '.' : 'No changes from the automatic picture yet.';
   const last = store.get('studio-last');
   $('#last').innerHTML = last ? `Last export: <b>${esc(last.how)}</b>, ${esc(last.what)}, ${esc(last.when)}` : '';
 }
@@ -1148,6 +1191,56 @@ function drawAt(width) {
 const blobOf = (c, type, q) => new Promise(r => c.toBlob(r, type, q));
 function remember(how, what) { store.set('studio-last', { how, what, when: new Date().toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }) }
 function say(cls, msg) { for (const id of ['#exp-status', '#status']) { $(id).className = 'status ' + cls; $(id).textContent = msg } }
+// ------------------------------------------------------------ the changes log (Darpan, 4 Nov 2026: "if I make a change and
+// update it, I want you to remember ... what the reason is and why I've changed it and what I've changed")
+// Each export keeps what was changed from the automatic picture (worked out here) and his own words on why. Kept on this
+// device (studio-log) and, when the website has its store (STUDIO_LOG), at /darpan/api/log so every device and Claude see it.
+const NAMES = { photoStyle: 'photo style', rows: 'cords', shape: 'photo shape', sag: 'cord curve', hang: 'hanging', tilt: 'tilt', gap: 'space between cards',
+  peg: 'pegs look', pegs: 'pegs', cord: 'cord thickness', titleAuto: 'automatic title', title: 'title', subtitle: 'second part of the title', oneTitle: 'title on one line',
+  festTitle: 'festival in the title', showCal: 'calendar line', showStory: 'history story', showTomorrow: 'tomorrow corner', showFooter: 'project name', footer: 'project name words',
+  captions: 'captions', capSize: 'caption size', showPlace: 'place on cards', showYear: 'year on cards', festTags: 'festival tags', look: 'background', glow: 'lamp glow',
+  jali: 'jali', bright: 'brightness', warmth: 'warmth', polish: 'polish', option: 'photo option', showSub: 'Indian months line', bubbles: 'place bubbles', tithi: 'tithi',
+  sundayRed: 'Sundays red', fest: 'festival tag', stories: 'stories' };
+const WORDS = { cal: 'calendar line', lead: 'story start', story: 'story', tomorrow: 'tomorrow corner' };
+function changes() {
+  const day = S.mode === 'day', pack = P[S.mode], o = cur(), D = day ? DAY_DEFAULT : MONTH_DEFAULT, out = [];
+  if (!pack) return out;
+  for (const g of day ? pack.years : pack.days) {
+    const k = day ? g.year : g.day, st = (day ? o.years : o.days)[k]; if (!st) continue;
+    const n = day ? k : label(k), auto = day ? defaultPick(g, o.photoStyle) : optPick(g, o.option);
+    if (day && st.on === false) { out.push(`${n} hidden`); continue }
+    if (st.pick != null && st.pick !== auto) out.push(`${n}: photo ${st.pick + 1} of ${g.cands.length} instead of photo ${auto + 1}`);
+    if (st.crop && st.crop !== 'auto') out.push(`${n}: crop ${st.crop}`);
+    if ((st.zoom && st.zoom !== 1) || st.dx || st.dy) out.push(`${n}: zoomed or moved`);
+    const c = g.cands[st.pick ?? auto] || {};
+    if (st.place != null && st.place !== c.place) out.push(`${n}: place “${st.place}”`);
+    if (st.caption != null && st.caption !== c.caption) out.push(`${n}: caption “${st.caption}”`);
+    if (st.ylabel != null && st.ylabel !== String(k)) out.push(`${n}: year shown as “${st.ylabel}”`);
+    if (st.fest != null && st.fest !== (c.festival || '')) out.push(`${n}: festival tag “${st.fest}”`);
+  }
+  for (const [f, v] of Object.entries(o.txt || {})) out.push(`${WORDS[f] || f}: “${v}”`);
+  for (const f of Object.keys(NAMES)) if (f in D && typeof D[f] !== 'object' && o[f] !== D[f] && !(f === 'title' && o.titleAuto)) out.push(`${NAMES[f]}: ${typeof o[f] === 'boolean' ? (o[f] ? 'on' : 'off') : o[f]}`);
+  if (day && o.wa[o.date]) out.push('2pm WhatsApp caption changed' + (o.wa[o.date].whole ? ' (whole caption)' : ''));
+  return out;
+}
+const LOGAPI = '/darpan/api/log';
+async function logChange(how, where) {
+  const e = { at: new Date().toISOString(), kind: S.mode, for: S.mode === 'day' ? S.day.date : S.month.month, how, where, changes: changes(), why: $('#why').value.trim() };
+  const log = store.get('studio-log') || []; log.unshift(e); store.set('studio-log', log.slice(0, 500));
+  $('#why').value = '';
+  try { await fetch(LOGAPI, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(e) }) } catch (x) {}
+  showLog();
+}
+async function showLog() {
+  let all = store.get('studio-log') || [];
+  try { const r = await fetch(LOGAPI, { cache: 'no-store' }); if (r.ok) { const j = await r.json(); if (j.entries) all = [...j.entries, ...all] } } catch (x) {}
+  const seen = new Set(); all = all.filter(e => !seen.has(e.at) && seen.add(e.at)).sort((a, b) => b.at.localeCompare(a.at));
+  const when = t => new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  $('#loglist').innerHTML = all.length ? all.slice(0, 200).map(e => `<li><b>${esc(e.kind === 'day' ? longDate(e.for) : longMonth(e.for))}</b>, ${esc(e.how)} on ${esc(when(e.at))}
+    <p>${e.why ? 'Why: ' + esc(e.why) : '<i>No reason written</i>'}</p><p class="chg">${e.changes.length ? 'Changed: ' + e.changes.map(esc).join('; ') : 'No changes from the automatic picture'}</p></li>`).join('')
+    : '<li>Nothing yet. Each time you export, what you changed and why is kept here.</li>';
+}
+showLog();
 $('#exp-go').addEventListener('click', async () => {
   const btn = $('#exp-go'); btn.disabled = true; say('', 'Drawing the full size picture…');
   await allReady();
@@ -1160,7 +1253,7 @@ $('#exp-go').addEventListener('click', async () => {
       const ans = await sendToDrive('replace', png, jpg);
       const note = { ahead: 'It goes out at 2pm that day.', before: 'Today’s 2pm send will use this one.', after: 'Today’s 2pm send had already gone; the folder copy is updated.', past: 'That day had gone by; the folder copy is updated.' }[ans.when2pm] || '';
       if (ans.captionNote) say('warn', `${ans.name} is in ${ans.folder}. ${ans.captionNote}`); else say('ok', `Done: ${ans.name}${ans.caption ? ' and your 2pm caption are' : ' is'} in ${ans.folder} (${ans.time}). ${note}`);
-      remember('Put in the Bapa’s Diary folder', ans.name);
+      remember('Put in the Bapa’s Diary folder', ans.name); logChange('Put in the Bapa’s Diary folder', ans.name);
     } catch (e) { say('warn', `Not put in the folder. ${(e && e.message) || e}`) } finally { btn.disabled = false; fillExport() }
     return;
   }
@@ -1182,7 +1275,7 @@ $('#exp-go').addEventListener('click', async () => {
         say('ok', `Downloaded ${name}, with a copy in “${ans.folder}” on Drive. The Bapa’s Diary folder is unchanged.`); where = `${ans.name} in ${ans.folder}`;
       } catch (e) { say('warn', `Downloaded ${name} to this device, but the Drive copy didn’t work. ${e.message}`) }
     }
-    remember('New export', where);
+    remember('New export', where); logChange('New export', where);
   } catch (e) {
     say(e && e.code === 'declined' ? '' : 'warn', e && e.code === 'declined' ? 'Export cancelled.' : `Export did not finish: ${(e && e.message) || e}`);
   } finally { btn.disabled = false; fillExport() }
@@ -1195,11 +1288,11 @@ $('#exp-go').addEventListener('click', async () => {
   try {
     await loadIndex();
     const today = todayLondon();
-    if (S.day.date !== today && INDEX.days.includes(today)) { S.day.date = today; S.day.years = {}; S.day.sel = null }
-    if (!INDEX.days.includes(S.day.date)) { S.day.date = INDEX.days.includes(today) ? today : INDEX.days.at(-1); S.day.years = {}; S.day.sel = null }
+    if (S.day.date !== today && INDEX.days.includes(today)) { S.day.date = today; unstash('day') }
+    if (!INDEX.days.includes(S.day.date)) { S.day.date = INDEX.days.includes(today) ? today : INDEX.days.at(-1); unstash('day') }
     const want = new URLSearchParams(location.search).get('date');   // studio/?date=2026-11-23 opens that day
     if (want && /^\d{4}-\d\d-\d\d$/.test(want) && want !== S.day.date) { S.mode = 'day'; return openDate(want) }
-    if (!INDEX.months.includes(S.month.month)) { S.month.month = INDEX.months.at(-1); S.month.days = {}; S.month.sel = null }
+    if (!INDEX.months.includes(S.month.month)) { S.month.month = INDEX.months.at(-1); unstash('month') }
     P[S.mode] = await loadPack(S.mode, S.mode === 'day' ? S.day.date : S.month.month); build();
     const other = S.mode === 'day' ? 'month' : 'day';
     P[other] = await loadPack(other, other === 'day' ? S.day.date : S.month.month);
