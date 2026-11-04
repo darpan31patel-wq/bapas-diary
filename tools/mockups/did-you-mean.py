@@ -1,4 +1,5 @@
 # Mockup only, never deploys: pictures of "Did you mean" on the live Search page and the new part of /interaction/,
+# (second run: Did you mean kept on one line)
 # with this branch's search.html and search-ask.js changes swapped into the live page on the runner (Darpan, 4 Nov 2026).
 import json
 import os
