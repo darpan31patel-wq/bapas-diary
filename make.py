@@ -2264,12 +2264,36 @@ TAGS = {'Diwali': BIG['Diwali'], 'Annakut': r'annakut', 'New Year': r'new year|b
         'Holi': r'\bholi|fuldol|pushpadol|dhuleti|colou?rs?\b|\brang', 'Pushpadolotsav': r'pushpadol|fuldol|dhuleti|colou?rs?\b|\brang|\bholi'}
 
 
+OLD = {}
+
+
+def old_festivals(d):
+    """A day before 2010, when the BAPS calendar begins: its festivals as worked out from the moon by the website
+    project (calendar/old-festivals.json), named as DAYS names them (Darpan, 4 Nov 2026: 2002's Diwali card had no tab)."""
+    if not OLD:
+        try:
+            OLD.update(json.load(open(os.path.join(HERE, 'calendar', 'old-festivals.json'), encoding='utf-8'))['days'])
+        except Exception as e:
+            print('  no old festival days:', e); OLD['_none'] = []
+    out = []
+    for n in OLD.get(d, []):
+        for k, v in DAYS:
+            if re.search(k, n, re.I) and v not in out:
+                out.append(v)
+    return out
+
+
 def festival_of(x):
-    """The tagged festival this photo is from: its own date is that festival and its caption says so, else ''."""
+    """The tagged festival this photo is from: its own date is that festival and its caption says so, else ''.
+    Annakut is always New Year's day too, so its tab names both (Darpan, 4 Nov 2026)."""
     d = str(x.get('d') or '')[:10]
     if not re.fullmatch(r'\d{4}-\d\d-\d\d', d):
         return ''
-    return next((f for f in festivals(d) if f in TAGS and re.search(TAGS[f], x.get('c') or '', re.I)), '')
+    fs = festivals(d) if cal_day(d) else old_festivals(d)
+    got = next((f for f in fs if f in TAGS and re.search(TAGS[f], x.get('c') or '', re.I)), '')
+    if got in ('Annakut', 'New Year') and {'Annakut', 'New Year'} <= set(fs):
+        return 'Annakut and New Year'
+    return got
 
 
 def prefer_festival(items, photos, seed, aspect, day):
@@ -2295,8 +2319,8 @@ def tag_festivals(photos):
 
 
 def fest_tag(d, text, B, PW):
-    f = garamond(PW * .085, 700)
-    while d.textlength(text, font=f) > PW * .8 and f.size > PW * .05:
+    f = garamond(PW * .115, 700)   # bigger than the first tab, which was easy to miss (Darpan, 4 Nov 2026)
+    while d.textlength(text, font=f) > PW * .9 and f.size > PW * .06:
         f = garamond(f.size - 1, 700)
     tw, h, pad = d.textlength(text, font=f), f.size * 1.35, PW * .03
     x0 = y0 = B + PW * .03
