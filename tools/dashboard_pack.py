@@ -118,12 +118,12 @@ def main():
             at = blobs[f].tell(); im.save(blobs[f], 'JPEG', quality=82 if k < 6 else 76)
             ims.append(im)
             d = str(x.get('d') or '')[:10]
-            fs = make.festivals(make.cal_day(d)) if len(d) == 10 else []
+            fest = make.festival_of(x)   # the same tab as the daily picture (Darpan, 4 Nov 2026: festivals(cal_day(d)) was always empty)
             cands.append(dict(f=f'{w["year"]}-{f}.jpg', at=[at, blobs[f].tell() - at], w=im.width, h=im.height,
                               face=[round(v * s, 1) for v in x['face']] if x['face'] else None,
                               crop=x.get('crop', 'frame'), caption=make.caption(x), original=x.get('c') or '',
                               place=make.place(x), date=d, special=bool(x.get('special')), nice=bool(x.get('nice')),
-                              festival=fs[0] if fs else '', **({'nobapa': True} if x.get('nobapa') else {})))
+                              festival=fest, **({'nobapa': True} if x.get('nobapa') else {})))
         for f, b in blobs.items():
             b.close()
             if os.path.getsize(b.name) == 0:
