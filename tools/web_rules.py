@@ -27,6 +27,7 @@ import argparse, collections, datetime, glob, gzip, hashlib, io, json, os, re, s
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import web_bapa_rules as R
 from web_places import not_a_town, town_of
+from web_day import TRIP_DAYS
 
 HERE = R.HERE
 CARD_CHARS = 40   # a Today card's caption fits two lines in about this many letters (cards are 150 to 200 px wide)
@@ -350,6 +351,27 @@ def day(a):
     for y, date, place, al, fi, cap, bapa in db.execute(
             'SELECT year, date, place, album, file, caption, is_bapa FROM photos WHERE date IS NOT NULL'):
         dated.setdefault((y, date), []).append([al, fi, cap or '', bapa, place])
+    # ... and albums filed under a range of days ('1 to 3 November 2002'), each photo on the day of the range it shows on
+    # (tools/web_day.py's share of the trip), so a nearby day can come from them too (Darpan, 4 Nov 2026: "photos with one
+    # exact date, never from albums filed under a range of days, ignore this from now")
+    trips = {}
+    for y, d0, d1, place, al, fi, cap, bapa in db.execute(
+            'SELECT year, date_from, date_to, place, album, file, caption, is_bapa FROM photos '
+            'WHERE date IS NULL AND date_from IS NOT NULL ORDER BY date_from, album, file'):
+        trips.setdefault((y, d0, d1), []).append([al, fi, cap or '', bapa, place])
+    for (y, d0, d1), rows in trips.items():
+        try:
+            t0, t1 = datetime.date.fromisoformat(d0), datetime.date.fromisoformat(d1 or d0)
+        except ValueError:
+            continue
+        days = (t1 - t0).days + 1
+        if days < 1 or days > TRIP_DAYS + 1:   # a longer trip shows only on its first day, as on Today
+            dated.setdefault((y, t0.isoformat()), []).extend(rows)
+            continue
+        for k in range(days):
+            share = rows[k * len(rows) // days:(k + 1) * len(rows) // days]
+            if share:
+                dated.setdefault((y, (t0 + datetime.timedelta(days=k)).isoformat()), []).extend(share)
     tgc = json.load(open(a.tg, encoding='utf-8')) if a.tg and os.path.exists(a.tg) else {}
     known = known_places(db)
     stats = dict(trip_dropped=0, near_added=0, stories_dropped=0, tg_years=0, framed=0, other_town=0)
@@ -391,6 +413,22 @@ def day(a):
                                     'trip': [d.isoformat(), d.isoformat()], 't': [r[:4] for r in rows]}
                         have.add(y)
                         stats['near_added'] += 1
+        # 8: every year the 2pm picture showed on this day shows here too, with the photo it chose (Darpan, 4 Nov 2026:
+        # "On any day the picture has already made, Today makes sure every year in the picture appears too. yes").
+        # Its baps.org photos only: a channel photo needs its copy on R2 first (the tg job).
+        chose = {y: url for y, url in db.execute(
+            'SELECT year, photo_url FROM diary WHERE substr(date, 6) = ? ORDER BY date', (mmdd,))}
+        for y, url in sorted(chose.items()):
+            if y in years and (years[y]['p'] or years[y].get('t')) or '/GalleryImages/' not in (url or ''):
+                continue
+            al, fi = url.split('/GalleryImages/')[-1].split('/')[0], url.rsplit('/', 1)[-1]
+            row = db.execute('SELECT place, caption, is_bapa, COALESCE(date, date_from) FROM photos WHERE album = ? AND file = ?',
+                             (al, fi)).fetchone()
+            if not row or not row[3]:
+                continue
+            place, cap, bapa, d = row
+            years[y] = {'y': y, 'place': town_of(place), 'p': [], 'trip': [d, d], 't': [[al, fi, cap or '', bapa]]}
+            stats['picture_years'] = stats.get('picture_years', 0) + 1
         shown_tg = set()
         # the post's own place for each year, tidied, for a card whose photo gave none worth showing
         for s in D['stories']:
