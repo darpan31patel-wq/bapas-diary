@@ -28,6 +28,9 @@ jobs:
           import yaml
           w = yaml.safe_load(open('.github/workflows/website-deploy.yml'))
           print(next(s['run'] for s in w['jobs']['deploy']['steps'] if s.get('name', '').startswith('Photo search')))" > build.sh
+          # the old diary photos list made by tg-xes1hy.yml (beside the live one), in place of the live list
+          sed -i 's#gh release download website-rules -p tg-cards.json || echo .{}. > tg-cards.json#gh release download website-rules -p tg-cards-xes1hy.json -O tg-cards.json#' build.sh
+          grep -n 'tg-cards' build.sh
           bash -e build.sh
       - name: Pictures of Today
         run: |
@@ -42,7 +45,9 @@ jobs:
               for (const [name, opt] of [['computer', {viewport: {width: 1600, height: 1000}, deviceScaleFactor: 2}],
                                          ['phone', {viewport: {width: 390, height: 844}, deviceScaleFactor: 2, isMobile: true, hasTouch: true}]]) {
                 const p = await b.newPage(opt);
+                p.on('pageerror', e => console.log(d, name, 'pageerror', e.message));
                 await p.goto('http://localhost:8080/#' + d, {waitUntil: 'networkidle'});
+                await p.waitForFunction(() => { const l = document.getElementById('loading'); return !l || l.hidden || !l.offsetParent; }, null, {timeout: 60000}).catch(() => console.log(d, name, 'still loading'));
                 for (let y = 0; y < 30; y++) { await p.mouse.wheel(0, 900); await p.waitForTimeout(250); }
                 await p.evaluate(() => window.scrollTo(0, 0));
                 await p.waitForTimeout(4000);
@@ -58,6 +63,6 @@ jobs:
           import json, sys
           D = json.load(open('out/data/day/$d.json'))
           print('$d', [(Y['y'], Y['place']) for Y in D['years'] if Y['p'] or Y.get('t')])"; done
-          cp out/data/day/11-04.json out/data/day/10-30.json out/data/day/11-01.json shots/
+          cp tg-cards.json shots/tg-cards-used.json; cp out/data/day/11-04.json out/data/day/10-30.json out/data/day/11-01.json shots/
           gh release view today-mockup-xes1hy > /dev/null 2>&1 || gh release create today-mockup-xes1hy --prerelease --title 'Today mockup (website only)' --notes 'Pictures of the Today page before going live. Website only.'
           gh release upload today-mockup-xes1hy shots/* --clobber
