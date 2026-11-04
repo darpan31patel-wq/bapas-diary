@@ -86,7 +86,7 @@ h1 { margin: 0; font: 600 clamp(30px, 5vw, 50px)/1.1 var(--title); letter-spacin
 .go.vgo:hover i::before, .go.vgo:focus-visible i::before { border-left-color: var(--gold); }
 .day h2 .go { align-self: center; }
 @media (max-width: 760px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; } .day h2 { font-size: 19px; } }
-@media (max-width: 760px) { .grid .pick { grid-column: 1 / -1; grid-row: auto; aspect-ratio: auto; } .grid .pick img { flex: none; aspect-ratio: 4 / 3; } }
+@media (max-width: 760px) { .grid .pick { grid-column: 1 / -1; grid-row: auto; aspect-ratio: auto; } .grid .pick img { flex: none; height: auto; aspect-ratio: 4 / 3; } }
 /* the photo big */
 .big { position: fixed; inset: 0; z-index: 80; background: rgba(10, 2, 4, .97); display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
   padding: calc(10px + env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px)); }
