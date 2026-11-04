@@ -7,7 +7,8 @@
 <title>Interaction</title>
 <!-- Darpan's private page (was /missed/, renamed 4 Nov 2026: "change this name to interaction"). Three parts, read with
      the one word (MISSED_KEY): visitors from Cloudflare (/api/visitors), feedback from the About page box (/api/feedback),
-     and searches that found nothing (/api/missed). Not in the menu, not in the site map, not for search engines. -->
+     searches that found nothing (/api/missed), and the misspellings Search has learned from "Did you mean" (/api/spellings,
+     4 Nov 2026). Not in the menu, not in the site map, not for search engines. -->
 <style>
 :root{--maroon-deep:#2a0a12;--gold-hi:#ffe296;--gold-soft:#d9a441;--cream:#fff3dc;--mist:#d8c3a5;--line:rgba(217,164,65,.3)}
 *{box-sizing:border-box}
@@ -29,6 +30,9 @@ ul{list-style:none;margin:0;padding:0}
 li.w{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px dotted rgba(217,164,65,.18)}
 li.w span:last-child{color:var(--mist);font-variant-numeric:tabular-nums}
 .note{color:var(--mist);font-style:italic}
+li.w .to{color:var(--mist);font-style:italic;font-size:14px}
+li.w b{color:var(--gold-hi);font-weight:500}
+a.forget{color:var(--gold-soft)}
 /* visitors */
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:6px 0 4px}
 .tile{background:rgba(255,226,150,.07);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
@@ -60,7 +64,7 @@ li.w span:last-child{color:var(--mist);font-variant-numeric:tabular-nums}
   <div class="gurus"><img src="/about/img/psm.jpg" alt="Pramukh Swami Maharaj"><img src="/about/img/msm.jpg" alt="Mahant Swami Maharaj"></div>
   <h1>Interaction</h1>
 </div>
-<p class="l">Who visits Bapa's Diary, what people write in the feedback box on About, and the searches that found nothing.</p>
+<p class="l">Who visits Bapa's Diary, what people write in the feedback box on About, the searches that found nothing, and the spellings Search has learned.</p>
 <form id="f"><input id="k" type="password" placeholder="Your word" autocomplete="current-password"><button type="submit">Show</button></form>
 <div id="out"><p class="note">Type the word and press Show.</p></div>
 </main>
@@ -112,10 +116,29 @@ function missedHtml(m) {
     : '<p class="note">Nothing saved yet: every search so far found something.</p>';
 }
 
+// misspellings learned from "Did you mean" (functions/api/spellings.js): tapped twice or more, they just work
+function spellHtml(sp) {
+  if (!sp.ok) return '<p class="note">Could not read the spellings just now.</p>';
+  const all = sp.j.all || [], at = sp.j.learnAt || 2;
+  const row = ([q, fix, n, day]) => `<li class="w"><span>${esc(q)} <span class="to">now finds</span> <b>${esc(fix)}</b></span><span>${n === 1 ? 'once' : n + ' times'} · <a href="#" class="forget" data-q="${esc(q)}">Forget</a></span></li>`;
+  const learned = all.filter(x => x[2] >= at), waiting = all.filter(x => x[2] < at);
+  return all.length ? (learned.length ? `<h3>Learned</h3><ul>${learned.map(row).join('')}</ul>` : '')
+    + (waiting.length ? `<h3>Tapped once, learned the next time</h3><ul>${waiting.map(row).join('')}</ul>` : '')
+    : '<p class="note">Nothing yet: when someone taps a Did you mean suggestion, it shows here.</p>';
+}
+out.addEventListener('click', async e => {
+  const a = e.target.closest('a.forget');
+  if (!a) return;
+  e.preventDefault();
+  const key = $('k').value.trim();
+  await fetch('/api/spellings', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({key, forget: a.dataset.q})}).catch(() => {});
+  a.closest('li').remove();
+});
+
 async function show(key) {
   out.innerHTML = '<p class="note">Looking…</p>';
   const q = '?key=' + encodeURIComponent(key);
-  const [m, f, v] = await Promise.all([get('/api/missed' + q), get('/api/feedback' + q), get('/api/visitors' + q + '&days=30')]);
+  const [m, f, v, sp] = await Promise.all([get('/api/missed' + q), get('/api/feedback' + q), get('/api/visitors' + q + '&days=30'), get('/api/spellings' + q)]);
   if (m.status === 403 || f.status === 403) { out.innerHTML = '<p class="note">That is not the word.</p>'; return; }
   if (m.j.error === 'no store yet') { out.innerHTML = '<p class="note">The store is not set up yet.</p>'; return; }
   try { localStorage.setItem('bapas-diary-missed', key); } catch (e) {}
@@ -124,7 +147,8 @@ async function show(key) {
     <div class="two">
       <section class="box" id="feedback"><h2>Feedback${nf ? ' (' + nf + ')' : ''}</h2><p class="sub">What people wrote in the box at the bottom of About, newest first.</p>${feedbackHtml(f)}</section>
       <section class="box" id="searches"><h2>Searches that found nothing</h2><p class="sub">Words typed into Search that gave no photos or stories, by day, most often first.</p>${missedHtml(m)}</section>
-    </div>`;
+    </div>
+    <section class="box" id="spellings" style="margin-top:22px"><h2>Spellings Search has learned</h2><p class="sub">When a search finds nothing, Search says “Did you mean” with the closest word in the diary. A slip that people tap twice or more now just works. Forget takes one off.</p>${spellHtml(sp)}</section>`;
 }
 $('f').addEventListener('submit', e => { e.preventDefault(); show($('k').value.trim()); });
 try { const k = localStorage.getItem('bapas-diary-missed'); if (k) { $('k').value = k; show(k); } } catch (e) {}
