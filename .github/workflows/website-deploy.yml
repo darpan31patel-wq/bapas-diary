@@ -6,7 +6,7 @@ name: website-deploy
 on:
   push:
     branches: ['claude/**']
-    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/search-people.js', 'site/search-image.js', 'tools/search_people.py', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'tools/web_offline.py', 'tools/web_secure.py', 'tools/web_tiny.py', 'tools/web_tablet.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', 'functions/**', 'site/weekly/**', '.github/workflows/website-deploy.yml', 'tools/web_type.py', 'tools/web_notranslate.py', 'site/screensaver/**', 'tools/web_screensaver.py', 'tools/screensaver/**', 'tools/web_year.py', 'site/year/**', 'tools/web_bapa_now.py', 'tools/web_darshan.py', 'tools/web_festival.py', 'tools/web_places.py', 'tools/web_videos.py', 'tools/web_diwali.py', 'tools/youtube/**', 'data/youtube/**']
+    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/search-people.js', 'site/search-image.js', 'tools/search_people.py', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'site/darpan/**', 'tools/web_offline.py', 'tools/web_secure.py', 'tools/web_tiny.py', 'tools/web_tablet.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', 'functions/**', 'site/weekly/**', '.github/workflows/website-deploy.yml', 'tools/web_type.py', 'tools/web_notranslate.py', 'site/screensaver/**', 'tools/web_screensaver.py', 'tools/screensaver/**', 'tools/web_year.py', 'site/year/**', 'tools/web_bapa_now.py', 'tools/web_darshan.py', 'tools/web_festival.py', 'tools/web_places.py', 'tools/web_videos.py', 'tools/web_diwali.py', 'tools/youtube/**', 'data/youtube/**']
   workflow_call:   # website-hires (on main) rebuilds the site when a year of full size photos is in R2
 concurrency: website-deploy
 jobs:
@@ -121,12 +121,16 @@ jobs:
           python3 tools/web_notranslate.py --out out   # browsers never translate our pages by themselves: Chrome made Bapa's Diary "Dad's diary" (Darpan, 28 Oct)
           python3 tools/web_screensaver.py --out out --db bapa.db --schedule schedule.json   # Screensaver button on Today (Darpan: go live, 29 Oct); last, so the screensaver page keeps the kit's own look, no site fonts or Gujarati switch on it
           python3 tools/web_bapa_now.py --out out   # Where is Bapa now, a small map card on Today from the schedule just written (Darpan: YES, 29 Oct)
+          # Darpan's private Studio at /darpan/ (Darpan, 4 Nov 2026): copied in after every other step, so it is never in the
+          # site map, never gets the menu, and keeps its own look. functions/darpan/_middleware.js asks for the password.
+          mkdir -p out/darpan && cp site/darpan/index.html out/darpan/index.html
           du -sh out/*
           if grep -rli 'telegram\|t\.me/' out --include='*.html'; then echo 'Telegram found: not deploying'; exit 1; fi   # never on the public site
       - name: Deploy to Pages
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           MISSED_KEY: ${{ secrets.MISSED_KEY }}
+          STUDIO_PASSWORD: ${{ secrets.STUDIO_PASSWORD }}
         run: |
           # the email sign up (/api/weekly, functions/ next to out/) needs the Resend key as a Pages secret (Darpan: ALL GOOD, 26 Oct)
           if [ -n "$RESEND_API_KEY" ]; then printf %s "$RESEND_API_KEY" | npx --yes wrangler@3.114.0 pages secret put RESEND_API_KEY --project-name "$PROJECT" > /dev/null && echo "Resend key: set"; fi
@@ -144,6 +148,8 @@ jobs:
             echo "missed searches store: the token cannot make a KV store. By hand: Cloudflare, Storage & Databases, KV, create 'missed-searches'; then Workers & Pages, $PROJECT, Settings, Bindings, add KV binding MISSED to it."
           fi
           if [ -n "$MISSED_KEY" ]; then printf %s "$MISSED_KEY" | npx --yes wrangler@3.114.0 pages secret put MISSED_KEY --project-name "$PROJECT" > /dev/null && echo "missed searches word: set"; else echo "missed searches word: add a GitHub secret MISSED_KEY (any word) to read them at /missed/"; fi
+          # the password for the private Studio at /darpan/ (Darpan, 4 Nov 2026); with none set the page stays shut
+          if [ -n "$STUDIO_PASSWORD" ]; then printf %s "$STUDIO_PASSWORD" | npx --yes wrangler@3.114.0 pages secret put STUDIO_PASSWORD --project-name "$PROJECT" > /dev/null && echo "Studio password: set"; else echo "Studio password: add a GitHub secret STUDIO_PASSWORD to open /darpan/"; fi
           npx --yes wrangler@3.114.0 pages deploy out --project-name "$PROJECT" --branch main --commit-dirty=true
       - name: bapas-diary.com and www point at the site
         run: |
