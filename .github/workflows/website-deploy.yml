@@ -131,6 +131,7 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           MISSED_KEY: ${{ secrets.MISSED_KEY }}
           STUDIO_PASSWORD: ${{ secrets.STUDIO_PASSWORD }}
+          CF_ANALYTICS_TOKEN: ${{ secrets.CF_ANALYTICS_TOKEN }}
         run: |
           # the email sign up (/api/weekly, functions/ next to out/) needs the Resend key as a Pages secret (Darpan: ALL GOOD, 26 Oct)
           if [ -n "$RESEND_API_KEY" ]; then printf %s "$RESEND_API_KEY" | npx --yes wrangler@3.114.0 pages secret put RESEND_API_KEY --project-name "$PROJECT" > /dev/null && echo "Resend key: set"; fi
@@ -153,7 +154,17 @@ jobs:
           fi
           [ -n "$NS" ] || echo "missed searches store: the token cannot make a KV store. By hand: Cloudflare, Storage & Databases, KV, create 'missed-searches'; then Workers & Pages, $PROJECT, Settings, Bindings, add KV binding MISSED to it."
           [ -n "$LOGNS" ] || echo "Studio changes log store: by hand: Cloudflare, Storage & Databases, KV, create 'studio-log'; then Workers & Pages, $PROJECT, Settings, Bindings, add KV binding STUDIO_LOG to it."
-          if [ -n "$MISSED_KEY" ]; then printf %s "$MISSED_KEY" | npx --yes wrangler@3.114.0 pages secret put MISSED_KEY --project-name "$PROJECT" > /dev/null && echo "missed searches word: set"; else echo "missed searches word: add a GitHub secret MISSED_KEY (any word) to read them at /missed/"; fi
+          if [ -n "$MISSED_KEY" ]; then printf %s "$MISSED_KEY" | npx --yes wrangler@3.114.0 pages secret put MISSED_KEY --project-name "$PROJECT" > /dev/null && echo "missed searches word: set"; else echo "missed searches word: add a GitHub secret MISSED_KEY (any word) to read them at /interaction/"; fi
+          # the visitors dashboard on /interaction/ (functions/api/visitors.js, Darpan 4 Nov 2026) reads Cloudflare's analytics with
+          # its own read only token (GitHub secret CF_ANALYTICS_TOKEN), never the deploy token; the zone and account ids go with it
+          if [ -n "$CF_ANALYTICS_TOKEN" ]; then
+            ZONE_ID=$(api "https://api.cloudflare.com/client/v4/zones?name=$DOMAIN" | jq -r '.result[0].id // empty')
+            echo "::add-mask::$ZONE_ID"
+            printf %s "$CF_ANALYTICS_TOKEN" | npx --yes wrangler@3.114.0 pages secret put ANALYTICS_TOKEN --project-name "$PROJECT" > /dev/null \
+              && { [ -z "$ZONE_ID" ] || printf %s "$ZONE_ID" | npx --yes wrangler@3.114.0 pages secret put ZONE_ID --project-name "$PROJECT" > /dev/null; } \
+              && printf %s "$CLOUDFLARE_ACCOUNT_ID" | npx --yes wrangler@3.114.0 pages secret put ACCOUNT_ID --project-name "$PROJECT" > /dev/null \
+              && echo "visitors dashboard token: set$([ -n "$ZONE_ID" ] || echo ', but the zone was not found')"
+          else echo "visitors dashboard: add a GitHub secret CF_ANALYTICS_TOKEN (a Cloudflare token that can read analytics) to see visitors on /interaction/"; fi
           # the password for the private Studio at /darpan/ (Darpan, 4 Nov 2026); with none set the page stays shut
           if [ -n "$STUDIO_PASSWORD" ]; then printf %s "$STUDIO_PASSWORD" | npx --yes wrangler@3.114.0 pages secret put STUDIO_PASSWORD --project-name "$PROJECT" > /dev/null && echo "Studio password: set"; else echo "Studio password: add a GitHub secret STUDIO_PASSWORD to open /darpan/"; fi
           npx --yes wrangler@3.114.0 pages deploy out --project-name "$PROJECT" --branch main --commit-dirty=true

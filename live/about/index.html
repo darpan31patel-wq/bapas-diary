@@ -172,6 +172,61 @@ a { color: var(--maroon); }
   })();
   </script>
 </section>
+<!-- The feedback box (Darpan, 4 Nov 2026: "add a feedback box to the bottom of 'about'"). Posts to /api/feedback
+     (functions/api/feedback.js); Darpan reads every answer on his private Interaction page. Only the words, an optional
+     name and the day are kept. -->
+<section class="feedback-box" aria-labelledby="feedback-h">
+  <style>
+    .feedback-box { box-sizing: border-box; max-width: 680px; margin: 0 auto 48px; padding: 30px 28px; border-radius: 14px; text-align: center;
+      background: linear-gradient(#faf3e6, #f3ead9); color: var(--ink); display: grid; gap: 12px; justify-items: center;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, .45), inset 0 0 0 1px rgba(168, 116, 42, .35), inset 0 0 0 7px #faf3e6, inset 0 0 0 8px rgba(168, 116, 42, .3); }
+    .feedback-box h2 { margin: 0; }
+    .feedback-box p { margin: 0; max-width: 46ch; font-size: 17px; }
+    .feedback-box form { display: grid; gap: 10px; width: 100%; max-width: 520px; }
+    .feedback-box textarea, .feedback-box input { width: 100%; font: 16px/1.5 Arimo, Arial, sans-serif; padding: 12px 14px; border-radius: 8px;
+      border: 1px solid #c8952f; background: #fffaf0; color: #2e1a14; }
+    .feedback-box textarea { min-height: 120px; resize: vertical; }
+    .feedback-box .fb-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+    .feedback-box button { justify-self: center; font: 700 13px Arimo, Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase; padding: 12px 26px;
+      border-radius: 8px; border: 0; background: var(--maroon); color: #ffe296; cursor: pointer; }
+    .feedback-box button:hover { background: #8a1c30; }
+    .feedback-box button[disabled] { opacity: .6; cursor: wait; }
+    .feedback-box :focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 2px; }
+    .feedback-box .fb-err { font: 13px Arimo, Arial, sans-serif; color: #a3261c; min-height: 1em; }
+    .feedback-box .fb-done { font: 500 19px/1.4 var(--serif); color: var(--maroon); }
+    @media (max-width: 600px) { .feedback-box { margin: 0 12px 32px; padding: 24px 18px; } }
+  </style>
+  <h2 id="feedback-h">Your feedback</h2>
+  <p>How has Bapa's Diary been for you? Is there something you would love to see? Please share your thoughts.</p>
+  <form>
+    <label class="fb-hp" aria-hidden="true">Leave this empty <input name="website" tabindex="-1" autocomplete="off"></label>
+    <textarea name="message" required maxlength="2000" placeholder="Write here…" aria-label="Your feedback"></textarea>
+    <input name="name" maxlength="60" placeholder="Your name (if you like)" autocomplete="name" aria-label="Your name, if you like">
+    <button type="submit">Send</button>
+  </form>
+  <div class="fb-err" role="status"></div>
+  <script>
+  (function () {
+    var box = document.currentScript.parentNode, form = box.querySelector('form'), err = box.querySelector('.fb-err');
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var btn = form.querySelector('button'), message = form.message.value.trim();
+      if (message.length < 2) { err.textContent = 'Please write a few words first.'; return; }
+      btn.disabled = true; err.textContent = '';
+      fetch('/api/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: message, name: form.name.value.trim(), website: form.website.value }) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (!res.ok) throw new Error(res.j.error || 'Sorry, something went wrong. Please try again.');
+          var p = document.createElement('p'); p.className = 'fb-done';
+          p.textContent = 'Thank you so much 🙏🏽 Your words have reached us.';
+          form.replaceWith(p);
+        })
+        .catch(function (x) { err.textContent = x.message || 'Sorry, something went wrong. Please try again.'; btn.disabled = false; });
+    });
+  })();
+  </script>
+</section>
 </main>
 </div>
 </body>
