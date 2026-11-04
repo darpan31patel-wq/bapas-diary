@@ -52,7 +52,14 @@ jobs:
                 for (let y = 0; y < 30; y++) { await p.mouse.wheel(0, 900); await p.waitForTimeout(250); }
                 await p.evaluate(() => window.scrollTo(0, 0));
                 await p.waitForTimeout(4000);
-                await p.screenshot({path: `shots/${d}-${name}.jpg`, fullPage: true, quality: 82, type: 'jpeg'});
+                if (name === 'phone') await p.screenshot({path: `shots/${d}-${name}.jpg`, fullPage: true, quality: 82, type: 'jpeg'});
+                else {   // a whole page picture comes out blank on a wide screen: one screen at a time, joined after
+                  const H = await p.evaluate(() => document.documentElement.scrollHeight);
+                  for (let y = 0, i = 0; y < H && i < 12; y += 1000, i++) {
+                    await p.evaluate(v => window.scrollTo(0, v), y); await p.waitForTimeout(1500);
+                    await p.screenshot({path: `part-${d}-${String(i).padStart(2, '0')}.png`});
+                  }
+                }
                 await p.close();
               }
             }
@@ -60,6 +67,16 @@ jobs:
           })();
           EOF
           node shot.js
+          python3 -c "
+          import glob
+          from PIL import Image
+          for d in '$DAYS'.split():
+              parts = [Image.open(f) for f in sorted(glob.glob(f'part-{d}-*.png'))]
+              im = Image.new('RGB', (parts[0].width, sum(p.height for p in parts)))
+              y = 0
+              for p in parts:
+                  im.paste(p, (0, y)); y += p.height
+              im.save(f'shots/{d}-computer.jpg', quality=82)"
           for d in $DAYS; do python3 -c "
           import json, sys
           D = json.load(open('out/data/day/$d.json'))
