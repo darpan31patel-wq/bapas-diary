@@ -42,7 +42,7 @@ jobs:
           (async () => {
             const b = await chromium.launch();
             for (const d of process.env.DAYS.split(' ')) {
-              for (const [name, opt] of [['computer', {viewport: {width: 1600, height: 1000}, deviceScaleFactor: 2}],
+              for (const [name, opt] of [['computer', {viewport: {width: 1600, height: 1000}, deviceScaleFactor: 1}],
                                          ['phone', {viewport: {width: 390, height: 844}, deviceScaleFactor: 2, isMobile: true, hasTouch: true}]]) {
                 const p = await b.newPage(opt);
                 p.on('pageerror', e => console.log(d, name, 'pageerror', e.message));
