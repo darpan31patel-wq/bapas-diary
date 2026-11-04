@@ -1,0 +1,63 @@
+# Mockup only, never deploys: builds the whole website exactly as website-deploy.yml does (its build step is read from that
+# file and run as is), then takes pictures of the Today page for a few days and puts them in release today-mockup-xes1hy,
+# so Darpan can see the change on the real page before anything goes live. Website only: touches nothing in the 2pm chain.
+name: today-mockup-xes1hy
+on:
+  push:
+    branches: ['claude/project-thread-xes1hy']
+    paths: ['.github/workflows/today-mockup-xes1hy.yml']
+permissions:
+  contents: write
+concurrency: today-mockup-xes1hy
+jobs:
+  mockup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PROJECT: bapas-diary
+      DOMAIN: bapas-diary.com
+      CAL_COMMIT: 9d0e952d170abfdaecfea4548f714bccb2532a8e
+      DAYS: '11-04 10-30 11-01'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the site as website-deploy.yml does (no deploy)
+        run: |
+          pip install -q pyyaml
+          python3 -c "
+          import yaml
+          w = yaml.safe_load(open('.github/workflows/website-deploy.yml'))
+          print(next(s['run'] for s in w['jobs']['deploy']['steps'] if s.get('name', '').startswith('Photo search')))" > build.sh
+          bash -e build.sh
+      - name: Pictures of Today
+        run: |
+          (cd out && python3 -m http.server 8080 > /dev/null 2>&1 &)
+          npm i -q playwright@1.48.2 && npx playwright install --with-deps chromium > /dev/null
+          mkdir shots
+          cat > shot.js <<'EOF'
+          const { chromium } = require('playwright');
+          (async () => {
+            const b = await chromium.launch();
+            for (const d of process.env.DAYS.split(' ')) {
+              for (const [name, opt] of [['computer', {viewport: {width: 1600, height: 1000}, deviceScaleFactor: 2}],
+                                         ['phone', {viewport: {width: 390, height: 844}, deviceScaleFactor: 2, isMobile: true, hasTouch: true}]]) {
+                const p = await b.newPage(opt);
+                await p.goto('http://localhost:8080/#' + d, {waitUntil: 'networkidle'});
+                for (let y = 0; y < 30; y++) { await p.mouse.wheel(0, 900); await p.waitForTimeout(250); }
+                await p.evaluate(() => window.scrollTo(0, 0));
+                await p.waitForTimeout(4000);
+                await p.screenshot({path: `shots/${d}-${name}.jpg`, fullPage: true, quality: 82, type: 'jpeg'});
+                await p.close();
+              }
+            }
+            await b.close();
+          })();
+          EOF
+          node shot.js
+          for d in $DAYS; do python3 -c "
+          import json, sys
+          D = json.load(open('out/data/day/$d.json'))
+          print('$d', [(Y['y'], Y['place']) for Y in D['years'] if Y['p'] or Y.get('t')])"; done
+          cp out/data/day/11-04.json out/data/day/10-30.json out/data/day/11-01.json shots/
+          gh release view today-mockup-xes1hy > /dev/null 2>&1 || gh release create today-mockup-xes1hy --prerelease --title 'Today mockup (website only)' --notes 'Pictures of the Today page before going live. Website only.'
+          gh release upload today-mockup-xes1hy shots/* --clobber
