@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Photos · Bapa's Diary</title>
+<meta name="description" content="Every photo of Bapa from these days, in one grid.">
+<meta name="robots" content="noindex">
+<script>if (/(^#|&)box=1/.test(location.hash)) document.documentElement.classList.add('inbox');   // shown in the Calendar's box</script>
+<link rel="stylesheet" href="/menu.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Lora:ital,wght@0,400;0,500;1,400&family=Arimo:wght@400;700&display=swap">
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+[hidden] { display: none !important; }
+/* inside the Calendar's box: no menu, tabs or top strip, less room above */
+html.inbox nav, html.inbox .ph-top, html.inbox .ph-tabs, html.inbox .gu-switch, html.inbox .bd-aa, html.inbox .bd-save, html.inbox .off-save { display: none !important; }
+html.inbox main { padding-top: 22px !important; }
+html.inbox, html.inbox body { background: #1d070c; }
+/* Every photo of a stay or a day in one grid (bapas-diary.com/photos/#from=2010-10-18&to=2010-11-06&place=Gondal), opened by
+   "See these photos" on the Calendar (Darpan, 28 Oct 2026: "it just opens up a webpage with all the pictures from the day in
+   a grid"). No search boxes: the days in order, a heading for each day, tap a photo to see it big. Photos and captions come
+   from the Search page's own lists (/search/data/YYYY.json), so it is never out of step with Search. */
+:root {
+  --maroon-out: #160509; --maroon-in: #42101c; --maroon: #6e1424;
+  --gold-hi: #ffe296; --gold: #d9a441; --gold-deep: #a8742a; --paper: #f3ead9; --muted: #c9b79a;
+  --title: Cinzel, "Trajan Pro", Georgia, serif; --serif: Lora, Georgia, "Times New Roman", serif; --sans: Arimo, Arial, Helvetica, sans-serif;
+  color-scheme: dark;
+}
+html { background: var(--maroon-out); }
+body { min-height: 100vh; background: radial-gradient(120% 80% at 50% 0%, var(--maroon-in), var(--maroon-out) 70%) fixed, var(--maroon-out);
+  color: var(--paper); font: 400 16px/1.55 var(--serif); }
+main { padding: 64px max(16px, env(safe-area-inset-right, 0px)) 60px max(16px, env(safe-area-inset-left, 0px)); }
+header { text-align: center; margin: 8px auto 22px; }
+h1 { margin: 0; font: 600 clamp(30px, 5vw, 50px)/1.1 var(--title); letter-spacing: .08em; color: var(--gold-hi); text-wrap: balance; }
+.when { margin-top: 6px; font: 700 13px/1.4 var(--sans); letter-spacing: .18em; text-transform: uppercase; color: var(--gold); }
+.count { margin-top: 4px; font: italic 400 16px var(--serif); color: var(--muted); }
+.day { margin: 0 0 26px; }
+.day h2 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(217, 164, 65, .2);
+  font: 600 22px/1.2 var(--serif); color: var(--gold-hi); }
+.day h2 small { font: 700 11px var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--gold); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); grid-auto-flow: dense; gap: 8px; }
+.grid button { display: block; padding: 0; border: 0; background: var(--maroon); aspect-ratio: 1; overflow: hidden; cursor: pointer; border-radius: 4px; }
+.grid img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s; }
+.grid button:hover img, .grid button:focus-visible img { transform: scale(1.05); }
+.grid button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 2px; }
+/* what the day's On this day posts say (Darpan, 29 Oct 2026: "YES go live", the same as on Today): the Indian date, the
+   occasion, and the whole story or everything Bapa did that day */
+/* one day: the box's title already says the place, date and photo count, so the day line only carries its Indian date,
+   centred under the title (Darpan, 30 Oct 2026: "drop the repeated line") */
+.day h2.solo { justify-content: center; border-bottom: 0; padding-bottom: 0; margin-top: -4px; }
+.day h2.solo:empty { display: none; }
+.day h2 .ti { font: italic 400 16px var(--serif); letter-spacing: 0; text-transform: none; color: var(--paper); }
+.tell { margin: 0 0 12px; }
+.tell .line { margin: 0; font: italic 500 17px/1.45 var(--serif); color: var(--paper); max-width: 70ch; }
+.tell .line b { font: 700 11px var(--sans); font-style: normal; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); margin-right: 8px; }
+.tell .paras { max-width: 70ch; }
+.tell .paras.many { max-width: none; columns: 34ch 3; column-gap: 40px; }   /* a long story uses the whole width */
+.tell .paras p { margin: 0; padding-top: 7px; font: 400 15px/1.55 var(--serif); color: var(--paper); opacity: .88; break-inside: avoid; }
+.tell ul { margin: 6px 0 0; padding: 0; list-style: none; max-width: 70ch; }
+.tell li { position: relative; margin: 0 0 4px; padding-left: 16px; font: 400 15px/1.45 var(--serif); opacity: .9; }
+.tell li::before { content: ""; position: absolute; left: 2px; top: .62em; width: 5px; height: 5px; border-radius: 50%; background: var(--gold); }
+/* the Calendar's own photo of the day, first and bigger, with what happened under it like a Today card: the year and
+   place, then the caption (Darpan, 4 Nov 2026: "show me mockup") */
+.grid .pick { grid-column: span 2; grid-row: span 2; display: flex; flex-direction: column; text-align: left;
+  background: var(--maroon); border: 1px solid rgba(217, 164, 65, .55); border-radius: 6px; }
+.grid .pick img { flex: 1 1 0; min-height: 0; }
+.pick .said { display: block; padding: 8px 11px 10px; background: linear-gradient(180deg, #4a111d, #2a0a10); }
+.pick .yr { display: block; font: 700 11px/1.3 var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--gold); }
+.pick .yr b { font: 600 17px var(--title); letter-spacing: .06em; color: var(--gold-hi); margin-right: 7px; }
+.pick .what { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 3px;
+  font: italic 500 15px/1.35 var(--serif); color: var(--paper); }
+.note { text-align: center; color: var(--muted); font-style: italic; margin: 50px 0; }
+/* Video Darshan (Darpan, 31 Oct 2026: "the same gold link on a Calendar day"): BAPS's own YouTube video of the day, the
+   same gold link as on Today, under the day's title (or beside each day's heading when several days are shown) */
+.vids { margin-top: 10px; }
+.vids:empty { display: none; }
+.go { display: inline-block; padding: 6px 13px; border: 1px solid var(--gold); border-radius: 999px; color: var(--gold); font: 600 11.5px/1.2 var(--sans);
+  letter-spacing: .08em; text-transform: uppercase; text-decoration: none; white-space: nowrap; }
+.go:hover, .go:focus-visible { background: var(--gold); color: var(--maroon-out); outline: none; }
+.go.vgo { display: inline-flex; align-items: center; gap: 7px; padding-left: 7px; }
+.go.vgo i { display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: var(--gold); }
+.go.vgo i::before { content: ""; margin-left: 2px; border-left: 6px solid var(--maroon-out); border-top: 4px solid transparent; border-bottom: 4px solid transparent; }
+.go.vgo:hover i, .go.vgo:focus-visible i { background: var(--maroon-out); }
+.go.vgo:hover i::before, .go.vgo:focus-visible i::before { border-left-color: var(--gold); }
+.day h2 .go { align-self: center; }
+@media (max-width: 760px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; } .day h2 { font-size: 19px; } }
+@media (max-width: 760px) { .grid .pick { grid-column: 1 / -1; grid-row: auto; aspect-ratio: auto; } .grid .pick img { flex: none; aspect-ratio: 4 / 3; } }
+/* the photo big */
+.big { position: fixed; inset: 0; z-index: 80; background: rgba(10, 2, 4, .97); display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px)); }
+.big .top { display: flex; justify-content: space-between; align-items: center; font: 700 12px var(--sans); letter-spacing: .14em; color: var(--gold); }
+.big .stage { display: grid; place-items: center; min-height: 0; }
+.big img { max-width: 100%; max-height: calc(100dvh - 190px); object-fit: contain; box-shadow: 0 18px 40px rgba(0, 0, 0, .6); }
+.big .cap { text-align: center; max-width: 70ch; margin: 10px auto 0; }
+.big .cap p { margin: 0; font: 500 19px/1.35 var(--serif); text-wrap: balance; }
+.big .cap div { margin-top: 4px; font: 700 11px/1.4 var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--gold); }
+.big .nav { display: flex; justify-content: center; gap: 10px; margin-top: 12px; }
+.pill { border: 1px solid var(--gold); background: none; color: var(--gold-hi); border-radius: 999px; padding: 9px 18px; font: 700 12px var(--sans);
+  letter-spacing: .12em; text-transform: uppercase; cursor: pointer; }
+.pill:hover, .pill:focus-visible { background: var(--gold); color: var(--maroon-out); outline: none; }
+.pill.solid { background: var(--gold); color: var(--maroon-out); }
+</style>
+</head>
+<body>
+<nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a href="/calendar/">Calendar</a><a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/then-and-now/">Legacy</a><a href="/about/">About</a></nav>
+<main>
+  <header><h1 id="title">Photos</h1><div class="when" id="when"></div><div class="count" id="count">Opening the photos…</div><div class="vids" id="vids"></div></header>
+  <div id="days"></div>
+</main>
+<div class="big" id="big" hidden role="dialog" aria-modal="true" aria-label="Photo">
+  <div class="top"><span id="pos"></span><button class="pill solid" id="close" type="button">Close</button></div>
+  <div class="stage" id="stage"></div>
+  <div><div class="cap" id="cap"></div>
+    <div class="nav"><button class="pill" id="prev" type="button">‹ Previous</button><button class="pill" id="next" type="button">Next ›</button></div></div>
+</div>
+<script>
+const PHOTOS = 'https://photos.bapas-diary.com/';
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const WD = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const iso = /^\d{4}-\d{2}-\d{2}$/;
+const dt = s => new Date(s + 'T12:00:00Z');
+const nice = (s, year) => { const d = dt(s); return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}${year ? ' ' + d.getUTCFullYear() : ''}`; };
+const url = (size, g, file) => `${PHOTOS}${size}/${g[3]}/${encodeURIComponent(file)}`;
+let all = [], at = 0, last = null;
+
+async function load() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  let from = h.get('from') || h.get('date') || '', to = h.get('to') || from;
+  const place = (h.get('place') || '').trim();
+  if (!iso.test(from) || !iso.test(to)) { $('count').textContent = 'These days could not be found. Open them from the Calendar.'; return; }
+  if (to < from) [from, to] = [to, from];
+  const days = Math.round((dt(to) - dt(from)) / 864e5) + 1;
+  $('title').textContent = place || nice(from, true);
+  $('when').textContent = from === to ? `${WD[dt(from).getUTCDay()]} ${nice(from, true)}` :
+    `${nice(from, from.slice(0, 4) !== to.slice(0, 4))} to ${nice(to, true)} · ${days} days`;
+  document.title = `${place ? place + ', ' : ''}${from === to ? nice(from, true) : nice(from) + ' to ' + nice(to, true)} · Bapa's Diary`;
+  const years = []; for (let y = +from.slice(0, 4); y <= +to.slice(0, 4); y++) years.push(y);
+  const byDay = {};
+  const lists = await Promise.all(years.map(y => fetch(`/search/data/${y}.json`).then(r => r.ok ? r.json() : null).catch(() => null)));
+  lists.forEach(data => {
+    if (!data) return;
+    data.p.forEach(([gi, file, cap, tags, bapa]) => {
+      const g = data.g[gi], a = g[0], b = g[1] || a;
+      if (b < from || a > to) return;   // an album over several days goes on its first day inside these days
+      const d = a < from ? from : a;
+      (byDay[d] = byDay[d] || []).push({ g, file, cap, d, bapa: bapa ? 1 : 0 });
+    });
+  });
+  // each day starts with the photos Bapa is in, then the rest (murtis, the hall, the mandir) in their own order
+  // (Darpan, 30 Oct 2026: "start with Bapa's photos")
+  Object.values(byDay).forEach(list => list.sort((a, b) => b.bapa - a.bapa));
+  if (from === to) await pickFirst(from, place, byDay);
+  const keys = Object.keys(byDay).sort();
+  all = keys.flatMap(k => byDay[k]);
+  if (!all.length) { $('count').textContent = 'No photos from these days yet.'; videos(from, to, []); return; }
+  $('count').textContent = `${all.length.toLocaleString()} ${all.length === 1 ? 'photo' : 'photos'}`;
+  let i = 0;
+  keys.forEach(k => {
+    const s = document.createElement('section'); s.className = 'day';
+    const places = [...new Set(byDay[k].map(p => p.g[2].split(',')[0].trim()))].join(' · ');
+    s.innerHTML = from === to ? '<h2 class="solo"></h2>' :
+      `<h2>${WD[dt(k).getUTCDay()]} ${nice(k, true)} <small>${esc(places)} · ${byDay[k].length} ${byDay[k].length === 1 ? 'photo' : 'photos'}</small></h2>`;
+    const grid = document.createElement('div'); grid.className = 'grid';
+    byDay[k].forEach(p => {
+      const n = i++, b = document.createElement('button'); b.type = 'button';
+      b.setAttribute('aria-label', p.cap || 'Darshan');
+      const im = new Image(); im.alt = ''; im.loading = p.pick ? 'eager' : 'lazy'; im.decoding = 'async';
+      // the tiny copy first (about 10 KB), the 480 px one if a new photo has none yet
+      im.onerror = () => { if (im.src.includes('/t/')) im.src = url('s', p.g, p.file); else b.remove(); };
+      im.src = url('t', p.g, p.file);
+      b.append(im); b.onclick = () => show(n);
+      if (p.pick) {   // year and place, then what happened, under the photo
+        b.classList.add('pick');
+        im.onerror = () => { im.onerror = null; im.src = url('s', p.g, p.file); };   // the sharper copy, else the 480 px one
+        im.src = url('m', p.g, p.file);
+        b.insertAdjacentHTML('beforeend', `<span class="said"><span class="yr"><b>${k.slice(0, 4)}</b>${esc(p.where || '')}</span>` +
+          (p.what ? `<span class="what">${esc(p.what)}</span>` : '') + '</span>');
+      }
+      grid.append(b);
+    });
+    s.append(grid); $('days').append(s);
+    if (keys.length <= 31) tell(k, s);
+  });
+  videos(from, to, keys);
+}
+
+// The Calendar's own photo of the day (the one its square shows, from /data/calendar.json, which the Calendar has just
+// loaded): goes first, bigger, with the year, the place and its caption. "Swamishri" is named by the photo's date.
+const guruOn = d => d < '2016-08-13' ? 'Pramukh Swami Maharaj' : 'Mahant Swami Maharaj';
+async function pickFirst(day, place, byDay) {
+  const C = await fetch('/data/calendar.json').then(r => r.ok ? r.json() : null).catch(() => null);
+  const row = C && C.m && (C.m[day.slice(0, 7)] || [])[+day.slice(8) - 1];
+  if (!row || !row[4]) return;
+  const [, , , pl, album, file, cap] = row;
+  const list = byDay[day] = byDay[day] || [];
+  let i = list.findIndex(p => String(p.g[3]) === String(album) && p.file === file);
+  const p = i >= 0 ? list.splice(i, 1)[0] : { g: [day, day, pl || place || '', album], file, cap: cap || '', d: day, bapa: 1 };
+  p.pick = 1; p.where = pl || place || p.g[2].split(',')[0].trim();
+  p.what = String(cap || p.cap || '').replace(/\bSwamishri\b/g, guruOn(day)).replace(/\.$/, '');
+  list.unshift(p);
+}
+
+// each day's Video Darshan, from /data/videos/YYYY.json (tools/web_videos.py): the day's first BAPS video on YouTube
+async function videos(from, to, keys) {
+  const link = v => `<a class="go vgo" href="https://www.youtube.com/watch?v=${encodeURIComponent(v[0])}" target="_blank" rel="noopener" title="${esc(v[1])}"><i aria-hidden="true"></i>Video Darshan</a>`;
+  const all = {};
+  for (let y = +from.slice(0, 4); y <= +to.slice(0, 4); y++)
+    Object.assign(all, await fetch(`/data/videos/${y}.json`).then(r => r.ok ? r.json() : {}).catch(() => ({})));
+  if (from === to) { if (all[from]) $('vids').innerHTML = link(all[from]); return; }
+  document.querySelectorAll('#days .day').forEach((s, i) => { const v = all[keys[i]]; if (v) s.querySelector('h2').insertAdjacentHTML('beforeend', link(v)); });
+}
+
+// The day's own On this day words, from Today's day file (/data/day/MM-DD.json): its BAPS calendar Indian date, or the
+// post's own for years before the calendar; the post's title or occasion; and its story, or the UK diary's list of the day
+const dayFiles = {};
+const said = t => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const tail = line => String(line || '').replace(/^[^:]{0,60}\bin [^:]+:\s*/, '');   // 'Pramukh Swami Maharaj in London: Dhanteras'
+async function tell(k, s) {
+  const md = k.slice(5), y = +k.slice(0, 4);
+  const D = await (dayFiles[md] = dayFiles[md] || fetch(`/data/day/${md}.json`).then(r => r.ok ? r.json() : null).catch(() => null));
+  if (!D) return;
+  const Y = (D.years || []).find(x => x.y === y) || {};
+  const stories = (D.stories || []).filter(x => x[0] === y);
+  const told = (Y.day || []).concat(stories.map(x => [x[2], (x[3] || {}).h || '', (x[3] || {}).w || [], (x[3] || {}).l || 0]));
+  const ti = ((D.cal || {})[y] || [])[0] || Y.ti || ((stories.find(x => x[3] && x[3].ti) || [])[3] || {}).ti;
+  if (ti) s.querySelector('h2').insertAdjacentHTML('beforeend', `<span class="ti">${esc(ti)}</span>`);
+  const seen = new Set();
+  told.forEach(([line, h, w, l]) => {
+    const top = h || tail(line) || line;
+    if (!top || seen.has(said(top))) return;
+    seen.add(said(top));
+    const rest = (w || []).filter(t => said(t) !== said(top) && said(t) !== said(tail(line)));
+    s.querySelector('.grid').insertAdjacentHTML('beforebegin', `<div class="tell"><p class="line"><b>On this day</b>${esc(top)}</p>` +
+      (rest.length ? (l ? `<ul>${rest.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : `<div class="paras${rest.length > 2 ? ' many' : ''}">${rest.map(t => `<p>${esc(t)}</p>`).join('')}</div>`) : '') + '</div>');
+  });
+}
+
+function show(n) {
+  if ($('big').hidden) { last = document.activeElement; $('big').hidden = false; document.body.style.overflow = 'hidden'; $('close').focus(); }
+  at = (n + all.length) % all.length;
+  const p = all[at];
+  $('stage').innerHTML = `<img alt="${esc(p.cap || 'Darshan')}" src="${url('m', p.g, p.file)}">`;
+  const img = $('stage').querySelector('img'); img.onerror = () => { img.onerror = null; img.src = url('s', p.g, p.file); };
+  $('cap').innerHTML = `<p>${esc(p.cap || 'Darshan')}</p><div>${esc(WD[dt(p.d).getUTCDay()] + ' ' + nice(p.d, true) + ' · ' + p.g[2])}</div>`;
+  $('pos').textContent = `${(at + 1).toLocaleString()} of ${all.length.toLocaleString()}`;
+  const nx = all[(at + 1) % all.length]; new Image().src = url('m', nx.g, nx.file);
+}
+function shut() { $('big').hidden = true; document.body.style.overflow = ''; last && last.focus(); }
+$('close').onclick = shut;
+$('prev').onclick = () => show(at - 1);
+$('next').onclick = () => show(at + 1);
+$('big').addEventListener('click', e => { if (e.target === $('big') || e.target === $('stage')) shut(); });
+addEventListener('keydown', e => {
+  if ($('big').hidden) { if (e.key === 'Escape' && parent !== window) parent.postMessage('daybox-close', location.origin); return; }
+  if (e.key === 'Escape') shut(); else if (e.key === 'ArrowRight') show(at + 1); else if (e.key === 'ArrowLeft') show(at - 1);
+});
+let sx = null;
+$('stage').addEventListener('touchstart', e => sx = e.touches[0].clientX, { passive: true });
+$('stage').addEventListener('touchend', e => { if (sx == null) return; const d = e.changedTouches[0].clientX - sx; sx = null; if (Math.abs(d) > 40) show(at + (d < 0 ? 1 : -1)); });
+addEventListener('hashchange', () => { if (!document.documentElement.classList.contains('inbox')) location.reload(); });
+load().catch(() => { $('count').textContent = 'The photos could not load. Please refresh the page.'; });
+</script>
+</body>
+</html>

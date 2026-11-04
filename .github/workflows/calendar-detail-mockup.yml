@@ -1,0 +1,70 @@
+# Pictures of a Calendar day box with the Calendar's own photo first and its year, place and caption under it (Darpan,
+# 4 Nov 2026), taken on the live Calendar on the runner with the new /photos/ page swapped in. Runs only on the mockup
+# branch, never deploys anything.
+name: Calendar detail mockup
+on:
+  push:
+    branches: [claude/project-thread-eawr12-mockup]
+    paths: [.github/workflows/calendar-detail-mockup.yml]
+permissions:
+  contents: write
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip -q install playwright && python3 -m playwright install --with-deps chromium >/dev/null
+      - name: Pictures
+        run: |
+          mkdir -p shots
+          python3 - <<'PY'
+          from urllib.parse import urlparse
+          from playwright.sync_api import sync_playwright
+          NEW = open('tools/mockups/calendar-detail.html', encoding='utf-8').read()
+          DAYS = ['2026-11-03', '2014-11-04', '2003-11-01']
+          log = open('shots/log.txt', 'w')
+          with sync_playwright() as p:
+              b = p.chromium.launch()
+              for w, h, dpr, tag in [(1600, 1000, 1, 'computer'), (390, 844, 2, 'phone')]:
+                  for ver in ['now', 'new']:
+                      ctx = b.new_context(viewport={'width': w, 'height': h}, device_scale_factor=dpr, is_mobile=tag == 'phone', has_touch=tag == 'phone')
+                      if ver == 'new':
+                          ctx.route(lambda u: urlparse(u).path in ('/photos/', '/photos/index.html'),
+                                    lambda r: r.fulfill(status=200, content_type='text/html; charset=utf-8', body=NEW))
+                      pg = ctx.new_page()
+                      pg.on('console', lambda m, t=tag, v=ver: log.write(f'{t} {v} console {m.type}: {m.text}\n') if m.type in ('error', 'warning') else None)
+                      pg.on('pageerror', lambda e, t=tag, v=ver: log.write(f'{t} {v} pageerror: {e}\n'))
+                      try: pg.goto('https://bapas-diary.com/calendar/', wait_until='networkidle', timeout=30000)
+                      except Exception as e: log.write(f'goto {e}\n')
+                      pg.wait_for_timeout(3000)
+                      for day in DAYS:
+                          href = pg.evaluate("""async day => { const C = await fetch('/data/calendar.json').then(r => r.json());
+                              const row = (C.m[day.slice(0, 7)] || [])[+day.slice(8) - 1] || [];
+                              return `/photos/#date=${day}${row[3] ? '&place=' + encodeURIComponent(row[3]) : ''}`; }""", day)
+                          log.write(f'{tag} {ver} {day} {href}\n')
+                          pg.evaluate("h => openDayBox(h)", href)
+                          pg.wait_for_timeout(7000)
+                          pg.screenshot(path=f'shots/{tag}-{day}-{ver}.jpg', type='jpeg', quality=86)
+                          if ver == 'new':
+                              fr = pg.frame_locator('.daybox iframe')
+                              try:
+                                  t = fr.locator('.pick').inner_text(timeout=3000)
+                                  log.write(f'   pick: {t!r}\n')
+                              except Exception as e:
+                                  log.write(f'   no pick ({e.__class__.__name__})\n')
+                          pg.keyboard.press('Escape'); pg.mouse.click(5, h // 2); pg.wait_for_timeout(800)
+                          pg.evaluate("() => { const x = document.querySelector('.daybox'); if (x) x.remove(); document.documentElement.style.overflow = '' }")
+                          pg.wait_for_timeout(500)
+                      ctx.close()
+              b.close()
+          log.close()
+          PY
+          cat shots/log.txt; ls -la shots
+      - name: Keep them
+        if: always()
+        run: |
+          gh release delete calendar-detail-mockup -y --cleanup-tag -R "$GITHUB_REPOSITORY" 2>/dev/null || true
+          gh release create calendar-detail-mockup shots/* -R "$GITHUB_REPOSITORY" --title "Calendar detail mockup pictures" --notes "Mockup pictures only, not part of the website" --target "$GITHUB_SHA"
