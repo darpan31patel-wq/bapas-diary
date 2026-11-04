@@ -93,6 +93,10 @@ function visitorsHtml(v) {
       <div><h3>Where from</h3>${(d.countries || []).length ? bars(d.countries.slice(0, 12), country) : '<p class="note">No countries yet.</p>'}</div>
       <div><h3>Most used tabs${d.tabsFrom ? ` <span style="letter-spacing:.06em;text-transform:none;font-weight:400;color:var(--mist)">(${esc(d.tabsFrom)})</span>` : ''}</h3>${(d.tabs || []).length ? bars(d.tabs, t => t) : '<p class="note">No tab counts yet.</p>'}</div>
     </div>
+    ${(d.found || []).length || (d.devices || []).length ? `<div class="cols">
+      <div><h3>How they found the site</h3>${(d.found || []).length ? bars(d.found, t => t) : '<p class="note">Nothing yet.</p>'}</div>
+      <div><h3>Phone or computer</h3>${(d.devices || []).length ? bars(d.devices, t => t) : '<p class="note">Nothing yet.</p>'}</div>
+    </div>` : ''}
     ${(d.notes || []).length ? `<p class="note" style="font-size:13px;margin-top:14px">${d.notes.map(esc).join('<br>')}</p>` : ''}`;
 }
 function feedbackHtml(f) {
