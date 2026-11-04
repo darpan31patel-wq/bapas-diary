@@ -204,6 +204,10 @@ def tg(a):
     folder = {(ch, i): f for ch, i, f in db.execute('SELECT channel, id, local_folder FROM tg_posts')}
     cards, seen, tried = {}, 0, 0
     known = known_places(db)
+    # the days whose 2pm picture took a channel photo for that year: those photos are kept even when Bapa's face is not
+    # recognised in them (Darpan, 4 Nov 2026: every year in the picture on Today too; 4 Nov 1997 Waterloo Station)
+    picked = {f'{y}-{d[5:]}' for d, y, u in db.execute('SELECT date, year, photo_url FROM diary')
+              if u and '/GalleryImages/' not in u}
     for os_dir in ('s/' + EARLY, 'm/' + EARLY):
         os.makedirs(os.path.join(a.out, os_dir), exist_ok=True)
     for ch, date, place, posts, data, guru in db.execute(
@@ -232,7 +236,9 @@ def tg(a):
                 im = trim_bars(im)
                 face, sim, front, _, other = R.bapa_face(im, date)
                 if not face or sim < TG_SAME_PERSON:
-                    continue
+                    if date not in picked:
+                        continue
+                    face = None   # the picture's own: kept, framed from the middle (a 7 long box: no face)
                 # a plain number for the public photo name: no channel or source name anywhere on the site
                 src = f'{ch}-{n}-{re.sub(r"[^0-9]", "", os.path.basename(path)) or 1}'
                 key = hashlib.sha1(src.encode()).hexdigest()[:12] + '.jpg'
@@ -240,15 +246,19 @@ def tg(a):
                     c = im.copy()
                     c.thumbnail((size, size * 2), Image.LANCZOS)
                     c.save(os.path.join(a.out, tier, EARLY, key), 'JPEG', quality=86, optimize=True, progressive=True)
-                x, yy, w, h = face
                 W, H = im.size
-                sharp, bright = R.face_quality(im, face)
-                close = h >= R.CLOSE_MIN_FACE and front >= .35 and sharp >= R.SHARP_MIN and bright >= R.BRIGHT_MIN
+                if face:
+                    x, yy, w, h = face
+                    sharp, bright = R.face_quality(im, face)
+                    close = h >= R.CLOSE_MIN_FACE and front >= .35 and sharp >= R.SHARP_MIN and bright >= R.BRIGHT_MIN
+                    box = [round((x + w / 2) / W, 3), round((yy + h / 2) / H, 3), round(x / W, 4), round(yy / H, 4), round(w / W, 4),
+                           round(h / H, 4), round(W / H, 4), int(close)]
+                else:
+                    box = [.5, .4, 0, 0, 0, 0, round(W / H, 4)]
                 cap = website_caption(own.get('card') or e['card'])
                 cards.setdefault(date[5:], []).append(
                     [y, caption_place(cap, known) or card_place(own.get('place'), e.get('place') or place, known), EARLY, key, cap,
-                     [round((x + w / 2) / W, 3), round((yy + h / 2) / H, 3), round(x / W, 4), round(yy / H, 4), round(w / W, 4),
-                      round(h / H, 4), round(W / H, 4), int(close)], round(sim, 3), card_caption(cap)])
+                     box, round(sim or 0, 3), card_caption(cap)])
                 seen += 1
     with open(os.path.join(a.out, 'tg-cards.json'), 'w', encoding='utf-8') as fh:
         json.dump(cards, fh, ensure_ascii=False, separators=(',', ':'))
@@ -443,7 +453,7 @@ def day(a):
             place = PLACE_ALIAS.get(place, place)   # 'Alexandra Park' is London
             # from 1999 on, as sure of Bapa's face as for baps.org's photos, and his face big enough to see (a tenth of
             # the photo's height at least), never a tiny far figure (Darpan, 26 Oct 2026: "i only want bapa")
-            if y >= BAPS_FROM and (sim < R.SAME_PERSON or box[5] < TG_FACE_MIN):
+            if y >= BAPS_FROM and len(box) > 7 and (sim < R.SAME_PERSON or box[5] < TG_FACE_MIN):
                 continue
             # a 3:4 channel post is the channel's own frame (its name above, the date below) that unframe() didn't take
             # off: never shown, the site never names its sources (Darpan, 23 Oct 2026)
