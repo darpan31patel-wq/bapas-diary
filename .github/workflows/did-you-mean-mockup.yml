@@ -1,0 +1,25 @@
+# Mockup only, never deploys: pictures of "Did you mean" on the live Search page with this branch's change swapped in on
+# the runner (tools/mockups/did-you-mean.py), kept in release did-you-mean-mockup. Website only, nothing in the 2pm chain.
+name: Did you mean mockup
+on:
+  push:
+    branches: [claude/project-thread-mhwbgq]
+    paths: [.github/workflows/did-you-mean-mockup.yml, tools/mockups/did-you-mean.py]
+permissions:
+  contents: write
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip -q install playwright && python3 -m playwright install --with-deps chromium >/dev/null
+      - name: Pictures
+        run: python3 tools/mockups/did-you-mean.py; cat shots/log.txt; ls -la shots
+      - name: Keep them
+        if: always()
+        run: |
+          gh release delete did-you-mean-mockup -y --cleanup-tag -R "$GITHUB_REPOSITORY" 2>/dev/null || true
+          gh release create did-you-mean-mockup shots/* -R "$GITHUB_REPOSITORY" --prerelease --title "Did you mean mockup pictures" --notes "Mockup pictures only, not part of the website" --target "$GITHUB_SHA"
