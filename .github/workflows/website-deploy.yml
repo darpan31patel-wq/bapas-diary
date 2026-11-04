@@ -124,6 +124,7 @@ jobs:
           # Darpan's private Studio at /darpan/ (Darpan, 4 Nov 2026): copied in after every other step, so it is never in the
           # site map, never gets the menu, and keeps its own look. functions/darpan/_middleware.js asks for the password.
           mkdir -p out/darpan && cp site/darpan/index.html out/darpan/index.html
+          mkdir -p out/darpan/visitors && cp site/darpan/visitors/index.html out/darpan/visitors/index.html   # visitors dashboard (Darpan, 4 Nov 2026)
           du -sh out/*
           if grep -rli 'telegram\|t\.me/' out --include='*.html'; then echo 'Telegram found: not deploying'; exit 1; fi   # never on the public site
       - name: Deploy to Pages
@@ -131,6 +132,7 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           MISSED_KEY: ${{ secrets.MISSED_KEY }}
           STUDIO_PASSWORD: ${{ secrets.STUDIO_PASSWORD }}
+          CF_ANALYTICS_TOKEN: ${{ secrets.CF_ANALYTICS_TOKEN }}
         run: |
           # the email sign up (/api/weekly, functions/ next to out/) needs the Resend key as a Pages secret (Darpan: ALL GOOD, 26 Oct)
           if [ -n "$RESEND_API_KEY" ]; then printf %s "$RESEND_API_KEY" | npx --yes wrangler@3.114.0 pages secret put RESEND_API_KEY --project-name "$PROJECT" > /dev/null && echo "Resend key: set"; fi
@@ -156,6 +158,13 @@ jobs:
           if [ -n "$MISSED_KEY" ]; then printf %s "$MISSED_KEY" | npx --yes wrangler@3.114.0 pages secret put MISSED_KEY --project-name "$PROJECT" > /dev/null && echo "missed searches word: set"; else echo "missed searches word: add a GitHub secret MISSED_KEY (any word) to read them at /missed/"; fi
           # the password for the private Studio at /darpan/ (Darpan, 4 Nov 2026); with none set the page stays shut
           if [ -n "$STUDIO_PASSWORD" ]; then printf %s "$STUDIO_PASSWORD" | npx --yes wrangler@3.114.0 pages secret put STUDIO_PASSWORD --project-name "$PROJECT" > /dev/null && echo "Studio password: set"; else echo "Studio password: add a GitHub secret STUDIO_PASSWORD to open /darpan/"; fi
+          # the visitors dashboard at /darpan/visitors/ (Darpan, 4 Nov 2026) reads Cloudflare's analytics with its own read only key
+          if [ -n "$CF_ANALYTICS_TOKEN" ]; then
+            ZID=$(api "https://api.cloudflare.com/client/v4/zones?name=$DOMAIN" | jq -r '.result[0].id // empty'); [ -n "$ZID" ] && echo "::add-mask::$ZID"
+            printf %s "$CF_ANALYTICS_TOKEN" | npx --yes wrangler@3.114.0 pages secret put CF_ANALYTICS_TOKEN --project-name "$PROJECT" > /dev/null && echo "visitors key: set"
+            printf %s "$CLOUDFLARE_ACCOUNT_ID" | npx --yes wrangler@3.114.0 pages secret put CF_ACCOUNT_ID --project-name "$PROJECT" > /dev/null && echo "visitors account: set"
+            if [ -n "$ZID" ]; then printf %s "$ZID" | npx --yes wrangler@3.114.0 pages secret put CF_ZONE_ID --project-name "$PROJECT" > /dev/null && echo "visitors site: set"; else echo "visitors site: could not find the zone (daily visitors will be missing)"; fi
+          else echo "visitors key: add a GitHub secret CF_ANALYTICS_TOKEN to fill /darpan/visitors/"; fi
           npx --yes wrangler@3.114.0 pages deploy out --project-name "$PROJECT" --branch main --commit-dirty=true
       - name: bapas-diary.com and www point at the site
         run: |
