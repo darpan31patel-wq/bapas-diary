@@ -513,7 +513,8 @@ function drawPolaroid(ctx, x, left, top, PW, PH, B, BB, o) {
   }
   ctx.strokeStyle = 'rgba(120,96,70,.6)'; ctx.lineWidth = 1; ctx.strokeRect(left + B, top + B, PW, PH);
   if (o.festTags && x.fest) {
-    ctx.font = `700 ${PW * .07}px ${SERIF}`; const tw = ctx.measureText(x.fest).width, h = PW * .07 * 1.35, pad = PW * .03;
+    let fz = PW * .1; ctx.font = `700 ${fz}px ${SERIF}`; while (ctx.measureText(x.fest).width > PW * .85 && fz > PW * .05) { fz -= 1; ctx.font = `700 ${fz}px ${SERIF}`; }
+    const tw = ctx.measureText(x.fest).width, h = fz * 1.35, pad = PW * .03;
     const bx = left + B + PW * .03, by = top + B + PW * .03;
     ctx.beginPath(); ctx.roundRect(bx, by, tw + 2 * pad, h, h / 2); ctx.fillStyle = 'rgb(236,192,104)'; ctx.fill(); ctx.strokeStyle = 'rgb(150,100,40)'; ctx.lineWidth = 1; ctx.stroke();
     ctx.fillStyle = MAROON; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(x.fest, bx + pad + tw / 2, by + h / 2 + 1); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
