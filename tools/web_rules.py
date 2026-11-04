@@ -27,6 +27,7 @@ import argparse, collections, datetime, glob, gzip, hashlib, io, json, os, re, s
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import web_bapa_rules as R
 from web_places import not_a_town, town_of
+from web_day import TRIP_DAYS
 
 HERE = R.HERE
 CARD_CHARS = 40   # a Today card's caption fits two lines in about this many letters (cards are 150 to 200 px wide)
@@ -203,6 +204,10 @@ def tg(a):
     folder = {(ch, i): f for ch, i, f in db.execute('SELECT channel, id, local_folder FROM tg_posts')}
     cards, seen, tried = {}, 0, 0
     known = known_places(db)
+    # the days whose 2pm picture took a channel photo for that year: those photos are kept even when Bapa's face is not
+    # recognised in them (Darpan, 4 Nov 2026: every year in the picture on Today too; 4 Nov 1997 Waterloo Station)
+    picked = {f'{y}-{d[5:]}' for d, y, u in db.execute('SELECT date, year, photo_url FROM diary')
+              if u and '/GalleryImages/' not in u}
     for os_dir in ('s/' + EARLY, 'm/' + EARLY):
         os.makedirs(os.path.join(a.out, os_dir), exist_ok=True)
     for ch, date, place, posts, data, guru in db.execute(
@@ -231,7 +236,9 @@ def tg(a):
                 im = trim_bars(im)
                 face, sim, front, _, other = R.bapa_face(im, date)
                 if not face or sim < TG_SAME_PERSON:
-                    continue
+                    if date not in picked:
+                        continue
+                    face = None   # the picture's own: kept, framed from the middle (a 7 long box: no face)
                 # a plain number for the public photo name: no channel or source name anywhere on the site
                 src = f'{ch}-{n}-{re.sub(r"[^0-9]", "", os.path.basename(path)) or 1}'
                 key = hashlib.sha1(src.encode()).hexdigest()[:12] + '.jpg'
@@ -239,15 +246,19 @@ def tg(a):
                     c = im.copy()
                     c.thumbnail((size, size * 2), Image.LANCZOS)
                     c.save(os.path.join(a.out, tier, EARLY, key), 'JPEG', quality=86, optimize=True, progressive=True)
-                x, yy, w, h = face
                 W, H = im.size
-                sharp, bright = R.face_quality(im, face)
-                close = h >= R.CLOSE_MIN_FACE and front >= .35 and sharp >= R.SHARP_MIN and bright >= R.BRIGHT_MIN
+                if face:
+                    x, yy, w, h = face
+                    sharp, bright = R.face_quality(im, face)
+                    close = h >= R.CLOSE_MIN_FACE and front >= .35 and sharp >= R.SHARP_MIN and bright >= R.BRIGHT_MIN
+                    box = [round((x + w / 2) / W, 3), round((yy + h / 2) / H, 3), round(x / W, 4), round(yy / H, 4), round(w / W, 4),
+                           round(h / H, 4), round(W / H, 4), int(close)]
+                else:
+                    box = [.5, .4, 0, 0, 0, 0, round(W / H, 4)]
                 cap = website_caption(own.get('card') or e['card'])
                 cards.setdefault(date[5:], []).append(
                     [y, caption_place(cap, known) or card_place(own.get('place'), e.get('place') or place, known), EARLY, key, cap,
-                     [round((x + w / 2) / W, 3), round((yy + h / 2) / H, 3), round(x / W, 4), round(yy / H, 4), round(w / W, 4),
-                      round(h / H, 4), round(W / H, 4), int(close)], round(sim, 3), card_caption(cap)])
+                     box, round(sim or 0, 3), card_caption(cap)])
                 seen += 1
     with open(os.path.join(a.out, 'tg-cards.json'), 'w', encoding='utf-8') as fh:
         json.dump(cards, fh, ensure_ascii=False, separators=(',', ':'))
@@ -350,6 +361,27 @@ def day(a):
     for y, date, place, al, fi, cap, bapa in db.execute(
             'SELECT year, date, place, album, file, caption, is_bapa FROM photos WHERE date IS NOT NULL'):
         dated.setdefault((y, date), []).append([al, fi, cap or '', bapa, place])
+    # ... and albums filed under a range of days ('1 to 3 November 2002'), each photo on the day of the range it shows on
+    # (tools/web_day.py's share of the trip), so a nearby day can come from them too (Darpan, 4 Nov 2026: "photos with one
+    # exact date, never from albums filed under a range of days, ignore this from now")
+    trips = {}
+    for y, d0, d1, place, al, fi, cap, bapa in db.execute(
+            'SELECT year, date_from, date_to, place, album, file, caption, is_bapa FROM photos '
+            'WHERE date IS NULL AND date_from IS NOT NULL ORDER BY date_from, album, file'):
+        trips.setdefault((y, d0, d1), []).append([al, fi, cap or '', bapa, place])
+    for (y, d0, d1), rows in trips.items():
+        try:
+            t0, t1 = datetime.date.fromisoformat(d0), datetime.date.fromisoformat(d1 or d0)
+        except ValueError:
+            continue
+        days = (t1 - t0).days + 1
+        if days < 1 or days > TRIP_DAYS + 1:   # a longer trip shows only on its first day, as on Today
+            dated.setdefault((y, t0.isoformat()), []).extend(rows)
+            continue
+        for k in range(days):
+            share = rows[k * len(rows) // days:(k + 1) * len(rows) // days]
+            if share:
+                dated.setdefault((y, (t0 + datetime.timedelta(days=k)).isoformat()), []).extend(share)
     tgc = json.load(open(a.tg, encoding='utf-8')) if a.tg and os.path.exists(a.tg) else {}
     known = known_places(db)
     stats = dict(trip_dropped=0, near_added=0, stories_dropped=0, tg_years=0, framed=0, other_town=0)
@@ -391,6 +423,22 @@ def day(a):
                                     'trip': [d.isoformat(), d.isoformat()], 't': [r[:4] for r in rows]}
                         have.add(y)
                         stats['near_added'] += 1
+        # 8: every year the 2pm picture showed on this day shows here too, with the photo it chose (Darpan, 4 Nov 2026:
+        # "On any day the picture has already made, Today makes sure every year in the picture appears too. yes").
+        # Its baps.org photos only: a channel photo needs its copy on R2 first (the tg job).
+        chose = {y: url for y, url in db.execute(
+            'SELECT year, photo_url FROM diary WHERE substr(date, 6) = ? ORDER BY date', (mmdd,))}
+        for y, url in sorted(chose.items()):
+            if y in years and (years[y]['p'] or years[y].get('t')) or '/GalleryImages/' not in (url or ''):
+                continue
+            al, fi = url.split('/GalleryImages/')[-1].split('/')[0], url.rsplit('/', 1)[-1]
+            row = db.execute('SELECT place, caption, is_bapa, COALESCE(date, date_from) FROM photos WHERE album = ? AND file = ?',
+                             (al, fi)).fetchone()
+            if not row or not row[3]:
+                continue
+            place, cap, bapa, d = row
+            years[y] = {'y': y, 'place': town_of(place), 'p': [], 'trip': [d, d], 't': [[al, fi, cap or '', bapa]]}
+            stats['picture_years'] = stats.get('picture_years', 0) + 1
         shown_tg = set()
         # the post's own place for each year, tidied, for a card whose photo gave none worth showing
         for s in D['stories']:
@@ -398,14 +446,22 @@ def day(a):
         said = {s[0]: s[1] for s in D['stories'] if s[1]}
         # 5: the channels' darshan of Bapa on this very day (every year since 26 Oct 2026, as the 2pm picture)
         todo = []
+        # a photo kept only because the 2pm picture used that day (Bapa not recognised, a 7 long box) shows only when the
+        # year has nothing else, and only one of them: never a room or a crowd in front of a year that has his darshan
+        sure = {x[0] for x in tgc.get(mmdd, []) if len(x[5]) > 7} | {y for y, Y in years.items() if Y['p'] or Y.get('t')}
+        loose = set()
         for y, place, al, key, cap, box, sim, short in tgc.get(mmdd, []):
+            if len(box) <= 7:
+                if y in sure or y in loose:
+                    continue
+                loose.add(y)
             # where the caption says he is, else the place read off the photo: 'Morning puja —.London' is London (Darpan,
             # 28 Oct 2026), 'Viday from Neasden Mandir' is London, not the Nairobi he flew to that night (29 Oct 2026)
             place = caption_place(cap, known) or tidy_place(place, known) or said.get(y, '')
             place = PLACE_ALIAS.get(place, place)   # 'Alexandra Park' is London
             # from 1999 on, as sure of Bapa's face as for baps.org's photos, and his face big enough to see (a tenth of
             # the photo's height at least), never a tiny far figure (Darpan, 26 Oct 2026: "i only want bapa")
-            if y >= BAPS_FROM and (sim < R.SAME_PERSON or box[5] < TG_FACE_MIN):
+            if y >= BAPS_FROM and len(box) > 7 and (sim < R.SAME_PERSON or box[5] < TG_FACE_MIN):
                 continue
             # a 3:4 channel post is the channel's own frame (its name above, the date below) that unframe() didn't take
             # off: never shown, the site never names its sources (Darpan, 23 Oct 2026)
