@@ -138,9 +138,13 @@ jobs:
           # when the token allows it, else a one line note says what to do by hand. Never stops the deploy.
           api() { curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' "$@"; }
           KV=https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces
+          # Darpan made the store and the MISSED binding by hand on 4 Nov 2026, so first look at the project's own bindings
+          HAVE=$(api "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJECT" | jq -r '.result.deployment_configs.production.kv_namespaces.MISSED.namespace_id // empty')
           NS=$(api "$KV?per_page=100" | jq -r '.result[]? | select(.title=="missed-searches") | .id' | head -1)
-          [ -n "$NS" ] || NS=$(api -X POST "$KV" -d '{"title":"missed-searches"}' | jq -r '.result.id // empty')
-          if [ -n "$NS" ]; then
+          [ -n "$NS" ] || [ -n "$HAVE" ] || NS=$(api -X POST "$KV" -d '{"title":"missed-searches"}' | jq -r '.result.id // empty')
+          if [ -n "$HAVE" ]; then
+            echo "missed searches store: already bound as MISSED (by hand)"
+          elif [ -n "$NS" ]; then
             ok=$(api -X PATCH "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJECT" \
               -d "{\"deployment_configs\":{\"production\":{\"kv_namespaces\":{\"MISSED\":{\"namespace_id\":\"$NS\"}}},\"preview\":{\"kv_namespaces\":{\"MISSED\":{\"namespace_id\":\"$NS\"}}}}}" | jq -r .success)
             echo "missed searches store: bound as MISSED ($ok)"
