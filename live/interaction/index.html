@@ -120,7 +120,7 @@ function missedHtml(m) {
 function spellHtml(sp) {
   if (!sp.ok) return '<p class="note">Could not read the spellings just now.</p>';
   const all = sp.j.all || [], at = sp.j.learnAt || 2;
-  const row = ([q, fix, n, day]) => `<li class="w"><span>${esc(q)} <span class="to">now finds</span> <b>${esc(fix)}</b></span><span>${n === 1 ? 'once' : n + ' times'} · <a href="#" class="forget" data-q="${esc(q)}">Forget</a></span></li>`;
+  const row = ([q, fix, n, day]) => `<li class="w"><span>${esc(q)} <span class="to">${n >= at ? 'now finds' : 'will find'}</span> <b>${esc(fix)}</b></span><span>${n === 1 ? 'once' : n + ' times'} · <a href="#" class="forget" data-q="${esc(q)}">Forget</a></span></li>`;
   const learned = all.filter(x => x[2] >= at), waiting = all.filter(x => x[2] < at);
   return all.length ? (learned.length ? `<h3>Learned</h3><ul>${learned.map(row).join('')}</ul>` : '')
     + (waiting.length ? `<h3>Tapped once, learned the next time</h3><ul>${waiting.map(row).join('')}</ul>` : '')

@@ -91,7 +91,7 @@ select, input[type=date], .clear { font: 700 12px var(--sans); letter-spacing: .
 #count .latest-v { flex-basis: 100%; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 12px; margin: -2px 0 6px; font: italic 500 15px var(--serif); color: var(--muted); }
 #count .latest-v:empty { display: none; }
 /* Did you mean (Darpan, 4 Nov 2026): a plain underlined word in the line, not a button */
-#count .dym { font-style: italic; }
+#count .dym { font-style: italic; white-space: nowrap; }   /* kept on one line: never a word alone below */
 #count .dym a { color: var(--maroon); font-weight: 600; font-style: normal; text-decoration: underline; text-decoration-color: var(--gold-deep); text-underline-offset: 3px; }
 #count .dym a:hover, #count .dym a:focus-visible { color: var(--gold-deep); }
 #count .go { display: inline-block; padding: 6px 13px; border: 1px solid var(--gold-deep); border-radius: 999px; color: var(--gold-deep); background: var(--paper-hi); font: 600 11.5px/1.2 var(--sans); font-style: normal; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; white-space: nowrap; }
