@@ -446,7 +446,15 @@ def day(a):
         said = {s[0]: s[1] for s in D['stories'] if s[1]}
         # 5: the channels' darshan of Bapa on this very day (every year since 26 Oct 2026, as the 2pm picture)
         todo = []
+        # a photo kept only because the 2pm picture used that day (Bapa not recognised, a 7 long box) shows only when the
+        # year has nothing else, and only one of them: never a room or a crowd in front of a year that has his darshan
+        sure = {x[0] for x in tgc.get(mmdd, []) if len(x[5]) > 7} | {y for y, Y in years.items() if Y['p'] or Y.get('t')}
+        loose = set()
         for y, place, al, key, cap, box, sim, short in tgc.get(mmdd, []):
+            if len(box) <= 7:
+                if y in sure or y in loose:
+                    continue
+                loose.add(y)
             # where the caption says he is, else the place read off the photo: 'Morning puja —.London' is London (Darpan,
             # 28 Oct 2026), 'Viday from Neasden Mandir' is London, not the Nairobi he flew to that night (29 Oct 2026)
             place = caption_place(cap, known) or tidy_place(place, known) or said.get(y, '')
