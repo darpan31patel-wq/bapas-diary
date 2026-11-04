@@ -11,6 +11,9 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 12 * * *'    # a daily nudge in case a round's hand-on to the next ever fails
+  workflow_run:             # and straight after the database is rebuilt (the evening photo routine), so the new photos
+    workflows: ['Offline database']   # reach Drive and the website the same night (Darpan, 4 Nov 2026: "yes to all", same night photos)
+    types: [completed]
 
 permissions:
   contents: write   # check.txt is also kept in the release `database`, so Claude can read the numbers
@@ -24,6 +27,9 @@ env:
 
 jobs:
   setup:
+    # after a database rebuild only when someone (the evening photo routine) asked for it, never after the Sunday 2am rebuild,
+    # so the Drive copying never runs into the 2pm picture's morning (04:30 to 07:30 UTC)
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.event == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -108,7 +114,7 @@ jobs:
 
   next:
     needs: [setup, download]
-    if: always() && needs.setup.result != 'failure'
+    if: always() && needs.setup.result != 'failure' && needs.setup.result != 'skipped'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:

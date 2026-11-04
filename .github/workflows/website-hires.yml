@@ -10,6 +10,9 @@ on:
     - cron: '40 8,14,20 * * *'   # 08:40, 14:40, 20:40 UTC; one run at a time, each up to about 5.5 hours
     - cron: '40 1 * * *'         # 01:40 UTC; stops itself at 04:30
   workflow_dispatch:
+  workflow_run:   # as soon as a Drive round ends, so the evening's new photos are on the website the same night (Darpan, 4 Nov 2026)
+    workflows: ['Download to Drive']
+    types: [completed]
 permissions:
   contents: read
 concurrency:
