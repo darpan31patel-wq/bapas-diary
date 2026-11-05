@@ -2268,7 +2268,7 @@ def food_corners(img):
 
 def dressed_card(draw, make_card):
     """The usual wide card, then its band redrawn: the festival's little picture at each foot corner (when it has one),
-    year and town between, the town smaller than on the daily picture (Darpan, 4 Nov 2026)."""
+    year and town between, the town bigger than on the daily picture so it reads on a small card."""
     def go(self, x, num=None):
         card = make_card(self, x, num)
         B, PW, PH, BB, CW, CH = self.B, self.PW, self.PH, self.BB, self.CW, self.CH
@@ -2283,7 +2283,7 @@ def dressed_card(draw, make_card):
             card.alpha_composite(pic, (round(B * .6), y)); card.alpha_composite(pic, (CW - s - round(B * .6), y))
         yf, yt = garamond(min(PW * .15, BB * .62), 700), str(x['y'])
         pl = place(x).upper()
-        pf, track = arimo_bold(min(PW * .045, BB * .19)), PW * .012
+        pf, track = arimo_bold(min(PW * .075, BB * .3)), PW * .012   # bigger than on the daily picture: these cards are small (Darpan, 5 Nov 2026: 'location names are too small')
         room = CW - 2 * (s + B) - (d.textlength(yt, font=yf) + PW * .035)
         while pf.size > 8 and spaced(d, pl, pf, track) > room:
             pf = arimo_bold(pf.size - 1)
