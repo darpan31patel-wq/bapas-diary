@@ -35,6 +35,23 @@ FESTS = {
         words=re.compile(r'annakut|thal\b|thaal|prasad|sweets|food|fruit|mithai|dishes|offer(s|ed|ing)? (the )?(annakut|thal)', re.I),
         tags={'annakut', 'food', 'sweets', 'thal', 'fruit', 'dry fruits', 'vegetables', 'serving food', 'eating'}, strong={'annakut', 'sweets', 'thal'},
         keep_all=False),  # "everything surrounding food": a year with food photos shows only those
+    # the other Diwali days (Darpan, 5 Nov 2026: "Yes to all 1-4", Dhanteras, Kali Chaudas and Bhai Bij get their own
+    # festival card too): every photo of the day stays, the ones that show or say the day first
+    'dhanteras': dict(title='Dhanteras', old='Dhan Teras (Lakshmi Pujan)', ti='Aso Vad Teras',
+        cal=re.compile(r'dhan ?teras|dhan ?trayodashi|lakshmi pujan', re.I),
+        words=re.compile(r'dhan ?teras|dhan ?trayodashi|lakshmi|laxmi|pujan|puja|coins?|diya|lamps?|rangoli', re.I),
+        own=re.compile(r'dhan ?teras|dhan ?trayodashi|lakshmi ?pujan', re.I),
+        tags={'puja', 'diya', 'lights', 'arti', 'rangoli', 'flowers'}, strong={'diya', 'rangoli'}),
+    'kalichaudas': dict(title='Kali Chaudas', old='Kali Chaudash', ti='Aso Vad Chaudas',
+        cal=re.compile(r'kali ?ch?au?dash?', re.I),
+        words=re.compile(r'kali ?ch?au?dash?|hanuman|hanumanji|pujan|puja|arti|aarti', re.I),
+        own=re.compile(r'kali ?ch?au?dash?|hanuman', re.I),
+        tags={'puja', 'arti', 'murti', 'diya', 'lights'}, strong={'diya'}),
+    'bhaibij': dict(title='Bhai Bij', old='Bhai Beej', ti='Kartak Sud Bij',
+        cal=re.compile(r'bhai ?b(ee|i)j', re.I),
+        words=re.compile(r'bhai ?b(ee|i)j|blessings?|ashirwad|sweets?|thal', re.I),
+        own=re.compile(r'bhai ?b(ee|i)j', re.I),
+        tags={'sweets', 'thal', 'garland', 'flowers'}, strong={'sweets', 'thal'}),
     # the other festivals (Darpan, 30 Oct 2026: "I want to do that for all the festivals"): every photo of the day stays,
     # the ones that show or say the festival first
     'janmashtami': dict(title='Janmashtami', old='Janmashtami', ti='Shravan Vad Atham', cal=re.compile(r'janmashtami', re.I),
@@ -138,6 +155,9 @@ def build(a):
                 ps = Y.get(part) or []
                 rated = [festive(p, F, tags) for p in ps]
                 if part == 't':   # a trip's or a nearby day's photos: only those whose captions say this festival
+                    own = F.get('own')   # (the Diwali days next to each other: only the day's own name, so a nearby
+                    if own:              # Diwali or New Year photo never stands for Dhanteras or Bhai Bij)
+                        rated = [(r[0], r[1] and bool(own.search(p[2] or ''))) for p, r in zip(ps, rated)]
                     ps, rated = [p for p, r in zip(ps, rated) if r[1]], [r for r in rated if r[1]]
                 score = [r[0] for r in rated]
                 order = sorted(range(len(ps)), key=lambda i: -score[i])   # stable: the best darshan first within each

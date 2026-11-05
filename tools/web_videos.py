@@ -27,6 +27,7 @@ FEST_WORDS = {
     'janmashtami': r'janmashtami', 'holi': r'\bholi\b', 'fuldol': r'fuldol|pushpadol|dhuleti',
     'gurupurnima': r'guru ?purnima', 'harinom': r'hari ?n(o|av)m|swaminarayan jayanti|ram ?navmi',
     'vasant': r'vasant', 'rathyatra': r'rath ?yatra', 'raksha': r'raksha', 'sharad': r'sharad|punam',
+    'dhanteras': r'dhan ?teras|dhan ?trayodashi|lakshmi ?pujan', 'kalichaudas': r'kali ?ch?au?dash?|hanuman', 'bhaibij': r'bhai ?b(ee|i)j',
     'psm': r'pramukh swami maharaj.{0,30}(birth|janma|jayanti)', 'msm': r'mahant swami maharaj.{0,30}(birth|janma|jayanti)',
 }
 
