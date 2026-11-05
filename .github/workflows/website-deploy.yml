@@ -67,7 +67,7 @@ jobs:
           python3 tools/web_day.py --db bapa.db --site day --photos-url https://photos.bapas-diary.com/ --search-url /search/ > /dev/null
           python3 tools/web_faces.py order --db bapa.db --day day/data/day   # each year opens on its best darshan, centred on his face
           # the picture's rules: whole head framed, nearby days only for an empty date, darshan before 1999, no story twice
-          # (4 Nov 2026, Today years, Darpan "yes push") the list made by the new tg code, tg-cards-xes1hy.json (2,743 darshans, with the
+          # (4 Nov 2026, Today years, Darpan "yes push"; Did you mean on Search went out 5 Nov) the list made by the new tg code, tg-cards-xes1hy.json (2,743 darshans, with the
           # ones the 2pm picture used), is the one Today uses; the older tg-cards.json stays in the release untouched as the fallback
           gh release download website-rules -p tg-cards-xes1hy.json -O tg-cards.json || gh release download website-rules -p tg-cards.json || echo '{}' > tg-cards.json
           python3 tools/web_rules.py day --day day/data/day --db bapa.db --faces faces --tg tg-cards.json
