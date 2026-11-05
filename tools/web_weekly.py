@@ -22,6 +22,14 @@ Today. The videos come from the website's own list (bapas-diary.com/data/videos/
 on the website branch); the year of a photo shown that day goes first, otherwise the most recent year with a video.
 If the list cannot be read, the email simply goes without the link.
 
+Diwali and the New Year (Darpan, 5 Nov 2026: "Yes to all 1-4", a Diwali darshan email): on the day the BAPS calendar
+names Diwali, the morning email adds "Bapa's Diwali through the years" under the picture, two Diwalis of Pramukh
+Swami Maharaj and two of Mahant Swami Maharaj, always both, with the gold Video Darshan of a Chopda Pujan of each; on
+Annakut and the New Year it adds "Annakut through the years", Bapa at the annakut, with the New Year ashirwad videos.
+They come from the website's own Diwali days list (bapas-diary.com/data/fest/season.json, tools/web_diwali.py on the
+website branch), so they are the same photos Today shows, Bapa in person only. If the list cannot be read, the email
+simply goes as on any other day.
+
 The email's pictures are cut to 4:3 and saved to weekly/e/WEEK/ for R2 (the workflow uploads them), so every email
 app shows them the same size. weekly/email.html is the email; weekly/week.json says what was picked.
 """
@@ -329,7 +337,90 @@ Reply to this email to write to us. <a href="{{{{{{RESEND_UNSUBSCRIBE_URL}}}}}}"
 </table></td></tr></table></body></html>'''
 
 
-def render_picture(day, cal, pic, full, special=None, video=None):
+SEASON = {'diwali': re.compile(r'^diwali$', re.I), 'newyear': re.compile(r'annakut|bestu|nutan varsh|^new year$', re.I)}
+
+
+def season_of(festivals):
+    """'diwali' or 'newyear' when the BAPS calendar names that day, else None."""
+    parts = [x.strip() for x in re.split(r'[;,/]| and ', festivals or '') if x.strip()]
+    return next((k for k, re_ in SEASON.items() if any(re_.search(x) for x in parts)), None)
+
+
+def season_list(local=None):
+    """The website's Diwali days list (tools/web_diwali.py), or {} when it cannot be read: the email still goes."""
+    try:
+        if local:
+            return json.load(open(local, encoding='utf-8'))
+        with urllib.request.urlopen(urllib.request.Request(f'{SITE}data/fest/season.json', headers={'User-Agent': UA}), timeout=30) as r:
+            return json.loads(r.read())
+    except Exception as e:
+        print(f'Diwali days list not read: {e}', flush=True)
+        return {}
+
+
+def both_gurus(rows, n=2):
+    """n of Pramukh Swami Maharaj's years and n of Mahant Swami Maharaj's, the most recent of each, oldest first."""
+    psm = [r for r in rows if (r.get('d') or str(r['y'])) <= PSM_LAST]
+    msm = [r for r in rows if (r.get('d') or str(r['y'])) >= MSM_FIRST]
+    if not psm or not msm:   # always both Bapas together, or not at all
+        return []
+    return sorted(psm[-n:] + msm[-n:], key=lambda r: r['y'])
+
+
+def festival_part(kind, J, out, name, no_photos=False):
+    """The Diwali or New Year part of the morning email: (html, number of photos)."""
+    if kind == 'diwali':
+        rows = both_gurus([dict(r, p=r['p'][0]) for r in J.get('diwali', []) if r.get('p')])
+        vids = J.get('chopda', [])
+        head, line = "Bapa's Diwali through the years", 'Pramukh Swami Maharaj and Mahant Swami Maharaj on Diwali, each year on its own Indian date. Happy Diwali 🪔'
+    else:
+        rows = both_gurus(J.get('annyears', []))
+        vids = J.get('ashirwad', [])
+        head, line = 'Annakut through the years', 'Bapa at the Annakut, each year on its own Indian date, and his New Year ashirwad. Nutan Varshabhinandan 🙏🏽'
+    if not rows:
+        return '', 0
+    cells = []
+    for i, r in enumerate(rows):
+        a, f, cap = r['p'][0], r['p'][1], r['p'][2] if len(r['p']) > 2 else ''
+        if no_photos:
+            src = PHOTOS + urllib.request.quote(f'm/{a}/{f}')
+        else:
+            pic = f'{name}-{kind}-{i}.jpg'
+            if len(r['p']) > 4 and isinstance(r['p'][4], list) and len(r['p'][4]) > 1 and r['p'][4][0] is not None:
+                FACE.setdefault((a, f), (0, r['p'][4][0], r['p'][4][1]))
+            try:
+                cut(a, f, os.path.join(out, 'e', 'daily', pic), 536)
+            except Exception as e:
+                print(f'  {a}/{f} not in R2 yet: {e}', flush=True)
+                continue
+            src = f'{PHOTOS}e/daily/{urllib.request.quote(pic)}'
+        guru = NAMES[0] if (r.get('d') or str(r['y'])) <= PSM_LAST else NAMES[1]
+        place = (r.get('place') or '').split(',')[0].strip()
+        cells.append(f'<td width="50%" valign="top" style="padding:0 5px 12px"><a href="{SITE}"><img src="{src}" width="268" alt="{esc(guru)}, {r["y"]}, {esc(place)}" '
+                     f'style="display:block;width:100%;max-width:268px;height:auto;border:0;border-radius:6px"></a>'
+                     f'<div style="font:600 15px/1.2 {SERIF};color:{C["ink"]};padding-top:6px">{guru}</div>'
+                     f'<div style="font:12px/1.4 {SANS};color:{C["muted"]}">{r["y"]}{" · " + esc(place) if place else ""}</div>'
+                     f'<div style="font:italic 14px/1.3 {SERIF};color:{C["ink"]};padding-top:2px">{esc(short(cap))}</div></td>')
+    if len(cells) < 2:
+        return '', 0
+    if len(cells) % 2:
+        cells = cells[:-1]
+    grid = ''.join(f'<tr>{cells[i]}{cells[i + 1]}</tr>' for i in range(0, len(cells), 2))
+    buttons = []   # a Video Darshan of each Bapa: the newest Chopda Pujan (or ashirwad) of Pramukh Swami Maharaj and of Mahant Swami Maharaj
+    for test in (lambda d: d <= PSM_LAST, lambda d: d >= MSM_FIRST):
+        v = next((r for r in reversed(vids) if r.get('v') and test(r.get('d') or str(r['y']))), None)
+        if v:
+            buttons.append(video_button((v['y'], v['v'][0][0] if isinstance(v['v'][0], list) else v['v'][0], v['v'][0][1] if isinstance(v['v'][0], list) else v['v'][1])))
+    html = (f'<tr><td style="padding:20px 12px 8px;background:#fbf0d6;border-top:1px solid {C["line"]};border-bottom:1px solid {C["line"]}">'
+            f'<div style="font:700 11px {SANS};letter-spacing:2px;text-transform:uppercase;color:{C["amber"]};padding:0 9px">{"Diwali" if kind == "diwali" else "Annakut and the New Year"}</div>'
+            f'<div style="font:600 22px/1.2 {SERIF};color:{C["maroon"]};padding:4px 9px 4px">{head}</div>'
+            f'<div style="font:15px/1.45 {SERIF};color:{C["ink"]};padding:0 9px 14px">{line}</div>'
+            f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0">{grid}</table>'
+            + (f'<div style="text-align:center;padding:4px 0 12px">{" &nbsp; ".join(buttons)}</div>' if buttons else '') + '</td></tr>')
+    return html, len(cells)
+
+
+def render_picture(day, cal, pic, full, special=None, video=None, fest=''):
     """The morning email as Darpan asked (26 Oct 2026: "can we not just send out our 2pm picture"): that day's Bapa's
     Diary picture itself, read from the daily run's finished picture, never changing anything in that chain."""
     link = f'{SITE}day/{day.isoformat()[5:]}/'
@@ -360,6 +451,7 @@ Here is today in Bapa's Diary.</td></tr>
 <div style="font:12px {SANS};color:{C["muted"]};text-align:center;padding:6px 0 0">Tap the picture to see it full size</div></td></tr>
 {extra}
 {f'<tr><td align="center" style="padding:16px 18px 0">{video_button(video)}</td></tr>' if video else ''}
+{f'<tr><td style="height:16px"></td></tr>{fest}' if fest else ''}
 <tr><td align="center" style="padding:16px 18px 24px"><a href="{link}" style="display:inline-block;font:700 13px {SANS};color:#3d0e19;background:{C["gold"]};padding:11px 20px;border-radius:999px;text-decoration:none">Open {nice(day.isoformat(), "%-d %B")} in Bapa's Diary</a></td></tr>
 <tr><td align="center" style="padding:18px 22px 26px;font:12px/1.6 {SANS};color:{C["muted"]};border-top:1px solid {C["line"]}">
 <div style="font:italic 600 20px {SERIF};color:{C["maroon"]};padding-bottom:6px">Jay Swaminarayan</div>
@@ -447,6 +539,8 @@ def main():
     ap.add_argument('--upload', help='command that sends --out/e/ to R2, run before anything is sent')
     ap.add_argument('--no-photos', action='store_true', help='link the R2 photos as they are (quick look, no cutting)')
     ap.add_argument('--videos', help="read the Video Darshan list from this days.json instead of the website (a mockup)")
+    ap.add_argument('--season', help="read the Diwali days list from this season.json instead of the website (a mockup)")
+    ap.add_argument('--picture', help="use this picture instead of the day's finished one (a mockup; nothing is sent with it)")
     a = ap.parse_args()
 
     today = datetime.datetime.now(UK).date()
@@ -508,7 +602,7 @@ def main():
 def send_picture(a, day):
     cal = sqlite3.connect(a.db).execute('SELECT indian_date, festivals FROM calendar WHERE date = ?', (day.isoformat(),)).fetchone() or ('', '')
     cal = ((cal[0] or '').split('/')[0], cal[1] or '')
-    pic, special = todays_picture(day, os.path.join(a.out, 'picture'))
+    pic, special = (a.picture, None) if a.picture else todays_picture(day, os.path.join(a.out, 'picture'))
     if not pic:
         sys.exit("No Bapa's Diary picture for this day yet (nor a backup), nothing sent.")
     name = day.isoformat() + ('' if os.path.basename(pic).startswith('bapas-diary') else '-backup')   # a backup never takes the real one's name
@@ -516,10 +610,19 @@ def send_picture(a, day):
     extra = picture_files(special, a.out, name + '-special') if special else None
     video = day_video(day.isoformat(), (), a.videos)
     print('Video Darshan:', f'{video[0]}, {video[2]}' if video else 'none for this day', flush=True)
-    html = render_picture(day, cal, img, full, extra, video)
+    kind, fest = season_of(cal[1]), ''
+    if kind:   # Diwali, or Annakut and the New Year (Darpan, 5 Nov 2026)
+        fest, n = festival_part(kind, season_list(a.season), a.out, name, a.no_photos)
+        print(f'{"Diwali" if kind == "diwali" else "New Year"} part: {n} photos' if fest else 'No Diwali days part (list not read)', flush=True)
+    html = render_picture(day, cal, img, full, extra, video, fest)
     os.makedirs(a.out, exist_ok=True)
     open(os.path.join(a.out, 'daily.html'), 'w', encoding='utf-8').write(html)
     subject = f"Today's darshan · {nice(day.isoformat(), '%A %-d %B')}"
+    if fest:
+        subject = ('Happy Diwali 🪔 · ' if kind == 'diwali' else 'Nutan Varshabhinandan 🙏🏽 · ') + subject
+    if a.picture:
+        print('A mockup picture: nothing sent.')
+        return
     print(f'{subject}: the day\'s picture{", and the special picture" if special else ""}', flush=True)
     send(a, subject, html, day, day.isoformat())
 
