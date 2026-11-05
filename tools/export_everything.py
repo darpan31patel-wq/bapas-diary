@@ -1,0 +1,358 @@
+"""Export everything Bapa's Diary knows, sorted by date, for Darpan's own use (5 Nov 2026: "export a massive database,
+organised by date, with ALL the information we have, photo, location, caption, date, database info, article, any
+tagging").
+
+Read only: it never changes bapas.db, the website or the daily 2pm picture. Photos are links, never files.
+
+    python3 tools/export_everything.py --db bapas.db --bapa bapa.db --tags deep-tags.json --yt days.json \
+        [--moments data/video-moments] [--articles articles.json] [--workbook 2018=rows.json] --out OUT_FOLDER
+
+  bapas.db       release `database` (bapas.db.gz): photos, Telegram channels, 2pm picture record, BAPS calendar
+  bapa.db        release `website-faces` (bapa.db.gz): which photos show Bapa in person, close up or activity
+  deep-tags.json release `deep-tags`: photo tags {ALBUM/FILE: "smiling, garland"}
+  days.json      data/youtube/days.json on the website branch: Video Darshan videos by day
+  --moments      data/video-moments/*.json (video moments), when there are any
+  --articles     baps.org News articles: a JSON list, or a SQLite file with a table holding them (see load_articles)
+  --workbook     a day by day workbook Darpan gave (YEAR=rows.json, as made for 2018), may be given more than once
+
+Writes into OUT_FOLDER:
+  years/Bapas Diary YYYY.xlsx   one workbook per year (Days, Photos, Articles, On this day, Channel posts, Videos,
+                                Video moments, About); "Before 1999.xlsx" holds the older history
+  Bapas Diary everything.db     one SQLite file with every table plus `everything_photos` (all photo fields joined)
+  All photos.csv                every photo with every field, one row each (opens in Excel: under a million rows)
+  All days.csv                  one row per day with everything known about it
+  All articles.csv              every News article with its full text
+"""
+import argparse, collections, csv, datetime, glob, json, os, re, shutil, sqlite3
+
+import openpyxl
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
+from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
+
+SITE = 'https://bapas-diary.com'
+PH = 'https://photos.bapas-diary.com'
+BAPS = 'https://www.baps.org/Data/Sites/1/Media/GalleryImages'
+CELL_MAX = 32000          # Excel keeps at most 32,767 letters in one cell
+CHANNEL = {'history': 'Today in BAPS History', 'satpurush': 'Satpurush in UK & Europe'}
+
+
+def guru(d):
+    # Darpan, 31 Oct 2026: before 13 Aug 2016 Swamishri is Pramukh Swami Maharaj, after it Mahant Swami Maharaj
+    return 'Pramukh Swami Maharaj' if d < '2016-08-13' else 'Mahant Swami Maharaj'
+
+
+def clean(v):
+    if isinstance(v, str):
+        v = ILLEGAL_CHARACTERS_RE.sub('', v)
+    return v
+
+
+def cut(v, where='All articles.csv'):
+    if isinstance(v, str) and len(v) > CELL_MAX:
+        return v[:CELL_MAX] + f' ... (cut here because Excel cells are full; the whole text is in {where})'
+    return v
+
+
+MONTHS = {m: i for i, m in enumerate(['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'], 1)}
+
+
+def day_of(v):
+    """YYYY-MM-DD from '2006-11-04' or the way baps.org writes dates ('4 November 2006', 'November 4, 2006')."""
+    v = str(v or '').strip()
+    if re.match(r'\d{4}-\d\d-\d\d', v): return v[:10]
+    m = re.search(r'(\d{1,2})\s*([A-Za-z]{3})[a-z]*,?\s*(\d{4})', v) or re.search(r'([A-Za-z]{3})[a-z]*\s*(\d{1,2}),?\s*(\d{4})', v)
+    if not m: return None
+    g = m.groups()
+    dd, mon = (g[0], g[1]) if g[0].isdigit() else (g[1], g[0])
+    if mon.lower() not in MONTHS: return None
+    return f'{g[2]}-{MONTHS[mon.lower()]:02d}-{int(dd):02d}'
+
+
+def load_articles(path):
+    """Articles as dicts {date, place, title, url, text, albums, photos}. Accepts a JSON list/dict or a SQLite file.
+
+    Field names are matched loosely so the tool works with the News crawl's own shape: t/title, d/date, text/body,
+    p/path/url, place, g (galleries {path: {t, rows}}) or albums."""
+    if not path:
+        return []
+    if path.endswith('.db'):
+        con = sqlite3.connect(path)
+        con.row_factory = sqlite3.Row
+        names = [n for (n,) in con.execute("select name from sqlite_master where type='table'")]
+        name = next((n for n in names if 'article' in n.lower() or 'news' in n.lower()), None)
+        raw = [dict(r) for r in con.execute(f'select * from "{name}"')] if name else []
+    else:
+        raw = json.load(open(path))
+        if isinstance(raw, dict):
+            raw = [dict(v, path=k) if isinstance(v, dict) else {'path': k, 'text': v} for k, v in raw.items()]
+    out = []
+    for a in raw:
+        g = a.get('g') or a.get('galleries') or {}
+        if isinstance(g, str):
+            try: g = json.loads(g)
+            except ValueError: g = {}
+        albums, photos = [], 0
+        if isinstance(g, dict):
+            for gp, gv in g.items():
+                rows = (gv or {}).get('rows') or []
+                photos += len(rows)
+                al = rows[0][0] if rows and rows[0] else (re.findall(r'-(\d+)\.aspx', gp) or [None])[0]
+                if al: albums.append(str(al))
+        elif isinstance(g, list):
+            albums = [str(x) for x in g]
+        own = a.get('own') or []
+        if isinstance(own, str):
+            try: own = json.loads(own)
+            except ValueError: own = []
+        photos += len(own)
+        albums += [str(r[0]) for r in own if r]
+        if a.get('albums'):
+            albums = [str(x) for x in (json.loads(a['albums']) if isinstance(a['albums'], str) else a['albums'])]
+        url = a.get('url') or a.get('p') or a.get('path') or ''
+        if url and not url.startswith('http'):
+            url = 'https://www.baps.org' + ('' if url.startswith('/') else '/') + url
+        d = day_of(a.get('date') or a.get('d'))
+        out.append({'date': d, 'place': a.get('place'), 'title': a.get('title') or a.get('t'),
+                    'url': url or None, 'text': a.get('text') or a.get('body'),
+                    'albums': ', '.join(dict.fromkeys(albums)) or None, 'photos': photos or a.get('photos')})
+    out.sort(key=lambda x: (x['date'] or '9999', x['title'] or ''))
+    return out
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--db', required=True)
+    ap.add_argument('--bapa')
+    ap.add_argument('--tags')
+    ap.add_argument('--yt')
+    ap.add_argument('--moments')
+    ap.add_argument('--articles')
+    ap.add_argument('--workbook', action='append', default=[])
+    ap.add_argument('--years', help='only these years, e.g. 2018 or 2017-2019 (the full files are still made)')
+    ap.add_argument('--out', required=True)
+    a = ap.parse_args()
+    os.makedirs(os.path.join(a.out, 'years'), exist_ok=True)
+
+    db = sqlite3.connect(a.db)
+    bapa = {}
+    if a.bapa:
+        for al, f, rk, close, why, fx, fy, sim in sqlite3.connect(a.bapa).execute(
+                'select album, file, rank, close, why, fx, fy, sim from bapa_pick'):
+            bapa[(al, f)] = (rk, close, why, fx, fy, sim)
+    tags = json.load(open(a.tags)) if a.tags else {}
+    yt = json.load(open(a.yt)) if a.yt else {}
+    moments = []
+    if a.moments:
+        for fn in sorted(glob.glob(os.path.join(a.moments, '*.json'))):
+            v = json.load(open(fn))
+            for m in v.get('m', []):
+                at, end, text, mtags, mb = (list(m) + [None] * 5)[:5]
+                moments.append([v.get('date'), v.get('place'), v.get('title'), at, end, text, mtags,
+                                'yes' if mb else 'no', f'https://youtu.be/{v["id"]}?t={int(at or 0)}'])
+    moments.sort(key=lambda r: (r[0] or '', r[3] or 0))
+    articles = load_articles(a.articles)
+    workbooks = {}
+    for w in a.workbook:
+        y, fn = w.split('=', 1)
+        for r in json.load(open(fn)):
+            if r[2] and r[2] != 'None':
+                d = r[2][:10]
+                if d.startswith('2013-12') and y == '2018': d = y + d[4:]   # 2018 workbook typo, see workbook-2018
+                workbooks[d] = r
+            elif r[0] and 'Wk. 53' in str(r[0]) and r[6]:
+                workbooks.setdefault(f'{y}-12-31', [None, None, f'{y}-12-31', None, None, None, r[6]])
+
+    # ---- photos, one row each with every field
+    P_COLS = ['Date', 'Date from', 'Date to', 'Year', 'Place', 'Caption', 'Bapa in photo', 'Close up or activity',
+              'How Bapa was found', 'Bapa face rank', 'Face position across', 'Face position down', 'Face likeness',
+              'Photo tags', 'Guru', 'High quality photo', 'Small photo', 'Original on baps.org',
+              'baps.org web size', 'Google Drive file (Bapa\'s Archive)', 'Album', 'File', 'How it was found',
+              'baps.org marked as Bapa']
+    photos = []
+    for (y, d, df, dt, place, al, f, cap, isb, src, lp) in db.execute(
+            'select year, date, date_from, date_to, place, album, file, caption, is_bapa, source, local_path '
+            'from photos order by coalesce(date, date_from), album, file'):
+        day = d or df
+        b = bapa.get((al, f))
+        photos.append([day, df if not d else None, dt, y, place, cap,
+                       'yes' if b else 'no', (('close up' if b[1] else 'activity') if b else None),
+                       b[2] if b else None, b[0] if b else None, b[3] if b else None, b[4] if b else None,
+                       b[5] if b else None, tags.get(f'{al}/{f}'), guru(day),
+                       f'{PH}/l/{al}/{f}', f'{PH}/s/{al}/{f}', f'{BAPS}/{al}/FullSizeImages/{f}',
+                       f'{BAPS}/{al}/WebImages/{f}', lp, al, f,
+                       {'page': 'baps.org vicharan page', 'button': 'baps.org daily page', 'scan': 'baps.org album scan'}
+                       .get(src, src), {1: 'yes', 0: 'no'}.get(isb)])
+    byday = collections.defaultdict(list)
+    for p in photos: byday[p[0]].append(p)
+
+    cal = {r[0]: r for r in db.execute('select date, weekday, vikram_samvat, lunar_months, month, paksha, tithi, '
+                                       'indian_date, festivals, festival_about, notes, ekadashi, punam, amas, source '
+                                       'from calendar')}
+    pick = collections.defaultdict(list)
+    for d, y, url, cap in db.execute('select date, year, photo_url, caption from diary order by year'):
+        pick[f'{y}-{d[5:]}'].append([d, url, cap])
+    otd = collections.defaultdict(list)
+    otd_rows = []
+    for ch, d, place, line, story, special, headline, g, posts, data in db.execute(
+            'select channel, date, place, line, story, special, headline, guru, posts, data from tg_events order by date'):
+        j = json.loads(data or '{}')
+        otd[d].append(line)
+        otd_rows.append([d, place, headline, line, story, j.get('whatsapp'), j.get('card'), 'yes' if special else 'no',
+                         CHANNEL.get(ch, ch), j.get('url'), j.get('video'), posts])
+    for d, card, g, data in db.execute('select date, card, guru, data from tg_cards order by date'):
+        otd[d].append(card)
+        otd_rows.append([d, None, None, card, None, None, card, None, 'Today in BAPS History (guru card)', None, None, None])
+    otd_rows.sort(key=lambda r: r[0] or '')
+    posts = []
+    for ch, pid, posted, d, place, text, np, nv, nf, fwd, links, url, folder in db.execute(
+            'select channel, id, posted, date, place, text, photos, videos, files, forwarded_from, links, url, '
+            'local_folder from tg_posts order by coalesce(date, substr(posted, 1, 10)), channel, id'):
+        posts.append([d, posted[:16].replace('T', ' ') if posted else None, CHANNEL.get(ch, ch), place, text, np, nv, nf,
+                      fwd or None, (', '.join(json.loads(links)) if links and links != '[]' else None), url, folder, pid])
+    vids, seen = [], set()
+    for d in sorted(yt):
+        for v in yt[d]:
+            if v['id'] in seen: continue
+            seen.add(v['id'])
+            vids.append([d, v.get('title'), round((v.get('secs') or 0) / 60, 1), f'https://youtu.be/{v["id"]}'])
+    art_by = collections.defaultdict(list)
+    for x in articles: art_by[x['date']].append(x)
+    mom_by = collections.defaultdict(list)
+    for m in moments: mom_by[m[0]].append(m)
+
+    # ---- days: every date that has anything at all
+    every = set(byday) | set(cal) | set(otd) | set(pick) | set(yt) | set(art_by) | set(workbooks) | set(mom_by)
+    first = min(d for d in every if d and d >= '1999-01-01')
+    d0, last = datetime.date.fromisoformat(first), max(d for d in every if d)
+    span = set()
+    while d0.isoformat() <= last:
+        span.add(d0.isoformat()); d0 += datetime.timedelta(1)
+    D_COLS = ['Date', 'Weekday', 'Tithi', 'Vikram Samvat', 'Festivals', 'About the festival', 'Calendar notes',
+              'Ekadashi, Punam or Amas', 'Places', 'Photos', 'Photos with Bapa', 'Articles', 'On this day',
+              '2pm daily picture photo', 'Workbook place', 'Workbook occasion', 'Workbook day note', 'Video Darshan',
+              'Video moments', 'Guru', 'See the day on bapas-diary.com', 'BAPS calendar page']
+    days = []
+    for d in sorted(span | {x for x in every if x}):
+        try: wd = datetime.date.fromisoformat(d).strftime('%A')
+        except ValueError: wd = None
+        c, w, ps = cal.get(d), workbooks.get(d), byday.get(d, [])
+        places = [p for p, _ in collections.Counter(p[4] for p in ps if p[4]).most_common()]
+        if not places and art_by.get(d): places = [x['place'] for x in art_by[d] if x['place']]
+        v = yt.get(d, [])
+        days.append([d, wd, c[7] if c else None, c[2] if c else None, (c[8] or None) if c else None,
+                     (c[9] or None) if c else None, (c[10] or None) if c else None,
+                     ', '.join(n for n, k in (('Ekadashi', c[11]), ('Punam', c[12]), ('Amas', c[13])) if k) or None if c else None,
+                     '; '.join(dict.fromkeys(places)) or None, len(ps), sum(1 for p in ps if p[6] == 'yes'),
+                     '\n'.join(x['title'] or '' for x in art_by.get(d, [])) or None,
+                     '\n'.join(x for x in otd.get(d, []) if x) or None,
+                     '\n'.join(f'{u} (made {pd})' for pd, u, _ in pick.get(d, [])) or None,
+                     ((w[4] or '').strip() or None) if w else None, ((w[5] or '').strip() or None) if w else None,
+                     w[6] if w else None, '\n'.join(f'https://youtu.be/{x["id"]}' for x in v) or None,
+                     len(mom_by.get(d, [])) or None, guru(d) if d >= '1999' else None,
+                     f'{SITE}/search/#date={d}' if ps else None, c[14] if c else None])
+
+    A_COLS = ['Date', 'Place', 'Title', 'Full text', 'Gallery albums', 'Gallery photos', 'Article on baps.org']
+    arows = [[x['date'], x['place'], x['title'], x['text'], x['albums'], x['photos'], x['url']] for x in articles]
+    O_COLS = ['Date', 'Place', 'Headline', 'Line', 'Story', 'Short message', 'Card', 'Special day', 'Source',
+              'Source link', 'Video', 'Posts']
+    C_COLS = ['Date', 'Posted', 'Channel', 'Place', 'Text', 'Photos', 'Videos', 'Files', 'Forwarded from', 'Links',
+              'Post link', 'Google Drive folder', 'Post number']
+    V_COLS = ['First day', 'Title', 'Minutes', 'YouTube']
+    M_COLS = ['Date', 'Place', 'Video', 'From second', 'To second', 'What happens', 'Tags', 'Bapa in it', 'YouTube']
+
+    # ---- full files
+    def write_csv(name, cols, rows):
+        with open(os.path.join(a.out, name), 'w', newline='', encoding='utf-8-sig') as fh:
+            wr = csv.writer(fh); wr.writerow(cols); wr.writerows(rows)
+    write_csv('All photos.csv', P_COLS, photos)
+    write_csv('All days.csv', D_COLS, days)
+    write_csv('All articles.csv', A_COLS, arows)
+
+    full = os.path.join(a.out, 'Bapas Diary everything.db')
+    if os.path.exists(full): os.remove(full)
+    shutil.copyfile(a.db, full)
+    fx = sqlite3.connect(full)
+    def table(name, cols, rows):
+        keys = [re.sub(r'\W+', '_', c.lower()).strip('_') for c in cols]
+        fx.execute(f'drop table if exists {name}')
+        fx.execute(f"create table {name} ({', '.join(chr(34) + k + chr(34) for k in keys)})")
+        fx.executemany(f'insert into {name} values ({",".join("?" * len(keys))})', rows)
+    table('everything_photos', P_COLS, photos)
+    table('everything_days', D_COLS, days)
+    table('news_articles', A_COLS, arows)
+    table('on_this_day', O_COLS, otd_rows)
+    table('videos', V_COLS, vids)
+    table('video_moments', M_COLS, moments)
+    if bapa:
+        fx.execute('drop table if exists bapa_pick')
+        fx.execute('create table bapa_pick (album, file, rank, close, why, fx, fy, sim)')
+        fx.executemany('insert into bapa_pick values (?,?,?,?,?,?,?,?)',
+                       [(al, f, *v) for (al, f), v in bapa.items()])
+    fx.execute('create index if not exists ep_date on everything_photos(date)')
+    fx.execute("insert or replace into about values ('export', ?)", (json.dumps({
+        'made': datetime.date.today().isoformat(), 'photos': len(photos), 'days': len(days), 'articles': len(arows),
+        'on_this_day': len(otd_rows), 'channel_posts': len(posts), 'videos': len(vids), 'video_moments': len(moments)}),))
+    fx.commit(); fx.execute('vacuum'); fx.close()
+
+    # ---- one workbook per year
+    HEAD = Font(bold=True, color='FFFFFF'); FILL = PatternFill('solid', fgColor='7A1F2B')
+    BLUE = Font(color='0563C1', underline='single'); WRAP = Alignment(wrap_text=True, vertical='top')
+
+    def sheet(X, name, cols, rows, widths, links=(), wrap=(), first=False):
+        ws = X.active if first else X.create_sheet(name)
+        ws.title = name
+        ws.append(cols)
+        for c in ws[1]: c.font = HEAD; c.fill = FILL; c.alignment = WRAP
+        for r in rows: ws.append([clean(cut(v)) for v in r])
+        for i, wdt in enumerate(widths, 1): ws.column_dimensions[get_column_letter(i)].width = wdt
+        for col in links:
+            for (cell,) in ws.iter_rows(min_row=2, min_col=col, max_col=col):
+                v = cell.value
+                if isinstance(v, str) and v.startswith('http') and '\n' not in v:
+                    cell.hyperlink = v; cell.font = BLUE
+        for col in wrap:
+            for (cell,) in ws.iter_rows(min_row=2, min_col=col, max_col=col): cell.alignment = WRAP
+        ws.freeze_panes = 'B2'; ws.auto_filter.ref = ws.dimensions
+
+    want = None
+    if a.years:
+        lo, _, hi = a.years.partition('-'); want = range(int(lo), int(hi or lo) + 1)
+    groups = [('Before 1999', lambda d: (d or '') < '1999')] + [
+        (str(y), (lambda Y: lambda d: (d or '').startswith(Y))(str(y))) for y in range(1999, int(last[:4]) + 1)]
+    for label, inside in groups:
+        if want and (label == 'Before 1999' or int(label) not in want): continue
+        X = openpyxl.Workbook()
+        dd = [r for r in days if inside(r[0])]
+        sheet(X, 'Days', D_COLS, dd, [11, 10, 20, 8, 26, 30, 24, 12, 26, 7, 8, 40, 40, 30, 20, 20, 50, 26, 8, 22, 30, 30],
+              links=(14, 18, 21, 22), wrap=(6, 12, 13, 14, 17, 18), first=True)
+        pp = [r for r in photos if inside(r[0])]
+        sheet(X, 'Photos', P_COLS, pp, [11, 11, 11, 6, 22, 60, 8, 11, 12, 7, 8, 8, 8, 30, 20, 34, 34, 34, 34, 40, 8, 26, 18, 9],
+              links=(16, 17, 18, 19))
+        aa = [r for r in arows if inside(r[0])]
+        sheet(X, 'Articles', A_COLS, aa, [11, 22, 40, 100, 16, 8, 40], links=(7,), wrap=(4,))
+        sheet(X, 'On this day', O_COLS, [r for r in otd_rows if inside(r[0])],
+              [11, 22, 30, 50, 80, 50, 30, 8, 24, 30, 30, 12], links=(10, 11), wrap=(4, 5, 6))
+        cc = [r for r in posts if inside(r[0] or r[1])]
+        sheet(X, 'Channel posts', C_COLS, cc, [11, 16, 22, 22, 80, 7, 7, 7, 20, 30, 30, 50, 8], links=(11,), wrap=(5,))
+        sheet(X, 'Videos', V_COLS, [r for r in vids if inside(r[0])], [11, 80, 8, 32], links=(4,))
+        sheet(X, 'Video moments', M_COLS, [r for r in moments if inside(r[0])], [11, 22, 40, 8, 8, 60, 30, 8, 40], links=(9,))
+        sheet(X, 'About', ['Item', 'Value'], [
+            ['Year', label], ['Made', datetime.date.today().isoformat()],
+            ['Days', len(dd)], ['Photos', len(pp)], ['Photos with Bapa', sum(1 for p in pp if p[6] == 'yes')],
+            ['Articles', len(aa)], ['Channel posts', len(cc)],
+            ['Photos', 'Links only: "High quality photo" is our copy, "Original on baps.org" is the first upload. '
+                       'The Google Drive file is the copy in Bapa\'s Archive.'],
+            ['Bapa in photo', 'Found by face check: only photos with Bapa himself in person, not murtis or portraits'],
+            ['Guru names', 'Before 13 Aug 2016 Swamishri means Pramukh Swami Maharaj, from then on Mahant Swami Maharaj'],
+            ['Long text', 'Excel holds 32,000 letters in a cell; anything longer is whole in All articles.csv'],
+            ['Everything', 'All years together: Bapas Diary everything.db, All photos.csv, All days.csv, All articles.csv'],
+        ], [22, 100], wrap=(2,))
+        X.save(os.path.join(a.out, 'years', f'Bapas Diary {label}.xlsx'))
+        print('saved', label, len(dd), 'days', len(pp), 'photos', len(aa), 'articles', flush=True)
+    print('done', len(photos), 'photos', len(days), 'days', len(arows), 'articles', len(otd_rows), 'on this day',
+          len(posts), 'channel posts', len(vids), 'videos', len(moments), 'moments')
+
+
+if __name__ == '__main__':
+    main()
