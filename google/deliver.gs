@@ -22,6 +22,7 @@
  */
 
 const FOLDER_NAME = "Bapa's Diary";
+const FOLDER_ID = '1P79txhqK5keX5j1HUje__RVki9YmSqaj';   // that folder in your Drive (the one the 2pm send reads)
 const BACKUP_NAME = "Bapa's Diary backup";
 const SOURCE = 'https://github.com/darpan31patel-wq/bapas-diary/releases/download/today/';
 const BANK = 'https://api.github.com/repos/darpan31patel-wq/bapas-diary/releases/tags/bank';
@@ -144,6 +145,8 @@ function alive_(folder, name) {
 }
 
 function folder_() {
+  // the folder your 2pm send reads (Darpan, 5 Nov 2026), by its id so a second folder with the same name can't catch it
+  try { const f = DriveApp.getFolderById(FOLDER_ID); if (!f.isTrashed()) return f; } catch (e) {}
   const found = DriveApp.getFoldersByName(FOLDER_NAME);
   return found.hasNext() ? found.next() : DriveApp.createFolder(FOLDER_NAME);
 }
@@ -163,16 +166,37 @@ function studioCode() {
   console.log('Paste this into the Studio:  ' + url + '#' + key);
 }
 
-/** A picture from the Studio. {key, mode: 'replace' | 'new', date: 'yyyy-MM-dd', png, jpg (base64), caption, whole} */
+/**
+ * The 2pm caption you changed in the Studio (Darpan, 3 and 5 Nov 2026), saved in Bapa's Diary as plain text:
+ * '<d MMMM yyyy> whole caption.txt' = the whole 2pm caption (you ticked "Replace my whole caption");
+ * '<d MMMM yyyy> caption.txt' = only the words under your top line and Day n.
+ * The file already there is updated, never copied; a whole caption you untick is binned. Returns the file's name ('' when none).
+ */
+function saveCaption_(folder, day, caption, whole) {
+  const text = String(caption).replace(/\r\n/g, '\n').trim();
+  const name = day + (whole ? ' whole caption.txt' : ' caption.txt');
+  if (!whole) { const w = alive_(folder, day + ' whole caption.txt'); if (w) w.setTrashed(true); }
+  const old = alive_(folder, name);
+  if (!text) { if (old) old.setTrashed(true); return ''; }
+  if (old) old.setContent(text);
+  else folder.createFile(name, text, MimeType.PLAIN_TEXT).setDescription('from the Studio');
+  return name;
+}
+
+/** A picture from the Studio. {key, mode: 'replace' | 'new' | 'caption', date: 'yyyy-MM-dd', png, jpg (base64), caption, whole} */
 function doPost(e) {
   const answer = o => ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
   try {
     const p = JSON.parse(e.postData.contents);
     const key = PropertiesService.getScriptProperties().getProperty('STUDIO_KEY');
     if (!key || p.key !== key) return answer({ ok: false, error: 'The Studio code is wrong. Run studioCode in the script and paste the new line into the Studio.' });
-    if (p.mode === 'ping') return answer({ ok: true, mode: 'ping', version: 3 });   // the Studio's "Check the connection"
+    if (p.mode === 'ping') return answer({ ok: true, mode: 'ping', version: 4 });   // the Studio's "Check the connection"
     const when = new Date(p.date + 'T12:00:00Z');
     const day = Utilities.formatDate(when, TZ, 'd MMMM yyyy');
+    if (p.mode === 'caption') {   // only the 2pm caption, the picture stays as it is
+      const name = saveCaption_(folder_(), day, String(p.caption || ''), p.whole);
+      return answer({ ok: true, mode: 'caption', folder: FOLDER_NAME, name: name, time: Utilities.formatDate(new Date(), TZ, 'HH:mm') });
+    }
     const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
     const png = Utilities.newBlob(Utilities.base64Decode(p.png), 'image/png');
     const jpg = p.jpg ? Utilities.newBlob(Utilities.base64Decode(p.jpg), 'image/jpeg') : null;
@@ -188,16 +212,8 @@ function doPost(e) {
       if (oldJpg) oldJpg.setTrashed(true);
       folder.createFile(png.setName(day + '.png')).setDescription('from the Studio');
       if (jpg) folder.createFile(jpg.setName(day + ' photo.jpg')).setDescription('from the Studio');
-      // the 2pm caption you changed in the Studio (Darpan, 3 Nov 2026): '<day> caption.txt' holds the words under your top
-      // line and Day n; '<day> whole caption.txt' is the whole caption when you ticked "Replace my whole caption"
-      let caption = false;
-      if (typeof p.caption === 'string') {
-        [' caption.txt', ' whole caption.txt'].forEach(n => { const old = alive_(folder, day + n); if (old) old.setTrashed(true); });
-        const text = p.caption.trim();
-        if (text) folder.createFile(day + (p.whole ? ' whole caption.txt' : ' caption.txt'), text, MimeType.PLAIN_TEXT).setDescription('from the Studio');
-        caption = true;
-      }
-      return answer({ ok: true, mode: 'replace', folder: FOLDER_NAME, name: day + '.png', when2pm: when2pm, caption: caption, time: Utilities.formatDate(new Date(), TZ, 'HH:mm') });
+      const caption = typeof p.caption === 'string' ? saveCaption_(folder, day, p.caption, p.whole) : '';
+      return answer({ ok: true, mode: 'replace', folder: FOLDER_NAME, name: day + '.png', when2pm: when2pm, caption: !!caption, captionName: caption, time: Utilities.formatDate(new Date(), TZ, 'HH:mm') });
     }
     const found = DriveApp.getFoldersByName(STUDIO_NAME);
     const out = found.hasNext() ? found.next() : DriveApp.createFolder(STUDIO_NAME);
