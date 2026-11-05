@@ -1,0 +1,42 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, deploys nothing.
+# Packs the small R2 photos listed in .github/diwali-special-mockup-keys.txt (the Diwali days' new parts: Dhanteras,
+# Kali Chaudas and Bhai Bij cards, Chopda Pujan with Bapa, Annakut of the years, the Diwali email) into the release
+# `diwali-special-mockup`, so Claude can make a private mockup of the real Today page on those days (the mockup can't
+# load photos from R2 directly). Photos come from photos.bapas-diary.com only, never baps.org. Mockup only: this file
+# and the key list are never handed to the website branch.
+name: website-diwali-special-mockup
+on:
+  push:
+    branches: ['claude/project-thread-ci47qq']
+    paths: ['.github/workflows/website-diwali-special-mockup.yml', '.github/diwali-special-mockup-keys.txt']
+permissions:
+  contents: write
+concurrency: website-diwali-special-mockup
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: The new Diwali parts' photos
+        run: |
+          pip install -q pillow
+          mkdir -p photos
+          grep -v '^$' .github/diwali-special-mockup-keys.txt | xargs -P 8 -I{} sh -c 'mkdir -p "photos/$(dirname "{}")"; curl -fsS --retry 3 -o "photos/{}" "https://photos.bapas-diary.com/s/{}" || echo "missing {}"'
+          python3 - <<'PY'
+          import glob
+          from PIL import Image, ImageOps
+          for f in glob.glob('photos/**/*.*', recursive=True):
+              try:
+                  im = ImageOps.exif_transpose(Image.open(f)).convert('RGB')
+                  im.thumbnail((420, 420))
+                  im.save(f, 'JPEG', quality=74)
+              except Exception as e:
+                  print('bad', f, e)
+          PY
+          echo "$(find photos -type f | wc -l) photos, $(du -sh photos | cut -f1)"
+          tar czf diwali-special-mockup.tgz photos
+          gh release view diwali-special-mockup >/dev/null 2>&1 || \
+            gh release create diwali-special-mockup --prerelease --title "Diwali days mockup" --notes "Small photos for the Diwali days mockup. Not used by the daily picture or the website."
+          gh release upload diwali-special-mockup diwali-special-mockup.tgz --clobber
