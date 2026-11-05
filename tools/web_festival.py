@@ -36,18 +36,19 @@ FESTS = {
         tags={'annakut', 'food', 'sweets', 'thal', 'fruit', 'dry fruits', 'vegetables', 'serving food', 'eating'}, strong={'annakut', 'sweets', 'thal'},
         keep_all=False),  # "everything surrounding food": a year with food photos shows only those
     # the other Diwali days (Darpan, 5 Nov 2026: "Yes to all 1-4", Dhanteras, Kali Chaudas and Bhai Bij get their own
-    # festival card too): every photo of the day stays, the ones that show or say the day first
-    'dhanteras': dict(title='Dhanteras', old='Dhan Teras (Lakshmi Pujan)', ti='Aso Vad Teras',
+    # festival card too): every photo of the day stays, the ones that show or say the day first; from 1999, as the early
+    # channel pictures of these days are mostly the murtis with Bapa small beside them
+    'dhanteras': dict(title='Dhanteras', old='Dhan Teras (Lakshmi Pujan)', ti='Aso Vad Teras', since=1999,
         cal=re.compile(r'dhan ?teras|dhan ?trayodashi|lakshmi pujan', re.I),
         words=re.compile(r'dhan ?teras|dhan ?trayodashi|lakshmi|laxmi|pujan|puja|coins?|diya|lamps?|rangoli', re.I),
         own=re.compile(r'dhan ?teras|dhan ?trayodashi|lakshmi ?pujan', re.I),
         tags={'puja', 'diya', 'lights', 'arti', 'rangoli', 'flowers'}, strong={'diya', 'rangoli'}),
-    'kalichaudas': dict(title='Kali Chaudas', old='Kali Chaudash', ti='Aso Vad Chaudas',
+    'kalichaudas': dict(title='Kali Chaudas', old='Kali Chaudash', ti='Aso Vad Chaudas', since=1999,
         cal=re.compile(r'kali ?ch?au?dash?', re.I),
         words=re.compile(r'kali ?ch?au?dash?|hanuman|hanumanji|pujan|puja|arti|aarti', re.I),
         own=re.compile(r'kali ?ch?au?dash?|hanuman', re.I),
         tags={'puja', 'arti', 'murti', 'diya', 'lights'}, strong={'diya'}),
-    'bhaibij': dict(title='Bhai Bij', old='Bhai Beej', ti='Kartak Sud Bij',
+    'bhaibij': dict(title='Bhai Bij', old='Bhai Beej', ti='Kartak Sud Bij', since=1999,
         cal=re.compile(r'bhai ?b(ee|i)j', re.I),
         words=re.compile(r'bhai ?b(ee|i)j|blessings?|ashirwad|sweets?|thal', re.I),
         own=re.compile(r'bhai ?b(ee|i)j', re.I),

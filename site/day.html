@@ -278,7 +278,8 @@ a.ss-big { text-decoration: none; }
 .chops .ashi .frame{background:linear-gradient(#fff3d0,#f0d79a)}
 .page.fest-diwali .chops .ashi .frame{box-shadow:0 0 0 2px var(--gold-hi),0 0 22px rgba(255,190,90,.35)}
 /* Annakut of the years: one gold edged darshan a year, oldest first, across the whole width above the places */
-.anyrs{margin-top:26px;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(30%,150px),1fr));gap:16px 14px}
+.anyrs{margin-top:26px;display:grid;grid-template-columns:repeat(var(--cols,6),minmax(0,1fr));gap:16px 14px}
+.chops{grid-template-columns:repeat(var(--cols,4),minmax(0,1fr))}
 .anyr{display:block;text-decoration:none;color:inherit}
 .anyr .frame{background:linear-gradient(#fff3d0,#f0d79a);box-shadow:0 0 0 2px var(--gold-soft),0 6px 14px rgba(0,0,0,.4)}
 .anyr .frame .im{aspect-ratio:1}
@@ -1500,6 +1501,14 @@ function seasonSections(J, S) {
       (rest.length ? band('More mandirs', rest.map(P => year(P.years[0], `${esc(P.place)} ${P.years[0].y}`)).join(''), `${rest.length} places`) : '') +
       '</div></section>';
   }
+  // whole rows only, so no row ends half empty on a wide screen (rule: full width, no dead space)
+  const even = () => [['.chops', 150], ['.anyrs', 124]].forEach(([sel, min]) => {
+    const g = $('dw').querySelector(sel); if (!g) return;
+    const n = g.children.length, gap = 16, fit = Math.max(1, Math.floor((g.clientWidth + gap) / (min + gap)));
+    g.style.setProperty('--cols', Math.ceil(n / Math.ceil(n / fit)));
+  });
+  requestAnimationFrame(even);
+  if (!window.dwEven) { window.dwEven = true; addEventListener('resize', () => requestAnimationFrame(even)); }
   const order = S.after ? ['ashi', 'ann', 'diwali', 'chop'] : S.diwali ? ['chop', 'diwali', 'ashi', 'ann'] : ['diwali', 'chop', 'ashi', 'ann'];
   $('dw').innerHTML = order.map(k => out[k] || '').join('');
   $('dw').hidden = !$('dw').innerHTML;

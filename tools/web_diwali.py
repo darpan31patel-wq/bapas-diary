@@ -233,13 +233,16 @@ def chopda_rows(fest, videos, db, bapa):
         d = Y.get('d') or next((x[5] for x in vs if x[5]), '')
         ps = list(Y.get('p') or Y.get('t') or [])
         ps.sort(key=lambda p: (not CHOPDA.search(p[2] or ''), face(p)))
-        if not ps and d:   # a Diwali Today has no card for: his own recognised darshan of that day, the Chopda Pujan first
-            got = []
-            for a, f, cap in db.execute('SELECT album, file, caption FROM photos WHERE coalesce(date, date_from) = ?', (d,)):
+        days = [d] + [(datetime.date.fromisoformat(d) + datetime.timedelta(k)).isoformat() for k in (-1, 1)] if d else []
+        for day in days if not ps else []:   # a Diwali Today has no card for: his own recognised darshan of that day
+            got = []                          # (or the day before or after), the Chopda Pujan first
+            for a, f, cap in bapa.execute('SELECT album, file, caption FROM photos WHERE coalesce(date, date_from) = ?', (day,)):   # bapa.db: captions say what Bapa does
                 h = him.get((a, f))
                 if h and not GURU.search(re.sub(r'^(swamishri|pramukh swami maharaj|mahant swami maharaj)\b', '', (cap or '').strip(), flags=re.I)):
                     got.append(((not CHOPDA.search(cap or ''), h[0]), [a, f, (cap or '').strip(), 1, [round(h[1] or .5, 3), round(h[2] or .3, 3)]]))
             ps = [p for _, p in sorted(got)]
+            if ps:
+                break
         place = Y.get('place') or next((title_place(x[3]) for x in vs if title_place(x[3])), '') or (place_on(db, d) if d else '')
         for k in (-1, 1):   # a Diwali with no photos of its own day: the town of the day before or after
             if not place and d:
@@ -260,9 +263,13 @@ def annakut_years(fest):
                 best[y] = {'y': y, 'd': d, 'place': place, 'p': p}
                 break
     for Y in ann:
-        ps = [p for p in (Y.get('p') or []) + (Y.get('t') or []) if ANNAKUT.search(p[2] or '')]
+        ps = [p for p in (Y.get('p') or []) + (Y.get('t') or []) if ANNAKUT.search(p[2] or '')
+              and not (len(p) > 4 and isinstance(p[4], list) and len(p[4]) > 7 and p[4][4] < .08)]   # never a tiny far off face
         if Y['y'] not in best and ps:
             best[Y['y']] = {'y': Y['y'], 'd': Y['d'], 'place': Y.get('place') or '', 'p': ps[0]}
+    for r in best.values():   # 'Swamishri performs annakut arti' -> 'Performs annakut arti': his name is on the tile by its date
+        cap = re.sub(r'^(swamishri|param pujya mahant swami|param pujya pramukh swami maharaj|pramukh swami maharaj|mahant swami maharaj)\s+', '', r['p'][2] or '', flags=re.I)
+        r['p'] = [r['p'][0], r['p'][1], cap[:1].upper() + cap[1:]] + list(r['p'][3:])
     return [best[y] for y in sorted(best)]
 
 
