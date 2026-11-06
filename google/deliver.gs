@@ -7,6 +7,7 @@
  *   3. Google asks for permission: Review permissions, pick your account, Advanced,
  *      "Go to Bapa's Diary (unsafe)" (it's your own script), then Allow.
  * That's it. A folder called "Bapa's Diary" appears in your Drive and fills every morning.
+ * On a big day the special picture comes too, as '6 November 2026 special.png' (and '... special photo.jpg').
  *
  * The backup bank (Darpan, 20 Oct 2026): GitHub also makes the next 90 days ahead of time. This script keeps
  * a copy of them in a second folder, "Bapa's Diary backup", and if today's fresh picture still hasn't come
@@ -56,10 +57,12 @@ function deliver_(isLastTry) {
   const day = Utilities.formatDate(now, TZ, 'd MMMM yyyy');
   const name = day + '.png';
   const folder = folder_();
-  if (alive_(folder, name)) return true;   // already delivered (a deleted copy doesn't count)
+  const have = alive_(folder, name);
+  if (have && alive_(folder, day + ' special.png')) return true;   // both already delivered (a deleted copy doesn't count)
 
   const stamp = UrlFetchApp.fetch(SOURCE + 'date.txt', { muteHttpExceptions: true });
   if (stamp.getResponseCode() !== 200 || stamp.getContentText().trim() !== today) {
+    if (have) return true;   // the Studio or the backup already put today's picture in
     console.log("Today's picture isn't ready yet");
     if (isLastTry) {
       const used = useBackup_(day);
@@ -72,15 +75,32 @@ function deliver_(isLastTry) {
     }
     return false;
   }
-  const picture = UrlFetchApp.fetch(SOURCE + 'bapas-diary.png').getBlob().setName(name);
-  folder.createFile(picture);
-  // the same picture 4096 pixels wide (the most a WhatsApp photo keeps), for the 2pm photos; the PNG goes as the document
-  const photo = UrlFetchApp.fetch(SOURCE + 'bapas-diary.jpg', { muteHttpExceptions: true });
-  if (photo.getResponseCode() === 200) folder.createFile(photo.getBlob().setName(name.replace('.png', ' photo.jpg')));
+  if (!have) {
+    const picture = UrlFetchApp.fetch(SOURCE + 'bapas-diary.png').getBlob().setName(name);
+    folder.createFile(picture);
+    // the same picture 4096 pixels wide (the most a WhatsApp photo keeps), for the 2pm photos; the PNG goes as the document
+    const photo = UrlFetchApp.fetch(SOURCE + 'bapas-diary.jpg', { muteHttpExceptions: true });
+    if (photo.getResponseCode() === 200) folder.createFile(photo.getBlob().setName(name.replace('.png', ' photo.jpg')));
+  }
+  deliverSpecial_(folder, day);
   return true;
 }
 
-/** Copies today's backup picture (and its photo copy) into Bapa's Diary. True if there was one. */
+/**
+ * The special picture (Darpan, 6 Nov 2026: keep a copy of it like the daily one). On a big day (Every Diwali, Every Annakut,
+ * a channel story day) GitHub makes a second picture; it goes into Bapa's Diary next to the daily one as
+ * '6 November 2026 special.png' and '6 November 2026 special photo.jpg'. Most days there is none and nothing happens.
+ */
+function deliverSpecial_(folder, day) {
+  if (alive_(folder, day + ' special.png')) return;
+  const png = UrlFetchApp.fetch(SOURCE + 'bapas-diary-special.png', { muteHttpExceptions: true });
+  if (png.getResponseCode() !== 200) return;   // no special picture today
+  folder.createFile(png.getBlob().setName(day + ' special.png'));
+  const jpg = UrlFetchApp.fetch(SOURCE + 'bapas-diary-special.jpg', { muteHttpExceptions: true });
+  if (jpg.getResponseCode() === 200) folder.createFile(jpg.getBlob().setName(day + ' special photo.jpg'));
+}
+
+/** Copies today's backup picture (its photo copy, and its special picture when there is one) into Bapa's Diary. True if there was one. */
 function useBackup_(day) {
   const backup = backupFolder_(), folder = folder_();
   const png = alive_(backup, day + '.png');
@@ -88,6 +108,8 @@ function useBackup_(day) {
   png.makeCopy(day + '.png', folder).setDescription('from the backup bank');
   const jpg = alive_(backup, day + ' photo.jpg');
   if (jpg) jpg.makeCopy(day + ' photo.jpg', folder).setDescription('from the backup bank');
+  const special = alive_(backup, day + ' special.png');
+  if (special && !alive_(folder, day + ' special.png')) special.makeCopy(day + ' special.png', folder).setDescription('from the backup bank');
   return true;
 }
 
