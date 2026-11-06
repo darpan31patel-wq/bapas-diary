@@ -2596,6 +2596,12 @@ def tg_caption(ev, evs=None):
     return text + '\n'
 
 
+# the channel photo (counted from 0, as the special picture shows them) that goes big instead of the first one
+SPECIAL_FIRST = {
+    'https://t.me/TodayinBAPShistory/2069': 3,   # 6 Nov 2005 Akshardham: Bapa on the lift beside the golden murti big, the mahapuja small (Darpan, 6 Nov 2026)
+}
+
+
 def compose_special(ev, day, lead=None):
     """Idea 3: on a big day in BAPS history, a second picture of that day's story: the channel's lead photo large,
     four more beside it under the story, in the daily picture's colours. lead: the year card's own photo of the
@@ -2610,6 +2616,9 @@ def compose_special(ev, day, lead=None):
             im = Image.open(x['path']).convert('RGB')
             if np.asarray(im.convert('L').resize((64, 64)), dtype=float).std() >= 25:   # not a plain night sky or a blank frame
                 ims.append(im)
+    k = SPECIAL_FIRST.get(ev.get('url'))
+    if k and lead is None and k < len(ims):   # Darpan's own choice of the big photo: it swaps places with the first
+        ims[0], ims[k] = ims[k], ims[0]
     ims = ims[:5]
     if not ims:
         return None
