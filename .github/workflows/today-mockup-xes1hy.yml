@@ -52,7 +52,11 @@ jobs:
                 for (let y = 0; y < 30; y++) { await p.mouse.wheel(0, 900); await p.waitForTimeout(250); }
                 await p.evaluate(() => window.scrollTo(0, 0));
                 await p.waitForTimeout(4000);
-                for (const y of ['2006', '2013', '2002', '2019', '2001']) {   // close up of the year's heading with the story line
+                for (const [sel, nm] of [['header', 'top'], ['#stories', 'stories']]) {   // the line at the top and the stories list
+                  const e = p.locator(sel).first();
+                  if (await e.count()) { await e.scrollIntoViewIfNeeded(); await p.waitForTimeout(800); await e.screenshot({path: `shots/${d}-${name}-${nm}.jpg`, quality: 85, type: 'jpeg'}).catch(x => console.log(nm, x.message)); }
+                }
+                for (const y of ['2006', '2013']) {   // close up of the year's heading with the story line
                   const g = p.locator('#y' + y);
                   if (await g.count()) { await g.scrollIntoViewIfNeeded(); await p.waitForTimeout(1200); await g.screenshot({path: `shots/${d}-${name}-group-${y}.jpg`, quality: 85, type: 'jpeg'}).catch(e => console.log(y, e.message)); }
                 }
@@ -100,5 +104,5 @@ jobs:
           print('$d', [(Y['y'], Y['place']) for Y in D['years'] if Y['p'] or Y.get('t')])"; done
           cp out/data/articles/11-04.json shots/articles-11-04.json
           gh release view today-mockup-xes1hy > /dev/null 2>&1 || gh release create today-mockup-xes1hy --prerelease --title 'Today mockup (website only)' --notes 'Pictures of the Today page before going live. Website only.'
-          gh release upload today-mockup-xes1hy shots/box-* --clobber
+          gh release upload today-mockup-xes1hy shots/*-stories.jpg shots/*-top.jpg --clobber
           for f in shots/*; do gh release upload today-mockup-xes1hy "$f" --clobber || echo "not uploaded: $f"; done
