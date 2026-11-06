@@ -10,7 +10,7 @@ Every photo of the year where Bapa is recognised is kept too (Darpan, 26 Oct 202
 the best six in <year>-best.jpg, the rest smaller in <year>-more.jpg (photos joined end to end; pack.json gives each
 one's place), with a sheet of small thumbnails per year (<year>-thumbs.jpg), so the pack stays light.
 Read only: nothing here changes the daily picture, shown.json or the release."""
-import datetime, json, os, sys
+import datetime, json, os, re, sqlite3, sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import make
@@ -49,6 +49,63 @@ def thumbs(ims, faces, path):
     sheet.save(path, quality=72)
 
 
+def festival_tag(x, reach=3):
+    """The festival tab for a photo in the Studio's packs: the daily picture's own tag (make.festival_of: the photo's
+    date is the festival and its caption says so), else a festival up to `reach` days either side of its date that its
+    own caption names (Darpan, 6 Nov 2026: 2002's Diwali to Annakut album in Ramod is filed under 3 November, so its
+    Annakut photos never got the tag). Packs only: the morning run's picture and its picks still use festival_of."""
+    got = make.festival_of(x)
+    if got:
+        return got
+    d, c = str(x.get('d') or '')[:10], x.get('c') or ''
+    if not c or not re.fullmatch(r'\d{4}-\d\d-\d\d', d):
+        return ''
+    try:
+        when = datetime.date.fromisoformat(d)
+    except ValueError:
+        return ''
+    found = []
+    for k in sorted(range(-reach, reach + 1), key=abs):
+        n = str(when + datetime.timedelta(days=k))
+        fs = make.festivals(n) if make.cal_day(n) else make.old_festivals(n)
+        hits = [f for f in fs if f in make.TAGS and re.search(make.TAGS[f], c, re.I)]
+        if {'Annakut', 'New Year'} & set(hits) and {'Annakut', 'New Year'} <= set(fs):
+            hits = ['Annakut and New Year'] + [f for f in hits if f not in ('Annakut', 'New Year')]
+        found += [(n, f) for f in hits if f not in [g for _, g in found]]
+    names = [p for _, f in sorted(found) for p in f.split(' and ')]   # 'Diwali, Annakut and New Year'
+    return names[0] if len(names) == 1 else ', '.join(names[:-1]) + ' and ' + names[-1] if names else ''
+
+
+ALBUMS = {}   # baps.org album -> (first day, last day) from the archive database
+
+
+def album_days(items):
+    """Each baps.org album's own first and last day (Darpan, 6 Nov 2026: 'album covers 3 to 10 November 2002'), read
+    from the archive database (bapas.db): {album: (first, last)}. Nothing when the database isn't to hand."""
+    want = sorted({k[0] for k in (make.baps_key(x['i']) for x in items) if k} - set(ALBUMS))
+    if want and os.path.exists(make.ARCHIVE_DB):
+        try:
+            db = sqlite3.connect(make.ARCHIVE_DB)
+            for i in range(0, len(want), 500):
+                part = want[i:i + 500]
+                for a, lo, hi in db.execute(f'SELECT album, min(coalesce(date, date_from)), max(coalesce(date, date_to)) FROM photos '
+                                            f'WHERE album IN ({",".join("?" * len(part))}) GROUP BY album', part):
+                    ALBUMS[a] = (lo and lo[:10], hi and hi[:10])
+            db.close()
+        except Exception as e:
+            print('  album days not read:', e)
+    for a in want:
+        ALBUMS.setdefault(a, (None, None))
+    return ALBUMS
+
+
+def album_span(x):
+    """(album_from, album_to) for a photo: both None when its album is a single day or isn't known."""
+    k = make.baps_key(x.get('i') or '')
+    lo, hi = ALBUMS.get(k[0], (None, None)) if k else (None, None)
+    return (lo, hi) if lo and hi and lo != hi else (None, None)
+
+
 def items_for(day, cache):
     """The day's photos, gathered as make.main() does."""
     mmdd = f'{day:%m-%d}'
@@ -82,6 +139,7 @@ def main():
     seen = make.shown
     make.shown = lambda: {d: v for d, v in seen().items() if d < str(day)}   # only the days before it, as its own morning run sees them
     items, tg_evs = items_for(day, os.path.join(make.HERE, '.cache'))
+    album_days(items)
     unwatch = watch_faces()
     photos = make.pick_one_per_year(items, seed=f'{day:%m-%d}', aspect=make.FRAME_ASPECT[make.LIVE_STYLE], day=day)
     unwatch()
@@ -118,12 +176,13 @@ def main():
             at = blobs[f].tell(); im.save(blobs[f], 'JPEG', quality=82 if k < 6 else 76)
             ims.append(im)
             d = str(x.get('d') or '')[:10]
-            fest = make.festival_of(x)   # the same tab as the daily picture (Darpan, 4 Nov 2026: festivals(cal_day(d)) was always empty)
+            fest = festival_tag(x)   # the daily picture's tab (Darpan, 4 Nov 2026), or a nearby festival its own caption names (6 Nov 2026)
+            lo, hi = album_span(x)
             cands.append(dict(f=f'{w["year"]}-{f}.jpg', at=[at, blobs[f].tell() - at], w=im.width, h=im.height,
                               face=[round(v * s, 1) for v in x['face']] if x['face'] else None,
                               crop=x.get('crop', 'frame'), caption=make.caption(x), original=x.get('c') or '',
                               place=make.place(x), date=d, special=bool(x.get('special')), nice=bool(x.get('nice')),
-                              festival=fest, **({'nobapa': True} if x.get('nobapa') else {})))
+                              festival=fest, album_from=lo, album_to=hi, **({'nobapa': True} if x.get('nobapa') else {})))
         for f, b in blobs.items():
             b.close()
             if os.path.getsize(b.name) == 0:
@@ -144,7 +203,7 @@ def main():
     pack = dict(date=str(day), title=make.cal_title(day) or f'{day.day} {day:%B}', subtitle='in Bapa’s Diary',
                 footer=make.FOOTER, cal_line=cal[0] if cal else '', tomorrow=cal[1] if cal else '',
                 story=dict(year=story['date'][:4], line=story.get('line', '')) if story else None,
-                whatsapp=wa.strip(), years=years, cell=CELL, cols=COLS, every=True, made=datetime.datetime.utcnow().isoformat(timespec='minutes') + 'Z')
+                whatsapp=wa.strip(), years=years, cell=CELL, cols=COLS, every=True, albums=True, made=datetime.datetime.utcnow().isoformat(timespec='minutes') + 'Z')
     json.dump(pack, open(os.path.join(out, 'pack.json'), 'w'), indent=1, ensure_ascii=False)
     print(f'{day}: {len(years)} years, {sum(len(y["cands"]) for y in years)} photos -> {out}')
 

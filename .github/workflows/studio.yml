@@ -12,6 +12,10 @@ on:
       dates:
         description: 'Extra dates to add (YYYY-MM-DD, comma separated). Leave blank for the next seven days.'
         required: false
+      to:
+        description: 'Branch to save the packs on (studio is the one the Studio reads; another name for a test run)'
+        required: false
+        default: studio
 
 permissions:
   contents: write
@@ -34,6 +38,11 @@ jobs:
         run: |
           mkdir -p site
           if git fetch -q --depth 1 origin studio; then git archive origin/studio | tar -x -C site; fi
+      - name: Bring the archive database (each album's first and last day)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download database -p bapas.db.gz --clobber && gunzip -f bapas.db.gz
       - name: Open Darpan's downloaded archive in Drive (the photos come from there, baps.org only for anything it lacks)
         continue-on-error: true
         timeout-minutes: 8
@@ -46,7 +55,7 @@ jobs:
           [ -n "$TOKEN" ] || { echo "The RCLONE_DRIVE_TOKEN secret isn't set, so the photos come from baps.org"; exit 0; }
           curl -s https://rclone.org/install.sh | sudo bash >/dev/null
           mkdir -p ~/.config/rclone && python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
-          gh release download database -p bapas.db.gz --clobber && gunzip -f bapas.db.gz
+          [ -f bapas.db ] || { gh release download database -p bapas.db.gz --clobber && gunzip -f bapas.db.gz; }
           echo "ARCHIVE=gdrive:Bapa's Archive" >> "$GITHUB_ENV"
       - name: Make the new packs
         env:
@@ -55,10 +64,11 @@ jobs:
       - name: Save them on the studio branch (one fresh commit, so old photos don't pile up)
         env:
           TOKEN: ${{ github.token }}
+          TO: ${{ inputs.to || 'studio' }}
         run: |
           cp dashboard/index.html site/index.html
           cd site
           git init -q -b studio
           git config user.name "Bapa's Diary bot"; git config user.email "actions@github.com"
           git add -A && git commit -qm "Studio packs $(date -u +%F)"
-          git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" studio
+          git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" "HEAD:${TO}"
