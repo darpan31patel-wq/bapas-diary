@@ -550,6 +550,47 @@ def remember(day, photos):
 STORY_BOOST = 60   # a photo of the moment the channel remembers for that year: ahead of every other photo, behind only Darpan's own pin (100)
 
 
+TAKEN = {}   # (album, file) -> (the photo's own day, album first day, album last day) from the archive database
+
+
+def taken_days(items):
+    """Each baps.org photo's own day from the archive database (bapas.db): its 'date' when baps.org gives the photo one
+    (its file name or a one day page), else only the first and last day of the album it is filed under. Nothing when
+    the database isn't to hand (then a photo's listed day is all there is to go by)."""
+    keys = {k for k in (baps_key(x.get('i') or '') for x in items) if k} - set(TAKEN)
+    albums = sorted({a for a, f in keys})
+    if albums and os.path.exists(ARCHIVE_DB):
+        try:
+            db = sqlite3.connect(ARCHIVE_DB)
+            for i in range(0, len(albums), 500):
+                part = albums[i:i + 500]
+                for a, f, d, lo, hi in db.execute(f'SELECT album, file, date, date_from, date_to FROM photos WHERE album IN ({",".join("?" * len(part))})', part):
+                    TAKEN[(a, urllib.parse.unquote(f or '').lower())] = (d and d[:10], lo and lo[:10], hi and hi[:10])
+            db.close()
+        except Exception as e:
+            print('  photo days not read:', e)
+    for k in keys:
+        TAKEN.setdefault(k, None)
+
+
+def on_the_day(x, day):
+    """True when the photo was taken on that year's own date (Darpan, 6 Nov 2026: 'choose a photo taken on the exact
+    date and at that day's place first'); False for a photo from a nearby day, or one only filed under an album that
+    covers a range of days ('1 to 9 November 2004'), whose own day nobody knows."""
+    try:
+        want = str(day.replace(year=x['y']))
+    except ValueError:   # 29 February in a year without one
+        return False
+    got = TAKEN.get(baps_key(x.get('i') or '') or ('', ''))
+    if got:
+        own, lo, hi = got
+        if own:
+            return own == want
+        if lo and hi and lo != hi:
+            return False
+    return str(x.get('d') or '')[:10] == want
+
+
 def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
     """Per year, a photo where Bapa is recognised, chosen by Darpan's rule (18 Oct 2026): a photo is either a
     really nice action shot or a close up of Bapa. An action shot only counts when what he is doing stays in
@@ -564,6 +605,8 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
     unless that would leave fewer than five; then they're kept and shown whole so he isn't cropped out.
     aspect is the frame's width / height (0.69 for the tall live cards, 1.33 for wide ones)."""
     rnd = random.Random(seed)
+    if day:
+        taken_days(items)
     cands, stories = {}, {}
     for e in (tg_events(f'{day:%m-%d}') if day else []):   # the channel's story for each year of this day
         if not e.get('channel') and not e.get('guru'):
@@ -627,8 +670,21 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
         if len(lst) > 16:   # keep memory down: only the best few of each kind stay
             pinned = [v for v in lst if (w := PICKS.get(seed, {}).get(str(x['y']))) and isinstance(w, str) and w.lower() in (v[2].get('c') or '').lower()]
             pinned += [v for v in lst if any(tells(v[2], e, RARE_DAYS) for e in stories.get(x['y'], []))]   # and so does a photo of the channel's story
-            keep_ids = {id(v) for v in sorted(lst, key=lambda v: -v[0])[:8] + sorted(lst, key=lambda v: -v[1])[:8] + pinned}   # Darpan's pin always stays
+            first = lambda v: 20 if day and v[2]['face'] and on_the_day(v[2], day) else 0   # photos of Bapa from the date itself stay first (6 Nov 2026)
+            keep_ids = {id(v) for v in sorted(lst, key=lambda v: -v[0] - first(v))[:8] + sorted(lst, key=lambda v: -v[1] - first(v))[:8] + pinned}   # Darpan's pin always stays
             lst[:] = [v for v in lst if id(v) in keep_ids]
+    if day:   # Darpan, 6 Nov 2026: a photo of Bapa taken on the exact date first; a photo from a nearby day or from an album
+        # filed under a range of nearby dates only when that year has no photo of Bapa from the date itself. The channel's
+        # story photos, his own pins and festival special pictures are left as they were.
+        for y, lst in cands.items():
+            if any(v[2]['face'] and not v[2].get('tg') and on_the_day(v[2], day) for v in lst):
+                pin = PICKS.get(seed, {}).get(str(y))
+                keep = [v for v in lst if v[2].get('tg') or on_the_day(v[2], day)
+                        or (isinstance(pin, str) and pin.lower() in (v[2].get('c') or '').lower())
+                        or any(tells(v[2], e, RARE_DAYS) for e in stories.get(y, []))]
+                if len(keep) < len(lst):
+                    print(f'  {y}: {len(lst) - len(keep)} photos from nearby days or a date range album set aside, the year has photos of Bapa from the day itself')
+                lst[:] = keep
     years = sorted(cands)
     if sum(1 for y in years if any(v[2]['face'] for v in cands[y])) >= 5:
         years = [y for y in years if any(v[2]['face'] or v[2].get('tg') for v in cands[y])]   # a channel year stays even unrecognised (flagged)
