@@ -85,6 +85,9 @@ h1 { margin: 0; font: 600 clamp(30px, 5vw, 50px)/1.1 var(--title); letter-spacin
 .go.vgo:hover i, .go.vgo:focus-visible i { background: var(--maroon-out); }
 .go.vgo:hover i::before, .go.vgo:focus-visible i::before { border-left-color: var(--gold); }
 .day h2 .go { align-self: center; }
+.artline { margin: 10px auto 0; max-width: 70ch; font: italic 500 16px/1.4 var(--serif); color: var(--gold); }
+.artline a { color: var(--gold-hi); text-decoration: underline; text-decoration-color: rgba(217, 164, 65, .45); text-underline-offset: 3px; }
+.artline a:hover, .artline a:focus-visible { text-decoration-color: var(--gold-hi); }
 @media (max-width: 760px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; } .day h2 { font-size: 19px; } }
 @media (max-width: 760px) { .grid .pick { grid-column: 1 / -1; grid-row: auto; aspect-ratio: auto; } .grid .pick img { flex: none; height: auto; aspect-ratio: 4 / 3; } }
 /* the photo big */
@@ -106,7 +109,7 @@ h1 { margin: 0; font: 600 clamp(30px, 5vw, 50px)/1.1 var(--title); letter-spacin
 <body>
 <nav class="site-menu" aria-label="Website tabs"><a href="/">Today</a><a href="/calendar/">Calendar</a><a href="/search/">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/then-and-now/">Legacy</a><a href="/about/">About</a></nav>
 <main>
-  <header><h1 id="title">Photos</h1><div class="when" id="when"></div><div class="count" id="count">Opening the photos…</div><div class="vids" id="vids"></div></header>
+  <header><h1 id="title">Photos</h1><div class="when" id="when"></div><div class="count" id="count">Opening the photos…</div><div class="vids" id="vids"></div><div class="arts" id="arts"></div></header>
   <div id="days"></div>
 </main>
 <div class="big" id="big" hidden role="dialog" aria-modal="true" aria-label="Photo">
@@ -154,6 +157,7 @@ async function load() {
   // (Darpan, 30 Oct 2026: "start with Bapa's photos")
   Object.values(byDay).forEach(list => list.sort((a, b) => b.bapa - a.bapa));
   if (from === to) await pickFirst(from, place, byDay);
+  if (from === to) stories(from);
   const keys = Object.keys(byDay).sort();
   all = keys.flatMap(k => byDay[k]);
   if (!all.length) { $('count').textContent = 'No photos from these days yet.'; videos(from, to, []); return; }
@@ -202,6 +206,14 @@ async function pickFirst(day, place, byDay) {
   p.pick = 1; p.where = pl || place || p.g[2].split(',')[0].trim();
   p.what = String(cap || p.cap || '').replace(/\bSwamishri\b/g, guruOn(day)).replace(/\.$/, '');
   list.unshift(p);
+}
+
+// the day's baps.org News story, from /data/articles/MM-DD.json (tools/web_articles.py): a gold line that opens it on
+// baps.org (Darpan, 4 Nov 2026: "link these articles to the calender or today")
+async function stories(day) {
+  const A = await fetch(`/data/articles/${day.slice(5)}.json`).then(r => r.ok ? r.json() : {}).catch(() => ({}));
+  $('arts').innerHTML = (A[day.slice(0, 4)] || []).slice(0, 2).map(([t, u]) =>
+    `<p class="artline">From the baps.org story: <a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a></p>`).join('');
 }
 
 // each day's Video Darshan, from /data/videos/YYYY.json (tools/web_videos.py): the day's first BAPS video on YouTube

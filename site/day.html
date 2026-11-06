@@ -327,6 +327,9 @@ a.ss-big { text-decoration: none; }
 .yhead .it{font:500 16px var(--serif);font-style:italic;color:var(--cream)}
 .yhead .fest{margin:0;background:var(--gold-soft);color:var(--maroon-out)}
 .yhead a{margin-left:auto}
+.artline{margin:9px 0 0;font:italic 500 15px/1.4 var(--serif);color:var(--gold-soft)}
+.artline a{margin:0;color:var(--gold-hi);text-decoration:underline;text-decoration-color:rgba(217,164,65,.45);text-underline-offset:3px}
+.artline a:hover,.artline a:focus-visible{text-decoration-color:var(--gold-hi)}
 /* the gold Photos button: that day's photos in Search (Darpan, 28 Oct 2026) */
 .go{display:inline-block;padding:6px 13px;border:1px solid var(--go,var(--gold-soft));border-radius:999px;color:var(--go,var(--gold-soft));font:600 11.5px/1.2 var(--sans);letter-spacing:.08em;text-transform:uppercase;text-decoration:none;white-space:nowrap}
 .go:hover,.go:focus-visible{background:var(--go,var(--gold-soft));color:var(--go-on,var(--maroon-out));outline:none}
@@ -848,6 +851,7 @@ function render() {
   under = null; SKY.row = -1; SKY.x = 1e9; SKY.wait = 1.5;   // the star sets off along the first rope
   years.filter(y => !hasPhotos(byYear[y])).forEach(y => group(y, null, byYear[y].place, DAY.cal && DAY.cal[y], byYear[y].stories));
   [...$('groups').children].sort((a, b) => a.id.slice(1) - b.id.slice(1)).forEach(g => $('groups').append(g));
+  storyLines();
   $('board').hidden = $('controls').hidden = false;
   $('search-day').href = D.fest ? '{{SEARCH}}#q=' + encodeURIComponent(D.title) : SRC.search(D.date);
   $('search-day').textContent = D.fest ? 'Search ' + D.title : 'Search this date';
@@ -1514,6 +1518,18 @@ function seasonSections(J, S) {
   $('dw').hidden = !$('dw').innerHTML;
 }
 
+// the baps.org News story of that day (tools/web_articles.py, from every News article read 4 to 6 Nov 2026): a gold line
+// under the year's heading that opens the story on baps.org (Darpan, 4 Nov 2026: "link these articles to the calender or today")
+const ART = {};
+function storyLines() {
+  document.querySelectorAll('#groups .arts[data-d]').forEach(async el => {
+    const d = el.dataset.d, md = d.slice(5);
+    const A = await (ART[md] = ART[md] || fetch('{{DATA}}../articles/' + md + '.json').then(r => r.ok ? r.json() : {}).catch(() => ({})));
+    el.innerHTML = (A[d.slice(0, 4)] || []).slice(0, 2).map(([t, u]) =>
+      `<p class="artline">From the baps.org story: <a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a></p>`).join('');
+  });
+}
+
 // every photo of the day, year by year
 function group(y, Y, where, cal, stories) {
   if (!Y && !stories.length) return;
@@ -1522,6 +1538,7 @@ function group(y, Y, where, cal, stories) {
   g.innerHTML = `<div class="yhead"><h3>${y}</h3><span class="caps">${esc(where || '')}</span>` +
     (ti ? `<span class="it">${esc(ti)}</span>` : '') + (fest ? `<span class="fest">${esc(fest)}</span>` : '') +
     `<a class="go" href="${esc(SRC.search(day))}">See more &rsaquo;</a>${Y && Y.v ? watchVideo(Y.v, 'go vgo') : ''}</div>` +
+    `<div class="arts" data-d="${esc(day)}"></div>` +
     told(Y, stories).map(t => storyHTML(...t)).join('');
   const add = (list, note) => {
     if (!list || !list.length) return;
