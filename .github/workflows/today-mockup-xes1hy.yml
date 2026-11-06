@@ -52,9 +52,9 @@ jobs:
                 for (let y = 0; y < 30; y++) { await p.mouse.wheel(0, 900); await p.waitForTimeout(250); }
                 await p.evaluate(() => window.scrollTo(0, 0));
                 await p.waitForTimeout(4000);
-                for (const [sel, nm] of [['header', 'top'], ['#stories', 'stories']]) {   // the line at the top and the stories list
+                for (const [sel, nm] of [['header:has(#title)', 'top'], ['#stories', 'stories']]) {   // the line at the top and the stories list
                   const e = p.locator(sel).first();
-                  if (await e.count()) { await e.scrollIntoViewIfNeeded(); await p.waitForTimeout(800); await e.screenshot({path: `shots/${d}-${name}-${nm}.jpg`, quality: 85, type: 'jpeg'}).catch(x => console.log(nm, x.message)); }
+                  try { console.log(nm, 'visible', await e.isVisible()); await e.scrollIntoViewIfNeeded({timeout: 5000}); await p.waitForTimeout(800); await e.screenshot({path: `shots/${d}-${name}-${nm}.jpg`, quality: 85, type: 'jpeg', timeout: 10000}); } catch (x) { console.log(nm, x.message.split('\n')[0]); }
                 }
                 for (const y of ['2006', '2013']) {   // close up of the year's heading with the story line
                   const g = p.locator('#y' + y);
