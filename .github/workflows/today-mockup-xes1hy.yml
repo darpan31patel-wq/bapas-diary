@@ -18,7 +18,7 @@ jobs:
       PROJECT: bapas-diary
       DOMAIN: bapas-diary.com
       CAL_COMMIT: 9d0e952d170abfdaecfea4548f714bccb2532a8e
-      DAYS: '11-04 10-30 11-02'
+      DAYS: '11-04 11-07'
     steps:
       - uses: actions/checkout@v4
       - name: Build the site as website-deploy.yml does (no deploy)
@@ -52,6 +52,12 @@ jobs:
                 for (let y = 0; y < 30; y++) { await p.mouse.wheel(0, 900); await p.waitForTimeout(250); }
                 await p.evaluate(() => window.scrollTo(0, 0));
                 await p.waitForTimeout(4000);
+                for (const y of ['2006', '2013', '2002', '2019', '2001']) {   // close up of the year's heading with the story line
+                  const g = p.locator('#y' + y);
+                  if (await g.count()) { await g.scrollIntoViewIfNeeded(); await p.waitForTimeout(1200); await g.screenshot({path: `shots/${d}-${name}-group-${y}.jpg`, quality: 85, type: 'jpeg'}).catch(e => console.log(y, e.message)); }
+                }
+                await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(800);
+                console.log(d, name, 'story lines', await p.evaluate(() => [...document.querySelectorAll('.artline')].map(e => e.closest('section').id + ' ' + e.textContent)));
                 if (name === 'phone') await p.screenshot({path: `shots/${d}-${name}.jpg`, fullPage: true, quality: 82, type: 'jpeg'});
                 else {   // a whole page picture comes out blank on a wide screen: one screen at a time, joined after
                   const H = await p.evaluate(() => document.documentElement.scrollHeight);
@@ -62,6 +68,17 @@ jobs:
                 }
                 await p.close();
               }
+            }
+            for (const [d, name, opt] of [['2006-11-04', 'computer', {viewport: {width: 1100, height: 900}, deviceScaleFactor: 1}],
+                                          ['2013-11-04', 'computer', {viewport: {width: 1100, height: 900}, deviceScaleFactor: 1}],
+                                          ['2006-11-04', 'phone', {viewport: {width: 390, height: 844}, deviceScaleFactor: 2, isMobile: true, hasTouch: true}]]) {
+              const p = await b.newPage(opt);   // the Calendar day box (the Calendar shows this page in its box)
+              p.on('pageerror', e => console.log(d, 'box pageerror', e.message));
+              await p.goto(`http://localhost:8080/photos/#date=${d}&box=1`, {waitUntil: 'networkidle'});
+              await p.waitForTimeout(5000);
+              console.log(d, 'box', await p.evaluate(() => document.getElementById('arts') && document.getElementById('arts').textContent));
+              await p.screenshot({path: `shots/box-${d}-${name}.jpg`, quality: 85, type: 'jpeg'});
+              await p.close();
             }
             await b.close();
           })();
@@ -77,10 +94,10 @@ jobs:
               for p in parts:
                   im.paste(p, (0, y)); y += p.height
               im.save(f'shots/{d}-computer.jpg', quality=82)"
-          for d in $DAYS; do python3 -c "
+          for d in; do python3 -c "
           import json, sys
           D = json.load(open('out/data/day/$d.json'))
           print('$d', [(Y['y'], Y['place']) for Y in D['years'] if Y['p'] or Y.get('t')])"; done
-          cp tg-cards.json shots/tg-cards-used.json; cp out/data/day/11-04.json out/data/day/10-30.json out/data/day/11-02.json shots/
+          cp out/data/articles/11-04.json shots/articles-11-04.json
           gh release view today-mockup-xes1hy > /dev/null 2>&1 || gh release create today-mockup-xes1hy --prerelease --title 'Today mockup (website only)' --notes 'Pictures of the Today page before going live. Website only.'
           gh release upload today-mockup-xes1hy shots/* --clobber
