@@ -18,7 +18,7 @@ jobs:
       PROJECT: bapas-diary
       DOMAIN: bapas-diary.com
       CAL_COMMIT: 9d0e952d170abfdaecfea4548f714bccb2532a8e
-      DAYS: '11-04 11-07'
+      DAYS: '11-04'
     steps:
       - uses: actions/checkout@v4
       - name: Build the site as website-deploy.yml does (no deploy)
@@ -100,4 +100,5 @@ jobs:
           print('$d', [(Y['y'], Y['place']) for Y in D['years'] if Y['p'] or Y.get('t')])"; done
           cp out/data/articles/11-04.json shots/articles-11-04.json
           gh release view today-mockup-xes1hy > /dev/null 2>&1 || gh release create today-mockup-xes1hy --prerelease --title 'Today mockup (website only)' --notes 'Pictures of the Today page before going live. Website only.'
-          gh release upload today-mockup-xes1hy shots/* --clobber
+          gh release upload today-mockup-xes1hy shots/box-* --clobber
+          for f in shots/*; do gh release upload today-mockup-xes1hy "$f" --clobber || echo "not uploaded: $f"; done
