@@ -99,7 +99,9 @@ export async function onRequest(context) {
     } });
   }
 
-  if (request.method === 'POST') {
+  const signedIn = await passOk(key, cookie(request, COOKIE));
+  // a POST from a signed in device is the Studio itself (the changes log at /darpan/api/log), not a password try
+  if (request.method === 'POST' && !signedIn) {
     const form = await request.formData().catch(() => null);
     const typed = String((form && form.get('password')) || '').slice(0, 200);
     if (!typed || !(await samePassword(key, typed, password))) {
@@ -112,7 +114,7 @@ export async function onRequest(context) {
     } });
   }
 
-  if (!(await passOk(key, cookie(request, COOKIE)))) return lockPage('');
+  if (!signedIn) return lockPage('');
 
   const res = await next();
   const out = new Response(res.body, res);
