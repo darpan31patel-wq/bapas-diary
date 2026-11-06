@@ -1,2 +1,5 @@
 # Browsers ask for /favicon.ico on pages that do not name an icon; send them the site icon (website review, 28 Oct 2026)
 /favicon.ico /favicon-32.png 301
+# the private searches page was renamed Interaction (Darpan, 4 Nov 2026: "change this name to interaction"); old links still open it
+/missed /interaction/ 301
+/missed/ /interaction/ 301

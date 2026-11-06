@@ -4,7 +4,9 @@
 //   GET  /api/missed?key=WORD                              {days: [[date, [[words, times], ...]], ...]} newest first
 // Kept in a Cloudflare KV store bound as MISSED (the deploy binds it; see website-deploy.yml). Only the words typed,
 // the day and the page: no names, no addresses, nothing about who searched. The list is read with the word kept as the
-// MISSED_KEY secret, on bapas-diary.com/missed/. Without the store or the key, this does nothing and answers quietly.
+// MISSED_KEY secret, on bapas-diary.com/interaction/ (was /missed/ until 4 Nov 2026).
+// The same store also keeps the About page's feedback (functions/api/feedback.js) under "feedback/" keys, so the list below
+// only reads the date keys (prefix "2", good until the year 3000). Without the store or the key, this does nothing and answers quietly.
 
 const answer = (body, status = 200) => new Response(JSON.stringify(body), {
   status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
@@ -30,7 +32,7 @@ export async function onRequestGet({ request, env }) {
   const days = {};
   let cursor;
   for (let n = 0; n < 20; n++) {   // up to 20,000 saved searches, newest days first below
-    const page = await env.MISSED.list({ limit: 1000, cursor });
+    const page = await env.MISSED.list({ prefix: '2', limit: 1000, cursor });
     for (const k of page.keys) {
       const day = k.name.slice(0, 10);
       const v = await env.MISSED.get(k.name, 'json').catch(() => null);

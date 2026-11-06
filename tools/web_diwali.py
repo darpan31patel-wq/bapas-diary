@@ -15,6 +15,13 @@ From Dhanteras to Bhai Bij Today shows three more things under the board, all fr
                               left out, so no murti or portrait of one guru stands alone. Bapa's photos are only ones
                               of him in person doing darshan or arti of the annakut.
 
+  Chopda Pujan with Bapa      (Darpan, 5 Nov 2026: "Yes to all 1-4") every Chopda Pujan BAPS put on YouTube, a tile a
+                              year: Pramukh Swami Maharaj's (2009, 2010, 2013) and Mahant Swami Maharaj's (2016 on),
+                              each with that Diwali's own darshan of him and its gold Video Darshan, playing in the page.
+  Annakut of the years        one darshan a year of Bapa at the annakut, oldest first, at the top of the Annakut
+                              gallery: his own darshan or arti of the annakut where the diary has one, else that
+                              Annakut's photo of him whose caption says annakut. Bapa in person only.
+
     python3 tools/web_diwali.py --db bapas.db --bapa bapa.db --deep-tags deep-tags.json --fest out/data/fest
 
 Writes out/data/fest/season.json. Run after tools/web_festival.py and tools/web_videos.py (it reads their files).
@@ -148,6 +155,9 @@ def ashirwad_rows(fest, channel, days_json):
     return out
 
 
+HIS_ANNAKUT = {}   # year: [(date, place, photo)], Bapa's own darshan or arti of the annakut, best first
+
+
 def annakut_rows(db, bapa, tags):
     """Every mandir's annakuts, year by year: the spreads, and Bapa's own darshan of them."""
     him = {}
@@ -175,10 +185,92 @@ def annakut_rows(db, bapa, tags):
             continue
         s = sorted(g['s'], key=lambda x: x[0])[:4]
         b = sorted(g['b'], key=lambda x: x[0])[:2]
+        for x in sorted(g['b'], key=lambda x: x[0]):   # each darshan of him with its own day, for Annakut of the years
+            HIS_ANNAKUT.setdefault(int(y), []).append((x[2], p, x[1]))
         places[p].append({'y': int(y), 'd': min(x[2] for x in s + b), 's': [x[1] for x in s], 'b': [x[1] for x in b]})
     out = [{'place': p, 'years': sorted(ys, key=lambda r: r['y'])} for p, ys in places.items()]
     out.sort(key=lambda r: (-len(r['years']), -sum(len(y['b']) for y in r['years']), r['place']))
     return out
+
+
+CHOPDA_VIDEO = re.compile(r'chopda|sharda ?pujan', re.I)
+
+
+def place_on(db, date):
+    """The town most of that day's photos were taken in."""
+    rows = db.execute('SELECT place, count(*) FROM photos WHERE coalesce(date, date_from) = ? GROUP BY place ORDER BY 2 DESC', (date,)).fetchall()
+    return next((town(p) for p, _ in rows if town(p)), '')
+
+
+def chopda_rows(fest, videos, db, bapa):
+    """Every Chopda Pujan video of Bapa, a row a year: the Chopda Pujan darshan first, then its blessings."""
+    dw = {Y['y']: Y for Y in load(os.path.join(fest, 'diwali.json'))['years']}
+    found = {}
+    for d, vs in json.load(open(os.path.join(videos, 'days.json'), encoding='utf-8')).items():
+        for v in vs:
+            if CHOPDA_VIDEO.search(v['title']):
+                found.setdefault(v['id'], (v['title'].strip(), v.get('secs') or 0, d))
+    for name in ('videos.tsv', 'streams.tsv'):
+        path = os.path.join(videos, 'channel', name)
+        if os.path.exists(path):
+            for row in csv.reader(open(path, encoding='utf-8'), delimiter='\t'):
+                if len(row) >= 3 and CHOPDA_VIDEO.search(row[-2]) and row[-3] not in found:
+                    found[row[-3]] = (row[-2].strip(), int(row[-1]) if row[-1].isdigit() else 0, title_day(row[-2]))
+    years = collections.defaultdict(list)
+    for vid, (t, secs, d) in found.items():
+        y = int(d[:4]) if d else int((re.search(r'\b(19|20)\d\d\b', t) or [0])[0] or 0)
+        if y < FIRST or re.search(r'forthcoming|greeting card|prime minister', t, re.I):   # no year: not put on a Diwali
+            continue
+        years[y].append((bool(BLESS.search(t)), -secs, vid, t, secs, d))
+    him = {}
+    for a, f, rank, fx, fy, close, why in bapa.execute('SELECT album, file, rank, fx, fy, close, why FROM bapa_pick'):
+        if why == 'recognised':
+            him[(a, f)] = (rank, fx, fy)
+    out = []
+    for y in sorted(years):
+        vs = sorted(years[y])[:2]   # the Chopda Pujan itself, then his blessings that evening
+        Y = dw.get(y) or {}
+        d = Y.get('d') or next((x[5] for x in vs if x[5]), '')
+        ps = list(Y.get('p') or Y.get('t') or [])
+        ps.sort(key=lambda p: (not CHOPDA.search(p[2] or ''), face(p)))
+        days = [d] + [(datetime.date.fromisoformat(d) + datetime.timedelta(k)).isoformat() for k in (-1, 1)] if d else []
+        for day in days if not ps else []:   # a Diwali Today has no card for: his own recognised darshan of that day
+            got = []                          # (or the day before or after), the Chopda Pujan first
+            for a, f, cap in bapa.execute('SELECT album, file, caption FROM photos WHERE coalesce(date, date_from) = ?', (day,)):   # bapa.db: captions say what Bapa does
+                h = him.get((a, f))
+                if h and not GURU.search(re.sub(r'^(swamishri|pramukh swami maharaj|mahant swami maharaj)\b', '', (cap or '').strip(), flags=re.I)):
+                    got.append(((not CHOPDA.search(cap or ''), h[0]), [a, f, (cap or '').strip(), 1, [round(h[1] or .5, 3), round(h[2] or .3, 3)]]))
+            ps = [p for _, p in sorted(got)]
+            if ps:
+                break
+        place = Y.get('place') or next((title_place(x[3]) for x in vs if title_place(x[3])), '') or (place_on(db, d) if d else '')
+        for k in (-1, 1):   # a Diwali with no photos of its own day: the town of the day before or after
+            if not place and d:
+                place = place_on(db, (datetime.date.fromisoformat(d) + datetime.timedelta(k)).isoformat())
+        out.append({'y': y, 'd': d, 'place': place, 'v': [[x[2], x[3], x[4]] for x in vs], 'p': ps[:1],
+                    'guru': 'Mahant Swami Maharaj' if d and d >= MSM or y > 2016 else 'Pramukh Swami Maharaj'})
+    return out
+
+
+def annakut_years(fest):
+    """One darshan a year of Bapa at the annakut, oldest first: his own darshan or arti of the annakut (the gallery's
+    gold frames), else that year's Annakut photo of him on Today whose caption says annakut."""
+    best, ann = {}, load(os.path.join(fest, 'annakut.json'))['years']
+    day = {Y['y']: Y['d'] for Y in ann}   # the New Year's Annakut itself, not a mango annakut or a Haatdi months away
+    for y, got in HIS_ANNAKUT.items():
+        for d, place, p in got:
+            if y in day and near(d, day[y], 1):
+                best[y] = {'y': y, 'd': d, 'place': place, 'p': p}
+                break
+    for Y in ann:
+        ps = [p for p in (Y.get('p') or []) + (Y.get('t') or []) if ANNAKUT.search(p[2] or '')
+              and not (len(p) > 4 and isinstance(p[4], list) and len(p[4]) > 7 and p[4][4] < .08)]   # never a tiny far off face
+        if Y['y'] not in best and ps:
+            best[Y['y']] = {'y': Y['y'], 'd': Y['d'], 'place': Y.get('place') or '', 'p': ps[0]}
+    for r in best.values():   # 'Swamishri performs annakut arti' -> 'Performs annakut arti': his name is on the tile by its date
+        cap = re.sub(r'^(swamishri|param pujya mahant swami|param pujya pramukh swami maharaj|pramukh swami maharaj|mahant swami maharaj)\s+', '', r['p'][2] or '', flags=re.I)
+        r['p'] = [r['p'][0], r['p'][1], cap[:1].upper() + cap[1:]] + list(r['p'][3:])
+    return [best[y] for y in sorted(best)]
 
 
 def main():
@@ -194,15 +286,19 @@ def main():
         'diwali': diwali_rows(a.fest),
         'ashirwad': ashirwad_rows(a.fest, [os.path.join(a.videos, 'channel', 'videos.tsv')], os.path.join(a.videos, 'days.json')),
         'annakut': annakut_rows(sqlite3.connect(a.db), sqlite3.connect(a.bapa), tags),
+        'chopda': chopda_rows(a.fest, a.videos, sqlite3.connect(a.db), sqlite3.connect(a.bapa)),
     }
+    out['annyears'] = annakut_years(a.fest)   # after annakut_rows, which finds his annakut darshans
     this = datetime.date.today().year
-    for k in ('diwali', 'ashirwad'):
+    for k in ('diwali', 'ashirwad', 'chopda', 'annyears'):
         out[k] = [r for r in out[k] if r['y'] < this or r.get('d', '9') < datetime.date.today().isoformat()]
     with open(os.path.join(a.fest, 'season.json'), 'w', encoding='utf-8') as fh:
         json.dump(out, fh, ensure_ascii=False, separators=(',', ':'))
     print(f"season: {len(out['diwali'])} Diwalis, {len(out['ashirwad'])} New Year blessings "
           f"({' '.join(str(r['y']) for r in out['ashirwad'])}), annakuts at {len(out['annakut'])} places, "
-          f"{sum(len(y['s']) + len(y['b']) for r in out['annakut'] for y in r['years'])} photos")
+          f"{sum(len(y['s']) + len(y['b']) for r in out['annakut'] for y in r['years'])} photos; "
+          f"Chopda Pujan videos {' '.join(str(r['y']) for r in out['chopda'])}; Annakut of the years {len(out['annyears'])} "
+          f"({out['annyears'][0]['y'] if out['annyears'] else '-'} to {out['annyears'][-1]['y'] if out['annyears'] else '-'})")
 
 
 if __name__ == '__main__':

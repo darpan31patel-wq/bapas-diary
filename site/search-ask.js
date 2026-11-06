@@ -189,7 +189,7 @@
   // the spellings to look for, for one searched word: [the word itself, then other spellings in the diary]
   function spellings(w) {
     w = w.toLowerCase();
-    const out = [w], same = SAME[w];
+    const out = [w], same = SAME[w] || learnedFor(w);
     if (same) out.push(same);
     if (w.length < 4 || !/^[a-z]+$/.test(w) || !vocab()) return out;
     const add = list => { for (const v of list || []) if (!out.some(o => v.includes(o))) out.push(v); };
@@ -205,6 +205,75 @@
     }
     return out.slice(0, 12);
   }
+  // ---------- Did you mean (Darpan, 4 Nov 2026) ----------
+  // "When a search finds nothing, the site suggests the closest place or word from the diary, and misspellings people
+  // keep making get learned from the Interaction page so next time they just work."
+  // How far apart two words are: letters added, dropped, changed, or two swapped.
+  function apart(a, b, most = 9) {
+    if (Math.abs(a.length - b.length) > most) return most + 1;
+    let p2 = null, p = Array.from({ length: b.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= a.length; i++) {
+      const c = [i];
+      let low = i;
+      for (let j = 1; j <= b.length; j++) {
+        c[j] = Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+        if (p2 && i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) c[j] = Math.min(c[j], p2[j - 2] + 1);
+        if (c[j] < low) low = c[j];
+      }
+      if (low > most) return most + 1;
+      p2 = p; p = c;
+    }
+    return p[b.length];
+  }
+  const allowed = n => n <= 4 ? 1 : n <= 7 ? 2 : 3;   // a short word may be one letter off, a long one up to three
+  // the closer of: the letters as typed, or the sound (Sarangpur and Salangpur sound alike, Divali and Diwali)
+  const howFar = (w, v, most) => Math.min(apart(w, v, most), apart(loose(w), loose(v), most) + 0.5);
+  // Misspellings learned from people tapping "Did you mean" (functions/api/spellings.js, read on /interaction/):
+  // a word tapped to the same diary word twice or more just works the next time. Only for a word the diary does not
+  // have at all, and only when it is close to the diary word, so a learned spelling can never hide real photos.
+  let LEARNED = {};
+  fetch('/api/spellings').then(r => r.ok ? r.json() : {}).then(j => { LEARNED = j.learned || {}; if (window.search && last) search(); }).catch(() => {});
+  function learnedFor(w) {
+    const fix = LEARNED[w];
+    if (!fix || !vocab() || uses(w)) return '';
+    return howFar(w.replace(/ /g, ''), fix.replace(/ /g, ''), 3) <= allowed(fix.length) ? fix : '';
+  }
+  // finds something? every word (with its other spellings) in one photo or story
+  const finds = words => { const s = window.spellWords(words).alts; return items.some(r => { const hay = r.u ? r.hay : r.hay + ' ' + calWords(r.d); return s.every(a => a.some(x => hay.includes(x))); }); };
+  // The suggestion for words that found nothing: a whole place, festival, person or thing from the list under the
+  // box first (so "guru purnma" is Guru Purnima), else each word the diary does not have becomes its closest word that
+  // it does (the most used one when two are as close). Only when the suggestion itself finds photos or stories.
+  window.didYouMean = q => {
+    if (!vocab()) return null;
+    const typed = q.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (typed.length < 3 || /"|(^|\s)-/.test(q)) return null;
+    let best = null;
+    const flat = typed.replace(/ /g, '');
+    for (const s of window.sugList ? sugList() : []) {
+      const most = allowed(s.low.length), far = howFar(flat, s.low.replace(/[^a-z0-9]+/g, ''), most);
+      if (far <= most && far > 0 && (!best || far < best.far || far === best.far && s.n > best.n)) best = { far, n: s.n, show: s.w[0].toUpperCase() + s.w.slice(1), words: s.low.split(/\s+/) };
+    }
+    if (!best) {
+      const words = typed.split(' '), out = [];
+      let changed = false;
+      for (const w of words) {
+        if (w.length < 3 || /\d/.test(w) || uses(w)) { out.push(w); continue; }
+        const most = allowed(w.length);
+        let pick = null;
+        for (const [v, n] of VOCAB) {
+          if (n < 2 || v.length < 3 || Math.abs(v.length - w.length) > most) continue;
+          const far = howFar(w, v, most);
+          if (far <= most && (!pick || far < pick.far || far === pick.far && n > pick.n)) pick = { far, n, v };
+        }
+        if (!pick) return null;
+        out.push(pick.v); changed = true;
+      }
+      if (!changed) return null;
+      best = { show: out.map(w => w[0].toUpperCase() + w.slice(1)).join(' '), words: out };
+    }
+    return finds(best.words.filter(Boolean)) ? best.show : null;
+  };
+
   // for the plain search: each word's spellings, and a line to say what else was looked for
   window.spellWords = want => {
     const alts = want.map(w => /\s/.test(w) ? [w] : spellings(w));

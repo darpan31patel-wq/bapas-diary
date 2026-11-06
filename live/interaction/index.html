@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Interaction</title>
+<!-- Darpan's private page (was /missed/, renamed 4 Nov 2026: "change this name to interaction"). Three parts, read with
+     the one word (MISSED_KEY): visitors from Cloudflare (/api/visitors), feedback from the About page box (/api/feedback),
+     searches that found nothing (/api/missed), and the misspellings Search has learned from "Did you mean" (/api/spellings,
+     4 Nov 2026). Not in the menu, not in the site map, not for search engines. -->
+<style>
+:root{--maroon-deep:#2a0a12;--gold-hi:#ffe296;--gold-soft:#d9a441;--cream:#fff3dc;--mist:#d8c3a5;--line:rgba(217,164,65,.3)}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at 50% 0,#5a1626,var(--maroon-deep) 60%) fixed;background-color:var(--maroon-deep);color:var(--cream);font:16px/1.5 'Lora',Georgia,serif;min-height:100vh;padding:28px 16px 60px}
+main{max-width:1180px;margin:0 auto}
+.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+.gurus{display:flex;gap:8px}
+.gurus img{width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--gold-soft)}
+h1{font:500 30px/1.2 'Lora',Georgia,serif;color:var(--gold-hi);margin:0}
+p.l{margin:4px 0 20px;color:var(--mist)}
+form#f{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;max-width:520px}
+input{flex:1 1 200px;font:inherit;padding:10px 14px;border-radius:999px;border:1px solid rgba(217,164,65,.5);background:rgba(0,0,0,.3);color:var(--cream)}
+button{font:700 11px 'Poppins',system-ui,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#3d0e19;background:var(--gold-soft);border:0;border-radius:999px;padding:10px 18px;cursor:pointer}
+section.box{background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:16px;padding:20px 22px;margin:0 0 22px}
+section.box>h2{font:500 22px/1.2 'Lora',Georgia,serif;color:var(--gold-hi);margin:0 0 4px}
+section.box>p.sub{margin:0 0 14px;color:var(--mist);font-size:14px}
+h3{font:700 10.5px/1 'Poppins',system-ui,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-soft);margin:22px 0 8px;border-bottom:1px solid var(--line);padding-bottom:8px}
+ul{list-style:none;margin:0;padding:0}
+li.w{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px dotted rgba(217,164,65,.18)}
+li.w span:last-child{color:var(--mist);font-variant-numeric:tabular-nums}
+.note{color:var(--mist);font-style:italic}
+li.w .to{color:var(--mist);font-style:italic;font-size:14px}
+li.w b{color:var(--gold-hi);font-weight:500}
+a.forget{color:var(--gold-soft)}
+/* visitors */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:6px 0 4px}
+.tile{background:rgba(255,226,150,.07);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.tile b{display:block;font:500 30px/1.1 'Lora',Georgia,serif;color:var(--gold-hi);font-variant-numeric:tabular-nums}
+.tile span{font:700 10px 'Poppins',system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--mist)}
+.chart{display:flex;align-items:flex-end;gap:3px;height:130px;padding-top:8px;border-bottom:1px solid var(--line)}
+.chart i{flex:1;min-width:2px;background:var(--gold-soft);border-radius:3px 3px 0 0;position:relative}
+.chart i:hover{background:var(--gold-hi)}
+.axis{display:flex;justify-content:space-between;font:11px 'Poppins',system-ui,sans-serif;color:var(--mist);margin-top:4px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:10px 34px}
+.bar{display:grid;grid-template-columns:minmax(110px,38%) 1fr 6ch;align-items:center;gap:10px;padding:5px 0;font-size:15px}
+.bar .t{height:10px;border-radius:5px;background:rgba(255,226,150,.1);overflow:hidden}
+.bar .t i{display:block;height:100%;background:var(--gold-soft);border-radius:5px}
+.bar em{font-style:normal;color:var(--mist);font-variant-numeric:tabular-nums;min-width:3ch;text-align:right}
+/* feedback */
+.fb{border-bottom:1px dotted rgba(217,164,65,.25);padding:12px 0}
+.fb:last-child{border-bottom:0}
+.fb .who{font:700 10.5px 'Poppins',system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-soft);margin-bottom:4px}
+.fb p{margin:0;white-space:pre-wrap}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.two section.box{margin:0}
+@media (max-width:860px){.cols,.two{grid-template-columns:1fr}.two{gap:22px}}
+@media (max-width:520px){section.box{padding:16px}.bar{grid-template-columns:100px 1fr 6ch}.tile b{font-size:24px}}
+</style>
+</head>
+<body>
+<main>
+<div class="top">
+  <div class="gurus"><img src="/about/img/psm.jpg" alt="Pramukh Swami Maharaj"><img src="/about/img/msm.jpg" alt="Mahant Swami Maharaj"></div>
+  <h1>Interaction</h1>
+</div>
+<p class="l">Who visits Bapa's Diary, what people write in the feedback box on About, the searches that found nothing, and the spellings Search has learned.</p>
+<form id="f"><input id="k" type="password" placeholder="Your word" autocomplete="current-password"><button type="submit">Show</button></form>
+<div id="out"><p class="note">Type the word and press Show.</p></div>
+</main>
+<script>
+const $ = id => document.getElementById(id), out = $('out');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const nice = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-GB', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
+const short = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-GB', {day: 'numeric', month: 'short'});
+const num = n => Number(n || 0).toLocaleString('en-GB');
+let country = c => c;
+try { const dn = new Intl.DisplayNames(['en'], {type: 'region'}); country = c => { try { return dn.of(c) || c; } catch (e) { return c; } }; } catch (e) {}
+const get = (u) => fetch(u, {cache: 'no-store'}).then(async r => ({ok: r.ok, status: r.status, j: await r.json().catch(() => ({}))})).catch(() => ({ok: false, j: {}}));
+const bars = (rows, name) => { const top = Math.max(1, ...rows.map(r => r[1])); return rows.map(([k, n]) =>
+  `<div class="bar"><span>${esc(name(k))}</span><span class="t"><i style="width:${Math.max(2, 100 * n / top)}%"></i></span><em>${num(n)}</em></div>`).join(''); };
+
+function visitorsHtml(v) {
+  if (!v.ok) return `<p class="note">${v.j.error === 'no token yet' ? 'Not switched on yet: it needs the Cloudflare reading key (see the steps sent in the chat).' : 'Could not reach Cloudflare just now. Please try again later.'}</p>`;
+  const d = v.j, days = d.days || [];
+  const visitors = days.reduce((a, x) => a + x[1], 0), views = days.reduce((a, x) => a + x[2], 0);
+  const last = days[days.length - 1] || ['', 0, 0], top = Math.max(1, ...days.map(x => x[1]));
+  return `<div class="tiles">
+      <div class="tile"><b>${num(visitors)}</b><span>Visitors, ${days.length} days</span></div>
+      <div class="tile"><b>${num(views)}</b><span>Pages opened</span></div>
+      <div class="tile"><b>${num(last[1])}</b><span>Visitors ${last[0] ? short(last[0]) : 'today'}</span></div>
+      <div class="tile"><b>${num((d.countries || []).length)}</b><span>Countries</span></div>
+    </div>
+    ${days.length ? `<h3>Visitors each day</h3><div class="chart">${days.map(x => `<i style="height:${Math.max(2, 100 * x[1] / top)}%" title="${short(x[0])}: ${num(x[1])} visitors, ${num(x[2])} pages"></i>`).join('')}</div>
+    <div class="axis"><span>${short(days[0][0])}</span><span>${short(last[0])}</span></div>` : ''}
+    <div class="cols">
+      <div><h3>Where from</h3>${(d.countries || []).length ? bars(d.countries.slice(0, 12), country) : '<p class="note">No countries yet.</p>'}</div>
+      <div><h3>Most used tabs${d.tabsFrom ? ` <span style="letter-spacing:.06em;text-transform:none;font-weight:400;color:var(--mist)">(${esc(d.tabsFrom)})</span>` : ''}</h3>${(d.tabs || []).length ? bars(d.tabs, t => t) : '<p class="note">No tab counts yet.</p>'}</div>
+    </div>
+    ${(d.found || []).length || (d.devices || []).length ? `<div class="cols">
+      <div><h3>How they found the site</h3>${(d.found || []).length ? bars(d.found, t => t) : '<p class="note">Nothing yet.</p>'}</div>
+      <div><h3>Phone or computer</h3>${(d.devices || []).length ? bars(d.devices, t => t) : '<p class="note">Nothing yet.</p>'}</div>
+    </div>` : ''}
+    ${(d.notes || []).length ? `<p class="note" style="font-size:13px;margin-top:14px">${d.notes.map(esc).join('<br>')}</p>` : ''}`;
+}
+function feedbackHtml(f) {
+  if (!f.ok) return '<p class="note">Could not read the feedback just now.</p>';
+  const items = f.j.items || [];
+  return items.length ? items.map(x => `<div class="fb"><div class="who">${esc(x.name || 'No name')} · ${nice(x.day)}</div><p>${esc(x.message)}</p></div>`).join('')
+    : '<p class="note">No feedback yet.</p>';
+}
+function missedHtml(m) {
+  if (!m.ok) return '<p class="note">Could not read the searches just now.</p>';
+  const days = m.j.days || [];
+  return days.length ? days.map(([day, list]) => `<h3>${nice(day)}</h3><ul>${list.map(([q, n]) => `<li class="w"><span>${esc(q)}</span><span>${n === 1 ? 'once' : n + ' times'}</span></li>`).join('')}</ul>`).join('')
+    : '<p class="note">Nothing saved yet: every search so far found something.</p>';
+}
+
+// misspellings learned from "Did you mean" (functions/api/spellings.js): tapped twice or more, they just work
+function spellHtml(sp) {
+  if (!sp.ok) return '<p class="note">Could not read the spellings just now.</p>';
+  const all = sp.j.all || [], at = sp.j.learnAt || 2;
+  const row = ([q, fix, n, day]) => `<li class="w"><span>${esc(q)} <span class="to">${n >= at ? 'now finds' : 'will find'}</span> <b>${esc(fix)}</b></span><span>${n === 1 ? 'once' : n + ' times'} · <a href="#" class="forget" data-q="${esc(q)}">Forget</a></span></li>`;
+  const learned = all.filter(x => x[2] >= at), waiting = all.filter(x => x[2] < at);
+  return all.length ? (learned.length ? `<h3>Learned</h3><ul>${learned.map(row).join('')}</ul>` : '')
+    + (waiting.length ? `<h3>Tapped once, learned the next time</h3><ul>${waiting.map(row).join('')}</ul>` : '')
+    : '<p class="note">Nothing yet: when someone taps a Did you mean suggestion, it shows here.</p>';
+}
+out.addEventListener('click', async e => {
+  const a = e.target.closest('a.forget');
+  if (!a) return;
+  e.preventDefault();
+  const key = $('k').value.trim();
+  await fetch('/api/spellings', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({key, forget: a.dataset.q})}).catch(() => {});
+  a.closest('li').remove();
+});
+
+async function show(key) {
+  out.innerHTML = '<p class="note">Looking…</p>';
+  const q = '?key=' + encodeURIComponent(key);
+  const [m, f, v, sp] = await Promise.all([get('/api/missed' + q), get('/api/feedback' + q), get('/api/visitors' + q + '&days=30'), get('/api/spellings' + q)]);
+  if (m.status === 403 || f.status === 403) { out.innerHTML = '<p class="note">That is not the word.</p>'; return; }
+  if (m.j.error === 'no store yet') { out.innerHTML = '<p class="note">The store is not set up yet.</p>'; return; }
+  try { localStorage.setItem('bapas-diary-missed', key); } catch (e) {}
+  const nf = (f.j.items || []).length;
+  out.innerHTML = `<section class="box" id="visitors"><h2>Visitors</h2><p class="sub">From Cloudflare, the last 30 days. Counts only, nothing about any one person.</p>${visitorsHtml(v)}</section>
+    <div class="two">
+      <section class="box" id="feedback"><h2>Feedback${nf ? ' (' + nf + ')' : ''}</h2><p class="sub">What people wrote in the box at the bottom of About, newest first.</p>${feedbackHtml(f)}</section>
+      <section class="box" id="searches"><h2>Searches that found nothing</h2><p class="sub">Words typed into Search that gave no photos or stories, by day, most often first.</p>${missedHtml(m)}</section>
+    </div>
+    <section class="box" id="spellings" style="margin-top:22px"><h2>Spellings Search has learned</h2><p class="sub">When a search finds nothing, Search says “Did you mean” with the closest word in the diary. A slip that people tap twice or more now just works. Forget takes one off.</p>${spellHtml(sp)}</section>`;
+}
+$('f').addEventListener('submit', e => { e.preventDefault(); show($('k').value.trim()); });
+try { const k = localStorage.getItem('bapas-diary-missed'); if (k) { $('k').value = k; show(k); } } catch (e) {}
+</script>
+</body>
+</html>

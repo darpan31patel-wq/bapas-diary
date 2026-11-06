@@ -90,6 +90,10 @@ select, input[type=date], .clear { font: 700 12px var(--sans); letter-spacing: .
 /* under it, the newest Video Darshan on the BAPS channel, and BAPS's live webcast while one is on (Darpan, 31 Oct 2026) */
 #count .latest-v { flex-basis: 100%; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 12px; margin: -2px 0 6px; font: italic 500 15px var(--serif); color: var(--muted); }
 #count .latest-v:empty { display: none; }
+/* Did you mean (Darpan, 4 Nov 2026): a plain underlined word in the line, not a button */
+#count .dym { font-style: italic; white-space: nowrap; }   /* kept on one line: never a word alone below */
+#count .dym a { color: var(--maroon); font-weight: 600; font-style: normal; text-decoration: underline; text-decoration-color: var(--gold-deep); text-underline-offset: 3px; }
+#count .dym a:hover, #count .dym a:focus-visible { color: var(--gold-deep); }
 #count .go { display: inline-block; padding: 6px 13px; border: 1px solid var(--gold-deep); border-radius: 999px; color: var(--gold-deep); background: var(--paper-hi); font: 600 11.5px/1.2 var(--sans); font-style: normal; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; white-space: nowrap; }
 #count .go:hover, #count .go:focus-visible { background: var(--gold-deep); color: var(--paper-hi); outline: none; }
 #count .go.vgo { display: inline-flex; }
@@ -509,7 +513,10 @@ function render(byYear, want) {
   }).join('') : '';
   if (!hits.length) {
     const asked = Object.keys(byYear).length || $('q').value.trim() || year || $('fest').value || $('place').value || $('act').value || $('month').value || $('day').value || $('from').value || $('to').value;
-    $('count').innerHTML = asked ? `Nothing found${loaded < total ? ' yet, still loading' : ''}.` : 'Type a word or pick a date to start.';
+    // Did you mean (Darpan, 4 Nov 2026): the closest place or word in the diary that does find something, as a plain
+    // underlined word in the line (no button); tapping it searches it (site/search-ask.js, didYouMean)
+    const typed = $('q').value.trim(), dym = asked && loaded >= total && typed && !picMode && window.didYouMean ? didYouMean(typed) : null;
+    $('count').innerHTML = asked ? `Nothing found${loaded < total ? ' yet, still loading' : ''}.` + (dym ? ` <span class="dym">Did you mean <a href="#q=${encodeURIComponent(dym)}" data-q="${esc(dym)}" data-from="${esc(typed)}">${esc(dym)}</a>?</span>` : '') : 'Type a word or pick a date to start.';
     $('results').innerHTML = '';
     $('more').hidden = true;
     if (asked && loaded >= total) missed($('q').value);
@@ -690,6 +697,17 @@ $('q').addEventListener('keydown', e => {
     box.querySelectorAll('li').forEach((li, i) => li.classList.toggle('on', i === SUG.at));
   } else if (e.key === 'Enter' && SUG.at >= 0) { e.preventDefault(); sugPick(SUG.at); }
   else if (e.key === 'Escape') box.hidden = true;
+});
+// "Did you mean": the tapped word is searched, and the slip is told to /api/spellings, which learns it once people
+// keep making it (functions/api/spellings.js; Darpan sees and can take them off on /interaction/)
+$('count').addEventListener('click', e => {
+  const a = e.target.closest('.dym a');
+  if (!a) return;
+  e.preventDefault();
+  const from = a.dataset.from.toLowerCase().replace(/[^a-z ]+/g, ' ').replace(/\s+/g, ' ').trim(), to = a.dataset.q.toLowerCase().replace(/[^a-z ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const fw = from.split(' '), tw = to.split(' '), pairs = fw.length === tw.length ? fw.map((w, i) => [w, tw[i]]).filter(([w, t]) => w !== t) : fw.length === 1 ? [[from, to]] : [];
+  for (const [q, fix] of pairs) try { fetch('/api/spellings', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({q, fix}), keepalive: true}).catch(() => {}); } catch (err) {}
+  $('q').value = a.dataset.q; clearTimeout(timer); search();
 });
 $('suggest').addEventListener('mousedown', e => e.preventDefault());   // keeps the box focused while a suggestion is tapped
 $('suggest').addEventListener('click', e => { const li = e.target.closest('li'); if (li) sugPick(+li.dataset.i); });
