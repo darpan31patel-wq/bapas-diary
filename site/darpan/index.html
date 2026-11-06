@@ -1400,7 +1400,13 @@ function changes() {
 }
 const LOGAPI = '/darpan/api/log';
 async function logChange(how, where) {
-  const e = { at: new Date().toISOString(), kind: S.mode, for: keyOf(S.mode), how, where, changes: changes(), why: $('#why').value.trim() };
+  // every card as it went out (year, which photo, its caption and place, and what the automatic picture had) so the log on the
+  // website says WHAT he chose without anyone reading his browser (Darpan, 6 Nov 2026: "save all that information into the memory")
+  const pack = P[S.mode], o = cur(), day = S.mode !== 'month';
+  const cards = pack ? groupsOf(pack).map(g => { const st = stateOf(o)[g.key] || {}, auto = day ? defaultPick(g, o.photoStyle) : optPick(g, o.option), pick = st.pick ?? auto, c = g.cands[pick] || {}, a = g.cands[auto] || {};
+    return { card: String(label(g.key)), shown: day ? st.on !== false : true, photo: pick + 1, of: g.cands.length, caption: st.caption ?? c.caption ?? '', place: st.place ?? c.place ?? '', date: c.date || '', festival: st.fest ?? (c.festival || captionFest(c)) ?? '',
+      auto: pick === auto ? undefined : { photo: auto + 1, caption: a.caption || '', place: a.place || '' } } }) : [];
+  const e = { at: new Date().toISOString(), kind: S.mode, for: keyOf(S.mode), how, where, changes: changes(), why: $('#why').value.trim(), title: o.titleAuto ? (pack && pack.title) || '' : o.title || '', cards };
   const log = store.get('studio-log') || []; log.unshift(e); store.set('studio-log', log.slice(0, 500));
   $('#why').value = '';
   try { await fetch(LOGAPI, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(e) }) } catch (x) {}
