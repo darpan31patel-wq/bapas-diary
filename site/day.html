@@ -317,6 +317,15 @@ a.ss-big { text-decoration: none; }
 .controls label{font:700 10px var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--gold-soft)}
 
 /* every photo of the day */
+.stories{margin-top:48px;border-top:1px solid rgba(217,164,65,.22);padding-top:28px}
+.stories>h2{margin:0;text-align:center;font:700 clamp(24px,3.4vw,36px)/1.15 var(--serif);color:var(--gold-hi);text-wrap:balance}
+.stories>p{text-align:center;color:var(--mist);margin:8px 0 0;font-size:15px}
+.stories ol{list-style:none;margin:22px auto 0;padding:0;max-width:1200px;columns:3 340px;column-gap:40px}
+.stories li{break-inside:avoid;margin:0 0 4px}
+.stories a{display:flex;gap:14px;align-items:baseline;padding:7px 4px;border-bottom:1px solid rgba(217,164,65,.14);text-decoration:none;color:var(--cream);font:500 16px/1.4 var(--serif)}
+.stories a b{flex:none;font:700 15px var(--serif);color:var(--gold);font-variant-numeric:tabular-nums}
+.stories a span{text-decoration:underline;text-decoration-color:rgba(217,164,65,.3);text-underline-offset:3px}
+.stories a:hover span,.stories a:focus-visible span{color:var(--gold-hi);text-decoration-color:var(--gold-hi)}
 .all{margin-top:56px;border-top:1px solid rgba(217,164,65,.22);padding-top:30px}
 .all>h2{margin:0;text-align:center;font:700 clamp(28px,4vw,42px)/1.1 var(--serif);color:var(--gold-hi);text-wrap:balance}
 .all>p{text-align:center;color:var(--mist);margin:8px 0 0;font-size:15px}
@@ -327,6 +336,9 @@ a.ss-big { text-decoration: none; }
 .yhead .it{font:500 16px var(--serif);font-style:italic;color:var(--cream)}
 .yhead .fest{margin:0;background:var(--gold-soft);color:var(--maroon-out)}
 .yhead a{margin-left:auto}
+.artline{margin:9px 0 0;font:italic 500 15px/1.4 var(--serif);color:var(--gold-soft)}
+.artline a{margin:0;color:var(--gold-hi);text-decoration:underline;text-decoration-color:rgba(217,164,65,.45);text-underline-offset:3px}
+.artline a:hover,.artline a:focus-visible{text-decoration-color:var(--gold-hi)}
 /* the gold Photos button: that day's photos in Search (Darpan, 28 Oct 2026) */
 .go{display:inline-block;padding:6px 13px;border:1px solid var(--go,var(--gold-soft));border-radius:999px;color:var(--go,var(--gold-soft));font:600 11.5px/1.2 var(--sans);letter-spacing:.08em;text-transform:uppercase;text-decoration:none;white-space:nowrap}
 .go:hover,.go:focus-visible{background:var(--go,var(--gold-soft));color:var(--go-on,var(--maroon-out));outline:none}
@@ -490,6 +502,9 @@ a.ss-big { text-decoration: none; }
         p.hidden = false;
       })();
     </script>
+    <!-- every baps.org News story of this date, in the list under the cards (Darpan, 6 Nov 2026: "somewhere at the top that
+         says what happened, stories from BAPS around the world on this day") -->
+    <p class="yir" id="storiesline" hidden><a href="#stories"></a></p>
     <div id="mocknote"></div>
 <!-- Computers: the left card, Screensaver and the email sign up (Darpan, 30 Oct 2026); on phones only its insides show.
      Three distinct buttons, one above the other: Screensaver, Latest vicharan, Email Me (Darpan, 30 Oct 2026; 18:43 no card title, "Email Me") -->
@@ -584,6 +599,12 @@ a.ss-big { text-decoration: none; }
     <button class="pill" id="slideshow" type="button">Slideshow</button>
     <a class="pill" id="search-day" target="_blank" rel="noopener">Search this date</a>
   </div>
+
+  <section class="stories" id="stories" hidden>
+    <h2>Stories from BAPS around the world on this day</h2>
+    <p id="stories-count"></p>
+    <ol id="storylist"></ol>
+  </section>
 
   <div class="dw" id="dw" hidden></div>
 
@@ -851,6 +872,8 @@ function render() {
   under = null; SKY.row = -1; SKY.x = 1e9; SKY.wait = 1.5;   // the star sets off along the first rope
   years.filter(y => !hasPhotos(byYear[y])).forEach(y => group(y, null, byYear[y].place, DAY.cal && DAY.cal[y], byYear[y].stories));
   [...$('groups').children].sort((a, b) => a.id.slice(1) - b.id.slice(1)).forEach(g => $('groups').append(g));
+  storyLines();
+  storyList();
   $('board').hidden = $('controls').hidden = false;
   $('search-day').href = D.fest ? '{{SEARCH}}#q=' + encodeURIComponent(D.title) : SRC.search(D.date);
   $('search-day').textContent = D.fest ? 'Search ' + D.title : 'Search this date';
@@ -1520,6 +1543,33 @@ function seasonSections(J, S) {
   $('dw').hidden = !$('dw').innerHTML;
 }
 
+// the baps.org News story of that day (tools/web_articles.py, from every News article read 4 to 6 Nov 2026): a gold line
+// under the year's heading that opens the story on baps.org (Darpan, 4 Nov 2026: "link these articles to the calender or today")
+const ART = {};
+function storyLines() {
+  document.querySelectorAll('#groups .arts[data-d]').forEach(async el => {
+    const d = el.dataset.d, md = d.slice(5);
+    const A = await (ART[md] = ART[md] || fetch('{{DATA}}../articles/' + md + '.json').then(r => r.ok ? r.json() : {}).catch(() => ({})));
+    el.innerHTML = (A[d.slice(0, 4)] || []).slice(0, 2).map(([t, u]) =>
+      `<p class="artline">From the baps.org story: <a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a></p>`).join('');
+  });
+}
+
+// all of this date's stories, newest year first, each opening on baps.org; a line at the top leads down to them
+async function storyList() {
+  const md = DAY.date, mine = showing;
+  const A = await (ART[md] = ART[md] || fetch('{{DATA}}../articles/' + md + '.json').then(r => r.ok ? r.json() : {}).catch(() => ({})));
+  if (showing !== mine) return;
+  const rows = Object.keys(A).sort((a, b) => b - a).flatMap(y => A[y].map(([t, u]) => [y, t, u]));
+  $('stories').hidden = $('storiesline').hidden = !rows.length;
+  if (!rows.length) return;
+  const n = rows.length, yrs = Object.keys(A).length;
+  $('storiesline').firstChild.textContent = `${n} ${n === 1 ? 'story' : 'stories'} from BAPS around the world on this day`;
+  $('stories-count').textContent = `${n} ${n === 1 ? 'story' : 'stories'} from ${yrs} ${yrs === 1 ? 'year' : 'years'}, each opens on baps.org`;
+  $('storylist').innerHTML = rows.map(([y, t, u]) =>
+    `<li><a href="${esc(u)}" target="_blank" rel="noopener"><b>${y}</b><span>${esc(t)}</span></a></li>`).join('');
+}
+
 // every photo of the day, year by year
 function group(y, Y, where, cal, stories) {
   if (!Y && !stories.length) return;
@@ -1528,6 +1578,7 @@ function group(y, Y, where, cal, stories) {
   g.innerHTML = `<div class="yhead"><h3>${y}</h3><span class="caps">${esc(where || '')}</span>` +
     (ti ? `<span class="it">${esc(ti)}</span>` : '') + (fest ? `<span class="fest">${esc(fest)}</span>` : '') +
     `<a class="go" href="${esc(SRC.search(day))}">See more &rsaquo;</a>${Y && Y.v ? watchVideo(Y.v, 'go vgo') : ''}</div>` +
+    `<div class="arts" data-d="${esc(day)}"></div>` +
     told(Y, stories).map(t => storyHTML(...t)).join('');
   const add = (list, note) => {
     if (!list || !list.length) return;
