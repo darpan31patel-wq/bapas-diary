@@ -58,7 +58,13 @@ button { font: inherit; color: inherit }
 .meta b { color: var(--fg); font-weight: 600; font-size: 15px }
 .meta span + span::before, .meta b + span::before { content: '·'; margin-right: 12px; color: var(--line) }
 .easel { position: relative; background: #0d0406; border: 1px solid var(--line); border-radius: 10px; padding: 10px; min-width: 0 }
-#view { width: 100%; height: auto; display: block; box-shadow: 0 10px 40px rgba(0,0,0,.6); cursor: pointer }
+#view { width: calc(var(--zoom, 1) * 100%); height: auto; display: block; box-shadow: 0 10px 40px rgba(0,0,0,.6); cursor: pointer }
+/* zoom into the picture alone, not the page (Darpan, 6 Nov 2026): the picture scrolls inside its own box */
+.zoombox { position: relative; overflow: auto; max-height: 82vh; border-radius: 6px; overscroll-behavior: contain; touch-action: pan-x pan-y }
+.zoombox.zoomed #view { cursor: grab } .zoombox.dragging #view { cursor: grabbing }
+.zoombar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 8px }
+.zoombar output { min-width: 44px; text-align: center; font: 600 13px var(--sans); color: var(--gold) }
+.zoombar #z-tip { flex: 1 1 100%; margin: 0 }
 .status { font-size: 13.5px; color: var(--muted); min-height: 1.4em; margin: 0 }
 .status.ok { color: var(--ok) }
 .status.warn { color: var(--saffron) }
@@ -112,6 +118,8 @@ input[type=checkbox] { accent-color: var(--gold); width: 16px; height: 16px }
 .thumbs button i { position: absolute; inset: 0; background-repeat: no-repeat }
 .thumbs button[aria-pressed="true"] { border-color: var(--gold) }
 .thumbs button span { position: absolute; z-index: 1; left: 3px; top: 3px; font: 700 9.5px var(--sans); background: rgba(20,6,10,.82); color: var(--gold); padding: 1px 4px; border-radius: 3px }
+.thumbs button span.off { left: auto; right: 3px; top: auto; bottom: 3px; color: #ffd6c8; background: rgba(120,30,20,.85) }   /* a photo filed under another date carries that date */
+.hint.ok { color: var(--ok) } .hint.warn { color: var(--saffron) }
 .thumbs button.nob { opacity: .82 }
 .words { display: grid; gap: 10px }
 .words .w { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 4px 8px; align-items: start }
@@ -173,8 +181,11 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
     <div class="meta" id="meta">Loading photos…</div>
     <div class="want" id="want" hidden><p id="want-p"></p><button class="btn primary" id="want-go" type="button">Get this day’s photos ready</button></div>
     <div class="easel" id="easel">
-      <canvas id="view" width="2796" height="1290" aria-label="Live preview of the picture. Click a card to change it."></canvas>
-      <div class="fe" id="fe" hidden></div>
+      <div class="zoombar"><span class="hint">Zoom the picture</span><button class="btn small" id="z-out" type="button" aria-label="Zoom out">−</button><output id="z-val">100%</output><button class="btn small" id="z-in" type="button" aria-label="Zoom in">+</button><button class="btn small" id="z-fit" type="button">Fit</button><span class="hint" id="z-tip">Ctrl and scroll, or pinch, on the picture zooms it too. Drag to move around when zoomed.</span></div>
+      <div class="zoombox" id="zoombox">
+        <canvas id="view" width="2796" height="1290" aria-label="Live preview of the picture. Click a card to change it."></canvas>
+        <div class="fe" id="fe" hidden></div>
+      </div>
     </div>
     <p class="status" id="status" role="status"></p>
     <p class="hint" id="tip">Click any card in the picture to change its photo, place or words.</p>
@@ -763,14 +774,57 @@ function buildEditor() {
 function placeEditor() {
   if (fe.hidden || getComputedStyle(fe).position === 'static') return;
   const h = HITS.find(h => h.key === cur().sel); if (!h) return;
-  const k = view.clientWidth / view.width, ox = view.offsetLeft, oy = view.offsetTop, room = $('#easel').clientWidth;
+  const k = view.clientWidth / view.width, ox = view.offsetLeft, oy = view.offsetTop, room = $('#zoombox').scrollWidth;
   let left = ox + (h.x + h.w) * k + 12;
   if (left + fe.offsetWidth > room - 4) left = ox + h.x * k - fe.offsetWidth - 12;
   fe.style.left = clamp(left, 4, room - fe.offsetWidth - 4) + 'px';
   fe.style.top = Math.max(4, oy + h.y * k) + 'px';
 }
 window.addEventListener('resize', placeEditor);
+
+// ------------------------------------------------------------ zoom the picture only (Darpan, 6 Nov 2026: "zoom into the
+// collage picture only without having to zoom the entire webpage"): the canvas grows inside its own scrolling box
+const zb = $('#zoombox');
+let ZOOM = 1, DRAGGED = false;
+function setZoom(z, ax, ay) {   // ax, ay: the point of the box to keep still, as a share of the picture (0 to 1); the middle by default
+  const was = ZOOM; ZOOM = clamp(Math.round(z * 20) / 20, 1, 6);
+  const r = zb.getBoundingClientRect();
+  const px = ax == null ? zb.scrollLeft + r.width / 2 : ax * view.clientWidth, py = ay == null ? zb.scrollTop + r.height / 2 : ay * view.clientHeight;
+  view.style.setProperty('--zoom', ZOOM);
+  zb.classList.toggle('zoomed', ZOOM > 1);
+  zb.scrollLeft = px * ZOOM / was - (ax == null ? r.width / 2 : (ax * view.clientWidth - zb.scrollLeft));
+  zb.scrollTop = py * ZOOM / was - (ay == null ? r.height / 2 : (ay * view.clientHeight - zb.scrollTop));
+  $('#z-val').textContent = Math.round(ZOOM * 100) + '%';
+  $('#z-out').disabled = ZOOM <= 1; $('#z-in').disabled = ZOOM >= 6;
+  store.set('studio-zoom', ZOOM); placeEditor();
+}
+$('#z-in').addEventListener('click', () => setZoom(ZOOM + .25));
+$('#z-out').addEventListener('click', () => setZoom(ZOOM - .25));
+$('#z-fit').addEventListener('click', () => setZoom(1));
+zb.addEventListener('wheel', e => {   // Ctrl and scroll (a pinch on a trackpad or phone sends the same) zooms around the pointer
+  if (!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+  const r = view.getBoundingClientRect();
+  setZoom(ZOOM * (e.deltaY < 0 ? 1.1 : 1 / 1.1), (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+}, { passive: false });
+let drag = null;
+zb.addEventListener('pointerdown', e => { if (ZOOM <= 1 || e.button !== 0 || e.target !== view) return; drag = { x: e.clientX, y: e.clientY, sl: zb.scrollLeft, st: zb.scrollTop, moved: false }; });
+zb.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (!drag.moved && Math.hypot(dx, dy) < 6) return;
+  if (!drag.moved) { drag.moved = true; zb.classList.add('dragging'); zb.setPointerCapture(e.pointerId) }
+  zb.scrollLeft = drag.sl - dx; zb.scrollTop = drag.st - dy;
+});
+const dragEnd = () => { if (drag && drag.moved) DRAGGED = true; drag = null; zb.classList.remove('dragging') };
+zb.addEventListener('pointerup', dragEnd); zb.addEventListener('pointercancel', dragEnd);
+document.addEventListener('keydown', e => {   // + and − zoom the picture when nothing is being typed
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) || document.querySelector('dialog[open]')) return;
+  if (e.key === '+' || e.key === '=') setZoom(ZOOM + .25); else if (e.key === '-') setZoom(ZOOM - .25); else if (e.key === '0') setZoom(1);
+});
+setZoom(+store.get('studio-zoom') || 1);
 view.addEventListener('click', ev => {
+  if (DRAGGED) { DRAGGED = false; return }
   const r = view.getBoundingClientRect(), x = (ev.clientX - r.left) * view.width / r.width, y = (ev.clientY - r.top) * view.height / r.height;
   const h = HITS.find(h => x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h);
   if (h) openEditor(h.key); else if (FE) closeEditor();
@@ -795,8 +849,20 @@ function paneCard() {
   const day = S.mode === 'day', pack = P[S.mode], o = cur(), k = selected();
   if (k == null) return '<p class="hint">Every year is hidden. Show some again on the Years and words tab.</p>';
   const x = info(k), g = x.g, st = x.st, c = x.c;
-  const tags = i => day ? (i === 0 ? '<span>DAILY PICK</span>' : g.cands[i].special ? '<span>SPECIAL</span>' : '')
-    : [['A', 'CLOSE'], ['B', 'ACTIVITY'], ['M', 'MIXED']].filter(([o2]) => optPick(g, o2) === i && (o2 !== 'M' || g.pickM != null)).map(([, l]) => `<span>${l}</span>`).join('').replace(/<\/span><span>/g, ' · ');
+  // which photos are really from this day, and which from an album baps.org filed under a nearby date (Darpan, 6 Nov 2026:
+  // "make it very clear, with plain words, which photos are actually from the current day")
+  const thisDay = day ? `${k}-${pack.date.slice(5)}` : null;
+  const niceDay = d => new Date(d + 'T12:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  const daysOff = d => Math.round((new Date(d + 'T12:00') - new Date(thisDay + 'T12:00')) / 864e5);
+  const offWords = d => { const n = daysOff(d); return n === 0 ? 'this very day' : `${Math.abs(n)} day${Math.abs(n) > 1 ? 's' : ''} ${n < 0 ? 'before' : 'after'} this day` };
+  const dateTag = i => { const d = g.cands[i].date; return day && d && d !== thisDay ? `<span class="off">${new Date(d + 'T12:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }).toUpperCase()}</span>` : '' };
+  const dates = day ? [...new Set(g.cands.map(c2 => c2.date).filter(Boolean))].sort() : [];
+  const dayNote = !day || !dates.length ? '' : dates.length === 1 && dates[0] === thisDay
+    ? `<p class="hint ok">All ${g.cands.length} were taken on ${niceDay(thisDay)}, this very day.</p>`
+    : dates.length === 1 ? `<p class="hint warn">None of these are filed under this day. All ${g.cands.length} come from an album baps.org filed under ${niceDay(dates[0])}, ${offWords(dates[0])}. A whole visit or festival is often filed under one date, so they may be from a few days around it.</p>`
+    : `<p class="hint warn">Mixed dates: ${dates.map(d => `${g.cands.filter(c2 => c2.date === d).length} from ${niceDay(d)} (${offWords(d)})`).join(', ')}. Photos not from this very day carry their date.</p>`;
+  const tags = i => dateTag(i) + (day ? (i === 0 ? '<span>DAILY PICK</span>' : g.cands[i].special ? '<span>SPECIAL</span>' : '')
+    : [['A', 'CLOSE'], ['B', 'ACTIVITY'], ['M', 'MIXED']].filter(([o2]) => optPick(g, o2) === i && (o2 !== 'M' || g.pickM != null)).map(([, l]) => `<span>${l}</span>`).join('').replace(/<\/span><span>/g, ' · '));
   const nb = g.cands.filter(c2 => !c2.nobapa).length, rest = g.cands.length - nb;
   const cell = i => { const c2 = g.cands[i]; return `<button data-i="${i}" class="${c2.nobapa ? 'nob' : ''}" aria-pressed="${i === x.pick}" title="${esc(c2.caption)}" aria-label="${esc(c2.caption)}">${thumb(pack, g, i)}${tags(i)}</button>` };
   const firstRest = g.cands.findIndex(c2 => c2.nobapa);
@@ -808,7 +874,7 @@ function paneCard() {
       <div class="chips" id="c-sel">${shownKeys().map(kk => `<button data-k="${kk}" class="${kk === k ? 'sel' : ''}" aria-pressed="${changed(kk) ? 'true' : 'false'}">${kk}</button>`).join('')}</div>
       <p class="hint">Click a card in the picture or a ${day ? 'year' : 'day'} here. A white one has your own changes.</p></div>
     <div class="group"><h3>Choose the photo</h3>
-      ${g.cands.length ? `<p class="hint">All ${g.cands.length} photo${g.cands.length > 1 ? 's' : ''} from ${esc(label(k))} in your archive${rest && nb ? `: the ${nb} where Bapa’s face was found come first` : ''}.</p>
+      ${g.cands.length ? `<p class="hint">All ${g.cands.length} photo${g.cands.length > 1 ? 's' : ''} from ${esc(label(k))} in your archive${rest && nb ? `: the ${nb} where Bapa’s face was found come first` : ''}.</p>${dayNote}
       <div class="thumbs" id="c-thumbs">${grid}</div>
       <p class="hint">${c ? esc([c.place, c.date || (day ? g.year : ''), c.festival].filter(Boolean).join(' · ')) : ''}${day ? '' : ' · ' + esc([g.tithi, ...g.fest].join(' · '))}</p>` : '<p class="hint">No photo for this day yet.</p>'}</div>
     <div class="group"><h3>Place, caption, year and festival tag</h3>
