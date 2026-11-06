@@ -8,6 +8,9 @@ Tables (every photo, nothing cut out):
                page    the day pages, crawled in Darpan's Chrome on 18 Oct 2026 (crawl/bapas-diary-YYYY.json)
                button  the newer day pages his screensaver's button has read since (crawl/button/YYYY-MM.json)
                scan    photos in an album that no page lists, found by tools/album_scan.py (scan.json, no caption)
+               news    every baps.org News article's galleries, read in his Chrome 4 to 6 Nov 2026 (crawl/news/articles.json)
+  articles       every baps.org News article (4,805, 1974 to 2026): date, place, title, full words, its galleries
+  article_photos which photos belong to which article (join on album, file to photos)
   tg_posts   every post of both Telegram channels (history = Today in BAPS History, satpurush = Satpurush in UK & Europe)
   tg_events  the dated stories read out of those posts
   tg_cards   the older guru cards made from the channel
@@ -83,6 +86,12 @@ CREATE VIEW photo_urls AS SELECT album, file,
   'https://www.baps.org/Data/Sites/1/Media/GalleryImages/' || album || '/WebImages/' || file AS web_url FROM photos;
 CREATE INDEX photos_date ON photos (date);
 CREATE INDEX photos_day ON photos (substr(date, 6, 5));
+CREATE TABLE articles (path TEXT PRIMARY KEY, url TEXT, year INTEGER, date TEXT, place TEXT, title TEXT, text TEXT,
+  galleries TEXT, photos INTEGER);
+CREATE INDEX articles_date ON articles (date);
+CREATE INDEX articles_day ON articles (substr(date, 6, 5));
+CREATE TABLE article_photos (path TEXT, album TEXT, file TEXT, gallery TEXT, PRIMARY KEY (path, album, file));
+CREATE INDEX article_photos_photo ON article_photos (album, file);
 CREATE TABLE tg_posts (
   channel TEXT, id INTEGER, posted TEXT, date TEXT, place TEXT, text TEXT, photos INTEGER, videos INTEGER,
   files INTEGER, forwarded_from TEXT, links TEXT, url TEXT, local_folder TEXT, PRIMARY KEY (channel, id));
@@ -129,6 +138,36 @@ def newer(rows, crawl, scan):
     return out
 
 
+def news(rows, crawl):
+    """The News articles (Darpan, 4 Nov 2026: every photo and every article on baps.org into the database): the article
+    rows, which photos each one has, and the gallery photos the vicharan pages never listed (source 'news')."""
+    have = {(r[5], r[6].lower()) for r in rows}
+    arts, links, out = [], [], []
+    for path, a in sorted(load_json(os.path.join(crawl, 'news', 'articles.json'), {}).items()):
+        when = a.get('date')
+        m = re.search(r'/News/(\d{4})/', path)
+        y = int(when[:4]) if when else int(m[1]) if m else None
+        gals = [('', {'t': a.get('t'), 'rows': a.get('own') or []})] + list((a.get('g') or {}).items())
+        seen = set()
+        for gp, g in gals:
+            for album, file, *alt in g.get('rows') or []:
+                if (album, file.lower()) in seen:
+                    continue
+                seen.add((album, file.lower()))
+                links.append((path, album, file, gp or None))
+                if (album, file.lower()) in have:
+                    continue
+                have.add((album, file.lower()))
+                cap = re.sub(r'\s*-\s*$', '', (alt[0] if alt else '') or '').strip() or g.get('t') or a.get('t')
+                day = datetime.date.fromisoformat(when) if when else datetime.date(y or 2000, 7, 1)
+                out.append((y, when, None, None, a.get('place'), album, file, cap, int(build_db.about_bapa(cap, day)), 'news',
+                            photo_path(y, when, None, None, a.get('place'), file, cap)))
+        arts.append((path, 'https://www.baps.org' + path, y, when, a.get('place'), a.get('t'), a.get('text'),
+                     json.dumps([{'path': gp, 'title': g.get('t'), 'photos': len(g.get('rows') or [])} for gp, g in gals[1:]],
+                                ensure_ascii=False), len(seen)))
+    return arts, links, out
+
+
 def load_json(path, default):
     try:
         return json.load(open(path, encoding='utf-8'))
@@ -157,6 +196,10 @@ def main():
             rows.append((y, when and str(when), span and str(span[0]), span and str(span[1]), place, album, file, cap,
                          int(build_db.about_bapa(cap, near)), 'page', photo_path(y, when, span and span[0], span and span[1], place, file, cap)))
     rows += newer(rows, a.crawl, a.scan)
+    arts, links, extra = news(rows, a.crawl)
+    rows += extra
+    db.executemany('INSERT OR IGNORE INTO articles VALUES (?,?,?,?,?,?,?,?,?)', arts)
+    db.executemany('INSERT OR IGNORE INTO article_photos VALUES (?,?,?,?)', links)
     seen = {}
     for r in rows:
         seen[r[-1].lower()] = seen.get(r[-1].lower(), 0) + 1
@@ -191,12 +234,13 @@ def main():
          '; '.join(f['about'] for f in c.get('festivals', []) if f.get('about')), '; '.join(c.get('notes', [])),
          int(bool(c.get('ekadashi'))), int(bool(c.get('punam'))), int(bool(c.get('amas'))), c.get('source')) for c in cal])
 
-    counts = {t: db.execute(f'SELECT count(*) FROM {t}').fetchone()[0] for t in ('photos', 'tg_posts', 'tg_events', 'tg_cards', 'diary', 'calendar')}
+    counts = {t: db.execute(f'SELECT count(*) FROM {t}').fetchone()[0] for t in ('photos', 'articles', 'article_photos', 'tg_posts', 'tg_events', 'tg_cards', 'diary', 'calendar')}
     counts['photos_by_source'] = dict(db.execute('SELECT source, count(*) FROM photos GROUP BY source').fetchall())
     db.executemany('INSERT INTO about VALUES (?,?)', [
         ('built', datetime.date.today().isoformat()),
         ('from', 'baps.org vicharan crawl 1999 to 2026 (18 Oct 2026), Today in BAPS History and Satpurush in UK & Europe '
-                 'Telegram channels, Bapa\'s Diary shown record, BAPS calendar 2010 to 2027'),
+                 'Telegram channels, Bapa\'s Diary shown record, BAPS calendar 2010 to 2027, baps.org News articles and their '
+                 'galleries (read 4 to 6 Nov 2026)'),
         ('full_url', 'FullSizeImages is the original upload; WebImages (about 800 px) is used when there is no original'),
         ('scan', json.dumps({k: v for k, v in load_json(a.scan or '', {}).items() if k not in ('extra', 'done')}
                             | {'albums_checked': len(load_json(a.scan or '', {}).get('done', {}))})),
