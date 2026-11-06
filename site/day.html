@@ -687,6 +687,7 @@ const FESTIVE = {
   msm: {re: /mahant swami maharaj('?s)? (janma )?jayanti(?! celebration)/i, line: 'Every birthday of Mahant Swami Maharaj with Bapa, each year on its own Indian date. 🙏🏽',
     bg: SAFFRON, fe: '#c9a227', fy: '#7a3a10', sky: ['fall', ['#e0245e', '#ff8fab', '#ffd56a']], rope: ['beads', ROSES, 1], foot: 'garland'},
 };
+const DATE_ONLY = ['dhanteras', 'kalichaudas', 'diwali', 'annakut', 'bhaibij'];
 const festKey = c => {
   const parts = c ? [c[1], c[2]].filter(Boolean).join(';').split(/[;,\/]| and /).map(x => x.trim()).filter(Boolean) : [];
   return Object.keys(FESTIVE).find(k => parts.some(x => FESTIVE[k].re.test(x))) || '';
@@ -790,8 +791,10 @@ async function open(mmdd, push) {
   try { data = await SRC.day(mmdd); } catch (e) { $('loading').textContent = 'This day could not be opened. Please try again in a moment.'; return; }
   if (showing !== mmdd) return;
   DAY = pastOnly(data);
+  // the Diwali days keep the English date, every year's same day as on any other day; their festival parts only open
+  // under the board (Darpan, 6 Nov 2026: "I want to carry on showing the English date as we normally have been")
   const key = festKey(data.cal && data.cal[now.getFullYear()]);
-  if (key) try {   // a festival day: every year's festival, each on its own Indian date, never this year's own
+  if (key && !DATE_ONLY.includes(key)) try {   // a festival day: every year's festival, each on its own Indian date, never this year's own
     const F = await SRC.fest(key), y = now.getFullYear();
     if (showing !== mmdd) return;
     F.years = F.years.filter(Y => Y.y < y);
