@@ -70,7 +70,10 @@ jobs:
           # (4 Nov 2026, Today years, Darpan "yes push"; Did you mean on Search went out 5 Nov) the list made by the new tg code, tg-cards-xes1hy.json (2,743 darshans, with the
           # ones the 2pm picture used), is the one Today uses; the older tg-cards.json stays in the release untouched as the fallback
           gh release download website-rules -p tg-cards-xes1hy.json -O tg-cards.json || gh release download website-rules -p tg-cards.json || echo '{}' > tg-cards.json
-          python3 tools/web_rules.py day --day day/data/day --db bapa.db --faces faces --tg tg-cards.json
+          # the 2pm picture's day lists and its picks, from main, so a card names the town the picture names for the same photo
+          # (Darpan, 6 Nov 2026: "2002 on the website say gondal but on the 2pm picture it says ramod")
+          mkdir -p picture && git fetch --depth 1 origin main && git archive FETCH_HEAD archive/memories archive/shown.json | tar -x -C picture --strip-components=1 || echo "picture lists: not read"
+          python3 tools/web_rules.py day --day day/data/day --db bapa.db --faces faces --tg tg-cards.json --picture picture
           # festival days: every year's Diwali and Annakut on its own Indian date, for Today on those days (Darpan, 30 Oct 2026)
           python3 tools/web_festival.py --day day/data/day --db bapa.db --deep-tags deep-tags.json --out day/data/fest
           rsync -a day/ out/ && test -f out/index.html && ls out/data/day | wc -l
