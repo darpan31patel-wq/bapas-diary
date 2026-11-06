@@ -92,10 +92,11 @@ def load_articles(path):
         if isinstance(g, str):
             try: g = json.loads(g)
             except ValueError: g = {}
-        albums, photos = [], 0
+        albums, photos, pics = [], 0, []
         if isinstance(g, dict):
             for gp, gv in g.items():
                 rows = (gv or {}).get('rows') or []
+                pics += [(r[0], r[1], r[2] if len(r) > 2 else None, (gv or {}).get('t') or gp) for r in rows if len(r) > 1]
                 photos += len(rows)
                 al = rows[0][0] if rows and rows[0] else (re.findall(r'-(\d+)\.aspx', gp) or [None])[0]
                 if al: albums.append(str(al))
@@ -106,6 +107,7 @@ def load_articles(path):
             try: own = json.loads(own)
             except ValueError: own = []
         photos += len(own)
+        pics += [(r[0], r[1], r[2] if len(r) > 2 else None, 'inside the article') for r in own if len(r) > 1]
         albums += [str(r[0]) for r in own if r]
         if a.get('albums'):
             albums = [str(x) for x in (json.loads(a['albums']) if isinstance(a['albums'], str) else a['albums'])]
@@ -115,7 +117,8 @@ def load_articles(path):
         d = day_of(a.get('date') or a.get('d'))
         out.append({'date': d, 'place': a.get('place'), 'title': a.get('title') or a.get('t'),
                     'url': url or None, 'text': a.get('text') or a.get('body'),
-                    'albums': ', '.join(dict.fromkeys(albums)) or None, 'photos': photos or a.get('photos')})
+                    'albums': ', '.join(dict.fromkeys(albums)) or None, 'photos': photos or a.get('photos'),
+                    'pics': pics})
     out.sort(key=lambda x: (x['date'] or '9999', x['title'] or ''))
     return out
 
@@ -168,7 +171,11 @@ def main():
               'How Bapa was found', 'Bapa face rank', 'Face position across', 'Face position down', 'Face likeness',
               'Photo tags', 'Guru', 'High quality photo', 'Small photo', 'Original on baps.org',
               'baps.org web size', 'Google Drive file (Bapa\'s Archive)', 'Album', 'File', 'How it was found',
-              'baps.org marked as Bapa']
+              'baps.org marked as Bapa', 'News article', 'News gallery']
+    in_article = {}
+    for x in articles:
+        for al, f, alt, gal in x['pics']:
+            in_article.setdefault((str(al), str(f)), (x, alt, gal))
     photos = []
     for (y, d, df, dt, place, al, f, cap, isb, src, lp) in db.execute(
             'select year, date, date_from, date_to, place, album, file, caption, is_bapa, source, local_path '
@@ -181,8 +188,19 @@ def main():
                        b[5] if b else None, tags.get(f'{al}/{f}'), guru(day),
                        f'{PH}/l/{al}/{f}', f'{PH}/s/{al}/{f}', f'{BAPS}/{al}/FullSizeImages/{f}',
                        f'{BAPS}/{al}/WebImages/{f}', lp, al, f,
-                       {'page': 'baps.org vicharan page', 'button': 'baps.org daily page', 'scan': 'baps.org album scan'}
-                       .get(src, src), {1: 'yes', 0: 'no'}.get(isb)])
+                       {'news': 'baps.org News gallery', 'page': 'baps.org vicharan page', 'button': 'baps.org daily page', 'scan': 'baps.org album scan'}
+                       .get(src, src), {1: 'yes', 0: 'no'}.get(isb)]
+                      + ([in_article[(al, f)][0]['url'], in_article[(al, f)][2]] if (al, f) in in_article else [None, None]))
+    # News gallery photos the database does not hold yet (the News thread loads them later): from the articles file
+    have = {(p[20], p[21]) for p in photos}
+    for (al, f), (x, alt, gal) in in_article.items():
+        if (al, f) in have: continue
+        day = x['date']
+        photos.append([day, None, None, int(day[:4]) if day else None, x['place'], (alt or '').strip() or None,
+                       'not checked yet', None, None, None, None, None, None, tags.get(f'{al}/{f}'),
+                       guru(day) if day else None, None, None, f'{BAPS}/{al}/FullSizeImages/{f}',
+                       f'{BAPS}/{al}/WebImages/{f}', None, al, f, 'baps.org News gallery', None, x['url'], gal])
+    photos.sort(key=lambda p: (p[0] or '', p[20], p[21]))
     byday = collections.defaultdict(list)
     for p in photos: byday[p[0]].append(p)
 
@@ -327,8 +345,8 @@ def main():
         sheet(X, 'Days', D_COLS, dd, [11, 10, 20, 8, 26, 30, 24, 12, 26, 7, 8, 40, 40, 30, 20, 20, 50, 26, 8, 22, 30, 30],
               links=(14, 18, 21, 22), wrap=(6, 12, 13, 14, 17, 18), first=True)
         pp = [r for r in photos if inside(r[0])]
-        sheet(X, 'Photos', P_COLS, pp, [11, 11, 11, 6, 22, 60, 8, 11, 12, 7, 8, 8, 8, 30, 20, 34, 34, 34, 34, 40, 8, 26, 18, 9],
-              links=(16, 17, 18, 19))
+        sheet(X, 'Photos', P_COLS, pp, [11, 11, 11, 6, 22, 60, 8, 11, 12, 7, 8, 8, 8, 30, 20, 34, 34, 34, 34, 40, 8, 26, 18, 9, 40, 30],
+              links=(16, 17, 18, 19, 25))
         aa = [r for r in arows if inside(r[0])]
         sheet(X, 'Articles', A_COLS, aa, [11, 22, 40, 100, 16, 8, 40], links=(7,), wrap=(4,))
         sheet(X, 'On this day', O_COLS, [r for r in otd_rows if inside(r[0])],
