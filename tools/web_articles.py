@@ -4,8 +4,9 @@
     python3 tools/web_articles.py --articles articles.json --out out/data/articles
 
 articles.json is crawl/news/articles.json on the database branch (every News article, read in his Chrome 4 to 6 Nov 2026,
-each with its date). Writes one small file a day, MM-DD.json: {"2006": [[title, link], ...], ...}, at most three stories a
-year, the ones about Bapa first, then the ones with the most photos.
+each with its date). Writes one small file a day, MM-DD.json: {"2006": [[title, link], ...], ...}, every story of that date,
+the ones about Bapa first, then the ones with the most photos. Today lists them all at the top ("Stories from BAPS around
+the world on this day", Darpan, 6 Nov 2026) and two under each year's heading; the Calendar day box shows two.
 """
 import argparse, json, os, re
 
@@ -30,7 +31,7 @@ def main():
         days.setdefault(d[5:], {}).setdefault(d[:4], []).append((not BAPA.search(t), -n, t, 'https://www.baps.org' + path))
     os.makedirs(a.out, exist_ok=True)
     for md, years in days.items():
-        json.dump({y: [[t, u] for _, _, t, u in sorted(v)[:3]] for y, v in sorted(years.items())},
+        json.dump({y: [[t, u] for _, _, t, u in sorted(v)] for y, v in sorted(years.items())},
                   open(os.path.join(a.out, md + '.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     print(f'{len(A)} stories on {len(days)} days of the year')
 
