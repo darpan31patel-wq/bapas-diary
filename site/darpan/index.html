@@ -447,13 +447,17 @@ function spacedText(ctx, text, x, y, track) {   // x is the left edge
 const spacedW = (ctx, text, track) => [...text].reduce((s, ch) => s + ctx.measureText(ch).width + track, 0) - track;
 
 // ------------------------------------------------------------ the daily picture (design B, W2)
+// a festival the photo's own caption names, when the pack has no tag (albums filed under a date range, like Diwali to
+// Annakut 2002 in Ramod filed under 3 Nov, never get one) (Darpan, 6 Nov 2026: "why isnt there a annakut sign on 2002")
+const FEST_WORDS = [[/annakut/i, 'Annakut'], [/diwali|deepavali/i, 'Diwali'], [/dhan\s?teras/i, 'Dhanteras'], [/kali\s?chaudas/i, 'Kali Chaudas'], [/bhai\s?bij/i, 'Bhai Bij'], [/new\s?year/i, 'New Year']];
+function captionFest(c) { const t = (c.original || '') + ' ' + (c.caption || ''); for (const [re, name] of FEST_WORDS) if (re.test(t)) return name; return '' }
 function dayCards(pack, o) {
   return pack.years.filter(y => (o.years[y.year]?.on ?? true)).map(y => {
     const st = o.years[y.year] || {};
     const pick = st.pick ?? defaultPick(y, o.photoStyle);
     const c = y.cands[pick] || y.cands[0];
     let mode = st.crop && st.crop !== 'auto' ? st.crop : autoCrop(c, o.photoStyle);
-    return { y: y.year, yl: st.ylabel ?? String(y.year), c, mode, zoom: st.zoom || 1, dx: st.dx || 0, dy: st.dy || 0, caption: st.caption ?? c.caption, place: st.place ?? c.place, fest: st.fest ?? c.festival };
+    return { y: y.year, yl: st.ylabel ?? String(y.year), c, mode, zoom: st.zoom || 1, dx: st.dx || 0, dy: st.dy || 0, caption: st.caption ?? c.caption, place: st.place ?? c.place, fest: st.fest ?? (c.festival || captionFest(c)) };
   });
 }
 function defaultPick(y, style) {
@@ -745,7 +749,7 @@ function buildEditor() {
     <label for="fe-place">Place on the card</label><input type="text" class="place" id="fe-place" data-f="place" data-k="${k}" value="${esc(x.place)}">
     <label for="fe-cap">Caption</label><textarea class="capedit" id="fe-cap" data-f="caption" data-k="${k}" rows="2">${esc(x.caption)}</textarea>
     ${S.mode === 'day' ? `<label for="fe-yl">Year on the card</label><input type="text" id="fe-yl" data-f="ylabel" data-k="${k}" value="${esc(x.st.ylabel ?? k)}">
-    <label for="fe-fest">Festival tag on the photo (empty for none)</label><input type="text" id="fe-fest" data-f="fest" data-k="${k}" value="${esc(x.st.fest ?? (x.c && x.c.festival) ?? '')}">` : ''}
+    <label for="fe-fest">Festival tag on the photo (empty for none)</label><input type="text" id="fe-fest" data-f="fest" data-k="${k}" value="${esc(x.st.fest ?? (x.c ? (x.c.festival || captionFest(x.c)) : ''))}">` : ''}
     <div class="row3"><button class="btn small" id="fe-prev" ${n < 2 ? 'disabled' : ''}>◀ Photo</button><button class="btn small" id="fe-next" ${n < 2 ? 'disabled' : ''}>Photo ▶</button>
       <button class="btn small" id="fe-all">See all ${n}</button>${S.mode === 'day' ? '<button class="btn small" id="fe-hide">Hide this year</button>' : ''}<button class="btn small" id="fe-reset">Reset</button></div>`;
   fe.hidden = false;
@@ -811,7 +815,7 @@ function paneCard() {
       <div class="row"><label for="c-place">Place${day ? ' on the card' : ' (bubbles)'}</label><input type="text" class="place" id="c-place" data-f="place" data-k="${k}" value="${esc(x.place)}"></div>
       <textarea class="capedit" id="c-cap" data-f="caption" data-k="${k}" aria-label="Caption" rows="2">${esc(x.caption)}</textarea>
       ${day ? `<div class="row"><label for="c-yl">Year on the card</label><input type="text" id="c-yl" data-f="ylabel" data-k="${k}" value="${esc(st.ylabel ?? k)}"></div>
-      <div class="row"><label for="c-fest">Festival tag on the photo</label><input type="text" id="c-fest" data-f="fest" data-k="${k}" value="${esc(st.fest ?? (c && c.festival) ?? '')}" placeholder="For example Annakut (empty for none)"></div>` : ''}
+      <div class="row"><label for="c-fest">Festival tag on the photo</label><input type="text" id="c-fest" data-f="fest" data-k="${k}" value="${esc(st.fest ?? (c ? (c.festival || captionFest(c)) : ''))}" placeholder="For example Annakut (empty for none)"></div>` : ''}
       ${c && c.original ? `<p class="hint">Website caption: “${esc(c.original)}”</p>` : ''}</div>
     <div class="group"><h3>Crop</h3>
       ${seg('c-crop', st.crop || 'auto', [['auto', 'Automatic'], ['close', 'Close up'], ['frame', 'Wider'], ['whole', 'Fill frame']])}
@@ -1220,7 +1224,7 @@ function changes() {
     if (st.place != null && st.place !== c.place) out.push(`${n}: place “${st.place}”`);
     if (st.caption != null && st.caption !== c.caption) out.push(`${n}: caption “${st.caption}”`);
     if (st.ylabel != null && st.ylabel !== String(k)) out.push(`${n}: year shown as “${st.ylabel}”`);
-    if (st.fest != null && st.fest !== (c.festival || '')) out.push(`${n}: festival tag “${st.fest}”`);
+    if (st.fest != null && st.fest !== (c.festival || captionFest(c))) out.push(`${n}: festival tag “${st.fest}”`);
   }
   for (const [f, v] of Object.entries(o.txt || {})) out.push(`${WORDS[f] || f}: “${v}”`);
   for (const f of Object.keys(NAMES)) if (f in D && typeof D[f] !== 'object' && o[f] !== D[f] && !(f === 'title' && o.titleAuto)) out.push(`${NAMES[f]}: ${typeof o[f] === 'boolean' ? (o[f] ? 'on' : 'off') : o[f]}`);
