@@ -926,7 +926,7 @@ function paneCard() {
   const niceDay = d => new Date(d + 'T12:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const daysOff = d => Math.round((new Date(d + 'T12:00') - new Date(thisDay + 'T12:00')) / 864e5);
   const offWords = d => { const n = daysOff(d); return n === 0 ? 'this very day' : `${Math.abs(n)} day${Math.abs(n) > 1 ? 's' : ''} ${n < 0 ? 'before' : 'after'} this day` };
-  const dateTag = i => { const d = g.cands[i].date; return day && d && d !== thisDay ? `<span class="off">${new Date(d + 'T12:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }).toUpperCase()}</span>` : '' };
+  const dateTag = i => { const d = g.cands[i].date; return thisDay && d && d !== thisDay ? `<span class="off">${new Date(d + 'T12:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }).toUpperCase()}</span>` : '' };
   const dates = thisDay ? [...new Set(g.cands.map(c2 => c2.date).filter(Boolean))].sort() : [];
   const dayNote = !thisDay || !dates.length ? '' : dates.length === 1 && dates[0] === thisDay
     ? `<p class="hint ok">All ${g.cands.length} were taken on ${niceDay(thisDay)}, this very day.</p>`
