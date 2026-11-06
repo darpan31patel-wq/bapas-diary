@@ -807,9 +807,11 @@ function paneCard() {
       ${g.cands.length ? `<p class="hint">All ${g.cands.length} photo${g.cands.length > 1 ? 's' : ''} from ${esc(label(k))} in your archive${rest && nb ? `: the ${nb} where Bapa’s face was found come first` : ''}.</p>
       <div class="thumbs" id="c-thumbs">${grid}</div>
       <p class="hint">${c ? esc([c.place, c.date || (day ? g.year : ''), c.festival].filter(Boolean).join(' · ')) : ''}${day ? '' : ' · ' + esc([g.tithi, ...g.fest].join(' · '))}</p>` : '<p class="hint">No photo for this day yet.</p>'}</div>
-    <div class="group"><h3>Place and caption</h3>
+    <div class="group"><h3>Place, caption, year and festival tag</h3>
       <div class="row"><label for="c-place">Place${day ? ' on the card' : ' (bubbles)'}</label><input type="text" class="place" id="c-place" data-f="place" data-k="${k}" value="${esc(x.place)}"></div>
       <textarea class="capedit" id="c-cap" data-f="caption" data-k="${k}" aria-label="Caption" rows="2">${esc(x.caption)}</textarea>
+      ${day ? `<div class="row"><label for="c-yl">Year on the card</label><input type="text" id="c-yl" data-f="ylabel" data-k="${k}" value="${esc(st.ylabel ?? k)}"></div>
+      <div class="row"><label for="c-fest">Festival tag on the photo</label><input type="text" id="c-fest" data-f="fest" data-k="${k}" value="${esc(st.fest ?? (c && c.festival) ?? '')}" placeholder="For example Annakut (empty for none)"></div>` : ''}
       ${c && c.original ? `<p class="hint">Website caption: “${esc(c.original)}”</p>` : ''}</div>
     <div class="group"><h3>Crop</h3>
       ${seg('c-crop', st.crop || 'auto', [['auto', 'Automatic'], ['close', 'Close up'], ['frame', 'Wider'], ['whole', 'Fill frame']])}
