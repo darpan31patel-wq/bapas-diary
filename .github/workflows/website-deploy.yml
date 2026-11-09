@@ -185,6 +185,28 @@ jobs:
           # with a GitHub token limited to bapas-diary, Contents read and write; without it the choices stay at /special-days.json
           if [ -n "$STUDIO_GITHUB_TOKEN" ]; then printf %s "$STUDIO_GITHUB_TOKEN" | npx --yes wrangler@3.114.0 pages secret put STUDIO_GITHUB_TOKEN --project-name "$PROJECT" > /dev/null && echo "Studio GitHub token: set"; else echo "Studio GitHub token: add a GitHub secret STUDIO_GITHUB_TOKEN so special picture choices reach archive/special-days.json on main"; fi
           npx --yes wrangler@3.114.0 pages deploy out --project-name "$PROJECT" --branch main --commit-dirty=true
+      - name: Keep a ready made copy of the site outside Cloudflare (Darpan, 9 Nov 2026 backups)
+        # the exact files just deployed, zipped with functions/, to Google Drive and the private R2 bucket
+        # bapas-diary-backups: if Cloudflare or GitHub ever fail, this zip goes straight onto another host. Never stops a deploy.
+        continue-on-error: true
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          CLIENT_ID: ${{ secrets.RCLONE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.RCLONE_CLIENT_SECRET }}
+        run: |
+          DAY=$(date -u +%F-%H%M); zip -qr site.zip out functions && ls -la site.zip
+          id=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
+          key=$(printf %s "$CLOUDFLARE_API_TOKEN" | sha256sum | cut -d' ' -f1); echo "::add-mask::$id"; echo "::add-mask::$key"
+          R2=https://$CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com
+          for k in "site/$DAY-site.zip" site/latest-site.zip; do
+            AWS_ACCESS_KEY_ID=$id AWS_SECRET_ACCESS_KEY=$key AWS_DEFAULT_REGION=auto aws s3 cp site.zip "s3://bapas-diary-backups/$k" --endpoint-url "$R2" --only-show-errors && echo "R2: $k"
+          done
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          git fetch -q --depth 1 origin main && git show FETCH_HEAD:tools/rclone_conf.py > "$RUNNER_TEMP/rclone_conf.py"
+          mkdir -p ~/.config/rclone && python3 "$RUNNER_TEMP/rclone_conf.py" > ~/.config/rclone/rclone.conf
+          D="gdrive:Bapa's Diary backups/Everything/site"
+          rclone copyto site.zip "$D/$DAY site.zip" && rclone copyto site.zip "$D/latest site.zip" && echo "Drive: $DAY site.zip"
+          rclone lsf "$D" --include '20*' | sort | head -n -7 | while read -r f; do rclone deletefile "$D/$f"; done   # last 7 deploys
       - name: bapas-diary.com and www point at the site
         run: |
           api() { curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' "$@"; }
