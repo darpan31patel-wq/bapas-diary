@@ -5,6 +5,7 @@
 #   database  -> bapas.db (photos, days, News articles) to Google Drive and the private R2 bucket bapas-diary-backups
 #   Studio    -> the Studio changes log and the missed searches / feedback (Cloudflare KV) to Drive
 #   sign ups  -> the weekly darshan email list (Resend) to Drive only (people's emails never go to R2)
+#   releases  -> the GitHub release files the builds need (database, faces, tags, bank...), Sundays, changes only
 #   checks    -> emails Darpan only when something is wrong: a backup step failed, the 2pm picture on GitHub is older
 #                than a day, or the Drive Bank of ready made 2pm pictures has fewer than 30 days left
 # It only READS the 2pm picture chain (release today, Drive Bank); it never changes make.py, daily.yml, bank.yml or
@@ -71,6 +72,27 @@ if git -C mirror.git fetch -q --prune origin '+refs/heads/*:refs/heads/*' '+refs
 else problem "Could not read the code from GitHub"; fi
 
 [ $R2_OK = 1 ] && r2_keep site   # the site copies each deploy leaves (website-deploy.yml)
+
+step "GitHub releases the website and 2pm picture are built from (Sundays: only files that changed)"
+# database, faces, deep tags, image search, today, bank, backup ... everything except mockups and tests. Drive and R2
+# keep releases/TAG/FILE; releases/list.txt remembers each file's size and date so unchanged files are never fetched twice.
+if [ "$DOW" = 7 ] || [ "${FULL:-}" = yes ]; then
+  rclone copyto "$DRIVE/releases/list.txt" have.txt 2>/dev/null || : > have.txt
+  gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate \
+    --jq '.[] | select(.tag_name | test("mockup|-test$|check") | not) | .tag_name as $t | .assets[] | "\($t)/\(.name)\t\(.size)\t\(.updated_at)"' > now.txt
+  n=0; while IFS=$'\t' read -r path size upd; do
+    grep -qxF "$path"$'\t'"$size"$'\t'"$upd" have.txt && continue
+    tag=${path%%/*}; name=${path#*/}
+    if gh release download "$tag" -p "$name" -O asset.bin --clobber; then
+      rclone copyto asset.bin "$DRIVE/releases/$path" || problem "Release file $path to Drive failed"
+      [ $R2_OK = 1 ] && { r2 cp asset.bin "s3://$BUCKET/releases/$path" || problem "Release file $path to R2 failed"; }
+      n=$((n+1))
+    else problem "Could not fetch release file $path"; fi
+    rm -f asset.bin
+  done < now.txt
+  rclone copyto now.txt "$DRIVE/releases/list.txt"
+  echo "$n release files copied, $(wc -l < now.txt) kept in all"
+fi
 
 step "Studio changes log, missed searches and feedback (Cloudflare KV)"
 CF=https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces

@@ -26,7 +26,7 @@ concurrency:
 jobs:
   backup:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 300   # the first Sunday copies about 7 GB of release files once; after that only changes
     steps:
       - uses: actions/checkout@v4
       - name: Keep the code copy between nights, so only what changed is fetched
