@@ -178,6 +178,8 @@ def main():
     ap.add_argument('--start-year', default='', help="the year the page opens on, or 'today' for this day in every year")
     ap.add_argument('--image', help='folder with the Search by photo model and photo numbers (release image-search)')
     ap.add_argument('--undated', help='undated-search.json from release undated-build: the darshan with no date')
+    ap.add_argument('--news-ready', help="news-ready.txt from tools/news_ready.py: the News albums whose photos are in the photo "
+                    "store; the other News photos wait until they arrive")
     a = ap.parse_args()
     os.makedirs(os.path.join(a.out, 'data'), exist_ok=True)
     db = sqlite3.connect(a.db)
@@ -186,9 +188,12 @@ def main():
     if a.deep_tags and os.path.exists(a.deep_tags):
         tags = with_deep(tags, json.load(open(a.deep_tags)))
     years, counts = {}, {}
-    rows = db.execute("SELECT year, date, date_from, date_to, place, album, file, caption, is_bapa FROM photos "
+    ready = set(open(a.news_ready).read().split()) if a.news_ready and os.path.exists(a.news_ready) else None
+    rows = db.execute("SELECT year, date, date_from, date_to, place, album, file, caption, is_bapa, source FROM photos "
                       "ORDER BY coalesce(date, date_from), album, file")
-    for y, date, d0, d1, place, album, file, cap, bapa in rows:
+    for y, date, d0, d1, place, album, file, cap, bapa, source in rows:
+        if source == 'news' and ready is not None and album not in ready:
+            continue   # a News photo not in the photo store yet
         yr = years.setdefault(y, {'g': [], 'p': [], 'at': {}})
         key = (date or d0, '' if date else (d1 or ''), place or '', album)
         if not date and mandir(cap):
