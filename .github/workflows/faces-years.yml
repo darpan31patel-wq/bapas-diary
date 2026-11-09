@@ -44,6 +44,9 @@ jobs:
         run: |
           pip install -q opencv-python-headless numpy pillow open_clip_torch torch --extra-index-url https://download.pytorch.org/whl/cpu
           gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
+          # News story photos (source 'news') count only once their files are in the photo store, so every day is not chosen
+          # again over photos that are not there yet (Darpan, 9 Nov 2026: 'yes push search news')
+          python3 tools/news_ready.py --db bapas.db --out news-ready.txt --prune
           curl -sf https://photos.bapas-diary.com/years.txt -o years.txt; echo "years in R2: $(tr '\n' ' ' < years.txt)"
           mkdir hints && gh release download website-faces -p 'face2-*.json.gz' -D hints
           gh release download faces-mockup -p faces.tgz   # a test copy starts from the live one too
