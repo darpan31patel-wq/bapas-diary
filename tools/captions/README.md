@@ -27,4 +27,12 @@ nightly album scan already does. From there the noon Drive download, the high re
    (saves `crawl/schedule/latest.json`; the screensaver reads it from raw.githubusercontent.com).
 7. Commit `crawl/button` and `crawl/schedule` on `database`, push to `refs/heads/database` (pull first), then
    `gh api -X POST repos/darpan31patel-wq/bapas-diary/actions/workflows/archive.yml/dispatches -f ref=main`.
-8. Close the tab. If Chrome isn't connected (Mac off), do nothing: the next run catches up.
+8. News (Darpan, 9 Nov 2026: "WANT CAPTIONS AND ARTICLES", "MAKE IT HAPPEN RIGHT NOW"), in the same tab after the day
+   pages: `python3 tools/captions/news_merge_daily.py --known --crawl crawl` prints what is saved. Paste
+   `news_chrome.js`, then `await NEWS.run(<known>, 15)` (over 45 s: start it as a promise and poll). For each 5 articles:
+   `NEWS.show(0, 5)`, get_page_text, write the text after the `---` line exactly to a file,
+   `python3 tools/captions/news_merge_daily.py --text that.txt --crawl crawl`; then `NEWS.show(5, 10)` and so on.
+   It saves each article's words, date, place and gallery photo names to `crawl/news/articles.json` and
+   `crawl/news/webnext.json`; gallery photos that are also on Bapa's day pages get that day's caption. Commit
+   `crawl/news` with the rest in step 7. An article with no words yet is left for the next night.
+9. Close the tab. If Chrome isn't connected (Mac off), do nothing: the next run catches up.
