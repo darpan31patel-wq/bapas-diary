@@ -31,12 +31,13 @@ h1 { margin: 0; font: 700 clamp(38px, 7vw, 66px)/1.05 var(--serif); text-wrap: b
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .45)); }
 p.lead { margin: 0; max-width: 34ch; font-style: italic; color: rgba(250, 241, 222, .82); text-wrap: balance; }
 .photos { display: flex; justify-content: center; gap: clamp(10px, 3vw, 28px); padding: 18px 0 6px; flex-wrap: wrap; min-height: 40px; }
-.photos a { width: clamp(120px, 24vw, 210px); text-decoration: none; color: var(--maroon); padding: clamp(8px, 2vw, 13px) clamp(8px, 2vw, 13px) 0;
+.photos a { width: clamp(130px, 20vw, 200px); text-decoration: none; color: var(--maroon); padding: clamp(8px, 2vw, 13px) clamp(8px, 2vw, 13px) 0;
   background: linear-gradient(var(--ivory-top), var(--ivory-bot)); border: 1px solid var(--ivory-edge);
   box-shadow: 0 14px 26px rgba(0, 0, 0, .45); transition: transform .3s ease; }
 .photos a:nth-child(1) { transform: rotate(-3deg); }
 .photos a:nth-child(2) { transform: rotate(1.5deg) translateY(10px); }
-.photos a:nth-child(3) { transform: rotate(3.5deg); }
+.photos a:nth-child(3) { transform: rotate(-1.5deg) translateY(6px); }
+.photos a:nth-child(4) { transform: rotate(3.5deg); }
 .photos a:hover, .photos a:focus-visible { transform: rotate(0) translateY(-4px); }
 .photos img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; object-position: 50% 25%; background: #e8dcc2; }
 .photos span { display: block; font: 700 22px/2.1 var(--serif); }
@@ -66,21 +67,47 @@ a:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 3px; }
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   var now = new Date(), mm = String(now.getMonth() + 1).padStart(2, '0'), dd = String(now.getDate()).padStart(2, '0');
   var box = document.getElementById('photos');
+  // Pramukh Swami Maharaj was guru until 13 August 2016, Mahant Swami Maharaj from then (the captions' own rule)
+  var MSM_FROM = '2016-08-13';
+  // Only a darshan where Bapa's face was recognised (the 8 long face box Today uses), a close up first (Darpan, 9 Nov 2026:
+  // "look at the pictures used": a 1990 card showed the kalash beside him, cut off at the edge)
+  function best(list) {
+    var seen = (list || []).filter(function (p) { return p[3] && p[4] && p[4].length > 7; });
+    return seen.filter(function (p) { return p[4][7]; })[0] || seen[0] || null;
+  }
+  // the frame is 4:5; centre his face in it, a little above the middle, as Today does
+  function at(p) {
+    var f = p[4], r = f[6] || .8, x = 50, y = 30;
+    if (r > .8) { var sx = r / .8; x = Math.max(0, Math.min(1, (f[0] * sx - .5) / (sx - 1))) * 100; y = 50; }
+    else if (r < .8) { var sy = .8 / r; y = Math.max(0, Math.min(1, (f[1] * sy - .4) / (sy - 1))) * 100; x = 50; }
+    return x.toFixed(1) + '% ' + y.toFixed(1) + '%';
+  }
   function show(day) {
     document.getElementById('lead').textContent = 'The link may be old or mistyped. But Bapa has darshan waiting for you, from ' + now.getDate() + ' ' + MONTHS[now.getMonth()] + ' through the years.';
-    var picks = [];
-    (day.years || []).slice().sort(function () { return 0; }).forEach(function (y) {
-      var p = (y.p || []).filter(function (p) { return p[3]; })[0] || (y.p || [])[0];
-      if (p) picks.push({ y: y.y, p: p });
+    // both gurus together, always (Darpan, 24 Oct 2026): two years of Pramukh Swami Maharaj, then two of Mahant Swami
+    // Maharaj, each pair the furthest apart, close ups first, the very day before a nearby one
+    var era = [[], []];
+    (day.years || []).forEach(function (y) {
+      var p = best(y.p), near = !p;
+      if (!p) p = best(y.t);
+      if (p) era[(y.y + '-' + mm + '-' + dd) >= MSM_FROM ? 1 : 0].push({ y: y.y, p: p, near: near, close: !!p[4][7] });
     });
-    // three years spread across the span, oldest to newest
-    if (picks.length > 3) picks = [picks[0], picks[Math.floor(picks.length / 2)], picks[picks.length - 1]];
+    var picks = [];
+    era.forEach(function (list) {
+      var good = list.filter(function (k) { return !k.near && k.close; });
+      if (good.length < 2) good = list.filter(function (k) { return !k.near; });
+      if (good.length < 2) good = list;
+      good.sort(function (a, b) { return a.y - b.y; });
+      if (good.length) picks.push(good[0]);
+      if (good.length > 1) picks.push(good[good.length - 1]);
+    });
     picks.forEach(function (k) {
       var a = document.createElement('a');
       a.href = '/search/#date=' + k.y + '-' + mm + '-' + dd;
       var img = new Image();
       img.alt = 'Darshan on ' + now.getDate() + ' ' + MONTHS[now.getMonth()] + ' ' + k.y;
       img.src = (window.PHOTO_URL || function (p) { return PHOTOS + 's/' + p[0] + '/' + p[1]; })(k.p);
+      img.style.objectPosition = at(k.p);
       img.onerror = function () { a.remove(); };
       var s = document.createElement('span');
       s.textContent = k.y;
