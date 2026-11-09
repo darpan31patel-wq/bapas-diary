@@ -79,6 +79,7 @@ button { font: inherit; color: inherit }
 .gold { color: var(--gold-hi) }
 .queue { list-style: none; margin: 0; padding: 0 } .queue li { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; border-bottom: 1px solid var(--line) } .queue li b { min-width: 4.2em; white-space: nowrap } .queue .ok { color: #8fd694; font: 12px var(--sans) } .queue button { margin-left: auto }
 .chips.cap button { font-size: 12px; max-width: 100%; white-space: normal; text-align: left }
+.story { border-top: 1px solid var(--line); padding: 8px 0 } .story p { margin: 2px 0 } .story .btn.small { text-decoration: none }
 .last { background: rgba(0,0,0,.18); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin: 8px 0 } .last p { margin: 4px 0 }
 /* the small editor that opens on a card */
 .fe { position: absolute; z-index: 3; width: 290px; max-width: calc(100% - 20px); background: var(--panel); border: 1px solid var(--gold-deep); border-radius: 10px;
@@ -970,10 +971,11 @@ function paneCard() {
       ${g.cands.length ? `<p class="hint">All ${g.cands.length} photo${g.cands.length > 1 ? 's' : ''} from ${esc(label(k))} in your archive${rest && nb ? `: the ${nb} where Bapa’s face was found come first` : ''}.</p>${dayNote2}${albumNote}
       <div class="thumbs" id="c-thumbs">${grid}</div>
       <p class="hint">${c ? esc([c.place, c.date || (day ? g.year : ''), c.festival].filter(Boolean).join(' · ')) : ''}${day ? '' : ' · ' + esc([g.tithi, ...g.fest].join(' · '))}</p>` : '<p class="hint">No photo for this day yet.</p>'}</div>
+    ${storiesPanel(g, pack)}
     <div class="group"><h3>Place, caption, year and festival tag</h3>
       <div class="row"><label for="c-place">Place${day ? ' on the card' : ' (bubbles)'}</label><input type="text" class="place" id="c-place" data-f="place" data-k="${k}" value="${esc(x.place)}"></div>
       <textarea class="capedit" id="c-cap" data-f="caption" data-k="${k}" aria-label="Caption" rows="2">${esc(x.caption)}</textarea>
-      <div class="chips cap" id="c-caphelp">${capHelps(x, g, pack).map(([t, v]) => `<button data-v="${esc(v)}" data-set="${t.startsWith('baps.org') ? 1 : ''}" title="${t.startsWith('baps.org') ? 'Use the baps.org caption' : 'Add these words to the caption'}">${esc(t)}</button>`).join('')}</div>
+      <div class="chips cap" id="c-caphelp">${capHelps(x, g, pack).map(([t, v]) => `<button class="capchip" data-v="${esc(v)}" data-set="${t.startsWith('baps.org') ? 1 : ''}" title="${t.startsWith('baps.org') ? 'Use the baps.org caption' : 'Add these words to the caption'}">${esc(t)}</button>`).join('')}</div>
       ${day ? `<div class="row"><label for="c-yl">Year on the card</label><input type="text" id="c-yl" data-f="ylabel" data-k="${k}" value="${esc(st.ylabel ?? x.yl ?? k)}"></div>
       <div class="row"><label for="c-fest">Festival tag on the photo</label><input type="text" id="c-fest" data-f="fest" data-k="${k}" value="${esc(st.fest ?? (c ? (c.festival || captionFest(c)) : ''))}" placeholder="For example Annakut (empty for none)"></div>` : ''}
       ${c && c.original ? `<p class="hint">Website caption: “${esc(c.original)}”</p>` : ''}</div>
@@ -1137,7 +1139,7 @@ function wire() {
   document.querySelectorAll('#c-crop button').forEach(b => b.addEventListener('click', () => { bag(k).crop = b.dataset.v; build() }));
   ['zoom', 'dx', 'dy'].forEach(f => on('c-' + f, 'input', e => { bag(k)[f] = +e.target.value; syncOut('c-' + f); render() }));
   on('c-reset', 'click', () => { const s = bag(k); Object.keys(s).forEach(f => f !== 'on' && delete s[f]); build() });
-  document.querySelectorAll('#c-caphelp button').forEach(b => b.addEventListener('click', () => { const t = $('#c-cap'); if (!t) return; const v = b.dataset.v, cur2 = t.value.trim(); t.value = b.dataset.set || !cur2 ? v : cur2.includes(v) ? cur2 : cur2 + (/[.!?,]$/.test(cur2) ? ' ' : ', ') + v; t.dispatchEvent(new Event('input', { bubbles: true })) }));
+  document.querySelectorAll('#pane .capchip').forEach(b => b.addEventListener('click', () => { const t = $('#c-cap'); if (!t) return; const v = b.dataset.v, cur2 = t.value.trim(); t.value = b.dataset.set || !cur2 ? v : cur2.includes(v) ? cur2 : cur2 + (/[.!?,]$/.test(cur2) ? ' ' : ', ') + v; t.dispatchEvent(new Event('input', { bubbles: true })) }));
   document.querySelectorAll('[data-last]').forEach(b => b.addEventListener('click', () => { const e = lastEntries()[+b.dataset.last]; if (e) applyLast(e) }));
   document.querySelectorAll('[data-sp]').forEach(b => b.addEventListener('click', () => { S.mode = 'special'; S.special.date = b.dataset.sp; unstash('special'); P.special = null; build(); loadPack('special', b.dataset.sp).then(pk => { P.special = pk; build() }).catch(() => {}) }));
   // shared look
@@ -1422,6 +1424,39 @@ function changes() {
   for (const f of Object.keys(NAMES)) if (f in D && typeof D[f] !== 'object' && o[f] !== D[f] && !(f === 'title' && o.titleAuto)) out.push(`${NAMES[f]}: ${typeof o[f] === 'boolean' ? (o[f] ? 'on' : 'off') : o[f]}`);
   if (S.mode === 'day' && o.wa[o.date]) out.push('2pm WhatsApp caption changed' + (o.wa[o.date].whole ? ' (whole caption)' : ''));
   return out;
+}
+// baps.org stories (Darpan, 9 Nov 2026: "all article and photo information onto the dashboard too"): every News article
+// of the card's year around its day, with its galleries and story line, and one tap to use its words in the caption
+let ARTICLES = null;
+async function loadArticles() {
+  if (ARTICLES) return;
+  for (const u of ['articles.json', 'https://raw.githubusercontent.com/darpan31patel-wq/bapas-diary/claude/project-thread-02nrr0/site/darpan/articles.json']) {
+    try { const r = await fetch(u, { cache: 'force-cache' }); if (r.ok) { ARTICLES = await r.json(); if (S.tab === 'card') build(); return } } catch (e) {}
+  }
+  ARTICLES = [];
+}
+const FESTWORDS = { Annakut: /annakut|new year|diwali/i, Diwali: /diwali|annakut|chopda/i };
+function storiesFor(g, pack) {
+  if (!ARTICLES || S.mode === 'month') return null;
+  const y = +g.year; if (!y) return [];
+  const sp = S.mode === 'special', story = sp && pack.kind === 'story';
+  const base = story ? pack.story_date : sp ? (g.day || `${y}-${pack.date.slice(5)}`) : `${y}-${pack.date.slice(5)}`;
+  const t0 = new Date(base + 'T12:00').getTime(), span = sp ? 7 : 3, words = sp && pack.festival ? FESTWORDS[pack.festival] || new RegExp(pack.festival, 'i') : null;
+  return ARTICLES.filter(a => a.y === y && a.d).map(a => ({ a, off: Math.round((new Date(a.d + 'T12:00').getTime() - t0) / 864e5) }))
+    .filter(x => Math.abs(x.off) <= span && (!words || x.off === 0 || words.test(x.a.t) || x.a.b))
+    .sort((p2, q) => (q.a.b - p2.a.b) || (Math.abs(p2.off) - Math.abs(q.off)) || (q.a.n - p2.a.n)).slice(0, 6);
+}
+function storiesPanel(g, pack) {
+  const list = storiesFor(g, pack);
+  if (list === null) { loadArticles(); return '' }
+  const when = o => o === 0 ? 'that day' : `${Math.abs(o)} day${Math.abs(o) > 1 ? 's' : ''} ${o < 0 ? 'before' : 'after'}`;
+  const niceD = d => new Date(d + 'T12:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  return `<div class="group"><h3>baps.org stories from ${esc(String(g.year))}</h3>${list.length ? list.map(({ a, off }) => `<div class="story">
+    <p><b>${esc(a.t)}</b><br><span class="hint">${esc([a.p, niceD(a.d) + ' (' + when(off) + ')', a.n ? a.n + (a.n > 1 ? ' photos' : ' photo') : 'no photos'].filter(Boolean).join(' · '))}${a.b ? ' · <span class="gold">names Bapa</span>' : ''}</span></p>
+    ${a.g.length ? `<p class="hint">Galleries: ${a.g.map(([n, k]) => esc(n) + (k ? ` (${k})` : '')).join(', ')}</p>` : ''}
+    ${a.s ? `<p class="hint">${esc(a.s)}</p>` : ''}
+    <div class="chips cap"><button class="capchip" data-set="1" data-v="${esc(a.t.replace(/,\s*[^,]+,\s*[^,]+$/, ''))}">Use the title as the caption</button>${a.s ? `<button class="capchip" data-v="${esc(a.s.split(/(?<=[.!?])\s/)[0])}">Add the first line</button>` : ''}<a class="btn small" href="${esc(a.u)}" target="_blank" rel="noopener">Open on baps.org</a></div></div>`).join('')
+    : `<p class="hint">No News story of ${esc(String(g.year))} within ${S.mode === 'special' ? 'a week' : '3 days'} of this day.</p>`}</div>`;
 }
 // caption helper (Darpan, 9 Nov 2026): the photo's own baps.org words, the festival and the place, one tap each
 function capHelps(x, g, pack) {
