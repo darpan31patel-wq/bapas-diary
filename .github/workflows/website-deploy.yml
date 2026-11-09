@@ -42,6 +42,9 @@ jobs:
           mkdir out && rsync -a --exclude README.md live/ out/
           gh release download legacy-auto -p more.json -D out/then-and-now 2>/dev/null || echo '[]' > out/then-and-now/more.json   # weekly Legacy pairs (Darpan: just go live, 28 Oct)
           gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
+          # News story photos (source 'news', 132,136 from 6 Nov 2026) join every page only once their files are in the photo store:
+          # until then they come out of this build's copy of the database, so no page shows an empty tile (Darpan, 9 Nov 2026)
+          python3 tools/news_ready.py --db bapas.db --out news-ready.txt --prune
           # before 13 Aug 2016 Swamishri is Pramukh Swami Maharaj: mends 335 1999 captions that said Mahant Swami Maharaj (Darpan, 31 Oct 2026)
           python3 tools/guru_names.py --db bapas.db
           # a place that is a year or a date ('2004, Los Angeles', '15 June 2012') becomes its town on every page (Darpan's Today, 19 June)
@@ -106,7 +109,6 @@ jobs:
           gh release download image-search -p image-search.tgz && tar -xzf image-search.tgz   # -> image/
           # Darshan with no date (Darpan, 30 Oct 2026): only in Search, after every dated photo; photos in R2 under undated/
           gh release download undated-build -p undated-search.json || echo '{"album": "undated", "p": []}' > undated-search.json
-          python3 tools/news_ready.py --db bapas.db --out news-ready.txt   # News story photos show in Search once they are in the photo store
           python3 tools/build_search.py --db bapas.db --out out/search --tags tags.json --deep-tags deep-tags.json --people-faces people-faces.json --start-year today --image image --undated undated-search.json --news-ready news-ready.txt
           python3 tools/web_darshan.py --db bapas.db --out out   # the Darshan tab's Indian dates and festivals (Darpan: yes Darshan tab, 29 Oct)
           python3 tools/site_menu.py out   # every page's tabs in the same order
