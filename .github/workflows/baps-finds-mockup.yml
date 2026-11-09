@@ -1,0 +1,27 @@
+# Mockup pictures only (Darpan, 9 Nov 2026: "give me mock ups of all of the above", the five baps.org finds).
+# Opens the LIVE bapas-diary.com pages in a browser on this runner, adds the new things in the browser only, and saves
+# screenshots to this branch. Deploys nothing, changes nothing on the website, never touches the daily 2pm picture.
+# Fetches only a handful of sample image files from baps.org and pramukhswami.org (never pages).
+name: baps-finds-mockup
+on:
+  push:
+    branches: [claude/project-thread-0f0un6]
+    paths: [tools/mockups/baps-finds/shoot.py, tools/mockups/baps-finds/go.txt]
+permissions:
+  contents: write
+concurrency: baps-finds-mockup
+jobs:
+  shoot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -q playwright pillow requests && python -m playwright install --with-deps chromium > /dev/null
+      - run: python3 tools/mockups/baps-finds/shoot.py tools/mockups/baps-finds/out
+      - name: Save the pictures on this branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898341+github-actions[bot]@users.noreply.github.com"
+          git add tools/mockups/baps-finds/out
+          git commit -m "baps.org finds: mockup pictures [skip ci]" || exit 0
+          git push
