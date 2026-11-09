@@ -74,6 +74,12 @@ button { font: inherit; color: inherit }
 .want p { margin: 0; flex: 1 1 280px; font-size: 14px }
 .compare summary { cursor: pointer; color: var(--muted); font-size: 13px }
 .compare img { width: 100%; border-radius: 6px; border: 1px solid var(--line); margin-top: 8px }
+.twin { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px } .twin figure { margin: 0 } .twin figcaption { font: 12px var(--sans); color: var(--muted); margin: 4px 0 0 } .twin img { margin-top: 0 }
+@media (max-width: 760px) { .twin { grid-template-columns: 1fr } }
+.gold { color: var(--gold-hi) }
+.queue { list-style: none; margin: 0; padding: 0 } .queue li { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; border-bottom: 1px solid var(--line) } .queue li b { min-width: 4.2em; white-space: nowrap } .queue .ok { color: #8fd694; font: 12px var(--sans) } .queue button { margin-left: auto }
+.chips.cap button { font-size: 12px; max-width: 100%; white-space: normal; text-align: left }
+.last { background: rgba(0,0,0,.18); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin: 8px 0 } .last p { margin: 4px 0 }
 /* the small editor that opens on a card */
 .fe { position: absolute; z-index: 3; width: 290px; max-width: calc(100% - 20px); background: var(--panel); border: 1px solid var(--gold-deep); border-radius: 10px;
   box-shadow: 0 12px 34px rgba(0,0,0,.6); padding: 10px 12px; display: grid; gap: 7px }
@@ -191,7 +197,10 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
     <p class="status" id="status" role="status"></p>
     <p class="hint" id="tip">Click any card in the picture to change its photo, place or words.</p>
     <p class="hint" id="autosave" aria-live="polite"></p>
-    <details class="compare" id="compare"><summary>Compare with the picture the morning run made</summary><img id="real" alt="The automatic run's picture for this date"></details>
+    <details class="compare" id="compare"><summary>Side by side with the picture the morning run made</summary>
+      <div class="twin"><figure><img id="real" alt="The automatic run's picture for this date"><figcaption>The morning run's picture</figcaption></figure><figure><img id="mine" alt="Your version"><figcaption>Your version, changed cards framed in gold</figcaption></figure></div>
+      <p class="hint" id="cmp-note"></p></details>
+    <p class="hint" id="backup-note"></p>
     <details class="compare" id="logbox"><summary>Changes log (what you changed and why)</summary><ol class="log" id="loglist"></ol></details>
   </main>
   <aside class="side">
@@ -916,6 +925,12 @@ function range(id, label, v, min, max, step, fmt = x => x) { return `<div class=
 function check(id, label, v) { return `<label class="check"><input type="checkbox" id="${id}" ${v ? 'checked' : ''}> ${label}</label>` }
 function text(id, label, v, ph = '') { return `<div class="row"><label for="${id}">${label}</label><input type="text" id="${id}" value="${esc(v)}" placeholder="${esc(ph)}"></div>` }
 
+let SPNEXT = null;
+function queuePanel() {
+  if (S.mode === 'month' || !INDEX.specials.length) return '';
+  if (SPNEXT === null) { SPNEXT = []; specialQueue().then(n => { SPNEXT = n; if (S.tab === 'card') build() }) }
+  return `<div class="group"><h3>Special pictures coming up</h3>${queueHtml(SPNEXT)}</div>`;
+}
 function paneCard() {
   const day = S.mode !== 'month', pack = P[S.mode], o = cur(), k = selected();
   if (k == null) return '<p class="hint">Every year is hidden. Show some again on the Years and words tab.</p>';
@@ -939,19 +954,26 @@ function paneCard() {
   const firstRest = g.cands.findIndex(c2 => c2.nobapa);
   const grid = g.cands.map((_, i) => (i === firstRest && i > 0 ? `<p class="hint" style="grid-column:1/-1;margin:6px 0 0">The other ${rest} photo${rest > 1 ? 's' : ''} from ${esc(label(k))} (Bapa’s face not found automatically)</p>` : '') + cell(i)).join('');
   const changed = kk => { const b = stateOf(o)[kk]; return b && Object.keys(b).some(f => f !== 'on') };
+  // Darpan, 9 Nov 2026: plain words on the album each photo comes from, now the packs carry the album's first and last day
+  const spans = {}; g.cands.forEach(c2 => { if (c2.album_from && c2.album_to && c2.album_from !== c2.album_to) { const kk = c2.album_from + '|' + c2.album_to; spans[kk] = (spans[kk] || 0) + 1 } });
+  const spanAll = Object.values(spans).reduce((a2, b2) => a2 + b2, 0) === g.cands.length && Object.keys(spans).length === 1;
+  const albumNote = Object.entries(spans).map(([kk, n]) => { const [f, t] = kk.split('|'); return `<p class="hint warn">${spanAll ? 'All' : n + ' of these'} are filed under ${thisDay ? niceDay(thisDay) : 'this day'}, but baps.org's album covers ${niceDay(f)} to ${niceDay(t)}, so they may be from any of those days.</p>` }).join('');
+  const dayNote2 = spanAll && dates.length === 1 ? '' : dayNote;
+  const lastPanel = lastTime(k);
   const chip = kk => S.mode === 'special' ? String((groupsOf(pack).find(g2 => g2.key === kk) || {}).year ?? kk) : kk;
-  return `
+  return `${S.mode === 'special' ? queuePanel() : ''}
     <div class="group">
       <div class="cardhead"><button class="btn" id="c-prev" aria-label="Previous">◀</button><b>${esc(label(k))}</b><button class="btn" id="c-next" aria-label="Next">▶</button></div>
       <div class="chips" id="c-sel">${shownKeys().map(kk => `<button data-k="${kk}" class="${kk === k ? 'sel' : ''}" aria-pressed="${changed(kk) ? 'true' : 'false'}">${chip(kk)}</button>`).join('')}</div>
-      <p class="hint">Click a card in the picture or a ${day ? 'year' : 'day'} here. A white one has your own changes.</p></div>
+      <p class="hint">Click a card in the picture or a ${day ? 'year' : 'day'} here. A white one has your own changes.</p>${lastPanel}</div>
     <div class="group"><h3>Choose the photo</h3>
-      ${g.cands.length ? `<p class="hint">All ${g.cands.length} photo${g.cands.length > 1 ? 's' : ''} from ${esc(label(k))} in your archive${rest && nb ? `: the ${nb} where Bapa’s face was found come first` : ''}.</p>${dayNote}
+      ${g.cands.length ? `<p class="hint">All ${g.cands.length} photo${g.cands.length > 1 ? 's' : ''} from ${esc(label(k))} in your archive${rest && nb ? `: the ${nb} where Bapa’s face was found come first` : ''}.</p>${dayNote2}${albumNote}
       <div class="thumbs" id="c-thumbs">${grid}</div>
       <p class="hint">${c ? esc([c.place, c.date || (day ? g.year : ''), c.festival].filter(Boolean).join(' · ')) : ''}${day ? '' : ' · ' + esc([g.tithi, ...g.fest].join(' · '))}</p>` : '<p class="hint">No photo for this day yet.</p>'}</div>
     <div class="group"><h3>Place, caption, year and festival tag</h3>
       <div class="row"><label for="c-place">Place${day ? ' on the card' : ' (bubbles)'}</label><input type="text" class="place" id="c-place" data-f="place" data-k="${k}" value="${esc(x.place)}"></div>
       <textarea class="capedit" id="c-cap" data-f="caption" data-k="${k}" aria-label="Caption" rows="2">${esc(x.caption)}</textarea>
+      <div class="chips cap" id="c-caphelp">${capHelps(x, g, pack).map(([t, v]) => `<button data-v="${esc(v)}" data-set="${t.startsWith('baps.org') ? 1 : ''}" title="${t.startsWith('baps.org') ? 'Use the baps.org caption' : 'Add these words to the caption'}">${esc(t)}</button>`).join('')}</div>
       ${day ? `<div class="row"><label for="c-yl">Year on the card</label><input type="text" id="c-yl" data-f="ylabel" data-k="${k}" value="${esc(st.ylabel ?? x.yl ?? k)}"></div>
       <div class="row"><label for="c-fest">Festival tag on the photo</label><input type="text" id="c-fest" data-f="fest" data-k="${k}" value="${esc(st.fest ?? (c ? (c.festival || captionFest(c)) : ''))}" placeholder="For example Annakut (empty for none)"></div>` : ''}
       ${c && c.original ? `<p class="hint">Website caption: “${esc(c.original)}”</p>` : ''}</div>
@@ -1090,14 +1112,14 @@ function build() {
   $('#tabs').innerHTML = TABS[S.mode].map(([k, l]) => `<button role="tab" data-t="${k}" aria-selected="${k === S.tab}">${l}</button>`).join('');
   $('#compare').hidden = S.mode === 'month' || waiting;
   $('#tip').textContent = S.mode === 'month' ? 'Click any day to change its photo, place or caption right there.' : 'Click any card to change its photo, place or caption right there.';
-  if (!pack) { $('#pane').innerHTML = '<p class="hint">' + (WANT ? 'The photos for this day are not ready yet.' : sp && !INDEX.specials.length ? 'No special picture pack yet.' : 'Loading photos…') + '</p>'; $('#meta').textContent = WANT ? longDate(WANT) : 'Loading photos…'; fe.hidden = true; wire(); return }
+  if (!pack) { $('#pane').innerHTML = '<p class="hint">' + (WANT ? 'The photos for this day are not ready yet.' : sp && !INDEX.specials.length ? 'No special picture pack yet.' : 'Loading photos…') + '</p>' + (sp ? queuePanel() : ''); $('#meta').textContent = WANT ? longDate(WANT) : 'Loading photos…'; fe.hidden = true; wire(); return }
   selected();
   const total = groupsOf(pack).reduce((s, g) => s + g.cands.length, 0);
   $('#meta').innerHTML = day ? `<b>${esc(pack.title)}</b><span>${dayCards(pack, o).length} of ${pack.years.length} years on the picture</span><span>${total} photos to choose from</span>`
     : sp ? `<b>${esc(pack.title)}</b><span>${pack.kind === 'story' ? 'a day in BAPS history' : `Every ${esc(pack.festival || '')}${pack.first && pack.last ? `, ${pack.first} to ${pack.last}` : ''}`}</span><span>${dayCards(pack, o).length} of ${pack.cards.length} cards on the picture</span><span>${total} photos to choose from</span>`
     : `<b>${esc(pack.title)}</b><span>${pack.days.length} days</span><span>${{ A: 'close-up images', B: 'activity', M: 'mixed' }[o.option]}</span><span>${total} photos to choose from</span>`;
   $('#pane').innerHTML = S.tab === 'card' ? paneCard() : S.tab === 'words' ? paneWords() : S.tab === 'layout' ? paneLayout() : lookPane(S.mode === 'month' ? 'm' : 'd', o);
-  if (S.mode !== 'month' && $('#compare').open) $('#real').src = pack.base + 'real.jpg';
+  if (S.mode !== 'month' && $('#compare').open) sideBySide();
   buildEditor(); wire(); render();
 }
 function wire() {
@@ -1115,6 +1137,9 @@ function wire() {
   document.querySelectorAll('#c-crop button').forEach(b => b.addEventListener('click', () => { bag(k).crop = b.dataset.v; build() }));
   ['zoom', 'dx', 'dy'].forEach(f => on('c-' + f, 'input', e => { bag(k)[f] = +e.target.value; syncOut('c-' + f); render() }));
   on('c-reset', 'click', () => { const s = bag(k); Object.keys(s).forEach(f => f !== 'on' && delete s[f]); build() });
+  document.querySelectorAll('#c-caphelp button').forEach(b => b.addEventListener('click', () => { const t = $('#c-cap'); if (!t) return; const v = b.dataset.v, cur2 = t.value.trim(); t.value = b.dataset.set || !cur2 ? v : cur2.includes(v) ? cur2 : cur2 + (/[.!?,]$/.test(cur2) ? ' ' : ', ') + v; t.dispatchEvent(new Event('input', { bubbles: true })) }));
+  document.querySelectorAll('[data-last]').forEach(b => b.addEventListener('click', () => { const e = lastEntries()[+b.dataset.last]; if (e) applyLast(e) }));
+  document.querySelectorAll('[data-sp]').forEach(b => b.addEventListener('click', () => { S.mode = 'special'; S.special.date = b.dataset.sp; unstash('special'); P.special = null; build(); loadPack('special', b.dataset.sp).then(pk => { P.special = pk; build() }).catch(() => {}) }));
   // shared look
   segOn(p + '-look', 'look'); bind(p + '-glow', 'glow', 1); bind(p + '-jali', 'jali', 1); bind(p + '-polish', 'polish'); bind(p + '-bright', 'bright', 1); bind(p + '-warm', 'warmth', 1);
   on(p + '-resetall', 'click', () => { const keep = S.mode === 'month' ? { month: o.month, option: o.option } : { date: o.date }; S[S.mode] = Object.assign(structuredClone(DEFAULTS[S.mode]), keep); FE = false; build() });
@@ -1147,7 +1172,7 @@ function syncOut(id) {   // keep the little number beside a slider in step
   out.textContent = /zoom|glow|jali/.test(id) ? pc(v) : /tilt/.test(id) ? v + '°' : /dx|dy|warm/.test(id) ? Math.round(v * 100) : /bright/.test(id) ? (v > 0 ? '+' : '') + Math.round(v * 100)
     : id === 'd-shape' ? (v < .8 ? 'wide' : v > 1.05 ? 'tall' : 'nearly square') : id === 'd-cord' ? (v || 'no cord') : v;
 }
-$('#compare').addEventListener('toggle', () => { if ($('#compare').open && P[S.mode] && S.mode !== 'month') $('#real').src = P[S.mode].base + 'real.jpg' });
+$('#compare').addEventListener('toggle', () => { sideBySide() });
 
 // ------------------------------------------------------------ top bar: what to make and which day
 async function load(kind) {
@@ -1398,6 +1423,92 @@ function changes() {
   if (S.mode === 'day' && o.wa[o.date]) out.push('2pm WhatsApp caption changed' + (o.wa[o.date].whole ? ' (whole caption)' : ''));
   return out;
 }
+// caption helper (Darpan, 9 Nov 2026): the photo's own baps.org words, the festival and the place, one tap each
+function capHelps(x, g, pack) {
+  const c = x.c || {}, out = [], add = (t, v) => { if (v && !out.some(e => e[1] === v)) out.push([t, v]) };
+  add('baps.org: ' + (c.original || c.caption || ''), c.original || c.caption);
+  const fest = x.st.fest ?? (c.festival || captionFest(c)); if (fest) add('Festival: ' + fest, fest);
+  if (c.place) add('Place: ' + c.place, c.place);
+  if (pack && pack.cal_line) add('Calendar: ' + pack.cal_line, pack.cal_line);
+  if (g && g.tithi) add('Tithi: ' + g.tithi, g.tithi);
+  return out.filter(([, v]) => v !== x.caption);
+}
+// the last time panel (Darpan, 9 Nov 2026): what he changed the last time he worked on this date, or this day last year
+let LOGALL = [];
+function lastEntries() {
+  if (S.mode === 'month') return [];
+  const date = keyOf(S.mode), mmdd = date.slice(5);
+  const same = LOGALL.filter(e => e.kind === S.mode && e.for === date && e.cards && e.cards.length);
+  const yearAgo = LOGALL.filter(e => e.kind === S.mode && e.for !== date && e.for.slice(5) === mmdd && e.cards && e.cards.length);
+  return [same[0], yearAgo[0]].filter(Boolean);
+}
+function lastTime(k) {
+  const es = lastEntries(); if (!es.length) return '';
+  const when = t => new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return `<div class="last">${es.map((e, i) => { const sw = e.cards.filter(c => c.auto || !c.shown); return `<p><b>Last time</b> (${e.for === keyOf(S.mode) ? 'this date' : 'this day in ' + e.for.slice(0, 4)}, ${esc(when(e.at))}): ${sw.length ? sw.slice(0, 6).map(c => esc(c.card) + (c.shown ? ' ' + esc(c.caption.slice(0, 40)) : ' hidden')).join('; ') + (sw.length > 6 ? ` and ${sw.length - 6} more` : '') : 'no cards swapped'}.</p>
+    <button class="btn small" data-last="${i}">Apply the same again</button>` }).join('')}</div>`;
+}
+function applyLast(e) {
+  const o = cur(), pack = P[S.mode]; let n = 0;
+  for (const c of e.cards) {
+    const g = groupsOf(pack).find(g2 => String(label(g2.key)) === String(c.card) || String(g2.year) === String(c.card)); if (!g) continue;
+    const st = stateOf(o)[g.key] || (stateOf(o)[g.key] = {});
+    if (S.mode === 'day' && !c.shown) { st.on = false; n++; continue }
+    const i = g.cands.findIndex(x => x.caption === (c.auto ? c.caption : null) || (c.date && x.date === c.date && x.caption === c.caption));
+    const j = i >= 0 ? i : g.cands.findIndex(x => x.caption === c.caption);
+    if (j >= 0 && c.auto) { st.pick = j; n++ }
+    const chosen = g.cands[j >= 0 ? j : (st.pick ?? 0)] || {};
+    if (c.caption && c.caption !== chosen.caption) { st.caption = c.caption; n++ }
+    if (c.place && c.place !== chosen.place) { st.place = c.place; n++ }
+  }
+  say('ok', n ? `Applied ${n} change${n > 1 ? 's' : ''} from last time.` : 'Nothing from last time fits these photos.');
+  build();
+}
+// side by side (Darpan, 9 Nov 2026): the morning run's picture next to his, the cards he changed framed in gold
+function sideBySide() {
+  const pack = P[S.mode]; if (!pack || S.mode === 'month' || !$('#compare').open) return;
+  $('#real').src = pack.base + 'real.jpg';
+  const o = cur(), c = document.createElement('canvas'); c.width = 1398; c.height = 645;
+  const ctx = c.getContext('2d'); ctx.drawImage(view, 0, 0, c.width, c.height);
+  const ch = HITS.filter(h => { const st = stateOf(o)[h.key]; return st && Object.keys(st).some(f => f !== 'on') });
+  ctx.strokeStyle = '#ffe296'; ctx.lineWidth = 8; ch.forEach(h => ctx.strokeRect(h.x / 2 - 2, h.y / 2 - 2, h.w / 2 + 4, h.h / 2 + 4));
+  $('#mine').src = c.toDataURL('image/jpeg', .85);
+  const names = ch.map(h => label(h.key)), hidden = groupsOf(pack).filter(g => stateOf(o)[g.key]?.on === false).map(g => label(g.key));
+  $('#cmp-note').innerHTML = (names.length ? `Changed: <span class="gold">${names.map(esc).join(', ')}</span>. ` : 'No card changed yet. ') + (hidden.length ? `Hidden: ${hidden.map(esc).join(', ')}.` : '');
+}
+// backup on the website (Darpan, 9 Nov 2026: a new laptop or a cleared browser must lose nothing): every export also
+// saves this device's whole Studio memory to /darpan/api/settings, and Restore brings it back
+const SETAPI = '/darpan/api/settings';
+async function backupSettings() {
+  const body = { at: new Date().toISOString(), settings: store.get('studio-settings-v1'), dates: store.get('studio-dates-v1'), zoom: store.get('studio-zoom'), log: (store.get('studio-log') || []).slice(0, 100) };
+  try { const r = await fetch(SETAPI, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); if (r.ok) { const j = await r.json(); if (j.ok) store.set('studio-backup-at', body.at) } } catch (x) {}
+  backupNote();
+}
+async function backupNote() {
+  const when = t => new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  let at = store.get('studio-backup-at');
+  try { const r = await fetch(SETAPI, { cache: 'no-store' }); if (r.ok) { const j = await r.json(); at = j.at || at; $('#backup-note').innerHTML = j.at ? `Your settings and changes are backed up on the website (${esc(when(j.at))}). <button class="btn small" id="restore">Restore them on this device</button>` : 'Your settings are not backed up yet: they are saved on the website with your next export.' } } catch (x) { $('#backup-note').textContent = '' }
+  const b = $('#restore'); if (b) b.addEventListener('click', restoreSettings);
+}
+async function restoreSettings() {
+  try {
+    const j = await (await fetch(SETAPI, { cache: 'no-store' })).json(); if (!j.at) return;
+    if (j.settings) store.set('studio-settings-v1', j.settings); if (j.dates) store.set('studio-dates-v1', j.dates); if (j.zoom != null) store.set('studio-zoom', j.zoom);
+    const mine = store.get('studio-log') || [], seen = new Set(mine.map(e => e.at)); store.set('studio-log', [...mine, ...(j.log || []).filter(e => !seen.has(e.at))].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 500));
+    location.reload();
+  } catch (x) { say('warn', 'Could not read the backup from the website. Try again.') }
+}
+// the queue of special pictures (Darpan, 9 Nov 2026: the next 2 or 3 always ready in the Special picture list)
+const SPQ = {};
+async function specialQueue() {
+  const today = todayLondon(), next = INDEX.specials.filter(d => d >= today).slice(0, 3);
+  await Promise.all(next.map(async d => { if (SPQ[d]) return; try { const j = await (await fetch(`${ROOT}special/${d}/pack.json`)).json(); SPQ[d] = { title: j.title, kind: j.kind, n: (j.cards || []).length } } catch (x) { SPQ[d] = null } }));
+  return next;
+}
+function queueHtml(next) {
+  if (!next.length) return '<p class="hint">No special picture is coming up in the packs yet.</p>';
+  return `<ul class="queue">${next.map(d => { const q = SPQ[d]; return `<li><b>${esc(new Date(d + 'T12:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }))}</b><span>${q ? esc(q.title) + (q.kind === 'story' ? ' (a day in BAPS history)' : '') : 'loading…'}</span>${q ? '<span class="ok">ready</span>' : ''}<button class="btn small" data-sp="${d}">Open</button></li>` }).join('')}</ul>`;
+}
 const LOGAPI = '/darpan/api/log';
 async function logChange(how, where) {
   // every card as it went out (year, which photo, its caption and place, and what the automatic picture had) so the log on the
@@ -1410,18 +1521,19 @@ async function logChange(how, where) {
   const log = store.get('studio-log') || []; log.unshift(e); store.set('studio-log', log.slice(0, 500));
   $('#why').value = '';
   try { await fetch(LOGAPI, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(e) }) } catch (x) {}
-  showLog();
+  showLog(); backupSettings();
 }
 async function showLog() {
   let all = store.get('studio-log') || [];
   try { const r = await fetch(LOGAPI, { cache: 'no-store' }); if (r.ok) { const j = await r.json(); if (j.entries) all = [...j.entries, ...all] } } catch (x) {}
   const seen = new Set(); all = all.filter(e => !seen.has(e.at) && seen.add(e.at)).sort((a, b) => b.at.localeCompare(a.at));
+  const had = LOGALL.length; LOGALL = all; if (!had && all.length && S.tab === 'card') build();
   const when = t => new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   $('#loglist').innerHTML = all.length ? all.slice(0, 200).map(e => `<li><b>${esc(e.kind === 'month' ? longMonth(e.for) : longDate(e.for))}${e.kind === 'special' ? ' (special picture)' : ''}</b>, ${esc(e.how)} on ${esc(when(e.at))}
     <p>${e.why ? 'Why: ' + esc(e.why) : '<i>No reason written</i>'}</p><p class="chg">${e.changes.length ? 'Changed: ' + e.changes.map(esc).join('; ') : 'No changes from the automatic picture'}</p></li>`).join('')
     : '<li>Nothing yet. Each time you export, what you changed and why is kept here.</li>';
 }
-showLog();
+showLog(); backupNote();
 $('#exp-go').addEventListener('click', async () => {
   const btn = $('#exp-go'); btn.disabled = true; say('', 'Drawing the full size picture…');
   await allReady();
