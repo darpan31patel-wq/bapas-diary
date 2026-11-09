@@ -73,7 +73,8 @@ a:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 3px; }
   // "look at the pictures used": a 1990 card showed the kalash beside him, cut off at the edge)
   function best(list) {
     var seen = (list || []).filter(function (p) { return p[3] && p[4] && p[4].length > 7; });
-    return seen.filter(function (p) { return p[4][7]; })[0] || seen[0] || null;
+    // big enough to see on a small card: his face at least a fifth of the photo's height
+    return seen.filter(function (p) { return p[4][7] && p[4][5] >= .2; })[0] || seen.filter(function (p) { return p[4][7]; })[0] || seen[0] || null;
   }
   // the frame is 4:5; centre his face in it, a little above the middle, as Today does
   function at(p) {
@@ -90,7 +91,7 @@ a:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 3px; }
     (day.years || []).forEach(function (y) {
       var p = best(y.p), near = !p;
       if (!p) p = best(y.t);
-      if (p) era[(y.y + '-' + mm + '-' + dd) >= MSM_FROM ? 1 : 0].push({ y: y.y, p: p, near: near, close: !!p[4][7] });
+      if (p) era[(y.y + '-' + mm + '-' + dd) >= MSM_FROM ? 1 : 0].push({ y: y.y, p: p, near: near, close: !!p[4][7] && p[4][5] >= .2 });
     });
     var picks = [];
     era.forEach(function (list) {
