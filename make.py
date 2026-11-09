@@ -82,7 +82,7 @@ def vicharan_items(path, mmdd, place, per_caption=2):
             c = 'Swamishri ' + c
         for i in ids.split(',')[:per_caption]:
             out.append({'y': y, 'd': when or f'{y}-{mmdd}', 'p': where or place.get(y, ''), 'c': c,   # the album's own place (2017 has Paris and London albums)
-                        'i': f'https://www.baps.org/Data/Sites/1/Media/GalleryImages/{album}/WebImages/{prefix}{i}.jpg'})
+                        'i': f'https://www.baps.org/Data/Sites/1/Media/GalleryImages/{album}/WebImages/{prefix}{i}' + ('' if re.search(r'\.jpe?g$', i, re.I) else '.jpg')})   # 'x.jpeg' keeps its own ending
     return out
 
 
