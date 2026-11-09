@@ -669,17 +669,17 @@ const FESTIVE = {
   diwali: {re: /^diwali$/i, many: 'Diwalis', line: 'Every Diwali with Bapa, each year on its own Indian date. Happy Diwali 🪔',
     sky: ['fireworks'], rope: ['bulbs'], foot: 'diyas'},
   annakut: {re: /annakut/i, many: 'Annakuts', line: 'Every Annakut with Bapa, the thal, the sweets and the offering, each year on its own Indian date. Nutan Varshabhinandan 🙏🏽',
-    bg: SAFFRON, fe: '#e8891c', fy: '#a23a10', sky: ['fall', ['#ff9f1c', '#ffb020']], rope: ['beads', MARIGOLD, 1], foot: 'thal'},
+    bg: SAFFRON, fe: '#e8891c', fy: '#a23a10', rope: ['beads', MARIGOLD, 1], foot: 'thal'},   // no falling petals (Darpan, 6 Nov 2026)
   // the other Diwali days (Darpan, 5 Nov 2026: "Yes to all 1-4"): Dhanteras in gold, falling gold and a pot of gold
   // coins; Kali Chaudas a dark night of stars, saffron beads and Hanumanji's gada; Bhai Bij marigold and a puja thali
   dhanteras: {re: /dhan ?teras|dhan ?trayodashi|lakshmi pujan/i, line: 'Every Dhanteras with Bapa, the Lakshmi Pujan and the first diyas of Diwali, each year on its own Indian date. Happy Dhanteras 🙏🏽',
     bg: 'radial-gradient(ellipse 70% 36% at 50% 0%,rgba(255,205,70,.28),transparent 70%),radial-gradient(ellipse 90% 70% at 50% 30%,#4c1418,var(--maroon-out)) no-repeat',
-    fe: '#d4a017', fy: '#7a5a0c', sky: ['fall', ['#ffd56a', '#ffe9a8', '#e6b450']], rope: ['beads', ['#ffd56a', '#e6b450', '#fff1b8'], 1], foot: 'coins'},
+    fe: '#d4a017', fy: '#7a5a0c', rope: ['beads', ['#ffd56a', '#e6b450', '#fff1b8'], 1], foot: 'coins'},
   kalichaudas: {re: /kali ?ch?au?dash?/i, line: "Every Kali Chaudas with Bapa, the day of Hanumanji's puja, each year on its own Indian date. 🙏🏽",
     bg: 'radial-gradient(ellipse 60% 35% at 50% 0%,rgba(255,120,40,.22),transparent 70%),linear-gradient(#0d0712,#22080c 45%,var(--maroon-out)) no-repeat',
     fe: '#e0561b', fy: '#9b2f0a', sky: ['stars'], rope: ['beads', ['#ff6a1a', '#ffb020', '#ff6a1a']], foot: 'gada'},
   bhaibij: {re: /bhai ?b(ee|i)j/i, line: 'Every Bhai Bij with Bapa, the second day of the New Year, each year on its own Indian date. 🙏🏽',
-    bg: SAFFRON, fe: '#d01f3c', fy: '#8f1a2e', sky: ['fall', ['#ff9f1c', '#ffd56a', '#ff8fab']], rope: ['beads', ['#d01f3c', '#ffd56a', '#ff9a1a'], 1], foot: 'puja'},
+    bg: SAFFRON, fe: '#d01f3c', fy: '#8f1a2e', rope: ['beads', ['#d01f3c', '#ffd56a', '#ff9a1a'], 1], foot: 'puja'},
   janmashtami: {re: /janmashtami/i, line: 'Every Janmashtami with Bapa, each year on its own Indian date. Happy Janmashtami 🙏🏽',
     bg: 'radial-gradient(ellipse 60% 35% at 50% 0%,rgba(80,120,220,.22),transparent 70%),linear-gradient(#070b1f,#12102a 40%,var(--maroon-out)) no-repeat',
     fe: '#1f7a8c', fy: '#1b3f7a', sky: ['stars'], rope: ['feathers'], foot: 'matki'},
@@ -708,6 +708,7 @@ const FESTIVE = {
   msm: {re: /mahant swami maharaj('?s)? (janma )?jayanti(?! celebration)/i, line: 'Every birthday of Mahant Swami Maharaj with Bapa, each year on its own Indian date. 🙏🏽',
     bg: SAFFRON, fe: '#c9a227', fy: '#7a3a10', sky: ['fall', ['#e0245e', '#ff8fab', '#ffd56a']], rope: ['beads', ROSES, 1], foot: 'garland'},
 };
+const DATE_ONLY = ['dhanteras', 'kalichaudas', 'diwali', 'annakut', 'bhaibij'];
 const festKey = c => {
   const parts = c ? [c[1], c[2]].filter(Boolean).join(';').split(/[;,\/]| and /).map(x => x.trim()).filter(Boolean) : [];
   return Object.keys(FESTIVE).find(k => parts.some(x => FESTIVE[k].re.test(x))) || '';
@@ -811,8 +812,10 @@ async function open(mmdd, push) {
   try { data = await SRC.day(mmdd); } catch (e) { $('loading').textContent = 'This day could not be opened. Please try again in a moment.'; return; }
   if (showing !== mmdd) return;
   DAY = pastOnly(data);
+  // the Diwali days keep the English date, every year's same day as on any other day; their festival parts only open
+  // under the board (Darpan, 6 Nov 2026: "I want to carry on showing the English date as we normally have been")
   const key = festKey(data.cal && data.cal[now.getFullYear()]);
-  if (key) try {   // a festival day: every year's festival, each on its own Indian date, never this year's own
+  if (key && !DATE_ONLY.includes(key)) try {   // a festival day: every year's festival, each on its own Indian date, never this year's own
     const F = await SRC.fest(key), y = now.getFullYear();
     if (showing !== mmdd) return;
     F.years = F.years.filter(Y => Y.y < y);
@@ -1532,7 +1535,10 @@ function seasonSections(J, S) {
   });
   requestAnimationFrame(even);
   if (!window.dwEven) { window.dwEven = true; addEventListener('resize', () => requestAnimationFrame(even)); }
-  const order = S.after ? ['ashi', 'ann', 'diwali', 'chop'] : S.diwali ? ['chop', 'diwali', 'ashi', 'ann'] : ['diwali', 'chop', 'ashi', 'ann'];
+  // Bapa's Diwali every year and Chopda Pujan with Bapa only on Diwali day itself, the New Year ashirwad and the Annakut
+  // gallery only on the New Year's day, and on the other Diwali days Today is as on any day (Darpan, 6 Nov 2026: "only
+  // live on diwali ... only live on new years day ... otherwise normaly on this day")
+  const order = S.diwali ? ['chop', 'diwali'] : S.newYear ? ['ashi', 'ann'] : [];
   $('dw').innerHTML = order.map(k => out[k] || '').join('');
   $('dw').hidden = !$('dw').innerHTML;
 }

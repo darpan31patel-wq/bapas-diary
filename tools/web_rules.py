@@ -342,6 +342,64 @@ def card_place(card, event, known):
     return own or ev
 
 
+# Darpan, 6 Nov 2026 ("2002 on the website say gondal but on the 2pm picture it says ramod"): a card names the town the
+# 2pm picture names for the same photos. The picture (make.py) reads baps.org's own day list for the photo's place
+# (2003: 'Bochasan' where the album says 'Dholka, Purushottampura(Lat)'), and on a travel album that lists two towns
+# ('Gondal, Ramod', 'London, New Delhi') it takes the one town its captions name. The website build gets the day lists
+# and the picture's picks from main (archive/memories, archive/shown.json) in --picture.
+NOT_TOWN = {'india', 'uk', 'usa', 'us', 'united kingdom', 'united states', 'england', 'europe', 'africa', 'kenya',
+            'canada', 'australia', 'new zealand', 'uae', 'gujarat', 'north america'}
+
+
+def towns_in(place):
+    out = []
+    for t in (place or '').split(','):
+        t = re.sub(r'\s*\(.*?\)', '', t).strip()
+        if t and t.lower() not in NOT_TOWN and not not_a_town(t) and not re.search(r'\d|Vicharan|Maharaj', t):
+            out.append(t)
+    return out
+
+
+def picture_town(db, cache, mem, y, al, fi):
+    """The town the 2pm picture would write under this photo: the day list's place for it, else the album's; on a
+    two town album, the one town the album's captions name."""
+    if al not in cache:
+        rows = db.execute('SELECT place, caption FROM photos WHERE album = ?', (al,)).fetchall()
+        cache[al] = (rows[0][0] if rows else '', ' '.join(c or '' for _, c in rows))
+    album_place, said = cache[al]
+    own = mem.get((y, al, fi)) or album_place
+    towns = towns_in(own)
+    for t in towns_in(album_place):
+        if t not in towns:
+            towns.append(t)
+    if len(towns) > 1:
+        named = [t for t in towns if re.search(rf'\b{re.escape(t)}\b', said, re.I)]
+        if len(named) == 1:
+            return named[0]
+    return next(iter(towns_in(own)), '') or town_of(own)
+
+
+def picture_lists(folder, mmdd):
+    """(the day list's place by (year, album, file), the picture's picks by year) for one day, from --picture."""
+    mem, picks = {}, {}
+    if not folder:
+        return mem, picks
+    f = os.path.join(folder, 'memories', mmdd + '.json')
+    if os.path.exists(f):
+        for x in json.load(open(f, encoding='utf-8')):
+            u = x.get('i') or ''
+            if '/GalleryImages/' in u and x.get('y') and x.get('p'):
+                mem[(int(x['y']), u.split('/GalleryImages/')[-1].split('/')[0], u.rsplit('/', 1)[-1])] = x['p']
+    f = os.path.join(folder, 'shown.json')
+    if os.path.exists(f):
+        for d, ys in json.load(open(f, encoding='utf-8')).items():
+            if d[5:] == mmdd and isinstance(ys, dict):
+                for yy, v in ys.items():
+                    if yy.isdigit():
+                        picks[int(yy)] = v.get('i') if isinstance(v, dict) else v
+    return mem, picks
+
+
 def face_box(rec, close=None):
     """[centre x, centre y, x, y, w, h, photo width / height, close] from a face scan record, or None."""
     if not rec or rec[0] < TG_SAME_PERSON:   # no face of Bapa found in it
@@ -385,6 +443,7 @@ def day(a):
     tgc = json.load(open(a.tg, encoding='utf-8')) if a.tg and os.path.exists(a.tg) else {}
     known = known_places(db)
     stats = dict(trip_dropped=0, near_added=0, stories_dropped=0, tg_years=0, framed=0, other_town=0)
+    album_cache = {}
 
     def finish(p):
         """p = [album, file, caption, bapa, face, card caption]"""
@@ -428,6 +487,8 @@ def day(a):
         # Its baps.org photos only: a channel photo needs its copy on R2 first (the tg job).
         chose = {y: url for y, url in db.execute(
             'SELECT year, photo_url FROM diary WHERE substr(date, 6) = ? ORDER BY date', (mmdd,))}
+        mem, picks = picture_lists(a.picture, mmdd)
+        chose.update(picks)   # today's picture too, straight from main, before the database is rebuilt with it
         for y, url in sorted(chose.items()):
             if y in years and (years[y]['p'] or years[y].get('t')) or '/GalleryImages/' not in (url or ''):
                 continue
@@ -510,6 +571,12 @@ def day(a):
                     Y.get(part, []).sort(key=rank)
                     for p in Y.get(part, []):
                         finish(p)
+                first = (Y['p'] or Y.get('t') or [None])[0]
+                if first:
+                    t = picture_town(db, album_cache, mem, Y['y'], first[0], first[1])
+                    if t and town(t) != town(Y['place']):
+                        Y['place'] = t
+                        stats['picture_places'] = stats.get('picture_places', 0) + 1
             Y.pop('tg', None)
         # 6, 7: a story is not told again where a card already shows that day in that town
         shown = {(Y['y'], town(Y['place'])) for Y in years.values() if Y['p'] or Y.get('t')}
@@ -646,7 +713,7 @@ def main():
     s = sub.add_parser('captions'); s.add_argument('--db', action='append', required=True); s.set_defaults(fn=captions)
     s = sub.add_parser('tg'); s.add_argument('--db', required=True); s.add_argument('--drive', required=True); s.add_argument('--out', required=True); s.set_defaults(fn=tg)
     s = sub.add_parser('day'); s.add_argument('--day', required=True); s.add_argument('--db', required=True)
-    s.add_argument('--faces'); s.add_argument('--tg'); s.set_defaults(fn=day)
+    s.add_argument('--faces'); s.add_argument('--tg'); s.add_argument('--picture'); s.set_defaults(fn=day)
     s = sub.add_parser('calendar'); s.add_argument('--db', action='append', required=True); s.set_defaults(fn=calendar)
     s = sub.add_parser('calfaces'); s.add_argument('--site', required=True); s.add_argument('--faces', required=True); s.set_defaults(fn=calfaces)
     s = sub.add_parser('look'); s.add_argument('--out', required=True); s.set_defaults(fn=look)

@@ -58,7 +58,13 @@ button { font: inherit; color: inherit }
 .meta b { color: var(--fg); font-weight: 600; font-size: 15px }
 .meta span + span::before, .meta b + span::before { content: '·'; margin-right: 12px; color: var(--line) }
 .easel { position: relative; background: #0d0406; border: 1px solid var(--line); border-radius: 10px; padding: 10px; min-width: 0 }
-#view { width: 100%; height: auto; display: block; box-shadow: 0 10px 40px rgba(0,0,0,.6); cursor: pointer }
+#view { width: calc(var(--zoom, 1) * 100%); height: auto; display: block; box-shadow: 0 10px 40px rgba(0,0,0,.6); cursor: pointer }
+/* zoom into the picture alone, not the page (Darpan, 6 Nov 2026): the picture scrolls inside its own box */
+.zoombox { position: relative; overflow: auto; max-height: 82vh; border-radius: 6px; overscroll-behavior: contain; touch-action: pan-x pan-y }
+.zoombox.zoomed #view { cursor: grab } .zoombox.dragging #view { cursor: grabbing }
+.zoombar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 8px }
+.zoombar output { min-width: 44px; text-align: center; font: 600 13px var(--sans); color: var(--gold) }
+.zoombar #z-tip { flex: 1 1 100%; margin: 0 }
 .status { font-size: 13.5px; color: var(--muted); min-height: 1.4em; margin: 0 }
 .status.ok { color: var(--ok) }
 .status.warn { color: var(--saffron) }
@@ -112,6 +118,8 @@ input[type=checkbox] { accent-color: var(--gold); width: 16px; height: 16px }
 .thumbs button i { position: absolute; inset: 0; background-repeat: no-repeat }
 .thumbs button[aria-pressed="true"] { border-color: var(--gold) }
 .thumbs button span { position: absolute; z-index: 1; left: 3px; top: 3px; font: 700 9.5px var(--sans); background: rgba(20,6,10,.82); color: var(--gold); padding: 1px 4px; border-radius: 3px }
+.thumbs button span.off { left: auto; right: 3px; top: auto; bottom: 3px; color: #ffd6c8; background: rgba(120,30,20,.85) }   /* a photo filed under another date carries that date */
+.hint.ok { color: var(--ok) } .hint.warn { color: var(--saffron) }
 .thumbs button.nob { opacity: .82 }
 .words { display: grid; gap: 10px }
 .words .w { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 4px 8px; align-items: start }
@@ -160,6 +168,7 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
   <div class="modes" role="group" aria-label="What to make">
     <button id="mode-day" aria-pressed="true">Daily picture</button>
     <button id="mode-month" aria-pressed="false">Month poster</button>
+    <button id="mode-special" aria-pressed="false" title="The second picture some days get: Every Diwali, Every Annakut, a day in BAPS history">Special picture</button>
   </div>
   <select id="pick" aria-label="Which day"></select>
   <select id="pick-opt" aria-label="Kind of poster" hidden></select>
@@ -173,8 +182,11 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
     <div class="meta" id="meta">Loading photos…</div>
     <div class="want" id="want" hidden><p id="want-p"></p><button class="btn primary" id="want-go" type="button">Get this day’s photos ready</button></div>
     <div class="easel" id="easel">
-      <canvas id="view" width="2796" height="1290" aria-label="Live preview of the picture. Click a card to change it."></canvas>
-      <div class="fe" id="fe" hidden></div>
+      <div class="zoombar"><span class="hint">Zoom the picture</span><button class="btn small" id="z-out" type="button" aria-label="Zoom out">−</button><output id="z-val">100%</output><button class="btn small" id="z-in" type="button" aria-label="Zoom in">+</button><button class="btn small" id="z-fit" type="button">Fit</button><span class="hint" id="z-tip">Ctrl and scroll, or pinch, on the picture zooms it too. Drag to move around when zoomed.</span></div>
+      <div class="zoombox" id="zoombox">
+        <canvas id="view" width="2796" height="1290" aria-label="Live preview of the picture. Click a card to change it."></canvas>
+        <div class="fe" id="fe" hidden></div>
+      </div>
     </div>
     <p class="status" id="status" role="status"></p>
     <p class="hint" id="tip">Click any card in the picture to change its photo, place or words.</p>
@@ -262,14 +274,24 @@ const MONTH_DEFAULT = {
   bubbles: true, tithi: true, sundayRed: true, fest: true, captions: 'auto', stories: true, capSize: 22,
   look: 'classic', glow: .45, jali: .08, bright: 0, warmth: 0, polish: true, days: {}, sel: null,
 };
-let S = { mode: 'day', tab: 'card', day: structuredClone(DAY_DEFAULT), month: structuredClone(MONTH_DEFAULT) };
+// the special picture (Darpan, 6 Nov 2026: "how do i edit the special picture?"): Every Diwali, Every Annakut and the
+// story pictures, from packs/special/<date>/ (tools/special_pack.py in the collage builder project). Same look and layout
+// settings as the daily picture; its cards are kept under `cards` by their place on the picture (c0, c1, ...).
+const SPECIAL_DEFAULT = Object.assign(structuredClone(DAY_DEFAULT), { date: '', cards: {}, txt: {}, showTomorrow: false, subtitle: '' });   // the pack's own second line
+delete SPECIAL_DEFAULT.years; delete SPECIAL_DEFAULT.wa;
+let S = { mode: 'day', tab: 'card', day: structuredClone(DAY_DEFAULT), month: structuredClone(MONTH_DEFAULT), special: structuredClone(SPECIAL_DEFAULT) };
 const saved = store.get('studio-settings-v1');
-if (saved) { S.day = Object.assign(structuredClone(DAY_DEFAULT), saved.day || {}); S.month = Object.assign(structuredClone(MONTH_DEFAULT), saved.month || {}); S.mode = saved.mode || 'day'; }
+if (saved) { S.day = Object.assign(structuredClone(DAY_DEFAULT), saved.day || {}); S.month = Object.assign(structuredClone(MONTH_DEFAULT), saved.month || {}); S.special = Object.assign(structuredClone(SPECIAL_DEFAULT), saved.special || {}); S.mode = saved.mode || 'day'; }
+const DEFAULTS = { day: DAY_DEFAULT, month: MONTH_DEFAULT, special: SPECIAL_DEFAULT };
+const keyOf = kind => kind === 'month' ? S.month.month : S[kind].date;   // which day or month that mode is on
+// the cards of a pack (years of a day, days of a month, cards of a special picture) and the per card changes
+const groupsOf = pack => pack.years || pack.days || pack.cards || [];
+const stateOf = o => o.years || o.days || o.cards;
 // the photo packs: beside this page when it carries them (claude.ai), otherwise the studio branch on GitHub (tools/studio_packs.py)
 // every date (and month) keeps its own changes, so going to another day and back loses nothing (Darpan, 4 Nov 2026:
 // "remember when I make a change ... before I press save"). Kept on this device in studio-dates-v1.
-const PER = { day: ['years', 'titleAuto', 'title', 'txt'], month: ['days', 'titleAuto', 'title'] };
-const dkey = kind => kind + ':' + (kind === 'day' ? S.day.date : S.month.month);
+const PER = { day: ['years', 'titleAuto', 'title', 'txt'], month: ['days', 'titleAuto', 'title'], special: ['cards', 'titleAuto', 'title', 'txt'] };
+const dkey = kind => kind + ':' + keyOf(kind);
 function stash(kind) {
   const all = store.get('studio-dates-v1') || {}, o = S[kind];
   delete all[dkey(kind)];
@@ -278,14 +300,15 @@ function stash(kind) {
   return store.set('studio-dates-v1', all);
 }
 function unstash(kind) {
-  const was = (store.get('studio-dates-v1') || {})[dkey(kind)], D = kind === 'day' ? DAY_DEFAULT : MONTH_DEFAULT, o = S[kind];
+  const was = (store.get('studio-dates-v1') || {})[dkey(kind)], D = DEFAULTS[kind], o = S[kind];
   PER[kind].forEach(f => { o[f] = structuredClone(was && f in was ? was[f] : D[f]) }); o.sel = null;
 }
 const RAW = 'https://raw.githubusercontent.com/darpan31patel-wq/bapas-diary/studio/packs/';
-let ROOT = '', INDEX = { days: [], months: [] };
+let ROOT = '', INDEX = { days: [], months: [], specials: [] };
+const PACKS_BRANCH = new URLSearchParams(location.search).get('packs');   // ?packs=<branch> reads that branch's packs (a test run)
 async function loadIndex() {
-  for (const root of ['', 'packs/', RAW]) {
-    try { const r = await fetch(root + 'index.json', { cache: 'no-store' }); if (r.ok) { INDEX = await r.json(); ROOT = root; return } } catch (e) {}
+  for (const root of PACKS_BRANCH ? [RAW.replace('/studio/', `/${PACKS_BRANCH}/`)] : ['', 'packs/', RAW]) {
+    try { const r = await fetch(root + 'index.json', { cache: 'no-store' }); if (r.ok) { INDEX = await r.json(); INDEX.specials = INDEX.specials || []; ROOT = root; return } } catch (e) {}
   }
   throw new Error('no index');
 }
@@ -297,8 +320,8 @@ async function loadPack(kind, key) {
   const base = `${ROOT}${kind}/${key}/`;
   const pack = await (await fetch(base + 'pack.json')).json();
   pack.base = base;
-  const groups = kind === 'day' ? pack.years : pack.days;
-  groups.forEach(g => g.cands.forEach((c, i) => { c.key = `${base}${g.year || g.day}-${i}` }));
+  const groups = groupsOf(pack);
+  groups.forEach((g, gi) => { g.key = kind === 'special' ? 'c' + gi : (g.year ?? g.day); g.cands.forEach((c, i) => { c.key = `${base}${g.key}-${i}` }) });
   const first = groups.flatMap(g => [...g.cands.slice(0, 6), ...[g.pickA, g.pickB, g.pickM].filter(i => i != null).map(i => g.cands[i])]);
   await Promise.all(first.filter(Boolean).map(c => photoOf(pack, c, true)));
   return pack;
@@ -322,7 +345,7 @@ function photoOf(pack, c, wait) {
   IMG[c.key] = rec;
   return wait ? rec.ready : null;
 }
-const allReady = () => Promise.all((S.mode === 'day' ? dayCards(P.day, S.day) : monthCards(P.month, S.month)).map(x => x.c && photoOf(P[S.mode], x.c, true)));
+const allReady = () => Promise.all((S.mode === 'month' ? monthCards(P.month, S.month) : dayCards(P[S.mode], cur())).map(x => x.c && photoOf(P[S.mode], x.c, true)));
 // a sheet of small thumbnails a year or day: cell i of a grid `cols` wide
 function thumb(pack, g, i) {
   if (!g.thumbs) return `<img src="${pack.base + g.cands[i].img}" alt="">`;
@@ -447,13 +470,18 @@ function spacedText(ctx, text, x, y, track) {   // x is the left edge
 const spacedW = (ctx, text, track) => [...text].reduce((s, ch) => s + ctx.measureText(ch).width + track, 0) - track;
 
 // ------------------------------------------------------------ the daily picture (design B, W2)
+// a festival the photo's own caption names, when the pack has no tag (albums filed under a date range, like Diwali to
+// Annakut 2002 in Ramod filed under 3 Nov, never get one) (Darpan, 6 Nov 2026: "why isnt there a annakut sign on 2002")
+const FEST_WORDS = [[/annakut/i, 'Annakut'], [/diwali|deepavali/i, 'Diwali'], [/dhan\s?teras/i, 'Dhanteras'], [/kali\s?chaudas/i, 'Kali Chaudas'], [/bhai\s?bij/i, 'Bhai Bij'], [/new\s?year/i, 'New Year']];
+function captionFest(c) { const t = (c.original || '') + ' ' + (c.caption || ''); for (const [re, name] of FEST_WORDS) if (re.test(t)) return name; return '' }
 function dayCards(pack, o) {
-  return pack.years.filter(y => (o.years[y.year]?.on ?? true)).map(y => {
-    const st = o.years[y.year] || {};
+  const bagz = stateOf(o);
+  return groupsOf(pack).filter(y => (bagz[y.key]?.on ?? true)).map(y => {
+    const st = bagz[y.key] || {};
     const pick = st.pick ?? defaultPick(y, o.photoStyle);
     const c = y.cands[pick] || y.cands[0];
     let mode = st.crop && st.crop !== 'auto' ? st.crop : autoCrop(c, o.photoStyle);
-    return { y: y.year, yl: st.ylabel ?? String(y.year), c, mode, zoom: st.zoom || 1, dx: st.dx || 0, dy: st.dy || 0, caption: st.caption ?? c.caption, place: st.place ?? c.place, fest: st.fest ?? c.festival };
+    return { y: y.year, key: y.key, yl: st.ylabel ?? String(y.year), c, mode, zoom: st.zoom || 1, dx: st.dx || 0, dy: st.dy || 0, caption: st.caption ?? c.caption, place: st.place ?? c.place, fest: st.fest ?? (c.festival || captionFest(c)) };
   });
 }
 function defaultPick(y, style) {
@@ -523,7 +551,7 @@ function drawDay(ctx, pack, o, hits) {
       ctx.save(); ctx.translate(cx, qy); ctx.rotate(t);
       drawPolaroid(ctx, x, -CW / 2, 0, PW, PH, B, BB, o);
       ctx.restore();
-      hits.push({ key: x.y, x: cx - CW / 2, y: qy, w: CW, h: CH });
+      hits.push({ key: x.key, x: cx - CW / 2, y: qy, w: CW, h: CH });
       later.push(() => { if (o.pegs) peg(ctx, cx, qy, s, o.peg, .72) });
       if (o.captions !== 'none') {
         const txt = o.captions === 'special' && !(x.c.special) ? '' : x.caption;
@@ -574,7 +602,7 @@ function drawPolaroid(ctx, x, left, top, PW, PH, B, BB, o) {
   const g = ctx.createLinearGradient(0, top, 0, top + CH); g.addColorStop(0, IVORY_TOP); g.addColorStop(1, IVORY_BOT);
   ctx.fillStyle = g; ctx.fillRect(left, top, CW, CH); ctx.restore();
   ctx.strokeStyle = IVORY_EDGE; ctx.lineWidth = 1.5; ctx.strokeRect(left + .5, top + .5, CW - 1, CH - 1);
-  const im = photoOf(P.day, x.c);
+  const im = photoOf(P[S.mode], x.c);
   if (im) {
     const [sx, sy, sw, sh] = cropBox(x.c, PW / PH, x.mode, x.zoom, x.dx, x.dy);
     ctx.save(); ctx.filter = photoFilter(o); ctx.drawImage(im, sx, sy, sw, sh, left + B, top + B, PW, PH); ctx.restore();
@@ -598,6 +626,63 @@ function drawPolaroid(ctx, x, left, top, PW, PH, B, BB, o) {
   ctx.fillStyle = PLACE; ctx.font = `700 ${ps}px ${SANS}`; if (pl) spacedText(ctx, pl, x0 + yw + gapw, base - PW * .008, track);
 }
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296 } }
+
+// ------------------------------------------------------------ the story special picture (make.py compose_special): the
+// channel's lead photo large on the left, the headline and story on the right, up to four small cards under them
+function drawStory(ctx, pack, o, hits) {
+  const W = 2796, H = 1290, L = pack.layout || {};
+  background(ctx, W, H, o);
+  const title = o.titleAuto ? pack.title : (o.title || pack.title);
+  const tw = goldText(ctx, title, W / 2, 84, 64);
+  diamond(ctx, W / 2 - tw / 2 - 26, 62, 5); diamond(ctx, W / 2 + tw / 2 + 26, 62, 5);
+  const sub = o.subtitle || pack.subtitle;
+  if (sub) { ctx.font = `600 22px ${SANS}`; ctx.fillStyle = CAP_GOLD; const t = sub.toUpperCase(); spacedText(ctx, t, W / 2 - spacedW(ctx, t, 6) / 2, 118, 6) }
+  const cards = dayCards(pack, o), roleOf = x => (groupsOf(pack).find(g => g.key === x.key) || {}).role;
+  const big = cards.find(x => roleOf(x) !== 'small'), small = cards.filter(x => x !== big).slice(0, 4);
+  const card = (x, left, top, w, h) => {   // ivory card with the photo filling its frame and the year and place under it
+    const e = 12, CW = w + 2 * e, CH = h + 2 * e + w * .1;
+    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 24; ctx.shadowOffsetY = 12;
+    const g = ctx.createLinearGradient(0, top, 0, top + CH); g.addColorStop(0, IVORY_TOP); g.addColorStop(1, IVORY_BOT);
+    ctx.fillStyle = g; ctx.fillRect(left, top, CW, CH); ctx.restore();
+    ctx.strokeStyle = IVORY_EDGE; ctx.lineWidth = 1.5; ctx.strokeRect(left + .5, top + .5, CW - 1, CH - 1);
+    const im = photoOf(P[S.mode], x.c);
+    if (im) {
+      const st = stateOf(o)[x.key] || {};
+      let box;
+      if ((st.crop && st.crop !== 'auto') || (st.zoom && st.zoom !== 1) || st.dx || st.dy) box = cropBox(x.c, w / h, x.mode, x.zoom, x.dx, x.dy);
+      else { const r = Math.max(w / im.width, h / im.height), sw = w / r, sh = h / r; box = [(im.width - sw) / 2, (im.height - sh) * .3, sw, sh] }   // as the run: centred, a little above the middle
+      ctx.save(); ctx.filter = photoFilter(o); ctx.drawImage(im, box[0], box[1], box[2], box[3], left + e, top + e, w, h); ctx.restore();
+    }
+    ctx.strokeStyle = 'rgba(120,96,70,.6)'; ctx.lineWidth = 1; ctx.strokeRect(left + e, top + e, w, h);
+    const yt = o.showYear ? String(x.yl ?? x.y) : '', pl = o.showPlace ? (x.place || '').toUpperCase() : '';
+    ctx.font = `700 ${w * .07}px ${SERIF}`; const yw = yt ? ctx.measureText(yt).width : 0, ps = w * .03, track = w * .006;
+    ctx.font = `700 ${ps}px ${SANS}`; const pw2 = pl ? spacedW(ctx, pl, track) : 0, sp = yt && pl ? w * .03 : 0;
+    const x0 = left + (CW - yw - sp - pw2) / 2, base = top + h + e + (CH - h - e) * .72;
+    ctx.textAlign = 'left'; ctx.fillStyle = MAROON; ctx.font = `700 ${w * .07}px ${SERIF}`; if (yt) ctx.fillText(yt, x0, base);
+    ctx.fillStyle = PLACE; ctx.font = `700 ${ps}px ${SANS}`; if (pl) spacedText(ctx, pl, x0 + yw + sp, base - w * .008, track);
+    hits.push({ key: x.key, x: left, y: top, w: CW, h: CH });
+    if (o.pegs && o.peg !== 'none') peg(ctx, left + CW / 2, top + 16, w / 220 * .9, o.peg, .72);
+  };
+  const B = L.big || [70, 200, 1180, 800];
+  if (big) card(big, B[0], B[1], B[2], B[3]);
+  const x0 = L.small_from || 1360, tw2 = W - x0 - 90;
+  const wd = { headline: T(o, 'headline', pack.headline || ''), story: T(o, 'story', pack.story || '') };
+  let y = 300;
+  ctx.textAlign = 'left';
+  ctx.font = `700 60px ${SERIF}`;
+  for (const line of wrapLines(ctx, wd.headline, tw2, 2).lines) { goldText(ctx, line, x0, y - 8, 60, 'left'); y += 72 }
+  y += 20;
+  ctx.font = `500 36px ${SERIF}`; ctx.fillStyle = CAP_IVORY; ctx.textAlign = 'left';
+  for (const line of wrapLines(ctx, wd.story, tw2, 7).lines) { ctx.fillText(line, x0, y); y += 50 }
+  const top = Math.max(620, y + 40);
+  if (small.length) {
+    const sw = Math.min(330, (tw2 - 30 * (small.length - 1)) / small.length - 24);
+    small.forEach((x, k) => card(x, x0 - 30 + k * (sw + 54), top, Math.round(sw), Math.round(sw * .74)));
+  }
+  const name = o.showFooter ? o.footer : '';
+  if (name) { ctx.font = `500 24px ${SERIF}`; ctx.textAlign = 'left'; const w = ctx.measureText(name).width, fy = H - 20; ctx.fillStyle = 'rgb(226,184,104)'; ctx.fillText(name, (W - w) / 2, fy); diamond(ctx, (W - w) / 2 - 28, fy - 8, 5); diamond(ctx, (W + w) / 2 + 28, fy - 8, 5) }
+}
+const isStory = () => S.mode === 'special' && !!P.special && P.special.kind === 'story';
 
 // ------------------------------------------------------------ the month poster (m7, options A and B)
 const optPick = (d, opt) => opt === 'A' ? d.pickA : opt === 'B' ? d.pickB : d.pickM ?? d.pickA;
@@ -706,32 +791,33 @@ function render() {
   cancelAnimationFrame(raf);
   raf = requestAnimationFrame(() => {
     const pack = P[S.mode]; if (!pack) return;
-    const [W, H] = S.mode === 'day' ? [2796, 1290] : [3840, 2160];
+    const [W, H] = S.mode === 'month' ? [3840, 2160] : [2796, 1290];
     if (view.width !== W) { view.width = W; view.height = H }
     const ctx = view.getContext('2d'); ctx.setTransform(1, 0, 0, 1, 0, 0); HITS = [];
-    S.mode === 'day' ? drawDay(ctx, pack, S.day, HITS) : drawMonth(ctx, pack, S.month, HITS);
+    S.mode === 'month' ? drawMonth(ctx, pack, S.month, HITS) : isStory() ? drawStory(ctx, pack, S.special, HITS) : drawDay(ctx, pack, cur(), HITS);
     const h = FE && HITS.find(h => h.key === cur().sel);
     if (h) { ctx.save(); ctx.strokeStyle = GOLD; ctx.lineWidth = W / 400; ctx.strokeRect(h.x - 9, h.y - 9, h.w + 18, h.h + 18); ctx.restore() }
     placeEditor();
-    const ok = store.set('studio-settings-v1', { mode: S.mode, day: S.day, month: S.month }) && stash(S.mode);
+    const ok = store.set('studio-settings-v1', { mode: S.mode, day: S.day, month: S.month, special: S.special }) && stash(S.mode);
     $('#autosave').textContent = ok ? `Every change is saved on this device as you go (${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}).` : '';
   });
 }
 // one card (a year of the daily picture, a day of the poster): its photos, your changes, and the photo, place and caption shown
-const bag = k => { const o = cur(), b = S.mode === 'day' ? o.years : o.days; return (b[k] = b[k] || {}) };
+const bag = k => { const b = stateOf(cur()); return (b[k] = b[k] || {}) };
 function info(k) {
-  const day = S.mode === 'day', pack = P[S.mode], o = cur();
-  const g = day ? pack.years.find(y => y.year == k) : pack.days.find(d => d.day == k);
+  const day = S.mode !== 'month', pack = P[S.mode], o = cur();
+  const g = groupsOf(pack).find(g => String(g.key) === String(k));
   if (!g) return null;
-  const st = (day ? o.years : o.days)[k] || {};
+  const st = stateOf(o)[k] || {};
   const pick = st.pick ?? (day ? defaultPick(g, o.photoStyle) : optPick(g, o.option));
   const c = g.cands[pick] || (day ? g.cands[0] : null);
   return { g, st, pick: g.cands[pick] ? pick : 0, c, place: st.place ?? (c ? c.place : ''), caption: st.caption ?? (c ? c.caption : '') };
 }
-const keys = () => S.mode === 'day' ? P.day.years.map(y => y.year) : P.month.days.map(d => d.day);
-const shownKeys = () => S.mode === 'day' ? P.day.years.filter(y => S.day.years[y.year]?.on ?? true).map(y => y.year) : keys();
+const keys = () => groupsOf(P[S.mode]).map(g => g.key);
+const shownKeys = () => S.mode === 'month' ? keys() : groupsOf(P[S.mode]).filter(g => stateOf(cur())[g.key]?.on ?? true).map(g => g.key);
 const selected = () => { const o = cur(), ks = shownKeys(); if (!ks.includes(o.sel)) o.sel = ks[0] ?? null; return o.sel };
-const label = k => S.mode === 'day' ? String(k) : `${k} ${P.month.title.split(' ')[0]}`;
+const label = k => S.mode === 'day' ? String(k) : S.mode === 'month' ? `${k} ${P.month.title.split(' ')[0]}`
+  : (g => g ? (g.role ? `${g.year}, ${g.role === 'big' ? 'the big photo' : 'small photo ' + keys().indexOf(k)}` : String(g.year)) : String(k))(groupsOf(P.special).find(g => g.key === k));
 
 // ------------------------------------------------------------ the small editor that opens on a clicked card
 const fe = $('#fe');
@@ -744,10 +830,10 @@ function buildEditor() {
   fe.innerHTML = `<header><b>${esc(label(k))}</b><span class="hint">photo ${x.pick + 1} of ${n}</span><button class="x" id="fe-x" aria-label="Close">×</button></header>
     <label for="fe-place">Place on the card</label><input type="text" class="place" id="fe-place" data-f="place" data-k="${k}" value="${esc(x.place)}">
     <label for="fe-cap">Caption</label><textarea class="capedit" id="fe-cap" data-f="caption" data-k="${k}" rows="2">${esc(x.caption)}</textarea>
-    ${S.mode === 'day' ? `<label for="fe-yl">Year on the card</label><input type="text" id="fe-yl" data-f="ylabel" data-k="${k}" value="${esc(x.st.ylabel ?? k)}">
-    <label for="fe-fest">Festival tag on the photo (empty for none)</label><input type="text" id="fe-fest" data-f="fest" data-k="${k}" value="${esc(x.st.fest ?? (x.c && x.c.festival) ?? '')}">` : ''}
+    ${S.mode !== 'month' ? `<label for="fe-yl">Year on the card</label><input type="text" id="fe-yl" data-f="ylabel" data-k="${k}" value="${esc(x.st.ylabel ?? x.yl ?? k)}">
+    <label for="fe-fest">Festival tag on the photo (empty for none)</label><input type="text" id="fe-fest" data-f="fest" data-k="${k}" value="${esc(x.st.fest ?? (x.c ? (x.c.festival || captionFest(x.c)) : ''))}">` : ''}
     <div class="row3"><button class="btn small" id="fe-prev" ${n < 2 ? 'disabled' : ''}>◀ Photo</button><button class="btn small" id="fe-next" ${n < 2 ? 'disabled' : ''}>Photo ▶</button>
-      <button class="btn small" id="fe-all">See all ${n}</button>${S.mode === 'day' ? '<button class="btn small" id="fe-hide">Hide this year</button>' : ''}<button class="btn small" id="fe-reset">Reset</button></div>`;
+      <button class="btn small" id="fe-all">See all ${n}</button>${S.mode === 'day' || (S.mode === 'special' && !isStory()) ? '<button class="btn small" id="fe-hide">Hide this year</button>' : ''}<button class="btn small" id="fe-reset">Reset</button></div>`;
   fe.hidden = false;
   $('#fe-x').onclick = closeEditor;
   const step = d => { const b = bag(k); b.pick = (x.pick + d + n) % n; delete b.caption; build() };
@@ -759,14 +845,57 @@ function buildEditor() {
 function placeEditor() {
   if (fe.hidden || getComputedStyle(fe).position === 'static') return;
   const h = HITS.find(h => h.key === cur().sel); if (!h) return;
-  const k = view.clientWidth / view.width, ox = view.offsetLeft, oy = view.offsetTop, room = $('#easel').clientWidth;
+  const k = view.clientWidth / view.width, ox = view.offsetLeft, oy = view.offsetTop, room = $('#zoombox').scrollWidth;
   let left = ox + (h.x + h.w) * k + 12;
   if (left + fe.offsetWidth > room - 4) left = ox + h.x * k - fe.offsetWidth - 12;
   fe.style.left = clamp(left, 4, room - fe.offsetWidth - 4) + 'px';
   fe.style.top = Math.max(4, oy + h.y * k) + 'px';
 }
 window.addEventListener('resize', placeEditor);
+
+// ------------------------------------------------------------ zoom the picture only (Darpan, 6 Nov 2026: "zoom into the
+// collage picture only without having to zoom the entire webpage"): the canvas grows inside its own scrolling box
+const zb = $('#zoombox');
+let ZOOM = 1, DRAGGED = false;
+function setZoom(z, ax, ay) {   // ax, ay: the point of the box to keep still, as a share of the picture (0 to 1); the middle by default
+  const was = ZOOM; ZOOM = clamp(Math.round(z * 20) / 20, 1, 6);
+  const r = zb.getBoundingClientRect();
+  const px = ax == null ? zb.scrollLeft + r.width / 2 : ax * view.clientWidth, py = ay == null ? zb.scrollTop + r.height / 2 : ay * view.clientHeight;
+  view.style.setProperty('--zoom', ZOOM);
+  zb.classList.toggle('zoomed', ZOOM > 1);
+  zb.scrollLeft = px * ZOOM / was - (ax == null ? r.width / 2 : (ax * view.clientWidth - zb.scrollLeft));
+  zb.scrollTop = py * ZOOM / was - (ay == null ? r.height / 2 : (ay * view.clientHeight - zb.scrollTop));
+  $('#z-val').textContent = Math.round(ZOOM * 100) + '%';
+  $('#z-out').disabled = ZOOM <= 1; $('#z-in').disabled = ZOOM >= 6;
+  store.set('studio-zoom', ZOOM); placeEditor();
+}
+$('#z-in').addEventListener('click', () => setZoom(ZOOM + .25));
+$('#z-out').addEventListener('click', () => setZoom(ZOOM - .25));
+$('#z-fit').addEventListener('click', () => setZoom(1));
+zb.addEventListener('wheel', e => {   // Ctrl and scroll (a pinch on a trackpad or phone sends the same) zooms around the pointer
+  if (!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+  const r = view.getBoundingClientRect();
+  setZoom(ZOOM * (e.deltaY < 0 ? 1.1 : 1 / 1.1), (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+}, { passive: false });
+let drag = null;
+zb.addEventListener('pointerdown', e => { if (ZOOM <= 1 || e.button !== 0 || e.target !== view) return; drag = { x: e.clientX, y: e.clientY, sl: zb.scrollLeft, st: zb.scrollTop, moved: false }; });
+zb.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (!drag.moved && Math.hypot(dx, dy) < 6) return;
+  if (!drag.moved) { drag.moved = true; zb.classList.add('dragging'); zb.setPointerCapture(e.pointerId) }
+  zb.scrollLeft = drag.sl - dx; zb.scrollTop = drag.st - dy;
+});
+const dragEnd = () => { if (drag && drag.moved) DRAGGED = true; drag = null; zb.classList.remove('dragging') };
+zb.addEventListener('pointerup', dragEnd); zb.addEventListener('pointercancel', dragEnd);
+document.addEventListener('keydown', e => {   // + and − zoom the picture when nothing is being typed
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) || document.querySelector('dialog[open]')) return;
+  if (e.key === '+' || e.key === '=') setZoom(ZOOM + .25); else if (e.key === '-') setZoom(ZOOM - .25); else if (e.key === '0') setZoom(1);
+});
+setZoom(+store.get('studio-zoom') || 1);
 view.addEventListener('click', ev => {
+  if (DRAGGED) { DRAGGED = false; return }
   const r = view.getBoundingClientRect(), x = (ev.clientX - r.left) * view.width / r.width, y = (ev.clientY - r.top) * view.height / r.height;
   const h = HITS.find(h => x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h);
   if (h) openEditor(h.key); else if (FE) closeEditor();
@@ -781,37 +910,50 @@ document.addEventListener('input', e => {
 });
 
 // ------------------------------------------------------------ the side panel
-const TABS = { day: [['card', 'Photo'], ['words', 'Years and words'], ['layout', 'Layout'], ['look', 'Look']], month: [['card', 'Photo'], ['words', 'Days and words'], ['layout', 'Layout'], ['look', 'Look']] };
+const TABS = { day: [['card', 'Photo'], ['words', 'Years and words'], ['layout', 'Layout'], ['look', 'Look']], month: [['card', 'Photo'], ['words', 'Days and words'], ['layout', 'Layout'], ['look', 'Look']], special: [['card', 'Photo'], ['words', 'Cards and words'], ['layout', 'Layout'], ['look', 'Look']] };
 function seg(id, value, opts) { return `<div class="seg" role="group" id="${id}">${opts.map(([v, l]) => `<button data-v="${v}" aria-pressed="${String(v) === String(value)}">${l}</button>`).join('')}</div>` }
 function range(id, label, v, min, max, step, fmt = x => x) { return `<div class="row"><label for="${id}">${label}<output id="${id}-o">${fmt(v)}</output></label><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${v}"></div>` }
 function check(id, label, v) { return `<label class="check"><input type="checkbox" id="${id}" ${v ? 'checked' : ''}> ${label}</label>` }
 function text(id, label, v, ph = '') { return `<div class="row"><label for="${id}">${label}</label><input type="text" id="${id}" value="${esc(v)}" placeholder="${esc(ph)}"></div>` }
 
 function paneCard() {
-  const day = S.mode === 'day', pack = P[S.mode], o = cur(), k = selected();
+  const day = S.mode !== 'month', pack = P[S.mode], o = cur(), k = selected();
   if (k == null) return '<p class="hint">Every year is hidden. Show some again on the Years and words tab.</p>';
   const x = info(k), g = x.g, st = x.st, c = x.c;
-  const tags = i => day ? (i === 0 ? '<span>DAILY PICK</span>' : g.cands[i].special ? '<span>SPECIAL</span>' : '')
-    : [['A', 'CLOSE'], ['B', 'ACTIVITY'], ['M', 'MIXED']].filter(([o2]) => optPick(g, o2) === i && (o2 !== 'M' || g.pickM != null)).map(([, l]) => `<span>${l}</span>`).join('').replace(/<\/span><span>/g, ' · ');
+  // which photos are really from this day, and which from an album baps.org filed under a nearby date (Darpan, 6 Nov 2026:
+  // "make it very clear, with plain words, which photos are actually from the current day")
+  const thisDay = S.mode === 'day' ? `${k}-${pack.date.slice(5)}` : null;
+  const niceDay = d => new Date(d + 'T12:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  const daysOff = d => Math.round((new Date(d + 'T12:00') - new Date(thisDay + 'T12:00')) / 864e5);
+  const offWords = d => { const n = daysOff(d); return n === 0 ? 'this very day' : `${Math.abs(n)} day${Math.abs(n) > 1 ? 's' : ''} ${n < 0 ? 'before' : 'after'} this day` };
+  const dateTag = i => { const d = g.cands[i].date; return thisDay && d && d !== thisDay ? `<span class="off">${new Date(d + 'T12:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }).toUpperCase()}</span>` : '' };
+  const dates = thisDay ? [...new Set(g.cands.map(c2 => c2.date).filter(Boolean))].sort() : [];
+  const dayNote = !thisDay || !dates.length ? '' : dates.length === 1 && dates[0] === thisDay
+    ? `<p class="hint ok">All ${g.cands.length} were taken on ${niceDay(thisDay)}, this very day.</p>`
+    : dates.length === 1 ? `<p class="hint warn">None of these are filed under this day. All ${g.cands.length} come from an album baps.org filed under ${niceDay(dates[0])}, ${offWords(dates[0])}. A whole visit or festival is often filed under one date, so they may be from a few days around it.</p>`
+    : `<p class="hint warn">Mixed dates: ${dates.map(d => `${g.cands.filter(c2 => c2.date === d).length} from ${niceDay(d)} (${offWords(d)})`).join(', ')}. Photos not from this very day carry their date.</p>`;
+  const tags = i => dateTag(i) + (day ? (i === 0 ? `<span>${S.mode === 'special' ? 'ON THE PICTURE' : 'DAILY PICK'}</span>` : g.cands[i].special ? '<span>SPECIAL</span>' : '')
+    : [['A', 'CLOSE'], ['B', 'ACTIVITY'], ['M', 'MIXED']].filter(([o2]) => optPick(g, o2) === i && (o2 !== 'M' || g.pickM != null)).map(([, l]) => `<span>${l}</span>`).join('').replace(/<\/span><span>/g, ' · '));
   const nb = g.cands.filter(c2 => !c2.nobapa).length, rest = g.cands.length - nb;
   const cell = i => { const c2 = g.cands[i]; return `<button data-i="${i}" class="${c2.nobapa ? 'nob' : ''}" aria-pressed="${i === x.pick}" title="${esc(c2.caption)}" aria-label="${esc(c2.caption)}">${thumb(pack, g, i)}${tags(i)}</button>` };
   const firstRest = g.cands.findIndex(c2 => c2.nobapa);
   const grid = g.cands.map((_, i) => (i === firstRest && i > 0 ? `<p class="hint" style="grid-column:1/-1;margin:6px 0 0">The other ${rest} photo${rest > 1 ? 's' : ''} from ${esc(label(k))} (Bapa’s face not found automatically)</p>` : '') + cell(i)).join('');
-  const changed = kk => { const b = (day ? o.years : o.days)[kk]; return b && Object.keys(b).some(f => f !== 'on') };
+  const changed = kk => { const b = stateOf(o)[kk]; return b && Object.keys(b).some(f => f !== 'on') };
+  const chip = kk => S.mode === 'special' ? String((groupsOf(pack).find(g2 => g2.key === kk) || {}).year ?? kk) : kk;
   return `
     <div class="group">
       <div class="cardhead"><button class="btn" id="c-prev" aria-label="Previous">◀</button><b>${esc(label(k))}</b><button class="btn" id="c-next" aria-label="Next">▶</button></div>
-      <div class="chips" id="c-sel">${shownKeys().map(kk => `<button data-k="${kk}" class="${kk === k ? 'sel' : ''}" aria-pressed="${changed(kk) ? 'true' : 'false'}">${kk}</button>`).join('')}</div>
+      <div class="chips" id="c-sel">${shownKeys().map(kk => `<button data-k="${kk}" class="${kk === k ? 'sel' : ''}" aria-pressed="${changed(kk) ? 'true' : 'false'}">${chip(kk)}</button>`).join('')}</div>
       <p class="hint">Click a card in the picture or a ${day ? 'year' : 'day'} here. A white one has your own changes.</p></div>
     <div class="group"><h3>Choose the photo</h3>
-      ${g.cands.length ? `<p class="hint">All ${g.cands.length} photo${g.cands.length > 1 ? 's' : ''} from ${esc(label(k))} in your archive${rest && nb ? `: the ${nb} where Bapa’s face was found come first` : ''}.</p>
+      ${g.cands.length ? `<p class="hint">All ${g.cands.length} photo${g.cands.length > 1 ? 's' : ''} from ${esc(label(k))} in your archive${rest && nb ? `: the ${nb} where Bapa’s face was found come first` : ''}.</p>${dayNote}
       <div class="thumbs" id="c-thumbs">${grid}</div>
       <p class="hint">${c ? esc([c.place, c.date || (day ? g.year : ''), c.festival].filter(Boolean).join(' · ')) : ''}${day ? '' : ' · ' + esc([g.tithi, ...g.fest].join(' · '))}</p>` : '<p class="hint">No photo for this day yet.</p>'}</div>
     <div class="group"><h3>Place, caption, year and festival tag</h3>
       <div class="row"><label for="c-place">Place${day ? ' on the card' : ' (bubbles)'}</label><input type="text" class="place" id="c-place" data-f="place" data-k="${k}" value="${esc(x.place)}"></div>
       <textarea class="capedit" id="c-cap" data-f="caption" data-k="${k}" aria-label="Caption" rows="2">${esc(x.caption)}</textarea>
-      ${day ? `<div class="row"><label for="c-yl">Year on the card</label><input type="text" id="c-yl" data-f="ylabel" data-k="${k}" value="${esc(st.ylabel ?? k)}"></div>
-      <div class="row"><label for="c-fest">Festival tag on the photo</label><input type="text" id="c-fest" data-f="fest" data-k="${k}" value="${esc(st.fest ?? (c && c.festival) ?? '')}" placeholder="For example Annakut (empty for none)"></div>` : ''}
+      ${day ? `<div class="row"><label for="c-yl">Year on the card</label><input type="text" id="c-yl" data-f="ylabel" data-k="${k}" value="${esc(st.ylabel ?? x.yl ?? k)}"></div>
+      <div class="row"><label for="c-fest">Festival tag on the photo</label><input type="text" id="c-fest" data-f="fest" data-k="${k}" value="${esc(st.fest ?? (c ? (c.festival || captionFest(c)) : ''))}" placeholder="For example Annakut (empty for none)"></div>` : ''}
       ${c && c.original ? `<p class="hint">Website caption: “${esc(c.original)}”</p>` : ''}</div>
     <div class="group"><h3>Crop</h3>
       ${seg('c-crop', st.crop || 'auto', [['auto', 'Automatic'], ['close', 'Close up'], ['frame', 'Wider'], ['whole', 'Fill frame']])}
@@ -826,13 +968,34 @@ function paneCard() {
 }
 const waText = () => { const o = S.day, w = o.wa[o.date]; return w ? w.text : (P.day?.whatsapp || '') };
 function paneWords() {
-  const day = S.mode === 'day', pack = P[S.mode], o = cur();
+  const day = S.mode !== 'month', pack = P[S.mode], o = cur();
   const list = keys().map(k => {
-    const x = info(k), on = day ? (o.years[k]?.on ?? true) : true;
-    return `<div class="w ${on ? '' : 'off'}"><b>${esc(day ? k : k)}${day ? `<br><label class="check" style="font:12px var(--sans)"><input type="checkbox" class="w-on" data-k="${k}" ${on ? 'checked' : ''}> show</label>` : ''}</b>
+    const x = info(k), on = day ? (stateOf(o)[k]?.on ?? true) : true;
+    return `<div class="w ${on ? '' : 'off'}"><b>${esc(S.mode === 'special' ? label(k) : k)}${day && !isStory() ? `<br><label class="check" style="font:12px var(--sans)"><input type="checkbox" class="w-on" data-k="${k}" ${on ? 'checked' : ''}> show</label>` : ''}</b>
       <input type="text" class="place" data-f="place" data-k="${k}" value="${esc(x.place)}" aria-label="Place for ${esc(label(k))}">
       <textarea class="capedit" data-f="caption" data-k="${k}" rows="2" aria-label="Caption for ${esc(label(k))}">${esc(x.caption)}</textarea></div>`;
   }).join('');
+  if (S.mode === 'special') return `
+    <div class="group"><h3>Every card: ${isStory() ? '' : 'show, '}place and caption</h3>
+      <div class="words">${list}</div></div>
+    <div class="group"><h3>Title</h3>
+      ${check('d-tauto', 'Use the automatic title', o.titleAuto)}
+      ${o.titleAuto ? '' : text('d-title', 'Title', o.title, pack.title)}
+      ${text('d-sub', 'Second part', o.subtitle || pack.subtitle || '')}</div>
+    ${isStory() ? `<div class="group"><h3>The story</h3>
+      ${text('d-t-headline', 'Headline', T(o, 'headline', pack.headline || ''))}
+      <div class="row"><label for="d-t-storyl">Story</label><textarea id="d-t-storyl" rows="5" style="width:100%">${esc(T(o, 'story', pack.story || ''))}</textarea></div>
+      <div class="seg"><button class="btn small" id="d-t-reset">Back to the automatic words</button></div></div>`
+    : `<div class="group"><h3>On and under each card</h3>
+      ${seg('d-caps', o.captions, [['all', 'Every caption'], ['special', 'Special moments only'], ['none', 'No captions']])}
+      ${range('d-capsize', 'Caption size', o.capSize, 15, 30, 1)}
+      ${check('d-year', 'Year on the card', o.showYear)} ${check('d-place', 'Place on the card', o.showPlace)} ${check('d-fest', 'Festival tag on cards', o.festTags)}</div>
+    <div class="group"><h3>Bottom line</h3>
+      ${check('d-cal', 'BAPS calendar line', o.showCal)} ${check('d-foot', 'Project name', o.showFooter)}
+      ${o.showFooter ? text('d-footer', 'Name', o.footer) : ''}
+      ${text('d-t-cal', 'BAPS calendar line', T(o, 'cal', pack.cal_line || ''))}
+      <div class="seg"><button class="btn small" id="d-t-reset">Back to the automatic words</button></div></div>`}
+    <p class="hint">This is the ${pack.kind === 'story' ? 'story picture' : `Every ${esc(pack.festival || '')} picture`} the morning run made for ${esc(longDate(pack.date))}. Compare, under the picture, shows the run's own.</p>`;
   if (day) return `
     <div class="group"><h3>Every year: show, place and caption</h3>
       <div class="seg"><button class="btn small" id="d-all">Show every year</button><button class="btn small" id="d-pre">Only Pramukh Swami</button><button class="btn small" id="d-post">Only Mahant Swami</button></div>
@@ -877,6 +1040,7 @@ function paneWords() {
 }
 function paneLayout() {
   const o = cur();
+  if (isStory()) return `<div class="group"><h3>Cards</h3>${seg('d-peg', o.peg, [['gloss', 'Varnished pegs'], ['flat', 'Flat pegs'], ['none', 'No pegs']])}<p class="hint">The story picture keeps the run's own layout: the big photo left, the story and small photos right.</p></div>`;
   if (S.mode === 'month') return `
     <div class="group"><h3>Cords and cards</h3>
       ${seg('m-rows', o.rows, [[3, '3 cords'], [4, '4 cords']])}
@@ -908,34 +1072,36 @@ function lookPane(p, o) {
 }
 
 function build() {
-  const day = S.mode === 'day', pack = P[S.mode], o = cur();
+  const day = S.mode === 'day', pack = P[S.mode], o = cur(), sp = S.mode === 'special';
   document.querySelectorAll('.modes button').forEach(b => b.setAttribute('aria-pressed', String(b.id === 'mode-' + S.mode)));
+  $('#mode-special').disabled = !INDEX.specials.length; $('#mode-special').title = INDEX.specials.length ? 'Every Diwali, Every Annakut, a day in BAPS history' : 'No special picture pack yet (the collage builder project makes them on days with a special picture)';
   const days = INDEX.days.includes(o.date) || !day ? INDEX.days : [...INDEX.days, o.date].sort();
-  const list = day ? days.map(k => [k, longDate(k)]) : INDEX.months.map(k => [k, longMonth(k)]), now = day ? o.date : o.month;
+  const list = day ? days.map(k => [k, longDate(k)]) : sp ? INDEX.specials.map(k => [k, longDate(k)]) : INDEX.months.map(k => [k, longMonth(k)]), now = S.mode === 'month' ? o.month : o.date;
   $('#any-l').hidden = !day; if (day) $('#any').value = o.date;
   if (!day || !WANT) $('#want').hidden = true;
   const waiting = day && !!WANT && !P.day;   // no old picture behind the 'being made' note
   $('#easel').style.display = waiting ? 'none' : ''; $('#tip').style.display = waiting ? 'none' : ''; $('#exp-open').disabled = waiting;
   $('#pick').innerHTML = list.map(([k, l]) => `<option value="${k}" ${k === now ? 'selected' : ''}>${l}</option>`).join('');
-  $('#pick').setAttribute('aria-label', day ? 'Which day' : 'Which month');
-  $('#pick-opt').hidden = day;
+  $('#pick').setAttribute('aria-label', S.mode === 'month' ? 'Which month' : 'Which day');
+  $('#pick-opt').hidden = S.mode !== 'month';
   $('#pick-opt').innerHTML = [['A', 'Close-up images'], ['B', 'Activity'], ['M', 'Mixed']].map(([k, l]) => `<option value="${k}" ${k === S.month.option ? 'selected' : ''}>${l}</option>`).join('');
   const dc = driveCode(); $('#drive-chip').className = 'chip' + (dc ? ' on' : ''); $('#drive-chip').textContent = dc ? 'Drive connected' : 'Connect Google Drive';
   if (!TABS[S.mode].some(t => t[0] === S.tab)) S.tab = 'card';
   $('#tabs').innerHTML = TABS[S.mode].map(([k, l]) => `<button role="tab" data-t="${k}" aria-selected="${k === S.tab}">${l}</button>`).join('');
-  $('#compare').hidden = !day || waiting;
-  $('#tip').textContent = day ? 'Click any card to change its photo, place or caption right there.' : 'Click any day to change its photo, place or caption right there.';
-  if (!pack) { $('#pane').innerHTML = '<p class="hint">' + (WANT ? 'The photos for this day are not ready yet.' : 'Loading photos…') + '</p>'; $('#meta').textContent = WANT ? longDate(WANT) : 'Loading photos…'; fe.hidden = true; wire(); return }
+  $('#compare').hidden = S.mode === 'month' || waiting;
+  $('#tip').textContent = S.mode === 'month' ? 'Click any day to change its photo, place or caption right there.' : 'Click any card to change its photo, place or caption right there.';
+  if (!pack) { $('#pane').innerHTML = '<p class="hint">' + (WANT ? 'The photos for this day are not ready yet.' : sp && !INDEX.specials.length ? 'No special picture pack yet.' : 'Loading photos…') + '</p>'; $('#meta').textContent = WANT ? longDate(WANT) : 'Loading photos…'; fe.hidden = true; wire(); return }
   selected();
-  const total = (day ? pack.years : pack.days).reduce((s, g) => s + g.cands.length, 0);
+  const total = groupsOf(pack).reduce((s, g) => s + g.cands.length, 0);
   $('#meta').innerHTML = day ? `<b>${esc(pack.title)}</b><span>${dayCards(pack, o).length} of ${pack.years.length} years on the picture</span><span>${total} photos to choose from</span>`
+    : sp ? `<b>${esc(pack.title)}</b><span>${pack.kind === 'story' ? 'a day in BAPS history' : `Every ${esc(pack.festival || '')}${pack.first && pack.last ? `, ${pack.first} to ${pack.last}` : ''}`}</span><span>${dayCards(pack, o).length} of ${pack.cards.length} cards on the picture</span><span>${total} photos to choose from</span>`
     : `<b>${esc(pack.title)}</b><span>${pack.days.length} days</span><span>${{ A: 'close-up images', B: 'activity', M: 'mixed' }[o.option]}</span><span>${total} photos to choose from</span>`;
-  $('#pane').innerHTML = S.tab === 'card' ? paneCard() : S.tab === 'words' ? paneWords() : S.tab === 'layout' ? paneLayout() : lookPane(day ? 'd' : 'm', o);
-  if (day && $('#compare').open) $('#real').src = pack.base + 'real.jpg';
+  $('#pane').innerHTML = S.tab === 'card' ? paneCard() : S.tab === 'words' ? paneWords() : S.tab === 'layout' ? paneLayout() : lookPane(S.mode === 'month' ? 'm' : 'd', o);
+  if (S.mode !== 'month' && $('#compare').open) $('#real').src = pack.base + 'real.jpg';
   buildEditor(); wire(); render();
 }
 function wire() {
-  const o = cur(), p = S.mode === 'day' ? 'd' : 'm';
+  const o = cur(), p = S.mode === 'month' ? 'm' : 'd';
   const on = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn) };
   const bind = (id, key, num, rebuild) => on(id, 'input', e => { o[key] = e.target.type === 'checkbox' ? e.target.checked : num ? +e.target.value : e.target.value; rebuild ? build() : (render(), syncOut(id)) });
   const segOn = (id, key, num) => document.querySelectorAll(`#${id} button`).forEach(b => b.addEventListener('click', () => { o[key] = num ? +b.dataset.v : b.dataset.v; build() }));
@@ -944,17 +1110,19 @@ function wire() {
   // the chosen card
   const k = o.sel, ks = shownKeys(), go = d => { o.sel = ks[(ks.indexOf(k) + d + ks.length) % ks.length]; build() };
   on('c-prev', 'click', () => go(-1)); on('c-next', 'click', () => go(1));
-  document.querySelectorAll('#c-sel button').forEach(b => b.addEventListener('click', () => { o.sel = +b.dataset.k; build() }));
+  document.querySelectorAll('#c-sel button').forEach(b => b.addEventListener('click', () => { o.sel = S.mode === 'special' ? b.dataset.k : +b.dataset.k; build() }));
   document.querySelectorAll('#c-thumbs button').forEach(b => b.addEventListener('click', () => { const s = bag(k); s.pick = +b.dataset.i; delete s.caption; build() }));
   document.querySelectorAll('#c-crop button').forEach(b => b.addEventListener('click', () => { bag(k).crop = b.dataset.v; build() }));
   ['zoom', 'dx', 'dy'].forEach(f => on('c-' + f, 'input', e => { bag(k)[f] = +e.target.value; syncOut('c-' + f); render() }));
   on('c-reset', 'click', () => { const s = bag(k); Object.keys(s).forEach(f => f !== 'on' && delete s[f]); build() });
   // shared look
   segOn(p + '-look', 'look'); bind(p + '-glow', 'glow', 1); bind(p + '-jali', 'jali', 1); bind(p + '-polish', 'polish'); bind(p + '-bright', 'bright', 1); bind(p + '-warm', 'warmth', 1);
-  on(p + '-resetall', 'click', () => { const keep = S.mode === 'day' ? { date: o.date } : { month: o.month, option: o.option }; S[S.mode] = Object.assign(structuredClone(S.mode === 'day' ? DAY_DEFAULT : MONTH_DEFAULT), keep); FE = false; build() });
-  if (S.mode === 'day') {
-    document.querySelectorAll('#d-style button').forEach(b => b.addEventListener('click', () => { o.photoStyle = b.dataset.v; Object.values(o.years).forEach(y => { delete y.pick; delete y.crop }); build() }));
-    on('d-wa', 'input', e => { const w = o.wa[o.date] || (o.wa[o.date] = { text: '', whole: false }); w.text = e.target.value; store.set('studio-settings-v1', { mode: S.mode, day: S.day, month: S.month }) });
+  on(p + '-resetall', 'click', () => { const keep = S.mode === 'month' ? { month: o.month, option: o.option } : { date: o.date }; S[S.mode] = Object.assign(structuredClone(DEFAULTS[S.mode]), keep); FE = false; build() });
+  if (S.mode !== 'month') {
+    on('d-t-headline', 'input', e => { (o.txt = o.txt || {}).headline = e.target.value; render() });
+    on('d-t-storyl', 'input', e => { (o.txt = o.txt || {}).story = e.target.value; render() });
+    document.querySelectorAll('#d-style button').forEach(b => b.addEventListener('click', () => { o.photoStyle = b.dataset.v; Object.values(stateOf(o)).forEach(y => { delete y.pick; delete y.crop }); build() }));
+    on('d-wa', 'input', e => { const w = o.wa[o.date] || (o.wa[o.date] = { text: '', whole: false }); w.text = e.target.value; store.set('studio-settings-v1', { mode: S.mode, day: S.day, month: S.month, special: S.special }) });
     on('d-wawhole', 'input', e => { const w = o.wa[o.date] || (o.wa[o.date] = { text: waText(), whole: false }); w.whole = e.target.checked; build() });
     on('d-wareset', 'click', () => { delete o.wa[o.date]; build() });
     segOn('d-rows', 'rows', 1); segOn('d-hang', 'hang'); segOn('d-peg', 'peg'); segOn('d-caps', 'captions');
@@ -964,7 +1132,7 @@ function wire() {
     on('d-t-reset', 'click', () => { o.txt = {}; build() });
     bind('d-year', 'showYear'); bind('d-place', 'showPlace'); bind('d-fest', 'festTags'); bind('d-story', 'showStory'); bind('d-cal', 'showCal'); bind('d-tom', 'showTomorrow'); bind('d-foot', 'showFooter', 0, 1); bind('d-footer', 'footer');
     document.querySelectorAll('.w-on').forEach(b => b.addEventListener('change', () => { bag(b.dataset.k).on = b.checked; b.closest('.w').classList.toggle('off', !b.checked); render(); $('#meta').querySelector('span').textContent = `${dayCards(P.day, o).length} of ${P.day.years.length} years on the picture` }));
-    const setAll = f => { P.day.years.forEach(y => { bag(y.year).on = f(y.year) }); build() };
+    const setAll = f => { groupsOf(P[S.mode]).forEach(y => { bag(y.key).on = f(y.year) }); build() };
     on('d-all', 'click', () => setAll(() => true)); on('d-pre', 'click', () => setAll(y => y <= 2016)); on('d-post', 'click', () => setAll(y => y >= 2016));
   } else {
     segOn('m-rows', 'rows', 1); segOn('m-caps', 'captions');
@@ -979,14 +1147,15 @@ function syncOut(id) {   // keep the little number beside a slider in step
   out.textContent = /zoom|glow|jali/.test(id) ? pc(v) : /tilt/.test(id) ? v + '°' : /dx|dy|warm/.test(id) ? Math.round(v * 100) : /bright/.test(id) ? (v > 0 ? '+' : '') + Math.round(v * 100)
     : id === 'd-shape' ? (v < .8 ? 'wide' : v > 1.05 ? 'tall' : 'nearly square') : id === 'd-cord' ? (v || 'no cord') : v;
 }
-$('#compare').addEventListener('toggle', () => { if ($('#compare').open && P.day) $('#real').src = P.day.base + 'real.jpg' });
+$('#compare').addEventListener('toggle', () => { if ($('#compare').open && P[S.mode] && S.mode !== 'month') $('#real').src = P[S.mode].base + 'real.jpg' });
 
 // ------------------------------------------------------------ top bar: what to make and which day
 async function load(kind) {
-  const key = kind === 'day' ? S.day.date : S.month.month;
+  const key = keyOf(kind);
+  if (!key) { P[kind] = null; build(); return }
   P[kind] = null; build();
-  try { const pk = await loadPack(kind, key); if ((kind === 'day' ? S.day.date : S.month.month) === key) P[kind] = pk }
-  catch (e) { $('#meta').textContent = 'The photos for this ' + (kind === 'day' ? 'day' : 'month') + ' could not be loaded. Pick it again to retry.'; return }
+  try { const pk = await loadPack(kind, key); if (keyOf(kind) === key) P[kind] = pk }
+  catch (e) { $('#meta').textContent = 'The photos for this ' + (kind === 'day' ? 'day' : kind === 'month' ? 'month' : 'special picture') + ' could not be loaded. Pick it again to retry.'; return }
   if (S.mode === kind) build();
 }
 document.querySelectorAll('.modes button').forEach(b => b.addEventListener('click', () => {
@@ -997,7 +1166,8 @@ document.querySelectorAll('.modes button').forEach(b => b.addEventListener('clic
 $('#pick').addEventListener('change', e => {
   FE = false;
   if (S.mode === 'day') return openDate(e.target.value);
-  if (P.month) stash('month'); S.month.month = e.target.value; unstash('month');
+  if (P[S.mode]) stash(S.mode);
+  if (S.mode === 'special') { S.special.date = e.target.value; unstash('special') } else { S.month.month = e.target.value; unstash('month') }
   load(S.mode);
 });
 
@@ -1157,6 +1327,7 @@ $('#drive-save').addEventListener('click', () => {
 
 // ------------------------------------------------------------ Export: a new export, or the day's picture in the Bapa's Diary folder (Darpan, 25 and 28 Oct 2026)
 const SIZES = {
+  special: [['full', 'Full size PNG, 5592 × 2580', 2, 'png'], ['whatsapp', 'WhatsApp JPG, 4096 wide', 4096 / 2796, 'jpg'], ['small', 'Small JPG, 2048 wide', 2048 / 2796, 'jpg']],
   day: [['full', 'Full size PNG, 5592 × 2580', 2, 'png'], ['whatsapp', 'WhatsApp JPG, 4096 wide', 4096 / 2796, 'jpg'], ['small', 'Small JPG, 2048 wide', 2048 / 2796, 'jpg']],
   month: [['full', 'Full size JPG, 3840 × 2160 (16:9)', 1, 'jpg'], ['big', 'Print PNG, 5760 × 3240', 1.5, 'png'], ['small', 'Small JPG, 1920 wide', .5, 'jpg']],
 };
@@ -1171,7 +1342,7 @@ function fillExport() {
   rep.disabled = !day; $('#opt-rep').classList.toggle('dis', !day);
   if (!day && rep.checked) document.querySelector('#exp-form input[value=new]').checked = true;
   $('#opt-rep-b').textContent = day ? `Put it in the Bapa’s Diary folder as ${when}` : 'Put it in the Bapa’s Diary folder';
-  $('#opt-rep-p').textContent = !day ? 'Only the daily picture goes in that folder. Month posters save as a new export.'
+  $('#opt-rep-p').textContent = !day ? (S.mode === 'special' ? 'The special picture cannot be put in the folder from here yet: it goes out as its own file. Save it as a new export and send it by hand.' : 'Only the daily picture goes in that folder. Month posters save as a new export.')
     : (!dc ? 'Connect Google Drive first (the button at the top). ' : '') + (d > t ? `It waits there as ${when}’s picture. The morning delivery leaves it alone, so that day’s 2pm send goes out with yours.`
     : d === t ? (hourLondon() < 14 ? 'Swaps today’s picture in the folder, so today’s 2pm send goes out with yours.' : 'Today’s 2pm send has already gone, so this only swaps the copy kept in the folder.')
     : 'That day has gone by, so this only swaps the copy kept in the folder. Nothing is sent.');
@@ -1186,10 +1357,10 @@ function fillExport() {
 $('#exp-open').addEventListener('click', () => { if (!P[S.mode]) return; fillExport(); $('#exp-status').textContent = ''; $('#exp').showModal() });
 document.querySelectorAll('#exp-form input[name=how]').forEach(r => r.addEventListener('change', fillExport));
 function drawAt(width) {
-  const [W, H] = S.mode === 'day' ? [2796, 1290] : [3840, 2160], k = width / W;
+  const [W, H] = S.mode === 'month' ? [3840, 2160] : [2796, 1290], k = width / W;
   const c = document.createElement('canvas'); c.width = Math.round(W * k); c.height = Math.round(H * k);
   const ctx = c.getContext('2d'); ctx.scale(k, k);
-  S.mode === 'day' ? drawDay(ctx, P.day, S.day, []) : drawMonth(ctx, P.month, S.month, []);
+  S.mode === 'month' ? drawMonth(ctx, P.month, S.month, []) : isStory() ? drawStory(ctx, P.special, S.special, []) : drawDay(ctx, P[S.mode], cur(), []);
   return c;
 }
 const blobOf = (c, type, q) => new Promise(r => c.toBlob(r, type, q));
@@ -1205,13 +1376,13 @@ const NAMES = { photoStyle: 'photo style', rows: 'cords', shape: 'photo shape', 
   captions: 'captions', capSize: 'caption size', showPlace: 'place on cards', showYear: 'year on cards', festTags: 'festival tags', look: 'background', glow: 'lamp glow',
   jali: 'jali', bright: 'brightness', warmth: 'warmth', polish: 'polish', option: 'photo option', showSub: 'Indian months line', bubbles: 'place bubbles', tithi: 'tithi',
   sundayRed: 'Sundays red', fest: 'festival tag', stories: 'stories' };
-const WORDS = { cal: 'calendar line', lead: 'story start', story: 'story', tomorrow: 'tomorrow corner' };
+const WORDS = { cal: 'calendar line', lead: 'story start', story: 'story', tomorrow: 'tomorrow corner', headline: 'headline' };
 function changes() {
-  const day = S.mode === 'day', pack = P[S.mode], o = cur(), D = day ? DAY_DEFAULT : MONTH_DEFAULT, out = [];
+  const day = S.mode !== 'month', pack = P[S.mode], o = cur(), D = DEFAULTS[S.mode], out = [];
   if (!pack) return out;
-  for (const g of day ? pack.years : pack.days) {
-    const k = day ? g.year : g.day, st = (day ? o.years : o.days)[k]; if (!st) continue;
-    const n = day ? k : label(k), auto = day ? defaultPick(g, o.photoStyle) : optPick(g, o.option);
+  for (const g of groupsOf(pack)) {
+    const k = g.key, st = stateOf(o)[k]; if (!st) continue;
+    const n = label(k), auto = day ? defaultPick(g, o.photoStyle) : optPick(g, o.option);
     if (day && st.on === false) { out.push(`${n} hidden`); continue }
     if (st.pick != null && st.pick !== auto) out.push(`${n}: photo ${st.pick + 1} of ${g.cands.length} instead of photo ${auto + 1}`);
     if (st.crop && st.crop !== 'auto') out.push(`${n}: crop ${st.crop}`);
@@ -1220,16 +1391,22 @@ function changes() {
     if (st.place != null && st.place !== c.place) out.push(`${n}: place “${st.place}”`);
     if (st.caption != null && st.caption !== c.caption) out.push(`${n}: caption “${st.caption}”`);
     if (st.ylabel != null && st.ylabel !== String(k)) out.push(`${n}: year shown as “${st.ylabel}”`);
-    if (st.fest != null && st.fest !== (c.festival || '')) out.push(`${n}: festival tag “${st.fest}”`);
+    if (st.fest != null && st.fest !== (c.festival || captionFest(c))) out.push(`${n}: festival tag “${st.fest}”`);
   }
   for (const [f, v] of Object.entries(o.txt || {})) out.push(`${WORDS[f] || f}: “${v}”`);
   for (const f of Object.keys(NAMES)) if (f in D && typeof D[f] !== 'object' && o[f] !== D[f] && !(f === 'title' && o.titleAuto)) out.push(`${NAMES[f]}: ${typeof o[f] === 'boolean' ? (o[f] ? 'on' : 'off') : o[f]}`);
-  if (day && o.wa[o.date]) out.push('2pm WhatsApp caption changed' + (o.wa[o.date].whole ? ' (whole caption)' : ''));
+  if (S.mode === 'day' && o.wa[o.date]) out.push('2pm WhatsApp caption changed' + (o.wa[o.date].whole ? ' (whole caption)' : ''));
   return out;
 }
 const LOGAPI = '/darpan/api/log';
 async function logChange(how, where) {
-  const e = { at: new Date().toISOString(), kind: S.mode, for: S.mode === 'day' ? S.day.date : S.month.month, how, where, changes: changes(), why: $('#why').value.trim() };
+  // every card as it went out (year, which photo, its caption and place, and what the automatic picture had) so the log on the
+  // website says WHAT he chose without anyone reading his browser (Darpan, 6 Nov 2026: "save all that information into the memory")
+  const pack = P[S.mode], o = cur(), day = S.mode !== 'month';
+  const cards = pack ? groupsOf(pack).map(g => { const st = stateOf(o)[g.key] || {}, auto = day ? defaultPick(g, o.photoStyle) : optPick(g, o.option), pick = st.pick ?? auto, c = g.cands[pick] || {}, a = g.cands[auto] || {};
+    return { card: String(label(g.key)), shown: day ? st.on !== false : true, photo: pick + 1, of: g.cands.length, caption: st.caption ?? c.caption ?? '', place: st.place ?? c.place ?? '', date: c.date || '', festival: st.fest ?? (c.festival || captionFest(c)) ?? '',
+      auto: pick === auto ? undefined : { photo: auto + 1, caption: a.caption || '', place: a.place || '' } } }) : [];
+  const e = { at: new Date().toISOString(), kind: S.mode, for: keyOf(S.mode), how, where, changes: changes(), why: $('#why').value.trim(), title: o.titleAuto ? (pack && pack.title) || '' : o.title || '', cards };
   const log = store.get('studio-log') || []; log.unshift(e); store.set('studio-log', log.slice(0, 500));
   $('#why').value = '';
   try { await fetch(LOGAPI, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(e) }) } catch (x) {}
@@ -1240,7 +1417,7 @@ async function showLog() {
   try { const r = await fetch(LOGAPI, { cache: 'no-store' }); if (r.ok) { const j = await r.json(); if (j.entries) all = [...j.entries, ...all] } } catch (x) {}
   const seen = new Set(); all = all.filter(e => !seen.has(e.at) && seen.add(e.at)).sort((a, b) => b.at.localeCompare(a.at));
   const when = t => new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  $('#loglist').innerHTML = all.length ? all.slice(0, 200).map(e => `<li><b>${esc(e.kind === 'day' ? longDate(e.for) : longMonth(e.for))}</b>, ${esc(e.how)} on ${esc(when(e.at))}
+  $('#loglist').innerHTML = all.length ? all.slice(0, 200).map(e => `<li><b>${esc(e.kind === 'month' ? longMonth(e.for) : longDate(e.for))}${e.kind === 'special' ? ' (special picture)' : ''}</b>, ${esc(e.how)} on ${esc(when(e.at))}
     <p>${e.why ? 'Why: ' + esc(e.why) : '<i>No reason written</i>'}</p><p class="chg">${e.changes.length ? 'Changed: ' + e.changes.map(esc).join('; ') : 'No changes from the automatic picture'}</p></li>`).join('')
     : '<li>Nothing yet. Each time you export, what you changed and why is kept here.</li>';
 }
@@ -1263,10 +1440,11 @@ $('#exp-go').addEventListener('click', async () => {
   }
   try {
     const [, , k, ext] = SIZES[S.mode].find(s => s[0] === $('#exp-size').value) || SIZES[S.mode][0];
-    const [W] = S.mode === 'day' ? [2796] : [3840];
+    const [W] = S.mode === 'month' ? [3840] : [2796];
     const blob = await blobOf(drawAt(W * k), ext === 'png' ? 'image/png' : 'image/jpeg', .93);
-    const d = new Date(S.mode === 'day' ? S.day.date + 'T12:00' : S.month.month + '-01T12:00');
-    const name = S.mode === 'day' ? `${d.getDate()} ${d.toLocaleString('en-GB', { month: 'long' })} ${d.getFullYear()} Bapa's Diary.${ext}` : `${d.toLocaleString('en-GB', { month: 'long' })} ${d.getFullYear()} Bapa's Diary ${{ A: 'close ups', B: 'activity', M: 'mixed' }[S.month.option]}.${ext}`;
+    const d = new Date(S.mode === 'month' ? S.month.month + '-01T12:00' : keyOf(S.mode) + 'T12:00');
+    const name = S.mode === 'day' ? `${d.getDate()} ${d.toLocaleString('en-GB', { month: 'long' })} ${d.getFullYear()} Bapa's Diary.${ext}`
+      : S.mode === 'special' ? `${d.getDate()} ${d.toLocaleString('en-GB', { month: 'long' })} ${d.getFullYear()} ${P.special.kind === 'story' ? 'special day' : 'Every ' + (P.special.festival || '')} Bapa's Diary.${ext}` : `${d.toLocaleString('en-GB', { month: 'long' })} ${d.getFullYear()} Bapa's Diary ${{ A: 'close ups', B: 'activity', M: 'mixed' }[S.month.option]}.${ext}`;
     const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
     if (dl) await dl.save({ filename: name, data: blob });
     else { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000) }
@@ -1297,9 +1475,13 @@ $('#exp-go').addEventListener('click', async () => {
     const want = new URLSearchParams(location.search).get('date');   // studio/?date=2026-11-23 opens that day
     if (want && /^\d{4}-\d\d-\d\d$/.test(want) && want !== S.day.date) { S.mode = 'day'; return openDate(want) }
     if (!INDEX.months.includes(S.month.month)) { S.month.month = INDEX.months.at(-1); unstash('month') }
-    P[S.mode] = await loadPack(S.mode, S.mode === 'day' ? S.day.date : S.month.month); build();
+    if (!INDEX.specials.includes(S.special.date)) { S.special.date = INDEX.specials.includes(today) ? today : (INDEX.specials.at(-1) || ''); unstash('special') }
+    const wantSp = new URLSearchParams(location.search).get('special');   // studio/?special=2026-11-08 opens that special picture
+    if (wantSp && INDEX.specials.includes(wantSp)) { S.mode = 'special'; S.special.date = wantSp; unstash('special') }
+    if (S.mode === 'special' && !S.special.date) S.mode = 'day';
+    P[S.mode] = await loadPack(S.mode, keyOf(S.mode)); build();
     const other = S.mode === 'day' ? 'month' : 'day';
-    P[other] = await loadPack(other, other === 'day' ? S.day.date : S.month.month);
-  } catch (e) { $('#meta').textContent = 'The photos could not be loaded. Reload the page to try again.' }
+    P[other] = await loadPack(other, keyOf(other));
+  } catch (e) { console.error(e); $('#meta').textContent = 'The photos could not be loaded. Reload the page to try again.' }
 })();
 </script>
