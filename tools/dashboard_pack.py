@@ -106,6 +106,14 @@ def album_span(x):
     return (lo, hi) if lo and hi and lo != hi else (None, None)
 
 
+def articles(day):
+    """The baps.org News articles of this English date in earlier years, for the Studio: year, place, the saved story
+    line (archive/news/lines.json, written once, never on the day) and the article's address on baps.org."""
+    return [dict(year=int(e['date'][:4]), date=e['date'], place=e.get('place') or '', line=e.get('line') or '',
+                 url='https://www.baps.org' + e['article'] if (e.get('article') or '').startswith('/') else e.get('article') or '')
+            for e in make.news_stories(day)]
+
+
 def items_for(day, cache):
     """The day's photos, gathered as make.main() does."""
     mmdd = f'{day:%m-%d}'
@@ -123,6 +131,9 @@ def items_for(day, cache):
         for x in items:
             if (x.get('c') or '').endswith('...') and x['i'] in full:
                 x['c'] = full[x['i']]
+        # a News photo with only its article's title for words stands in only for a year with no other photo (as make.main())
+        named = {x['y'] for x in items + extra if x.get('news') != 'newstitle'}
+        extra = [x for x in extra if x.get('news') != 'newstitle' or x['y'] not in named]
         items += [x for x in extra if x['i'] not in have]
     make.album_towns(items)
     tg_extra, tg_evs, special = make.tg_day(day, items)
@@ -182,7 +193,8 @@ def main():
                               face=[round(v * s, 1) for v in x['face']] if x['face'] else None,
                               crop=x.get('crop', 'frame'), caption=make.caption(x), original=x.get('c') or '',
                               place=make.place(x), date=d, special=bool(x.get('special')), nice=bool(x.get('nice')),
-                              festival=fest, album_from=lo, album_to=hi, **({'nobapa': True} if x.get('nobapa') else {})))
+                              festival=fest, album_from=lo, album_to=hi, **({'nobapa': True} if x.get('nobapa') else {}),
+                              **({'news': True} if x.get('news') else {})))
         for f, b in blobs.items():
             b.close()
             if os.path.getsize(b.name) == 0:
@@ -198,12 +210,16 @@ def main():
     left = [e for e in tg_evs if town(e) not in pictured and e.get('url') not in cards and not any(make.tells(x, e) for x in photos)
             and not (e.get('channel') and (e['date'][:4], town(e)[1]) in pictured)]
     told = max(left, key=make.tg_rank, default=None)
+    said = {town(e) for e in tg_evs} | ({town(story)} if story else set())   # the News article lines, as make.main() (9 Nov 2026)
+    news = [e for e in make.news_stories(day) if town(e) not in said and not any(make.tells(x, e) for x in photos)]
+    left += news
+    told = told or (news[0] if news else None)
     wa = make.cal_caption(day, None)
     wa = wa + (('\n' if wa else '') + make.tg_caption(told, left) if told else '')
     pack = dict(date=str(day), title=make.cal_title(day) or f'{day.day} {day:%B}', subtitle='in Bapa’s Diary',
                 footer=make.FOOTER, cal_line=cal[0] if cal else '', tomorrow=cal[1] if cal else '',
                 story=dict(year=story['date'][:4], line=story.get('line', '')) if story else None,
-                whatsapp=wa.strip(), years=years, cell=CELL, cols=COLS, every=True, albums=True, made=datetime.datetime.utcnow().isoformat(timespec='minutes') + 'Z')
+                whatsapp=wa.strip(), articles=articles(day), years=years, cell=CELL, cols=COLS, every=True, albums=True, made=datetime.datetime.utcnow().isoformat(timespec='minutes') + 'Z')
     json.dump(pack, open(os.path.join(out, 'pack.json'), 'w'), indent=1, ensure_ascii=False)
     print(f'{day}: {len(years)} years, {sum(len(y["cands"]) for y in years)} photos -> {out}')
 

@@ -146,7 +146,7 @@ class Pool:
             b.close()
 
 
-def card(pool, out, label, year, group, first, others):
+def card(pool, out, label, year, group, first, others, face_first=False):
     """One card: the photo the picture shows first, then every other photo it could use, and a thumbnail sheet."""
     got = [pool.add(first, group, True)] if first is not None else []
     for k, x in enumerate(others):
@@ -157,6 +157,9 @@ def card(pool, out, label, year, group, first, others):
         if (c['f'], c['at'][0]) in seen:
             continue
         seen.add((c['f'], c['at'][0])); cands.append(c); ims.append(im)
+    if face_first:   # Bapa's face found first, the thumbnails in the same order
+        order = sorted(range(len(cands)), key=lambda k: cands[k].get('face') is None)
+        cands, ims = [cands[k] for k in order], [ims[k] for k in order]
     if ims:
         dp.thumbs(ims, [c['face'] for c in cands], os.path.join(out, f'{label}-thumbs.jpg'))
     return dict(year=year, cands=cands, thumbs=f'{label}-thumbs.jpg' if ims else None)
@@ -201,6 +204,52 @@ def festival_photos(name, photos):
     return out
 
 
+def spare_years(name, day, have_years):
+    """Years an Every <festival> picture has no card for, with the photos from that year's own festival day in the
+    archive database (the baps.org News galleries included): those whose caption names the festival first (arti, then
+    thal), then the day's other photos, each face checked when it is packed. {year: [photos]}. The Studio shows them
+    as cards he can keep or take off; the morning picture is unchanged (Darpan, 9 Nov 2026: the missing Annakut years,
+    'with article information too')."""
+    import sqlite3
+    db = os.path.join(make.HERE, 'bapas.db')
+    if not os.path.exists(db):
+        return {}
+    make.cal_day(day)
+    words, days = re.compile(make.BIG[name], re.I), dict(OLD_DAYS.get(name, {}))
+    for d in sorted(make.CALENDAR):
+        if d[:4].isdigit() and int(d[:4]) < day.year and int(d[:4]) not in days and name in make.festivals(d):
+            days[int(d[:4])] = d
+    con, out = sqlite3.connect(db), {}
+    for y, d in sorted(days.items()):
+        if y in have_years:
+            continue
+        rows = con.execute('select album, file, caption, place from photos where date = ? or (date_from = ? and date_to = ?)'
+                           ' order by album, file', (d, d, d)).fetchall()
+        named = [r for r in rows if words.search(r[2] or '') and not make.JUNK.search(r[2] or '')]
+        own = re.compile(re.escape(name), re.I)   # the festival's own name with arti or thal first, then its name, then the rest
+        rank = lambda r: (0 if own.search(r[2] or '') and re.search(r'\barti\b|\bthal', r[2] or '', re.I)
+                          else 1 if own.search(r[2] or '') else 2)
+        named.sort(key=rank)
+        rest = [r for r in rows if r not in named and not make.JUNK.search(r[2] or '')]
+        got = []
+        for album, f, c, where in named[:16] + rest[:16]:
+            got.append({'i': f'https://www.baps.org/Data/Sites/1/Media/GalleryImages/{album}/WebImages/{f}', 'y': y, 'd': d,
+                        'p': where or '', 'c': c or name, 'fday': d})
+        if got:
+            out[y] = got
+    every = [x for v in out.values() for x in v]
+    if every:
+        make.album_towns(every)
+        make.download_all(every, CACHE)
+        dp.album_days(every)
+    out = {y: [x for x in v if 'path' in x] for y, v in out.items()}
+    return {y: v for y, v in out.items() if v}
+
+
+# the festival's own day in years before the calendar (2010), from the baps.org News articles of that day
+OLD_DAYS = {'Annakut': {1999: '1999-11-08', 2000: '2000-10-28', 2002: '2002-11-05', 2003: '2003-10-26', 2007: '2007-11-10'}}
+
+
 def jsonable(v):
     return json.loads(json.dumps(v, default=lambda o: list(o) if isinstance(o, tuple) else str(o)))
 
@@ -220,7 +269,7 @@ def main():
     out = os.path.join(root, str(day))
     os.makedirs(out, exist_ok=True)
     sp.convert('RGB').resize((2400, round(2400 * sp.height / sp.width)), Image.LANCZOS).save(os.path.join(out, 'real.jpg'), quality=85)
-    pool, cards = Pool(out), []
+    pool, cards, spare_cards = Pool(out), [], []
     made = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
     if kind == 'festival':
         name, cal = drawn['name'], drawn.get('cal') or ('', '')
@@ -230,6 +279,15 @@ def main():
             c = card(pool, out, str(x['y']), x['y'], str(x['y']), x, rest)
             c.update(festival=name, day=str(x.get('fday') or x['d'])[:10])
             cards.append(c)
+        spares = spare_years(name, day, {x['y'] for x in drawn['photos']})
+        for y, xs in sorted(spares.items()):   # years the picture has no card for, offered to add in the Studio (Darpan, 9 Nov 2026)
+            c = card(pool, out, f'spare-{y}', y, f'spare-{y}', xs[0], xs[1:], face_first=True)
+            if not c['cands']:
+                continue
+            c.update(festival=name, day=str(xs[0]['fday']), added=True)
+            # a year where Bapa's face is found joins the picture as a card he can change or take off; the rest wait aside
+            (cards if c['cands'][0].get('face') else spare_cards).append(c)
+        cards.sort(key=lambda c: c['year'])
         hero = [x['y'] for x in (drawn.get('hero') or [])]
         pins = make.fest_pins(name)
         pack = dict(date=str(day), kind='every_festival', festival=name, title=drawn.get('title') or f'Every {name}',
@@ -266,7 +324,7 @@ def main():
                     story_date=ev['date'][:10], story_place=ev.get('place') or '',
                     layout=dict(name='story', big=[70, 200, 1180, 800], small_from=1360, size=[make.W, make.H], unit=make.SCALE))
     pool.close()
-    pack.update(real='real.jpg', cards=cards, cell=dp.CELL, cols=dp.COLS, made=made)
+    pack.update(real='real.jpg', cards=cards, spares=spare_cards, articles=dp.articles(day), cell=dp.CELL, cols=dp.COLS, made=made)
     json.dump(pack, open(os.path.join(out, 'pack.json'), 'w'), indent=1, ensure_ascii=False)
     print(f'{day}: {kind} special, {len(cards)} cards, {sum(len(c["cands"]) for c in cards)} photos -> {out}')
 

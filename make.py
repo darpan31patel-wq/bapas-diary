@@ -70,6 +70,7 @@ def vicharan_items(path, mmdd, place, per_caption=2):
         if line.startswith('#'):
             head, _, rest = line[1:].partition('|')
             where, _, when = rest.partition('|')
+            when, _, tag = when.partition('|')                            # '||news', '||newstitle': a baps.org News gallery (tools/build_db.py)
             parts = head.split(' ')
             y, album, prefix = int(parts[0]), parts[1], (parts[2] if len(parts) > 2 else '')
             place.setdefault(y, where)
@@ -81,8 +82,8 @@ def vicharan_items(path, mmdd, place, per_caption=2):
         if c[:1].islower():
             c = 'Swamishri ' + c
         for i in ids.split(',')[:per_caption]:
-            out.append({'y': y, 'd': when or f'{y}-{mmdd}', 'p': where or place.get(y, ''), 'c': c,   # the album's own place (2017 has Paris and London albums)
-                        'i': f'https://www.baps.org/Data/Sites/1/Media/GalleryImages/{album}/WebImages/{prefix}{i}.jpg'})
+            out.append({**({'news': tag} if tag else {}), 'y': y, 'd': when or f'{y}-{mmdd}', 'p': where or place.get(y, ''), 'c': c,   # the album's own place (2017 has Paris and London albums)
+                        'i': f'https://www.baps.org/Data/Sites/1/Media/GalleryImages/{album}/WebImages/{prefix}{i}' + ('' if re.search(r'\.jpe?g$', i, re.I) else '.jpg')})   # 'x.jpeg' keeps its own ending
     return out
 
 
@@ -2087,6 +2088,16 @@ def tells(x, e, limit=None):
     return any(SPECIAL.search(w) or days.get(w, 0) < (limit or TELL_DAYS) for w in story & words(x.get("c")))
 
 
+def news_stories(day):
+    """The saved story lines of the baps.org News articles of this English date in earlier years (archive/news/lines.json:
+    {'YYYY-MM-DD#article number': {place, line, article}}), oldest first."""
+    try:
+        lines = json.load(open(os.path.join(HERE, 'archive', 'news', 'lines.json'), encoding='utf-8'))
+    except (OSError, ValueError):
+        return []
+    return [dict(v, date=k[:10], news=True) for k, v in sorted(lines.items()) if k[5:10] == f'{day:%m-%d}' and int(k[:4]) < day.year]
+
+
 def tg_story(evs, photos):
     """The story for the history line: never one a card already tells (Darpan, 19 Oct 2026: the older darshan card
     comes first, the line must say something different)."""
@@ -2698,8 +2709,12 @@ def main():
         for x in items:                                                   # the day list's 'sanctifies water...' gets the carried on caption
             if (x.get('c') or '').endswith('...') and x['i'] in full:
                 x['c'] = full[x['i']]
+        # Darpan, 9 Nov 2026: a News photo with no words of its own (only its article's title) stands in only for a year
+        # that has no other photo at all: a hoarding with Bapa's portrait passed the face check as 2010's card in the test
+        named = {x['y'] for x in items + extra if x.get('news') != 'newstitle'}
+        extra = [x for x in extra if x.get('news') != 'newstitle' or x['y'] not in named]
         items += [x for x in extra if x['i'] not in have]
-        print(f'  + {len(items) - len(have)} more captioned photos from the vicharan pages')
+        print(f'  + {len(items) - len(have)} more captioned photos from the vicharan pages ({sum(1 for x in extra if x.get("news"))} from the News galleries)')
     album_towns(items)
     settle_places(items, mmdd)
     print(f'{day}: {len(items)} photos across {len({x["y"] for x in items})} years')
@@ -2805,6 +2820,13 @@ def main():
     left = [e for e in tg_evs if town(e) not in pictured and e.get('url') not in cards and not any(tells(x, e) for x in photos)
             and not (e.get('channel') and (e['date'][:4], town(e)[1]) in pictured)]
     told = max(left, key=tg_rank, default=None)
+    # Darpan, 9 Nov 2026: a baps.org News article of this exact English date is one more story under 'Also on this day'
+    # (archive/news/lines.json: each line written once, checked and saved, never made on the day), unless a card, the
+    # bottom line or a channel story of that day and town already tells it
+    said = {town(e) for e in tg_evs} | ({town(story)} if story else set())
+    news = [e for e in news_stories(day) if town(e) not in said and not any(tells(x, e) for x in photos)]
+    left += news
+    told = told or (news[0] if news else None)
     every, story_lead = None, None
     wins = 'Diwali' in festivals(day)   # Darpan, 3 Nov 2026: Diwali's own picture wins over the channel's story, which goes in the caption
     if not special or wins:   # a big festival with no special day in BAPS history: one darshan from each year's own festival day
