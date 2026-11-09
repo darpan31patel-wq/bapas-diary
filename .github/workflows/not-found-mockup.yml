@@ -1,0 +1,28 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain.
+# One small pack for the Page not found mockup (Darpan, 9 Nov 2026: "look at the pictures used"): the live day list
+# for 9 November and the small copies of the first few photos of each year, from the public site, into the release
+# not-found-mockup. Runs only when this file changes on its own branch. Under 2 MB.
+name: not-found-mockup
+on:
+  push:
+    branches: ['claude/project-thread-vzmsju']
+    paths: ['.github/workflows/not-found-mockup.yml']
+permissions:
+  contents: write
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Day list and photos
+        run: |
+          mkdir -p pack/s
+          curl -sSf https://bapas-diary.com/data/day/11-09.json -o pack/11-09.json
+          jq -r '.years[] | ((.p // [])[0:6] + (.t // [])[0:3])[] | "\(.[0])/\(.[1])"' pack/11-09.json | sort -u > list.txt
+          wc -l list.txt
+          while read k; do mkdir -p "pack/s/$(dirname "$k")"; curl -sSf "https://photos.bapas-diary.com/s/$k" -o "pack/s/$k" || echo "missing $k"; sleep 0.2; done < list.txt
+          tar czf not-found-mockup.tgz pack; ls -la not-found-mockup.tgz
+          gh release view not-found-mockup -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create not-found-mockup -R "$GITHUB_REPOSITORY" --prerelease --title "Page not found mockup" --notes "Photos for the Page not found mockup. Not used by the daily picture."
+          gh release upload not-found-mockup not-found-mockup.tgz --clobber -R "$GITHUB_REPOSITORY"
