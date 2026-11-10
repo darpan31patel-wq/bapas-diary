@@ -70,7 +70,7 @@ PR_CAL = ['ભોજન પૂર્ણ કરીને સ્વામીશ્
           'કેટલું બળ ભર્યું છે આ શબ્દોમાં !']
 
 def kill_timers(page):
-    page.evaluate("""() => { let id = setTimeout(() => {}, 0); while (id-- > 0) { clearTimeout(id); clearInterval(id); } }""")
+    page.evaluate("""() => { let id = setTimeout(() => {}, 0), k = 0; while (id-- > 0 && k++ < 100000) { clearTimeout(id); clearInterval(id); } }""")
 
 def shot(page, name, el=None):
     p = OUT / name
@@ -78,9 +78,11 @@ def shot(page, name, el=None):
     log('  saved', name)
 
 msm_pics = []
+OPTS = {'computer': dict(viewport={'width': 1600, 'height': 1000}),
+        'phone': dict(viewport={'width': 390, 'height': 844}, device_scale_factor=2, is_mobile=True, has_touch=True)}
 
 def today(page, tag):
-    page = page.context.new_page()   # its own tab, so the pretend clock stays here
+    page = page.context.browser.new_context(**OPTS[tag]).new_page()   # its own window, so the pretend clock stays here
     page.clock.install(time=datetime.datetime(2026, 11, 3, 12, 0))   # Today always shows today's date: pretend it is 3 November
     page.goto(SITE + '/', wait_until='networkidle'); page.wait_for_selector('#y2010', state='attached', timeout=45000); time.sleep(4)
     page.evaluate("() => { const a = document.getElementById('all'); if (a) a.hidden = false; }")
@@ -95,7 +97,7 @@ def today(page, tag):
             if src: msm_pics.append([y] + src)
     page.locator('#y2010').scroll_into_view_if_needed(); time.sleep(2)
     shot(page, f'1-today-prasang-{tag}.jpg', '#y2010')
-    page.close()
+    page.context.close()
 
 def calendar_prasang(page, tag):
     def fix(route):
@@ -197,8 +199,7 @@ def about(page, tag):
 
 with sync_playwright() as pw:
     b = pw.chromium.launch()
-    for tag, opts in [('computer', dict(viewport={'width': 1600, 'height': 1000})),
-                      ('phone', dict(viewport={'width': 390, 'height': 844}, device_scale_factor=2, is_mobile=True, has_touch=True))]:
+    for tag, opts in OPTS.items():
         ctx = b.new_context(**opts); page = ctx.new_page()
         jobs = [('calendar prasang', lambda: calendar_prasang(page, tag)),
                 ('years 1990', lambda: years(page, tag, '1990')), ('ask', lambda: ask(page, tag)),
