@@ -102,10 +102,13 @@ def calendar_prasang(page, tag):
                 Y['day'] = (Y.get('day') or []) + [['', 'Edison, 9 September 2017 · પ્રેરણા પરિમલ', PR_CAL, 0]]
         route.fulfill(response=r, body=json.dumps(D), headers={**r.headers, 'content-type': 'application/json'})
     page.route('**/data/day/09-09.json', fix)
-    page.goto(SITE + '/calendar/#2017-09', wait_until='networkidle'); time.sleep(4)
-    page.locator('#ribbon .month[data-k="2017-09"] a.card[data-d="9"]').first.click(force=True); time.sleep(7)
+    if tag == 'phone':   # on a phone the day opens as its own page
+        page.goto(SITE + '/photos/#date=2017-09-09&place=Edison', wait_until='networkidle'); time.sleep(5)
+    else:
+        page.goto(SITE + '/calendar/#2017-09', wait_until='networkidle'); time.sleep(4)
+        page.locator('#ribbon .month[data-k="2017-09"] a.card[data-d="9"]').first.click(force=True); time.sleep(7)
     for f in page.frames:
-        if '/photos/' in f.url:
+        if '/photos/' in f.url or f == page.main_frame:
             f.evaluate("""() => document.querySelectorAll('.tell .line b').forEach(b => { if (b.parentNode.textContent.includes('Edison, 9 September 2017')) { b.textContent = 'Prasang'; const t = b.closest('.tell'); t.style.outline = '2px dashed rgba(217,164,65,.55)'; t.style.outlineOffset = '8px'; t.querySelectorAll('p').forEach(p => p.lang = 'gu'); } })""")
     time.sleep(1)
     shot(page, f'1-calendar-prasang-{tag}.jpg')
