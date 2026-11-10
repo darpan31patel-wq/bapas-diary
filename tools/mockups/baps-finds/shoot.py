@@ -137,7 +137,7 @@ def years(page, tag, key):
       while ((n = tw.nextNode())) { if (n.parentElement.closest('nav')) continue; const v = n.nodeValue.trim();
         if (v === '1999') n.nodeValue = n.nodeValue.replace('1999', y); else if (v === 'Mumbai') n.nodeValue = n.nodeValue.replace('Mumbai', where); }
       const t = document.querySelector('#tab-psm .yrs'); if (t) t.textContent = '1990 to 13 August 2016';
-    }""", [d[1], when, where, age, when.slice(-4)])
+    }""", [d[1], when, where, age, when[-4:]])
     time.sleep(2)
     shot(page, f'2-years-{key}-{tag}.jpg')
 
@@ -173,9 +173,14 @@ def month_pic(page, tag, key):
     page.goto(SITE + f'/calendar/#{key}', wait_until='networkidle'); time.sleep(4)
     m2 = msm_pics[0][1] if msm_pics else w[1]
     page.evaluate("""([a, b]) => {
-      const t = document.getElementById('t1'), r = t.getBoundingClientRect(), hd = document.querySelector('header');
-      const h = Math.max(40, Math.min(70, r.height * 1.1)), w = h * 16 / 9, top = r.top + r.height / 2 - h / 2 + scrollY;
-      const f = (s, x) => `<img src="${s}" alt="" style="position:absolute;z-index:5;top:${top}px;left:${x}px;height:${h}px;width:${w}px;object-fit:cover;object-position:50% 30%;border-radius:8px;box-shadow:0 0 0 2px #d9a441,0 6px 18px rgba(0,0,0,.45);outline:2px dashed rgba(217,164,65,.6);outline-offset:5px">`;
+      const name = new Date(2000, +location.hash.slice(6) - 1, 1).toLocaleString('en-GB', {month: 'long'});
+      const tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); let n, r = null;
+      while ((n = tw.nextNode())) { if (!n.nodeValue.trim().startsWith(name) || n.parentElement.closest('nav')) continue;
+        const rg = document.createRange(); rg.selectNodeContents(n.parentElement); const q = rg.getBoundingClientRect();
+        if (q.width > 0 && q.top > 0 && q.top < 500) { r = q; break; } }
+      if (!r) return;
+      const h = Math.max(30, Math.min(70, r.height * 1.1)), w = Math.min(h * 16 / 9, r.left - 30), top = r.top + r.height / 2 - h / 2 + scrollY;
+      const f = (s, x) => `<img src="${s}" alt="" style="position:absolute;z-index:99;top:${top}px;left:${x}px;height:${h}px;width:${w}px;object-fit:cover;object-position:50% 30%;border-radius:8px;box-shadow:0 0 0 2px #d9a441,0 6px 18px rgba(0,0,0,.45);outline:2px dashed rgba(217,164,65,.6);outline-offset:5px">`;
       document.body.insertAdjacentHTML('beforeend', f(a, r.left - w - 22) + f(b, r.right + 22));
     }""", [w[1], m2])
     time.sleep(2)
