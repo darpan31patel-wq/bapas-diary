@@ -1,0 +1,97 @@
+Fetching samples
+  got 191103S.jpg (1080, 810)
+  got 221103S.jpg (1080, 810)
+  got 231103S.jpg (1080, 810)
+  got 201601_baps_wallpaper_h.jpg (160, 90)
+  got 201602_baps_wallpaper_h_001.jpg (160, 90)
+  got 201603_baps_wallpaper_h_001.jpg (160, 90)
+  got 201604_baps_wallpaper_h_001.jpg (160, 90)
+  got 201605_baps_wallpaper_h_001.jpg (160, 90)
+  got 201606_baps_wallpaper_h_001.jpg (160, 90)
+  got 201607_baps_wallpaper_h_001.jpg (160, 90)
+  got 201608_baps_wallpaper_h_001.jpg (160, 90)
+  got 201609_baps_wallpaper_h_001.jpg (160, 90)
+  got 201610_baps_wallpaper_h_001.jpg (160, 90)
+  got 201611_baps_wallpaper_h_001.jpg (160, 90)
+  got 201612_baps_wallpaper_h_001.jpg (160, 90)
+  got 2024_3_h_001.jpg (160, 90)
+  got 2024_8_h_001.jpg (160, 90)
+  got 2024_11_h_001.jpg (160, 90)
+  got pramukh_swami_in_canada_parliament_house.jpg (900, 562)
+  got pramukh_swami_with_tony_blair.jpg (900, 562)
+  got pramukh_swami_vasudev_pande_trinidad_pm.jpg (900, 562)
+  got pramukh_swami_yoveri_kagura_museveni_president_uganada.jpg (900, 562)
+computer today
+  saved 1-today-prasang-computer.jpg
+computer calendar prasang
+  saved 1-calendar-prasang-computer.jpg
+computer years 1990
+Traceback (most recent call last):
+  File "/home/runner/work/bapas-diary/bapas-diary/tools/mockups/baps-finds/shoot.py", line 213, in <module>
+    try: fn()
+         ~~^^
+  File "/home/runner/work/bapas-diary/bapas-diary/tools/mockups/baps-finds/shoot.py", line 205, in <lambda>
+    ('years 1990', lambda: years(page, tag, '1990')), ('ask', lambda: ask(page, tag)),
+                           ~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/bapas-diary/bapas-diary/tools/mockups/baps-finds/shoot.py", line 140, in years
+    }""", [d[1], when, where, age, when.slice(-4)])
+                                   ^^^^^^^^^^
+AttributeError: 'str' object has no attribute 'slice'
+
+computer ask
+  saved 3-ask-essays-computer.jpg
+computer month 2016-03
+  saved 4-calendar-month-2016-03-computer.jpg
+computer about
+  saved 5-about-pictures-computer.jpg
+computer years 1996b
+Traceback (most recent call last):
+  File "/home/runner/work/bapas-diary/bapas-diary/tools/mockups/baps-finds/shoot.py", line 213, in <module>
+    try: fn()
+         ~~^^
+  File "/home/runner/work/bapas-diary/bapas-diary/tools/mockups/baps-finds/shoot.py", line 208, in <lambda>
+    jobs += [('years 1996b', lambda: years(page, tag, '1996b')), ('years 1996a', lambda: years(page, tag, '1996a')),
+                                     ~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/bapas-diary/bapas-diary/tools/mockups/baps-finds/shoot.py", line 140, in years
+    }""", [d[1], when, where, age, when.slice(-4)])
+                                   ^^^^^^^^^^
+AttributeError: 'str' object has no attribute 'slice'
+
+computer years 1996a
+Traceback (most recent call last):
+  File "/home/runner/work/bapas-diary/bapas-diary/tools/mockups/baps-finds/shoot.py", line 213, in <module>
+    try: fn()
+         ~~^^
+  File "/home/runner/work/bapas-diary/bapas-diary/tools/mockups/baps-finds/shoot.py", line 208, in <lambda>
+    jobs += [('years 1996b', lambda: years(page, tag, '1996b')), ('years 1996a', lambda: years(page, tag, '1996a')),
+                                                                                         ~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/bapas-diary/bapas-diary/tools/mockups/baps-finds/shoot.py", line 140, in years
+    }""", [d[1], when, where, age, when.slice(-4)])
+                                   ^^^^^^^^^^
+AttributeError: 'str' object has no attribute 'slice'
+
+computer month 2016-08
+  saved 4-calendar-month-2016-08-computer.jpg
+phone today
+  saved 1-today-prasang-phone.jpg
+phone calendar prasang
+  saved 1-calendar-prasang-phone.jpg
+phone years 1990
+Traceback (most recent call last):
+  File "/home/runner/work/bapas-diary/bapas-diary/tools/mockups/baps-finds/shoot.py", line 213, in <module>
+    try: fn()
+         ~~^^
+  File "/home/runner/work/bapas-diary/bapas-diary/tools/mockups/baps-finds/shoot.py", line 205, in <lambda>
+    ('years 1990', lambda: years(page, tag, '1990')), ('ask', lambda: ask(page, tag)),
+                           ~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/bapas-diary/bapas-diary/tools/mockups/baps-finds/shoot.py", line 140, in years
+    }""", [d[1], when, where, age, when.slice(-4)])
+                                   ^^^^^^^^^^
+AttributeError: 'str' object has no attribute 'slice'
+
+phone ask
+  saved 3-ask-essays-phone.jpg
+phone month 2016-03
+  saved 4-calendar-month-2016-03-phone.jpg
+phone about
+  saved 5-about-pictures-phone.jpg
