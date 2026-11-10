@@ -1448,8 +1448,9 @@ async function askDrive(payload) {
   if (!ans.ok && /code is wrong/.test(ans.error)) { setDrive(''); build(); throw new Error('The Studio code no longer matches your script. Run studioCode in the script and connect again with the line it shows.') }
   return ans;
 }
-async function checkDrive() {   // true when the script is reachable, the code is right and the script is the newest
+async function checkDrive(need) {   // true when the script is reachable, the code is right and the script is the newest
   const ans = await askDrive({ mode: 'ping' });
+  if (ans.ok && need === 'extra' && !ans.extra) throw new Error(`Connected, but the script in Google does not know extra pictures yet (it answers version ${ans.version || '?'}). Paste the new script, then: ${REDEPLOY}`);
   if (ans.ok && ans.version >= 2) return true;
   throw new Error(`Connected, and your code is right, but the script in Google is an older one, so it can’t put a picture for another day in the folder. Paste the newest script (the file Claude sent you), then: ${REDEPLOY}`);
 }
@@ -1458,7 +1459,7 @@ async function sendToDrive(mode, png, jpg) {
   const w = mode === 'replace' ? S.day.wa[S.day.date] : null;   // an edited 2pm caption goes with the picture
   const ans = await askDrive(Object.assign({ mode, date: mode === 'extra' ? S.special.date : S.day.date, png: await toBase64(png), jpg: jpg ? await toBase64(jpg) : null }, w ? { caption: w.text, whole: !!w.whole } : {}));
   if (!ans.ok) throw new Error(ans.error);
-  if (mode === 'extra' && ans.mode !== 'extra') throw new Error(`Your script does not know extra pictures yet, so it put this one in “${ans.folder}” as ${ans.name} instead. Paste the extra picture part into your “gets 2pm picture ready” script, then: ${REDEPLOY}`);
+  if (mode === 'extra' && ans.mode !== 'extra') throw new Error(`Your script does not know extra pictures yet, so it put this one in “${ans.folder}” as ${ans.name} instead. Paste the new script, then: ${REDEPLOY}`);
   if (w && !ans.caption) ans.captionNote = 'The picture is in, but your script is an older one, so the caption was not saved. Paste the newest script, then: ' + REDEPLOY;
   return ans;
 }
@@ -1504,8 +1505,8 @@ const SIZES = {
 const todayLondon = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
 const hourLondon = () => +new Date().toLocaleString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false });
 // the extra picture needs the "gets 2pm picture ready" script to know mode "extra" (the Daily WhatsApp project adds it;
-// 10 Nov 2026). Until that project confirms, the choice shows but stays off: flip EXTRA_ON to true then.
-const EXTRA_ON = false;
+// 10 Nov 2026, confirmed 12:23: ping answers version 5 with extra: true).
+const EXTRA_ON = true;
 const how = () => (document.querySelector('#exp-form input[name=how]:checked') || {}).value || 'new';
 function fillExport() {
   const day = S.mode === 'day', sp = EXTRA_ON && S.mode === 'special' && !!S.special.date, spSoon = !EXTRA_ON && S.mode === 'special', dc = driveCode();
@@ -1760,11 +1761,12 @@ $('#exp-go').addEventListener('click', async () => {
   if (how() === 'replace' && S.mode === 'special') {   // an extra picture beside the day's, never in its place
     try {
       if (!driveCode()) throw new Error('Connect Google Drive first: press Connect Google Drive at the top.');
-      say('', 'Checking your script…'); await checkDrive();
+      say('', 'Checking your script…'); await checkDrive('extra');
       const png = await blobOf(drawAt(5635), 'image/png');
       say('', `Sending it to your Bapa’s Diary folder (${(png.size / 1e6).toFixed(0)} MB)…`);
       const ans = await sendToDrive('extra', png, null);
-      say('ok', `Done: ${ans.name} is in ${ans.folder} (${ans.time}). The 2pm send sends the day’s picture first, then this one.`);
+      const gone = ans.when2pm === 'after' || ans.when2pm === 'past';
+      say('ok', `Saved in ${ans.folder} as ${ans.name} (${ans.time}). ${gone ? '2pm for that day has already gone, so it sits in the folder.' : 'It goes at 2pm after the day’s picture.'}`);
       remember('Added to the Bapa’s Diary folder as an extra picture', ans.name); logChange('Added to the Bapa’s Diary folder as an extra picture', ans.name);
     } catch (e) { say('warn', `Not added to the folder. ${(e && e.message) || e}`) } finally { btn.disabled = false; fillExport() }
     return;
