@@ -1503,17 +1503,20 @@ const SIZES = {
 };
 const todayLondon = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
 const hourLondon = () => +new Date().toLocaleString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false });
+// the extra picture needs the "gets 2pm picture ready" script to know mode "extra" (the Daily WhatsApp project adds it;
+// 10 Nov 2026). Until that project confirms, the choice shows but stays off: flip EXTRA_ON to true then.
+const EXTRA_ON = false;
 const how = () => (document.querySelector('#exp-form input[name=how]:checked') || {}).value || 'new';
 function fillExport() {
-  const day = S.mode === 'day', sp = S.mode === 'special' && !!S.special.date, dc = driveCode();
+  const day = S.mode === 'day', sp = EXTRA_ON && S.mode === 'special' && !!S.special.date, spSoon = !EXTRA_ON && S.mode === 'special', dc = driveCode();
   $('#exp-size').innerHTML = SIZES[S.mode].map(([k, l]) => `<option value="${k}" ${k === ($('#exp-size').value || '') ? 'selected' : ''}>${l}</option>`).join('');
   $('#opt-new-p').textContent = `Downloads the picture to this device${day && dc ? ', and keeps a copy in “Bapa’s Diary Studio exports” on Drive' : ''}. Nothing in the Bapa’s Diary folder changes.`;
   const rep = $('#opt-rep input'), t = todayLondon(), d = S.day.date, when = longDate(d);
   rep.disabled = !day && !sp; $('#opt-rep').classList.toggle('dis', !day && !sp);
   if (!day && !sp && rep.checked) document.querySelector('#exp-form input[value=new]').checked = true;
   const sd = S.special.date, sw = sp ? longDate(sd) : '';
-  $('#opt-rep-b').textContent = day ? `Put it in the Bapa’s Diary folder as ${when}` : sp ? 'Add it to the Bapa’s Diary folder as an extra picture' : 'Put it in the Bapa’s Diary folder';
-  $('#opt-rep-p').textContent = sp ? (!dc ? 'Connect Google Drive first (the button at the top). ' : '') + `It goes in as “${sw} special.png” (or “special 2”, “special 3” when one is already there). Nothing is replaced: the 2pm send sends ${sd === t ? 'today' : sw}’s picture first, then every special picture in the folder, newest copy of each name.` + (sd < t ? ' That day has gone by, so it only sits in the folder.' : sd === t && hourLondon() >= 14 ? ' Today’s 2pm send has already gone, so it only sits in the folder.' : '')
+  $('#opt-rep-b').textContent = day ? `Put it in the Bapa’s Diary folder as ${when}` : sp || spSoon ? 'Add it to the Bapa’s Diary folder as an extra picture' : 'Put it in the Bapa’s Diary folder';
+  $('#opt-rep-p').textContent = spSoon ? 'Coming soon: once the script that gets the 2pm picture ready knows extra pictures, this goes in beside the day’s picture and the 2pm send sends both. For now save it as a new export.' : sp ? (!dc ? 'Connect Google Drive first (the button at the top). ' : '') + `It goes in as “${sw} special.png” (or “special 2”, “special 3” when one is already there). Nothing is replaced: the 2pm send sends ${sd === t ? 'today' : sw}’s picture first, then every special picture in the folder, newest copy of each name.` + (sd < t ? ' That day has gone by, so it only sits in the folder.' : sd === t && hourLondon() >= 14 ? ' Today’s 2pm send has already gone, so it only sits in the folder.' : '')
     : !day ? 'Only the daily picture goes in that folder. Month posters save as a new export.'
     : (!dc ? 'Connect Google Drive first (the button at the top). ' : '') + (d > t ? `It waits there as ${when}’s picture. The morning delivery leaves it alone, so that day’s 2pm send goes out with yours.`
     : d === t ? (hourLondon() < 14 ? 'Swaps today’s picture in the folder, so today’s 2pm send goes out with yours.' : 'Today’s 2pm send has already gone, so this only swaps the copy kept in the folder.')
