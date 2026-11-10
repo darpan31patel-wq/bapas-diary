@@ -7,7 +7,8 @@
  *   3. Google asks for permission: Review permissions, pick your account, Advanced,
  *      "Go to Bapa's Diary (unsafe)" (it's your own script), then Allow.
  * That's it. A folder called "Bapa's Diary" appears in your Drive and fills every morning.
- * On a big day the special picture comes too, as '6 November 2026 special.png' (and '... special photo.jpg').
+ * On a big day the special picture comes too, as '6 November 2026 special.png' (and '... special photo.jpg'), checked again
+ * every 2 hours until 2pm so a late one still arrives. Every picture the 2pm send uses is in this folder (Darpan, 10 Nov 2026).
  *
  * The backup bank (Darpan, 20 Oct 2026): GitHub also makes the next 90 days ahead of time. This script keeps
  * a copy of them in a second folder, "Bapa's Diary backup", and if today's fresh picture still hasn't come
@@ -64,7 +65,10 @@ function deliver_(isLastTry) {
 
   const stamp = UrlFetchApp.fetch(SOURCE + 'date.txt', { muteHttpExceptions: true });
   if (stamp.getResponseCode() !== 200 || stamp.getContentText().trim() !== today) {
-    if (have) return true;   // the Studio or the backup already put today's picture in
+    if (have) {   // the Studio or the backup already put today's picture in
+      if (isLastTry) specialCheck_();   // still make sure a big day's special is there (from the bank if GitHub is late)
+      return true;
+    }
     console.log("Today's picture isn't ready yet");
     if (isLastTry) {
       const used = useBackup_(day);
@@ -103,6 +107,27 @@ function deliverSpecial_(folder, day) {
   if (jpg.getResponseCode() === 200) folder.createFile(jpg.getBlob().setName(day + ' special photo.jpg'));
 }
 
+/**
+ * Every picture goes out from Drive only (Darpan, 10 Nov 2026). Runs with the 2 hourly bank copy too, so a special picture
+ * GitHub makes late (after 10:30am) still reaches Bapa's Diary before 2pm. Takes GitHub's fresh one when it is ready;
+ * from 10:30am, if GitHub still hasn't made today's, it takes the backup bank's special instead. Never after 2pm, and never
+ * when the day already has a special (yours from the Studio counts).
+ */
+function specialCheck_() {
+  const now = new Date();
+  const hhmm = +Utilities.formatDate(now, TZ, 'HHmm');
+  if (hhmm >= 1400) return;
+  const today = Utilities.formatDate(now, TZ, 'yyyy-MM-dd');
+  const day = Utilities.formatDate(now, TZ, 'd MMMM yyyy');
+  const folder = folder_();
+  if (specials_(folder, day).length) return;
+  const stamp = UrlFetchApp.fetch(SOURCE + 'date.txt', { muteHttpExceptions: true });
+  if (stamp.getResponseCode() === 200 && stamp.getContentText().trim() === today) { deliverSpecial_(folder, day); return; }
+  if (hhmm < 1030) return;   // GitHub may still be making today's
+  const special = alive_(backupFolder_(), day + ' special.png');
+  if (special) special.makeCopy(day + ' special.png', folder).setDescription('from the backup bank');
+}
+
 /** Copies today's backup picture (its photo copy, and its special picture when there is one) into Bapa's Diary. True if there was one. */
 function useBackup_(day) {
   const backup = backupFolder_(), folder = folder_();
@@ -124,6 +149,7 @@ function useBackup_(day) {
  */
 function syncBank() {
   const started = Date.now();
+  try { specialCheck_(); } catch (e) { console.log('Special picture check: ' + e); }
   const res = UrlFetchApp.fetch(BANK, { muteHttpExceptions: true });
   if (res.getResponseCode() !== 200) { console.log('No bank on GitHub yet: ' + res.getResponseCode()); return; }
   const backup = backupFolder_();
