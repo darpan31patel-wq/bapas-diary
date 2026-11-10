@@ -333,8 +333,12 @@ def word_days():
         days = {}
         for f in sorted(glob.glob(os.path.join(HERE, 'archive', 'vicharan', '*.txt'))):
             d = os.path.basename(f)[:5]
+            news = False
             for line in open(f, encoding='utf-8'):
-                if line.startswith('#') or '|' not in line:
+                if line.startswith('#'):
+                    news = line.rstrip('\n').endswith(('|news', '|newstitle'))   # the News galleries do not change how rare a word is:
+                    continue                                                      # a day with no News photo picks exactly as before
+                if news or '|' not in line:
                     continue
                 for w in set(caption_words(line.rstrip('\n').split('|', 1)[1])):
                     days.setdefault(w, set()).add(d)
