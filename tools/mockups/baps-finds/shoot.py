@@ -3,7 +3,7 @@
 Everything is added in this browser only, nothing on the website changes. A handful of sample images are fetched
 once from baps.org and pramukhswami.org (image files only, a pause between each). Usage: shoot.py OUTDIR
 """
-import base64, io, json, sys, time, traceback
+import base64, datetime, io, json, sys, time, traceback
 from pathlib import Path
 
 import requests
@@ -80,7 +80,9 @@ def shot(page, name, el=None):
 msm_pics = []
 
 def today(page, tag):
-    page.goto(SITE + '/#11-03', wait_until='networkidle'); page.wait_for_selector('#y2010', state='attached', timeout=45000); time.sleep(4)
+    page = page.context.new_page()   # its own tab, so the pretend clock stays here
+    page.clock.install(time=datetime.datetime(2026, 11, 3, 12, 0))   # Today always shows today's date: pretend it is 3 November
+    page.goto(SITE + '/', wait_until='networkidle'); page.wait_for_selector('#y2010', state='attached', timeout=45000); time.sleep(4)
     page.evaluate("() => { const a = document.getElementById('all'); if (a) a.hidden = false; }")
     page.evaluate("""(P) => {
       const g = document.getElementById('y2010'), a = g.querySelector('.arts');
@@ -93,6 +95,7 @@ def today(page, tag):
             if src: msm_pics.append([y] + src)
     page.locator('#y2010').scroll_into_view_if_needed(); time.sleep(2)
     shot(page, f'1-today-prasang-{tag}.jpg', '#y2010')
+    page.close()
 
 def calendar_prasang(page, tag):
     def fix(route):
@@ -128,8 +131,11 @@ def years(page, tag, key):
       document.getElementById('place').textContent = where;
       document.getElementById('cap').textContent = 'Daily darshan, from the baps.org Daily Satsang page';
       document.getElementById('count').textContent = 'Darshan 1';
+      const tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); let n;
+      while ((n = tw.nextNode())) { if (n.parentElement.closest('nav')) continue; const v = n.nodeValue.trim();
+        if (v === '1999') n.nodeValue = n.nodeValue.replace('1999', y); else if (v === 'Mumbai') n.nodeValue = n.nodeValue.replace('Mumbai', where); }
       const t = document.querySelector('#tab-psm .yrs'); if (t) t.textContent = '1990 to 13 August 2016';
-    }""", [d[1], when, where, age, key[:4]])
+    }""", [d[1], when, where, age, when.slice(-4)])
     time.sleep(2)
     shot(page, f'2-years-{key}-{tag}.jpg')
 
@@ -163,14 +169,13 @@ def month_pic(page, tag, key):
     w = wall.get(key)
     if not w: log('  no wallpaper', key); return
     page.goto(SITE + f'/calendar/#{key}', wait_until='networkidle'); time.sleep(4)
-    m2 = wall.get('2024-' + key[5:]) or w
+    m2 = msm_pics[0][1] if msm_pics else w[1]
     page.evaluate("""([a, b]) => {
-      const t = document.querySelector('.mtitle');
-      const f = s => `<img src="${s}" alt="" style="display:block;height:clamp(44px,8vh,78px);aspect-ratio:16/9;object-fit:cover;border-radius:8px;box-shadow:0 0 0 2px #d9a441,0 6px 18px rgba(0,0,0,.45)">`;
-      t.style.display = 'flex'; t.style.alignItems = 'center'; t.style.justifyContent = 'center'; t.style.gap = 'clamp(10px,2vw,28px)';
-      t.insertAdjacentHTML('afterbegin', f(a)); t.insertAdjacentHTML('beforeend', f(b));
-      t.style.outline = '2px dashed rgba(217,164,65,.5)'; t.style.outlineOffset = '6px'; t.style.borderRadius = '10px';
-    }""", [w[1], m2[1]])
+      const t = document.getElementById('t1'), r = t.getBoundingClientRect(), hd = document.querySelector('header');
+      const h = Math.max(40, Math.min(70, r.height * 1.1)), w = h * 16 / 9, top = r.top + r.height / 2 - h / 2 + scrollY;
+      const f = (s, x) => `<img src="${s}" alt="" style="position:absolute;z-index:5;top:${top}px;left:${x}px;height:${h}px;width:${w}px;object-fit:cover;object-position:50% 30%;border-radius:8px;box-shadow:0 0 0 2px #d9a441,0 6px 18px rgba(0,0,0,.45);outline:2px dashed rgba(217,164,65,.6);outline-offset:5px">`;
+      document.body.insertAdjacentHTML('beforeend', f(a, r.left - w - 22) + f(b, r.right + 22));
+    }""", [w[1], m2])
     time.sleep(2)
     shot(page, f'4-calendar-month-{key}-{tag}.jpg')
 
@@ -195,12 +200,13 @@ with sync_playwright() as pw:
     for tag, opts in [('computer', dict(viewport={'width': 1600, 'height': 1000})),
                       ('phone', dict(viewport={'width': 390, 'height': 844}, device_scale_factor=2, is_mobile=True, has_touch=True))]:
         ctx = b.new_context(**opts); page = ctx.new_page()
-        jobs = [('today', lambda: today(page, tag)), ('calendar prasang', lambda: calendar_prasang(page, tag)),
+        jobs = [('calendar prasang', lambda: calendar_prasang(page, tag)),
                 ('years 1990', lambda: years(page, tag, '1990')), ('ask', lambda: ask(page, tag)),
                 ('month 2016-03', lambda: month_pic(page, tag, '2016-03')), ('about', lambda: about(page, tag))]
         if tag == 'computer':
             jobs += [('years 1996b', lambda: years(page, tag, '1996b')), ('years 1996a', lambda: years(page, tag, '1996a')),
                      ('month 2016-08', lambda: month_pic(page, tag, '2016-08'))]
+        jobs = [('today', lambda: today(page, tag))] + jobs
         for name, fn in jobs:
             log(tag, name)
             try: fn()
