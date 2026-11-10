@@ -8,7 +8,8 @@
  *      "Go to Bapa's Diary (unsafe)" (it's your own script), then Allow.
  * That's it. A folder called "Bapa's Diary" appears in your Drive and fills every morning.
  * On a big day the special picture comes too, as '6 November 2026 special.png' (and '... special photo.jpg'), checked again
- * every 2 hours until 2pm so a late one still arrives. Every picture the 2pm send uses is in this folder (Darpan, 10 Nov 2026).
+ * and the day's caption words as '6 November 2026 caption.txt', checked again every 2 hours until 2pm so late ones still arrive.
+ * Google Drive or nothing (Darpan, 10 Nov 2026): everything the 2pm send uses is in this folder.
  *
  * The backup bank (Darpan, 20 Oct 2026): GitHub also makes the next 90 days ahead of time. This script keeps
  * a copy of them in a second folder, "Bapa's Diary backup", and if today's fresh picture still hasn't come
@@ -61,12 +62,12 @@ function deliver_(isLastTry) {
   const name = day + '.png';
   const folder = folder_();
   const have = alive_(folder, name);
-  if (have && alive_(folder, day + ' special.png')) return true;   // both already delivered (a deleted copy doesn't count)
+  if (have && done_('special', day) && done_('caption', day)) return true;   // all of today's already sorted
 
   const stamp = UrlFetchApp.fetch(SOURCE + 'date.txt', { muteHttpExceptions: true });
   if (stamp.getResponseCode() !== 200 || stamp.getContentText().trim() !== today) {
     if (have) {   // the Studio or the backup already put today's picture in
-      if (isLastTry) specialCheck_();   // still make sure a big day's special is there (from the bank if GitHub is late)
+      if (isLastTry) dayCheck_();   // still make sure a big day's special and the caption are there (from the bank if GitHub is late)
       return true;
     }
     console.log("Today's picture isn't ready yet");
@@ -89,7 +90,44 @@ function deliver_(isLastTry) {
     if (photo.getResponseCode() === 200) folder.createFile(photo.getBlob().setName(name.replace('.png', ' photo.jpg')));
   }
   deliverSpecial_(folder, day);
+  deliverCaption_(folder, day);
   return true;
+}
+
+/**
+ * Remembers what was already sorted for a day, so a file you bin on purpose isn't put back by the next check.
+ * To have today's special and caption fetched again, run redeliverToday.
+ */
+function done_(what, day) {
+  return !!PropertiesService.getScriptProperties().getProperty('done ' + what + ' ' + day);
+}
+
+function mark_(what, day) {
+  PropertiesService.getScriptProperties().setProperty('done ' + what + ' ' + day, Utilities.formatDate(new Date(), TZ, 'HH:mm'));
+}
+
+/** Run this by hand to fetch today's picture, special and caption again (bin the ones in Bapa's Diary first). */
+function redeliverToday() {
+  const day = Utilities.formatDate(new Date(), TZ, 'd MMMM yyyy');
+  const props = PropertiesService.getScriptProperties();
+  props.deleteProperty('done special ' + day);
+  props.deleteProperty('done caption ' + day);
+  return deliver();
+}
+
+/**
+ * The day's 2pm caption words (the channel's stories under your top line and Day n) also go into Bapa's Diary as
+ * '<d MMMM yyyy> caption.txt' (Darpan, 10 Nov 2026: Google Drive or nothing). A caption you saved from the Studio wins
+ * and is never replaced. Most days without a story there are no words and no file.
+ */
+function deliverCaption_(folder, day) {
+  if (done_('caption', day)) return;
+  if (!alive_(folder, day + ' caption.txt') && !alive_(folder, day + ' whole caption.txt')) {
+    const res = UrlFetchApp.fetch(SOURCE + 'caption.txt', { muteHttpExceptions: true });
+    const text = res.getResponseCode() === 200 ? res.getContentText('UTF-8').replace(/\r\n/g, '\n').trim() : '';
+    if (text) folder.createFile(day + ' caption.txt', text, MimeType.PLAIN_TEXT).setDescription('from GitHub');
+  }
+  mark_('caption', day);
 }
 
 /**
@@ -98,37 +136,71 @@ function deliver_(isLastTry) {
  * '6 November 2026 special.png' and '6 November 2026 special photo.jpg'. Most days there is none and nothing happens.
  */
 function deliverSpecial_(folder, day) {
-  if (specials_(folder, day).length) return;   // already there, or you sent your own special from the Studio
-
-  const png = UrlFetchApp.fetch(SOURCE + 'bapas-diary-special.png', { muteHttpExceptions: true });
-  if (png.getResponseCode() !== 200) return;   // no special picture today
-  folder.createFile(png.getBlob().setName(day + ' special.png'));
-  const jpg = UrlFetchApp.fetch(SOURCE + 'bapas-diary-special.jpg', { muteHttpExceptions: true });
-  if (jpg.getResponseCode() === 200) folder.createFile(jpg.getBlob().setName(day + ' special photo.jpg'));
+  if (done_('special', day)) return;
+  if (!specials_(folder, day).length) {   // not there yet, and you didn't send your own special from the Studio
+    const png = UrlFetchApp.fetch(SOURCE + 'bapas-diary-special.png', { muteHttpExceptions: true });
+    if (png.getResponseCode() === 200) {   // most days there is no special picture
+      folder.createFile(png.getBlob().setName(day + ' special.png')).setDescription('from GitHub');
+      const jpg = UrlFetchApp.fetch(SOURCE + 'bapas-diary-special.jpg', { muteHttpExceptions: true });
+      const oldJpg = alive_(folder, day + ' special photo.jpg');   // its photo copy goes with it, never twice
+      if (jpg.getResponseCode() === 200) { if (oldJpg) oldJpg.setTrashed(true); folder.createFile(jpg.getBlob().setName(day + ' special photo.jpg')).setDescription('from GitHub'); }
+    }
+  }
+  mark_('special', day);
 }
 
 /**
- * Every picture goes out from Drive only (Darpan, 10 Nov 2026). Runs with the 2 hourly bank copy too, so a special picture
- * GitHub makes late (after 10:30am) still reaches Bapa's Diary before 2pm. Takes GitHub's fresh one when it is ready;
- * from 10:30am, if GitHub still hasn't made today's, it takes the backup bank's special instead. Never after 2pm, and never
- * when the day already has a special (yours from the Studio counts).
+ * Google Drive or nothing (Darpan, 10 Nov 2026): everything the 2pm send uses is in Bapa's Diary. Runs with the 2 hourly
+ * bank copy too, so a special picture or caption GitHub makes late (after 10:30am) still arrives before 2pm. Takes GitHub's
+ * fresh ones when they are ready; from 10:30am, if GitHub still hasn't made today's, it takes the backup bank's instead.
+ * Never after 2pm, and never when the day already has a special (yours from the Studio counts) or a caption.
  */
-function specialCheck_() {
+function dayCheck_() {
   const now = new Date();
   const hhmm = +Utilities.formatDate(now, TZ, 'HHmm');
-  if (hhmm >= 1400) return;
   const today = Utilities.formatDate(now, TZ, 'yyyy-MM-dd');
   const day = Utilities.formatDate(now, TZ, 'd MMMM yyyy');
+  forgetOld_(day);
+  if (hhmm >= 1400 || (done_('special', day) && done_('caption', day))) return;
   const folder = folder_();
-  if (specials_(folder, day).length) return;
   const stamp = UrlFetchApp.fetch(SOURCE + 'date.txt', { muteHttpExceptions: true });
-  if (stamp.getResponseCode() === 200 && stamp.getContentText().trim() === today) { deliverSpecial_(folder, day); return; }
-  if (hhmm < 1030) return;   // GitHub may still be making today's
-  const special = alive_(backupFolder_(), day + ' special.png');
-  if (special) special.makeCopy(day + ' special.png', folder).setDescription('from the backup bank');
+  if (stamp.getResponseCode() === 200 && stamp.getContentText().trim() === today) {
+    deliverSpecial_(folder, day);
+    deliverCaption_(folder, day);
+    return;
+  }
+  if (hhmm >= 1030) fromBank_(folder, day);   // before then GitHub may still be making today's
 }
 
-/** Copies today's backup picture (its photo copy, and its special picture when there is one) into Bapa's Diary. True if there was one. */
+/** Today's special picture and caption from the backup bank, for whichever of them isn't sorted yet. */
+function fromBank_(folder, day) {
+  const backup = backupFolder_();
+  if (!done_('special', day)) {
+    const special = alive_(backup, day + ' special.png');
+    if (special && !specials_(folder, day).length) special.makeCopy(day + ' special.png', folder).setDescription('from the backup bank');
+    mark_('special', day);
+  }
+  if (!done_('caption', day)) {
+    const caption = alive_(backup, day + ' caption.txt');
+    if (caption && !alive_(folder, day + ' caption.txt') && !alive_(folder, day + ' whole caption.txt')) {
+      const text = caption.getBlob().getDataAsString('UTF-8').replace(/\r\n/g, '\n').trim();
+      if (text) folder.createFile(day + ' caption.txt', text, MimeType.PLAIN_TEXT).setDescription('from the backup bank');
+    }
+    mark_('caption', day);
+  }
+}
+
+/** Forgets the notes of days gone by. */
+function forgetOld_(day) {
+  const props = PropertiesService.getScriptProperties();
+  const cut = new Date(day).getTime();
+  Object.keys(props.getProperties()).forEach(k => {
+    const m = k.match(/^done (?:special|caption) (.+)$/);
+    if (m && new Date(m[1]).getTime() < cut) props.deleteProperty(k);
+  });
+}
+
+/** Copies today's backup picture (its photo copy, and its special picture and caption when there are) into Bapa's Diary. True if there was one. */
 function useBackup_(day) {
   const backup = backupFolder_(), folder = folder_();
   const png = alive_(backup, day + '.png');
@@ -136,8 +208,7 @@ function useBackup_(day) {
   png.makeCopy(day + '.png', folder).setDescription('from the backup bank');
   const jpg = alive_(backup, day + ' photo.jpg');
   if (jpg) jpg.makeCopy(day + ' photo.jpg', folder).setDescription('from the backup bank');
-  const special = alive_(backup, day + ' special.png');
-  if (special && !specials_(folder, day).length) special.makeCopy(day + ' special.png', folder).setDescription('from the backup bank');
+  fromBank_(folder, day);   // its special picture and caption too
   return true;
 }
 
@@ -149,7 +220,7 @@ function useBackup_(day) {
  */
 function syncBank() {
   const started = Date.now();
-  try { specialCheck_(); } catch (e) { console.log('Special picture check: ' + e); }
+  try { dayCheck_(); } catch (e) { console.log('Special picture and caption check: ' + e); }
   const res = UrlFetchApp.fetch(BANK, { muteHttpExceptions: true });
   if (res.getResponseCode() !== 200) { console.log('No bank on GitHub yet: ' + res.getResponseCode()); return; }
   const backup = backupFolder_();
@@ -256,6 +327,7 @@ function studioCode() {
 function saveCaption_(folder, day, caption, whole) {
   const text = String(caption).replace(/\r\n/g, '\n').trim();
   const name = day + (whole ? ' whole caption.txt' : ' caption.txt');
+  mark_('caption', day);   // yours wins: GitHub's caption never comes in after it
   if (!whole) { const w = alive_(folder, day + ' whole caption.txt'); if (w) w.setTrashed(true); }
   const old = alive_(folder, name);
   if (!text) { if (old) old.setTrashed(true); return ''; }
