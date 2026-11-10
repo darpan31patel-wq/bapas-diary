@@ -1575,13 +1575,33 @@ function changes() {
 }
 // baps.org stories (Darpan, 9 Nov 2026: "all article and photo information onto the dashboard too"): every News article
 // of the card's year around its day, with its galleries and story line, and one tap to use its words in the caption
-let ARTICLES = null;
+let ARTICLES = null, HISTORY = null;
 async function loadArticles() {
   if (ARTICLES) return;
-  for (const u of ['articles.json', 'https://raw.githubusercontent.com/darpan31patel-wq/bapas-diary/claude/project-thread-02nrr0/site/darpan/articles.json']) {
-    try { const r = await fetch(u, { cache: 'force-cache' }); if (r.ok) { ARTICLES = await r.json(); if (S.tab === 'card') build(); return } } catch (e) {}
-  }
-  ARTICLES = [];
+  const RAWB = 'https://raw.githubusercontent.com/darpan31patel-wq/bapas-diary/claude/project-thread-02nrr0/site/darpan/';
+  const get = async name => { for (const u of [name, RAWB + name]) { try { const r = await fetch(u, { cache: 'force-cache' }); if (r.ok) return await r.json() } catch (e) {} } return [] };
+  [ARTICLES, HISTORY] = await Promise.all([get('articles.json'), get('history.json')]);
+  if (S.tab === 'card') build();
+}
+// the "day in BAPS history" events of bapas.db (the Telegram history channels, 1,558 days), shown like the stories
+// (Darpan, 10 Nov 2026: "there's no information anywhere" about Bapa meeting Prince Philip, 10 Nov 1997)
+function historyFor(g, pack) {
+  if (!HISTORY || S.mode === 'month') return [];
+  const y = +g.year; if (!y) return [];
+  const sp = S.mode === 'special', story = sp && pack.kind === 'story';
+  const base = story ? pack.story_date : sp ? (g.day || `${y}-${pack.date.slice(5)}`) : `${y}-${pack.date.slice(5)}`;
+  const t0 = new Date(base + 'T12:00').getTime(), span = sp ? 7 : 3;
+  return HISTORY.filter(h => h.d.startsWith(y + '-')).map(h => ({ h, off: Math.round((new Date(h.d + 'T12:00').getTime() - t0) / 864e5) }))
+    .filter(x => Math.abs(x.off) <= span).sort((a, b) => Math.abs(a.off) - Math.abs(b.off) || b.h.n - a.h.n).slice(0, 6);
+}
+function historyPanel(g, pack) {
+  const list = historyFor(g, pack); if (!list.length) return '';
+  const when = o => o === 0 ? 'that day' : `${Math.abs(o)} day${Math.abs(o) > 1 ? 's' : ''} ${o < 0 ? 'before' : 'after'}`;
+  const niceD = d => new Date(d + 'T12:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  return `<div class="group"><h3>On this day in BAPS history, ${esc(String(g.year))}</h3>${list.map(({ h, off }) => `<div class="story">
+    <p><b>${esc(h.l)}</b><br><span class="hint">${esc([h.p, niceD(h.d) + ' (' + when(off) + ')', h.n ? h.n + (h.n > 1 ? ' photos' : ' photo') : ''].filter(Boolean).join(' · '))}${h.x ? ' · <span class="gold">a special day</span>' : ''}</span></p>
+    ${h.s && h.s !== h.l ? `<p class="hint">${esc(h.s)}</p>` : ''}
+    <div class="chips cap">${h.c ? `<button class="capchip" data-set="1" data-v="${esc(h.c)}">Use “${esc(h.c)}”</button>` : ''}<button class="capchip" data-set="1" data-v="${esc(h.l)}">Use the full line</button>${h.u ? `<a class="btn small" href="${esc(h.u)}" target="_blank" rel="noopener">Open the post</a>` : ''}</div></div>`).join('')}</div>`;
 }
 const FESTWORDS = { Annakut: /annakut|new year|diwali/i, Diwali: /diwali|annakut|chopda/i };
 function storiesFor(g, pack) {
@@ -1611,7 +1631,7 @@ function storiesPanel(g, pack) {
   const ownHtml = own.length ? `<div class="group"><h3>Story lines in the pack for ${esc(String(g.year))}</h3>${own.map(a => `<div class="story"><p>${esc(a.line || '')}<br><span class="hint">${esc([a.place, a.date].filter(Boolean).join(' · '))}</span></p>
     <div class="chips cap"><button class="capchip" data-set="1" data-v="${esc(a.line || '')}">Use as the caption</button>${a.url ? `<a class="btn small" href="${esc(a.url)}" target="_blank" rel="noopener">Open on baps.org</a>` : ''}</div></div>`).join('')}</div>` : '';
   if (list === null) { loadArticles(); return ownHtml }
-  return ownHtml + storiesPanelDb(g, list);
+  return ownHtml + historyPanel(g, pack) + storiesPanelDb(g, list);
 }
 function storiesPanelDb(g, list) {
   const when = o => o === 0 ? 'that day' : `${Math.abs(o)} day${Math.abs(o) > 1 ? 's' : ''} ${o < 0 ? 'before' : 'after'}`;
