@@ -1584,7 +1584,7 @@ async function loadArticles() {
   [ARTICLES, HISTORY] = await Promise.all([get('articles.json'), get('history.json')]);
   if (S.tab === 'card') build();
 }
-// the "day in BAPS history" events of bapas.db (the Telegram history channels, 1,558 days), shown like the stories
+// the "day in BAPS history" events of bapas.db (the history channels, 1,558 days), shown like the stories
 // (Darpan, 10 Nov 2026: "there's no information anywhere" about Bapa meeting Prince Philip, 10 Nov 1997)
 function historyFor(g, pack) {
   if (!HISTORY || S.mode === 'month') return [];
