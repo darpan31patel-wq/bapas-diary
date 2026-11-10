@@ -176,7 +176,16 @@ def from_archive(items, cache):
             print('  archive photo would not open', rel, e)
             continue
         got += 1
+        x['arch'] = True
     print(f'  {got} of {len(items)} photos from the archive in Drive ({time.time() - t:.0f}s), the rest from baps.org', flush=True)
+    # the website project, 10 Nov 2026: the News photo files are still being copied into the photo store, so only a News
+    # photo whose file is already there may be chosen; the others wait (only when the archive answered at all)
+    if got:
+        wait = [x for x in items if x.get('news') and not x.get('arch')]
+        for x in wait:
+            x['skip'] = True
+        if wait:
+            print(f'  {len(wait)} News photos have no file in the archive yet and are left out today')
 
 
 def full_size(photos):
@@ -203,6 +212,8 @@ def download_all(items, cache):
 
     def one(x, timeout=25, quiet=True):
         path = os.path.join(cache, hashlib.sha1(x['i'].encode()).hexdigest() + '.jpg')
+        if x.get('skip'):
+            return
         if not os.path.exists(path):
             try:
                 data = fetch(x['i'], tries=2, timeout=timeout)
