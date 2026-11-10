@@ -1,0 +1,114 @@
+Fetching samples
+  got 191103S.jpg (1080, 810)
+  got 221103S.jpg (1080, 810)
+  got 231103S.jpg (1080, 810)
+  got 201601_baps_wallpaper_h.jpg (160, 90)
+  got 201602_baps_wallpaper_h_001.jpg (160, 90)
+  got 201603_baps_wallpaper_h_001.jpg (160, 90)
+  got 201604_baps_wallpaper_h_001.jpg (160, 90)
+  got 201605_baps_wallpaper_h_001.jpg (160, 90)
+  got 201606_baps_wallpaper_h_001.jpg (160, 90)
+  got 201607_baps_wallpaper_h_001.jpg (160, 90)
+  got 201608_baps_wallpaper_h_001.jpg (160, 90)
+  got 201609_baps_wallpaper_h_001.jpg (160, 90)
+  got 201610_baps_wallpaper_h_001.jpg (160, 90)
+  got 201611_baps_wallpaper_h_001.jpg (160, 90)
+  got 201612_baps_wallpaper_h_001.jpg (160, 90)
+  got pramukh_swami_in_canada_parliament_house.jpg (900, 562)
+  got pramukh_swami_with_tony_blair.jpg (900, 562)
+  got pramukh_swami_vasudev_pande_trinidad_pm.jpg (900, 562)
+  got pramukhswami_with_baps_school_abu.jpg (900, 562)
+  got pramukhswami_with_bullock_cart.jpg (900, 570)
+  got pramukh_swami_yoveri_kagura_museveni_president_uganada.jpg (900, 562)
+computer today
+ult()
+           ~~~~~~~~~~~^^
+  File "/home/runner/.local/lib/python3.14/site-packages/playwright/_impl/page.py", line 464, in wait_for_selector
+    return await self._main_frame.wait_for_selector(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        selector=selector, timeout=timeout, state=state, strict=strict
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/runner/.local/lib/python3.14/site-packages/playwright/_impl/frame.py", line 418, in wait_for_selector
+    result = await self._channel.waitForSelector(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+    )
+    ^
+  File "/home/runner/.local/lib/python3.14/site-packages/playwright/_impl/channel_owner.py", line 398, in _mapped
+    return mapper(await awaitable)
+                  ^^^^^^^^^^^^^^^
+  File "/home/runner/.local/lib/python3.14/site-packages/playwright/_impl/channel_owner.py", line 387, in finish
+    raise e from None
+  File "/home/runner/.local/lib/python3.14/site-packages/playwright/_impl/channel_owner.py", line 352, in finish
+    result = await zone.run_async(lambda: awaitable)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/.local/lib/python3.14/site-packages/playwright/_impl/utils/zones.py", line 58, in run_async
+    return await func()
+           ^^^^^^^^^^^^
+playwright._impl._errors.TimeoutError: Page.wait_for_selector: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator("#y2010") to be visible
+
+
+computer calendar prasang
+  saved 1-calendar-prasang-computer.jpg
+computer years 1990
+  saved 2-years-1990-computer.jpg
+computer ask
+  saved 3-ask-essays-computer.jpg
+computer month 2016-03
+  saved 4-calendar-month-2016-03-computer.jpg
+computer about
+  saved 5-about-pictures-computer.jpg
+computer years 1996b
+  saved 2-years-1996b-computer.jpg
+computer years 1996a
+  saved 2-years-1996a-computer.jpg
+computer month 2016-08
+  saved 4-calendar-month-2016-08-computer.jpg
+computer month 2016-11
+  saved 4-calendar-month-2016-11-computer.jpg
+phone today
+ult()
+           ~~~~~~~~~~~^^
+  File "/home/runner/.local/lib/python3.14/site-packages/playwright/_impl/page.py", line 464, in wait_for_selector
+    return await self._main_frame.wait_for_selector(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        selector=selector, timeout=timeout, state=state, strict=strict
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/runner/.local/lib/python3.14/site-packages/playwright/_impl/frame.py", line 418, in wait_for_selector
+    result = await self._channel.waitForSelector(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+    )
+    ^
+  File "/home/runner/.local/lib/python3.14/site-packages/playwright/_impl/channel_owner.py", line 398, in _mapped
+    return mapper(await awaitable)
+                  ^^^^^^^^^^^^^^^
+  File "/home/runner/.local/lib/python3.14/site-packages/playwright/_impl/channel_owner.py", line 387, in finish
+    raise e from None
+  File "/home/runner/.local/lib/python3.14/site-packages/playwright/_impl/channel_owner.py", line 352, in finish
+    result = await zone.run_async(lambda: awaitable)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/.local/lib/python3.14/site-packages/playwright/_impl/utils/zones.py", line 58, in run_async
+    return await func()
+           ^^^^^^^^^^^^
+playwright._impl._errors.TimeoutError: Page.wait_for_selector: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator("#y2010") to be visible
+
+
+phone calendar prasang
+  saved 1-calendar-prasang-phone.jpg
+phone years 1990
+  saved 2-years-1990-phone.jpg
+phone ask
+  saved 3-ask-essays-phone.jpg
+phone month 2016-03
+  saved 4-calendar-month-2016-03-phone.jpg
+phone about
+  saved 5-about-pictures-phone.jpg
