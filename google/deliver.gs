@@ -17,6 +17,8 @@
  * there straight into Drive. "Put it in the Bapa's Diary folder" makes it that day's picture there (today before 2pm or
  * any day ahead, and 2pm sends yours; a day gone by just has its copy updated);
  * "Save as a new export" puts it in a separate folder, "Bapa's Diary Studio exports", and leaves today's alone.
+ * An extra picture (Darpan, 9 Nov 2026) goes into Bapa's Diary next to that day's picture as '9 November 2026 special.png',
+ * or '... special 2.png', '... special 3.png' when there is one already; 2pm sends them all. Nothing is ever replaced or binned.
  * To switch it on (once): Deploy > New deployment > Select type: Web app > Execute as: Me, Who has access: Anyone
  * > Deploy (allow it). Then choose "studioCode" in the function menu, press Run, and paste the line it shows into
  * the Studio's "Connect to Google Drive" box. Nobody can send a picture without that code.
@@ -92,7 +94,8 @@ function deliver_(isLastTry) {
  * '6 November 2026 special.png' and '6 November 2026 special photo.jpg'. Most days there is none and nothing happens.
  */
 function deliverSpecial_(folder, day) {
-  if (alive_(folder, day + ' special.png')) return;
+  if (specials_(folder, day).length) return;   // already there, or you sent your own special from the Studio
+
   const png = UrlFetchApp.fetch(SOURCE + 'bapas-diary-special.png', { muteHttpExceptions: true });
   if (png.getResponseCode() !== 200) return;   // no special picture today
   folder.createFile(png.getBlob().setName(day + ' special.png'));
@@ -109,7 +112,7 @@ function useBackup_(day) {
   const jpg = alive_(backup, day + ' photo.jpg');
   if (jpg) jpg.makeCopy(day + ' photo.jpg', folder).setDescription('from the backup bank');
   const special = alive_(backup, day + ' special.png');
-  if (special && !alive_(folder, day + ' special.png')) special.makeCopy(day + ' special.png', folder).setDescription('from the backup bank');
+  if (special && !specials_(folder, day).length) special.makeCopy(day + ' special.png', folder).setDescription('from the backup bank');
   return true;
 }
 
@@ -160,6 +163,36 @@ function byDate_(a, b) {
   return t(a) - t(b) || (a < b ? -1 : 1);
 }
 
+/** The special pictures of a day in a folder: '<day> special.png' (or .jpg) and '<day> special 2.png', '... special 3.jpg' and so on. */
+function specials_(folder, day) {
+  const re = new RegExp('^' + day + ' special(?: (\\d+))?\\.(?:png|jpe?g)$', 'i');
+  const out = [];
+  const it = folder.searchFiles('title contains "' + day + ' special" and trashed = false');
+  while (it.hasNext()) {
+    const f = it.next(), m = f.getName().match(re);
+    if (m && !f.isTrashed()) out.push({ file: f, n: m[1] ? +m[1] : 1 });
+  }
+  return out;
+}
+
+/**
+ * An extra picture from the Studio (Darpan, 9 Nov 2026): saved in Bapa's Diary as '<day> special.png' when that day has no
+ * special picture yet, otherwise as the next number after the highest one there ('<day> special 2.png', '... special 3.png').
+ * Never replaces or bins a file. Returns the new file's name.
+ */
+function saveExtra_(folder, day, blob, ext) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30 * 1000);   // two exports at once can't take the same number
+  try {
+    const top = specials_(folder, day).reduce((n, s) => Math.max(n, s.n), 0);
+    const name = day + ' special' + (top ? ' ' + (top + 1) : '') + ext;
+    folder.createFile(blob.setName(name)).setDescription('from the Studio (extra)');
+    return name;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function alive_(folder, name) {
   const it = folder.getFilesByName(name);
   while (it.hasNext()) { const f = it.next(); if (!f.isTrashed()) return f; }
@@ -205,14 +238,15 @@ function saveCaption_(folder, day, caption, whole) {
   return name;
 }
 
-/** A picture from the Studio. {key, mode: 'replace' | 'new' | 'caption', date: 'yyyy-MM-dd', png, jpg (base64), caption, whole} */
+/** A picture from the Studio. {key, mode: 'replace' | 'extra' | 'new' | 'caption', date: 'yyyy-MM-dd', png, jpg (base64), caption, whole} */
 function doPost(e) {
   const answer = o => ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
   try {
     const p = JSON.parse(e.postData.contents);
     const key = PropertiesService.getScriptProperties().getProperty('STUDIO_KEY');
     if (!key || p.key !== key) return answer({ ok: false, error: 'The Studio code is wrong. Run studioCode in the script and paste the new line into the Studio.' });
-    if (p.mode === 'ping') return answer({ ok: true, mode: 'ping', version: 4 });   // the Studio's "Check the connection"
+    if (p.mode === 'ping') return answer({ ok: true, mode: 'ping', version: 5, extra: true });   // the Studio's "Check the connection"
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(p.date))) return answer({ ok: false, error: 'No date came with the picture (it should look like 2026-11-09).' });
     const when = new Date(p.date + 'T12:00:00Z');
     const day = Utilities.formatDate(when, TZ, 'd MMMM yyyy');
     if (p.mode === 'caption') {   // only the 2pm caption, the picture stays as it is
@@ -220,6 +254,15 @@ function doPost(e) {
       return answer({ ok: true, mode: 'caption', folder: FOLDER_NAME, name: name, time: Utilities.formatDate(new Date(), TZ, 'HH:mm') });
     }
     const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+    if (p.mode === 'extra') {   // one more picture for that day's 2pm, next to the main one; the main picture and caption stay as they are
+      if (!p.png && !p.jpg) return answer({ ok: false, error: 'No picture came with the export.' });
+      const blob = p.png ? Utilities.newBlob(Utilities.base64Decode(p.png), 'image/png')
+                         : Utilities.newBlob(Utilities.base64Decode(p.jpg), 'image/jpeg');
+      const name = saveExtra_(folder_(), day, blob, p.png ? '.png' : '.jpg');
+      const hour = +Utilities.formatDate(new Date(), TZ, 'H');
+      const when2pm = p.date < today ? 'past' : p.date > today ? 'ahead' : hour >= 14 ? 'after' : 'before';
+      return answer({ ok: true, mode: 'extra', folder: FOLDER_NAME, name: name, when2pm: when2pm, time: Utilities.formatDate(new Date(), TZ, 'HH:mm') });
+    }
     const png = Utilities.newBlob(Utilities.base64Decode(p.png), 'image/png');
     const jpg = p.jpg ? Utilities.newBlob(Utilities.base64Decode(p.jpg), 'image/jpeg') : null;
     if (p.mode === 'replace') {
