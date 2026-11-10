@@ -1451,7 +1451,7 @@ function storiesFor(g, pack) {
   const base = story ? pack.story_date : sp ? (g.day || `${y}-${pack.date.slice(5)}`) : `${y}-${pack.date.slice(5)}`;
   const t0 = new Date(base + 'T12:00').getTime(), span = sp ? 7 : 3, words = sp && pack.festival ? FESTWORDS[pack.festival] || new RegExp(pack.festival, 'i') : null;
   return ARTICLES.filter(a => a.y === y && a.d).map(a => ({ a, off: Math.round((new Date(a.d + 'T12:00').getTime() - t0) / 864e5) }))
-    .filter(x => Math.abs(x.off) <= span && (!words || x.off === 0 || words.test(x.a.t) || x.a.b))
+    .filter(x => Math.abs(x.off) <= span && (!words || x.off === 0 || words.test(x.a.t) || (x.a.b && Math.abs(x.off) <= 2)))
     .sort((p2, q) => (q.a.b - p2.a.b) || (Math.abs(p2.off) - Math.abs(q.off)) || (q.a.n - p2.a.n)).slice(0, 6);
 }
 function spareGroup(pack) {
