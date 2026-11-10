@@ -79,6 +79,7 @@ button { font: inherit; color: inherit }
 .gold { color: var(--gold-hi) }
 .queue { list-style: none; margin: 0; padding: 0 } .queue li { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; border-bottom: 1px solid var(--line) } .queue li b { min-width: 4.2em; white-space: nowrap } .queue .ok { color: #8fd694; font: 12px var(--sans) } .queue button { margin-left: auto }
 .chips.cap button { font-size: 12px; max-width: 100%; white-space: normal; text-align: left }
+.thumbs button span.news { left: auto; right: 3px; background: #7a3b12; color: #ffe296 } .chips small { font-size: 10px; color: var(--gold2); letter-spacing: .08em }
 .story { border-top: 1px solid var(--line); padding: 8px 0 } .story p { margin: 2px 0 } .story .btn.small { text-decoration: none }
 .last { background: rgba(0,0,0,.18); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin: 8px 0 } .last p { margin: 4px 0 }
 /* the small editor that opens on a card */
@@ -287,7 +288,7 @@ const MONTH_DEFAULT = {
 // the special picture (Darpan, 6 Nov 2026: "how do i edit the special picture?"): Every Diwali, Every Annakut and the
 // story pictures, from packs/special/<date>/ (tools/special_pack.py in the collage builder project). Same look and layout
 // settings as the daily picture; its cards are kept under `cards` by their place on the picture (c0, c1, ...).
-const SPECIAL_DEFAULT = Object.assign(structuredClone(DAY_DEFAULT), { date: '', cards: {}, txt: {}, showTomorrow: false, subtitle: '' });   // the pack's own second line
+const SPECIAL_DEFAULT = Object.assign(structuredClone(DAY_DEFAULT), { date: '', cards: {}, txt: {}, showTomorrow: false, subtitle: '', added: [] });   // the pack's own second line
 delete SPECIAL_DEFAULT.years; delete SPECIAL_DEFAULT.wa;
 let S = { mode: 'day', tab: 'card', day: structuredClone(DAY_DEFAULT), month: structuredClone(MONTH_DEFAULT), special: structuredClone(SPECIAL_DEFAULT) };
 const saved = store.get('studio-settings-v1');
@@ -300,7 +301,7 @@ const stateOf = o => o.years || o.days || o.cards;
 // the photo packs: beside this page when it carries them (claude.ai), otherwise the studio branch on GitHub (tools/studio_packs.py)
 // every date (and month) keeps its own changes, so going to another day and back loses nothing (Darpan, 4 Nov 2026:
 // "remember when I make a change ... before I press save"). Kept on this device in studio-dates-v1.
-const PER = { day: ['years', 'titleAuto', 'title', 'txt'], month: ['days', 'titleAuto', 'title'], special: ['cards', 'titleAuto', 'title', 'txt'] };
+const PER = { day: ['years', 'titleAuto', 'title', 'txt'], month: ['days', 'titleAuto', 'title'], special: ['cards', 'titleAuto', 'title', 'txt', 'added'] };
 const dkey = kind => kind + ':' + keyOf(kind);
 function stash(kind) {
   const all = store.get('studio-dates-v1') || {}, o = S[kind];
@@ -331,7 +332,12 @@ async function loadPack(kind, key) {
   const pack = await (await fetch(base + 'pack.json')).json();
   pack.base = base;
   const groups = groupsOf(pack);
-  groups.forEach((g, gi) => { g.key = kind === 'special' ? 'c' + gi : (g.year ?? g.day); g.cands.forEach((c, i) => { c.key = `${base}${g.key}-${i}` }) });
+  // the collage builder's packs (fields note, 9 Nov 2026) may add years (added: true, shown like any other card) and spares
+  // (years with no sure photo of Bapa, offered as "add a year"); any other new field is simply kept
+  if (kind === 'special') { pack.spares = pack.spares || []; const want = new Set((S.special.added || []).map(String)); pack.spares.slice().forEach(sp => { if (want.has(String(sp.year))) { pack.spares.splice(pack.spares.indexOf(sp), 1); groups.push(sp); sp.added = true } }); groups.sort((a, b) => (a.year || 0) - (b.year || 0) || (a.role === 'big' ? -1 : 0)) }
+  const keyOfGroup = (g, gi) => kind === 'special' ? (pack.kind === 'story' ? 'c' + gi : 'y' + g.year) : (g.year ?? g.day);
+  groups.forEach((g, gi) => { g.key = keyOfGroup(g, gi); g.cands.forEach((c, i) => { c.key = `${base}${g.key}-${i}` }) });
+  pack.spares && pack.spares.forEach(g => { g.key = 'y' + g.year; g.cands.forEach((c, i) => { c.key = `${base}${g.key}-${i}` }) });
   const first = groups.flatMap(g => [...g.cands.slice(0, 6), ...[g.pickA, g.pickB, g.pickM].filter(i => i != null).map(i => g.cands[i])]);
   await Promise.all(first.filter(Boolean).map(c => photoOf(pack, c, true)));
   return pack;
@@ -948,7 +954,8 @@ function paneCard() {
     ? `<p class="hint ok">All ${g.cands.length} were taken on ${niceDay(thisDay)}, this very day.</p>`
     : dates.length === 1 ? `<p class="hint warn">None of these are filed under this day. All ${g.cands.length} come from an album baps.org filed under ${niceDay(dates[0])}, ${offWords(dates[0])}. A whole visit or festival is often filed under one date, so they may be from a few days around it.</p>`
     : `<p class="hint warn">Mixed dates: ${dates.map(d => `${g.cands.filter(c2 => c2.date === d).length} from ${niceDay(d)} (${offWords(d)})`).join(', ')}. Photos not from this very day carry their date.</p>`;
-  const tags = i => dateTag(i) + (day ? (i === 0 ? `<span>${S.mode === 'special' ? 'ON THE PICTURE' : 'DAILY PICK'}</span>` : g.cands[i].special ? '<span>SPECIAL</span>' : '')
+  const newsTag = i => g.cands[i].news ? '<span class="news">NEWS</span>' : '';
+  const tags = i => dateTag(i) + newsTag(i) + (day ? (i === 0 ? `<span>${S.mode === 'special' ? 'ON THE PICTURE' : 'DAILY PICK'}</span>` : g.cands[i].special ? '<span>SPECIAL</span>' : '')
     : [['A', 'CLOSE'], ['B', 'ACTIVITY'], ['M', 'MIXED']].filter(([o2]) => optPick(g, o2) === i && (o2 !== 'M' || g.pickM != null)).map(([, l]) => `<span>${l}</span>`).join('').replace(/<\/span><span>/g, ' · '));
   const nb = g.cands.filter(c2 => !c2.nobapa).length, rest = g.cands.length - nb;
   const cell = i => { const c2 = g.cands[i]; return `<button data-i="${i}" class="${c2.nobapa ? 'nob' : ''}" aria-pressed="${i === x.pick}" title="${esc(c2.caption)}" aria-label="${esc(c2.caption)}">${thumb(pack, g, i)}${tags(i)}</button>` };
@@ -965,7 +972,7 @@ function paneCard() {
   return `${S.mode === 'special' ? queuePanel() : ''}
     <div class="group">
       <div class="cardhead"><button class="btn" id="c-prev" aria-label="Previous">◀</button><b>${esc(label(k))}</b><button class="btn" id="c-next" aria-label="Next">▶</button></div>
-      <div class="chips" id="c-sel">${shownKeys().map(kk => `<button data-k="${kk}" class="${kk === k ? 'sel' : ''}" aria-pressed="${changed(kk) ? 'true' : 'false'}">${chip(kk)}</button>`).join('')}</div>
+      <div class="chips" id="c-sel">${shownKeys().map(kk => `<button data-k="${kk}" class="${kk === k ? 'sel' : ''}" aria-pressed="${changed(kk) ? 'true' : 'false'}" title="${(groupsOf(pack).find(g2 => g2.key === kk) || {}).added ? 'A year added from the baps.org News articles' : ''}">${chip(kk)}${(groupsOf(pack).find(g2 => g2.key === kk) || {}).added ? ' <small>new</small>' : ''}</button>`).join('')}</div>
       <p class="hint">Click a card in the picture or a ${day ? 'year' : 'day'} here. A white one has your own changes.</p>${lastPanel}</div>
     <div class="group"><h3>Choose the photo</h3>
       ${g.cands.length ? `<p class="hint">All ${g.cands.length} photo${g.cands.length > 1 ? 's' : ''} from ${esc(label(k))} in your archive${rest && nb ? `: the ${nb} where Bapa’s face was found come first` : ''}.</p>${dayNote2}${albumNote}
@@ -985,7 +992,7 @@ function paneCard() {
       ${range('c-dx', 'Left or right', st.dx || 0, -.4, .4, .01, v => Math.round(v * 100))}
       ${range('c-dy', 'Up or down', st.dy || 0, -.4, .4, .01, v => Math.round(v * 100))}
       <p class="hint">Automatic and Close up never cut Bapa’s head or pagh. Moving can, so check the picture.</p></div>
-    <div class="group"><button class="btn" id="c-reset">Reset ${esc(label(k))}</button></div>
+    <div class="group"><button class="btn" id="c-reset">Reset ${esc(label(k))}</button></div>${spareGroup(pack)}
     ${day ? `<div class="group"><h3>Kind of photo, every year</h3>
       ${seg('d-style', o.photoStyle, [['auto', 'As the daily run picks'], ['close', 'Close ups of Bapa'], ['action', 'What Bapa is doing']])}
       <p class="hint">Changing this resets every year’s photo choice. Places and captions you typed stay.</p></div>` : ''}`;
@@ -1141,6 +1148,7 @@ function wire() {
   on('c-reset', 'click', () => { const s = bag(k); Object.keys(s).forEach(f => f !== 'on' && delete s[f]); build() });
   document.querySelectorAll('#pane .capchip').forEach(b => b.addEventListener('click', () => { const t = $('#c-cap'); if (!t) return; const v = b.dataset.v, cur2 = t.value.trim(); t.value = b.dataset.set || !cur2 ? v : cur2.includes(v) ? cur2 : cur2 + (/[.!?,]$/.test(cur2) ? ' ' : ', ') + v; t.dispatchEvent(new Event('input', { bubbles: true })) }));
   document.querySelectorAll('[data-last]').forEach(b => b.addEventListener('click', () => { const e = lastEntries()[+b.dataset.last]; if (e) applyLast(e) }));
+  document.querySelectorAll('[data-add]').forEach(b => b.addEventListener('click', () => addSpare(b.dataset.add)));
   document.querySelectorAll('[data-sp]').forEach(b => b.addEventListener('click', () => { S.mode = 'special'; S.special.date = b.dataset.sp; unstash('special'); P.special = null; build(); loadPack('special', b.dataset.sp).then(pk => { P.special = pk; build() }).catch(() => {}) }));
   // shared look
   segOn(p + '-look', 'look'); bind(p + '-glow', 'glow', 1); bind(p + '-jali', 'jali', 1); bind(p + '-polish', 'polish'); bind(p + '-bright', 'bright', 1); bind(p + '-warm', 'warmth', 1);
@@ -1446,9 +1454,26 @@ function storiesFor(g, pack) {
     .filter(x => Math.abs(x.off) <= span && (!words || x.off === 0 || words.test(x.a.t) || x.a.b))
     .sort((p2, q) => (q.a.b - p2.a.b) || (Math.abs(p2.off) - Math.abs(q.off)) || (q.a.n - p2.a.n)).slice(0, 6);
 }
+function spareGroup(pack) {
+  if (S.mode !== 'special' || !pack.spares || !pack.spares.length) return '';
+  return `<div class="group"><h3>Years you can add</h3><p class="hint">No photo with Bapa's face was found for these years, so they are not on the picture. Add one to put its card on, then choose its photo.</p>
+    <div class="chips">${pack.spares.map(sp => `<button data-add="${sp.year}" title="${esc((sp.cands[0] || {}).caption || '')}">${sp.year}${sp.cands[0] && sp.cands[0].place ? ' ' + esc(sp.cands[0].place) : ''} (${sp.cands.length})</button>`).join('')}</div></div>`;
+}
+function addSpare(year) {
+  const pack = P.special, i = pack.spares.findIndex(sp => String(sp.year) === String(year)); if (i < 0) return;
+  const sp = pack.spares.splice(i, 1)[0]; sp.added = true; pack.cards.push(sp); pack.cards.sort((a, b) => (a.year || 0) - (b.year || 0));
+  (S.special.added = S.special.added || []).push(sp.year); S.special.sel = sp.key;
+  Promise.all(sp.cands.slice(0, 6).map(c => photoOf(pack, c, true))).then(build); build();
+}
 function storiesPanel(g, pack) {
   const list = storiesFor(g, pack);
-  if (list === null) { loadArticles(); return '' }
+  const own = (pack.articles || []).filter(a => String(a.year) === String(g.year));
+  const ownHtml = own.length ? `<div class="group"><h3>Story lines in the pack for ${esc(String(g.year))}</h3>${own.map(a => `<div class="story"><p>${esc(a.line || '')}<br><span class="hint">${esc([a.place, a.date].filter(Boolean).join(' · '))}</span></p>
+    <div class="chips cap"><button class="capchip" data-set="1" data-v="${esc(a.line || '')}">Use as the caption</button>${a.url ? `<a class="btn small" href="${esc(a.url)}" target="_blank" rel="noopener">Open on baps.org</a>` : ''}</div></div>`).join('')}</div>` : '';
+  if (list === null) { loadArticles(); return ownHtml }
+  return ownHtml + storiesPanelDb(g, list);
+}
+function storiesPanelDb(g, list) {
   const when = o => o === 0 ? 'that day' : `${Math.abs(o)} day${Math.abs(o) > 1 ? 's' : ''} ${o < 0 ? 'before' : 'after'}`;
   const niceD = d => new Date(d + 'T12:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   return `<div class="group"><h3>baps.org stories from ${esc(String(g.year))}</h3>${list.length ? list.map(({ a, off }) => `<div class="story">
