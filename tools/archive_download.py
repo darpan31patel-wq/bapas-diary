@@ -192,7 +192,12 @@ def baps_photos(db, root, gap, stop_at, years=None, notes=None):
                     full_ok[0] = False
                     print('  baps.org has no full size originals for these, saving the web size')
         if body:
-            save(path, body)
+            try:
+                save(path, body)
+            except OSError as e:   # e.g. a name too long for the disk: note it and carry on, never stop the whole round (10 Nov 2026)
+                os.makedirs(os.path.dirname(notes), exist_ok=True)
+                with open(notes, 'a') as f:
+                    f.write(f'{album}/{file}\tcould not save: {e.strerror}\n')
             misses, skipped = 0, 0
         else:
             os.makedirs(os.path.dirname(notes), exist_ok=True)
