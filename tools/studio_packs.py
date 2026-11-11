@@ -6,11 +6,13 @@ site is a copy of the studio branch. Makes a day pack (tools/dashboard_pack.py) 
 don't have one yet, plus any dates asked for, drops day packs more than 3 days old (unless asked for by date, which
 stay 60 days), and writes site/packs/index.json listing what the Studio can open. Read only for the daily picture.
 A day the morning run makes a special picture on (Every Diwali, Every Annakut, a day in BAPS history) also gets a
-special pack (tools/special_pack.py) in site/packs/special/<date>/, kept as long as its day pack (Darpan, 6 Nov 2026);
+special pack (tools/special_pack.py) in site/packs/special/<date>/, kept as long as its day pack (Darpan, 6 Nov 2026),
+and the next 3 special days up to 90 days ahead are kept ready too (9 Nov 2026);
 packs/special/checked.json remembers the days already looked at, so a day with no special picture isn't looked at again."""
 import argparse, datetime, json, os, shutil, subprocess, sys
 from zoneinfo import ZoneInfo
 
+LOOKS = 30   # new days looked at for a special picture in one run (each is a full photo pick)
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -19,6 +21,8 @@ def main():
     ap.add_argument('site')
     ap.add_argument('--days', type=int, default=7)
     ap.add_argument('--dates', default='')
+    ap.add_argument('--ahead', type=int, default=90, help='look this many days ahead for special pictures')
+    ap.add_argument('--next', type=int, default=3, help='keep the special packs of this many coming special days ready')
     a = ap.parse_args()
     packs = os.path.join(a.site, 'packs')
     days_dir = os.path.join(packs, 'day')
@@ -46,9 +50,18 @@ def main():
     os.makedirs(specials_dir, exist_ok=True)
     checked_file = os.path.join(specials_dir, 'checked.json')
     checked = json.load(open(checked_file)) if os.path.exists(checked_file) else {}
-    for d in want:   # the special picture's pack, on the days the morning run makes one
+    # the special pictures' days: the days asked for and the next days (as the day packs), then on up to AHEAD days
+    # until the next NEXT special days are ready (Darpan, 9 Nov 2026: 'the Studio's Special picture list always holds
+    # the next 2 or 3'). Each day is looked at once (checked.json); at most LOOKS new days a run, so a run stays short.
+    ahead = [today + datetime.timedelta(days=i) for i in range(a.ahead + 1)]
+    looks = 0
+    for d in want + [d for d in ahead if d not in want]:
+        ready = sum(1 for k, v in checked.items() if v == 'made' and k >= str(today))
+        if d not in want and (ready >= a.next or looks >= LOOKS):
+            break
         if str(d) not in a.dates and (checked.get(str(d)) == 'none' or os.path.exists(os.path.join(specials_dir, str(d), 'pack.json'))):
             continue
+        looks += 1
         print('looking for a special picture on', d, flush=True)
         shutil.rmtree(os.path.join(specials_dir, str(d)), ignore_errors=True)
         r = subprocess.run([sys.executable, os.path.join(HERE, 'tools', 'special_pack.py'), str(d), specials_dir])
