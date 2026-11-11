@@ -138,7 +138,11 @@ def newer(rows, crawl, scan):
             y, when, d0, d1, place = sib[:5]
         else:   # a new album no page has shown yet: its date and place are in the file name
             m = re.match(r'(\d{4})_(\d{2})_(\d{2})_\d+_([A-Za-z_]+?)_*(?:f|Edit)?\.jpg$', file)
-            y, when, d0, d1, place = int(m[1]), f'{m[1]}-{m[2]}-{m[3]}', None, None, m[4].replace('_', ' ')
+            if not m:   # 2018_05_26_032_Rajkot_001.jpg, 2025_02_23_2542_2.jpg: the date, and a place only if it names one
+                m = re.match(r'(\d{4})_(\d{2})_(\d{2})_\d+_?([A-Za-z_]*)', file)
+            if not m:   # no date in the name either: leave it for a page to show it
+                continue
+            y, when, d0, d1, place = int(m[1]), f'{m[1]}-{m[2]}-{m[3]}', None, None, m[4].replace('_', ' ').strip() or None
         out.append((y, when, d0, d1, place, album, file, None, None, 'scan', photo_path(y, when, d0, d1, place, file, '')))
     return out
 
