@@ -12,6 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600;700&family=Arimo:wght@400;700&display=swap">
 <style>
+.preview { white-space: pre-wrap; font: 14px/1.45 var(--sans); background: rgba(255,255,255,.04); border: 1px solid var(--line, rgba(255,255,255,.12)); border-radius: 8px; padding: 10px 12px; margin: 4px 0 8px }
 /* Layout (Darpan, 28 Oct 2026: easier to use): one bar on top with what to make, which day and Export; the picture
    large in the middle, where a click on any card opens a small editor right on it; the side panel holds that card's
    photos and the settings. Stacks on a phone. */
@@ -278,7 +279,7 @@ const DAY_DEFAULT = {
   date: '2026-10-25', photoStyle: 'auto', rows: 3, shape: .9, sag: 60, hang: 'straight', tilt: 1.5, gap: 10, peg: 'gloss', pegs: true, cord: 7,
   titleAuto: true, title: '', subtitle: 'in Bapa’s Diary', oneTitle: true, festTitle: true, showCal: true, showStory: true, showTomorrow: true,
   showFooter: true, footer: 'Darpan’s Smruti Project', captions: 'all', capSize: 21, showPlace: true, showYear: true, festTags: true,
-  look: 'classic', glow: .5, jali: .13, bright: 0, warmth: 0, polish: true, years: {}, sel: null, wa: {}, txt: {},
+  look: 'classic', glow: .5, jali: .13, bright: 0, warmth: 0, polish: true, years: {}, sel: null, wa: {}, txt: {}, intro: '',
 };
 const MONTH_DEFAULT = {
   month: '2024-02', option: 'A', rows: 3, sag: 14, tilt: 1, pegs: true, titleAuto: true, title: '', subtitle: 'in Bapa’s Diary', showSub: true,
@@ -1132,6 +1133,15 @@ function paneCard() {
       <p class="hint">Changing this resets every year’s photo choice. Places and captions you typed stay.</p></div>` : ''}`;
 }
 const waText = () => { const o = S.day, w = o.wa[o.date]; return w ? w.text : (P.day?.whatsapp || '') };
+// the top line under the picture in WhatsApp (Darpan, 12 Nov 2026: "i want those words on my dashboard", "editabel"). The
+// sender adds its usual words; the Studio shows them, and a changed line goes to the folder with the caption: for every day
+// (intro_all) or just this day. Empty box = the sender's own words.
+const INTRO_USUAL = 'Jay Swaminarayan 🙏🏽 Bapa on this day, every year. See the whole day and more at bapas-diary.com';
+const introText = () => { const o = S.day, w = o.wa[o.date]; return w && w.intro != null ? w.intro : (o.intro || INTRO_USUAL) };
+const introDay = () => { const w = S.day.wa[S.day.date]; return !!(w && w.intro != null) };
+const introChanged = () => introText() !== INTRO_USUAL || !!S.day.intro;
+const waNow = () => Object.assign({ caption: waText(), whole: !!S.day.wa[S.day.date]?.whole }, introChanged() ? { intro: introText(), intro_all: !introDay() } : {});
+const waPreview = () => { const w = S.day.wa[S.day.date]; return w && w.whole ? waText() : [introText(), 'Day n', waText()].filter(Boolean).join('\n\n') };
 function paneWords() {
   const day = S.mode !== 'month', pack = P[S.mode], o = cur();
   const list = keys().map(k => {
@@ -1183,11 +1193,17 @@ function paneWords() {
       ${(() => { const wd = dayWords(pack, o); return text('d-t-cal', 'BAPS calendar line', wd.cal) + text('d-t-lead', 'Story start', wd.lead, 'On this day in 1999') + text('d-t-story', 'Story', wd.story) + text('d-t-tomorrow', 'Corner (tomorrow)', wd.tomorrow) })()}
       <div class="seg"><button class="btn small" id="d-t-reset">Back to the automatic words</button></div>
       <p class="hint">${Object.keys(o.txt || {}).length ? 'You changed some of these words for this day.' : 'These are the automatic words for this day. Type over any of them.'}</p></div>
-    <div class="group"><h3>2pm WhatsApp caption</h3>
-      <textarea id="d-wa" rows="6" aria-label="WhatsApp caption" placeholder="${o.wa[o.date]?.whole ? 'Your whole 2pm caption' : 'No extra words today'}" style="width:100%">${esc(waText())}</textarea>
-      ${check('d-wawhole', 'Replace my whole caption (top line and Day n too)', !!o.wa[o.date]?.whole)}
-      <div class="seg"><button class="btn small" id="d-wareset">Back to the automatic words</button></div>
-      <p class="hint">${o.wa[o.date] ? 'Changed. Goes out when you Export with “Use for the 2pm send”.' : 'These are the words that go under your top line and Day n at 2pm. Change them here, then Export with “Use for the 2pm send”.'}</p></div>`;
+    <div class="group"><h3>2pm WhatsApp message</h3>
+      <div class="row"><label for="d-intro">Top line, under the picture</label><textarea id="d-intro" rows="3" style="width:100%" placeholder="${esc(INTRO_USUAL)}">${esc(introText())}</textarea></div>
+      ${check('d-introday', 'Just for this day (otherwise every day from now on)', introDay())}
+      <p class="hint">${introChanged() ? (introDay() ? `Your own top line for ${esc(longDate(o.date))}.` : 'Your own top line, for every day. Saved with the words below.') : 'The usual top line. Type over it to change it.'}</p>
+      <div class="row"><label for="d-wa">Words under the top line and Day n</label>
+      <textarea id="d-wa" rows="6" aria-label="WhatsApp caption" placeholder="${o.wa[o.date]?.whole ? 'Your whole 2pm caption' : 'No extra words today'}" style="width:100%">${esc(waText())}</textarea></div>
+      ${check('d-wawhole', 'Replace my whole message (top line and Day n too)', !!o.wa[o.date]?.whole)}
+      <div class="seg"><button class="btn small primary" id="d-wasave">Save the words for the 2pm send</button><button class="btn small" id="d-wareset">Back to the usual words</button></div>
+      <p class="status" id="wa-status" role="status"></p>
+      <p class="hint">As it goes out at 2pm:</p><pre class="preview" id="wa-preview">${esc(waPreview())}</pre>
+      <p class="hint">Save here, or Export with “Use for the 2pm send”, which saves the words with the picture.</p></div>`;
   return `
     <div class="group"><h3>Every day: place and caption</h3>
       <div class="words">${list}</div>
@@ -1293,7 +1309,25 @@ function wire() {
     document.querySelectorAll('#d-style button').forEach(b => b.addEventListener('click', () => { o.photoStyle = b.dataset.v; Object.values(stateOf(o)).forEach(y => { delete y.pick; delete y.crop }); build() }));
     on('d-wa', 'input', e => { const w = o.wa[o.date] || (o.wa[o.date] = { text: '', whole: false }); w.text = e.target.value; store.set('studio-settings-v1', { mode: S.mode, day: S.day, month: S.month, special: S.special }) });
     on('d-wawhole', 'input', e => { const w = o.wa[o.date] || (o.wa[o.date] = { text: waText(), whole: false }); w.whole = e.target.checked; build() });
-    on('d-wareset', 'click', () => { delete o.wa[o.date]; build() });
+    on('d-wareset', 'click', () => { delete o.wa[o.date]; o.intro = ''; build() });
+    const keep = () => store.set('studio-settings-v1', { mode: S.mode, day: S.day, month: S.month, special: S.special });
+    on('d-intro', 'input', e => { const v = e.target.value; if (introDay()) o.wa[o.date].intro = v; else o.intro = v === INTRO_USUAL ? '' : v; keep(); $('#wa-preview').textContent = waPreview() });
+    on('d-introday', 'input', e => { if (e.target.checked) { const w = o.wa[o.date] || (o.wa[o.date] = { text: waText(), whole: false }); w.intro = introText() } else if (o.wa[o.date]) { delete o.wa[o.date].intro } keep(); build() });
+    on('d-wa', 'input', () => { $('#wa-preview').textContent = waPreview() });
+    on('d-wasave', 'click', async () => {
+      const st = $('#wa-status'), btn = $('#d-wasave');
+      if (!driveCode()) { st.className = 'status warn'; st.textContent = 'Not saved: connect Google Drive first (the button at the top).'; return }
+      btn.disabled = true; st.className = 'status'; st.textContent = 'Saving the words in your Bapa’s Diary folder…';
+      try {
+        await checkDrive();
+        const ans = await askDrive(Object.assign({ mode: 'caption', date: o.date }, waNow()));
+        if (!ans.ok) throw new Error(ans.error);
+        if (ans.mode !== 'caption') throw new Error('Your “gets 2pm picture ready” script is an older one that can’t save the words. Paste the newest script, then: ' + REDEPLOY);
+        st.className = 'status ok'; st.textContent = `Saved for ${longDate(o.date)} in ${ans.folder || 'Bapa’s Diary'} (${ans.time || ''}).${introChanged() && !ans.intro ? ' Your script kept the caption but not the top line yet: the Daily WhatsApp project needs its small change first.' : ''}`;
+        logChange('Saved the 2pm words', longDate(o.date));
+      } catch (e) { st.className = 'status warn'; st.textContent = 'Not saved. ' + ((e && e.message) || e) }
+      finally { btn.disabled = false }
+    });
     segOn('d-rows', 'rows', 1); segOn('d-hang', 'hang'); segOn('d-peg', 'peg'); segOn('d-caps', 'captions');
     bind('d-shape', 'shape', 1); bind('d-sag', 'sag', 1); bind('d-cord', 'cord', 1); bind('d-gap', 'gap', 1); bind('d-tilt', 'tilt', 1); bind('d-capsize', 'capSize', 1);
     bind('d-tauto', 'titleAuto', 0, 1); bind('d-title', 'title'); bind('d-festt', 'festTitle'); bind('d-one', 'oneTitle'); bind('d-sub', 'subtitle');
@@ -1456,8 +1490,8 @@ async function checkDrive(need) {   // true when the script is reachable, the co
 }
 async function toBase64(blob) { const buf = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < buf.length; i += 32768) s += String.fromCharCode.apply(null, buf.subarray(i, i + 32768)); return btoa(s) }
 async function sendToDrive(mode, png, jpg) {
-  const w = mode === 'replace' ? S.day.wa[S.day.date] : null;   // an edited 2pm caption goes with the picture
-  const ans = await askDrive(Object.assign({ mode, date: mode === 'extra' ? S.special.date : S.day.date, png: await toBase64(png), jpg: jpg ? await toBase64(jpg) : null }, w ? { caption: w.text, whole: !!w.whole } : {}));
+  const w = mode === 'replace' && (S.day.wa[S.day.date] || introChanged()) ? waNow() : null;   // edited 2pm words go with the picture
+  const ans = await askDrive(Object.assign({ mode, date: mode === 'extra' ? S.special.date : S.day.date, png: await toBase64(png), jpg: jpg ? await toBase64(jpg) : null }, w || {}));
   if (!ans.ok) throw new Error(ans.error);
   if (mode === 'extra' && ans.mode !== 'extra') throw new Error(`Your script does not know extra pictures yet, so it put this one in “${ans.folder}” as ${ans.name} instead. Paste the new script, then: ${REDEPLOY}`);
   if (w && !ans.caption) ans.captionNote = 'The picture is in, but your script is an older one, so the caption was not saved. Paste the newest script, then: ' + REDEPLOY;
@@ -1572,6 +1606,7 @@ function changes() {
   for (const [f, v] of Object.entries(o.txt || {})) out.push(`${WORDS[f] || f}: “${v}”`);
   for (const f of Object.keys(NAMES)) if (f in D && typeof D[f] !== 'object' && o[f] !== D[f] && !(f === 'title' && o.titleAuto)) out.push(`${NAMES[f]}: ${typeof o[f] === 'boolean' ? (o[f] ? 'on' : 'off') : o[f]}`);
   if (S.mode === 'day' && o.wa[o.date]) out.push('2pm WhatsApp caption changed' + (o.wa[o.date].whole ? ' (whole caption)' : ''));
+  if (S.mode === 'day' && introChanged()) out.push(`2pm top line: “${introText()}”` + (introDay() ? ' (this day)' : ' (every day)'));
   return out;
 }
 // baps.org stories (Darpan, 9 Nov 2026: "all article and photo information onto the dashboard too"): every News article
