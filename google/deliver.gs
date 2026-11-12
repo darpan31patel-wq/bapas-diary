@@ -485,7 +485,24 @@ function saveCaption_(folder, day, caption, whole) {
   return name;
 }
 
-/** A picture from the Studio. {key, mode: 'replace' | 'extra' | 'new' | 'caption', date: 'yyyy-MM-dd', png, jpg (base64), caption, whole} */
+/**
+ * The top line under the picture, changed in the Studio (Darpan, 12 Nov 2026; built with the Daily WhatsApp project):
+ * 'top line.txt' = for every day (all is true), '<d MMMM yyyy> top line.txt' = just that day. The file already there is
+ * updated, never copied; for every day, that day's own file is binned too; empty text bins the file. The 2pm send reads
+ * the day's file first, then 'top line.txt', else its usual top line. Returns true when saved.
+ */
+function saveIntro_(folder, day, intro, all) {
+  const text = String(intro).replace(/\r\n/g, '\n').trim();
+  const name = all ? 'top line.txt' : day + ' top line.txt';
+  if (all) { const own = alive_(folder, day + ' top line.txt'); if (own) own.setTrashed(true); }
+  const old = alive_(folder, name);
+  if (!text) { if (old) old.setTrashed(true); return false; }
+  if (old) old.setContent(text);
+  else folder.createFile(name, text, MimeType.PLAIN_TEXT).setDescription('from the Studio');
+  return true;
+}
+
+/** A picture from the Studio. {key, mode: 'replace' | 'extra' | 'new' | 'caption', date: 'yyyy-MM-dd', png, jpg (base64), caption, whole, intro, intro_all} */
 function doPost(e) {
   const answer = o => ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
   try {
@@ -497,8 +514,10 @@ function doPost(e) {
     const when = new Date(p.date + 'T12:00:00Z');
     const day = Utilities.formatDate(when, TZ, 'd MMMM yyyy');
     if (p.mode === 'caption') {   // only the 2pm caption, the picture stays as it is
-      const name = saveCaption_(folder_(), day, String(p.caption || ''), p.whole);
-      return answer({ ok: true, mode: 'caption', folder: FOLDER_NAME, name: name, time: Utilities.formatDate(new Date(), TZ, 'HH:mm') });
+      const folder = folder_();
+      const name = saveCaption_(folder, day, String(p.caption || ''), p.whole);
+      const intro = typeof p.intro === 'string' ? saveIntro_(folder, day, p.intro, p.intro_all === true || p.intro_all === 'true') : false;
+      return answer({ ok: true, mode: 'caption', folder: FOLDER_NAME, name: name, intro: intro, time: Utilities.formatDate(new Date(), TZ, 'HH:mm') });
     }
     const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
     if (p.mode === 'extra') {   // one more picture for that day's 2pm, next to the main one; the main picture and caption stay as they are
@@ -525,7 +544,8 @@ function doPost(e) {
       folder.createFile(png.setName(day + '.png')).setDescription('from the Studio');
       if (jpg) folder.createFile(jpg.setName(day + ' photo.jpg')).setDescription('from the Studio');
       const caption = typeof p.caption === 'string' ? saveCaption_(folder, day, p.caption, p.whole) : '';
-      return answer({ ok: true, mode: 'replace', folder: FOLDER_NAME, name: day + '.png', when2pm: when2pm, caption: !!caption, captionName: caption, time: Utilities.formatDate(new Date(), TZ, 'HH:mm') });
+      const intro = typeof p.intro === 'string' ? saveIntro_(folder, day, p.intro, p.intro_all === true || p.intro_all === 'true') : false;
+      return answer({ ok: true, mode: 'replace', folder: FOLDER_NAME, name: day + '.png', when2pm: when2pm, caption: !!caption, captionName: caption, intro: intro, time: Utilities.formatDate(new Date(), TZ, 'HH:mm') });
     }
     const found = DriveApp.getFoldersByName(STUDIO_NAME);
     const out = found.hasNext() ? found.next() : DriveApp.createFolder(STUDIO_NAME);
