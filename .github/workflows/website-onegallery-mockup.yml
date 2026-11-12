@@ -1,0 +1,39 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, fetches nothing
+# from baps.org. One run: packs the small photos of 2 February 2026 (the day's own and its News stories', listed in
+# mockup/one-gallery/list.tsv) into the release one-gallery-mockup, so Claude can build the "one gallery a day" mockup
+# (Darpan, 12 Nov 2026). Photos come only from the website's public photo store; no secrets are used.
+name: website-onegallery-mockup
+on:
+  push:
+    branches: ['claude/project-thread-51qbza']
+    paths: ['.github/workflows/website-onegallery-mockup.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Small photos from the photo store
+        run: |
+          mkdir -p t missing
+          : > need-drive.tsv
+          while IFS=$'\t' read -r album file lp; do
+            q=$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1]))' "$file")
+            mkdir -p "t/$album"
+            curl -fsS "https://photos.bapas-diary.com/t/$album/$q" -o "t/$album/$file" 2>/dev/null \
+              || curl -fsS "https://photos.bapas-diary.com/s/$album/$q" -o "t/$album/$file" 2>/dev/null \
+              || { rm -f "t/$album/$file"; printf '%s\t%s\t%s\n' "$album" "$file" "$lp" >> need-drive.tsv; }
+          done < mockup/one-gallery/list.tsv
+          echo "from the photo store: $(find t -type f | wc -l), still to find: $(wc -l < need-drive.tsv)"
+      - name: Into the release
+        run: |
+          echo "photos packed: $(find t -type f | wc -l) of $(wc -l < mockup/one-gallery/list.tsv)"
+          tar czf one-gallery-photos.tgz t
+          gh release view one-gallery-mockup >/dev/null 2>&1 || gh release create one-gallery-mockup --prerelease \
+            --title "One gallery a day mockup photos" --notes "Small photos of 2 February 2026 for the one gallery a day mockup. Not used by the daily picture or the website."
+          gh release upload one-gallery-mockup one-gallery-photos.tgz --clobber
