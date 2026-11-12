@@ -100,15 +100,32 @@ window.NEWS = (() => {
     }
     return o.map(x => typeof x === 'string' ? x : (x.from === x.to ? x.pre + String(x.from).padStart(x.w, '0') + x.suf : x.pre + '[' + x.from + '-' + x.to + '/' + x.w + ']' + x.suf));
   }
+  // "F" carries each photo's exact file name on static.wn.baps-apps.org, in the same order as the names: the part after
+  // the name is "_display-<number>.JPG", written short as the number's step from the one before (and the ending only
+  // when it changes). A photo in another folder is written whole after "!".
+  function files(sorted, dir) {
+    let n = 0, ext = null;
+    return sorted.map(src => {
+      const st = stem(src), d = src.slice(0, src.lastIndexOf('/') + 1), tail = src.slice(d.length + st.length), m = tail.match(/^_display-(\d+)(\.\w+)$/);
+      if (d !== dir || !m || !src.slice(d.length).startsWith(st)) return '!' + encodeURI(src);
+      const t = String(+m[1] - n) + (m[2] === ext ? '' : m[2]);
+      n = +m[1]; ext = m[2];
+      return t;
+    });
+  }
   function text(from = 0, to = out.length) {
     const s = [];
     for (let i = from; i < to && out[i]; i++) {
       const a = out[i];
-      let r = runs(a.photos.map(p => stem(p[0])).sort());
+      const sorted = a.photos.map(p => p[0]).sort((x, y) => stem(x) < stem(y) ? -1 : stem(x) > stem(y) ? 1 : 0);
+      let r = runs(sorted.map(stem));
       if (r.join('\n').length > 2500) r = [];      // too many to pass on: the photo count and folder are still saved
-      const caps = a.photos.filter(p => p[1]).length, dir = a.photos.length ? a.photos[0][0].slice(0, a.photos[0][0].lastIndexOf('/') + 1) : '';
-      s.push('@@@ ' + a.p, 'L ' + a.listed, 'H ' + hash(JSON.stringify([a.lines, r, dir])), 'N ' + a.photos.length + ' ' + caps, 'P ' + dir);
+      const caps = a.photos.filter(p => p[1]).length, first = (a.photos.find(p => !/^vi\//.test(p[0])) || a.photos[0] || [''])[0], dir = first.slice(0, first.lastIndexOf('/') + 1);   // not a YouTube thumbnail's folder
+      const f = r.length ? files(sorted, dir) : [];
+      s.push('@@@ ' + a.p, 'L ' + a.listed, 'H ' + hash(JSON.stringify(f.length ? [a.lines, r, dir, f] : [a.lines, r, dir])), 'N ' + a.photos.length + ' ' + caps, 'P ' + dir);
+      if (a.refresh) s.push('R 1');
       for (const x of r) s.push('S ' + x);
+      if (f.length) s.push('F ' + f.join(' '));
       for (const l of a.lines) s.push('T ' + l);
     }
     return s.join('\n');
@@ -123,5 +140,15 @@ window.NEWS = (() => {
     document.body.appendChild(el);
     return s.length;
   }
-  return {run, text, show, part: i => out[i], hash};
+  // Articles saved before the exact file names were kept (News archive thread, 12 Nov 2026): read only their gallery
+  // pages again, gently, so the "F" names can be added. NEWS.refresh([paths from news_merge_daily.py --refresh]).
+  async function refresh(paths) {
+    out.length = 0;
+    for (const p of paths) {
+      const g = await get(p + '/gallery'); await sleep(GAP);
+      if (g) out.push({p, listed: '', lines: [], photos: gallery(g), refresh: true});
+    }
+    return out.map((a, i) => ({i, p: a.p, photos: a.photos.length}));
+  }
+  return {run, refresh, text, show, part: i => out[i], hash};
 })();
