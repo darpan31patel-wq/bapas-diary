@@ -190,7 +190,7 @@ def main():
     years, counts = {}, {}
     ready = set(open(a.news_ready).read().split()) if a.news_ready and os.path.exists(a.news_ready) else None
     rows = db.execute("SELECT year, date, date_from, date_to, place, album, file, caption, is_bapa, source FROM photos "
-                      "ORDER BY coalesce(date, date_from), album, file")
+                      "ORDER BY coalesce(date, date_from), source = 'news', album, file")   # a day's own photos first, then its News stories' (one gallery a day, Darpan 12 Nov 2026)
     for y, date, d0, d1, place, album, file, cap, bapa, source in rows:
         if source == 'news' and ready is not None and album not in ready:
             continue   # a News photo not in the photo store yet
