@@ -12,6 +12,10 @@ on:
       date:
         description: 'Date to make (YYYY-MM-DD). Leave blank for today.'
         required: false
+      if_needed:
+        description: "Only make it if today's isn't made yet (the Google script asks for this at 8:30am when GitHub is late)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -29,9 +33,11 @@ jobs:
 
       - name: Already made today?
         id: done
-        if: github.event_name == 'schedule'
+        if: github.event_name == 'schedule' || inputs.if_needed
         run: |
-          if grep -q "^$(TZ=Europe/London date +%F) " log.md; then echo "skip=1" >> "$GITHUB_OUTPUT"; fi
+          # the newest log on main, so a run GitHub started late still sees a picture made in the meantime (Darpan, 12 Nov 2026)
+          git fetch -q --depth=1 origin "${GITHUB_REF_NAME}" && git show FETCH_HEAD:log.md > /tmp/log.md || cp log.md /tmp/log.md
+          if grep -q "^$(TZ=Europe/London date +%F) " /tmp/log.md; then echo "skip=1" >> "$GITHUB_OUTPUT"; fi
 
       - uses: actions/setup-python@v5
         if: steps.done.outputs.skip != '1'
