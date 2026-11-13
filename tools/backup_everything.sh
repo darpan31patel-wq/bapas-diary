@@ -90,6 +90,12 @@ if git -C mirror.git fetch -q --prune origin '+refs/heads/*:refs/heads/*' '+refs
   fi
 else problem "Could not read the code from GitHub"; fi
 
+# the emergency publish on GitLab needs site/latest-site.zip in R2; if a deploy could not put it there, use Drive's copy
+if [ $R2_OK = 1 ] && ! aws s3 ls "s3://$BUCKET/site/latest-site.zip" --endpoint-url "$R2" >/dev/null 2>&1; then
+  rclone copyto "$DRIVE/site/latest site.zip" latest-site.zip && r2 cp latest-site.zip "s3://$BUCKET/site/latest-site.zip" \
+    && echo "site/latest-site.zip put in R2 from Drive" || problem "No site copy in R2 for the emergency publish"
+  rm -f latest-site.zip
+fi
 [ $R2_OK = 1 ] && r2_keep site   # the site copies each deploy leaves (website-deploy.yml)
 
 step "GitHub releases the website and 2pm picture are built from (Sundays: only files that changed)"
@@ -116,9 +122,12 @@ fi
 step "Studio changes log, missed searches and feedback (Cloudflare KV)"
 CF=https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces
 cfapi() { curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$@"; }
-for title in studio-log missed-searches; do
-  id=$(cfapi "$CF?per_page=100" | jq -r --arg t "$title" '.result[]? | select(.title|ascii_downcase|gsub("_";"-")==$t) | .id' | head -1)
-  [ -n "$id" ] || { echo "$title: no store found"; continue; }
+# the stores are found through the website's own bindings (STUDIO_LOG, MISSED), whatever Darpan named them
+BINDS=$(cfapi "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/bapas-diary" | jq -c '.result.deployment_configs.production.kv_namespaces // {}')
+for pair in STUDIO_LOG:studio-log MISSED:missed-searches; do
+  bind=${pair%%:*}; title=${pair#*:}
+  id=$(echo "$BINDS" | jq -r --arg b "$bind" '.[$b].namespace_id // empty')
+  [ -n "$id" ] || { problem "Could not find the $title store ($bind) on the website"; continue; }
   python3 - "$CF/$id" "$title.json" <<'PY' || problem "Could not read the $title store"
 import json, os, sys, urllib.request
 base, out = sys.argv[1], sys.argv[2]
