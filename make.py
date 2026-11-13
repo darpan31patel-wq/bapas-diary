@@ -2051,20 +2051,100 @@ def tg_day(day, items):
                    'tg': True, 'post': e.get('url'), 'guru': e.get('guru', False), 'unframe': sat,
                    'boost': (TG_GAP_BOOST if gap else 0) - .2 * away - (1 if e.get('guru') else .01) * k}
                   for k, (n, u) in enumerate(urls)]   # the channel's lead photo first (for an earlier guru, well first), the very day before a nearby one
-    add = set(special_choices()['add'])
-    special = max((e for e in evs if e.get('special') or (e['date'][:10] in add and e.get('posts'))), key=tg_rank, default=None)
+    special = max((e for e in evs if e.get('special')), key=tg_rank, default=None)
     return extra, evs, special
 
 
+SPECIAL_FILE = os.path.join(HERE, 'archive', 'special-days.json')
+
+
 def special_choices():
-    """Darpan, 13 Nov 2026 ('i want the ability to choose what does and doesnt becomes a special card'): his own
-    list, archive/special-days.json. 'add': story dates (YYYY-MM-DD, the story's own date) that get their special
-    picture every year on that day; 'off': days (MM-DD) that never get a special picture of any kind."""
+    """Darpan, 13 Nov 2026 ('i want the ability to choose through any event, any day, any year, to make an event a
+    special card'): his own choices, archive/special-days.json, written by this project or by the Studio.
+      "add": [{"day": "11-13" every year | "2026-11-13" that day only,
+               "kind": "story"  ref = the story's date (1905-11-13) or its channel post link
+                       "news"   ref = the News article's path (/News/2003/....aspx)
+                       "year"   year = a year of that day: its photos of the day
+                       "photos" photos = [photo addresses], with year, place, headline, story
+               optional: headline, story, place, year, photos (they win over what the builder finds), note}]
+      "off": ["11-20" every year | "2026-11-20" that day only]
+    Returns {'add': [...], 'off': [...]}; a broken or missing file is no choices at all."""
     try:
-        c = json.load(open(os.path.join(HERE, 'archive', 'special-days.json'), encoding='utf-8'))
+        c = json.load(open(SPECIAL_FILE, encoding='utf-8'))
     except (OSError, ValueError):
         c = {}
-    return {'add': [k for k in c.get('add', {})], 'off': [k for k in c.get('off', {})]}
+    add, off = c.get('add') or [], c.get('off') or []
+    return {'add': [x for x in add if isinstance(x, dict) and x.get('day')], 'off': [str(d) for d in off]}
+
+
+def on_day(d, day):
+    return str(d) in (f'{day:%m-%d}', f'{day}')
+
+
+def special_off(day):
+    return any(on_day(d, day) for d in special_choices()['off'])
+
+
+def chosen_specials(day, items=()):
+    """The special pictures Darpan chose for this day, in his order, each as a story the special picture is drawn
+    from: {date, place, headline, line, story, urls or posts}. A choice whose story or photos can't be found is left out."""
+    out = []
+    for c in special_choices()['add']:
+        if not on_day(c['day'], day):
+            continue
+        kind, ref, ev = c.get('kind', 'story'), str(c.get('ref') or ''), None
+        if kind == 'story':
+            evs = [e for e in tg_all() if e.get('posts') and (e.get('url') == ref or e['date'][:10] == ref[:10])]
+            ev = dict(max(evs, key=tg_rank)) if evs else None
+        elif kind == 'news':
+            ev = news_story(ref)
+        elif kind == 'year':
+            y = int(c.get('year') or 0)
+            mine = [x for x in items if x['y'] == y and x.get('d', '')[:10] == f'{y}-{day:%m-%d}'] or [x for x in items if x['y'] == y]
+            if mine:
+                ev = {'date': mine[0].get('d', '')[:10] or f'{y}-{day:%m-%d}', 'place': mine[0].get('p', ''),
+                      'line': caption(mine[0]), 'urls': [x['i'] for x in mine[:8]]}
+        elif kind == 'photos':
+            ev = {'date': f"{c.get('year') or day.year}-{day:%m-%d}", 'line': c.get('headline') or ''}
+        if ev is None:
+            print('  chosen special not found:', c)
+            continue
+        for k in ('headline', 'story', 'place'):
+            if c.get(k):
+                ev[k] = c[k]
+        if c.get('year'):
+            ev['date'] = f"{c['year']}{ev['date'][4:]}"
+        if c.get('photos'):
+            ev['urls'] = list(c['photos'])
+        ev['chosen'] = True
+        out.append(ev)
+    return out
+
+
+def news_story(path):
+    """A baps.org News article as a special picture's story: its saved line (archive/news/lines.json) or its title,
+    its place and its gallery photos, from the archive's database."""
+    ev = None
+    try:
+        lines = json.load(open(os.path.join(HERE, 'archive', 'news', 'lines.json'), encoding='utf-8'))
+        k = next((k for k, v in lines.items() if v.get('article') == path), None)
+        if k:
+            ev = {'date': k[:10], 'place': lines[k].get('place', ''), 'line': lines[k]['line'], 'whatsapp': lines[k].get('whatsapp')}
+    except (OSError, ValueError):
+        pass
+    if not os.path.exists(ARCHIVE_DB):
+        return ev
+    db = sqlite3.connect(ARCHIVE_DB)
+    try:
+        row = db.execute('SELECT date, place, title FROM articles WHERE path = ?', (path,)).fetchone()
+        if row and not ev:
+            ev = {'date': row[0][:10], 'place': row[1] or '', 'line': row[2] or ''}
+        if ev:
+            ev['urls'] = [f'https://www.baps.org/Data/Sites/1/Media/GalleryImages/{a}/WebImages/{f}'
+                          for a, f in db.execute('SELECT album, file FROM article_photos WHERE path = ? LIMIT 8', (path,))]
+    finally:
+        db.close()
+    return ev
 
 
 UNFRAME_CAPTION = 124   # the channel's caption written along the bottom of the darshan (Darpan, 22 Oct 2026: '...uja ashirwad - London' still showed at 88)
@@ -2644,7 +2724,7 @@ def compose_special(ev, day, lead=None):
     """Idea 3: on a big day in BAPS history, a second picture of that day's story: the channel's lead photo large,
     four more beside it under the story, in the daily picture's colours. lead: the year card's own photo of the
     moment (baps.org), shown large first when the special picture comes from a story the card shows."""
-    urls = tg_photos(ev['posts'])[:8]
+    urls = (ev.get('urls') or tg_photos(ev.get('posts') or []))[:8]   # Darpan's own choice may bring its photos
     cache = os.path.join(HERE, '.cache')
     ims = [lead.convert('RGB')] if lead is not None else []
     for u in urls:
@@ -2836,6 +2916,8 @@ def main():
     for f in ('caption.txt', 'bapas-diary-special.png', 'bapas-diary-special.jpg', 'flags.txt', 'bapas-diary-backup.png'):   # nothing left over from another day
         if os.path.exists(os.path.join(a.out, f)):
             os.remove(os.path.join(a.out, f))
+    for f in glob.glob(os.path.join(a.out, 'bapas-diary-special-*')):   # the second, third... chosen special pictures
+        os.remove(f)
     if story:
         print('  story:', story['date'], story['line'], '(in the picture)')
     # Darpan, 20 Oct 2026: a story the picture already tells (its history line, or a card) is not told again under
@@ -2891,12 +2973,21 @@ def main():
             compose(rest, day, seed=mmdd, style=LIVE_STYLE, history=tg_story(tg_evs, rest)).save(
                 os.path.join(a.out, 'bapas-diary-backup.png'), optimize=True)
         print('  flagged:', ', '.join(str(x['y']) for x in unsure))
-    if f'{day:%m-%d}' in special_choices()['off']:   # Darpan's own 'no special picture on this day'
-        print('  no special picture: switched off in archive/special-days.json')
-        special = None
-        for f in ('bapas-diary-special.png', 'bapas-diary-special.jpg'):
-            if os.path.exists(os.path.join(a.out, f)):
+    chosen = [] if special_off(day) else chosen_specials(day, items)
+    if special_off(day) or chosen:   # Darpan's own choice wins: 'off' means none at all, a chosen story replaces the automatic one
+        print('  special picture:', 'switched off by Darpan' if not chosen else f'{len(chosen)} chosen by Darpan')
+        for f in os.listdir(a.out):
+            if f.startswith('bapas-diary-special'):
                 os.remove(os.path.join(a.out, f))
+        special, story_lead = None, None
+    for n, ev in enumerate(chosen):   # the first is bapas-diary-special.png, then bapas-diary-special-2.png...
+        sp = compose_special(ev, day)
+        if sp:
+            k = len([f for f in os.listdir(a.out) if f.startswith('bapas-diary-special') and f.endswith('.png')])
+            name = 'bapas-diary-special' + (f'-{k + 1}' if k else '')
+            sp.save(os.path.join(a.out, name + '.png'), optimize=True)
+            sp.save(os.path.join(a.out, name + '.jpg'), quality=95, optimize=True)
+            print(f'  chosen special picture {name}:', ev['date'], ev.get('headline') or ev.get('line'))
     if special:
         sp = compose_special(special, day, lead=story_lead)
         if sp:
