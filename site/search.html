@@ -172,6 +172,15 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 .big-info .tithi { font: 700 11px var(--sans); letter-spacing: .22em; text-transform: uppercase; color: var(--gold-soft); }
 .big-info .fest { font: 600 20px var(--serif); color: var(--cap); }
 .big-info .about { color: var(--muted); font: italic 500 16px/1.45 var(--serif); white-space: pre-line; }
+.big-pic .story .ttl { display: block; font: 700 23px/1.3 var(--serif); margin-bottom: 12px; }
+/* a Daily Satsang prasang (Darpan, 13 Nov 2026): our English translation first, and beside it one small quiet word that
+   shows the Gujarati as baps.org wrote it, and back ("not 100% confident on your translation") */
+.big-pic .story .lang { display: flex; gap: 12px; align-items: baseline; margin-bottom: 14px; font: 600 11px var(--sans); letter-spacing: .18em; text-transform: uppercase; color: var(--gold-deep); }
+.big-pic .story .lang button { all: unset; cursor: pointer; font: 500 15px var(--serif); letter-spacing: 0; text-transform: none; color: var(--gold-deep); text-decoration: underline; text-underline-offset: 3px; }
+.big-pic .story .lang button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.big-info .src { color: var(--muted); font: 500 14px/1.4 var(--sans); }
+.big-info .src a { color: var(--gold-soft); }
+.card.read .ttl { display: block; font-weight: 700; margin-bottom: 4px; }
 .big-info hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; width: 100%; }
 .big-nav { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line); font: 700 11px var(--sans); letter-spacing: .14em; color: var(--muted); }
 .big-nav button { font: 700 11px var(--sans); letter-spacing: .16em; text-transform: uppercase; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--gold-hi); cursor: pointer; }
@@ -397,6 +406,7 @@ const UNDATED = '~';   // the date of a photo with no date: sorts after every re
 const $ = id => document.getElementById(id);
 
 // One list of everything, kept in date order: baps.org photos (kind 'photo'), On this day stories (kind 'post'),
+// the Daily Satsang prasangs from baps.org, under the day each one happened (kind 'read', data/reads.json),
 // and BAPS calendar days that have a festival or note (kind 'day'). Every item also carries its date's calendar
 // words, so "Diwali" finds every photo taken on a Diwali day. Results are shown grouped by date under the calendar.
 let items = [], cal = {}, mandirDay = {}, loaded = 0, total = 0, hits = [], shown = 0, lastDate = '';
@@ -523,9 +533,9 @@ function render(byYear, want) {
     return;
   }
   missed('');
-  const nPhotos = hits.filter(h => h.kind === 'photo').length, nPosts = hits.filter(h => h.kind === 'post').length;
+  const nPhotos = hits.filter(h => h.kind === 'photo').length, nPosts = hits.filter(h => h.kind === 'post').length, nReads = hits.filter(h => h.kind === 'read').length;
   const nDates = new Set(hits.filter(h => !h.u).map(h => h.d)).size, nNone = hits.filter(h => h.u).length;
-  $('count').innerHTML = nNone && nNone === hits.length && !picMode ? `<b>${nNone.toLocaleString()}</b> darshan photo${nNone === 1 ? '' : 's'}` : (latestOn() && !picMode ? '<span class="latest">Latest vicharan, newest first</span>' + latestVideo() : '') + (picMode ? `<b>${nPhotos.toLocaleString()}</b> photos most like your picture, closest first` + (loaded < total ? ' (still loading)' : '') : `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'}${latestOn() ? '' : ` and <b>${nPosts.toLocaleString()}</b> On this day stor${nPosts === 1 ? 'y' : 'ies'}`} on <b>${nDates.toLocaleString()}</b> date${nDates === 1 ? '' : 's'}${nNone ? `, and <b>${nNone.toLocaleString()}</b> more darshan` : ''}`
+  $('count').innerHTML = nNone && nNone === hits.length && !picMode ? `<b>${nNone.toLocaleString()}</b> darshan photo${nNone === 1 ? '' : 's'}` : (latestOn() && !picMode ? '<span class="latest">Latest vicharan, newest first</span>' + latestVideo() : '') + (picMode ? `<b>${nPhotos.toLocaleString()}</b> photos most like your picture, closest first` + (loaded < total ? ' (still loading)' : '') : `<b>${nPhotos.toLocaleString()}</b> photo${nPhotos === 1 ? '' : 's'}${latestOn() ? '' : `${nReads ? ', ' : ' and '}<b>${nPosts.toLocaleString()}</b> On this day stor${nPosts === 1 ? 'y' : 'ies'}${nReads ? ` and <b>${nReads.toLocaleString()}</b> prasang${nReads === 1 ? '' : 's'}` : ''}`} on <b>${nDates.toLocaleString()}</b> date${nDates === 1 ? '' : 's'}${nNone ? `, and <b>${nNone.toLocaleString()}</b> more darshan` : ''}`
     + (loaded < total ? ' (still loading)' : ''));
   $('results').innerHTML = `<div class="${picMode ? 'grid' : 'days slim'}" id="cards"></div>`;
   shown = 0; lastDate = '';
@@ -606,12 +616,29 @@ function postCard(p, want, i) {
     ${p.place ? `<div class="place${said(p, 'place')}">${highlight(p.place, want)}</div>` : ''}
     </div></article>`;
 }
+// a Daily Satsang prasang: its own title, the start of its words (English when translated, else the Gujarati), its day and place
+const READ_KIND = { prasang: 'Prasang', essay: 'Essay', lekhmala: 'Lekhmala' };
+const readLang = p => p.en.length && !(p.gu.length && window.BapaGujarati && BapaGujarati.on()) ? 'en' : 'gu';
+function readCard(p, want, i) {
+  const words = p[readLang(p)].join('\n'), text = words.length > 600 ? words.slice(0, 600) + '…' : words;
+  return `<article class="card post read" data-i="${i}" tabindex="0"><div class="txt" translate="no">
+    <span class="badge">${READ_KIND[p.k] || 'Prasang'}</span>
+    <p class="cap">${p.title ? `<span class="ttl">${highlight(p.title, want)}</span>` : ''}${highlight(text, want)}</p>
+    <div class="date${said(p, 'date')}">${niceDate(p.d)}</div>
+    ${p.place ? `<div class="place${said(p, 'place')}">${highlight(p.place, want)}</div>` : ''}
+    </div></article>`;
+}
+function readStory(p, lang) {
+  const other = lang === 'en' ? 'gu' : 'en', can = p.en.length && p.gu.length;
+  $('big-pic').innerHTML = `<div class="story" translate="no">${can || lang === 'en' ? `<div class="lang"><span>${lang === 'en' ? 'English translation' : 'ગુજરાતી'}</span>${can ? `<button type="button" id="read-flip" lang="${other}">${other === 'gu' ? 'ગુજરાતી' : 'English'}</button>` : ''}</div>` : ''}${p.title ? `<span class="ttl">${esc(p.title)}</span>` : ''}${esc(p[lang].join('\n\n'))}</div>`;
+  if (can) $('read-flip').addEventListener('click', () => readStory(p, other));
+}
 var lastWant = [];
 function more(want = lastWant) {
   const box = $('cards'), next = hits.slice(shown, shown + PAGE);
   let html = '', carry = '', open = false;   // carry: more photos of the day the last batch ended on, for its own box
   next.forEach((p, i) => {
-    const card = p.kind === 'photo' ? photoCard(p, want, shown + i) : p.kind === 'post' ? postCard(p, want, shown + i) : '';
+    const card = p.kind === 'photo' ? photoCard(p, want, shown + i) : p.kind === 'post' ? postCard(p, want, shown + i) : p.kind === 'read' ? readCard(p, want, shown + i) : '';
     if (picMode) { html += card; return; }
     if (p.d !== lastDate) {
       if (open) html += '</div></section>';
@@ -758,6 +785,10 @@ function showBig(i) {
     $('big-pic').innerHTML = `<img src="${medium}" alt="${esc(p.cap)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'soon',textContent:'Photo coming soon'}))">`;
     $('big-info').innerHTML = `<div class="cap">${esc(p.cap || 'Darshan')}</div><div class="meta">${esc(g[1] ? niceDate(g[0]) + ' to ' + niceDate(g[1]) : niceDate(g[0]))} · ${esc(g[2])}</div>${p.m ? `<div class="mandir">${[...p.m].map(k => MANDIR[k][1]).join(' · ')}</div>` : ''}<hr><div class="when">${esc(day)}</div>${calInfo(p.d)}<div class="gos" id="big-go">${p.d >= '1999' ? `<a class="go" href="/calendar/#${p.d}">Calendar &rsaquo;</a>` : ''}</div>`;
     bigVideo(p);
+  } else if (p.kind === 'read') {
+    readStory(p, readLang(p));
+    const page = p.page !== p.d ? `, ${longDate(p.page)}` : '';
+    $('big-info').innerHTML = `<span class="badge">${READ_KIND[p.k] || 'Prasang'}</span>${p.place ? `<div class="meta">${esc(p.place)}</div>` : ''}<div class="src">From <a href="${esc(p.url)}" target="_blank" rel="noopener">Daily Satsang on baps.org${esc(page)}</a></div><hr><div class="when">${esc(day)}</div>${calInfo(p.d)}<div class="gos">${p.d >= '1999' ? `<a class="go" href="/calendar/#${p.d}">Calendar &rsaquo;</a>` : ''}</div>`;
   } else {
     $('big-pic').innerHTML = `<div class="story">${esc(p.text)}</div>`;
     $('big-info').innerHTML = `<span class="badge">On this day</span>${p.m ? `<div class="mandir">${[...p.m].map(k => MANDIR[k][1]).join(' · ')}</div>` : ''}${p.place ? `<div class="meta">${esc(p.place)}</div>` : ''}<hr><div class="when">${esc(day)}</div>${calInfo(p.d)}`;
@@ -867,7 +898,7 @@ function add(list) {
 }
 async function load() {
   const about = await (await fetch('data/about.json')).json();
-  total = about.years.length + 1 + (about.calendar ? 1 : 0) + (about.undated ? 1 : 0);
+  total = about.years.length + 1 + (about.calendar ? 1 : 0) + (about.undated ? 1 : 0) + (about.reads ? 1 : 0);
   const nPhotos = Object.values(about.photos).reduce((a, b) => a + b, 0);
   // the years and the photo count follow the data, so they grow by themselves as photos are added
   // Darpan, 3 Nov 2026: one plain line; the darshan photos count in the total (the number keeps growing with the data)
@@ -898,7 +929,11 @@ async function load() {
   const none = about.undated ? fetch('data/undated.json').then(r => r.json()).then(data => add(data.p.map(([file, tags, cap]) =>
     ({ kind: 'photo', u: 1, y: 0, g: ['', '', '', data.album], d: UNDATED, city: '', file, cap: cap || 'Darshan', tags: tags || '', m: '', b: true,
        hay: ('darshan ' + (cap || '') + ' ' + (tags || '')).toLowerCase() })))).catch(() => add([])) : null;
-  await tg; await none;
+  // the Daily Satsang prasangs: English and Gujarati words both find them
+  const reads = about.reads ? fetch('data/reads.json').then(r => r.json()).then(list => add(list.map(([d, place, k, title, en, gu, url, page]) =>
+    ({ kind: 'read', d, y: +d.slice(0, 4), place, k, title, en, gu, url, page, text: (en.length ? en : gu).join('\n'),
+       hay: [title, place, ...en, ...gu].join(' ').toLowerCase() })))).catch(() => add([])) : null;
+  await tg; await none; await reads;
   // 'today' opens with no filters at all; links from Today and the Calendar still pick their date
   // (Darpan, 30 Oct 2026: "no search filters as default please")
   if (START_YEAR && START_YEAR !== 'today' && !linked && !$('q').value.trim() && !$('year').value && !$('month').value) {   // unless they already started searching
