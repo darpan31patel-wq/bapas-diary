@@ -266,10 +266,11 @@ def main():
             c = card(pool, out, f'card{k + 1}', y, 'story', x, others)
             c.update(role='big' if k == 0 else 'small', place=ev.get('place') or '')
             cards.append(c)
-        pack = dict(date=str(day), kind='story', source=drawn['source'], title=f'{day.day} {day:%B} in Bapa’s Diary',
+        pack = dict(date=str(day), kind='story', source=drawn['source'], title=f'{day.day} {day:%B}',
                     subtitle='A special day in BAPS history', footer=make.FOOTER, cal_line='',
                     headline=ev.get('headline') or ev['line'],
-                    story=(ev.get('whatsapp') if lead else None) or ev.get('story') or ev.get('whatsapp') or ev['line'],
+                    story='\n\n'.join(make.special_words(ev, bool(lead))),   # the channel's whole post (Darpan, 13 Nov 2026: 'stop cutting everything out')
+                    story_short=ev.get('whatsapp') or ev.get('story') or ev['line'],
                     story_date=ev['date'][:10], story_place=ev.get('place') or '',
                     layout=dict(name='story', big=[70, 200, 1180, 800], small_from=1360, size=[make.W, make.H], unit=make.SCALE))
     pool.close()
