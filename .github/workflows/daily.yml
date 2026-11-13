@@ -188,7 +188,7 @@ jobs:
           [ -e out/bapas-diary-special.png ] && cp out/bapas-diary-special.png "preview/$(cat out/date.txt)-special.png"
           for f in out/bapas-diary-special-*.png; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-${f#out/bapas-diary-}"; done
           [ -e out/flags.txt ] && cp out/flags.txt "preview/$(cat out/date.txt)-flags.txt"; fi
-          for f in out/all-photos.txt out/album-check.txt; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-$(basename "$f")"; done
+          for f in out/all-photos.txt out/album-check.txt out/search.txt; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-$(basename "$f")"; done
           for f in out/caption-*.jpg out/caption-*.png; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-$(basename "$f")"; done
           for d in out/photos-*; do [ -d "$d" ] && rm -rf "preview/$(cat out/date.txt)-$(basename "$d")" && cp -r "$d" "preview/$(cat out/date.txt)-$(basename "$d")"; done
           git config user.name "github-actions[bot]"

@@ -2057,6 +2057,9 @@ def tg_day(day, items):
 
 
 SPECIAL_FILE = os.path.join(HERE, 'archive', 'special-days.json')
+SPECIAL_SITE = os.environ.get('SPECIAL_SITE', 'https://bapas-diary.com/special-days.json')
+_CHOICES = None
+SEARCHED = []   # what the day's deep search found, most special first (out/search.txt)
 DAILY_SPECIAL = os.environ.get('DAILY_SPECIAL', '1') != '0'   # a special picture every day (Darpan, 13 Nov 2026: 'want 1 special picture everyday'; his yes to go live 21:34)
 
 
@@ -2071,12 +2074,24 @@ def special_choices():
                optional: headline, story, place, year, photos (they win over what the builder finds), note}]
       "off": ["11-20" every year | "2026-11-20" that day only]
     Returns {'add': [...], 'off': [...]}; a broken or missing file is no choices at all."""
+    global _CHOICES
+    if _CHOICES is not None:
+        return _CHOICES
     try:
         c = json.load(open(SPECIAL_FILE, encoding='utf-8'))
     except (OSError, ValueError):
         c = {}
-    add, off = c.get('add') or [], c.get('off') or []
-    return {'add': [x for x in add if isinstance(x, dict) and x.get('day')], 'off': [str(d) for d in off]}
+    add, off = list(c.get('add') or []), list(c.get('off') or [])
+    # Darpan, 13 Nov 2026: what he chooses on the Studio's Choose tab is kept at the website until it can write into the
+    # repository; those come first (the newest word), the file's after. The website not answering changes nothing.
+    try:
+        w = json.loads(fetch(SPECIAL_SITE, tries=2, timeout=15).decode('utf-8'))
+        add = [x for x in w.get('add') or [] if x not in add] + add
+        off = [d for d in w.get('off') or [] if d not in off] + off
+    except Exception as e:
+        print('  his Studio choices could not be read from the website:', e)
+    _CHOICES = {'add': [x for x in add if isinstance(x, dict) and x.get('day')], 'off': [str(d) for d in off]}
+    return _CHOICES
 
 
 def on_day(d, day):
@@ -2137,39 +2152,99 @@ def year_story(y, day, items, lead=None):
             'line': caps[0] if caps else f'{day.day} {day:%B} {y}', 'paras': caps[1:], 'urls': [x['i'] for x in mine[:8]]}
 
 
+def day_search(day, items, photos, tg_evs):
+    """Darpan, 13 Nov 2026 (deep search): before the day's special moment is chosen, everything the day has is gone
+    through, not only the channel's stories: every photo caption of the day in every year, every baps.org News article
+    of this exact date, every history story (with or without pictures, the UK diary's too), and every festival the
+    calendar gives that date in a past year. Each find is a candidate with a score; one find per year. No AI: fixed
+    rules, the same day always gives the same list. Returns the candidates, the most special first."""
+    mmdd = f'{day:%m-%d}'
+    exact = lambda y: [x for x in items if x['y'] == y and x.get('d', '')[:10] == f'{y}-{mmdd}' and not x.get('tg')]
+    found = {}
+
+    def put(key, score, ev, why):
+        ev = dict(ev, score=round(score), why=why)
+        if key not in found or found[key]['score'] < ev['score']:
+            found[key] = ev
+    # every history story of the day
+    for d in {e['date'][:10] for e in tg_evs if e['date'][5:10] == mmdd}:
+        same = [e for e in tg_evs if e['date'][:10] == d]
+        e = dict(max(same, key=lambda e: (bool(e.get('posts') and e.get('photos')),) + tg_rank(e)), kind='story')
+        y = int(d[:4])
+        score = 100 + (50 if e.get('special') else 0) + min(e.get('reposts', 1), 5)
+        if e.get('channel'):   # the UK diary: its own channel's photos
+            try:
+                e['urls'] = [u for _, u in tg_photos(e.get('posts') or [], e['channel'], pairs=True)]
+            except Exception:
+                e['urls'] = []
+            score = 80
+        if not ((e.get('posts') and e.get('photos')) or e.get('urls')):   # a story told without pictures: that year's photos of the day
+            e['urls'] = [x['i'] for x in exact(y)[:8]]
+            score -= 30
+        if e.get('urls') or (e.get('posts') and e.get('photos')):
+            put(d, score, e, 'history story' + (' (a big day)' if e.get('special') else ''))
+    # every News article of this exact date
+    paths = [e['article'] for e in news_stories(day) if e.get('article')]
+    if os.path.exists(ARCHIVE_DB):
+        db = sqlite3.connect(ARCHIVE_DB)
+        try:
+            paths += [r[0] for r in db.execute('SELECT path FROM articles WHERE substr(date, 6, 5) = ? AND year < ? AND photos > 0',
+                                               (mmdd, day.year)) if r[0] not in paths]
+        except sqlite3.Error as e:
+            print('  the News articles could not be read:', e)
+        finally:
+            db.close()
+    for path in paths:
+        ev = news_story(path)
+        if ev and ev.get('urls'):
+            words = f"{ev.get('line', '')} {' '.join(ev.get('paras') or [])[:600]}"
+            put(ev['date'][:10], 50 + min(ev.get('bapa', 0), 20) + (20 if SPECIAL.search(words) else 0) + (10 if ev.get('paras') else 0),
+                ev, 'News article')
+    # every photo caption of the day, year by year, and the festival the calendar gives that date
+    for y in sorted({x['y'] for x in items if not x.get('tg')}):
+        mine = exact(y)
+        if not mine:
+            continue
+        caps = list(dict.fromkeys(c for c in (caption(x) for x in mine) if c and c != DARSHAN))
+        moments = [c for c in caps if is_special(c)]
+        try:
+            d = datetime.date(y, day.month, day.day)
+            fest = (festivals(d) if cal_day(d) else old_festivals(str(d))) or []
+        except Exception:
+            fest = []
+        if not moments and not fest:
+            continue
+        card = next((x for x in photos if x['y'] == y and not x.get('tg') and is_special(caption(x))), None)
+        lead = card or next((x for x in mine if is_special(caption(x))), None)
+        ev = year_story(y, day, items, lead=lead)
+        if not ev:
+            continue
+        if fest:
+            ev['headline'] = f"{' and '.join(fest[:2])} {y}" + (f" in {ev['place'].split(',')[0]}" if ev.get('place') else '')
+            ev['paras'] = caps
+        key, score = f'{y}-{mmdd}', 40 + min(len(moments), 10) * 3 + (30 if fest else 0)
+        why = ', '.join(([f'{fest[0]} that year'] if fest else []) + ([f'{len(moments)} special captions'] if moments else []))
+        if key in found and found[key].get('kind') == 'news':   # the same day told by an article: its words, and both count
+            found[key]['score'] += round(score / 2); found[key]['why'] += ' + ' + why
+        else:
+            put(key, score, ev, why)
+    return sorted(found.values(), key=lambda e: (-e['score'], e['date']))
+
+
 def daily_specials(day, items, photos, tg_evs):
     """Darpan, 13 Nov 2026: 'want 1 special picture everyday, so choose the most special item of that day, from all the
     information you have, and if youre not sure make multiple and i will decide.' For a day with no festival picture, no
-    big day and no choice of his own. In order: a story the channel posted with pictures; a baps.org News article of
-    this exact date with photos; a year whose card shows a special moment; else the year with the most photos of the day.
-    One channel story is the day's special for sure; anything else is a guess, so up to three are made (the first goes
-    out, the others wait in the Studio). No AI: the same day always gives the same pictures."""
+    big day and no choice of his own: the best finds of day_search(). One find clearly ahead (a history story with
+    nothing near it) is the day's special for sure; otherwise the best three are made (the first goes out, the others
+    wait in the Studio). An ordinary day with no find at all: the year with the most photos of the day."""
     mmdd = f'{day:%m-%d}'
-    told = [e for e in tg_evs if not e.get('channel') and e.get('posts') and e.get('photos') and e['date'][5:10] == mmdd]
-    stories = [dict(max((e for e in told if e['date'][:10] == d), key=tg_rank), kind='story') for d in {e['date'][:10] for e in told}]
-    stories.sort(key=tg_rank, reverse=True)
-    if len(stories) == 1:
-        return stories
-    out = stories[:3]
-    if len(out) < 3:
-        paths = [e['article'] for e in news_stories(day) if e.get('article')]
-        if os.path.exists(ARCHIVE_DB):
-            db = sqlite3.connect(ARCHIVE_DB)
-            try:
-                paths += [r[0] for r in db.execute('SELECT path FROM articles WHERE substr(date, 6, 5) = ? AND year < ? AND photos > 0 '
-                                                   'ORDER BY photos DESC', (mmdd, day.year)) if r[0] not in paths]
-            except sqlite3.Error as e:
-                print('  the News articles could not be read:', e)
-            finally:
-                db.close()
-        news = [ev for ev in map(news_story, paths) if ev and ev.get('urls')]
-        news.sort(key=lambda ev: -ev.get('bapa', 0))   # the article with the most photos of Bapa first
-        out += news[:3 - len(out)]
-    special = [x for x in photos if x.get('special') and x.get('crop') != 'close' and not x.get('tg')]
-    for x in sorted(special, key=lambda x: (not x.get('nice'), x['y'])):
-        ev = year_story(x['y'], day, items, lead=x) if len(out) < 3 else None
-        if ev:
-            out.append(ev)
+    out = day_search(day, items, photos, tg_evs)
+    SEARCHED[:] = [f"{e['score']:4}  {e.get('kind'):5}  {e['date']}  {e.get('place') or '':18.18}  {e.get('headline') or e.get('line')}  ({e['why']})" for e in out]
+    for l in SEARCHED[:8]:
+        print('  search:', l)
+    if out and out[0]['score'] >= 100 and (len(out) == 1 or out[1]['score'] < out[0]['score'] - 25):
+        return out[:1]
+    out = out[:3]
     if not out:   # an ordinary day: the year with the most photos of the very day
         years = collections.Counter(x['y'] for x in items if x.get('d', '')[:10] == f"{x['y']}-{mmdd}" and not x.get('tg'))
         for y, _ in years.most_common(1) or [(photos[0]['y'], 0)]:
@@ -3232,6 +3307,8 @@ def main():
                     save_special(sp, f"{ev.get('kind', 'story')}: {ev['date']} {ev.get('headline') or ev.get('line')}")
         except Exception as e:
             print('  no daily special picture:', e)
+        if SEARCHED:
+            open(os.path.join(a.out, 'search.txt'), 'w', encoding='utf-8').write('\n'.join(SEARCHED) + '\n')
     open(os.path.join(a.out, 'date.txt'), 'w').write(f'{day}\n')
     open(os.path.join(a.out, 'summary.txt'), 'w').write(f'{len(photos)} years: ' + ', '.join(str(x['y']) for x in photos) + '\n')
     print('saved', os.path.join(a.out, 'bapas-diary.jpg'))
