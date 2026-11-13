@@ -132,7 +132,9 @@ jobs:
       - name: Start the next round while anything is left
         run: |
           cat status/* 2>/dev/null || true
-          if [ "$(cat status/* 2>/dev/null | grep -c done)" -lt 11 ]; then
+          if [ "$(cat status/* 2>/dev/null | grep -c done)" -lt 11 ] && [ "$(date -u +%-H)" -lt 8 ]; then
+            echo "Not starting a round that would run into the 2pm picture's morning (04:30 to 07:30 UTC); the 12:00 UTC run carries on"
+          elif [ "$(cat status/* 2>/dev/null | grep -c done)" -lt 11 ]; then
             gh workflow run drive.yml --ref main && echo "Next round started"
           else
             echo "Everything is in Drive"

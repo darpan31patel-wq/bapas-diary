@@ -21,7 +21,7 @@ Tables (every photo, nothing cut out):
 
 The photo and video files themselves are fetched by tools/archive_download.py, which saves them next to this file.
 """
-import argparse, datetime, glob, json, os, re, sqlite3, sys, urllib.parse
+import argparse, datetime, glob, hashlib, json, os, re, sqlite3, sys, urllib.parse
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(HERE, 'tools'))
@@ -47,6 +47,11 @@ def photo_path(y, when, d0, d1, place, file, cap):
     town = clean(re.sub(r',\s*India$', '', place or ''), 40)
     stem, ext = os.path.splitext(file)
     name = f'{clean(cap, 80)} ({stem}){ext}' if clean(cap, 80) else file
+    if len(name.encode()) > 250:   # a file name (plus .part while saving) may be at most 255 bytes; only names that could never be saved change (News photos have long names and curly quotes, 10 Nov 2026)
+        short = clean(stem, 60) or 'photo'
+        name = f'{clean(cap, 50)} ({short} {hashlib.sha1(file.encode()).hexdigest()[:8]}){ext}'.lstrip()
+        while len(name.encode()) > 200:
+            name = name[1:]
     return f'photos/baps.org/{y}/{clean(day + " " + town, 70)}/{name}'
 
 
@@ -133,7 +138,11 @@ def newer(rows, crawl, scan):
             y, when, d0, d1, place = sib[:5]
         else:   # a new album no page has shown yet: its date and place are in the file name
             m = re.match(r'(\d{4})_(\d{2})_(\d{2})_\d+_([A-Za-z_]+?)_*(?:f|Edit)?\.jpg$', file)
-            y, when, d0, d1, place = int(m[1]), f'{m[1]}-{m[2]}-{m[3]}', None, None, m[4].replace('_', ' ')
+            if not m:   # 2018_05_26_032_Rajkot_001.jpg, 2025_02_23_2542_2.jpg: the date, and a place only if it names one
+                m = re.match(r'(\d{4})_(\d{2})_(\d{2})_\d+_?([A-Za-z_]*)', file)
+            if not m:   # no date in the name either: leave it for a page to show it
+                continue
+            y, when, d0, d1, place = int(m[1]), f'{m[1]}-{m[2]}-{m[3]}', None, None, m[4].replace('_', ' ').strip() or None
         out.append((y, when, d0, d1, place, album, file, None, None, 'scan', photo_path(y, when, d0, d1, place, file, '')))
     return out
 
