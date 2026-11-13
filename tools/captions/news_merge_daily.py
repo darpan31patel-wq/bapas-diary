@@ -78,9 +78,16 @@ def parse(text):
         elif tag == 'N': a['n'] = int((val.split() or ['0'])[0])
         elif tag == 'P': a['dir'] = val.strip()
         elif tag == 'S': a['runs'].append(val)
+        elif tag == 'Q':
+            k, _, rest = val.partition('|')
+            a['runs'].append((a['runs'][-1] if a['runs'] else '')[:int(k)] + rest)
+        elif tag == 'D': a.setdefault('dic', []).append(val)
         elif tag == 'T': a['lines'].append(val)
         elif tag == 'F': a['f'] = val.split()
         elif tag == 'R': a['refresh'] = True
+    for a in arts:     # a gallery read again names its long repeated parts once ("D ..."), then writes ~1, ~2 ... for them
+        if a.get('dic'):
+            a['runs'] = [re.sub(r'~(\d)', lambda m: a['dic'][int(m[1]) - 1], r) for r in a['runs']]
     return arts
 
 
@@ -108,7 +115,7 @@ def files(x, names):
 
 if a.refresh:      # new site articles saved without exact file names, for NEWS.refresh
     W = json.load(open(wpath, encoding='utf-8')) if os.path.exists(wpath) else {}
-    print(json.dumps([p for p, v in W.items() if v.get('names') and not v.get('files')], ensure_ascii=False))
+    print(json.dumps([p for p, v in W.items() if v.get('photos') and not v.get('files')], ensure_ascii=False))
     sys.exit()
 
 if a.known:
@@ -135,11 +142,12 @@ for x in parse(open(a.text, encoding='utf-8').read()):
     if x.get('refresh'):     # only the exact file names, for an article already saved
         names = [n for r in x['runs'] for n in expand(r)]
         f = files(x, names)
-        if x['p'] in W and f and W[x['p']].get('names') == names:
-            W[x['p']]['files'] = f
-            print(f"{x['p']}: {len(f)} exact file names added")
+        if x['p'] in W and f:     # the gallery as baps.org shows it now (it may have gained photos since it was saved)
+            changed = W[x['p']].get('names') != names
+            W[x['p']].update(names=names, files=f, photos=len(f))
+            print(f"{x['p']}: {len(f)} exact file names added" + (' (gallery changed, names updated)' if changed else ''))
         else:
-            print(f"{x['p']}: gallery changed or no names, left as it is")
+            print(f"{x['p']}: not saved before, or no names, left as it is")
         continue
     lines = [l for l in x['lines'] if l != 'Local News' and not JUNK.match(l)]   # hub page labels, after the hash check
     if not lines and not x['n']:

@@ -113,18 +113,39 @@ window.NEWS = (() => {
       return t;
     });
   }
+  // Long names repeat the same parts ("Tapomurti_Shri_Nilkanth_Varni_Pratishtha_Toronto_"): each such part is written
+  // once as "D part", and the names then carry ~1, ~2 ... (up to 9) in its place.
+  function dic(names) {
+    let ns = names.slice(); const D = [];
+    if (ns.some(x => x.includes('~'))) return {D, ns};
+    for (let round = 1; round <= 9; round++) {
+      const c = new Map();
+      for (const x of new Set(ns)) {
+        const p = x.split(/(?<=_)/);
+        for (let i = 0; i < p.length; i++) { let t = ''; for (let j = i; j < p.length && j < i + 12; j++) { t += p[j]; if (t.length >= 8 && !t.includes('~')) c.set(t, (c.get(t) || 0) + 1); } }
+      }
+      let best = null, bs = 0;
+      for (const [t, n] of c) { const sv = n * (t.length - 2) - t.length - 4; if (n > 1 && sv > bs) { bs = sv; best = t; } }
+      if (!best || bs < 40) break;
+      D.push(best); ns = ns.map(x => x.split(best).join('~' + round));
+    }
+    return {D, ns};
+  }
   function text(from = 0, to = out.length) {
     const s = [];
     for (let i = from; i < to && out[i]; i++) {
       const a = out[i];
       const sorted = a.photos.map(p => p[0]).sort((x, y) => stem(x) < stem(y) ? -1 : stem(x) > stem(y) ? 1 : 0);
       let r = runs(sorted.map(stem));
-      if (r.join('\n').length > 2500) r = [];      // too many to pass on: the photo count and folder are still saved
-      const caps = a.photos.filter(p => p[1]).length, first = (a.photos.find(p => !/^vi\//.test(p[0])) || a.photos[0] || [''])[0], dir = first.slice(0, first.lastIndexOf('/') + 1);   // not a YouTube thumbnail's folder
+      const {D, ns} = dic(r);
+      if (!a.refresh && ns.join('\n').length > 6000) r = [];   // too many to pass on with the words: NEWS.refresh reads it again on its own
+      const cnt = {};
+      for (const p of a.photos) { const d = p[0].slice(0, p[0].lastIndexOf('/') + 1); cnt[d] = (cnt[d] || 0) + 1; }
+      const caps = a.photos.filter(p => p[1]).length, dir = Object.keys(cnt).sort((x, y) => cnt[y] - cnt[x])[0] || '';   // the folder most photos are in
       const f = r.length ? files(sorted, dir) : [];
       s.push('@@@ ' + a.p, 'L ' + a.listed, 'H ' + hash(JSON.stringify(f.length ? [a.lines, r, dir, f] : [a.lines, r, dir])), 'N ' + a.photos.length + ' ' + caps, 'P ' + dir);
       if (a.refresh) s.push('R 1');
-      for (const x of r) s.push('S ' + x);
+      if (r.length) { for (const d of D) s.push('D ' + d); for (const x of ns) s.push('S ' + x); }
       if (f.length) s.push('F ' + f.join(' '));
       for (const l of a.lines) s.push('T ' + l);
     }

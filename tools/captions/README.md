@@ -35,7 +35,8 @@ nightly album scan already does. From there the noon Drive download, the high re
    It saves each article's words, date, place and gallery photo names to `crawl/news/articles.json` and
    `crawl/news/webnext.json`; gallery photos that are also on Bapa's day pages get that day's caption. Commit
    `crawl/news` with the rest in step 7. An article with no words yet is left for the next night.
-   Then, gently, up to 10 a night: `news_merge_daily.py --refresh --crawl crawl` lists articles saved before exact
-   photo file names were kept. `await NEWS.refresh(<the first 10>)`, then `NEWS.show(0, 5)`, `(5, 10)` and
-   `--text` as above. It only adds the "files" list in `crawl/news/webnext.json` (for the News archive thread's copier).
+   Then: `news_merge_daily.py --refresh --crawl crawl` lists articles saved without exact photo addresses (a gallery too
+   big to pass on with its words, or one saved before 12 Nov). `await NEWS.refresh(<that list>)` reads only their
+   gallery pages, one tab, 3 s apart (60 pages took 4 minutes on 13 Nov), then `NEWS.show(i, j)` a few at a time
+   and `--text` as above. It adds the "files" list in `crawl/news/webnext.json` for the News archive thread's copier.
 9. Close the tab. If Chrome isn't connected (Mac off), do nothing: the next run catches up.
