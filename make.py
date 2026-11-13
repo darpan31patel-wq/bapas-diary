@@ -2162,10 +2162,9 @@ def daily_specials(day, items, photos, tg_evs):
                 print('  the News articles could not be read:', e)
             finally:
                 db.close()
-        for path in paths:
-            ev = news_story(path)
-            if ev and ev.get('urls') and len(out) < 3:
-                out.append(ev)
+        news = [ev for ev in map(news_story, paths) if ev and ev.get('urls')]
+        news.sort(key=lambda ev: -ev.get('bapa', 0))   # the article with the most photos of Bapa first
+        out += news[:3 - len(out)]
     special = [x for x in photos if x.get('special') and x.get('crop') != 'close' and not x.get('tg')]
     for x in sorted(special, key=lambda x: (not x.get('nice'), x['y'])):
         ev = year_story(x['y'], day, items, lead=x) if len(out) < 3 else None
@@ -2199,11 +2198,23 @@ def news_story(path):
         if row and not ev:
             ev = {'date': row[0][:10], 'place': row[1] or '', 'line': row[2] or ''}
         if ev:
-            ev['urls'] = [f'https://www.baps.org/Data/Sites/1/Media/GalleryImages/{a}/WebImages/{f}'
-                          for a, f in db.execute('SELECT album, file FROM article_photos WHERE path = ? LIMIT 8', (path,))]
+            # photos with Bapa in them first (the archive's own mark), in the gallery's order
+            rows = db.execute('SELECT a.album, a.file, COALESCE(p.is_bapa, 0) FROM article_photos a LEFT JOIN photos p '
+                              'ON p.album = a.album AND p.file = a.file WHERE a.path = ? ORDER BY a.rowid', (path,)).fetchall()
+            rows = [r for r in rows if r[2]] + [r for r in rows if not r[2]]
+            ev['urls'] = [f'https://www.baps.org/Data/Sites/1/Media/GalleryImages/{a}/WebImages/{f}' for a, f, _ in rows[:8]]
+            ev['bapa'] = sum(1 for r in rows if r[2])
             ev['kind'] = 'news'; ev['article'] = path
             text = (db.execute('SELECT text FROM articles WHERE path = ?', (path,)).fetchone() or [''])[0] or ''
-            paras = [' '.join(t.split()) for t in re.split(r'\n\s*\n|\r\n\s*\r\n', text) if len(t.split()) > 6]
+            text = re.sub(r'^\s*Photo Gallery\b', '', text)
+            text = re.sub(r'[^.()]{0,80}\(\d+ photos?\)', ' ', text)   # the gallery links at its top ('Chopada Pujan (42 photos)')
+            text = re.sub(r'^\s*Introduction\b', '', ' '.join(text.split()))
+            paras, cur = [], ''
+            for sent in re.split(r'(?<=[.!?])\s+(?=[A-Z"“])', text):   # the site keeps no paragraphs: about three sentences each
+                cur = (cur + ' ' + sent).strip()
+                if len(cur) > 260:
+                    paras.append(cur); cur = ''
+            paras += [cur] if cur else []
             if paras:
                 ev['paras'] = paras
     finally:
