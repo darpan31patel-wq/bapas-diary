@@ -158,7 +158,7 @@ jobs:
             --notes "Rebuilt every morning. Your Google script collects bapas-diary.png from here at 8:30am."
           gh release upload today out/bapas-diary.png out/bapas-diary.jpg out/date.txt --clobber
           # the channel's story for the 2pm caption, and on big days the special picture; yesterday's are taken down
-          for f in caption.txt bapas-diary-special.png bapas-diary-special.jpg flags.txt bapas-diary-backup.png; do
+          for f in caption.txt bapas-diary-special.png bapas-diary-special.jpg bapas-diary-special-{2,3,4,5}.{png,jpg} flags.txt bapas-diary-backup.png; do
             if [ -e "out/$f" ]; then gh release upload today "out/$f" --clobber
             else gh release delete-asset today "$f" -y 2>/dev/null || true; fi
           done
@@ -186,6 +186,7 @@ jobs:
           cp out/summary.txt "preview/$(cat out/date.txt).txt"
           [ -e out/caption.txt ] && cp out/caption.txt "preview/$(cat out/date.txt)-caption.txt"
           [ -e out/bapas-diary-special.png ] && cp out/bapas-diary-special.png "preview/$(cat out/date.txt)-special.png"
+          for f in out/bapas-diary-special-*.png; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-${f#out/bapas-diary-}"; done
           [ -e out/flags.txt ] && cp out/flags.txt "preview/$(cat out/date.txt)-flags.txt"; fi
           for f in out/all-photos.txt out/album-check.txt; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-$(basename "$f")"; done
           for f in out/caption-*.jpg out/caption-*.png; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-$(basename "$f")"; done

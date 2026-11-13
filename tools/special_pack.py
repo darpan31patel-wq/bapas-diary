@@ -68,6 +68,13 @@ def gather(day):
 def which_special(day, photos, tg_evs, special):
     """The special picture make.main() makes that day, as ('festival', picture, drawn) or ('story', picture, drawn),
     drawn = what it was drawn from; None when there is none."""
+    if make.special_off(day):   # Darpan switched this day's special picture off
+        return None
+    chosen = make.chosen_specials(day, photos)
+    if chosen:   # Darpan's own choice wins (the Studio pack shows the first; the others are special 2, 3...)
+        sp = make.compose_special(chosen[0], day)
+        if sp is not None:
+            return 'story', sp, dict(ev=chosen[0], lead=None, source='chosen')
     wins = 'Diwali' in make.festivals(day)
     drawn, every = {}, None
     if not special or wins:

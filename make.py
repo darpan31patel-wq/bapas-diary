@@ -871,7 +871,7 @@ def thin_rule(dr, y, x0, x1, fade_to_left):
 TITLE_RULES = False   # the thin gold lines either side of the title and the footer (Darpan, 19 Oct 2026: take them away)
 
 
-def header(img, title, subtitle, compact=False):
+def header(img, title, subtitle, compact=False, sub_y=None):
     """Big bold gold title, then a smaller spaced capital line between two thin gold rules.
     compact: the same, a little smaller, fitting above cards that start at y=156."""
     dr = ImageDraw.Draw(img)
@@ -881,7 +881,7 @@ def header(img, title, subtitle, compact=False):
     sf, track = garamond(px(32 if compact else 40), 600), px(9)
     sub = subtitle.upper()
     sw = spaced(dr, sub, sf, track)
-    sy = px(114 if compact else 142)
+    sy = px(sub_y or (114 if compact else 142))
     draw_spaced(dr, (W - sw) / 2, sy, sub, sf, track, (240, 214, 160))
     mid = sy + px(24)
     if TITLE_RULES:
@@ -2055,6 +2055,99 @@ def tg_day(day, items):
     return extra, evs, special
 
 
+SPECIAL_FILE = os.path.join(HERE, 'archive', 'special-days.json')
+EVERY_STORY = False   # True: every channel story of the day posted with pictures gets its own special picture (waiting for Darpan's yes)
+
+
+def special_choices():
+    """Darpan, 13 Nov 2026 ('i want the ability to choose through any event, any day, any year, to make an event a
+    special card'): his own choices, archive/special-days.json, written by this project or by the Studio.
+      "add": [{"day": "11-13" every year | "2026-11-13" that day only,
+               "kind": "story"  ref = the story's date (1905-11-13) or its channel post link
+                       "news"   ref = the News article's path (/News/2003/....aspx)
+                       "year"   year = a year of that day: its photos of the day
+                       "photos" photos = [photo addresses], with year, place, headline, story
+               optional: headline, story, place, year, photos (they win over what the builder finds), note}]
+      "off": ["11-20" every year | "2026-11-20" that day only]
+    Returns {'add': [...], 'off': [...]}; a broken or missing file is no choices at all."""
+    try:
+        c = json.load(open(SPECIAL_FILE, encoding='utf-8'))
+    except (OSError, ValueError):
+        c = {}
+    add, off = c.get('add') or [], c.get('off') or []
+    return {'add': [x for x in add if isinstance(x, dict) and x.get('day')], 'off': [str(d) for d in off]}
+
+
+def on_day(d, day):
+    return str(d) in (f'{day:%m-%d}', f'{day}')
+
+
+def special_off(day):
+    return any(on_day(d, day) for d in special_choices()['off'])
+
+
+def chosen_specials(day, items=()):
+    """The special pictures Darpan chose for this day, in his order, each as a story the special picture is drawn
+    from: {date, place, headline, line, story, urls or posts}. A choice whose story or photos can't be found is left out."""
+    out = []
+    for c in special_choices()['add']:
+        if not on_day(c['day'], day):
+            continue
+        kind, ref, ev = c.get('kind', 'story'), str(c.get('ref') or ''), None
+        if kind == 'story':
+            evs = [e for e in tg_all() if e.get('posts') and (e.get('url') == ref or e['date'][:10] == ref[:10])]
+            ev = dict(max(evs, key=tg_rank)) if evs else None
+        elif kind == 'news':
+            ev = news_story(ref)
+        elif kind == 'year':
+            y = int(c.get('year') or 0)
+            mine = [x for x in items if x['y'] == y and x.get('d', '')[:10] == f'{y}-{day:%m-%d}'] or [x for x in items if x['y'] == y]
+            if mine:
+                ev = {'date': mine[0].get('d', '')[:10] or f'{y}-{day:%m-%d}', 'place': mine[0].get('p', ''),
+                      'line': caption(mine[0]), 'urls': [x['i'] for x in mine[:8]]}
+        elif kind == 'photos':
+            ev = {'date': f"{c.get('year') or day.year}-{day:%m-%d}", 'line': c.get('headline') or ''}
+        if ev is None:
+            print('  chosen special not found:', c)
+            continue
+        for k in ('headline', 'story', 'place'):
+            if c.get(k):
+                ev[k] = c[k]
+        if c.get('year'):
+            ev['date'] = f"{c['year']}{ev['date'][4:]}"
+        if c.get('photos'):
+            ev['urls'] = list(c['photos'])
+        ev['chosen'] = True
+        out.append(ev)
+    return out
+
+
+def news_story(path):
+    """A baps.org News article as a special picture's story: its saved line (archive/news/lines.json) or its title,
+    its place and its gallery photos, from the archive's database."""
+    ev = None
+    try:
+        lines = json.load(open(os.path.join(HERE, 'archive', 'news', 'lines.json'), encoding='utf-8'))
+        k = next((k for k, v in lines.items() if v.get('article') == path), None)
+        if k:
+            ev = {'date': k[:10], 'place': lines[k].get('place', ''), 'line': lines[k]['line'], 'whatsapp': lines[k].get('whatsapp')}
+    except (OSError, ValueError):
+        pass
+    if not os.path.exists(ARCHIVE_DB):
+        return ev
+    db = sqlite3.connect(ARCHIVE_DB)
+    try:
+        row = db.execute('SELECT date, place, title FROM articles WHERE path = ?', (path,)).fetchone()
+        if row and not ev:
+            ev = {'date': row[0][:10], 'place': row[1] or '', 'line': row[2] or ''}
+        if ev:
+            ev['urls'] = [f'https://www.baps.org/Data/Sites/1/Media/GalleryImages/{a}/WebImages/{f}'
+                          for a, f in db.execute('SELECT album, file FROM article_photos WHERE path = ? LIMIT 8', (path,))]
+    finally:
+        db.close()
+    return ev
+
+
 UNFRAME_CAPTION = 124   # the channel's caption written along the bottom of the darshan (Darpan, 22 Oct 2026: '...uja ashirwad - London' still showed at 88)
 
 
@@ -2628,11 +2721,32 @@ SPECIAL_FIRST = {
 }
 
 
+def balanced(d, text, f, maxw, lines):
+    """The words in as few lines as wrap() needs, each line as near the same length as the words allow."""
+    out = wrap(d, text, f, maxw, lines)
+    words = text.split()
+    if len(out) < 2 or len(out) > lines or ' '.join(out) != text.strip():
+        return out
+    best, n = out, len(out)
+
+    def splits(ws, k):
+        if k == 1:
+            yield [' '.join(ws)]; return
+        for i in range(1, len(ws) - k + 2):
+            for rest in splits(ws[i:], k - 1):
+                yield [' '.join(ws[:i])] + rest
+    width = lambda ls: max(d.textlength(l, font=f) for l in ls)
+    for ls in splits(words, n):
+        if width(ls) <= maxw and width(ls) < width(best):
+            best = ls
+    return best
+
+
 def compose_special(ev, day, lead=None):
     """Idea 3: on a big day in BAPS history, a second picture of that day's story: the channel's lead photo large,
     four more beside it under the story, in the daily picture's colours. lead: the year card's own photo of the
     moment (baps.org), shown large first when the special picture comes from a story the card shows."""
-    urls = tg_photos(ev['posts'])[:8]
+    urls = (ev.get('urls') or tg_photos(ev.get('posts') or []))[:8]   # Darpan's own choice may bring its photos
     cache = os.path.join(HERE, '.cache')
     ims = [lead.convert('RGB')] if lead is not None else []
     for u in urls:
@@ -2649,12 +2763,12 @@ def compose_special(ev, day, lead=None):
     if not ims:
         return None
     img = background(); dr = ImageDraw.Draw(img)
-    header(img, f'{day.day} {day:%B} in Bapa’s Diary', 'A special day in BAPS history', compact=True)
+    header(img, f'{day.day} {day:%B}', 'A special day in BAPS history', compact=True, sub_y=136)   # Darpan, 13 Nov 2026: only the date (the story isn't always about Bapa), more space under it
     yr, pl = ev['date'][:4], (ev.get('place') or '').upper()
 
     def card(im, w, h):
         e = round(px(12))
-        c = Image.new('RGBA', (w + 2 * e, h + 2 * e + round(w * .1))); d = ImageDraw.Draw(c)
+        c = Image.new('RGBA', (w + 2 * e, h + 2 * e + round(max(w * .1, px(56))))); d = ImageDraw.Draw(c)
         for j in range(c.height):
             t = j / c.height
             d.line((0, j, c.width, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(IVORY_TOP, IVORY_BOTTOM)) + (255,))
@@ -2663,7 +2777,7 @@ def compose_special(ev, day, lead=None):
         p = im.resize((round(im.width * r), round(im.height * r)), Image.LANCZOS)
         p = p.crop(((p.width - w) // 2, round((p.height - h) * .3), (p.width - w) // 2 + w, round((p.height - h) * .3) + h))
         c.paste(polish(p), (e, e))
-        yf, pf = garamond(w * .07, 700), arimo_bold(w * .03)
+        yf, pf = garamond(max(w * .07, px(40)), 700), arimo_bold(max(w * .03, px(19)))   # Darpan, 13 Nov 2026: 'location names too small' on the small cards
         yw = d.textlength(yr, font=yf); sp = w * .03 if pl else 0
         x0 = (c.width - yw - sp - spaced(d, pl, pf, w * .006)) / 2; base = h + e + (c.height - h - e) * .72
         d.text((x0, base), yr, font=yf, fill=YEAR_C2, anchor='ls')
@@ -2679,11 +2793,13 @@ def compose_special(ev, day, lead=None):
     x0, tw = px(1360), W - px(1360 + 90)
     hf, bf = garamond(px(60), 700), garamond(px(36), 500)
     y = px(300)
-    for line in wrap(dr, ev.get('headline') or ev['line'], hf, tw, 2):
-        gold_text(img, (x0, y - px(60)), line, hf); y += px(72)
+    # Darpan, 13 Nov 2026: the words centred over the photos, the title's two lines of equal length
+    for line in balanced(dr, ev.get('headline') or ev['line'], hf, tw, 2):
+        gold_text(img, (x0 + (tw - dr.textlength(line, font=hf)) / 2, y - px(60)), line, hf); y += px(72)
     y += px(20)
-    for line in wrap(dr, (ev.get('whatsapp') if lead is not None else None) or ev.get('story') or ev.get('whatsapp') or ev['line'], bf, tw, 7):
-        dr.text((x0, y), line, font=bf, fill=CAPTION_IVORY, anchor='ls'); y += px(50)
+    words = (ev.get('whatsapp') if lead is not None else None) or ev.get('story') or ev.get('whatsapp') or ev['line']
+    for line in (wrap(dr, words, bf, tw, 7) if words != (ev.get('headline') or ev['line']) else []):   # never the title twice
+        dr.text((x0 + tw / 2, y), line, font=bf, fill=CAPTION_IVORY, anchor='ms'); y += px(50)
     small = ims[1:5]
     top = round(max(px(620), y + px(40)))
     if small:
@@ -2824,6 +2940,8 @@ def main():
     for f in ('caption.txt', 'bapas-diary-special.png', 'bapas-diary-special.jpg', 'flags.txt', 'bapas-diary-backup.png'):   # nothing left over from another day
         if os.path.exists(os.path.join(a.out, f)):
             os.remove(os.path.join(a.out, f))
+    for f in glob.glob(os.path.join(a.out, 'bapas-diary-special-*')):   # the second, third... chosen special pictures
+        os.remove(f)
     if story:
         print('  story:', story['date'], story['line'], '(in the picture)')
     # Darpan, 20 Oct 2026: a story the picture already tells (its history line, or a card) is not told again under
@@ -2879,12 +2997,37 @@ def main():
             compose(rest, day, seed=mmdd, style=LIVE_STYLE, history=tg_story(tg_evs, rest)).save(
                 os.path.join(a.out, 'bapas-diary-backup.png'), optimize=True)
         print('  flagged:', ', '.join(str(x['y']) for x in unsure))
+    chosen = [] if special_off(day) else chosen_specials(day, items)
+    if special_off(day) or chosen:   # Darpan's own choice wins: 'off' means none at all, a chosen story replaces the automatic one
+        print('  special picture:', 'switched off by Darpan' if not chosen else f'{len(chosen)} chosen by Darpan')
+        for f in os.listdir(a.out):
+            if f.startswith('bapas-diary-special'):
+                os.remove(os.path.join(a.out, f))
+        special, story_lead = None, None
+    def save_special(sp, why):   # the first is bapas-diary-special.png, then bapas-diary-special-2.png, -3...
+        k = len([f for f in os.listdir(a.out) if f.startswith('bapas-diary-special') and f.endswith('.png')])
+        name = 'bapas-diary-special' + (f'-{k + 1}' if k else '')
+        sp.save(os.path.join(a.out, name + '.png'), optimize=True)
+        sp.save(os.path.join(a.out, name + '.jpg'), quality=95, optimize=True)
+        print(f'  {name}:', why)
+    for ev in chosen:
+        sp = compose_special(ev, day)
+        if sp:
+            save_special(sp, f"chosen by Darpan: {ev['date']} {ev.get('headline') or ev.get('line')}")
     if special:
         sp = compose_special(special, day, lead=story_lead)
         if sp:
-            sp.save(os.path.join(a.out, 'bapas-diary-special.png'), optimize=True)
-            sp.save(os.path.join(a.out, 'bapas-diary-special.jpg'), quality=95, optimize=True)
-            print('  special picture:', special['date'], special.get('headline'))
+            save_special(sp, f"{special['date']} {special.get('headline') or special.get('line')}")
+    if EVERY_STORY and not special_off(day):
+        # Darpan, 13 Nov 2026: 'whenever there is a Telegram message with pictures, we can make that a special card. The
+        # more special cards, the better' (he declines the ones he doesn't want on his dashboards): every other story of
+        # this day the channel posted with pictures gets its own special picture too, oldest first
+        done = {e['date'][:10] for e in chosen + ([special] if special else [])}
+        for d in sorted({e['date'][:10] for e in tg_evs if not e.get('channel') and e.get('posts') and e.get('photos')} - done):
+            ev = max((e for e in tg_evs if e['date'][:10] == d and not e.get('channel') and e.get('posts') and e.get('photos')), key=tg_rank)
+            sp = compose_special(ev, day)
+            if sp:
+                save_special(sp, f"{ev['date']} {ev.get('headline') or ev.get('line')}")
     open(os.path.join(a.out, 'date.txt'), 'w').write(f'{day}\n')
     open(os.path.join(a.out, 'summary.txt'), 'w').write(f'{len(photos)} years: ' + ', '.join(str(x['y']) for x in photos) + '\n')
     print('saved', os.path.join(a.out, 'bapas-diary.jpg'))
