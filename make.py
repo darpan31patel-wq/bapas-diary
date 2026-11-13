@@ -871,7 +871,7 @@ def thin_rule(dr, y, x0, x1, fade_to_left):
 TITLE_RULES = False   # the thin gold lines either side of the title and the footer (Darpan, 19 Oct 2026: take them away)
 
 
-def header(img, title, subtitle, compact=False):
+def header(img, title, subtitle, compact=False, sub_y=None):
     """Big bold gold title, then a smaller spaced capital line between two thin gold rules.
     compact: the same, a little smaller, fitting above cards that start at y=156."""
     dr = ImageDraw.Draw(img)
@@ -881,7 +881,7 @@ def header(img, title, subtitle, compact=False):
     sf, track = garamond(px(32 if compact else 40), 600), px(9)
     sub = subtitle.upper()
     sw = spaced(dr, sub, sf, track)
-    sy = px(114 if compact else 142)
+    sy = px(sub_y or (114 if compact else 142))
     draw_spaced(dr, (W - sw) / 2, sy, sub, sf, track, (240, 214, 160))
     mid = sy + px(24)
     if TITLE_RULES:
@@ -2056,6 +2056,7 @@ def tg_day(day, items):
 
 
 SPECIAL_FILE = os.path.join(HERE, 'archive', 'special-days.json')
+EVERY_STORY = False   # True: every channel story of the day posted with pictures gets its own special picture (waiting for Darpan's yes)
 
 
 def special_choices():
@@ -2720,6 +2721,27 @@ SPECIAL_FIRST = {
 }
 
 
+def balanced(d, text, f, maxw, lines):
+    """The words in as few lines as wrap() needs, each line as near the same length as the words allow."""
+    out = wrap(d, text, f, maxw, lines)
+    words = text.split()
+    if len(out) < 2 or len(out) > lines or ' '.join(out) != text.strip():
+        return out
+    best, n = out, len(out)
+
+    def splits(ws, k):
+        if k == 1:
+            yield [' '.join(ws)]; return
+        for i in range(1, len(ws) - k + 2):
+            for rest in splits(ws[i:], k - 1):
+                yield [' '.join(ws[:i])] + rest
+    width = lambda ls: max(d.textlength(l, font=f) for l in ls)
+    for ls in splits(words, n):
+        if width(ls) <= maxw and width(ls) < width(best):
+            best = ls
+    return best
+
+
 def compose_special(ev, day, lead=None):
     """Idea 3: on a big day in BAPS history, a second picture of that day's story: the channel's lead photo large,
     four more beside it under the story, in the daily picture's colours. lead: the year card's own photo of the
@@ -2741,12 +2763,12 @@ def compose_special(ev, day, lead=None):
     if not ims:
         return None
     img = background(); dr = ImageDraw.Draw(img)
-    header(img, f'{day.day} {day:%B} in Bapa’s Diary', 'A special day in BAPS history', compact=True)
+    header(img, f'{day.day} {day:%B}', 'A special day in BAPS history', compact=True, sub_y=136)   # Darpan, 13 Nov 2026: only the date (the story isn't always about Bapa), more space under it
     yr, pl = ev['date'][:4], (ev.get('place') or '').upper()
 
     def card(im, w, h):
         e = round(px(12))
-        c = Image.new('RGBA', (w + 2 * e, h + 2 * e + round(w * .1))); d = ImageDraw.Draw(c)
+        c = Image.new('RGBA', (w + 2 * e, h + 2 * e + round(max(w * .1, px(56))))); d = ImageDraw.Draw(c)
         for j in range(c.height):
             t = j / c.height
             d.line((0, j, c.width, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(IVORY_TOP, IVORY_BOTTOM)) + (255,))
@@ -2755,7 +2777,7 @@ def compose_special(ev, day, lead=None):
         p = im.resize((round(im.width * r), round(im.height * r)), Image.LANCZOS)
         p = p.crop(((p.width - w) // 2, round((p.height - h) * .3), (p.width - w) // 2 + w, round((p.height - h) * .3) + h))
         c.paste(polish(p), (e, e))
-        yf, pf = garamond(w * .07, 700), arimo_bold(w * .03)
+        yf, pf = garamond(max(w * .07, px(40)), 700), arimo_bold(max(w * .03, px(19)))   # Darpan, 13 Nov 2026: 'location names too small' on the small cards
         yw = d.textlength(yr, font=yf); sp = w * .03 if pl else 0
         x0 = (c.width - yw - sp - spaced(d, pl, pf, w * .006)) / 2; base = h + e + (c.height - h - e) * .72
         d.text((x0, base), yr, font=yf, fill=YEAR_C2, anchor='ls')
@@ -2771,11 +2793,13 @@ def compose_special(ev, day, lead=None):
     x0, tw = px(1360), W - px(1360 + 90)
     hf, bf = garamond(px(60), 700), garamond(px(36), 500)
     y = px(300)
-    for line in wrap(dr, ev.get('headline') or ev['line'], hf, tw, 2):
-        gold_text(img, (x0, y - px(60)), line, hf); y += px(72)
+    # Darpan, 13 Nov 2026: the words centred over the photos, the title's two lines of equal length
+    for line in balanced(dr, ev.get('headline') or ev['line'], hf, tw, 2):
+        gold_text(img, (x0 + (tw - dr.textlength(line, font=hf)) / 2, y - px(60)), line, hf); y += px(72)
     y += px(20)
-    for line in wrap(dr, (ev.get('whatsapp') if lead is not None else None) or ev.get('story') or ev.get('whatsapp') or ev['line'], bf, tw, 7):
-        dr.text((x0, y), line, font=bf, fill=CAPTION_IVORY, anchor='ls'); y += px(50)
+    words = (ev.get('whatsapp') if lead is not None else None) or ev.get('story') or ev.get('whatsapp') or ev['line']
+    for line in (wrap(dr, words, bf, tw, 7) if words != (ev.get('headline') or ev['line']) else []):   # never the title twice
+        dr.text((x0 + tw / 2, y), line, font=bf, fill=CAPTION_IVORY, anchor='ms'); y += px(50)
     small = ims[1:5]
     top = round(max(px(620), y + px(40)))
     if small:
@@ -2980,20 +3004,30 @@ def main():
             if f.startswith('bapas-diary-special'):
                 os.remove(os.path.join(a.out, f))
         special, story_lead = None, None
-    for n, ev in enumerate(chosen):   # the first is bapas-diary-special.png, then bapas-diary-special-2.png...
+    def save_special(sp, why):   # the first is bapas-diary-special.png, then bapas-diary-special-2.png, -3...
+        k = len([f for f in os.listdir(a.out) if f.startswith('bapas-diary-special') and f.endswith('.png')])
+        name = 'bapas-diary-special' + (f'-{k + 1}' if k else '')
+        sp.save(os.path.join(a.out, name + '.png'), optimize=True)
+        sp.save(os.path.join(a.out, name + '.jpg'), quality=95, optimize=True)
+        print(f'  {name}:', why)
+    for ev in chosen:
         sp = compose_special(ev, day)
         if sp:
-            k = len([f for f in os.listdir(a.out) if f.startswith('bapas-diary-special') and f.endswith('.png')])
-            name = 'bapas-diary-special' + (f'-{k + 1}' if k else '')
-            sp.save(os.path.join(a.out, name + '.png'), optimize=True)
-            sp.save(os.path.join(a.out, name + '.jpg'), quality=95, optimize=True)
-            print(f'  chosen special picture {name}:', ev['date'], ev.get('headline') or ev.get('line'))
+            save_special(sp, f"chosen by Darpan: {ev['date']} {ev.get('headline') or ev.get('line')}")
     if special:
         sp = compose_special(special, day, lead=story_lead)
         if sp:
-            sp.save(os.path.join(a.out, 'bapas-diary-special.png'), optimize=True)
-            sp.save(os.path.join(a.out, 'bapas-diary-special.jpg'), quality=95, optimize=True)
-            print('  special picture:', special['date'], special.get('headline'))
+            save_special(sp, f"{special['date']} {special.get('headline') or special.get('line')}")
+    if EVERY_STORY and not special_off(day):
+        # Darpan, 13 Nov 2026: 'whenever there is a Telegram message with pictures, we can make that a special card. The
+        # more special cards, the better' (he declines the ones he doesn't want on his dashboards): every other story of
+        # this day the channel posted with pictures gets its own special picture too, oldest first
+        done = {e['date'][:10] for e in chosen + ([special] if special else [])}
+        for d in sorted({e['date'][:10] for e in tg_evs if not e.get('channel') and e.get('posts') and e.get('photos')} - done):
+            ev = max((e for e in tg_evs if e['date'][:10] == d and not e.get('channel') and e.get('posts') and e.get('photos')), key=tg_rank)
+            sp = compose_special(ev, day)
+            if sp:
+                save_special(sp, f"{ev['date']} {ev.get('headline') or ev.get('line')}")
     open(os.path.join(a.out, 'date.txt'), 'w').write(f'{day}\n')
     open(os.path.join(a.out, 'summary.txt'), 'w').write(f'{len(photos)} years: ' + ', '.join(str(x['y']) for x in photos) + '\n')
     print('saved', os.path.join(a.out, 'bapas-diary.jpg'))
