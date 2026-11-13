@@ -66,8 +66,9 @@ jobs:
           aws s3 cp "s3://$BUCKET/years.txt" done.txt --endpoint-url "$R2" || : > done.txt
           aws s3 ls "s3://$BUCKET/o/" --recursive --endpoint-url "$R2" | awk '{ $1=$2=$3=""; sub(/^ +/, ""); print }' > have.txt || true
           echo "$(wc -l < have.txt) photos already in R2 at full size; years finished: $(tr '\n' ' ' < done.txt)"
-          # this year and last year keep growing: photos of late December often reach baps.org in January (website review, 28 Oct 2026)
-          for y in $(date -u +%Y) $(( $(date -u +%Y) - 1 )); do
+          # any finished year can grow: late December photos reach baps.org in January (28 Oct 2026), and the News story
+          # photos (6 Nov 2026) added to every year from 1999, so every year is looked at again (Darpan, 13 Nov: "asap")
+          for y in $(seq 1999 $(date -u +%Y)); do
           if grep -qx "$y" done.txt; then
             rclone lsf -R --files-only --fast-list "gdrive:Bapa's Archive/photos/baps.org/$y" | sed "s|^|photos/baps.org/$y/|" > drive-year.txt || : > drive-year.txt
             new=$(python3 -c "import sqlite3, sys; have = set(open('have.txt').read().split(chr(10))); drive = set(open('drive-year.txt').read().split(chr(10))); print(sum(f'o/{a}/{f}' not in have and p in drive for a, f, p in sqlite3.connect('bapas.db').execute('SELECT album, file, local_path FROM photos WHERE year = ?', (int(sys.argv[1]),))))" "$y" || echo 0)
