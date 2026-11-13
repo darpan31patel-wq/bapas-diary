@@ -1,0 +1,62 @@
+# swaminarayan.org, the old BAPS website from before baps.org, copied page by page and photo by photo into Darpan's
+# Drive archive ("Bapa's Archive/sites/swaminarayan.org/...") (Darpan, 13 Nov 2026: "Yes to all, prioritise
+# swaminarayan.org, ASAP"). Archive only: touches nothing in the 2pm picture's chain, the website, R2 or bapas.db,
+# and never runs 04:00 to 07:30 UTC. One run, one machine, three gentle readers. It carries on where the last run
+# stopped (state kept in Drive), so pushing this file again starts the next round.
+# Round 1: 13 Nov 2026 evening.
+name: swaminarayan-org
+on:
+  push:
+    branches: ['claude/project-thread-2nikpj']
+    paths: ['.github/workflows/swaminarayan-org-2nikpj.yml']
+permissions:
+  contents: write   # the page list into the release `database`
+concurrency:
+  group: swaminarayan-org
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    env:
+      REMOTE: "gdrive:Bapa's Archive/sites/swaminarayan.org"
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Never in the 2pm picture's morning
+        run: |
+          m=$(( 10#$(date -u +%H) * 60 + 10#$(date -u +%M) ))
+          if [ $m -ge 225 ] && [ $m -lt 450 ]; then echo "::error::03:45 to 07:30 UTC is kept free"; exit 1; fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Drive access
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          CLIENT_ID: ${{ secrets.RCLONE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.RCLONE_CLIENT_SECRET }}
+        run: |
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          git fetch -q --depth 1 origin main && git show FETCH_HEAD:tools/rclone_conf.py > "$RUNNER_TEMP/rclone_conf.py"
+          mkdir -p ~/.config/rclone && python3 "$RUNNER_TEMP/rclone_conf.py" > ~/.config/rclone/rclone.conf
+      - name: Where the last round stopped
+        run: |
+          mkdir -p state
+          rclone copy "$REMOTE/_state" state 2>/dev/null || true
+          ls -la state
+      - name: Copy (stops by itself at 03:40 UTC or when everything is in)
+        run: |
+          # every 20 minutes the new files move to Drive, so the runner's disk never fills
+          ( while sleep 1200; do [ -d work/files ] && rclone move work/files "$REMOTE" --transfers 8 --min-age 30s \
+              --stats 0 2>&1 | tail -2; done ) &
+          mover=$!
+          python3 -I tools/swaminarayan_org.py --work work --state state --stop-at 03:40 --workers 3 --gap 0.7 \
+            | tee run.log | grep -E '^\{|stopping' || true
+          kill $mover || true
+      - name: Into Drive
+        if: always()
+        run: |
+          [ -d work/files ] && rclone move work/files "$REMOTE" --transfers 8 --stats-one-line --stats 0 || true
+          rclone copy state "$REMOTE/_state" --stats 0
+          cp state/pages.jsonl swaminarayan-org-pages.jsonl && gh release upload database swaminarayan-org-pages.jsonl --clobber
+          cp state/last-run.json swaminarayan-org-last-run.json && gh release upload database swaminarayan-org-last-run.json --clobber
+          cat state/last-run.json
