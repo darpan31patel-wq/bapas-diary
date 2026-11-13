@@ -10,7 +10,7 @@ permissions:
 jobs:
   shots:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -42,55 +42,58 @@ jobs:
         run: |
           mkdir -p shots
           python3 - <<'PY'
-          import base64
+          import base64, signal
           from playwright.sync_api import sync_playwright
+          def alarm(*a): raise TimeoutError('step took too long')
+          signal.signal(signal.SIGALRM, alarm)
           MOCK = open('mock.html', encoding='utf-8').read()
-          def snap(pg, path, clip=None):
+          def snap(pg, path, clip):
+              signal.alarm(45); print('snap', path, flush=True)
               cdp = pg.context.new_cdp_session(pg)
-              args = {'format': 'jpeg', 'quality': 86, 'captureBeyondViewport': True}
-              if clip: args['clip'] = dict(clip, scale=1)
-              open(path, 'wb').write(base64.b64decode(cdp.send('Page.captureScreenshot', args)['data']))
+              data = cdp.send('Page.captureScreenshot', {'format': 'jpeg', 'quality': 86, 'captureBeyondViewport': True, 'clip': dict(clip, scale=1)})['data']
+              open(path, 'wb').write(base64.b64decode(data)); signal.alarm(0)
           def box(pg, sel, pad=18):
               b = pg.evaluate("s=>{const r=document.querySelector(s).getBoundingClientRect();return {x:r.left+scrollX,y:r.top+scrollY,width:r.width,height:r.height}}", sel)
               return {'x': max(0, b['x'] - pad), 'y': max(0, b['y'] - pad), 'width': b['width'] + 2 * pad, 'height': b['height'] + 2 * pad}
+          def shoot(br, day, w, h, dpr, tag):
+              ctx = br.new_context(viewport={'width': w, 'height': h}, device_scale_factor=dpr, service_workers='block')
+              try:
+                  pg = ctx.new_page()
+                  pg.on('pageerror', lambda e: print('page error', e, flush=True))
+                  pg.on('framenavigated', lambda fr: print('navigated', fr.url, flush=True) if fr == pg.main_frame else None)
+                  pg.clock.set_fixed_time(day + 'T09:00:00')
+                  pg.route(lambda u: u.split('#')[0].split('?')[0].rstrip('/') == 'https://bapas-diary.com', lambda r: r.fulfill(status=200, content_type='text/html; charset=utf-8', body=MOCK))
+                  signal.alarm(60)
+                  try: pg.goto('https://bapas-diary.com/', wait_until='domcontentloaded', timeout=40000)
+                  except Exception as e: print('goto', e, flush=True)
+                  pg.wait_for_timeout(10000); signal.alarm(0)
+                  if pg.evaluate("!document.getElementById('moments') || document.getElementById('moments').hidden"):
+                      print(day, tag, 'no moments shown'); return
+                  print(day, tag, pg.evaluate("document.getElementById('momentsline').innerText"), flush=True)
+                  snap(pg, f'shots/{day}-{tag}-top.jpg', {'x': 0, 'y': 0, 'width': w, 'height': h})
+                  for _ in range(8):
+                      pg.mouse.wheel(0, 600); pg.wait_for_timeout(400)
+                  pg.evaluate("document.getElementById('moments').scrollIntoView()")
+                  pg.wait_for_timeout(4000)
+                  snap(pg, f'shots/{day}-{tag}-moments.jpg', box(pg, '#moments'))
+                  if tag == 'computer':
+                      pg.evaluate("document.getElementById('momore-btn').click()")
+                      pg.wait_for_timeout(4000)
+                      snap(pg, f'shots/{day}-{tag}-more.jpg', box(pg, '#moments'))
+              except Exception as e: print(day, tag, 'stopped:', e, flush=True)
+              finally:
+                  signal.alarm(0)
+                  try: ctx.close()
+                  except Exception: pass
           with sync_playwright() as p:
               br = p.chromium.launch()
-              for day in ['2026-11-13', '2026-08-13', '2027-11-10', '2026-03-06']:
-                  for w, h, dpr, tag in [(1600, 1000, 1, 'computer'), (390, 844, 2, 'phone')]:
-                      if tag == 'phone' and day not in ('2026-11-13', '2026-08-13'): continue
-                      ctx = br.new_context(viewport={'width': w, 'height': h}, device_scale_factor=dpr, service_workers='block')
-                      pg = ctx.new_page()
-                      pg.on('pageerror', lambda e: print('page error', e))
-                      pg.clock.set_fixed_time(day + 'T09:00:00')
-                      pg.route(lambda u: u.rstrip('/') == 'https://bapas-diary.com', lambda r: r.fulfill(status=200, content_type='text/html; charset=utf-8', body=MOCK))
-                      try: pg.goto('https://bapas-diary.com/', wait_until='load', timeout=40000)
-                      except Exception as e: print('goto', e)
-                      pg.wait_for_timeout(9000)
-                      try: pg.wait_for_load_state('networkidle', timeout=8000)
-                      except Exception: pass
-                      if pg.evaluate("!document.getElementById('moments') || document.getElementById('moments').hidden"):
-                          print(day, tag, 'no moments shown'); ctx.close(); continue
-                      print(day, tag, pg.evaluate("document.getElementById('momentsline').innerText"))
-                      snap(pg, f'shots/{day}-{tag}-top.jpg', {'x': 0, 'y': 0, 'width': w, 'height': min(h, 1000)})
-                      pg.evaluate("document.getElementById('moments').scrollIntoView()")
-                      for _ in range(6):
-                          pg.mouse.wheel(0, 500); pg.wait_for_timeout(500)
-                      pg.evaluate("document.getElementById('moments').scrollIntoView()")
-                      pg.wait_for_timeout(3500)
-                      snap(pg, f'shots/{day}-{tag}-moments.jpg', box(pg, '#moments'))
-                      if tag == 'computer':
-                          pg.evaluate("document.getElementById('momore-btn') && document.getElementById('momore-btn').click()")
-                          pg.wait_for_timeout(3500)
-                          snap(pg, f'shots/{day}-{tag}-more.jpg', box(pg, '#moments'))
-                          first = pg.query_selector('#momentlist .mo[data-m] .mi')
-                          if first:
-                              first.click(); pg.wait_for_timeout(3000)
-                              snap(pg, f'shots/{day}-{tag}-open.jpg', {'x': 0, 'y': pg.evaluate('scrollY'), 'width': w, 'height': h})
-                      ctx.close()
+              for day in ['2026-11-13', '2026-08-13', '2027-11-10']:
+                  shoot(br, day, 1600, 1000, 1, 'computer')
+                  if day != '2027-11-10': shoot(br, day, 390, 844, 2, 'phone')
               br.close()
           PY
           ls -la shots
       - name: Keep them
         run: |
           gh release delete special-moments-mockup -y --cleanup-tag -R "$GITHUB_REPOSITORY" 2>/dev/null || true
-          gh release create special-moments-mockup shots/*.jpg -R "$GITHUB_REPOSITORY" --title "Special moments mockup pictures" --notes "Mockup pictures only, not part of the website" --target "$GITHUB_SHA"
+          ls shots/*.jpg && gh release create special-moments-mockup shots/*.jpg -R "$GITHUB_REPOSITORY" --title "Special moments mockup pictures" --notes "Mockup pictures only, not part of the website" --target "$GITHUB_SHA"
