@@ -2051,8 +2051,20 @@ def tg_day(day, items):
                    'tg': True, 'post': e.get('url'), 'guru': e.get('guru', False), 'unframe': sat,
                    'boost': (TG_GAP_BOOST if gap else 0) - .2 * away - (1 if e.get('guru') else .01) * k}
                   for k, (n, u) in enumerate(urls)]   # the channel's lead photo first (for an earlier guru, well first), the very day before a nearby one
-    special = max((e for e in evs if e.get('special')), key=tg_rank, default=None)
+    add = set(special_choices()['add'])
+    special = max((e for e in evs if e.get('special') or (e['date'][:10] in add and e.get('posts'))), key=tg_rank, default=None)
     return extra, evs, special
+
+
+def special_choices():
+    """Darpan, 13 Nov 2026 ('i want the ability to choose what does and doesnt becomes a special card'): his own
+    list, archive/special-days.json. 'add': story dates (YYYY-MM-DD, the story's own date) that get their special
+    picture every year on that day; 'off': days (MM-DD) that never get a special picture of any kind."""
+    try:
+        c = json.load(open(os.path.join(HERE, 'archive', 'special-days.json'), encoding='utf-8'))
+    except (OSError, ValueError):
+        c = {}
+    return {'add': [k for k in c.get('add', {})], 'off': [k for k in c.get('off', {})]}
 
 
 UNFRAME_CAPTION = 124   # the channel's caption written along the bottom of the darshan (Darpan, 22 Oct 2026: '...uja ashirwad - London' still showed at 88)
@@ -2879,6 +2891,12 @@ def main():
             compose(rest, day, seed=mmdd, style=LIVE_STYLE, history=tg_story(tg_evs, rest)).save(
                 os.path.join(a.out, 'bapas-diary-backup.png'), optimize=True)
         print('  flagged:', ', '.join(str(x['y']) for x in unsure))
+    if f'{day:%m-%d}' in special_choices()['off']:   # Darpan's own 'no special picture on this day'
+        print('  no special picture: switched off in archive/special-days.json')
+        special = None
+        for f in ('bapas-diary-special.png', 'bapas-diary-special.jpg'):
+            if os.path.exists(os.path.join(a.out, f)):
+                os.remove(os.path.join(a.out, f))
     if special:
         sp = compose_special(special, day, lead=story_lead)
         if sp:

@@ -68,6 +68,8 @@ def gather(day):
 def which_special(day, photos, tg_evs, special):
     """The special picture make.main() makes that day, as ('festival', picture, drawn) or ('story', picture, drawn),
     drawn = what it was drawn from; None when there is none."""
+    if f'{day:%m-%d}' in make.special_choices()['off']:   # Darpan switched this day's special picture off
+        return None
     wins = 'Diwali' in make.festivals(day)
     drawn, every = {}, None
     if not special or wins:
