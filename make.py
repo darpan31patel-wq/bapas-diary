@@ -2209,6 +2209,12 @@ def news_story(path):
             text = re.sub(r'^\s*Photo Gallery\b', '', text)
             text = re.sub(r'[^.()]{0,80}\(\d+ photos?\)', ' ', text)   # the gallery links at its top ('Chopada Pujan (42 photos)')
             text = re.sub(r'^\s*Introduction\b', '', ' '.join(text.split()))
+            words = len(text.split())
+            if words and len(re.findall(r'[.!?](\s|$)', text)) < words / 45:   # not written words: the gallery's captions run together
+                caps = [c for (c,) in db.execute('SELECT DISTINCT p.caption FROM article_photos a JOIN photos p ON p.album = a.album '
+                                                 'AND p.file = a.file WHERE a.path = ? AND p.caption IS NOT NULL ORDER BY a.rowid', (path,))]
+                caps = list(dict.fromkeys(tidy(c).strip().rstrip('.') for c in caps if c and len(c.split()) > 2))[:14]
+                text = '. '.join(caps) + ('.' if caps else '')
             paras, cur = [], ''
             for sent in re.split(r'(?<=[.!?])\s+(?=[A-Z"“])', text):   # the site keeps no paragraphs: about three sentences each
                 cur = (cur + ' ' + sent).strip()
