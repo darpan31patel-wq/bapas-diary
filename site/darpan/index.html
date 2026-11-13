@@ -313,7 +313,8 @@ const SPECIAL_DEFAULT = Object.assign(structuredClone(DAY_DEFAULT), { date: '', 
 delete SPECIAL_DEFAULT.years; delete SPECIAL_DEFAULT.wa;
 let S = { mode: 'day', tab: 'card', day: structuredClone(DAY_DEFAULT), month: structuredClone(MONTH_DEFAULT), special: structuredClone(SPECIAL_DEFAULT) };
 const saved = store.get('studio-settings-v1');
-if (saved) { S.day = Object.assign(structuredClone(DAY_DEFAULT), saved.day || {}); S.month = Object.assign(structuredClone(MONTH_DEFAULT), saved.month || {}); S.special = Object.assign(structuredClone(SPECIAL_DEFAULT), saved.special || {}); S.mode = saved.mode || 'day'; }
+if (saved) { S.day = Object.assign(structuredClone(DAY_DEFAULT), saved.day || {}); S.month = Object.assign(structuredClone(MONTH_DEFAULT), saved.month || {}); S.special = Object.assign(structuredClone(SPECIAL_DEFAULT), saved.special || {}); S.mode = saved.mode || 'day'; if (saved.tab) S.tab = saved.tab; }
+const SAVED_AT = saved && saved.at || 0;   // when he was last here (2pm picture project note, 13 Nov 2026: "remember where he was when he comes back")
 const DEFAULTS = { day: DAY_DEFAULT, month: MONTH_DEFAULT, special: SPECIAL_DEFAULT };
 const keyOf = kind => kind === 'month' ? S.month.month : S[kind].date;   // which day or month that mode is on
 // the cards of a pack (years of a day, days of a month, cards of a special picture) and the per card changes
@@ -359,9 +360,23 @@ async function loadPack(kind, key) {
   const keyOfGroup = (g, gi) => kind === 'special' ? (pack.kind === 'story' ? 'c' + gi : 'y' + g.year) : (g.year ?? g.day);
   groups.forEach((g, gi) => { g.key = keyOfGroup(g, gi); g.cands.forEach((c, i) => { c.key = `${base}${g.key}-${i}` }) });
   pack.spares && pack.spares.forEach(g => { g.key = 'y' + g.year; g.cands.forEach((c, i) => { c.key = `${base}${g.key}-${i}` }) });
-  const first = groups.flatMap(g => [...g.cands.slice(0, 6), ...[g.pickA, g.pickB, g.pickM].filter(i => i != null).map(i => g.cands[i])]);
-  await Promise.all(first.filter(Boolean).map(c => photoOf(pack, c, true)));
+  // speed (2pm picture project note, 13 Nov 2026: "show the ready drawn pictures from the packs first and only redraw when he
+  // changes something"): the page no longer waits for 13 MB of photos. The run's own picture (real.jpg) shows at once, the
+  // photos the picture needs load first, the picture is drawn as soon as they are in, and the rest arrive behind it.
+  const o = S[kind], st = stateOf(o) || {};
+  const pickOf = g => kind === 'month' ? optPick(g, o.option) : (st[g.key]?.pick ?? defaultPick(g, o.photoStyle));
+  const picks = groups.map(g => g.cands[pickOf(g)] || g.cands[0]).filter(Boolean);
+  const rest = groups.flatMap(g => [...g.cands.slice(0, 6), ...[g.pickA, g.pickB, g.pickM].filter(i => i != null).map(i => g.cands[i])]).filter(c => c && !picks.includes(c));
+  const real = new Image(); real.crossOrigin = 'anonymous'; real.onload = () => { pack.realImg = real; render() }; real.src = base + (pack.real || 'real.jpg');
+  picks.forEach(c => photoOf(pack, c, false));
+  Promise.all(picks.map(c => photoOf(pack, c, true))).then(() => rest.forEach(c => photoOf(pack, c, false)));
   return pack;
+}
+// the photos the picture shows that are still on their way (0 = the picture can be drawn)
+function pendingPhotos() {
+  const pack = P[S.mode]; if (!pack) return 0;
+  const cards = S.mode === 'month' ? monthCards(pack, S.month) : dayCards(pack, cur());
+  return cards.filter(x => x.c && !(IMG[x.c.key] && (IMG[x.c.key].im || IMG[x.c.key].failed))).length;
 }
 // the photos of a year (or day) are joined in two files, the best six and the rest; each file is fetched once,
 // the rest only when one of them is wanted
@@ -372,7 +387,7 @@ function photoOf(pack, c, wait) {
   if (have) return wait ? have.ready : have.im;
   const im = new Image(), rec = { im: null };
   rec.ready = new Promise(res => {
-    im.onload = () => { rec.im = im; res(); if (!wait) render() }; im.onerror = () => res();
+    im.onload = () => { rec.im = im; res(); if (!wait) render() }; im.onerror = () => { rec.failed = true; res(); if (!wait) render() };
     if (c.img) im.src = pack.base + c.img;
     else {
       BINS[pack.base + c.f] ??= fetch(pack.base + c.f).then(r => r.blob());
@@ -977,11 +992,18 @@ function render() {
     const [W, H] = S.mode === 'month' ? [3840, 2160] : [2796, 1290];
     if (view.width !== W) { view.width = W; view.height = H }
     const ctx = view.getContext('2d'); ctx.setTransform(1, 0, 0, 1, 0, 0); HITS = [];
+    const pend = pendingPhotos(), stEl = $('#status');
+    if (pend && pack.realImg && !isLayered()) {   // the run's own picture until the photos the picture needs are in
+      ctx.drawImage(pack.realImg, 0, 0, W, H);
+      stEl.className = 'status'; stEl.textContent = `This is the morning run’s picture. Your photos are arriving (${pend} still to come)…`; stEl.dataset.arriving = '1';
+      fe.hidden = true; return;
+    }
+    if (stEl.dataset.arriving) { delete stEl.dataset.arriving; if (pend) stEl.textContent = `Photos arriving (${pend} still to come)…`; else stEl.textContent = '' }
     S.mode === 'month' ? drawMonth(ctx, pack, S.month, HITS) : isLayered() ? drawLayered(ctx, pack, cur(), HITS) : isStory() ? drawStory(ctx, pack, S.special, HITS) : drawDay(ctx, pack, cur(), HITS);
     const h = FE && HITS.find(h => h.key === cur().sel);
     if (h) { ctx.save(); ctx.strokeStyle = GOLD; ctx.lineWidth = W / 400; ctx.strokeRect(h.x - 9, h.y - 9, h.w + 18, h.h + 18); ctx.restore() }
     placeEditor();
-    const ok = store.set('studio-settings-v1', { mode: S.mode, day: S.day, month: S.month, special: S.special }) && stash(S.mode);
+    const ok = store.set('studio-settings-v1', { mode: S.mode, tab: S.tab, at: Date.now(), day: S.day, month: S.month, special: S.special }) && stash(S.mode);
     $('#autosave').textContent = ok ? `Every change is saved on this device as you go (${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}).` : '';
   });
 }
@@ -1298,6 +1320,7 @@ function lookPane(p, o) {
 
 function build() {
   const day = S.mode === 'day', pack = P[S.mode], o = cur(), sp = S.mode === 'special';
+  store.set('studio-settings-v1', { mode: S.mode, tab: S.tab, at: Date.now(), day: S.day, month: S.month, special: S.special });   // where he is, for when he comes back
   document.querySelectorAll('.modes button').forEach(b => b.setAttribute('aria-pressed', String(b.id === 'mode-' + S.mode)));
   $('#mode-special').disabled = !INDEX.specials.length; $('#mode-special').title = INDEX.specials.length ? 'Every Diwali, Every Annakut, a day in BAPS history' : 'No special picture pack yet (the collage builder project makes them on days with a special picture)';
   const days = INDEX.days.includes(o.date) || !day ? INDEX.days : [...INDEX.days, o.date].sort();
@@ -1358,10 +1381,10 @@ function wire() {
     on('d-t-full', 'click', () => { (o.txt = o.txt || {}).story = pk.story || ''; build() });
     on('d-t-short', 'click', () => { (o.txt = o.txt || {}).story = pk.story_short || String(pk.story || '').split(/(?<=[.!?])\s/)[0]; build() });
     document.querySelectorAll('#d-style button').forEach(b => b.addEventListener('click', () => { o.photoStyle = b.dataset.v; Object.values(stateOf(o)).forEach(y => { delete y.pick; delete y.crop }); build() }));
-    on('d-wa', 'input', e => { const w = o.wa[o.date] || (o.wa[o.date] = { text: '', whole: false }); w.text = e.target.value; store.set('studio-settings-v1', { mode: S.mode, day: S.day, month: S.month, special: S.special }) });
+    on('d-wa', 'input', e => { const w = o.wa[o.date] || (o.wa[o.date] = { text: '', whole: false }); w.text = e.target.value; store.set('studio-settings-v1', { mode: S.mode, tab: S.tab, at: Date.now(), day: S.day, month: S.month, special: S.special }) });
     on('d-wawhole', 'input', e => { const w = o.wa[o.date] || (o.wa[o.date] = { text: waText(), whole: false }); w.whole = e.target.checked; build() });
     on('d-wareset', 'click', () => { delete o.wa[o.date]; o.intro = ''; keep(); build() });
-    const keep = () => store.set('studio-settings-v1', { mode: S.mode, day: S.day, month: S.month, special: S.special });
+    const keep = () => store.set('studio-settings-v1', { mode: S.mode, tab: S.tab, at: Date.now(), day: S.day, month: S.month, special: S.special });
     on('d-intro', 'input', e => { const v = e.target.value; if (introDay()) o.wa[o.date].intro = v; else o.intro = v; keep(); $('#wa-preview').textContent = waPreview() });
     on('d-introday', 'input', e => { if (e.target.checked) { const w = o.wa[o.date] || (o.wa[o.date] = { text: waText(), whole: false }); w.intro = introText() } else if (o.wa[o.date]) { delete o.wa[o.date].intro } keep(); build() });
     on('d-wa', 'input', () => { $('#wa-preview').textContent = waPreview() });
@@ -1944,6 +1967,7 @@ function applyLast(e) {
 // side by side (Darpan, 9 Nov 2026): the morning run's picture next to his, the cards he changed framed in gold
 function sideBySide() {
   const pack = P[S.mode]; if (!pack || S.mode === 'month' || !$('#compare').open) return;
+  if (pendingPhotos()) { allReady().then(sideBySide); return }
   $('#real').src = pack.base + 'real.jpg';
   const o = cur(), c = document.createElement('canvas'); c.width = 1398; c.height = 645;
   const ctx = c.getContext('2d'); ctx.drawImage(view, 0, 0, c.width, c.height);
@@ -2072,18 +2096,19 @@ $('#exp-go').addEventListener('click', async () => {
   try {
     await loadIndex();
     const today = todayLondon();
-    if (S.day.date !== today && INDEX.days.includes(today)) { S.day.date = today; unstash('day') }
+    const recent = Date.now() - SAVED_AT < 12 * 3600e3;   // back within 12 hours: the same day, tab and picture as he left them
+    if (!recent && S.day.date !== today && INDEX.days.includes(today)) { S.day.date = today; unstash('day') }
     if (!INDEX.days.includes(S.day.date)) { S.day.date = INDEX.days.includes(today) ? today : INDEX.days.at(-1); unstash('day') }
     const want = new URLSearchParams(location.search).get('date');   // studio/?date=2026-11-23 opens that day
     if (want && /^\d{4}-\d\d-\d\d$/.test(want) && want !== S.day.date) { S.mode = 'day'; return openDate(want) }
     if (!INDEX.months.includes(S.month.month)) { S.month.month = INDEX.months.at(-1); unstash('month') }
-    if (!INDEX.specials.includes(S.special.date)) { S.special.date = INDEX.specials.includes(today) ? today : (INDEX.specials.at(-1) || ''); unstash('special') }
+    if (!INDEX.specials.includes(S.special.date) && !(recent && S.special.date)) { S.special.date = INDEX.specials.includes(today) ? today : (INDEX.specials.at(-1) || ''); unstash('special') }
     const wantSp = new URLSearchParams(location.search).get('special');   // studio/?special=2026-11-08 opens that special picture
     if (wantSp && INDEX.specials.includes(wantSp)) { S.mode = 'special'; S.special.date = wantSp; unstash('special') }
     if (S.mode === 'special' && !S.special.date) S.mode = 'day';
+    if (S.mode === 'special' && !INDEX.specials.includes(S.special.date)) { S.tab = 'choose'; build(); return }   // a day he chose that has no special pack yet
     P[S.mode] = await loadPack(S.mode, keyOf(S.mode)); build();
-    const other = S.mode === 'day' ? 'month' : 'day';
-    P[other] = await loadPack(other, keyOf(other));
+    // the other kinds load when he opens them (13 Nov 2026: the month poster's 16 MB used to download behind every opening)
   } catch (e) { console.error(e); $('#meta').textContent = 'The photos could not be loaded. Reload the page to try again.' }
 })();
 </script>
