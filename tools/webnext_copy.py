@@ -60,8 +60,8 @@ def main():
         town = re.sub(r',\s*India$', '', place)
         folder = clean(f'{when} {town}', 70)
         for i, src in enumerate(files):
-            if 'static.wn.baps-apps.org' not in src:
-                continue   # YouTube thumbnails and anything else
+            if 'static.wn.baps-apps.org' not in src or '/display/' not in src:
+                continue   # YouTube thumbnails and the page's banner crops
             file = urllib.parse.unquote(src.split('?')[0].rsplit('/', 1)[1])
             stem, ext = os.path.splitext(file)
             cap = names[i] if i < len(names) else ''

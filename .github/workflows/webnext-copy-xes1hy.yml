@@ -1,0 +1,61 @@
+# The photos of baps.org's new style News pages into Darpan's Drive archive and the website's photo store (R2), once,
+# when this file is pushed (Darpan, 13 Nov 2026: "faster"). Website and archive only: touches nothing in the 2pm
+# picture's chain and never runs 04:30 to 07:30 UTC. One run, one machine, a second between photos.
+name: webnext-copy
+on:
+  push:
+    branches: ['claude/project-thread-xes1hy']
+    paths: ['.github/workflows/webnext-copy-xes1hy.yml']
+permissions:
+  contents: write   # webnext-photos.json into the release `database`
+concurrency:
+  group: webnext-copy
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      REMOTE: "gdrive:Bapa's Archive"
+      BUCKET: bapas-diary-photos
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Never in the 2pm picture's morning
+        run: |
+          m=$(( 10#$(date -u +%H) * 60 + 10#$(date -u +%M) ))
+          if [ $m -ge 240 ] && [ $m -lt 450 ]; then echo "::error::04:00 to 07:30 UTC is kept free"; exit 1; fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Drive and R2 access
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          CLIENT_ID: ${{ secrets.RCLONE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.RCLONE_CLIENT_SECRET }}
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          pip install -q pillow
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          git fetch -q --depth 1 origin main && git show FETCH_HEAD:tools/rclone_conf.py > "$RUNNER_TEMP/rclone_conf.py"
+          mkdir -p ~/.config/rclone && python3 "$RUNNER_TEMP/rclone_conf.py" > ~/.config/rclone/rclone.conf
+          id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
+          key=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1)
+          echo "::add-mask::$id"; echo "::add-mask::$key"
+          { echo "AWS_ACCESS_KEY_ID=$id"; echo "AWS_SECRET_ACCESS_KEY=$key"
+            echo "AWS_DEFAULT_REGION=auto"; echo "R2=https://$CF_ACCOUNT.r2.cloudflarestorage.com"; } >> "$GITHUB_ENV"
+      - name: Fetch, save and make the website copies
+        run: |
+          git fetch -q --depth 1 origin +refs/heads/database:refs/remotes/origin/database
+          git show origin/database:crawl/news/webnext.json > webnext.json
+          git show origin/database:crawl/news/articles.json > articles.json
+          rclone lsf -R --files-only "$REMOTE/photos/baps.org/2026" | sed 's|^|photos/baps.org/2026/|' > have.txt || : > have.txt
+          rclone lsf -R --files-only "$REMOTE/photos/baps.org/2025" | sed 's|^|photos/baps.org/2025/|' >> have.txt || true
+          python3 tools/webnext_copy.py --webnext webnext.json --articles articles.json --work work --list webnext-photos.json --have have.txt
+      - name: Into Drive and R2
+        run: |
+          [ -d work/photos ] && rclone copy work/photos "$REMOTE/photos" --transfers 8 --stats-one-line --stats 0 || echo "nothing new for Drive"
+          [ -d work/r2 ] && aws s3 sync work/r2 "s3://$BUCKET/" --endpoint-url "$R2" --only-show-errors \
+            --cache-control "public, max-age=31536000, immutable" --content-type image/jpeg || echo "nothing new for R2"
+          gh release upload database webnext-photos.json --clobber
+          echo "$(python3 -c "import json; print(len(json.load(open('webnext-photos.json'))))") photos listed"
