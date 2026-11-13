@@ -61,6 +61,11 @@ h1 { margin: 0; font: 600 clamp(30px, 5vw, 50px)/1.1 var(--title); letter-spacin
 .tell ul { margin: 6px 0 0; padding: 0; list-style: none; max-width: 70ch; }
 .tell li { position: relative; margin: 0 0 4px; padding-left: 16px; font: 400 15px/1.45 var(--serif); opacity: .9; }
 .tell li::before { content: ""; position: absolute; left: 2px; top: .62em; width: 5px; height: 5px; border-radius: 50%; background: var(--gold); }
+/* What Bapa did that day, from the old BAPS website's travelogue, under the day's photos (Darpan, 13 Nov 2026: "The
+   written report of what Bapa did that day, shown under the photos on a clicked Calendar day"). English date only. */
+.vr { margin: 22px 0 6px; padding-top: 14px; border-top: 1px solid rgba(217, 164, 65, .2); }
+.vr .tell + .tell { margin-top: 18px; }
+.vr .line i { font-style: italic; color: var(--gold-hi); }
 /* the Calendar's own photo of the day, first and bigger, with what happened under it like a Today card: the year and
    place, then the caption (Darpan, 4 Nov 2026: "show me mockup") */
 .grid .pick { grid-column: span 2; grid-row: span 2; display: flex; flex-direction: column; text-align: left;
@@ -160,7 +165,7 @@ async function load() {
   if (from === to) stories(from);
   const keys = Object.keys(byDay).sort();
   all = keys.flatMap(k => byDay[k]);
-  if (!all.length) { $('count').textContent = 'No photos from these days yet.'; videos(from, to, []); return; }
+  if (!all.length) { $('count').textContent = 'No photos from these days yet.'; videos(from, to, []); reports(from, to, []); return; }
   $('count').textContent = `${all.length.toLocaleString()} ${all.length === 1 ? 'photo' : 'photos'}`;
   let i = 0;
   keys.forEach(k => {
@@ -190,6 +195,34 @@ async function load() {
     if (keys.length <= 31) tell(k, s);
   });
   videos(from, to, keys);
+  reports(from, to, keys);
+}
+
+// What Bapa did each day, written at the time on the old BAPS website (/data/reports/MM-DD.json, tools/sorg_reports.py):
+// the day's report under its photos, then that day's prasangs. The heading names the day and the places in English
+// only, never the Indian date; "Swamishri" is left as the report wrote it (before 13 August 2016, Pramukh Swami Maharaj).
+const repFiles = {};
+const WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+async function reports(from, to, keys) {
+  const each = [];
+  for (let d = dt(from); d <= dt(to) && each.length < 31; d = new Date(+d + 864e5)) each.push(d.toISOString().slice(0, 10));
+  for (const k of each) {
+    const md = k.slice(5);
+    const R = await (repFiles[md] = repFiles[md] || fetch(`/data/reports/${md}.json`).then(r => r.ok ? r.json() : {}).catch(() => ({})));
+    const list = (R || {})[k.slice(0, 4)] || [];
+    if (!list.length) continue;
+    const box = document.createElement('div'); box.className = 'vr';
+    box.innerHTML = list.map(r => {
+      const where = (r.pl || []).filter((p, i, a) => i === 0 || p !== a[i - 1]).join(', ');
+      const top = r.k === 'p' ? `<b>Prasang</b>${esc(r.t || '')}${where ? ` <i>${esc(where)}</i>` : ''}` :
+        `<b>Vicharan</b>${esc(WEEK[dt(k).getUTCDay()] + ' ' + nice(k, true))}${where ? ', ' + esc(where) : ''}${r.o ? ` <i>${esc(r.o)}</i>` : ''}`;
+      return `<div class="tell"><p class="line">${top}</p><div class="paras${(r.w || []).length > 3 ? ' many' : ''}">` +
+        (r.w || []).map(t => `<p>${esc(t)}</p>`).join('') + '</div></div>';
+    }).join('');
+    const sec = keys.length > 1 ? [...document.querySelectorAll('#days .day')][keys.indexOf(k)] : null;
+    if (sec) sec.append(box);
+    else if (keys.length <= 1) $('days').append(box);
+  }
 }
 
 // The Calendar's own photo of the day (the one its square shows, from /data/calendar.json, which the Calendar has just
