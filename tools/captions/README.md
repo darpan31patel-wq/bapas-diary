@@ -14,7 +14,11 @@ nightly album scan already does. From there the noon Drive download, the high re
 
 1. Not between 04:30 and 07:30 UTC. Check out branch `database` (`git fetch origin +refs/heads/database:refs/remotes/origin/database`).
 2. `python3 tools/captions/captions_merge.py --known --crawl crawl` prints the pages already saved.
-3. In Darpan's Chrome (Claude in Chrome), open a new tab on `https://www.baps.org/vicharan.aspx`. If baps.org shows a
+3. Never read baps.org at the same time as the News archive thread (13 Nov 2026). Its Daily Satsang reading may be
+   running in a tab of Darpan's Chrome (a page whose window has `DS`). If one is, run `DS.stop = true` in that tab
+   first (don't navigate or close it), and when this run is done, message the News archive thread
+   (cmsg_012tM2wBGin4Tjo82uVf3LGeGMAUJXGKuZRVxtYgDmSw2L) that baps.org is free again so it can restart.
+   In Darpan's Chrome (Claude in Chrome), open a new tab on `https://www.baps.org/vicharan.aspx`. If baps.org shows a
    check page instead, stop and try tomorrow: never click or solve it.
 4. Paste `captions_chrome.js` into the tab with the javascript tool, then `await CAP.run(<known pages>, 3)`.
    It lists the pages it read (new days, the last 3 days again, and each day's linked photo albums).
