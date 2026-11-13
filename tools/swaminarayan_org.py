@@ -27,7 +27,7 @@ SKIP = re.compile(r'/(?:search|guestbook|ecard|cgi-bin)/|\.(?:asp|aspx)$', re.I)
 OTHER = re.compile(r'\.(?:mp3|wav|wma|ram?|rm|zip|wmv|avi|mpe?g|mp4|mov|flv|swf|exe)$', re.I)
 QUOTED = re.compile(r"""(?:href|src|background|action)\s*=\s*["']?([^"'\s>]+)|["']([^"'<>\s]+?\.(?:jpe?g|gif|png|"""
                     r"""html?|pdf|mp3|zip|wmv|ram?|rm))["']""", re.I)
-FULLIMG = re.compile(r"""fullimage\w*\(\s*'((?:[^'\\]|\\.)*)'\s*,\s*'([^']+)'""", re.I)
+FULLIMG = re.compile(r"""\w*image\w*\(\s*'((?:[^'\\]|\\.)*)'\s*,\s*'([^']+)'""", re.I)
 IMGTAG = re.compile(r'<img\b[^>]*>', re.I)
 MONTHS = 'january february march april may june july august september october november december'.split()
 
@@ -252,6 +252,10 @@ class Copier:
             if status != 200:
                 with self.lock:
                     self.counts['missing'] += 1
+                return
+            if re.search(rb'(?i)<title>\s*(file|page) not found', body[:3000]):
+                with self.lock:
+                    self.counts['missing'] += 1   # the site answers a missing page with a 'File Not Found' page
                 return
             if b'Just a moment' in body[:5000] and b'challenge' in body[:20000]:
                 print('A protection check page: stopping at once, never trying to get past it', flush=True)

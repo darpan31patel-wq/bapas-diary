@@ -29,9 +29,9 @@ D2 = re.compile(r'\b(\d{1,2})(?:st|nd|rd|th)?\s+(' + MRX + r')\.?,?\s+(\d{4})\b'
 D3 = re.compile(r'\b(' + MRX + r')\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})\b', re.I)
 D5 = re.compile(r'\b(\d{1,2})(?:st|nd|rd|th)?\s+(' + MRX + r')\.?,?\s+\'?(\d{2})\b(?!\d)', re.I)
 D4 = re.compile(r'\b(' + MRX + r')\.?,?\s+(\d{4})\b', re.I)
-FULLIMG = re.compile(r"""fullimage\w*\(\s*'((?:[^'\\]|\\.)*)'\s*,\s*'([^']+)'""", re.I)
+FULLIMG = re.compile(r"""\w*image\w*\(\s*'((?:[^'\\]|\\.)*)'\s*,\s*'([^']+)'""", re.I)
 IMG = re.compile(r'<img\b[^>]*>', re.I)
-TOKEN = re.compile(r"""fullimage\w*\(\s*'(?:[^'\\]|\\.)*'\s*,\s*'[^']+'|<img\b[^>]*>""", re.I)
+TOKEN = re.compile(r"""\w*image\w*\(\s*'(?:[^'\\]|\\.)*'\s*,\s*'[^']+'|<img\b[^>]*>""", re.I)
 HEAD = re.compile(r'(?is)<(h[1-6]|b|strong|font[^>]*size\s*=\s*["\']?[3-7])[^>]*>(.*?)</(?:h[1-6]|b|strong|font)>')
 OTHER = re.compile(r'\.(?:mp3|wav|wma|ram?|rm|zip|wmv|avi|mpe?g|mp4|mov|flv|swf)$', re.I)
 NOT_PLACE = {'index', 'photo', 'photos', 'image', 'images', 'gallery', 'page', 'main', 'default'}
@@ -157,6 +157,8 @@ def index_page(site, url, rel, raw, headers, base_url):
     body = raw.decode('cp1252', errors='replace')
     tm = re.search(r'(?is)<title>(.*?)</title>', body)
     title = flat(html.unescape(tm[1])) if tm else ''
+    if re.match(r'(?i)(file|page) not found', title):
+        return None, []   # the site's 'File Not Found' page, served for a missing address
     heads = [flat(text(h[1])) for h in HEAD.findall(body)]
     heads = [h for h in heads if 2 < len(h) < 200]
     words = paragraphs(body)
@@ -201,6 +203,8 @@ def index_page(site, url, rel, raw, headers, base_url):
         else:
             cm = FULLIMG.match(tok)
             cap, f = cm[1].replace("\\'", "'"), cm[2]
+            if not re.search(r'\.(?:jpe?g|png|gif|bmp)$', f, re.I):
+                continue   # another script call that only looks alike
             u = urllib.parse.urljoin(url, f)
             kind, alt = 'full', ''
             small = re.sub(r'f(\.\w+)$', r'h\1', u.rsplit('/', 1)[-1], flags=re.I)
@@ -292,6 +296,8 @@ def main():
                     page, photos = index_page(a.site, url, rel, open(full, 'rb').read(), headers, base)
                 except Exception as e:
                     print('could not read', rel, e, file=sys.stderr)
+                    continue
+                if page is None:
                     continue
                 P.write(json.dumps(page, ensure_ascii=False) + '\n')
                 for p in photos:
