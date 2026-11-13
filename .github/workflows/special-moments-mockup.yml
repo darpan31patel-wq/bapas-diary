@@ -26,13 +26,13 @@ jobs:
           data = data.group(1) if data else '/data/day/'
           hunks, cur = [], None
           for line in open('tools/mockups/special-moments.patch', encoding='utf-8').read().split('\n'):
-              if line.startswith('@@'): cur = {'before': None, 'add': []}; hunks.append(cur); continue
+              if line.startswith('@@'): cur = {'before': [], 'add': []}; hunks.append(cur); continue
               if cur is None or line.startswith(('---', '+++')): continue
               if line.startswith('+'): cur['add'].append(line[1:])
-              elif line.startswith(' ') and not cur['add']: cur['before'] = line[1:]
+              elif line.startswith(' ') and not cur['add']: cur['before'].append(line[1:])
           for h in hunks:
-              b = h['before'] + '\n'
-              assert html.count(b) >= 1, 'not found: ' + b
+              b = '\n'.join(h['before']) + '\n'
+              assert html.count(b) == 1, 'not found once: ' + b
               add = '\n'.join(h['add']).replace('{{DATA}}', data) + '\n'
               html = html.replace(b, b + add, 1)
           open('mock.html', 'w', encoding='utf-8').write(html)
