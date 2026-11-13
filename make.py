@@ -2057,7 +2057,7 @@ def tg_day(day, items):
 
 
 SPECIAL_FILE = os.path.join(HERE, 'archive', 'special-days.json')
-DAILY_SPECIAL = os.environ.get('DAILY_SPECIAL', '') == '1'   # a special picture every day (Darpan, 13 Nov 2026), on once he has said yes; test runs set DAILY_SPECIAL=1
+DAILY_SPECIAL = os.environ.get('DAILY_SPECIAL', '1') != '0'   # a special picture every day (Darpan, 13 Nov 2026: 'want 1 special picture everyday'; his yes to go live 21:34)
 
 
 def special_choices():
@@ -3225,10 +3225,13 @@ def main():
         if sp:
             save_special(sp, f"{special['date']} {special.get('headline') or special.get('line')}")
     if DAILY_SPECIAL and not special_off(day) and not any(f.startswith('bapas-diary-special') for f in os.listdir(a.out)):
-        for ev in daily_specials(day, items, photos, tg_evs):   # the first is the day's special picture, the others are for him to choose from
-            sp = compose_special(ev, day)
-            if sp:
-                save_special(sp, f"{ev.get('kind', 'story')}: {ev['date']} {ev.get('headline') or ev.get('line')}")
+        try:   # the daily picture never waits on this
+            for ev in daily_specials(day, items, photos, tg_evs):   # the first is the day's special picture, the others are for him to choose from
+                sp = compose_special(ev, day)
+                if sp:
+                    save_special(sp, f"{ev.get('kind', 'story')}: {ev['date']} {ev.get('headline') or ev.get('line')}")
+        except Exception as e:
+            print('  no daily special picture:', e)
     open(os.path.join(a.out, 'date.txt'), 'w').write(f'{day}\n')
     open(os.path.join(a.out, 'summary.txt'), 'w').write(f'{len(photos)} years: ' + ', '.join(str(x['y']) for x in photos) + '\n')
     print('saved', os.path.join(a.out, 'bapas-diary.jpg'))
