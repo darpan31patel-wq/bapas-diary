@@ -3,7 +3,7 @@
 # I'm reliant on one thing." One gentle nightly run that puts a copy of every part of Bapa's Diary in a second company:
 #   code      -> GitLab (every branch, every night, only what changed) and a full git bundle on Sundays to Drive + R2
 #   database  -> bapas.db (photos, days, News articles) to Google Drive and the private R2 bucket bapas-diary-backups
-#   Studio    -> the Studio changes log and the missed searches / feedback (Cloudflare KV) to Drive
+#   Studio    -> the Studio changes log and the missed searches / feedback (read through the website) to Drive
 #   sign ups  -> the weekly darshan email list (Resend) to Drive only (people's emails never go to R2)
 #   releases  -> the GitHub release files the builds need (database, faces, tags, bank...), Sundays, changes only
 #   checks    -> emails Darpan only when something is wrong: a backup step failed, the 2pm picture on GitHub is older
@@ -119,36 +119,27 @@ if [ "$DOW" = 7 ] || [ "${FULL:-}" = yes ]; then
   echo "$n release files copied, $(wc -l < now.txt) kept in all"
 fi
 
-step "Studio changes log, missed searches and feedback (Cloudflare KV)"
-CF=https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces
-cfapi() { curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$@"; }
-# the stores are found through the website's own bindings (STUDIO_LOG, MISSED), whatever Darpan named them
-BINDS=$(cfapi "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/bapas-diary" | jq -c '.result.deployment_configs.production.kv_namespaces // {}')
-for pair in STUDIO_LOG:studio-log MISSED:missed-searches; do
-  bind=${pair%%:*}; title=${pair#*:}
-  id=$(echo "$BINDS" | jq -r --arg b "$bind" '.[$b].namespace_id // empty')
-  [ -n "$id" ] || { problem "Could not find the $title store ($bind) on the website"; continue; }
-  python3 - "$CF/$id" "$title.json" <<'PY' || problem "Could not read the $title store"
-import json, os, sys, urllib.request
-base, out = sys.argv[1], sys.argv[2]
-h = {'Authorization': 'Bearer ' + os.environ['CLOUDFLARE_API_TOKEN']}
-def get(url, raw=False):
-    with urllib.request.urlopen(urllib.request.Request(url, headers=h), timeout=60) as r:
-        b = r.read(); return b.decode('utf-8', 'replace') if raw else json.loads(b)
-keys, cur = [], ''
-while True:
-    j = get(f'{base}/keys?limit=1000' + (f'&cursor={cur}' if cur else ''))
-    if not j.get('success'): sys.exit('no permission to read this store')
-    keys += [k['name'] for k in j['result']]
-    cur = j.get('result_info', {}).get('cursor') or ''
-    if not cur: break
-from urllib.parse import quote
-rows = {k: get(f'{base}/values/{quote(k, safe="")}', raw=True) for k in keys}
-json.dump(rows, open(out, 'w'), ensure_ascii=False, indent=1)
-print(f'{len(rows)} entries')
-PY
-  [ -f "$title.json" ] && { gzip -f "$title.json"; rclone copyto "$title.json.gz" "$DRIVE/studio/$DAY $title.json.gz" && drive_keep studio || problem "$title copy to Drive failed"; }
-done
+step "Studio changes log, missed searches and feedback (read through the website itself)"
+# the Cloudflare key may not read the stores, so these come the same way Darpan reads them: the Studio with its
+# password, /api/missed and /api/feedback with the MISSED_KEY word. Nothing is printed but the counts.
+SITE=https://bapas-diary.com
+if [ -n "${STUDIO_PASSWORD:-}" ]; then
+  printf %s "$STUDIO_PASSWORD" | curl -s -o /dev/null -c jar.txt --data-urlencode password@- "$SITE/darpan/api/log"
+  if curl -s -f -b jar.txt "$SITE/darpan/api/log" -o studio-log.json && jq -e '.entries' studio-log.json >/dev/null; then
+    echo "Studio changes log: $(jq '.entries | length' studio-log.json) entries"
+    gzip -f studio-log.json && { rclone copyto studio-log.json.gz "$DRIVE/studio/$DAY studio-log.json.gz" || problem "Studio log copy to Drive failed"; }
+  else problem "Could not open the Studio changes log (the STUDIO_PASSWORD secret may not match the website)"; fi
+  rm -f jar.txt
+fi
+if [ -n "${MISSED_KEY:-}" ]; then
+  for what in missed feedback; do
+    if printf %s "$MISSED_KEY" | curl -s -f -G --data-urlencode "key@-" "$SITE/api/$what" -o "$what.json" && jq -e . "$what.json" >/dev/null; then
+      echo "$what: saved"; gzip -f "$what.json"
+      rclone copyto "$what.json.gz" "$DRIVE/studio/$DAY $what.json.gz" || problem "$what copy to Drive failed"
+    else problem "Could not read $what from the website"; fi
+  done
+fi
+drive_keep studio
 
 step "Weekly darshan email sign ups (Resend), Drive only"
 if [ -n "${RESEND_API_KEY:-}" ]; then
