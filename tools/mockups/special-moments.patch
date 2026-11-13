@@ -1,5 +1,5 @@
 diff --git a/site/day.html b/site/day.html
-index 60bf8c8..8baa3c7 100644
+index 60bf8c8..df7fa72 100644
 --- a/site/day.html
 +++ b/site/day.html
 @@ -326,6 +326,26 @@ a.ss-big { text-decoration: none; }
@@ -105,12 +105,12 @@ index 60bf8c8..8baa3c7 100644
 +  D.years.forEach(Y => byYear[Y.y] = {Y, stories: []});
 +  (D.stories || []).forEach(s => { const b = byYear[s[0]] = byYear[s[0]] || {Y: null, stories: []}; if (!b.stories.some(o => o[2] === s[2])) b.stories.push(s) });
 +  Object.keys(byYear).forEach(k => {
-+    const y = +k, {Y, stories} = byYear[k];
++    const y = +k, {Y, stories} = byYear[k], at = (stories[0] || [])[1] || placeOf(y);   // a story says its own place
 +    told(Y, stories).forEach(([line, h, w, l]) => {
 +      const top = h || tail(line) || line;
 +      if (l) (w || []).concat(top).map(t => [t, momentOf(t)]).filter(([, s]) => s.w >= 3).sort((a, b) => b[1].w - a[1].w).slice(0, 2)
-+        .forEach(([t, s]) => add({y, place: placeOf(y), kind: s.f, w: s.w + 3, text: t, story: 1}));
-+      else { const s = momentOf([line, h].concat(w || []).join(' ')); if (s.w >= 3) add({y, place: placeOf(y), kind: s.f, w: s.w + 3, text: top, story: 1}) }
++        .forEach(([t, s]) => add({y, place: at, kind: s.f, w: s.w + 3, text: t, story: 1}));
++      else { const s = momentOf([line, h].concat(w || []).join(' ')); if (s.w >= 3) add({y, place: at, kind: s.f, w: s.w + 3, text: top, story: 1}) }
 +    });
 +  });
 +  // 3 the BAPS calendar: a festival on this date in a year with photos of Bapa (not on a festival day's own page,
