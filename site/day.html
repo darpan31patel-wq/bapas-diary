@@ -326,6 +326,26 @@ a.ss-big { text-decoration: none; }
 .stories a b{flex:none;font:700 15px var(--serif);color:var(--gold);font-variant-numeric:tabular-nums}
 .stories a span{text-decoration:underline;text-decoration-color:rgba(217,164,65,.3);text-underline-offset:3px}
 .stories a:hover span,.stories a:focus-visible span{color:var(--gold-hi);text-decoration-color:var(--gold-hi)}
+/* the special moments of the day: the deep search of every caption, story, calendar day and News story (Darpan, 13 Nov 2026) */
+.moments{margin-top:48px;border-top:1px solid rgba(217,164,65,.22);padding-top:28px;scroll-margin-top:16px}
+.moments>h2{margin:0;text-align:center;font:700 clamp(28px,4vw,42px)/1.1 var(--serif);color:var(--gold-hi);text-wrap:balance}
+.moments>p{text-align:center;color:var(--mist);margin:8px auto 0;font-size:15px;max-width:760px;text-wrap:balance}
+.moments ol{list-style:none;margin:24px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,440px),1fr));gap:4px 34px}
+.moments li[hidden]{display:none}
+.mo{display:flex;gap:16px;align-items:flex-start;padding:12px 4px;border-bottom:1px solid rgba(217,164,65,.14);text-decoration:none;color:var(--cream);cursor:pointer}
+.mo .mi{flex:none;width:104px;height:104px;border-radius:3px;overflow:hidden;background:#2a0b10;box-shadow:0 0 0 1.5px rgba(217,164,65,.7),0 4px 10px rgba(0,0,0,.35)}
+.mo .mi img{display:block;width:100%;height:100%;object-fit:cover}
+.mo .mt{min-width:0}
+.mo .my{display:flex;align-items:baseline;gap:4px 12px;flex-wrap:wrap}
+.mo .my b{font:700 28px/1 var(--serif);color:var(--gold-hi);font-variant-numeric:tabular-nums}
+.mo .my .caps{color:var(--gold-soft)}
+.mo .mk{display:block;margin-top:6px;font:700 10.5px/1.2 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+.mo .ml{display:block;margin-top:4px;font:500 18px/1.4 var(--serif);overflow-wrap:anywhere}
+.mo .ms{display:block;margin-top:4px;font:italic 500 14px/1.3 var(--serif);color:var(--mist)}
+.mo:hover .ml,.mo:focus-visible .ml{color:var(--gold-hi)}
+.moments .momore{text-align:center;margin-top:20px}
+.moments .momore .go{background:none;cursor:pointer}
+@media (max-width:560px){.mo{gap:12px}.mo .mi{width:76px;height:76px}.mo .my b{font-size:23px}.mo .ml{font-size:16.5px}}
 .all{margin-top:56px;border-top:1px solid rgba(217,164,65,.22);padding-top:30px}
 .all>h2{margin:0;text-align:center;font:700 clamp(28px,4vw,42px)/1.1 var(--serif);color:var(--gold-hi);text-wrap:balance}
 .all>p{text-align:center;color:var(--mist);margin:8px 0 0;font-size:15px}
@@ -504,6 +524,7 @@ a.ss-big { text-decoration: none; }
     </script>
     <!-- every baps.org News story of this date, in the list under the cards (Darpan, 6 Nov 2026: "somewhere at the top that
          says what happened, stories from BAPS around the world on this day") -->
+    <p class="yir" id="momentsline" hidden><a href="#moments"></a></p>
     <p class="yir" id="storiesline" hidden><a href="#stories"></a></p>
     <div id="mocknote"></div>
 <!-- Computers: the left card, Screensaver and the email sign up (Darpan, 30 Oct 2026); on phones only its insides show.
@@ -599,6 +620,13 @@ a.ss-big { text-decoration: none; }
     <button class="pill" id="slideshow" type="button">Slideshow</button>
     <a class="pill" id="search-day" target="_blank" rel="noopener">Search this date</a>
   </div>
+
+  <section class="moments" id="moments" hidden>
+    <h2>Special moments on this day</h2>
+    <p id="moments-count"></p>
+    <ol id="momentlist"></ol>
+    <p class="momore" id="momore" hidden><button class="go" id="momore-btn" type="button">See more &rsaquo;</button></p>
+  </section>
 
   <section class="stories" id="stories" hidden>
     <h2>Stories from BAPS around the world on this day</h2>
@@ -874,6 +902,7 @@ function render() {
   [...$('groups').children].sort((a, b) => a.id.slice(1) - b.id.slice(1)).forEach(g => $('groups').append(g));
   storyLines();
   storyList();
+  moments();
   $('board').hidden = $('controls').hidden = false;
   $('search-day').href = D.fest ? '{{SEARCH}}#q=' + encodeURIComponent(D.title) : SRC.search(D.date);
   $('search-day').textContent = D.fest ? 'Search ' + D.title : 'Search this date';
@@ -1568,6 +1597,92 @@ async function storyList() {
   $('stories-count').textContent = `${n} ${n === 1 ? 'story' : 'stories'} from ${yrs} ${yrs === 1 ? 'year' : 'years'}, each opens on baps.org`;
   $('storylist').innerHTML = rows.map(([y, t, u]) =>
     `<li><a href="${esc(u)}" target="_blank" rel="noopener"><b>${y}</b><span>${esc(t)}</span></a></li>`).join('');
+}
+
+// The special moments of the day (Darpan, 13 Nov 2026: "a deep search for all the captions, all the articles, all the
+// news, all the history, all the calendar festivals, all the significant moments"): every photo caption of every year,
+// every On this day story and diary line, every baps.org News story of the date and the BAPS calendar's festivals,
+// looked through for what makes a moment special. The same search as the Studio's "Special moments found this day",
+// with the everyday words left out that a public page would call special by mistake (a shawl "honor", "Lord
+// Harikrishna Maharaj", a plain "celebration", the daily abhishek, arrivals, sabhas). Strongest first; a photo moment
+// opens that photo, a story moment its year below, a News story baps.org. Only photos with Bapa, as everywhere on Today.
+const MOMENT_WORDS = [
+  [/(?<!satsang )\bdiksha|initiat(ed|ion) into|parshadi diksha/i, 'Diksha', 5], [/pratishtha|consecrat/i, 'Murti pratishtha', 5],
+  [/inaugurat|opening ceremony|udghatan|newly built/i, 'Inauguration', 4],
+  [/shila?n?y[aã]s|foundation stone|ground.?breaking|bh[ou]o?mi ?pujan/i, 'Foundation stone', 4],
+  [/janma ?jayanti|birthday|birth anniversary|pragatya|janmotsav/i, 'Jayanti', 4],
+  [/mahotsav|centenary|shatabdi|jubilee|anniversary|patotsav/i, 'Celebration', 3],
+  [/annakut|diwali|deepavali|\bholi\b|janmashtami|ram navami|hanuman jayanti|sharad pu?rnima|sharad punam|raksha ?bandhan|guru pu?rnima|dhanteras|chopda|new year|uttarayan|navratri|dussehra|shivratri|fuldol|pushpadol|kali chaudas|bhai bij|vasant panch|rath ?yatra/i, 'Festival', 3],
+  [/president|prime minister|\bminister\b|governor|\bking\b|\bqueen\b|\bprince|princess|ambassador|\bmayor|parliament|buckingham palace|royal palace|rashtrapati bhavan|white house|10 downing|senator|congress(wo)?man|\bpope\b|dalai lama|archbishop|\broyal|high commissioner|chancellor|house of lords|\bduke\b|\bduchess\b/i, 'Dignitary', 5],
+  [/\bMPs?\b|\bMLAs?\b|\bLord [A-Z][a-z]+ of\b/, 'Dignitary', 5],
+  [/first time|first ever|historic|guinness|world record|largest|biggest/i, 'Historic', 4],
+  [/\baward|felicitat|conferred|doctorate|honorary|civic reception|key to the city|recogni[sz]ed/i, 'Honour', 3],
+  [/\byagna\b|\byajna\b|mahapuja|vishwa shanti/i, 'Yagna', 3], [/rath ?yatra|shobha ?yatra|nagar ?yatra|procession/i, 'Procession', 3],
+  [/samadhi|akshar ?nivas|passes away|passed away|return to akshardham|tribute|smruti ?sabha|antyeshti/i, 'Remembrance', 6],
+];
+// its weight: the strongest kind it is, and one more for each other kind (a festival with a prime minister: 5 + 1)
+const momentOf = t => { const f = []; let w = 0; for (const [re, name, k] of MOMENT_WORDS) if (re.test(t || '') && !f.includes(name)) { w = f.length ? Math.max(w, k) + 1 : k; f.push(name) } return {f, w} };
+const SHOW_MOMENTS = 8;
+async function moments() {
+  const D = DAY, mine = showing, y0 = now.getFullYear(), out = [], seen = new Set();
+  const placeOf = y => (D.years.find(Y => Y.y === y) || {}).place || (D.stories.find(s => s[0] === y) || [])[1] || '';
+  const add = m => {   // once: a photo's caption and the News story's title often say the same, the title with its place after
+    const k = said(m.text); if (!k || [...seen].some(o => o === k || (Math.min(o.length, k.length) > 11 && (o.startsWith(k) || k.startsWith(o))))) return;
+    seen.add(k); out.push(m);
+  };
+  // 1 the photo captions: each year's strongest photo of each kind of moment, at most two a year
+  D.years.forEach(Y => {
+    const best = {};
+    Y.p.forEach(p => { const s = momentOf(p[2]); if (s.w < 3 || String(p[2]).length < 12) return; const k = s.f[0]; if (!best[k] || s.w > best[k].s.w) best[k] = {p, s} });
+    Object.values(best).sort((a, b) => b.s.w - a.s.w).slice(0, 2).forEach(({p, s}) => add({y: Y.y, place: Y.place, kind: s.f, w: s.w + 1, text: p[2], p}));
+  });
+  // 2 the On this day stories, and each line of a diary day
+  const byYear = {};
+  D.years.forEach(Y => byYear[Y.y] = {Y, stories: []});
+  (D.stories || []).forEach(s => { const b = byYear[s[0]] = byYear[s[0]] || {Y: null, stories: []}; if (!b.stories.some(o => o[2] === s[2])) b.stories.push(s) });
+  Object.keys(byYear).forEach(k => {
+    const y = +k, {Y, stories} = byYear[k];
+    told(Y, stories).forEach(([line, h, w, l]) => {
+      const top = h || tail(line) || line;
+      if (l) (w || []).concat(top).map(t => [t, momentOf(t)]).filter(([, s]) => s.w >= 3).sort((a, b) => b[1].w - a[1].w).slice(0, 2)
+        .forEach(([t, s]) => add({y, place: placeOf(y), kind: s.f, w: s.w + 3, text: t, story: 1}));
+      else { const s = momentOf([line, h].concat(w || []).join(' ')); if (s.w >= 3) add({y, place: placeOf(y), kind: s.f, w: s.w + 3, text: top, story: 1}) }
+    });
+  });
+  // 3 the BAPS calendar: a festival on this date in a year with photos of Bapa (not on a festival day's own page,
+  // which is all that festival already)
+  if (!D.fest) D.years.forEach(Y => {
+    const names = festsOf(D.cal && D.cal[Y.y]).filter(n => n !== 'Ekadashi');
+    if (!names.length || !Y.p.length || out.some(m => m.y === Y.y && m.kind.includes('Festival'))) return;
+    add({y: Y.y, place: Y.place, kind: ['Festival'], w: 4, text: `${names.join(' and ')} with Bapa in ${Y.place || 'the year ' + Y.y}`, p: Y.p[0]});
+  });
+  // 4 the baps.org News stories of the date
+  const A = D.fest ? {} : await (ART[D.date] = ART[D.date] || fetch('{{DATA}}../articles/' + D.date + '.json').then(r => r.ok ? r.json() : {}).catch(() => ({})));
+  if (showing !== mine) return;
+  Object.keys(A).filter(y => D.date < TODAY || +y < y0).forEach(y => A[y].forEach(([t, u]) => {
+    const s = momentOf(t); if (s.w >= 3) add({y: +y, place: '', kind: s.f, w: s.w, text: t, url: u});
+  }));
+  out.sort((a, b) => b.w - a.w || b.y - a.y);
+  $('moments').hidden = $('momentsline').hidden = !out.length;
+  if (!out.length) return;
+  const n = out.length;
+  $('momentsline').firstChild.textContent = `${n} special ${n === 1 ? 'moment' : 'moments'} on this day`;
+  $('moments-count').textContent = `Found in every photo caption, every story, the BAPS calendar and the baps.org News of ${D.title}, through the years`;
+  $('momentlist').innerHTML = out.map((m, i) => {
+    const url = m.p && SRC.photo(m.p), where = m.place ? `<span class="caps">${esc(m.place)}</span>` : '';
+    const attr = m.url ? `href="${esc(m.url)}" target="_blank" rel="noopener"` : `href="#y${m.y}" data-m="${i}"`;
+    return `<li${i >= SHOW_MOMENTS ? ' hidden' : ''}><a class="mo" ${attr}>${url ? `<span class="mi"><img loading="lazy" decoding="async" alt="" src="${esc(url)}" style="object-position:${focus(m.p)}"></span>` : ''}` +
+      `<span class="mt"><span class="my"><b>${m.y}</b>${where}</span><span class="mk">${esc(m.kind.slice(0, 2).join(' · '))}</span>` +
+      `<span class="ml">${esc(String(m.text).replace(/[\s,;:.-]+$/, ''))}</span>${m.url ? '<span class="ms">From the baps.org story</span>' : ''}</span></a></li>`;
+  }).join('');
+  $('momentlist').querySelectorAll('.mo[data-m]').forEach(a => a.addEventListener('click', e => {
+    const m = out[+a.dataset.m], i = m.p ? everyPhoto.findIndex(x => x.p === m.p) : -1;
+    e.preventDefault();
+    if (i >= 0) return view(i);
+    const g = $('y' + m.y); if (g) g.scrollIntoView({behavior: reduce ? 'auto' : 'smooth'});
+  }));
+  $('momore').hidden = n <= SHOW_MOMENTS;
+  $('momore-btn').onclick = () => { $('momentlist').querySelectorAll('li[hidden]').forEach(li => li.hidden = false); $('momore').hidden = true };
 }
 
 // every photo of the day, year by year
