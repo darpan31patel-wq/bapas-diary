@@ -191,7 +191,8 @@ def load(folder, fixes=None):
 # day in New Jersey), so its photos only join a day when Bapa was there: the article or its captions speak of Swamishri
 # and its town is where the vicharan pages put him on that day (when the vicharan pages say nothing for that day, the
 # article's own words decide).
-# Only the exact English date counts: a photo's own dated file name, else the article's date when the article is of one day.
+# Only the exact English date counts, and it is the day the event happened as the story tells it, never the day the
+# article was published: a photo's own dated file name, else the day saved for its story or gallery in archive/news/dates.json.
 # News photos are only ever added: they never take the place of a vicharan photo, and make.py's face check still decides.
 TOWN_ALIAS = {'amdavad': 'ahmedabad', 'delhi': 'new delhi', 'bombay': 'mumbai', 'baroda': 'vadodara', 'atladara': 'vadodara', 'atladra': 'vadodara',
               'neasden': 'london', 'calcutta': 'kolkata', 'gadhada': 'gadhada', 'gadhda': 'gadhada', 'sarangpur': 'sarangpur', 'salangpur': 'sarangpur',
@@ -247,25 +248,19 @@ def news_caption(cap, section, title):
     return name or cap, False
 
 
-def many_days(path, a, year, when=None):
-    """True when a News article is not of its one listed day: it covers a festival week or a tour, or its own words and
-    gallery headings give other days ('4 Nov. Diksha', '6 Nov. Murti-Pratishtha' under an article listed on 11 Nov).
-    Its photos then belong to no single date unless their own file names carry one."""
-    span = page_dates(path, a.get('t') or '', year)
-    if span and span[0] != span[1]:
-        return True
-    days = {file_date(r[1], year) for g in (a.get('g') or {}).values() for r in g.get('rows') or []} - {None}
-    head = ((a.get('text') or '')[:600] + ' ' + ' '.join(a.get('g') or {})).lower().replace('-', ' ')
-    if len(days) > 1 or re.search(r'\b\d{1,2}(?:st|nd|rd|th)?\s*(?:to|\u2013)\s*\d{1,2}(?:st|nd|rd|th)?\s+' + MON, head):
-        return True
-    said = set()
-    for m in re.finditer(r'\b(\d{1,2})(?:st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?(?:,?\s+(\d{4}))?', head):
-        if not m[3] or int(m[3]) == year:
-            said.add((MON_SHORT[m[2]], int(m[1])))
-    for m in re.finditer(r'\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?,\s+(\d{4})', head):
-        if int(m[3]) == year:
-            said.add((MON_SHORT[m[1]], int(m[2])))
-    return bool(when and said and said != {(when.month, when.day)})
+DATES = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'archive', 'news', 'dates.json')
+
+
+def event_days(path=DATES):
+    """{article: 'YYYY-MM-DD' or {gallery: 'YYYY-MM-DD'}}: the day each News story's event happened, read once from the
+    story itself and saved (archive/news/dates.json). Darpan, 13 Nov 2026: 'The article might have been released later
+    on, but the exact date that's mentioned in the story within the article needs to be the date.' The date baps.org
+    lists an article under is often the day it was published (the Akshardham shilanyas of 8 Nov 2000 is listed on
+    10 Nov), so it is never used on its own."""
+    try:
+        return json.load(open(path, encoding='utf-8'))['days']
+    except (OSError, ValueError, KeyError):
+        return {}
 
 
 def load_news(path, years):
@@ -275,6 +270,7 @@ def load_news(path, years):
     if not path or not os.path.exists(path):
         return out, stats
     where = bapa_towns(years)
+    told = event_days()
     have = {(x[2], x[3].lower()) for v in years.values() for x in v}
     for apath, a in sorted(json.load(open(path, encoding='utf-8')).items()):
         when = a.get('date')
@@ -289,10 +285,11 @@ def load_news(path, years):
         says = bool(PRESENT.search((a.get('t') or '') + ' ' + (a.get('text') or '')))
         gals = list((a.get('g') or {}).items()) + [('', {'t': '', 'rows': a.get('own') or []})]   # a gallery's own captions first
         words = (a.get('t') or '') + ' ' + (a.get('text') or '')
-        spread = many_days(apath, a, day0.year, day0)
+        fixed = told.get(apath)
         any_named = any(about_bapa(r[2], day0) for gp, g in gals for r in g.get('rows') or [] if len(r) > 2 and r[2] and r[2] != a.get('t'))
         seen = set()
         for gp, g in gals:
+            gday = fixed if isinstance(fixed, str) else (fixed or {}).get(gp.rsplit('/', 1)[-1].replace('.aspx', '')) if gp else None
             section = re.sub(r'-\d+$', '', gp.rsplit('/', 1)[-1].replace('.aspx', '')).replace('-', ' ') if gp else ''
             caps = [news_caption(r[2] if len(r) > 2 else '', section, a.get('t')) for r in g.get('rows') or []]
             rows = continued([(r[0], r[1], c[0]) for r, c in zip(g.get('rows') or [], caps)], day0)
@@ -304,10 +301,10 @@ def load_news(path, years):
                 day = file_date(file, day0.year)
                 if day and abs((day - day0).days) > 31:
                     day = None
-                if not day and spread:                        # a festival week or a tour: no single day to give it
-                    stats['from an article of many days'] += 1
+                if not day and not gday:                      # the story does not pin this photo to one day
+                    stats['no day of its own in the story'] += 1
                     continue
-                day = day or day0
+                day = day or datetime.date.fromisoformat(gday)
                 known = set().union(*(where.get(day + datetime.timedelta(k), set()) for k in (-1, 0, 1)))
                 named = about_bapa(cap, day)
                 if known and town:
