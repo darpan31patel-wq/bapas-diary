@@ -49,10 +49,8 @@ def main():
     rows, saved, skipped, failed = [], 0, 0, 0
     for path, g in sorted(W.items()):
         files, names = g.get('files') or [], g.get('names') or []
-        m = re.search(r'/(\d+)/display/?$', g.get('folder') or '')
-        if not files or not m:
+        if not files:
             continue
-        album = f'webnext-{m[1]}'
         art = A.get(path) or {}
         when = g.get('date') or art.get('date') or ''
         place = art.get('place') or ''
@@ -62,6 +60,10 @@ def main():
         for i, src in enumerate(files):
             if 'static.wn.baps-apps.org' not in src or '/display/' not in src:
                 continue   # YouTube thumbnails and the page's banner crops
+            m = re.search(r'/(\d+)/display/', src)   # the folder number is in each photo's own address (a few
+            if not m:                                 # galleries' folder field is a video page, 13 Nov 2026)
+                continue
+            album = f'webnext-{m[1]}'
             file = urllib.parse.unquote(src.split('?')[0].rsplit('/', 1)[1])
             stem, ext = os.path.splitext(file)
             cap = names[i] if i < len(names) else ''

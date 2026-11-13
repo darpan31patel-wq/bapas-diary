@@ -1,6 +1,7 @@
 # The photos of baps.org's new style News pages into Darpan's Drive archive and the website's photo store (R2), once,
 # when this file is pushed (Darpan, 13 Nov 2026: "faster"). Website and archive only: touches nothing in the 2pm
 # picture's chain and never runs 04:30 to 07:30 UTC. One run, one machine, a second between photos.
+# 13 Nov: run again for the 620 photos of galleries whose folder field was a video page.
 name: webnext-copy
 on:
   push:
