@@ -12,6 +12,25 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600;700&family=Arimo:wght@400;700&display=swap">
 <style>
+.storybox { width: 100%; min-height: 220px; font: 15px/1.4 var(--serif); resize: vertical; white-space: pre-wrap }
+/* Darpan's own choice of special pictures (collage builder note, 13 Nov 2026) */
+.sw { font: 600 12.5px var(--sans); padding: 5px 10px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); color: var(--fg); cursor: pointer; white-space: nowrap }
+.sw[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: #2a0d14 }
+.sw.off[aria-pressed="true"] { background: var(--saffron); border-color: var(--saffron); color: #fff }
+.ch { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 4px 10px; align-items: start; border-top: 1px solid var(--line); padding: 8px 0 }
+.ch.nopic { grid-template-columns: minmax(0, 1fr) } .ch.nopic .pic { display: none }
+.ch .pic { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; background: #000; display: block }
+.ch p { margin: 0 } .ch .acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px }
+.ch.on { background: rgba(233,190,110,.07); border-radius: 8px; padding: 8px; border-top: 0; margin-top: 4px }
+.ch .edit { grid-column: 1 / -1; display: grid; gap: 6px } .ch .edit textarea { font: 14px/1.4 var(--serif); white-space: pre-wrap }
+.yr { font: 700 20px/1 var(--serif); color: var(--gold); margin: 10px 0 2px }
+.mine { list-style: none; margin: 0; padding: 0 } .mine li { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 5px 0; border-bottom: 1px solid var(--line) }
+.mine li b { color: var(--gold); font: 700 13px var(--sans); min-width: 5.4em } .mine li span { flex: 1 1 160px; min-width: 0 }
+.opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px }
+.opts figure { margin: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px; display: grid; gap: 6px }
+.opts img { width: 100%; aspect-ratio: 2796 / 1290; object-fit: cover; border-radius: 6px; background: #000 }
+.opts figcaption { font-size: 13px } .opts figcaption b { display: block; font: 700 15px var(--serif); color: var(--gold) }
+.tabs { flex-wrap: wrap }
 .preview { white-space: pre-wrap; font: 14px/1.45 var(--sans); background: rgba(255,255,255,.04); border: 1px solid var(--line, rgba(255,255,255,.12)); border-radius: 8px; padding: 10px 12px; margin: 4px 0 8px }
 /* Layout (Darpan, 28 Oct 2026: easier to use): one bar on top with what to make, which day and Export; the picture
    large in the middle, where a click on any card opens a small editor right on it; the side panel holds that card's
@@ -200,6 +219,7 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
     <p class="status" id="status" role="status"></p>
     <p class="hint" id="tip">Click any card in the picture to change its photo, place or words.</p>
     <p class="hint" id="autosave" aria-live="polite"></p>
+    <div id="options" hidden><h3 class="yr" style="font-size:17px">Other special pictures for this day</h3><p class="hint" id="options-p"></p><div class="opts" id="options-row"></div></div>
     <details class="compare" id="compare"><summary>Side by side with the picture the morning run made</summary>
       <div class="twin"><figure><img id="real" alt="The automatic run's picture for this date"><figcaption>The morning run's picture</figcaption></figure><figure><img id="mine" alt="Your version"><figcaption>Your version, changed cards framed in gold</figcaption></figure></div>
       <p class="hint" id="cmp-note"></p></details>
@@ -580,7 +600,7 @@ function dayCards(pack, o) {
     const pick = st.pick ?? defaultPick(y, o.photoStyle);
     const c = y.cands[pick] || y.cands[0];
     let mode = st.crop && st.crop !== 'auto' ? st.crop : autoCrop(c, o.photoStyle);
-    return { y: y.year, key: y.key, yl: st.ylabel ?? String(y.year), c, mode, zoom: st.zoom || 1, dx: st.dx || 0, dy: st.dy || 0, caption: st.caption ?? c.caption, place: st.place ?? c.place, fest: st.fest ?? (c.festival || captionFest(c)) };
+    return { y: y.year, key: y.key, yl: st.ylabel ?? (y.year == null ? '' : String(y.year)), c, mode, zoom: st.zoom || 1, dx: st.dx || 0, dy: st.dy || 0, caption: st.caption ?? c.caption, place: st.place ?? c.place, fest: st.fest ?? (c.festival || captionFest(c)) };
   });
 }
 function defaultPick(y, style) {
@@ -768,7 +788,7 @@ function drawStory(ctx, pack, o, hits) {
       ctx.save(); ctx.filter = photoFilter(o); ctx.drawImage(im, box[0], box[1], box[2], box[3], left + e, top + e, w, h); ctx.restore();
     }
     ctx.strokeStyle = 'rgba(120,96,70,.6)'; ctx.lineWidth = 1; ctx.strokeRect(left + e, top + e, w, h);
-    const yt = o.showYear ? String(x.yl ?? x.y) : '', pl = o.showPlace ? (x.place || '').toUpperCase() : '';
+    const yt = o.showYear ? String(x.yl ?? (x.y == null ? '' : x.y)) : '', pl = o.showPlace ? (x.place || '').toUpperCase() : '';
     ctx.font = `700 ${w * .07}px ${SERIF}`; const yw = yt ? ctx.measureText(yt).width : 0, ps = w * .03, track = w * .006;
     ctx.font = `700 ${ps}px ${SANS}`; const pw2 = pl ? spacedW(ctx, pl, track) : 0, sp = yt && pl ? w * .03 : 0;
     const x0 = left + (CW - yw - sp - pw2) / 2, base = top + h + e + (CH - h - e) * .72;
@@ -779,20 +799,32 @@ function drawStory(ctx, pack, o, hits) {
   };
   const B = L.big || [70, 200, 1180, 800];
   if (big) card(big, B[0], B[1], B[2], B[3]);
-  const x0 = L.small_from || 1360, tw2 = W - x0 - 90;
+  // the headline and story centred over the small cards, as the real picture (collage builder note, 13 Nov 2026): the
+  // headline's lines balanced to about the same length, the story with its paragraphs and line breaks kept, set as large
+  // as fits (36 down to 26) above the small cards, which sit at the foot of the picture when the story is long
+  const x0 = L.small_from || 1360, tw2 = W - x0 - 90, cx = x0 + tw2 / 2;
   const wd = { headline: T(o, 'headline', pack.headline || ''), story: T(o, 'story', pack.story || '') };
-  let y = 300;
+  const sw = small.length ? Math.min(330, (tw2 - 30 * (small.length - 1)) / small.length - 24) : 0, CH = small.length ? Math.round(sw * .74) + 24 + sw * .1 : 0;
+  const foot = small.length ? H - CH - 56 : H - 70;   // where the small cards sit when the story is long
+  let y = 270;
+  ctx.textAlign = 'center';
+  let hsz = 60; ctx.font = `700 ${hsz}px ${SERIF}`;
+  let hl = wrapLines(ctx, wd.headline, tw2, 3);
+  while (!hl.fits && hsz > 44) { hsz -= 4; ctx.font = `700 ${hsz}px ${SERIF}`; hl = wrapLines(ctx, wd.headline, tw2, 3) }
+  if (hl.lines.length > 1) { let lo = tw2 * .45, hi = tw2; for (let i = 0; i < 12; i++) { const mid = (lo + hi) / 2, r = wrapLines(ctx, wd.headline, mid, 3); if (r.fits && r.lines.length === hl.lines.length) { hl = r; hi = mid } else lo = mid } }
+  for (const line of hl.lines) { goldText(ctx, line, cx, y, hsz); y += hsz * 1.18 }
+  y += 26;
+  const paras = String(wd.story || '').replace(/\r/g, '').split(/\n\s*\n/).map(pg => pg.split('\n').map(l => l.trim()).filter(Boolean)).filter(pg => pg.length);
+  const layoutStory = sz => { ctx.font = `500 ${sz}px ${SERIF}`; const lh = sz * 1.38, out = []; paras.forEach((pg, i) => { if (i) out.push(null); pg.forEach(l => wrapLines(ctx, l, tw2, 99).lines.forEach(t => out.push(t))) }); return { lines: out, lh, h: out.reduce((a2, l) => a2 + (l === null ? lh * .55 : lh), 0) } };
+  let st = layoutStory(36);
+  for (let sz = 35; sz >= 26 && st.h > foot - 40 - y; sz--) st = layoutStory(sz);
+  const room = foot - 40 - y;
+  if (st.h > room) { let h2 = 0, keep = []; for (const l of st.lines) { const add = l === null ? st.lh * .55 : st.lh; if (h2 + add > room) break; keep.push(l); h2 += add } if (keep.length && keep[keep.length - 1]) keep[keep.length - 1] = keep[keep.length - 1].replace(/[,;:]?$/, '…'); st.lines = keep; st.h = h2 }
+  ctx.fillStyle = CAP_IVORY; ctx.textAlign = 'center';
+  for (const line of st.lines) { if (line === null) { y += st.lh * .55; continue } ctx.fillText(line, cx, y + st.lh * .72); y += st.lh }
+  const top = Math.min(foot, Math.max(620, y + 40));
+  if (small.length) small.forEach((x, k) => card(x, x0 - 30 + k * (sw + 54), top, Math.round(sw), Math.round(sw * .74)));
   ctx.textAlign = 'left';
-  ctx.font = `700 60px ${SERIF}`;
-  for (const line of wrapLines(ctx, wd.headline, tw2, 2).lines) { goldText(ctx, line, x0, y - 8, 60, 'left'); y += 72 }
-  y += 20;
-  ctx.font = `500 36px ${SERIF}`; ctx.fillStyle = CAP_IVORY; ctx.textAlign = 'left';
-  for (const line of wrapLines(ctx, wd.story, tw2, 7).lines) { ctx.fillText(line, x0, y); y += 50 }
-  const top = Math.max(620, y + 40);
-  if (small.length) {
-    const sw = Math.min(330, (tw2 - 30 * (small.length - 1)) / small.length - 24);
-    small.forEach((x, k) => card(x, x0 - 30 + k * (sw + 54), top, Math.round(sw), Math.round(sw * .74)));
-  }
   const name = o.showFooter ? o.footer : '';
   if (name) { ctx.font = `500 24px ${SERIF}`; ctx.textAlign = 'left'; const w = ctx.measureText(name).width, fy = H - 20; ctx.fillStyle = 'rgb(226,184,104)'; ctx.fillText(name, (W - w) / 2, fy); diamond(ctx, (W - w) / 2 - 28, fy - 8, 5); diamond(ctx, (W + w) / 2 + 28, fy - 8, 5) }
 }
@@ -1061,7 +1093,7 @@ document.addEventListener('input', e => {
 });
 
 // ------------------------------------------------------------ the side panel
-const TABS = { day: [['card', 'Photo'], ['words', 'Years and words'], ['layout', 'Layout'], ['look', 'Look']], month: [['card', 'Photo'], ['words', 'Days and words'], ['layout', 'Layout'], ['look', 'Look']], special: [['card', 'Photo'], ['words', 'Cards and words'], ['layout', 'Layout'], ['look', 'Look']] };
+const TABS = { day: [['card', 'Photo'], ['words', 'Years and words'], ['layout', 'Layout'], ['look', 'Look']], month: [['card', 'Photo'], ['words', 'Days and words'], ['layout', 'Layout'], ['look', 'Look']], special: [['choose', 'Choose'], ['card', 'Photo'], ['words', 'Cards and words'], ['layout', 'Layout'], ['look', 'Look']] };
 function seg(id, value, opts) { return `<div class="seg" role="group" id="${id}">${opts.map(([v, l]) => `<button data-v="${v}" aria-pressed="${String(v) === String(value)}">${l}</button>`).join('')}</div>` }
 function range(id, label, v, min, max, step, fmt = x => x) { return `<div class="row"><label for="${id}">${label}<output id="${id}-o">${fmt(v)}</output></label><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${v}"></div>` }
 function check(id, label, v) { return `<label class="check"><input type="checkbox" id="${id}" ${v ? 'checked' : ''}> ${label}</label>` }
@@ -1108,7 +1140,8 @@ function paneCard() {
     <div class="group">
       <div class="cardhead"><button class="btn" id="c-prev" aria-label="Previous">◀</button><b>${esc(label(k))}</b><button class="btn" id="c-next" aria-label="Next">▶</button></div>
       <div class="chips" id="c-sel">${shownKeys().map(kk => `<button data-k="${kk}" class="${kk === k ? 'sel' : ''}" aria-pressed="${changed(kk) ? 'true' : 'false'}" title="${(groupsOf(pack).find(g2 => g2.key === kk) || {}).added ? 'A year added from the baps.org News articles' : ''}">${chip(kk)}${(groupsOf(pack).find(g2 => g2.key === kk) || {}).added ? ' <small>new</small>' : ''}</button>`).join('')}</div>
-      <p class="hint">Click a card in the picture or a ${day ? 'year' : 'day'} here. A white one has your own changes.</p>${lastPanel}</div>
+      <p class="hint">Click a card in the picture or a ${day ? 'year' : 'day'} here. A white one has your own changes.</p>${lastPanel}
+      ${g.year && !isStory() ? `<div class="acts" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${chButton({ kind: 'year', year: +g.year, note: `${g.year} ${x.place || ''}`.trim() })}<span class="hint">${esc(String(g.year))}’s photos of this day as the special picture</span></div>` : ''}</div>
     <div class="group"><h3>Choose the photo</h3>
       ${g.cands.length ? `<p class="hint">All ${g.cands.length} photo${g.cands.length > 1 ? 's' : ''} from ${esc(label(k))} in your archive${rest && nb ? `: the ${nb} where Bapa’s face was found come first` : ''}.</p>${dayNote2}${albumNote}
       <div class="thumbs" id="c-thumbs">${grid}</div>
@@ -1118,7 +1151,7 @@ function paneCard() {
       <div class="row"><label for="c-place">Place${day ? ' on the card' : ' (bubbles)'}</label><input type="text" class="place" id="c-place" data-f="place" data-k="${k}" value="${esc(x.place)}"></div>
       <textarea class="capedit" id="c-cap" data-f="caption" data-k="${k}" aria-label="Caption" rows="2">${esc(x.caption)}</textarea>
       <div class="chips cap" id="c-caphelp">${capHelps(x, g, pack).map(([t, v]) => `<button class="capchip" data-v="${esc(v)}" data-set="${t.startsWith('baps.org') ? 1 : ''}" title="${t.startsWith('baps.org') ? 'Use the baps.org caption' : 'Add these words to the caption'}">${esc(t)}</button>`).join('')}</div>
-      ${day ? `<div class="row"><label for="c-yl">Year on the card</label><input type="text" id="c-yl" data-f="ylabel" data-k="${k}" value="${esc(st.ylabel ?? x.yl ?? k)}"></div>
+      ${day ? `<div class="row"><label for="c-yl">Year on the card</label><input type="text" id="c-yl" data-f="ylabel" data-k="${k}" value="${esc(st.ylabel ?? (g.year == null ? '' : String(g.year)))}" placeholder="Empty for no year"></div>
       ${S.mode === 'special' ? '' : `<div class="row"><label for="c-fest">Festival tag on the photo</label><input type="text" id="c-fest" data-f="fest" data-k="${k}" value="${esc(st.fest ?? (c ? (c.festival || captionFest(c)) : ''))}" placeholder="For example Annakut (empty for none)"></div>`}` : ''}
       ${c && c.original ? `<p class="hint">Website caption: “${esc(c.original)}”</p>` : ''}</div>
     <div class="group"><h3>Crop</h3>
@@ -1168,9 +1201,10 @@ function paneWords() {
       ${o.titleAuto ? '' : text('d-title', 'Title', o.title, pack.title)}
       ${text('d-sub', 'Second part', o.subtitle || pack.subtitle || '')}</div>
     ${isStory() ? `<div class="group"><h3>The story</h3>
-      ${text('d-t-headline', 'Headline', T(o, 'headline', pack.headline || ''))}
-      <div class="row"><label for="d-t-storyl">Story</label><textarea id="d-t-storyl" rows="5" style="width:100%">${esc(T(o, 'story', pack.story || ''))}</textarea></div>
-      <div class="seg"><button class="btn small" id="d-t-reset">Back to the automatic words</button></div></div>`
+      <div class="row"><label for="d-t-headline">Headline</label><textarea id="d-t-headline" rows="2" style="width:100%;font:16px/1.3 var(--serif)">${esc(T(o, 'headline', pack.headline || ''))}</textarea></div>
+      <textarea id="d-t-storyl" class="storybox" aria-label="Story" placeholder="The story words, as they go on the picture">${esc(T(o, 'story', pack.story || ''))}</textarea>
+      <div class="seg">${pack.story_short || pack.story ? `<button class="btn small" id="d-t-full">Use the full post</button><button class="btn small" id="d-t-short">Use the short line</button>` : ''}<button class="btn small" id="d-t-reset">Back to the automatic words</button></div>
+      <p class="hint">Type freely: add, delete, paste. Your line breaks stay, and the words go on the picture exactly as typed, made smaller as they grow so they always fit above the small cards (Darpan, 13 Nov 2026: “please stop cutting everything out”).</p></div>`
     : `<div class="group"><h3>On and under each card</h3>
       ${seg('d-caps', o.captions, [['all', 'Every caption'], ['special', 'Special moments only'], ['none', 'No captions']])}
       ${range('d-capsize', 'Caption size', o.capSize, 15, 30, 1)}
@@ -1267,10 +1301,11 @@ function build() {
   document.querySelectorAll('.modes button').forEach(b => b.setAttribute('aria-pressed', String(b.id === 'mode-' + S.mode)));
   $('#mode-special').disabled = !INDEX.specials.length; $('#mode-special').title = INDEX.specials.length ? 'Every Diwali, Every Annakut, a day in BAPS history' : 'No special picture pack yet (the collage builder project makes them on days with a special picture)';
   const days = INDEX.days.includes(o.date) || !day ? INDEX.days : [...INDEX.days, o.date].sort();
-  const list = day ? days.map(k => [k, longDate(k)]) : sp ? INDEX.specials.map(k => [k, longDate(k)]) : INDEX.months.map(k => [k, longMonth(k)]), now = S.mode === 'month' ? o.month : o.date;
-  $('#any-l').hidden = !day; if (day) $('#any').value = o.date;
+  const sps = !sp || !o.date || INDEX.specials.includes(o.date) ? INDEX.specials : [...INDEX.specials, o.date].sort();   // any day can be chosen for (13 Nov 2026)
+  const list = day ? days.map(k => [k, longDate(k)]) : sp ? sps.map(k => [k, longDate(k)]) : INDEX.months.map(k => [k, longMonth(k)]), now = S.mode === 'month' ? o.month : o.date;
+  $('#any-l').hidden = S.mode === 'month'; if (S.mode !== 'month') $('#any').value = o.date || '';
   if (!day || !WANT) $('#want').hidden = true;
-  const waiting = day && !!WANT && !P.day;   // no old picture behind the 'being made' note
+  const waiting = (day && !!WANT && !P.day) || (sp && !pack && !!o.date);   // no old picture behind the 'being made' note, nor behind a day with no special pack
   $('#easel').style.display = waiting ? 'none' : ''; $('#tip').style.display = waiting ? 'none' : ''; $('#exp-open').disabled = waiting;
   $('#pick').innerHTML = list.map(([k, l]) => `<option value="${k}" ${k === now ? 'selected' : ''}>${l}</option>`).join('');
   $('#pick').setAttribute('aria-label', S.mode === 'month' ? 'Which month' : 'Which day');
@@ -1281,13 +1316,15 @@ function build() {
   $('#tabs').innerHTML = TABS[S.mode].map(([k, l]) => `<button role="tab" data-t="${k}" aria-selected="${k === S.tab}">${l}</button>`).join('');
   $('#compare').hidden = S.mode === 'month' || waiting;
   $('#tip').textContent = S.mode === 'month' ? 'Click any day to change its photo, place or caption right there.' : 'Click any card to change its photo, place or caption right there.';
+  $('#options').hidden = !(sp && pack && (pack.options || []).length); if (sp && pack && (pack.options || []).length) optionsRow(pack);
+  if (sp && !pack && o.date && !SPLOADING) { S.tab = 'choose'; $('#tabs').innerHTML = `<button role="tab" data-t="choose" aria-selected="true">Choose</button>`; $('#pane').innerHTML = paneChoose(); $('#meta').innerHTML = `<b>${esc(longDate(o.date))}</b><span>no special picture pack for this day yet</span>`; fe.hidden = true; wire(); return }
   if (!pack) { $('#pane').innerHTML = '<p class="hint">' + (WANT ? 'The photos for this day are not ready yet.' : sp && !INDEX.specials.length ? 'No special picture pack yet.' : 'Loading photos…') + '</p>' + (sp ? queuePanel() : ''); $('#meta').textContent = WANT ? longDate(WANT) : 'Loading photos…'; fe.hidden = true; wire(); return }
   selected();
   const total = groupsOf(pack).reduce((s, g) => s + g.cands.length, 0);
   $('#meta').innerHTML = day ? `<b>${esc(pack.title)}</b><span>${dayCards(pack, o).length} of ${pack.years.length} years on the picture</span><span>${total} photos to choose from</span>`
     : sp ? `<b>${esc(pack.title)}</b><span>${pack.kind === 'story' ? 'a day in BAPS history' : `Every ${esc(pack.festival || '')}${pack.first && pack.last ? `, ${pack.first} to ${pack.last}` : ''}`}</span><span>${dayCards(pack, o).length} of ${pack.cards.length} cards on the picture</span><span>${total} photos to choose from</span>`
     : `<b>${esc(pack.title)}</b><span>${pack.days.length} days</span><span>${{ A: 'close-up images', B: 'activity', M: 'mixed' }[o.option]}</span><span>${total} photos to choose from</span>`;
-  $('#pane').innerHTML = S.tab === 'card' ? paneCard() : S.tab === 'words' ? paneWords() : S.tab === 'layout' ? paneLayout() : lookPane(S.mode === 'month' ? 'm' : 'd', o);
+  $('#pane').innerHTML = S.tab === 'choose' ? paneChoose() : S.tab === 'card' ? paneCard() : S.tab === 'words' ? paneWords() : S.tab === 'layout' ? paneLayout() : lookPane(S.mode === 'month' ? 'm' : 'd', o);
   if (S.mode !== 'month' && $('#compare').open) sideBySide();
   buildEditor(); wire(); render();
 }
@@ -1297,7 +1334,7 @@ function wire() {
   const bind = (id, key, num, rebuild) => on(id, 'input', e => { o[key] = e.target.type === 'checkbox' ? e.target.checked : num ? +e.target.value : e.target.value; rebuild ? build() : (render(), syncOut(id)) });
   const segOn = (id, key, num) => document.querySelectorAll(`#${id} button`).forEach(b => b.addEventListener('click', () => { o[key] = num ? +b.dataset.v : b.dataset.v; build() }));
   document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => { S.tab = b.dataset.t; build() }));
-  if (!P[S.mode]) return;
+  if (!P[S.mode]) { wireChoices(); return }
   // the chosen card
   const k = o.sel, ks = shownKeys(), go = d => { o.sel = ks[(ks.indexOf(k) + d + ks.length) % ks.length]; build() };
   on('c-prev', 'click', () => go(-1)); on('c-next', 'click', () => go(1));
@@ -1310,12 +1347,16 @@ function wire() {
   document.querySelectorAll('[data-last]').forEach(b => b.addEventListener('click', () => { const e = lastEntries()[+b.dataset.last]; if (e) applyLast(e) }));
   document.querySelectorAll('[data-add]').forEach(b => b.addEventListener('click', () => addSpare(b.dataset.add)));
   document.querySelectorAll('[data-sp]').forEach(b => b.addEventListener('click', () => { S.mode = 'special'; S.special.date = b.dataset.sp; unstash('special'); P.special = null; build(); loadPack('special', b.dataset.sp).then(pk => { P.special = pk; build() }).catch(() => {}) }));
+  wireChoices();
   // shared look
   segOn(p + '-look', 'look'); bind(p + '-glow', 'glow', 1); bind(p + '-jali', 'jali', 1); bind(p + '-polish', 'polish'); bind(p + '-bright', 'bright', 1); bind(p + '-warm', 'warmth', 1);
   on(p + '-resetall', 'click', () => { const keep = S.mode === 'month' ? { month: o.month, option: o.option } : { date: o.date }; S[S.mode] = Object.assign(structuredClone(DEFAULTS[S.mode]), keep); FE = false; build() });
   if (S.mode !== 'month') {
     on('d-t-headline', 'input', e => { (o.txt = o.txt || {}).headline = e.target.value; render() });
     on('d-t-storyl', 'input', e => { (o.txt = o.txt || {}).story = e.target.value; render() });
+    const pk = P[S.mode] || {};
+    on('d-t-full', 'click', () => { (o.txt = o.txt || {}).story = pk.story || ''; build() });
+    on('d-t-short', 'click', () => { (o.txt = o.txt || {}).story = pk.story_short || String(pk.story || '').split(/(?<=[.!?])\s/)[0]; build() });
     document.querySelectorAll('#d-style button').forEach(b => b.addEventListener('click', () => { o.photoStyle = b.dataset.v; Object.values(stateOf(o)).forEach(y => { delete y.pick; delete y.crop }); build() }));
     on('d-wa', 'input', e => { const w = o.wa[o.date] || (o.wa[o.date] = { text: '', whole: false }); w.text = e.target.value; store.set('studio-settings-v1', { mode: S.mode, day: S.day, month: S.month, special: S.special }) });
     on('d-wawhole', 'input', e => { const w = o.wa[o.date] || (o.wa[o.date] = { text: waText(), whole: false }); w.whole = e.target.checked; build() });
@@ -1363,13 +1404,22 @@ function syncOut(id) {   // keep the little number beside a slider in step
 $('#compare').addEventListener('toggle', () => { sideBySide() });
 
 // ------------------------------------------------------------ top bar: what to make and which day
+let SPLOADING = false;
 async function load(kind) {
   const key = keyOf(kind);
   if (!key) { P[kind] = null; build(); return }
-  P[kind] = null; build();
+  P[kind] = null; if (kind === 'special') SPLOADING = true; build();
   try { const pk = await loadPack(kind, key); if (keyOf(kind) === key) P[kind] = pk }
-  catch (e) { $('#meta').textContent = 'The photos for this ' + (kind === 'day' ? 'day' : kind === 'month' ? 'month' : 'special picture') + ' could not be loaded. Pick it again to retry.'; return }
+  catch (e) { if (kind === 'special') { SPLOADING = false; if (S.mode === kind) build(); return } $('#meta').textContent = 'The photos for this ' + (kind === 'day' ? 'day' : kind === 'month' ? 'month' : 'special picture') + ' could not be loaded. Pick it again to retry.'; return }
+  finally { if (kind === 'special') SPLOADING = false }
   if (S.mode === kind) build();
+}
+// a special picture for any day (collage builder note, 13 Nov 2026: "a date picker for any day"): a day with a pack opens
+// it; a day without one opens the Choose tab, where Darpan picks what its special picture should be made from
+function openSpecial(d) {
+  FE = false; S.mode = 'special'; if (P.special) stash('special'); S.special.date = d; unstash('special');
+  if (INDEX.specials.includes(d)) return load('special');
+  P.special = null; S.tab = 'choose'; build();
 }
 document.querySelectorAll('.modes button').forEach(b => b.addEventListener('click', () => {
   S.mode = b.id.slice(5); FE = false; $('#status').textContent = ''; build();
@@ -1380,7 +1430,8 @@ $('#pick').addEventListener('change', e => {
   FE = false;
   if (S.mode === 'day') return openDate(e.target.value);
   if (P[S.mode]) stash(S.mode);
-  if (S.mode === 'special') { S.special.date = e.target.value; unstash('special') } else { S.month.month = e.target.value; unstash('month') }
+  if (S.mode === 'special') return openSpecial(e.target.value);
+  S.month.month = e.target.value; unstash('month');
   load(S.mode);
 });
 
@@ -1441,7 +1492,7 @@ $('#want-go').addEventListener('click', async () => {
   } catch (e) { showWant('Could not reach GitHub. Check the internet connection and try again.') }
   finally { btn.disabled = false }
 });
-$('#any').addEventListener('change', e => { if (/^\d{4}-\d\d-\d\d$/.test(e.target.value)) openDate(e.target.value) });
+$('#any').addEventListener('change', e => { if (/^\d{4}-\d\d-\d\d$/.test(e.target.value)) (S.mode === 'special' ? openSpecial : openDate)(e.target.value) });
 function openGh() {
   const on = !!ghKey(); $('#ghd-on').hidden = !on; $('#ghd-off').hidden = on; $('#ghd-status').textContent = ''; $('#gh-code').value = ''; $('#ghd').showModal();
 }
@@ -1458,6 +1509,121 @@ $('#gh-save').addEventListener('click', async () => {
   } catch (e) { st.className = 'status warn'; st.textContent = 'Could not reach GitHub. Try again.' }
 });
 $('#pick-opt').addEventListener('change', e => { S.month.option = e.target.value; build() });
+
+// ------------------------------------------------------------ Darpan's own choice of special pictures (collage builder note,
+// 13 Nov 2026: "Darpan wants to choose for himself which events become a special picture ... on any day, in any year, and
+// also to switch off a special picture he doesn't want"; evening: "want 1 special picture everyday ... make it easy for me
+// on the dashboard to select a day or piece of information from that day"). The Studio only records his choices in one
+// small file, archive/special-days.json ({about, add: [...], off: [...]}), through /darpan/api/special-days
+// (functions/darpan/api/special-days.js); the 2pm picture project reads it at its morning run and makes the pictures.
+const CHAPI = '/darpan/api/special-days';
+let CH = null, CHSRC = 'none', CHTIMER = 0, DAYD = {};
+const CHKINDS = { story: 'a day in BAPS history', news: 'a baps.org News article', year: 'a year’s photos of the day', photos: 'his own photos' };
+const chScope = () => store.get('studio-choice-scope') || 'every';   // 'every' = this day every year (MM-DD), 'year' = that one day
+const chDate = () => S.mode === 'day' ? S.day.date : S.special.date;
+const chDay = date => chScope() === 'year' ? date : date.slice(5);
+const covers = (key, date) => key === date || key === date.slice(5);
+async function loadChoices() {
+  if (CH) return CH;
+  try { const r = await fetch(CHAPI, { cache: 'no-store' }); if (r.ok) { const j = await r.json(); if (j.file) { CH = j.file; CHSRC = j.source } } } catch (e) {}
+  if (!CH) { CH = store.get('studio-choices') || { about: '', add: [], off: [] }; CHSRC = 'device' }
+  CH.add = CH.add || []; CH.off = CH.off || [];
+  return CH;
+}
+const chFor = date => CH ? CH.add.filter(e => covers(e.day, date)) : [];
+const chOff = date => !!CH && CH.off.some(d => covers(d, date));
+const sameEntry = (a, b) => a.kind === b.kind && (a.kind === 'story' || a.kind === 'news' ? a.ref === b.ref : +a.year === +b.year && (a.kind !== 'photos' || JSON.stringify(a.photos || []) === JSON.stringify(b.photos || [])));
+const chHave = (date, e) => chFor(date).find(x => sameEntry(x, e));
+const chWords = e => e.kind === 'year' ? `${e.year}’s photos of the day` : e.kind === 'photos' ? `${e.year} ${e.place || ''}, his own photos` : (e.note || e.headline || e.ref);
+const newsPath = u => { try { return new URL(u).pathname } catch (e) { return u } };
+const chButton = e => { const d = chDate(); if (!d) return ''; const have = chHave(d, e), i = have ? chFor(d).indexOf(have) : -1; return `<button class="sw" data-ch="${esc(JSON.stringify(e))}" aria-pressed="${!!have}" title="${have ? 'Press again to take it off' : 'Make this the day’s special picture (it goes first; any others follow as special 2, 3)'}">${have ? (i === 0 ? 'The special picture ✓' : `Special ${i + 1} ✓`) : 'Make this the special picture'}</button>` };
+function chToggle(date, e, first) {
+  const have = chHave(date, e);
+  if (have) CH.add.splice(CH.add.indexOf(have), 1);
+  else { e = Object.assign({ day: chDay(date) }, e); if (first) { const i = CH.add.findIndex(x => covers(x.day, date)); CH.add.splice(i < 0 ? CH.add.length : i, 0, e) } else CH.add.push(e) }
+  saveChoices(have ? 'Special picture taken off' : 'Special picture chosen', chWords(e));
+}
+function chInstead(date, e) {   // "Use this one instead": the day's earlier choices go, this one is the special picture
+  CH.add = CH.add.filter(x => !covers(x.day, date)); CH.add.push(Object.assign({ day: chDay(date) }, e));
+  saveChoices('Other special picture chosen', chWords(e));
+}
+function chOffToggle(date) {
+  const i = CH.off.findIndex(d => covers(d, date));
+  if (i >= 0) CH.off.splice(i, 1); else CH.off.push(chDay(date));
+  saveChoices(i >= 0 ? 'Special picture allowed again' : 'No special picture this day', longDate(date));
+}
+const chMove = (date, i, d) => { const mine = chFor(date), a = mine[i], b = mine[i + d]; if (!a || !b) return; const ia = CH.add.indexOf(a), ib = CH.add.indexOf(b); CH.add[ia] = b; CH.add[ib] = a; saveChoices('Special pictures reordered', longDate(date)) };
+function chSay(cls, msg) { for (const el of [document.getElementById('ch-status'), $('#status')]) if (el) { el.className = 'status ' + cls; el.textContent = msg } }
+async function saveChoices(how, where, quiet) {
+  store.set('studio-choices', CH); if (!quiet) build();
+  chSay('', 'Saving your choice…');
+  try {
+    const r = await fetch(CHAPI, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ add: CH.add, off: CH.off }) });
+    const j = r.ok ? await r.json() : {};
+    if (!r.ok || !j.ok) throw new Error(j.error || `the website said ${r.status}`);
+    CHSRC = j.source;
+    chSay('ok', 'Saved. The picture will be remade at the next morning run (about 5am UK).' + (j.source === 'github' ? '' : ' Kept in the Studio for now: the 2pm picture project reads it at bapas-diary.com/special-days.json until the GitHub token is set.'));
+    if (how) logChange(how, where);
+  } catch (e) { chSay('warn', 'Kept on this device, but not saved on the website: ' + ((e && e.message) || e) + '. It is sent again the next time you choose.') }
+}
+const dayData = async mmdd => { if (DAYD[mmdd] !== undefined) return DAYD[mmdd]; DAYD[mmdd] = null; try { const r = await fetch(`/data/day/${mmdd}.json`, { cache: 'force-cache' }); if (r.ok) DAYD[mmdd] = await r.json() } catch (e) {} if (S.tab === 'choose') build(); return DAYD[mmdd] };
+const PHOTOS = 'https://photos.bapas-diary.com/';
+function paneChoose() {
+  const date = S.special.date, pack = P.special;
+  if (!date) return '<p class="hint">Pick a day above, or type any date.</p>';
+  if (!CH) { loadChoices().then(() => S.tab === 'choose' && build()); return '<p class="hint">Loading your choices…</p>' }
+  if (!HISTORY) loadArticles();
+  const mmdd = date.slice(5), y0 = +date.slice(0, 4), niceD = d => new Date(d + 'T12:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  const mine = chFor(date), off = chOff(date), dd = DAYD[mmdd] === undefined ? (dayData(mmdd), null) : DAYD[mmdd];
+  // everything that could become a special picture, by year, newest first
+  const byYear = {};
+  const put = (y, item) => (byYear[y] = byYear[y] || []).push(item);
+  uniqStories((HISTORY || []).filter(h => h.d.slice(5) === mmdd).map(h => ({ h }))).forEach(({ h }) => put(+h.d.slice(0, 4), { e: { kind: 'story', ref: h.d, note: h.l }, title: h.l, sub: [h.p, h.ch === 'satpurush' ? 'Satpurush UK diary' : 'Today in BAPS history', h.n ? h.n + (h.n > 1 ? ' photos' : ' photo') : ''].filter(Boolean).join(' · '), more: h.s, pic: '', url: h.u, special: !!h.x }));
+  (ARTICLES || []).filter(a => a.d && a.d.slice(5) === mmdd).forEach(a => put(a.y, { e: { kind: 'news', ref: newsPath(a.u), note: a.t }, title: a.t, sub: [a.p, 'baps.org News', a.n ? a.n + ' photos' : 'no photos'].filter(Boolean).join(' · '), more: a.s, pic: '', url: a.u, special: a.b }));
+  (dd ? dd.years : []).forEach(Y => { const best = Y.p.find(p => p[3]) || Y.p[0]; put(Y.y, { e: { kind: 'year', year: Y.y, note: `${Y.y} ${Y.place || ''}`.trim() }, title: `${Y.y}, ${Y.place || 'place unknown'}`, sub: `${Y.p.length} photo${Y.p.length > 1 ? 's' : ''} of this day${best && best[2] ? ' · ' + best[2] : ''}`, pic: best ? `${PHOTOS}s/${best[0]}/${best[1]}` : '' }) });
+  if (!dd && pack && pack.kind !== 'story') groupsOf(pack).forEach(g => { if (!g.year || byYear[g.year]) return; const c = g.cands[0]; put(+g.year, { e: { kind: 'year', year: +g.year, note: `${g.year} ${c && c.place || ''}`.trim() }, title: `${g.year}, ${c && c.place || ''}`, sub: `${g.cands.length} photos`, pic: '' }) });
+  const years = Object.keys(byYear).map(Number).sort((a, b) => b - a);
+  const kindWords = pack ? (pack.kind === 'story' ? CHKINDS[pack.story_kind] || 'a day in BAPS history' : `Every ${pack.festival || ''}`) : '';
+  const own = pack ? `<div class="ch ${off ? '' : 'on'}"><img class="pic" src="${esc(pack.base + (pack.real || 'real.jpg'))}" alt=""><div><p><b>${esc(pack.headline || pack.title)}</b></p><p class="hint">${esc(kindWords)}${pack.story_date ? ' · ' + esc(niceD(pack.story_date)) : ''}${pack.choose ? ' · your own choice' : ' · the builder’s own pick'}</p>
+      <div class="acts"><button class="sw off" id="ch-off" aria-pressed="${off}">${off ? 'No special picture this day ✓' : 'No special picture this day'}</button></div></div></div>`
+    : `<div class="ch nopic"><div><p class="hint">No special picture pack for ${esc(niceD(date))} yet. The morning run makes one from your choice below, or from the day’s most special item on its own.</p>
+      <div class="acts"><button class="sw off" id="ch-off" aria-pressed="${off}">${off ? 'No special picture this day ✓' : 'No special picture this day'}</button></div></div></div>`;
+  const mineHtml = mine.length ? `<ol class="mine">${mine.map((e, i) => `<li><b>${i ? 'special ' + (i + 1) : 'special'}</b><span>${esc(chWords(e))} <small class="hint">(${/^\d{4}-/.test(e.day) ? niceD(e.day) + ' only' : 'every year'})</small></span>
+      <button class="btn small" data-mv="${i}|-1" ${i ? '' : 'disabled'} aria-label="Move up">▲</button><button class="btn small" data-mv="${i}|1" ${i < mine.length - 1 ? '' : 'disabled'} aria-label="Move down">▼</button><button class="btn small" data-scope="${i}" title="Every year or this one day">${/^\d{4}-/.test(e.day) ? 'Make it every year' : 'Make it this year only'}</button><button class="btn small" data-rm="${i}">Take off</button></li>`).join('')}</ol>`
+    : `<p class="hint">Nothing chosen for this day yet${off ? ', and no special picture at all' : ''}.</p>`;
+  const item = (y, it) => { const have = chHave(date, it.e), i = have ? mine.indexOf(have) : -1; return `<div class="ch ${have ? 'on' : ''} ${it.pic ? '' : 'nopic'}">${it.pic ? `<img class="pic" src="${esc(it.pic)}" alt="" loading="lazy">` : ''}<div>
+      <p><b>${esc(it.title)}</b>${it.special ? ' <span class="gold">★</span>' : ''}</p><p class="hint">${esc(it.sub)}</p>${it.more ? `<p class="hint">${esc(it.more)}</p>` : ''}
+      <div class="acts"><button class="sw" data-ch="${esc(JSON.stringify(it.e))}" data-first="" aria-pressed="${!!have}">${have ? (i === 0 ? 'A special picture ✓ (special)' : `A special picture ✓ (special ${i + 1})`) : 'Make this a special picture'}</button>${it.url ? `<a class="btn small" href="${esc(it.url)}" target="_blank" rel="noopener">${/baps\.org/.test(it.url) ? 'Open on baps.org' : 'Open the post'}</a>` : ''}</div></div>
+      ${have ? `<div class="edit"><input type="text" data-ef="headline" data-ei="${i}" value="${esc(have.headline || '')}" placeholder="Headline (empty: the builder’s own)" aria-label="Headline"><textarea data-ef="story" data-ei="${i}" rows="4" placeholder="Story words (empty: the builder’s own)" aria-label="Story">${esc(have.story || '')}</textarea>${have.kind === 'year' || have.kind === 'photos' ? `<input type="text" data-ef="place" data-ei="${i}" value="${esc(have.place || '')}" placeholder="Place (empty: as the photos say)" aria-label="Place">` : ''}</div>` : ''}</div>` };
+  const today = todayLondon();
+  return `<div class="group"><h3>The special picture for ${esc(niceD(date))}</h3>${own}
+      <p class="status" id="ch-status" role="status"></p>
+      ${date === today ? `<div class="acts" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn small" id="ch-remake" disabled title="Not switched on yet: it would start today’s 2pm picture run, so it waits for your word.">Remake now</button><span class="hint">Today’s picture: the morning run has gone, so a new choice needs a remake. Not switched on yet.</span></div>` : ''}</div>
+    <div class="group"><h3>Your choices for this day</h3>${mineHtml}
+      ${seg('ch-scope', chScope(), [['every', 'Every year on this day'], ['year', `This year only (${y0})`]])}
+      <p class="hint">The first choice is the special picture at 2pm; the next ones follow as special 2, special 3. Each has a box for your own headline and story words; empty means the builder’s own. ${CHSRC === 'github' ? 'Saved in archive/special-days.json for the morning run.' : CHSRC === 'studio' ? 'Kept in the Studio; the morning run reads it at bapas-diary.com/special-days.json until the GitHub token is set.' : 'Kept on this device until the website can keep it.'}</p></div>
+    <div class="group"><h3>Everything from this day, newest first</h3>
+      ${!HISTORY || !dd && DAYD[mmdd] === undefined ? '<p class="hint">Loading the day’s stories, articles and photos…</p>' : ''}
+      ${years.length ? years.map(y => `<div class="yr">${y}</div>${byYear[y].map(it => item(y, it)).join('')}`).join('') : HISTORY ? '<p class="hint">Nothing found for this day yet.</p>' : ''}</div>`;
+}
+function optionsRow(pack) {
+  const date = S.special.date;
+  $('#options-p').textContent = `The builder was not sure, so it made ${pack.options.length + 1} pictures for this day. The one above goes out at 2pm. Press “Use this one instead” to send another.`;
+  $('#options-row').innerHTML = pack.options.map((op, i) => `<figure><img src="${esc(pack.base + (op.picture || `option-${i + 2}.jpg`))}" alt=""><figcaption><b>${esc(op.headline || '')}</b>${esc([CHKINDS[op.kind] || op.kind, op.story_place, op.story_date ? longDate(op.story_date) : ''].filter(Boolean).join(' · '))}${op.story ? `<br><span class="hint">${esc(String(op.story).slice(0, 160))}${op.story.length > 160 ? '…' : ''}</span>` : ''}</figcaption>
+    <div><button class="btn small primary" data-instead="${i}" ${op.choose ? '' : 'disabled'}>Use this one instead</button></div></figure>`).join('');
+  document.querySelectorAll('[data-instead]').forEach(b => b.addEventListener('click', () => { const op = pack.options[+b.dataset.instead]; if (op && op.choose && CH) chInstead(date, Object.assign({}, op.choose)) }));
+}
+function wireChoices() {
+  const date = chDate(); if (!date) return;
+  const on = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn) };
+  document.querySelectorAll('[data-ch]').forEach(b => b.addEventListener('click', async () => { await loadChoices(); chToggle(date, JSON.parse(b.dataset.ch), !('first' in b.dataset)) }));
+  on('ch-off', 'click', async () => { await loadChoices(); chOffToggle(date) });
+  document.querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => { const e = chFor(date)[+b.dataset.rm]; if (e) chToggle(date, e) }));
+  document.querySelectorAll('[data-mv]').forEach(b => b.addEventListener('click', () => { const [i, d] = b.dataset.mv.split('|').map(Number); chMove(date, i, d) }));
+  document.querySelectorAll('[data-scope]').forEach(b => b.addEventListener('click', () => { const e = chFor(date)[+b.dataset.scope]; if (!e) return; e.day = /^\d{4}-/.test(e.day) ? e.day.slice(5) : date; saveChoices('Special picture: every year or this year', chWords(e)) }));
+  document.querySelectorAll('#ch-scope button').forEach(b => b.addEventListener('click', () => { store.set('studio-choice-scope', b.dataset.v); build() }));
+  document.querySelectorAll('[data-ef]').forEach(el => el.addEventListener('input', () => { const e = chFor(date)[+el.dataset.ei]; if (!e) return; const v = el.value; if (v.trim()) e[el.dataset.ef] = v; else delete e[el.dataset.ef]; store.set('studio-choices', CH); clearTimeout(CHTIMER); CHTIMER = setTimeout(() => saveChoices('Special picture words changed', chWords(e), true), 1500) }));
+}
 
 // ------------------------------------------------------------ Google Drive: the connection (kept in this browser twice, storage and a cookie)
 const COOKIE = 'studio_drive';
@@ -1610,7 +1776,7 @@ function changes() {
     const c = g.cands[st.pick ?? auto] || {};
     if (st.place != null && st.place !== c.place) out.push(`${n}: place “${st.place}”`);
     if (st.caption != null && st.caption !== c.caption) out.push(`${n}: caption “${st.caption}”`);
-    if (st.ylabel != null && st.ylabel !== String(k)) out.push(`${n}: year shown as “${st.ylabel}”`);
+    if (st.ylabel != null && st.ylabel !== (g.year == null ? '' : String(g.year))) out.push(st.ylabel ? `${n}: year shown as “${st.ylabel}”` : `${n}: no year on the card`);
     if (st.fest != null && st.fest !== (c.festival || captionFest(c))) out.push(`${n}: festival tag “${st.fest}”`);
   }
   for (const [f, v] of Object.entries(o.txt || {})) out.push(`${WORDS[f] || f}: “${v}”`);
@@ -1638,8 +1804,18 @@ function historyFor(g, pack) {
   const sp = S.mode === 'special', story = sp && pack.kind === 'story';
   const base = story ? pack.story_date : sp ? (g.day || `${y}-${pack.date.slice(5)}`) : `${y}-${pack.date.slice(5)}`;
   const t0 = new Date(base + 'T12:00').getTime(), span = sp ? 7 : 3;
-  return HISTORY.filter(h => h.d.startsWith(y + '-')).map(h => ({ h, off: Math.round((new Date(h.d + 'T12:00').getTime() - t0) / 864e5) }))
-    .filter(x => Math.abs(x.off) <= span).sort((a, b) => Math.abs(a.off) - Math.abs(b.off) || b.h.n - a.h.n).slice(0, 6);
+  return uniqStories(HISTORY.filter(h => h.d.startsWith(y + '-')).map(h => ({ h, off: Math.round((new Date(h.d + 'T12:00').getTime() - t0) / 864e5) }))
+    .filter(x => Math.abs(x.off) <= span)).sort((a, b) => Math.abs(a.off) - Math.abs(b.off) || b.h.n - a.h.n).slice(0, 6);
+}
+// the channels post the same story again every year, in slightly other words: show each story once, with its longest words
+// (collage builder note, 13 Nov 2026: "Please show each story once, with its longest words")
+const storyWords = t => new Set(String(t || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 3));
+const sameStory = (a, b) => { if (a.d !== b.d) return false; const wa = storyWords(a.l + ' ' + a.h), wb = storyWords(b.l + ' ' + b.h); let n = 0; wa.forEach(w => wb.has(w) && n++); return n >= Math.min(wa.size, wb.size) * .5 };
+const longer = (a, b) => ((a.s || '').length + (a.l || '').length) >= ((b.s || '').length + (b.l || '').length) ? a : b;
+function uniqStories(list) {   // items are {h, ...}; the one that says more stays
+  const out = [];
+  for (const x of list) { const i = out.findIndex(y => sameStory(y.h, x.h)); if (i < 0) out.push(x); else if (longer(x.h, out[i].h) === x.h) out[i] = x }
+  return out;
 }
 function historyPanel(g, pack) {
   const list = historyFor(g, pack); if (!list.length) return '';
@@ -1648,7 +1824,7 @@ function historyPanel(g, pack) {
   return `<div class="group"><h3>On this day in BAPS history, ${esc(String(g.year))}</h3>${list.map(({ h, off }) => `<div class="story">
     <p><b>${esc(h.l)}</b><br><span class="hint">${esc([h.p, niceD(h.d) + ' (' + when(off) + ')', h.n ? h.n + (h.n > 1 ? ' photos' : ' photo') : ''].filter(Boolean).join(' · '))}${h.x ? ' · <span class="gold">a special day</span>' : ''}</span></p>
     ${h.s && h.s !== h.l ? `<p class="hint">${esc(h.s)}</p>` : ''}
-    <div class="chips cap">${h.c ? `<button class="capchip" data-set="1" data-v="${esc(h.c)}">Use “${esc(h.c)}”</button>` : ''}<button class="capchip" data-set="1" data-v="${esc(h.l)}">Use the full line</button>${h.u ? `<a class="btn small" href="${esc(h.u)}" target="_blank" rel="noopener">Open the post</a>` : ''}</div></div>`).join('')}</div>`;
+    <div class="chips cap">${h.c ? `<button class="capchip" data-set="1" data-v="${esc(h.c)}">Use “${esc(h.c)}”</button>` : ''}<button class="capchip" data-set="1" data-v="${esc(h.l)}">Use the full line</button>${h.u ? `<a class="btn small" href="${esc(h.u)}" target="_blank" rel="noopener">Open the post</a>` : ''}${chButton({ kind: 'story', ref: h.d, note: h.l })}</div></div>`).join('')}</div>`;
 }
 const FESTWORDS = { Annakut: /annakut|new year|diwali/i, Diwali: /diwali|annakut|chopda/i };
 function storiesFor(g, pack) {
@@ -1687,7 +1863,7 @@ function storiesPanelDb(g, list) {
     <p><b>${esc(a.t)}</b><br><span class="hint">${esc([a.p, niceD(a.d) + ' (' + when(off) + ')', a.n ? a.n + (a.n > 1 ? ' photos' : ' photo') : 'no photos'].filter(Boolean).join(' · '))}${a.b ? ' · <span class="gold">names Bapa</span>' : ''}</span></p>
     ${a.g.length ? `<p class="hint">Galleries: ${a.g.map(([n, k]) => esc(n) + (k ? ` (${k})` : '')).join(', ')}</p>` : ''}
     ${a.s ? `<p class="hint">${esc(a.s)}</p>` : ''}
-    <div class="chips cap"><button class="capchip" data-set="1" data-v="${esc(a.t.replace(/,\s*[^,]+,\s*[^,]+$/, ''))}">Use the title as the caption</button>${a.s ? `<button class="capchip" data-v="${esc(a.s.split(/(?<=[.!?])\s/)[0])}">Add the first line</button>` : ''}<a class="btn small" href="${esc(a.u)}" target="_blank" rel="noopener">Open on baps.org</a></div></div>`).join('')
+    <div class="chips cap"><button class="capchip" data-set="1" data-v="${esc(a.t.replace(/,\s*[^,]+,\s*[^,]+$/, ''))}">Use the title as the caption</button>${a.s ? `<button class="capchip" data-v="${esc(a.s.split(/(?<=[.!?])\s/)[0])}">Add the first line</button>` : ''}<a class="btn small" href="${esc(a.u)}" target="_blank" rel="noopener">Open on baps.org</a>${off === 0 ? chButton({ kind: 'news', ref: newsPath(a.u), note: a.t }) : ''}</div></div>`).join('')
     : `<p class="hint">No News story of ${esc(String(g.year))} within ${S.mode === 'special' ? 'a week' : '3 days'} of this day.</p>`}</div>`;
 }
 // caption helper (Darpan, 9 Nov 2026): the photo's own baps.org words, the festival and the place, one tap each

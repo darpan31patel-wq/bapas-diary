@@ -133,6 +133,7 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           MISSED_KEY: ${{ secrets.MISSED_KEY }}
           STUDIO_PASSWORD: ${{ secrets.STUDIO_PASSWORD }}
+          STUDIO_GITHUB_TOKEN: ${{ secrets.STUDIO_GITHUB_TOKEN }}
           CF_ANALYTICS_TOKEN: ${{ secrets.CF_ANALYTICS_TOKEN }}
         run: |
           # the email sign up (/api/weekly, functions/ next to out/) needs the Resend key as a Pages secret (Darpan: ALL GOOD, 26 Oct)
@@ -169,6 +170,9 @@ jobs:
           else echo "visitors dashboard: add a GitHub secret CF_ANALYTICS_TOKEN (a Cloudflare token that can read analytics) to see visitors on /interaction/"; fi
           # the password for the private Studio at /darpan/ (Darpan, 4 Nov 2026); with none set the page stays shut
           if [ -n "$STUDIO_PASSWORD" ]; then printf %s "$STUDIO_PASSWORD" | npx --yes wrangler@3.114.0 pages secret put STUDIO_PASSWORD --project-name "$PROJECT" > /dev/null && echo "Studio password: set"; else echo "Studio password: add a GitHub secret STUDIO_PASSWORD to open /darpan/"; fi
+          # the Studio writes Darpan's special picture choices to archive/special-days.json on main (collage builder note, 13 Nov 2026)
+          # with a GitHub token limited to bapas-diary, Contents read and write; without it the choices stay at /special-days.json
+          if [ -n "$STUDIO_GITHUB_TOKEN" ]; then printf %s "$STUDIO_GITHUB_TOKEN" | npx --yes wrangler@3.114.0 pages secret put STUDIO_GITHUB_TOKEN --project-name "$PROJECT" > /dev/null && echo "Studio GitHub token: set"; else echo "Studio GitHub token: add a GitHub secret STUDIO_GITHUB_TOKEN so special picture choices reach archive/special-days.json on main"; fi
           npx --yes wrangler@3.114.0 pages deploy out --project-name "$PROJECT" --branch main --commit-dirty=true
       - name: bapas-diary.com and www point at the site
         run: |
