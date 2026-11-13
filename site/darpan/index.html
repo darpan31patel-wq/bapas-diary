@@ -201,6 +201,7 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
   <select id="pick" aria-label="Which day"></select>
   <select id="pick-opt" aria-label="Kind of poster" hidden></select>
   <label class="any" id="any-l">or any date <input type="date" id="any" min="2000-01-01" max="2100-12-31" aria-label="Any date"></label>
+  <label class="any" id="anym-l" hidden>or any month <input type="month" id="anym" min="1999-01" max="2100-12" aria-label="Any month"></label>
   <span class="spacer"></span>
   <button class="chip" id="drive-chip">Connect Google Drive</button>
   <button class="btn primary" id="exp-open">Export…</button>
@@ -1325,10 +1326,12 @@ function build() {
   $('#mode-special').disabled = !INDEX.specials.length; $('#mode-special').title = INDEX.specials.length ? 'Every Diwali, Every Annakut, a day in BAPS history' : 'No special picture pack yet (the collage builder project makes them on days with a special picture)';
   const days = INDEX.days.includes(o.date) || !day ? INDEX.days : [...INDEX.days, o.date].sort();
   const sps = !sp || !o.date || INDEX.specials.includes(o.date) ? INDEX.specials : [...INDEX.specials, o.date].sort();   // any day can be chosen for (13 Nov 2026)
-  const list = day ? days.map(k => [k, longDate(k)]) : sp ? sps.map(k => [k, longDate(k)]) : INDEX.months.map(k => [k, longMonth(k)]), now = S.mode === 'month' ? o.month : o.date;
+  const months = INDEX.months.includes(o.month) || S.mode !== 'month' ? INDEX.months : [...INDEX.months, o.month].sort();   // any month (Darpan, 13 Nov 2026)
+  const list = day ? days.map(k => [k, longDate(k)]) : sp ? sps.map(k => [k, longDate(k)]) : months.map(k => [k, longMonth(k)]), now = S.mode === 'month' ? o.month : o.date;
   $('#any-l').hidden = S.mode === 'month'; if (S.mode !== 'month') $('#any').value = o.date || '';
-  if (!day || !WANT) $('#want').hidden = true;
-  const waiting = (day && !!WANT && !P.day) || (sp && !pack && !!o.date);   // no old picture behind the 'being made' note, nor behind a day with no special pack
+  $('#anym-l').hidden = S.mode !== 'month'; if (S.mode === 'month') $('#anym').value = o.month || '';
+  if (!((day && WANT) || (S.mode === 'month' && WANTM))) $('#want').hidden = true;
+  const waiting = (day && !!WANT && !P.day) || (S.mode === 'month' && !!WANTM && !P.month) || (sp && !pack && !!o.date);   // no old picture behind the 'being made' note, nor behind a day with no special pack
   $('#easel').style.display = waiting ? 'none' : ''; $('#tip').style.display = waiting ? 'none' : ''; $('#exp-open').disabled = waiting;
   $('#pick').innerHTML = list.map(([k, l]) => `<option value="${k}" ${k === now ? 'selected' : ''}>${l}</option>`).join('');
   $('#pick').setAttribute('aria-label', S.mode === 'month' ? 'Which month' : 'Which day');
@@ -1341,7 +1344,7 @@ function build() {
   $('#tip').textContent = S.mode === 'month' ? 'Click any day to change its photo, place or caption right there.' : 'Click any card to change its photo, place or caption right there.';
   $('#options').hidden = !(sp && pack && (pack.options || []).length); if (sp && pack && (pack.options || []).length) optionsRow(pack);
   if (sp && !pack && o.date && !SPLOADING) { S.tab = 'choose'; $('#tabs').innerHTML = `<button role="tab" data-t="choose" aria-selected="true">Choose</button>`; $('#pane').innerHTML = paneChoose(); $('#meta').innerHTML = `<b>${esc(longDate(o.date))}</b><span>no special picture pack for this day yet</span>`; fe.hidden = true; wire(); restorePane(); return }
-  if (!pack) { $('#pane').innerHTML = '<p class="hint">' + (WANT ? 'The photos for this day are not ready yet.' : sp && !INDEX.specials.length ? 'No special picture pack yet.' : 'Loading photos…') + '</p>' + (sp ? queuePanel() : ''); $('#meta').textContent = WANT ? longDate(WANT) : 'Loading photos…'; fe.hidden = true; wire(); return }
+  if (!pack) { $('#pane').innerHTML = '<p class="hint">' + (day && WANT ? 'The photos for this day are not ready yet.' : S.mode === 'month' && WANTM ? 'The photos for this month are not ready yet.' : sp && !INDEX.specials.length ? 'No special picture pack yet.' : 'Loading photos…') + '</p>' + (sp ? queuePanel() : ''); $('#meta').textContent = day && WANT ? longDate(WANT) : S.mode === 'month' && WANTM ? longMonth(WANTM) : 'Loading photos…'; fe.hidden = true; wire(); return }
   selected();
   const total = groupsOf(pack).reduce((s, g) => s + g.cands.length, 0);
   $('#meta').innerHTML = day ? `<b>${esc(pack.title)}</b><span>${dayCards(pack, o).length} of ${pack.years.length} years on the picture</span><span>${total} photos to choose from</span>`
@@ -1458,6 +1461,7 @@ function openSpecial(d) {
 document.querySelectorAll('.modes button').forEach(b => b.addEventListener('click', () => {
   S.mode = b.id.slice(5); FE = false; $('#status').textContent = ''; build();
   if (S.mode === 'day' && WANT) return showWant();
+  if (S.mode === 'month' && WANTM) return showWantM();
   if (!P[S.mode]) load(S.mode);
 }));
 $('#pick').addEventListener('change', e => {
@@ -1465,8 +1469,7 @@ $('#pick').addEventListener('change', e => {
   if (S.mode === 'day') return openDate(e.target.value);
   if (P[S.mode]) stash(S.mode);
   if (S.mode === 'special') return openSpecial(e.target.value);
-  S.month.month = e.target.value; unstash('month');
-  load(S.mode);
+  openMonth(e.target.value);
 });
 
 // ------------------------------------------------------------ any date (Darpan, 3 Nov 2026: 'create a picture for any date')
@@ -1513,17 +1516,52 @@ function waitFor(d) {
     else showWant();
   }, 30e3);
 }
+// any month (Darpan, 13 Nov 2026: "I want to be able to choose any month of any year and create a picture"): a month with
+// no pack is asked for from the same photo maker with a "months" input (the Collage builder project adds it to studio.yml;
+// until then GitHub answers 422 and the page says so plainly). The month's photos take longer than a day's.
+let WANTM = null, WAITM = null;
+const MONTH_MINS = 90;
+function openMonth(k) {
+  if (!k) return;
+  FE = false; S.mode = 'month'; if (P.month) stash('month'); S.month.month = k; unstash('month');
+  if (INDEX.months.includes(k)) { WANTM = null; $('#want').hidden = true; return load('month') }
+  WANTM = k; P.month = null; build(); showWantM();
+  const when = asked()['m:' + k];
+  if (when && Date.now() - when < MONTH_MINS * 60e3) waitForM(k);
+}
+function showWantM(msg) {
+  if (!WANTM) { $('#want').hidden = true; return }
+  const when = asked()['m:' + WANTM], mins = when ? Math.round((Date.now() - when) / 60e3) : null, busy = when && Date.now() - when < MONTH_MINS * 60e3;
+  $('#want-p').textContent = msg || (busy
+    ? `The photos for ${longMonth(WANTM)} are being gathered (asked ${mins < 1 ? 'just now' : mins + ' min ago'}). A whole month takes longer than a day, often 20 to 40 minutes; the poster opens here by itself when they are ready.`
+    : `There are no photos for ${longMonth(WANTM)} yet. Press the button and GitHub gathers that month’s photos from your archive and builds the poster pack (often 20 to 40 minutes). It then opens here, ready to edit like February 2024.`);
+  $('#want-go').hidden = !!busy;
+  $('#want-go').textContent = ghKey() ? 'Get this month’s photos ready' : 'Connect GitHub to make any month';
+  $('#want').hidden = false;
+}
+function waitForM(k) {
+  clearInterval(WAITM);
+  WAITM = setInterval(async () => {
+    if (WANTM !== k) return clearInterval(WAITM);
+    if (await freshIndex() && INDEX.months.includes(k)) { clearInterval(WAITM); WANTM = null; $('#want').hidden = true; load('month'); return }
+    if (Date.now() - (asked()['m:' + k] || 0) > MONTH_MINS * 60e3) { clearInterval(WAITM); showWantM(`The photos for ${longMonth(k)} have not arrived after ${MONTH_MINS} minutes. Press the button to ask again.`); $('#want-go').hidden = false }
+    else showWantM();
+  }, 60e3);
+}
+$('#anym').addEventListener('change', e => { if (/^\d{4}-\d\d$/.test(e.target.value)) openMonth(e.target.value) });
 $('#want-go').addEventListener('click', async () => {
   if (!ghKey()) return openGh();
-  const d = WANT, btn = $('#want-go'); btn.disabled = true;
+  const month = S.mode === 'month' && !!WANTM, d = month ? WANTM : WANT, btn = $('#want-go'); btn.disabled = true;
+  const show = month ? showWantM : showWant;
   try {
-    const r = await gh('/actions/workflows/studio.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main', inputs: { dates: d } }) });
-    if (r.status === 204) { const a = asked(); a[d] = Date.now(); store.set('studio-asked', a); showWant(); waitFor(d) }
-    else showWant(r.status === 401 ? 'GitHub did not accept the key on this device. Press Connect GitHub and paste a new one.'
+    const r = await gh('/actions/workflows/studio.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main', inputs: month ? { months: d } : { dates: d } }) });
+    if (r.status === 204) { const a = asked(); a[month ? 'm:' + d : d] = Date.now(); store.set('studio-asked', a); show(); (month ? waitForM : waitFor)(d) }
+    else show(r.status === 401 ? 'GitHub did not accept the key on this device. Press Connect GitHub and paste a new one.'
       : r.status === 403 || r.status === 404 ? 'The GitHub key cannot start the photo maker. Make a new key with Actions set to Read and write for bapas-diary.'
+      : month && r.status === 422 ? 'The photo maker does not know months yet. The Collage builder project has to add the “months” input to its Studio packs run first (you were given the note to paste there). Nothing else is needed on the Studio.'
       : `GitHub said no (${r.status}). Try again in a minute.`);
-    if (r.status === 401) { store.set('studio-gh', ''); $('#want-go').textContent = 'Connect GitHub to make any date' }
-  } catch (e) { showWant('Could not reach GitHub. Check the internet connection and try again.') }
+    if (r.status === 401) { store.set('studio-gh', ''); $('#want-go').textContent = month ? 'Connect GitHub to make any month' : 'Connect GitHub to make any date' }
+  } catch (e) { show('Could not reach GitHub. Check the internet connection and try again.') }
   finally { btn.disabled = false }
 });
 $('#any').addEventListener('change', e => { if (/^\d{4}-\d\d-\d\d$/.test(e.target.value)) (S.mode === 'special' ? openSpecial : openDate)(e.target.value) });
@@ -2116,12 +2154,13 @@ $('#exp-go').addEventListener('click', async () => {
     if (!INDEX.days.includes(S.day.date)) { S.day.date = INDEX.days.includes(today) ? today : INDEX.days.at(-1); unstash('day') }
     const want = new URLSearchParams(location.search).get('date');   // studio/?date=2026-11-23 opens that day
     if (want && /^\d{4}-\d\d-\d\d$/.test(want) && want !== S.day.date) { S.mode = 'day'; return openDate(want) }
-    if (!INDEX.months.includes(S.month.month)) { S.month.month = INDEX.months.at(-1); unstash('month') }
+    if (!INDEX.months.includes(S.month.month) && !(recent && S.month.month)) { S.month.month = INDEX.months.at(-1); unstash('month') }
     if (!INDEX.specials.includes(S.special.date) && !(recent && S.special.date)) { S.special.date = INDEX.specials.includes(today) ? today : (INDEX.specials.at(-1) || ''); unstash('special') }
     const wantSp = new URLSearchParams(location.search).get('special');   // studio/?special=2026-11-08 opens that special picture
     if (wantSp && INDEX.specials.includes(wantSp)) { S.mode = 'special'; S.special.date = wantSp; unstash('special') }
     if (S.mode === 'special' && !S.special.date) S.mode = 'day';
     if (S.mode === 'special' && !INDEX.specials.includes(S.special.date)) { S.tab = 'choose'; build(); return }   // a day he chose that has no special pack yet
+    if (S.mode === 'month' && !INDEX.months.includes(S.month.month)) { WANTM = S.month.month; build(); showWantM(); if (Date.now() - (asked()['m:' + WANTM] || 0) < MONTH_MINS * 60e3) waitForM(WANTM); return }
     P[S.mode] = await loadPack(S.mode, keyOf(S.mode)); build();
     // the other kinds load when he opens them (13 Nov 2026: the month poster's 16 MB used to download behind every opening)
   } catch (e) { console.error(e); $('#meta').textContent = 'The photos could not be loaded. Reload the page to try again.' }
