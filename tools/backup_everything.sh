@@ -4,6 +4,7 @@
 #   code      -> GitLab (every branch, every night, only what changed) and a full git bundle on Sundays to Drive + R2
 #   database  -> bapas.db (photos, days, News articles) to Google Drive and the private R2 bucket bapas-diary-backups
 #   Studio    -> the Studio changes log and the missed searches / feedback (read through the website) to Drive
+#   Studio packs -> the Studio's days, months and special pictures to photos.bapas-diary.com/studio/ (R2) and Drive
 #   sign ups  -> the weekly darshan email list (Resend) to Drive only (people's emails never go to R2)
 #   releases  -> the GitHub release files the builds need (database, faces, tags, bank...), Sundays, changes only
 #   checks    -> emails Darpan only when something is wrong: a backup step failed, the 2pm picture on GitHub is older
@@ -97,6 +98,26 @@ if [ $R2_OK = 1 ] && ! aws s3 ls "s3://$BUCKET/site/latest-site.zip" --endpoint-
   rm -f latest-site.zip
 fi
 [ $R2_OK = 1 ] && r2_keep site   # the site copies each deploy leaves (website-deploy.yml)
+
+step "Studio photo packs, so the Studio opens days without GitHub (changes only)"
+# Darpan, 13 Nov 2026: "if i lose access to github like last time, i dont have access to the studio right?" The Studio
+# loads its days, months and special pictures from the studio branch on raw.githubusercontent.com. This copies that
+# packs/ folder (read from the code copy above, so no extra GitHub traffic) and the stories files the Studio reads
+# (articles.json, history.json) to photos.bapas-diary.com/studio/ in R2, and to Drive. It only reads the studio branch.
+PHOTOS=bapas-diary-photos
+if git -C mirror.git rev-parse -q --verify refs/heads/studio >/dev/null; then
+  rm -rf studio-copy && mkdir -p studio-copy
+  git -C mirror.git archive refs/heads/studio packs | tar -x -C studio-copy
+  for f in articles.json history.json; do
+    git -C mirror.git show "refs/heads/claude/project-thread-02nrr0:site/darpan/$f" > "studio-copy/$f" 2>/dev/null || rm -f "studio-copy/$f"
+  done
+  echo "$(find studio-copy -type f | wc -l) Studio files ($(du -sh studio-copy | cut -f1))"
+  aws s3 sync studio-copy/packs "s3://$PHOTOS/studio/packs/" --endpoint-url "$R2" --only-show-errors --size-only --exclude '*.json' \
+    && aws s3 sync studio-copy "s3://$PHOTOS/studio/" --endpoint-url "$R2" --only-show-errors --exclude '*' --include '*.json' --cache-control 'no-cache' \
+    && echo "Studio packs in R2 at photos.bapas-diary.com/studio/" || problem "Studio packs copy to R2 failed"
+  rclone sync studio-copy "$DRIVE/studio-packs" --size-only --transfers 8 || problem "Studio packs copy to Drive failed"
+  rm -rf studio-copy
+else problem "No studio branch in the code copy"; fi
 
 step "GitHub releases the website and 2pm picture are built from (Sundays: only files that changed)"
 # database, faces, deep tags, image search, today, bank, backup ... everything except mockups and tests. Drive and R2
