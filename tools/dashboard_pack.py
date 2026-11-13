@@ -76,6 +76,34 @@ def picks_sheet(picks, path):
     return dict(f=os.path.basename(path), w=sheet.width, h=sheet.height, long=PICK)
 
 
+def lighten(out):
+    """Adds picks.jpg and the small photos to a pack made before them, from the photos it already holds, so its
+    choices, order and every other field stay exactly as they were (a pack Darpan may already have worked on)."""
+    import io
+    path = os.path.join(out, 'pack.json')
+    pack = json.load(open(path))
+    if 'picks' in pack:
+        return False
+    picks = []
+    for y in pack['years']:
+        name = f'{y["year"]}-small.jpg'
+        blob = open(os.path.join(out, name), 'wb')
+        for k, c in enumerate(y['cands'][:6]):
+            with open(os.path.join(out, c['f']), 'rb') as f:
+                f.seek(c['at'][0]); im = Image.open(io.BytesIO(f.read(c['at'][1]))).convert('RGB')
+            if k == 0:
+                picks.append((y, im))
+            t = min(1, SMALL / max(im.size)); sm = im.resize((max(1, round(im.width * t)), max(1, round(im.height * t))), Image.LANCZOS)
+            at = blob.tell(); sm.save(blob, 'JPEG', quality=78)
+            c['small'] = dict(f=name, at=[at, blob.tell() - at], w=sm.width, h=sm.height)
+        blob.close()
+        if os.path.getsize(blob.name) == 0:
+            os.remove(blob.name)
+    pack['picks'] = picks_sheet(picks, os.path.join(out, 'picks.jpg'))
+    json.dump(pack, open(path, 'w'), indent=1, ensure_ascii=False)
+    return True
+
+
 def festival_tag(x, reach=3):
     """The festival tab for a photo in the Studio's packs: the daily picture's own tag (make.festival_of: the photo's
     date is the festival and its caption says so), else a festival up to `reach` days either side of its date that its
@@ -160,6 +188,13 @@ def items_for(day, cache):
 
 
 def main():
+    if sys.argv[1] == '--lighten':   # python tools/dashboard_pack.py --lighten <pack folder> ...
+        for out in sys.argv[2:]:
+            try:
+                print(out, 'picks.jpg and small photos added' if lighten(out) else 'has them already')
+            except Exception as e:   # an old pack of another shape stays as it is
+                print(out, 'left as it is:', e)
+        return
     day = datetime.date.fromisoformat(sys.argv[1])
     out = os.path.join(sys.argv[2] if len(sys.argv) > 2 else 'dashboard/packs', str(day))
     os.makedirs(out, exist_ok=True)
