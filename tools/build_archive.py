@@ -177,6 +177,44 @@ def news(rows, crawl):
     return arts, links, out
 
 
+def webnext(rows, crawl):
+    """The photos of baps.org's new style News pages (crawl/news/webnext.json: per article its photos' full addresses on
+    static.wn.baps-apps.org, read in Darpan's Chrome), saved in Drive and R2 by tools/webnext_copy.py under album
+    webnext-<folder number> (13 Nov 2026). The Drive path is made exactly as webnext_copy.py makes it."""
+    have = {(r[5], r[6].lower()) for r in rows}
+    A = load_json(os.path.join(crawl, 'news', 'articles.json'), {})
+    out = []
+    for path, g in sorted(load_json(os.path.join(crawl, 'news', 'webnext.json'), {}).items()):
+        files, names = g.get('files') or [], g.get('names') or []
+        art = A.get(path) or {}
+        when = g.get('date') or art.get('date') or ''
+        place = art.get('place') or ''
+        town = re.sub(r',\s*India$', '', place)
+        folder = clean(f'{when} {town}', 70)
+        y = int(when[:4]) if when[:4].isdigit() else None
+        for i, src in enumerate(files):
+            m = re.search(r'/(\d+)/display/', src)
+            if 'static.wn.baps-apps.org' not in src or not m:
+                continue
+            album = f'webnext-{m[1]}'
+            file = urllib.parse.unquote(src.split('?')[0].rsplit('/', 1)[1])
+            if (album, file.lower()) in have:
+                continue
+            have.add((album, file.lower()))
+            stem, ext = os.path.splitext(file)
+            words = (names[i] if i < len(names) else '').replace('_', ' ').strip()
+            cap = clean(words, 80)
+            name = f'{cap} ({stem}){ext or ".jpg"}' if cap else file
+            if len(name.encode()) > 200:
+                name = f'{cap[:40]} ({stem[:60]}){ext or ".jpg"}'
+            local = f'photos/baps.org/{y or "undated"}/{folder}/{name}'
+            text = words or art.get('t') or ''
+            day = datetime.date.fromisoformat(when) if when else datetime.date(y or 2000, 7, 1)
+            out.append((y, when or None, None, None, place or None, album, file, text, int(build_db.about_bapa(text, day)),
+                        'news', path, local))
+    return out
+
+
 def load_json(path, default):
     try:
         return json.load(open(path, encoding='utf-8'))
@@ -207,6 +245,9 @@ def main():
     rows += newer(rows, a.crawl, a.scan)
     arts, links, extra = news(rows, a.crawl)
     rows += extra
+    wn = webnext(rows, a.crawl)   # the new style News pages' photos (13 Nov 2026), each with its article path at [10]
+    links += [(r[10], r[5], r[6], None) for r in wn]
+    rows += [r[:10] + r[11:] for r in wn]
     db.executemany('INSERT OR IGNORE INTO articles VALUES (?,?,?,?,?,?,?,?,?)', arts)
     db.executemany('INSERT OR IGNORE INTO article_photos VALUES (?,?,?,?)', links)
     seen = {}
