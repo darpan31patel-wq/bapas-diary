@@ -65,7 +65,7 @@ def gather(day):
     return items, photos, tg_evs, special
 
 
-def which_special(day, photos, tg_evs, special):
+def which_special(day, photos, tg_evs, special, items=()):
     """The special picture make.main() makes that day, as ('festival', picture, drawn) or ('story', picture, drawn),
     drawn = what it was drawn from; None when there is none."""
     if make.special_off(day):   # Darpan switched this day's special picture off
@@ -103,12 +103,16 @@ def which_special(day, photos, tg_evs, special):
         special = max(shown, key=make.tg_rank, default=None)
         lead = next((x for x in photos if special and x.get('im') is not None and make.tells(x, special, make.RARE_DAYS)), None)
         source = 'year card'
+    options = []
+    if not special and make.DAILY_SPECIAL:   # a special picture every day: the day's most special item, the others as options
+        evs = make.daily_specials(day, list(items), photos, tg_evs)
+        special, options, lead, source = (evs[0] if evs else None), evs[1:], None, 'daily'
     if not special:
         return None
     sp = make.compose_special(special, day, lead=lead['im'] if lead else None)
     if sp is None:
         return None
-    return 'story', sp, dict(ev=special, lead=lead, source=source)
+    return 'story', sp, dict(ev=special, lead=lead, source=source, options=options)
 
 
 class Pool:
@@ -219,7 +223,7 @@ def main():
     make.shown = lambda: {d: v for d, v in seen().items() if d < str(day)}   # only the days before it, as its own morning run sees them
     items, photos, tg_evs, special = gather(day)
     dp.album_days(items + photos)
-    got = which_special(day, photos, tg_evs, special)
+    got = which_special(day, photos, tg_evs, special, items)
     if not got:
         print(f'{day}: no special picture')
         sys.exit(2)
@@ -250,7 +254,7 @@ def main():
         y = int(ev['date'][:4])
         shown = [dict(lead, crop='frame')] if lead else []
         extra = []
-        for u in make.tg_photos(ev['posts'])[:8]:   # as compose_special: the channel's photos, blank frames left out
+        for u in (ev.get('urls') or make.tg_photos(ev.get('posts') or []))[:8]:   # as compose_special: the story's photos, blank frames left out
             x = {'i': u, 'y': y, 'd': ev['date'], 'p': ev.get('place') or '', 'c': ev.get('card') or ev.get('line') or '', 'tg': True}
             make.download_all([x], CACHE)
             if 'path' not in x:
@@ -273,6 +277,23 @@ def main():
                     story_short=ev.get('whatsapp') or ev.get('story') or ev['line'],
                     story_date=ev['date'][:10], story_place=ev.get('place') or '',
                     layout=dict(name='story', big=[70, 200, 1180, 800], small_from=1360, size=[make.W, make.H], unit=make.SCALE))
+        # Darpan, 13 Nov 2026 ('if youre not sure make multiple and i will decide'): the other pictures the day could
+        # have, each drawn and with the entry that makes it the day's special once it is put in archive/special-days.json
+        def choice(e):
+            k = e.get('kind', 'story')
+            c = dict(day=str(day), kind=k)
+            c.update(ref=e.get('article') or e['date'][:10]) if k in ('story', 'news') else c.update(year=int(e['date'][:4]))
+            return c
+        ev['article'] = ev.get('article')
+        pack.update(story_kind=ev.get('kind', 'story'), choose=choice(ev), options=[])
+        for n, e in enumerate(drawn.get('options') or [], 2):
+            op = make.compose_special(e, day)
+            if op is None:
+                continue
+            op.convert('RGB').resize((2400, round(2400 * op.height / op.width)), Image.LANCZOS).save(os.path.join(out, f'option-{n}.jpg'), quality=85)
+            pack['options'].append(dict(picture=f'option-{n}.jpg', kind=e.get('kind', 'story'), headline=e.get('headline') or e['line'],
+                                        story='\n\n'.join(make.special_words(e)), story_date=e['date'][:10], story_place=e.get('place') or '',
+                                        choose=choice(e)))
     pool.close()
     pack.update(real='real.jpg', cards=cards, cell=dp.CELL, cols=dp.COLS, made=made)
     json.dump(pack, open(os.path.join(out, 'pack.json'), 'w'), indent=1, ensure_ascii=False)

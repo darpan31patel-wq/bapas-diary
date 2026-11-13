@@ -89,6 +89,7 @@ jobs:
         env:
           DATE: ${{ inputs.date }}
           STYLES: ${{ github.ref != 'refs/heads/main' && 'H2' || '' }}
+          DAILY_SPECIAL: ${{ github.ref != 'refs/heads/main' && '1' || '' }}   # a special picture every day: test branches only until Darpan's yes
         run: |
           if [ "${GITHUB_REF}" != "refs/heads/main" ] && [ "${DATE#before:}" != "$DATE" ]; then
             # test branches only, 'before:2026-11-10,2026-11-14': each date made twice, by main as it is today and by this

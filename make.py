@@ -2057,7 +2057,7 @@ def tg_day(day, items):
 
 
 SPECIAL_FILE = os.path.join(HERE, 'archive', 'special-days.json')
-EVERY_STORY = False   # True: every channel story of the day posted with pictures gets its own special picture (waiting for Darpan's yes)
+DAILY_SPECIAL = os.environ.get('DAILY_SPECIAL', '') == '1'   # a special picture every day (Darpan, 13 Nov 2026), on once he has said yes; test runs set DAILY_SPECIAL=1
 
 
 def special_choices():
@@ -2123,6 +2123,63 @@ def chosen_specials(day, items=()):
     return out
 
 
+def year_story(y, day, items, lead=None):
+    """One year of the day as a special picture's story: that year's photos of the day (the chosen card's first) and every
+    different caption among them as its words."""
+    mine = [x for x in items if x['y'] == y and x.get('d', '')[:10] == f'{y}-{day:%m-%d}'] or [x for x in items if x['y'] == y]
+    mine = [x for x in mine if not x.get('tg')]
+    if lead is not None:
+        mine = [lead] + [x for x in mine if x['i'] != lead['i']]
+    if not mine:
+        return None
+    caps = list(dict.fromkeys(c for c in (caption(x) for x in mine) if c and c != DARSHAN))
+    return {'kind': 'year', 'date': mine[0].get('d', '')[:10] or f'{y}-{day:%m-%d}', 'place': mine[0].get('p', ''),
+            'line': caps[0] if caps else f'{day.day} {day:%B} {y}', 'paras': caps[1:], 'urls': [x['i'] for x in mine[:8]]}
+
+
+def daily_specials(day, items, photos, tg_evs):
+    """Darpan, 13 Nov 2026: 'want 1 special picture everyday, so choose the most special item of that day, from all the
+    information you have, and if youre not sure make multiple and i will decide.' For a day with no festival picture, no
+    big day and no choice of his own. In order: a story the channel posted with pictures; a baps.org News article of
+    this exact date with photos; a year whose card shows a special moment; else the year with the most photos of the day.
+    One channel story is the day's special for sure; anything else is a guess, so up to three are made (the first goes
+    out, the others wait in the Studio). No AI: the same day always gives the same pictures."""
+    mmdd = f'{day:%m-%d}'
+    told = [e for e in tg_evs if not e.get('channel') and e.get('posts') and e.get('photos') and e['date'][5:10] == mmdd]
+    stories = [dict(max((e for e in told if e['date'][:10] == d), key=tg_rank), kind='story') for d in {e['date'][:10] for e in told}]
+    stories.sort(key=tg_rank, reverse=True)
+    if len(stories) == 1:
+        return stories
+    out = stories[:3]
+    if len(out) < 3:
+        paths = [e['article'] for e in news_stories(day) if e.get('article')]
+        if os.path.exists(ARCHIVE_DB):
+            db = sqlite3.connect(ARCHIVE_DB)
+            try:
+                paths += [r[0] for r in db.execute('SELECT path FROM articles WHERE substr(date, 6, 5) = ? AND year < ? AND photos > 0 '
+                                                   'ORDER BY photos DESC', (mmdd, day.year)) if r[0] not in paths]
+            except sqlite3.Error as e:
+                print('  the News articles could not be read:', e)
+            finally:
+                db.close()
+        for path in paths:
+            ev = news_story(path)
+            if ev and ev.get('urls') and len(out) < 3:
+                out.append(ev)
+    special = [x for x in photos if x.get('special') and x.get('crop') != 'close' and not x.get('tg')]
+    for x in sorted(special, key=lambda x: (not x.get('nice'), x['y'])):
+        ev = year_story(x['y'], day, items, lead=x) if len(out) < 3 else None
+        if ev:
+            out.append(ev)
+    if not out:   # an ordinary day: the year with the most photos of the very day
+        years = collections.Counter(x['y'] for x in items if x.get('d', '')[:10] == f"{x['y']}-{mmdd}" and not x.get('tg'))
+        for y, _ in years.most_common(1) or [(photos[0]['y'], 0)]:
+            ev = year_story(y, day, items)
+            if ev:
+                out.append(ev)
+    return out
+
+
 def news_story(path):
     """A baps.org News article as a special picture's story: its saved line (archive/news/lines.json) or its title,
     its place and its gallery photos, from the archive's database."""
@@ -2144,6 +2201,11 @@ def news_story(path):
         if ev:
             ev['urls'] = [f'https://www.baps.org/Data/Sites/1/Media/GalleryImages/{a}/WebImages/{f}'
                           for a, f in db.execute('SELECT album, file FROM article_photos WHERE path = ? LIMIT 8', (path,))]
+            ev['kind'] = 'news'; ev['article'] = path
+            text = (db.execute('SELECT text FROM articles WHERE path = ?', (path,)).fetchone() or [''])[0] or ''
+            paras = [' '.join(t.split()) for t in re.split(r'\n\s*\n|\r\n\s*\r\n', text) if len(t.split()) > 6]
+            if paras:
+                ev['paras'] = paras
     finally:
         db.close()
     return ev
@@ -2726,7 +2788,7 @@ def full_story(ev):
     """Darpan, 13 Nov 2026 ('I want as much information as possible... please stop cutting everything out'): the whole
     of the channel's post for this story, as paragraphs, without its date and place lines, links and hashtags. The
     longest repost of the story is used. None when the post can't be found (the short saved words are used then)."""
-    if ev.get('news') or ev.get('channel') or not ev.get('date'):
+    if ev.get('news') or ev.get('channel') or ev.get('kind') in ('news', 'year', 'photos') or not ev.get('date'):
         return None
     try:
         posts = [p for p in json.load(open(os.path.join(HERE, 'telegram', 'posts.json'), encoding='utf-8')) if p.get('date') == ev['date'][:10]]
@@ -2831,6 +2893,8 @@ def balanced(d, text, f, maxw, lines):
 def special_words(ev, from_card=False):
     """The words under a story special picture's title, as paragraphs: the channel's whole post; else the saved story,
     else its one line (never the title again)."""
+    if ev.get('paras'):   # a News article's own words, a year's captions, or Darpan's own
+        return list(ev['paras'])
     full = full_story(ev)
     if full:
         return full
@@ -3143,16 +3207,11 @@ def main():
         sp = compose_special(special, day, lead=story_lead)
         if sp:
             save_special(sp, f"{special['date']} {special.get('headline') or special.get('line')}")
-    if EVERY_STORY and not special_off(day):
-        # Darpan, 13 Nov 2026: 'whenever there is a Telegram message with pictures, we can make that a special card. The
-        # more special cards, the better' (he declines the ones he doesn't want on his dashboards): every other story of
-        # this day the channel posted with pictures gets its own special picture too, oldest first
-        done = {e['date'][:10] for e in chosen + ([special] if special else [])}
-        for d in sorted({e['date'][:10] for e in tg_evs if not e.get('channel') and e.get('posts') and e.get('photos')} - done):
-            ev = max((e for e in tg_evs if e['date'][:10] == d and not e.get('channel') and e.get('posts') and e.get('photos')), key=tg_rank)
+    if DAILY_SPECIAL and not special_off(day) and not any(f.startswith('bapas-diary-special') for f in os.listdir(a.out)):
+        for ev in daily_specials(day, items, photos, tg_evs):   # the first is the day's special picture, the others are for him to choose from
             sp = compose_special(ev, day)
             if sp:
-                save_special(sp, f"{ev['date']} {ev.get('headline') or ev.get('line')}")
+                save_special(sp, f"{ev.get('kind', 'story')}: {ev['date']} {ev.get('headline') or ev.get('line')}")
     open(os.path.join(a.out, 'date.txt'), 'w').write(f'{day}\n')
     open(os.path.join(a.out, 'summary.txt'), 'w').write(f'{len(photos)} years: ' + ', '.join(str(x['y']) for x in photos) + '\n')
     print('saved', os.path.join(a.out, 'bapas-diary.jpg'))
