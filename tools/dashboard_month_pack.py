@@ -18,10 +18,10 @@ CELL, COLS = 160, 10
 notes = poster.tg_notes(y, m)
 os.makedirs(out, exist_ok=True)
 nd = calendar.monthrange(y, m)[1]
-first = cal[f'{y}-{m:02d}-01']
+first = cal.get(f'{y}-{m:02d}-01')   # the calendar starts in January 2010: an earlier month comes without Indian dates and festivals
 days, prev = [], None
 for dn in range(1, nd + 1):
-    info = cal[f'{y}-{m:02d}-{dn:02d}']
+    info = cal.get(f'{y}-{m:02d}-{dn:02d}') or dict(indian_date='', month=None, festivals=[], notes=[])
     tithi = info['indian_date'] if info['month'] != prev else info['indian_date'].split(' ', 1)[-1]
     prev = info['month']
     fest = [re.sub(r'\s*\(.*?\)', '', f['name']) for f in info['festivals']] + [n for n in info['notes'] if not poster.NOT_FESTIVAL.search(n)]
@@ -56,7 +56,7 @@ for dn in range(1, nd + 1):
                      cands=cands, thumbs=sheet, pickA=idx(pa.get(dn)), pickB=idx(pb.get(dn)), pickM=idx(pm.get(dn)),
                      modeA=(pa.get(dn) or {}).get('mode', 'close'), modeB=(pb.get(dn) or {}).get('mode', 'frame'),
                      modeM=(pm.get(dn) or {}).get('mode', 'close')))
-sub = f"{first['lunar_months'].replace('-', ' · ')}  ·  Vikram Samvat {first['vikram_samvat']}".upper()
+sub = f"{first['lunar_months'].replace('-', ' · ')}  ·  Vikram Samvat {first['vikram_samvat']}".upper() if first else ''
 json.dump(dict(month=month, title=f'{calendar.month_name[m]} {y}', subtitle='in Bapa’s Diary', subline=sub, cell=CELL, cols=COLS, days=days),
           open(os.path.join(out, 'pack.json'), 'w'), indent=1, ensure_ascii=False)
 print(month, nd, 'days', sum(len(d['cands']) for d in days), 'photos')
