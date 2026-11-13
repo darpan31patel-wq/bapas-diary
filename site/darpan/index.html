@@ -1606,18 +1606,22 @@ const PHOTOS = 'https://photos.bapas-diary.com/';
 // I want it to do a deep search and find all the special moments of that day"): every caption of every year's photos,
 // every News article of the date, every history story and the calendar's festivals, looked through for the words that
 // make a moment special. Found moments come first on the Choose tab, each with its own switch.
-const SPECIAL_WORDS = [
-  [/\bdiksha|initiat(ed|ion)|parshad|bhagwati/i, 'diksha', 5], [/pratishtha|consecrat/i, 'murti pratishtha', 5], [/inaugurat|opening ceremony|udghatan|\bopens\b|newly built/i, 'inauguration', 4],
-  [/shilanyas|foundation stone|ground.?breaking|bhoomi ?pujan/i, 'foundation stone', 4], [/jayanti|janma|birthday|birth anniversary|pragatya/i, 'birthday', 4], [/mahotsav|centenary|shatabdi|jubilee|anniversary|patotsav|celebration/i, 'a festival or anniversary', 3],
-  [/annakut|diwali|deepavali|\bholi\b|janmashtami|ram navami|hanuman jayanti|sharad purnima|raksha ?bandhan|guru purnima|dhanteras|chopda|new year|uttarayan|navratri|dussehra|shivratri|ekadashi|fuldol|pushpadolotsav|kartik|dev diwali/i, 'a festival', 3],
-  [/president|prime minister|\bminister\b|governor|\bking\b|\bqueen\b|prince|princess|ambassador|mayor|parliament|palace|senate|congress|chief minister|\bpope\b|dalai lama|archbishop|royal|high commissioner|chancellor|\bMP\b|\bMLA\b|lord\b/i, 'a leader or dignitary', 5],
-  [/akshardham|first time|for the first time|first ever|historic|record|guinness|largest|biggest/i, 'a historic moment', 4], [/award|honou?r|felicitat|conferred|doctorate|recogni/i, 'an honour', 3],
-  [/yagna|mahapuja|vishwa shanti|yajna|homatmak/i, 'a yagna or mahapuja', 3], [/arriv(es|al)|depart(s|ure)|welcome|swagat|airport|lands in/i, 'an arrival or departure', 1],
-  [/wedding|lagna|vivah/i, 'a wedding', 2], [/hospital|operation|surgery|recover/i, 'health', 2], [/abhishek|rath yatra|shobha yatra|procession|nagar yatra|padhramani to .*mandir/i, 'a procession or abhishek', 3],
-  [/samadhi|akshar ?nivas|passes away|tribute|smruti ?sabha|antim/i, 'remembrance', 4], [/children|bal|kishor|youth|yuva|students|school|university|college/i, 'children or youths', 1], [/mandir|temple|shikharbaddh|hari mandir/i, 'a mandir', 1],
-  [/sant|sadhu|parayan|katha|vicharan|padhramani|satsang sabha|ashirwad/i, 'satsang', 0],
+const SPECIAL_WORDS = [   // the same words and weights as the Today page's special moments (Today thread, 13 Nov 2026), so both agree
+  [/(?<!satsang )\bdiksha|initiat(ed|ion) into|parshadi diksha/i, 'diksha', 5], [/pratishtha|consecrat/i, 'murti pratishtha', 5],
+  [/inaugurat|opening ceremony|udghatan|newly built/i, 'inauguration', 4],
+  [/shila?n?y[aã]s|foundation stone|ground.?breaking|bh[ou]o?mi ?pujan/i, 'foundation stone', 4],
+  [/janma ?jayanti|birthday|birth anniversary|pragatya|janmotsav/i, 'jayanti', 4],
+  [/mahotsav|centenary|shatabdi|jubilee|anniversary|patotsav/i, 'a celebration', 3],
+  [/annakut|diwali|deepavali|\bholi\b|janmashtami|ram navami|hanuman jayanti|sharad pu?rnima|sharad punam|raksha ?bandhan|guru pu?rnima|dhanteras|chopda|new year|uttarayan|navratri|dussehra|shivratri|fuldol|pushpadol|kali chaudas|bhai bij|vasant panch|rath ?yatra/i, 'a festival', 3],
+  [/president|prime minister|\bminister\b|governor|\bking\b|\bqueen\b|\bprince|princess|ambassador|\bmayor|parliament|buckingham palace|royal palace|rashtrapati bhavan|white house|10 downing|senator|congress(wo)?man|\bpope\b|dalai lama|archbishop|\broyal|high commissioner|chancellor|house of lords|\bduke\b|\bduchess\b/i, 'a leader or dignitary', 5],
+  [/\bMPs?\b|\bMLAs?\b|\bLord [A-Z][a-z]+ of\b/, 'a leader or dignitary', 5],
+  [/first time|first ever|historic|guinness|world record|largest|biggest/i, 'a historic moment', 4],
+  [/\baward|felicitat|conferred|doctorate|honorary|civic reception|key to the city|recogni[sz]ed/i, 'an honour', 3],
+  [/\byagna\b|\byajna\b|mahapuja|vishwa shanti/i, 'a yagna or mahapuja', 3], [/rath ?yatra|shobha ?yatra|nagar ?yatra|procession/i, 'a procession', 3],
+  [/samadhi|akshar ?nivas|passes away|passed away|return to akshardham|tribute|smruti ?sabha|antyeshti/i, 'remembrance', 6],
 ];
-const specialIn = t => { const f = []; let w = 0; for (const [re, name, k] of SPECIAL_WORDS) if (re.test(t || '')) { if (k) f.push(name); w += k } return { f: [...new Set(f)], w } };
+// its weight: the strongest kind it is, and one more for each other kind, so a long caption does not win just by being long
+const specialIn = t => { const f = []; let w = 0; for (const [re, name, k] of SPECIAL_WORDS) if (re.test(t || '') && !f.includes(name)) { w = f.length ? Math.max(w, k) + 1 : k; f.push(name) } return { f, w } };
 function dayMoments(dd, mmdd, byYear) {
   const out = [], seen = new Set(), scanned = { captions: 0, articles: 0, stories: 0 };
   (dd ? dd.years : []).forEach(Y => {
