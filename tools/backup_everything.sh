@@ -64,7 +64,7 @@ if git -C mirror.git fetch -q --prune origin '+refs/heads/*:refs/heads/*' '+refs
     if [ -z "$GLUSER" ]; then problem "GitLab would not open with the GITLAB_TOKEN secret (wrong or expired token)"
     else
       [ "$(gl -o /dev/null -w '%{http_code}' "$GLAPI/projects/$ENC")" = 200 ] || \
-        gl -X POST "$GLAPI/projects" --data-urlencode "path=${REPO#*/}" --data-urlencode "name=Bapa's Diary" \
+        gl -X POST "$GLAPI/projects" --data-urlencode "path=${REPO#*/}" --data-urlencode "name=Bapas Diary" \
           -d visibility=private -d initialize_with_readme=false | jq -c '{made: .path_with_namespace, error: .message}'
       GL="https://oauth2:$GITLAB_TOKEN@gitlab.com/$REPO.git"
       if git -C mirror.git push -q --prune "$GL" '+refs/heads/*:refs/heads/*' '+refs/tags/*:refs/tags/*' 2>&1 | sed "s#$GITLAB_TOKEN#***#g"; [ "${PIPESTATUS[0]}" = 0 ]; then
@@ -153,6 +153,35 @@ for a in get('/audiences').get('data', []):
 json.dump(out, open('/dev/stdout', 'w'), indent=1)
 PY
   [ -s signups.json ] && { gzip -f signups.json; rclone copyto signups.json.gz "$DRIVE/signups/$DAY signups.json.gz" && drive_keep signups || problem "Sign up list copy to Drive failed"; }
+fi
+
+step "Standby website on Netlify (only when the site has changed)"
+# Darpan, 13 Nov 2026: a second home for the pages, so bapas-diary.netlify.app (or bapas-diary-standby) is always ready to
+# take over if Cloudflare ever fails. The plain pages work there; the Studio, sign up and feedback need Cloudflare.
+if [ -n "${NETLIFY_TOKEN:-}" ]; then
+  echo "::add-mask::$NETLIFY_TOKEN"
+  nl() { curl -s -H "Authorization: Bearer $NETLIFY_TOKEN" "$@"; }
+  NAPI=https://api.netlify.com/api/v1
+  SITE_ID=$(nl "$NAPI/sites?filter=all" | jq -r '[.[] | select(.name|test("^bapas-diary"))][0].id // empty')
+  if [ -z "$SITE_ID" ]; then
+    for name in bapas-diary bapas-diary-standby bapas-diary-backup; do
+      SITE_ID=$(nl -X POST -H 'Content-Type: application/json' -d "{\"name\":\"$name\"}" "$NAPI/sites" | jq -r '.id // empty')
+      [ -n "$SITE_ID" ] && break
+    done
+  fi
+  if [ -z "$SITE_ID" ]; then problem "Netlify would not open with the NETLIFY_TOKEN secret"
+  elif rclone copyto "$DRIVE/site/latest site.zip" site.zip; then
+    NOW=$(md5sum site.zip | cut -c1-32); WAS=$(rclone cat "$DRIVE/site/netlify.txt" 2>/dev/null)
+    if [ "$NOW" = "$WAS" ]; then echo "Netlify standby already has this site"
+    else
+      rm -rf standby && mkdir standby && unzip -q site.zip 'out/*' -d standby && (cd standby/out && zip -qr ../../standby.zip .)
+      URL=$(nl -X POST -H 'Content-Type: application/zip' --data-binary @standby.zip --max-time 1800 "$NAPI/sites/$SITE_ID/deploys" | jq -r '.ssl_url // .url // empty')
+      if [ -n "$URL" ]; then echo "Netlify standby updated: $URL"; printf %s "$NOW" | rclone rcat "$DRIVE/site/netlify.txt"
+      else problem "Netlify standby update failed"; fi
+      rm -rf standby standby.zip
+    fi
+    rm -f site.zip
+  else problem "No site copy in Drive for the Netlify standby"; fi
 fi
 
 step "Checks on the 2pm picture (reading only)"

@@ -60,6 +60,7 @@ jobs:
           SUMMARY_TO: ${{ secrets.SUMMARY_TO }}
           STUDIO_PASSWORD: ${{ secrets.STUDIO_PASSWORD }}
           MISSED_KEY: ${{ secrets.MISSED_KEY }}
+          NETLIFY_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
           GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
           GITLAB_REPO: ${{ vars.GITLAB_REPO }}
           FULL: ${{ inputs.full && 'yes' || '' }}
