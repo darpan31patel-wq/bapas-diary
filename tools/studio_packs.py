@@ -34,8 +34,8 @@ def main():
     for d in want:
         made = os.path.join(days_dir, str(d), 'pack.json')
         # a pack made before every photo of the year was kept (28 Oct 2026), or before each photo carried its album's
-        # first and last day (6 Nov 2026), is made again
-        if os.path.exists(made) and str(d) not in a.dates and json.load(open(made)).get('albums'):
+        # first and last day (6 Nov 2026), or before the picks sheet and the small photos (13 Nov 2026), is made again
+        if os.path.exists(made) and str(d) not in a.dates and json.load(open(made)).get('albums') and 'picks' in json.load(open(made)):
             continue
         print('making', d, flush=True)
         r = subprocess.run([sys.executable, os.path.join(HERE, 'tools', 'dashboard_pack.py'), str(d), days_dir])
