@@ -124,6 +124,10 @@ FIXED = {'01-20': 'Gunatitanand Swami Diksha Day', '01-23': 'Yogiji Maharaj Smru
          '05-23': 'Yogiji Maharaj Jayanti', '06-01': 'Bhagwan Swaminarayan Smrutiparva', '08-13': 'Pramukh Swami Maharaj Smrutiparva',
          '09-13': 'Mahant Swami Maharaj Jayanti', '10-11': 'Gunatitanand Swami Smrutiparva', '10-17': 'Gunatitanand Swami Jayanti',
          '11-07': 'Bhagatji Maharaj Smrutiparva', '12-07': 'Pramukh Swami Maharaj Jayanti'}
+# an anniversary only from the year it began: the calendar runs back before 2010 now, worked out by tools/old_calendar.py
+# (Darpan, 13 Nov 2026), and no day before 13 August 2016 is Pramukh Swami Maharaj's Smrutiparva
+SINCE = {'Pramukh Swami Maharaj Smrutiparva': 2017, 'Yogiji Maharaj Smrutiparva': 1971, 'Shastriji Maharaj Smrutiparva': 1951,
+         'Pramukh Varni Din': 1950}
 
 
 def kept_days(date, month, names, ekadashi, punam, amas, indian_date):
@@ -138,7 +142,7 @@ def kept_days(date, month, names, ekadashi, punam, amas, indian_date):
     for flag, word in ((punam, 'Punam'), (amas, 'Amas')):   # the website shows the whole Indian date ('Aso Sud Chaudas/Punam')
         if flag and word not in (indian_date or '') and word not in out:
             out.append(word)
-    if date[5:10] in FIXED:
+    if date[5:10] in FIXED and int(date[:4]) >= SINCE.get(FIXED[date[5:10]], 0):
         out.append(FIXED[date[5:10]])
     ek = [f for f in out if 'Ekadashi' in f][:1] or (['Ekadashi'] if ekadashi else [])
     return ek + [f for f in out if f not in ek]
