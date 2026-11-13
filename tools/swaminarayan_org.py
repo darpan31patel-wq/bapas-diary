@@ -110,6 +110,7 @@ class Copier:
         os.makedirs(self.files, exist_ok=True)
         os.makedirs(a.state, exist_ok=True)
         self.lock = threading.Lock()
+        self.tl = threading.local()
         self.seen = set()
         sp = os.path.join(a.state, 'seen.txt')
         if os.path.exists(sp):
@@ -120,6 +121,7 @@ class Copier:
         for u in todo + seeds():
             self.add(u, force=u in todo)
         self.pages = open(os.path.join(a.state, 'pages.jsonl'), 'a', encoding='utf-8')
+        self.files_log = open(os.path.join(a.state, 'files.jsonl'), 'a', encoding='utf-8')
         self.counts = dict(pages=0, photos=0, other=0, missing=0, failed=0, bytes=0)
         self.stop_at = None
         if a.stop_at:
@@ -150,6 +152,7 @@ class Copier:
         for attempt in range(3):
             try:
                 with urllib.request.urlopen(req, timeout=60) as r:
+                    self.tl.h = {k.lower(): v for k, v in r.headers.items()}
                     return r.status, r.headers.get('Content-Type', ''), r.read(), r.geturl()
             except urllib.error.HTTPError as e:
                 if e.code in (404, 410, 403):
@@ -158,6 +161,28 @@ class Copier:
             except Exception:
                 time.sleep(5 * (attempt + 1))
         return None, '', b'', url
+
+    def note(self, url, kind, size, h):
+        row = dict(url=url, file=local(url), type=kind, bytes=size, last_modified=h.get('last-modified'),
+                   etag=h.get('etag'), fetched_at=dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'),
+                   source='swaminarayan.org')
+        with self.lock:
+            self.files_log.write(json.dumps(row) + '\n')
+
+    def heads(self, urls):
+        """the file details (type, size, Last-Modified) for files an earlier round saved before these were kept"""
+        for url in urls:
+            if self.stop_at and dt.datetime.now(dt.timezone.utc) >= self.stop_at:
+                return
+            req = urllib.request.Request(url, method='HEAD',
+                                         headers={'User-Agent': 'Mozilla/5.0 (bapas-diary archive; gentle)'})
+            try:
+                with urllib.request.urlopen(req, timeout=60) as r:
+                    h = {k.lower(): v for k, v in r.headers.items()}
+                    self.note(url, h.get('content-type', ''), int(h.get('content-length') or 0), h)
+            except Exception:
+                pass
+            time.sleep(self.a.gap / max(1, self.a.workers))
 
     def page(self, url, body_bytes):
         body = body_bytes.decode('cp1252', errors='replace')
@@ -234,6 +259,7 @@ class Copier:
                 with self.lock:
                     self.retry.append(url)
                 return
+            self.note(url, kind, len(body), getattr(self.tl, 'h', {}))
             fn = os.path.join(self.files, local(url))
             os.makedirs(os.path.dirname(fn), exist_ok=True)
             with open(fn, 'wb') as f:
@@ -263,7 +289,10 @@ class Copier:
         while not self.q.empty():
             left.append(self.q.get())
         left += self.retry
+        if not left and self.a.heads and os.path.exists(self.a.heads):
+            self.heads([x for x in open(self.a.heads, encoding='utf-8').read().split('\n') if x])
         self.pages.close()
+        self.files_log.close()
         with open(os.path.join(self.a.state, 'todo.txt'), 'w', encoding='utf-8') as f:
             f.write('\n'.join(left))
         with open(os.path.join(self.a.state, 'seen.txt'), 'w', encoding='utf-8') as f:
@@ -283,6 +312,7 @@ if __name__ == '__main__':
     ap.add_argument('--stop-at', default='03:50', help='UTC time to stop by (the 2pm picture morning stays free)')
     ap.add_argument('--workers', type=int, default=3)
     ap.add_argument('--gap', type=float, default=0.7, help='seconds each reader waits between files')
+    ap.add_argument('--heads', default='', help='addresses of saved files whose details are missing (asked once)')
     ap.add_argument('--most', type=int, default=0, help='stop after this many files (a test)')
     a = ap.parse_args()
     c = Copier(a)

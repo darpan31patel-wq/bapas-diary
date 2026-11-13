@@ -3,7 +3,10 @@
 # swaminarayan.org, ASAP"). Archive only: touches nothing in the 2pm picture's chain, the website, R2 or bapas.db,
 # and never runs 04:00 to 07:30 UTC. One run, one machine, three gentle readers. It carries on where the last run
 # stopped (state kept in Drive), so pushing this file again starts the next round.
-# Round 1: 13 Nov 2026 evening.
+# Every round also rebuilds the full detail list (Darpan, 13 Nov 2026: "all the captions, all the date information, any
+# location, where the actual resource is from"): tools/sites_index.py reads every saved page and writes pages.jsonl and
+# photos.jsonl (caption, date as written and as YYYY-MM-DD, place, gallery, page, Drive path, file details).
+# Round 1: 13 Nov 2026 evening. Round 2: 14 Nov 2026 after 07:30 UTC.
 name: swaminarayan-org
 on:
   push:
@@ -50,6 +53,7 @@ jobs:
               --stats 0 2>&1 | tail -2; done ) &
           mover=$!
           python3 -I tools/swaminarayan_org.py --work work --state state --stop-at 03:40 --workers 3 --gap 0.7 \
+            --heads state/heads.txt \
             | tee run.log | grep -E '^\{|stopping' || true
           kill $mover || true
       - name: Into Drive
@@ -57,6 +61,22 @@ jobs:
         run: |
           [ -d work/files ] && rclone move work/files "$REMOTE" --transfers 8 --stats-one-line --stats 0 || true
           rclone copy state "$REMOTE/_state" --stats 0
-          cp state/pages.jsonl swaminarayan-org-pages.jsonl && gh release upload database swaminarayan-org-pages.jsonl --clobber
+      - name: Full detail for every page and photo
+        if: always()
+        run: |
+          # every saved page back from Drive (pages only, small), then the lists rebuilt from all of them
+          rclone copy "$REMOTE" pages --filter "- _state/**" --filter "- _index/**" --filter "+ *.{htm,html,HTM,HTML}" \
+            --filter "+ *.php*" --filter "- *" --transfers 8 --stats 0
+          python3 -I tools/sites_index.py --site swaminarayan.org --files pages --headers state/files.jsonl --out idx
+          # saved files whose details (type, size, Last-Modified) round 1 did not keep: asked once next round
+          rclone lsf -R --files-only "$REMOTE" --filter "- _state/**" --filter "- _index/**" \
+            | python3 -c "import sys,urllib.parse as u; [print('https://www.swaminarayan.org/' + u.quote(l.rstrip('\n'), safe=\"/%-_.~()!'\$&+,;=:@\")) for l in sys.stdin]" \
+            | sort > drive.txt
+          python3 -c "import json,sys; [print(json.loads(l)['url']) for l in open('state/files.jsonl')]" | sort -u > known.txt || : > known.txt
+          comm -23 drive.txt known.txt > state/heads.txt; wc -l drive.txt state/heads.txt
+          rclone copy state "$REMOTE/_state" --stats 0
+          rclone copy idx "$REMOTE/_index" --stats 0
+          cp idx/pages.jsonl swaminarayan-org-pages.jsonl && cp idx/photos.jsonl swaminarayan-org-photos.jsonl
+          gh release upload database swaminarayan-org-pages.jsonl swaminarayan-org-photos.jsonl --clobber
           cp state/last-run.json swaminarayan-org-last-run.json && gh release upload database swaminarayan-org-last-run.json --clobber
           cat state/last-run.json
