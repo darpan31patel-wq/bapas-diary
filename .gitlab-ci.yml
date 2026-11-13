@@ -1,0 +1,15 @@
+# Bapa's Diary emergency publish (Darpan, 13 Nov 2026: never rely on one thing).
+# This repository is copied to GitLab every night by .github/workflows/backup-everything.yml. If GitHub ever stops,
+# open the project on gitlab.com, Build, Pipelines, "Run pipeline", Run: the last site GitHub built (kept in the private
+# R2 bucket bapas-diary-backups by website-deploy.yml) goes straight back onto bapas-diary.com through Cloudflare.
+# The Cloudflare keys are kept here, masked, by the nightly backup. Never runs on its own: only when started by hand.
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+
+publish-last-site:
+  image: node:20
+  script:
+    - npx --yes wrangler@3.114.0 r2 object get bapas-diary-backups/site/latest-site.zip --file site.zip --remote
+    - unzip -q site.zip && test -f out/index.html
+    - npx --yes wrangler@3.114.0 pages deploy out --project-name bapas-diary --branch main --commit-dirty=true

@@ -5,7 +5,7 @@ name: Backup everything
 # to Google Drive and the private R2 bucket bapas-diary-backups, the Studio log and email sign ups to Drive, and emails
 # Darpan only when something needs a look. It reads the 2pm picture chain but never changes it.
 # Secrets used: RCLONE_DRIVE_TOKEN, RCLONE_CLIENT_ID, RCLONE_CLIENT_SECRET, CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID,
-# RESEND_API_KEY, SUMMARY_TO (all already there) and, once he has a GitLab account, GITLAB_TOKEN plus variable GITLAB_REPO.
+# RESEND_API_KEY, SUMMARY_TO (all already there) and, once he has a GitLab account, GITLAB_TOKEN (GITLAB_REPO variable optional).
 
 on:
   schedule:

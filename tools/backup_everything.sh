@@ -52,13 +52,32 @@ step "Code: every branch and tag"
 if [ -d mirror.git ]; then git -C mirror.git remote set-url origin "$GH_URL"; else git clone -q --mirror "$GH_URL" mirror.git; fi
 if git -C mirror.git fetch -q --prune origin '+refs/heads/*:refs/heads/*' '+refs/tags/*:refs/tags/*'; then
   echo "$(git -C mirror.git for-each-ref | wc -l) branches and tags"
-  if [ -n "${GITLAB_TOKEN:-}" ] && [ -n "${GITLAB_REPO:-}" ]; then
+  if [ -n "${GITLAB_TOKEN:-}" ]; then
+    # Darpan only makes the account and one token; this finds his name, makes the private project bapas-diary the
+    # first time, copies every branch, and keeps the Cloudflare keys the emergency deploy (.gitlab-ci.yml) needs in it
     echo "::add-mask::$GITLAB_TOKEN"
-    GL="https://oauth2:$GITLAB_TOKEN@gitlab.com/$GITLAB_REPO.git"
-    git -C mirror.git push -q --prune "$GL" '+refs/heads/*:refs/heads/*' '+refs/tags/*:refs/tags/*' 2>&1 | sed "s#$GITLAB_TOKEN#***#g" \
-      && echo "GitLab copy up to date" || problem "GitLab copy failed"
+    gl() { curl -s -H "PRIVATE-TOKEN: $GITLAB_TOKEN" "$@"; }
+    GLAPI=https://gitlab.com/api/v4
+    GLUSER=$(gl "$GLAPI/user" | jq -r '.username // empty')
+    REPO=${GITLAB_REPO:-$GLUSER/bapas-diary}
+    ENC=$(jq -rn --arg r "$REPO" '$r|@uri')
+    if [ -z "$GLUSER" ]; then problem "GitLab would not open with the GITLAB_TOKEN secret (wrong or expired token)"
+    else
+      [ "$(gl -o /dev/null -w '%{http_code}' "$GLAPI/projects/$ENC")" = 200 ] || \
+        gl -X POST "$GLAPI/projects" --data-urlencode "path=${REPO#*/}" --data-urlencode "name=Bapa's Diary" \
+          -d visibility=private -d initialize_with_readme=false | jq -c '{made: .path_with_namespace, error: .message}'
+      GL="https://oauth2:$GITLAB_TOKEN@gitlab.com/$REPO.git"
+      if git -C mirror.git push -q --prune "$GL" '+refs/heads/*:refs/heads/*' '+refs/tags/*:refs/tags/*' 2>&1 | sed "s#$GITLAB_TOKEN#***#g"; [ "${PIPESTATUS[0]}" = 0 ]; then
+        echo "GitLab copy up to date: gitlab.com/$REPO"
+      else problem "GitLab copy failed"; fi
+      for v in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do   # kept masked in GitLab, never printed
+        gl -o /dev/null -X PUT "$GLAPI/projects/$ENC/variables/$v" --data-urlencode "value=${!v}" -d masked=true -d raw=true \
+          -w '%{http_code}' | grep -q 200 || gl -o /dev/null -X POST "$GLAPI/projects/$ENC/variables" -d "key=$v" \
+          --data-urlencode "value=${!v}" -d masked=true -d raw=true || problem "Could not keep $v in GitLab"
+      done
+    fi
   else
-    echo "GitLab copy waits for the GITLAB_TOKEN secret and GITLAB_REPO variable"
+    echo "GitLab copy waits for the GITLAB_TOKEN secret"
   fi
   if [ "$DOW" = 7 ] || [ "${FULL:-}" = yes ]; then
     git -C mirror.git bundle create "../$DAY-bapas-diary.bundle" --all && ls -la "$DAY-bapas-diary.bundle"
