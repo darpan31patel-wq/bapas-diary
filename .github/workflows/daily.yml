@@ -27,7 +27,7 @@ concurrency:
 jobs:
   make:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: ${{ github.ref == 'refs/heads/main' && 40 || 170 }}
     steps:
       - uses: actions/checkout@v4
 
@@ -90,6 +90,40 @@ jobs:
           DATE: ${{ inputs.date }}
           STYLES: ${{ github.ref != 'refs/heads/main' && 'H2' || '' }}
         run: |
+          if [ "${GITHUB_REF}" != "refs/heads/main" ] && [ "${DATE#before:}" != "$DATE" ]; then
+            # test branches only, 'before:2026-11-10,2026-11-14': each date made twice, by main as it is today and by this
+            # branch, and set one above the other (Darpan, 9 Nov 2026: test pictures next to today's picture for the same date)
+            git fetch -q --depth 1 origin main && git worktree add -q ../before FETCH_HEAD
+            export ARCHIVE_DB="$PWD/bapas.db"
+            mkdir -p compare
+            for d in $(echo "${DATE#before:}" | tr ',' ' '); do
+              (cd ../before && python make.py --date "$d" --out "out/$d" --cache "$GITHUB_WORKSPACE/cache") > "compare/$d-before-log.txt" 2>&1 || true
+              python make.py --date "$d" --out "out/$d" --cache cache > "compare/$d-after-log.txt" 2>&1 || true
+              for w in before after; do
+                o="out/$d"; [ "$w" = before ] && o="../before/out/$d"
+                cp "$o/bapas-diary.jpg" "compare/$d-$w.jpg" || true
+                cp "$o/summary.txt" "compare/$d-$w-summary.txt" || true
+                [ -e "$o/caption.txt" ] && cp "$o/caption.txt" "compare/$d-$w-caption.txt"
+              done
+              python - "$d" <<'PY' || true
+          import sys
+          from PIL import Image, ImageDraw, ImageFont
+          d = sys.argv[1]
+          a, b = (Image.open(f'compare/{d}-{w}.jpg').convert('RGB') for w in ('before', 'after'))
+          k = 2400 / a.width
+          a, b = (im.resize((2400, round(im.height * k))) for im in (a, b))
+          font = ImageFont.truetype('fonts/arimo-latin-700-normal.woff2', 44)
+          out = Image.new('RGB', (2400, a.height + b.height + 160), (24, 16, 16))
+          draw = ImageDraw.Draw(out)
+          draw.text((30, 16), f'{d}  BEFORE: the picture as main makes it today', font=font, fill=(240, 220, 170))
+          out.paste(a, (0, 80))
+          draw.text((30, a.height + 96), f'{d}  AFTER: with the News articles and photos', font=font, fill=(240, 220, 170))
+          out.paste(b, (0, a.height + 160))
+          out.save(f'compare/{d}-side-by-side.jpg', quality=90)
+          PY
+            done
+            rm -rf out && mkdir out && mv compare out/compare; echo "compare" > out/date.txt; exit 0
+          fi
           if [ "${GITHUB_REF}" != "refs/heads/main" ] && [ "${DATE#*,}" != "$DATE" ]; then
             # test branches only: several dates at once, original and unique caption picks side by side
             for d in ${DATE//,/ }; do

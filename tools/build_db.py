@@ -185,6 +185,150 @@ def load(folder, fixes=None):
     return out
 
 
+# ---------------------------------------------------------------- the baps.org News galleries
+# Darpan, 9 Nov 2026 ('use all articles and photos'): the News articles and their photo galleries (crawl/news/articles.json,
+# read in his Chrome 4 to 6 Nov 2026) join the day lists. A News article can be about anything anywhere (a kids' sports
+# day in New Jersey), so its photos only join a day when Bapa was there: the article or its captions speak of Swamishri
+# and its town is where the vicharan pages put him on that day (when the vicharan pages say nothing for that day, the
+# article's own words decide).
+# Only the exact English date counts: a photo's own dated file name, else the article's date when the article is of one day.
+# News photos are only ever added: they never take the place of a vicharan photo, and make.py's face check still decides.
+TOWN_ALIAS = {'amdavad': 'ahmedabad', 'delhi': 'new delhi', 'bombay': 'mumbai', 'baroda': 'vadodara', 'atladara': 'vadodara', 'atladra': 'vadodara',
+              'neasden': 'london', 'calcutta': 'kolkata', 'gadhada': 'gadhada', 'gadhda': 'gadhada', 'sarangpur': 'sarangpur', 'salangpur': 'sarangpur',
+              'navsari': 'navsari', 'tithal': 'tithal', 'gandhinagar': 'gandhinagar'}
+NOT_TOWN = {'india', 'uk', 'usa', 'canada', 'kenya', 'uganda', 'tanzania', 'south africa', 'australia', 'new zealand', 'uae', 'europe', 'uk & europe',
+            'north america', 'africa', 'asia pacific', 'gujarat', 'england', 'worldwide', 'uk and europe', 'east africa', 'middle east'}
+PRESENT = re.compile(r"\bSwamishri\b|\b(?:presence|blessings in person) of (?:HH |H\.H\. |His Holiness |Param Pujya |Pujya |P\.P\. )?(?:Pramukh|Mahant) Swami", re.I)
+
+
+def towns(place):
+    """'London, New Delhi' or 'Atladara (Vadodara), India' -> {'london', 'new delhi'}, {'vadodara'} (countries are not towns)."""
+    out = set()
+    for part in re.split(r'[,/()&]| and | to ', place or ''):
+        t = re.sub(r'\s+', ' ', part).strip().lower()
+        if t and t not in NOT_TOWN and not re.fullmatch(r'[a-z]{2}', t):
+            out.add(TOWN_ALIAS.get(t, t))
+    return out
+
+
+def bapa_towns(years):
+    """{date: towns} where the vicharan pages put Bapa: a dated photo's page, and every day of a trip page."""
+    out = collections.defaultdict(set)
+    for photos in years.values():
+        for day, span, album, file, cap, place in photos:
+            if day:
+                out[day] |= towns(place)
+            elif span and (span[1] - span[0]).days <= 31:
+                for i in range((span[1] - span[0]).days + 1):
+                    out[span[0] + datetime.timedelta(i)] |= towns(place)
+    return out
+
+
+def news_place(place):
+    """'London, UK & Europe' -> 'London, UK'; a News place that is not a town and country ('My Best Friend | Shishu Din,
+    UK & Europe', 'BAPS Shri Swaminarayan Mandir, North America') is left empty: make.py then uses the year's own place."""
+    parts = [x.strip() for x in (place or '').replace(' & Europe', '').split(',') if x.strip()]
+    if not parts or '|' in place or not towns(parts[0]) or re.search(r'Mandir|Din\b|Celebration', parts[0]):
+        return ''
+    return ', '.join(parts)
+
+
+def news_caption(cap, section, title):
+    """(caption, has its own words): a gallery photo's own caption; when it has none, or it only repeats the article's
+    title ("Parents' Day, London, UK 2006"), the event's name is the caption ("Parents' Day") and it counts as a title."""
+    strip = lambda t: re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', t or '').replace('\u2019', "'").replace('\ufffd', "'")).strip()
+    cap, title, section = re.sub(r'\s*-\s*$', '', strip(cap)), strip(title), strip(section)
+    parts = [x.strip() for x in title.split(',') if x.strip()]
+    name = parts[0] if parts else ''                                   # 'Akshardham Shilnyas Vidhi, New Delhi, India' -> the event
+    low = cap.lower()
+    own = bool(cap) and not (name and low.startswith(name.lower()) and len(cap) <= len(title) + 6) and low != section.lower()
+    if own:
+        return cap, True
+    return name or cap, False
+
+
+def many_days(path, a, year, when=None):
+    """True when a News article is not of its one listed day: it covers a festival week or a tour, or its own words and
+    gallery headings give other days ('4 Nov. Diksha', '6 Nov. Murti-Pratishtha' under an article listed on 11 Nov).
+    Its photos then belong to no single date unless their own file names carry one."""
+    span = page_dates(path, a.get('t') or '', year)
+    if span and span[0] != span[1]:
+        return True
+    days = {file_date(r[1], year) for g in (a.get('g') or {}).values() for r in g.get('rows') or []} - {None}
+    head = ((a.get('text') or '')[:600] + ' ' + ' '.join(a.get('g') or {})).lower().replace('-', ' ')
+    if len(days) > 1 or re.search(r'\b\d{1,2}(?:st|nd|rd|th)?\s*(?:to|\u2013)\s*\d{1,2}(?:st|nd|rd|th)?\s+' + MON, head):
+        return True
+    said = set()
+    for m in re.finditer(r'\b(\d{1,2})(?:st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?(?:,?\s+(\d{4}))?', head):
+        if not m[3] or int(m[3]) == year:
+            said.add((MON_SHORT[m[2]], int(m[1])))
+    for m in re.finditer(r'\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?,\s+(\d{4})', head):
+        if int(m[3]) == year:
+            said.add((MON_SHORT[m[1]], int(m[2])))
+    return bool(when and said and said != {(when.month, when.day)})
+
+
+def load_news(path, years):
+    """({year: [photos]}, counts): the News gallery photos that belong in the day lists, in the same shape as load()
+    gives ((date, None, album, file, caption, place)), and how many were left out and why."""
+    stats, out = collections.Counter(), {}
+    if not path or not os.path.exists(path):
+        return out, stats
+    where = bapa_towns(years)
+    have = {(x[2], x[3].lower()) for v in years.values() for x in v}
+    for apath, a in sorted(json.load(open(path, encoding='utf-8')).items()):
+        when = a.get('date')
+        if not when:
+            stats['no date'] += 1
+            continue
+        day0 = datetime.date.fromisoformat(when)
+        if day0.year not in years:
+            stats['before 1999'] += 1
+            continue
+        town = towns(a.get('place'))
+        says = bool(PRESENT.search((a.get('t') or '') + ' ' + (a.get('text') or '')))
+        gals = list((a.get('g') or {}).items()) + [('', {'t': '', 'rows': a.get('own') or []})]   # a gallery's own captions first
+        words = (a.get('t') or '') + ' ' + (a.get('text') or '')
+        spread = many_days(apath, a, day0.year, day0)
+        any_named = any(about_bapa(r[2], day0) for gp, g in gals for r in g.get('rows') or [] if len(r) > 2 and r[2] and r[2] != a.get('t'))
+        seen = set()
+        for gp, g in gals:
+            section = re.sub(r'-\d+$', '', gp.rsplit('/', 1)[-1].replace('.aspx', '')).replace('-', ' ') if gp else ''
+            caps = [news_caption(r[2] if len(r) > 2 else '', section, a.get('t')) for r in g.get('rows') or []]
+            rows = continued([(r[0], r[1], c[0]) for r, c in zip(g.get('rows') or [], caps)], day0)
+            for (album, file, cap), (_, own) in zip(rows, caps):
+                key = (album, file.lower())
+                if key in seen or key in have:
+                    continue
+                seen.add(key)
+                day = file_date(file, day0.year)
+                if day and abs((day - day0).days) > 31:
+                    day = None
+                if not day and spread:                        # a festival week or a tour: no single day to give it
+                    stats['from an article of many days'] += 1
+                    continue
+                day = day or day0
+                known = set().union(*(where.get(day + datetime.timedelta(k), set()) for k in (-1, 0, 1)))
+                named = about_bapa(cap, day)
+                if known and town:
+                    ok = bool(town & known) and (says or named or any_named)
+                    why = 'Bapa was in another town' if not town & known else 'the article does not speak of Bapa'
+                elif known:                                   # 'UK & Europe', 'North America': only when the words name his town
+                    ok = (says or named) and any(re.search(rf'\b{re.escape(t)}\b', words, re.I) for t in known)
+                    why = 'Bapa was in another town'
+                else:
+                    ok = says or named
+                    why = 'the article does not speak of Bapa'
+                if not ok:
+                    stats[why] += 1
+                    continue
+                have.add(key)
+                out.setdefault(day.year, []).append((day, None, album, file, cap, news_place(a.get('place')) + ('|news' if own else '|newstitle')))
+                stats['added'] += 1
+                stats['added, captioned as Bapa'] += named
+    return out, stats
+
+
 def build(years):
     """{'MM-DD': {year: (actual date, [photos])}} with the exact day, else the trip's range page, else the nearest day."""
     days = collections.defaultdict(dict)
@@ -230,9 +374,10 @@ def build(years):
     return days, stats
 
 
-def write(days, out):
+def write(days, out, news=None):
     os.makedirs(out, exist_ok=True)
-    for mmdd, per_year in sorted(days.items()):
+    for mmdd in sorted(set(days) | set(news or {})):
+        per_year = days.get(mmdd, {})
         when = datetime.date(2024, int(mmdd[:2]), int(mmdd[3:]))
         lines = [f"# Every captioned photo of Bapa on baps.org's {when.day} {when:%B} vicharan pages, from the full crawl of every year (tools/build_db.py).",
                  '# "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.',
@@ -247,6 +392,22 @@ def write(days, out):
                 lines.append(f'#{y} {album}|{place}{note}')
                 for cap, ids in caps.items():
                     lines.append(','.join(ids) + '|' + cap)
+        # the News galleries come after every vicharan group, so a year's place and first photos stay the vicharan pages' own.
+        # Only a News photo of the exact English date (Darpan, 9 Nov 2026): never a nearby day, never a festival week.
+        # '#year album|place||news' marks them; 'newstitle' when the photo has no words of its own, only the article's title.
+        for y in sorted((news or {}).get(mmdd, {})):
+            actual, photos = news[mmdd][y]
+            if actual.strftime('%m-%d') != mmdd:
+                continue
+            groups = collections.OrderedDict()
+            for day, span, album, file, cap, place in photos:
+                groups.setdefault((album, place), collections.OrderedDict()).setdefault(short(cap), []).append(file[:-4] if file.lower().endswith('.jpg') else file)
+            for (album, place), caps in groups.items():
+                place, tag = place.rsplit('|', 1)
+                lines.append(f'#{y} {album}|{place}||{tag}')
+                for cap, ids in caps.items():
+                    for k in range(0, len(ids), 2):          # make.py reads two photos a line: every News photo gets its turn
+                        lines.append(','.join(ids[k:k + 2]) + '|' + cap)
         open(os.path.join(out, mmdd + '.txt'), 'w', encoding='utf-8').write('\n'.join(lines) + '\n')
 
 
@@ -255,12 +416,20 @@ def main():
     ap.add_argument('folder')
     ap.add_argument('--out', default=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'archive', 'vicharan'))
     ap.add_argument('--fixes', help='bapas-diary-fixes.json (dates for undated pages, rows for failed ones)')
+    ap.add_argument('--news', help='crawl/news/articles.json: the baps.org News articles and their galleries (default: news/articles.json in the folder)')
     a = ap.parse_args()
     years = load(a.folder, a.fixes or os.path.join(a.folder, 'bapas-diary-fixes.json'))
     total = sum(len(v) for v in years.values())
     undated = sum(1 for v in years.values() for x in v if not x[0] and not x[1])
     days, stats = build(years)
-    write(days, a.out)
+    news, why = load_news(a.news or os.path.join(a.folder, 'news', 'articles.json'), years)
+    news_days, _ = build(news)
+    write(days, a.out, news_days)
+    if why:
+        print('News galleries:', ', '.join(f'{v} {k}' for k, v in why.most_common()))
+        exact = [(m, y) for m, v in news_days.items() for y, (act, _) in v.items() if act.strftime('%m-%d') == m]
+        print('  day/year slots that gain News photos (exact date only):', len(exact),
+              '; years that had no photo at all:', sum(1 for m, y in exact if y not in days[m]))
     print(f'{len(years)} years, {total} photos ({undated} with no date), {stats["bapa"]} captioned as Bapa')
     print(f'day/year slots filled: {stats["exact"]} exact day, {stats["range"]} from a trip page, {stats["near"]} from a nearby day')
     per = collections.Counter(len(v) for v in days.values())
