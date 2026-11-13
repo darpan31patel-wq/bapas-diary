@@ -1,0 +1,83 @@
+# Pictures of the live Calendar and Today with the Indian date and festivals on every day before 2010, worked out from
+# the moon and the sun by tools/old_calendar.py (Darpan, 13 Nov 2026). The live pages, with only their day data
+# patched from tools/mockups/old-calendar-days.json. Runs only on the mockup branch, never deploys anything.
+name: Old calendar mockup
+on:
+  push:
+    branches: [claude/project-thread-eawr12-mockup]
+    paths: [.github/workflows/old-calendar-mockup.yml]
+permissions:
+  contents: write
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip -q install playwright && python3 -m playwright install --with-deps chromium >/dev/null
+      - name: Pictures
+        run: |
+          mkdir -p shots
+          python3 - <<'PY'
+          import json, urllib.request
+          from urllib.parse import urlparse
+          from playwright.sync_api import sync_playwright
+          OLD = json.load(open('tools/mockups/old-calendar-days.json', encoding='utf-8'))   # date -> [indian date, festivals]
+          log = open('shots/log.txt', 'w')
+
+          def get(u):
+              return json.loads(urllib.request.urlopen(urllib.request.Request(u, headers={'User-Agent': 'Mozilla/5.0'})).read())
+
+          CAL = get('https://bapas-diary.com/data/calendar.json')
+          n = 0
+          for k, rows in CAL['m'].items():
+              for i, row in enumerate(rows):
+                  d = f'{k}-{i + 1:02d}'
+                  if d in OLD and row is not None and not row[0]:
+                      row[0], row[1] = OLD[d]; n += 1
+          log.write(f'calendar: {n} days patched\n')
+          NEWCAL = json.dumps(CAL, ensure_ascii=False)
+
+          def day_json(route):
+              u = route.request.url
+              d = get(u)
+              md = urlparse(u).path.rsplit('/', 1)[-1][:5]
+              cal = d.setdefault('cal', {})
+              for y in range(1998, 2010):
+                  if f'{y}-{md}' in OLD and str(y) not in cal:
+                      cal[str(y)] = OLD[f'{y}-{md}'] + ['']
+              route.fulfill(status=200, content_type='application/json', body=json.dumps(d, ensure_ascii=False))
+
+          SHOTS = [('calendar', 'https://bapas-diary.com/calendar/#1999-11'), ('calendar', 'https://bapas-diary.com/calendar/#2004-08'),
+                   ('calendar', 'https://bapas-diary.com/calendar/#2003-07'), ('today', 'https://bapas-diary.com/#11-12')]
+          with sync_playwright() as p:
+              b = p.chromium.launch()
+              for w, h, dpr, tag in [(1600, 1000, 1, 'computer'), (390, 844, 2, 'phone')]:
+                  for ver in ['now', 'new']:
+                      for page, url in SHOTS:
+                          ctx = b.new_context(viewport={'width': w, 'height': h}, device_scale_factor=dpr, is_mobile=tag == 'phone', has_touch=tag == 'phone')
+                          if ver == 'new':
+                              ctx.route(lambda u: urlparse(u).path == '/data/calendar.json',
+                                        lambda r: r.fulfill(status=200, content_type='application/json', body=NEWCAL))
+                              ctx.route(lambda u: urlparse(u).path.startswith('/data/day/') and urlparse(u).path.endswith('.json'), day_json)
+                          pg = ctx.new_page()
+                          pg.on('pageerror', lambda e, t=tag, v=ver: log.write(f'{t} {v} pageerror: {e}\n'))
+                          try: pg.goto(url, wait_until='networkidle', timeout=40000)
+                          except Exception as e: log.write(f'goto {e}\n')
+                          pg.wait_for_timeout(6000)
+                          name = f"shots/{tag}-{page}-{url.split('#')[1]}-{ver}"
+                          pg.screenshot(path=name + '.jpg', type='jpeg', quality=86)
+                          if page == 'today':
+                              pg.screenshot(path=name + '-full.jpg', type='jpeg', quality=80, full_page=True)
+                          ctx.close()
+              b.close()
+          log.close()
+          PY
+          cat shots/log.txt; ls -la shots
+      - name: Keep them
+        if: always()
+        run: |
+          gh release delete old-calendar-mockup -y --cleanup-tag -R "$GITHUB_REPOSITORY" 2>/dev/null || true
+          gh release create old-calendar-mockup shots/* -R "$GITHUB_REPOSITORY" --title "Old calendar mockup pictures" --notes "Mockup pictures only, not part of the website" --target "$GITHUB_SHA"
