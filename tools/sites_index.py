@@ -45,6 +45,18 @@ def text(s):
     return re.sub(r'\n\s*\n+', '\n', s).strip()
 
 
+def paragraphs(s):
+    """page words with source line wraps as spaces and a blank line at every real paragraph or heading break"""
+    s = re.sub(r'(?is)<(script|style)\b.*?</\1>', ' ', s)
+    s = re.sub(r'\s+', ' ', s)
+    s = re.sub(r'(?i)(<br\s*/?>\s*){2,}|</?(p|div|tr|table|h[1-6]|li|ul|ol|blockquote)\b[^>]*>', '\x00', s)
+    s = re.sub(r'(?i)<br\s*/?>', '\n', s)
+    s = html.unescape(re.sub(r'<[^>]+>', ' ', s)).replace('\xa0', ' ')
+    parts = [re.sub(r'[ \t]+', ' ', x).strip(' \n') for x in s.split('\x00')]
+    parts = [re.sub(r' *\n *', '\n', x) for x in parts if x.strip()]
+    return '\n\n'.join(parts)
+
+
 def flat(s):
     return re.sub(r'\s+', ' ', s or '').strip()
 
@@ -147,7 +159,7 @@ def index_page(site, url, rel, raw, headers, base_url):
     title = flat(html.unescape(tm[1])) if tm else ''
     heads = [flat(text(h[1])) for h in HEAD.findall(body)]
     heads = [h for h in heads if 2 < len(h) < 200]
-    words = text(body)
+    words = paragraphs(body)
     pdates = dates(title + '\n' + words)
     section, month, ppath = path_bits(rel)
     hplace = next((heading_place(h) for h in heads if heading_place(h)), '')
