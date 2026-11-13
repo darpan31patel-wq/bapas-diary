@@ -2760,6 +2760,23 @@ def full_story(ev):
     return out or None
 
 
+def even_lines(d, text, f, maxw):
+    """The text in as few lines as fit maxw, the lines then evened out so the last is never a word on its own
+    (Darpan, 13 Nov 2026: 'why is there one word on its own????')."""
+    out = wrap(d, text, f, maxw, 99, shorten=False)
+    if len(out) < 2:
+        return out
+    lo, hi = maxw * .4, maxw
+    for _ in range(14):   # the narrowest width that still takes no more lines
+        mid = (lo + hi) / 2
+        got = wrap(d, text, f, mid, 99, shorten=False)
+        if len(got) <= len(out) and all(d.textlength(l, font=f) <= mid for l in got):
+            hi, out = mid, got
+        else:
+            lo = mid
+    return out
+
+
 def story_block(dr, paras, tw, room, sizes=(36, 34, 32, 30, 28, 26)):
     """The story's paragraphs set as large as fits the room: [(line or None for a paragraph gap)], font, line height.
     At the smallest size what still doesn't fit ends at the last whole sentence."""
@@ -2770,7 +2787,7 @@ def story_block(dr, paras, tw, room, sizes=(36, 34, 32, 30, 28, 26)):
             if k:
                 lines.append(None); h += gap
             for part in para.split('\n'):
-                for l in wrap(dr, part, bf, tw, 99, shorten=False):
+                for l in even_lines(dr, part, bf, tw):
                     lines.append(l); h += lh
         if h <= room:
             return lines, bf, lh, gap
