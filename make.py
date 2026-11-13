@@ -2790,7 +2790,7 @@ def story_block(dr, paras, tw, room, sizes=(36, 34, 32, 30, 28, 26)):
                 for l in even_lines(dr, part, bf, tw):
                     lines.append(l); h += lh
         if h <= room:
-            return lines, bf, lh, gap
+            return lines, bf, lh, gap, True
     while h > room and lines:   # still too long at the smallest size: whole sentences only
         l = lines.pop(); h -= gap if l is None else lh
     text = ' '.join(l for l in lines if l is not None)
@@ -2804,7 +2804,7 @@ def story_block(dr, paras, tw, room, sizes=(36, 34, 32, 30, 28, 26)):
         lines = [l for l in keep if l != '']
     while lines and lines[-1] is None:
         lines.pop()
-    return lines, bf, lh, gap
+    return lines, bf, lh, gap, False
 
 
 def balanced(d, text, f, maxw, lines):
@@ -2893,31 +2893,42 @@ def compose_special(ev, day, lead=None):
         ImageDraw.Draw(sh).rectangle((m, dy, c.width + m, c.height + dy), fill=(0, 0, 0, 150))
         sh = sh.filter(ImageFilter.GaussianBlur(px(12))); sh.alpha_composite(c, (m, m))
         return sh
-    hero = card(ims[0], round(px(1180)), round(px(800)))
-    img.paste(hero, (round(px(70)), round(px(200))), hero)
-    peg(img, px(70) + hero.width / 2, px(228), px(1.5))
-    x0, tw = px(1360), W - px(1360 + 90)
-    hf, bf = garamond(px(60), 700), garamond(px(36), 500)
-    y = px(300)
-    # Darpan, 13 Nov 2026: the words centred over the photos, the title's two lines of equal length
-    for line in balanced(dr, ev.get('headline') or ev['line'], hf, tw, 2):
-        gold_text(img, (x0 + (tw - dr.textlength(line, font=hf)) / 2, y - px(60)), line, hf); y += px(72)
-    y += px(20)
     small = ims[1:5]
-    sw = min(px(330), (tw - px(30) * (len(small) - 1)) / len(small) - px(24)) if small else 0
     paras = special_words(ev, lead is not None)
-    # the whole story, as large as fits above the small cards (which sit at the foot of the picture when it is long)
-    floor = H - px(96) - (sw * .74 + px(150) if small else 0)
-    lines, bf, lh, gap = story_block(dr, paras, tw, floor - y) if paras else ([], bf, 0, 0)
+    head = ev.get('headline') or ev['line']
+    # Darpan, 13 Nov 2026 ('stop cutting everything out'): the whole story always. A long one gets a smaller big card,
+    # smaller small cards and smaller words, in that order, until every word is in; only then is anything left off
+    for hw, smax, sizes in ((1180, 330, (36, 34, 32, 30)), (1000, 270, (32, 30, 28)), (860, 230, (28, 27, 26, 25, 24)), (760, 200, (24, 23, 22))):
+        x0 = px(hw + 180); tw = W - x0 - px(90)
+        hf = garamond(px(60 if hw > 900 else 52), 700)
+        heads = balanced(dr, head, hf, tw, 3)
+        y0 = px(300 if hw == 1180 else 270) + hf.size * 1.2 * len(heads) + px(34)   # where the story's first line starts (its top)
+        sw = min(px(smax), (tw - px(54) * (len(small) - 1) - px(24)) / len(small)) if small else 0
+        cards_h = (sw * .74 + px(24) + max(sw * .1, px(56)) + px(70)) if small else 0
+        floor = H - px(90) - cards_h
+        lines, bf, lh, gap, whole = story_block(dr, paras, tw * .86, floor - y0, sizes) if paras else ([], None, 0, 0, True)
+        if whole:
+            break
+    hh = round(px(hw) * 800 / 1180)
+    hero = card(ims[0], round(px(hw)), hh)
+    hy = round(px(200) + (px(800) - hh) / 2)
+    img.paste(hero, (round(px(70)), hy), hero)
+    peg(img, px(70) + hero.width / 2, hy + px(28), px(1.5))
+    y = y0 - px(34) - hf.size * 1.2 * len(heads) + hf.size
+    # Darpan, 13 Nov 2026: the words centred over the photos, the title's lines of equal length
+    for line in heads:
+        gold_text(img, (x0 + (tw - dr.textlength(line, font=hf)) / 2, y - hf.size), line, hf); y += hf.size * 1.2
+    y = y0 + (bf.size if bf else 0)
     for line in lines:
         if line is None:
             y += gap; continue
         dr.text((x0 + tw / 2, y), line, font=bf, fill=CAPTION_IVORY, anchor='ms'); y += lh
-    top = round(max(px(620), y + px(40)))
     if small:
+        top = round(max(px(620), min(y - (bf.size if bf else 0) + px(24), floor)))
+        across = len(small) * sw + (len(small) - 1) * px(54) + px(24)
         for k, im in enumerate(small):
             c = card(im, round(sw), round(sw * .74), label=not plain[k + 1])
-            cx = x0 - px(30) + k * (sw + px(54))
+            cx = x0 + (tw - across) / 2 - px(30) + k * (sw + px(54))
             img.paste(c, (round(cx), top), c); peg(img, cx + c.width / 2, top + px(28), px(1))
     footer(img, small=True)
     return img
