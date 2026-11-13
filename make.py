@@ -2843,6 +2843,9 @@ def compose_special(ev, day, lead=None):
     four more beside it under the story, in the daily picture's colours. lead: the year card's own photo of the
     moment (baps.org), shown large first when the special picture comes from a story the card shows."""
     urls = [(None, u) for u in ev.get('urls') or []] or tg_photos(ev.get('posts') or [], numbered=True)   # Darpan's own choice may bring its photos
+    if not ev.get('urls'):   # real photos before video stills (7 December's big card was a blurry still of a mandir model)
+        real = {u for _, u in tg_photos(ev.get('posts') or [], pairs=True)}
+        urls = [v for v in urls if v[1] in real] + [v for v in urls if v[1] not in real]
     urls = urls[:8]
     cache = os.path.join(HERE, '.cache')
     ims = [lead.convert('RGB')] if lead is not None else []
@@ -2873,7 +2876,7 @@ def compose_special(ev, day, lead=None):
 
     def card(im, w, h, label=True):
         e = round(px(12))
-        c = Image.new('RGBA', (w + 2 * e, h + 2 * e + round(max(w * .1, px(56))))); d = ImageDraw.Draw(c)
+        c = Image.new('RGBA', (w + 2 * e, h + 2 * e + (round(max(w * .1, px(56))) if label else 0))); d = ImageDraw.Draw(c)   # no empty strip under a card with no year and place
         for j in range(c.height):
             t = j / c.height
             d.line((0, j, c.width, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(IVORY_TOP, IVORY_BOTTOM)) + (255,))
