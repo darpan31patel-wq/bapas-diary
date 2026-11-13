@@ -1568,6 +1568,35 @@ async function saveChoices(how, where, quiet) {
 }
 const dayData = async mmdd => { if (DAYD[mmdd] !== undefined) return DAYD[mmdd]; DAYD[mmdd] = null; try { const r = await fetch(`/data/day/${mmdd}.json`, { cache: 'force-cache' }); if (r.ok) DAYD[mmdd] = await r.json() } catch (e) {} if (S.tab === 'choose') build(); return DAYD[mmdd] };
 const PHOTOS = 'https://photos.bapas-diary.com/';
+// the deep search of a day (Darpan, 13 Nov 2026: "It goes through all the captions of that day to find anything special.
+// I want it to do a deep search and find all the special moments of that day"): every caption of every year's photos,
+// every News article of the date, every history story and the calendar's festivals, looked through for the words that
+// make a moment special. Found moments come first on the Choose tab, each with its own switch.
+const SPECIAL_WORDS = [
+  [/\bdiksha|initiat(ed|ion)|parshad|bhagwati/i, 'diksha', 5], [/pratishtha|consecrat/i, 'murti pratishtha', 5], [/inaugurat|opening ceremony|udghatan|\bopens\b|newly built/i, 'inauguration', 4],
+  [/shilanyas|foundation stone|ground.?breaking|bhoomi ?pujan/i, 'foundation stone', 4], [/jayanti|janma|birthday|birth anniversary|pragatya/i, 'birthday', 4], [/mahotsav|centenary|shatabdi|jubilee|anniversary|patotsav|celebration/i, 'a festival or anniversary', 3],
+  [/annakut|diwali|deepavali|\bholi\b|janmashtami|ram navami|hanuman jayanti|sharad purnima|raksha ?bandhan|guru purnima|dhanteras|chopda|new year|uttarayan|navratri|dussehra|shivratri|ekadashi|fuldol|pushpadolotsav|kartik|dev diwali/i, 'a festival', 3],
+  [/president|prime minister|\bminister\b|governor|\bking\b|\bqueen\b|prince|princess|ambassador|mayor|parliament|palace|senate|congress|chief minister|\bpope\b|dalai lama|archbishop|royal|high commissioner|chancellor|\bMP\b|\bMLA\b|lord\b/i, 'a leader or dignitary', 5],
+  [/akshardham|first time|for the first time|first ever|historic|record|guinness|largest|biggest/i, 'a historic moment', 4], [/award|honou?r|felicitat|conferred|doctorate|recogni/i, 'an honour', 3],
+  [/yagna|mahapuja|vishwa shanti|yajna|homatmak/i, 'a yagna or mahapuja', 3], [/arriv(es|al)|depart(s|ure)|welcome|swagat|airport|lands in/i, 'an arrival or departure', 1],
+  [/wedding|lagna|vivah/i, 'a wedding', 2], [/hospital|operation|surgery|recover/i, 'health', 2], [/abhishek|rath yatra|shobha yatra|procession|nagar yatra|padhramani to .*mandir/i, 'a procession or abhishek', 3],
+  [/samadhi|akshar ?nivas|passes away|tribute|smruti ?sabha|antim/i, 'remembrance', 4], [/children|bal|kishor|youth|yuva|students|school|university|college/i, 'children or youths', 1], [/mandir|temple|shikharbaddh|hari mandir/i, 'a mandir', 1],
+  [/sant|sadhu|parayan|katha|vicharan|padhramani|satsang sabha|ashirwad/i, 'satsang', 0],
+];
+const specialIn = t => { const f = []; let w = 0; for (const [re, name, k] of SPECIAL_WORDS) if (re.test(t || '')) { if (k) f.push(name); w += k } return { f: [...new Set(f)], w } };
+function dayMoments(dd, mmdd, byYear) {
+  const out = [], seen = new Set(), scanned = { captions: 0, articles: 0, stories: 0 };
+  (dd ? dd.years : []).forEach(Y => {
+    const best = {};
+    Y.p.forEach(p2 => { scanned.captions++; const { f, w } = specialIn(p2[2]); if (!w || !f.length) return; const key = f.join(','); if (!best[key] || (p2[3] && !best[key].p[3]) || (w > best[key].w)) best[key] = { p: p2, w, f } });
+    const cal = dd.cal && dd.cal[Y.y]; if (cal && cal[1]) { const { f, w } = specialIn(cal[1]); out.push({ y: Y.y, w: w + 2, why: 'BAPS calendar: ' + cal[1], title: `${cal[1]} in ${Y.y}`, sub: `${Y.place || ''} · ${Y.p.length} photos of the day`, pic: Y.p[0] ? `${PHOTOS}s/${Y.p[0][0]}/${Y.p[0][1]}` : '', e: { kind: 'year', year: Y.y, note: `${Y.y} ${cal[1]}` } }) }
+    Object.values(best).sort((a, b) => b.w - a.w).slice(0, 3).forEach(({ p: p2, w, f }) => out.push({ y: Y.y, w, why: 'caption: ' + f.join(', '), title: p2[2], sub: `${Y.y} · ${Y.place || ''} · one of ${Y.p.length} photos of the day${p2[3] ? '' : ' · Bapa’s face not found in this one'}`, pic: `${PHOTOS}s/${p2[0]}/${p2[1]}`, e: { kind: 'year', year: Y.y, note: `${Y.y} ${p2[2]}`.slice(0, 160) } }));
+  });
+  (ARTICLES || []).filter(a => a.d && a.d.slice(5) === mmdd).forEach(a => { scanned.articles++; const { f, w } = specialIn(a.t + ' ' + (a.s || '')); if (w >= 3) out.push({ y: a.y, w: w + (a.b ? 2 : 0) + Math.min(2, a.n / 20), why: 'article: ' + f.join(', '), title: a.t, sub: `${a.y} · ${a.p || ''} · baps.org News · ${a.n || 'no'} photos`, pic: '', url: a.u, e: { kind: 'news', ref: newsPath(a.u), note: a.t } }) });
+  uniqStories((HISTORY || []).filter(h => h.d.slice(5) === mmdd).map(h => ({ h }))).forEach(({ h }) => { scanned.stories++; const { f, w } = specialIn(h.l + ' ' + (h.s || '')); out.push({ y: +h.d.slice(0, 4), w: w + (h.x ? 6 : 3), why: (h.x ? 'a special day in BAPS history' : 'BAPS history') + (f.length ? ': ' + f.join(', ') : ''), title: h.l, sub: `${h.d.slice(0, 4)} · ${h.p || ''} · ${h.n ? h.n + ' photos' : 'no photos'}`, pic: '', url: h.u, e: { kind: 'story', ref: h.d, note: h.l } }) });
+  const list = out.filter(m => { const k = m.e.kind + ':' + (m.e.ref || m.e.year) + ':' + m.title; if (seen.has(k)) return false; seen.add(k); return true }).sort((a, b) => b.w - a.w || b.y - a.y);
+  return { list, scanned };
+}
 function paneChoose() {
   const date = S.special.date, pack = P.special;
   if (!date) return '<p class="hint">Pick a day above, or type any date.</p>';
@@ -1580,7 +1609,7 @@ function paneChoose() {
   const put = (y, item) => (byYear[y] = byYear[y] || []).push(item);
   uniqStories((HISTORY || []).filter(h => h.d.slice(5) === mmdd).map(h => ({ h }))).forEach(({ h }) => put(+h.d.slice(0, 4), { e: { kind: 'story', ref: h.d, note: h.l }, title: h.l, sub: [h.p, h.ch === 'satpurush' ? 'Satpurush UK diary' : 'Today in BAPS history', h.n ? h.n + (h.n > 1 ? ' photos' : ' photo') : ''].filter(Boolean).join(' · '), more: h.s, pic: '', url: h.u, special: !!h.x }));
   (ARTICLES || []).filter(a => a.d && a.d.slice(5) === mmdd).forEach(a => put(a.y, { e: { kind: 'news', ref: newsPath(a.u), note: a.t }, title: a.t, sub: [a.p, 'baps.org News', a.n ? a.n + ' photos' : 'no photos'].filter(Boolean).join(' · '), more: a.s, pic: '', url: a.u, special: a.b }));
-  (dd ? dd.years : []).forEach(Y => { const best = Y.p.find(p => p[3]) || Y.p[0]; put(Y.y, { e: { kind: 'year', year: Y.y, note: `${Y.y} ${Y.place || ''}`.trim() }, title: `${Y.y}, ${Y.place || 'place unknown'}`, sub: `${Y.p.length} photo${Y.p.length > 1 ? 's' : ''} of this day${best && best[2] ? ' · ' + best[2] : ''}`, pic: best ? `${PHOTOS}s/${best[0]}/${best[1]}` : '' }) });
+  (dd ? dd.years : []).forEach(Y => { const best = Y.p.find(p => p[3]) || Y.p[0], found = [...new Set(Y.p.flatMap(p => specialIn(p[2]).f))]; put(Y.y, { e: { kind: 'year', year: Y.y, note: `${Y.y} ${Y.place || ''}`.trim() }, title: `${Y.y}, ${Y.place || 'place unknown'}`, sub: `${Y.p.length} photo${Y.p.length > 1 ? 's' : ''} of this day${best && best[2] ? ' · ' + best[2] : ''}${found.length ? ' · captions mention ' + found.slice(0, 4).join(', ') : ''}`, pic: best ? `${PHOTOS}s/${best[0]}/${best[1]}` : '', special: found.length > 0 }) });
   if (!dd && pack && pack.kind !== 'story') groupsOf(pack).forEach(g => { if (!g.year || byYear[g.year]) return; const c = g.cands[0]; put(+g.year, { e: { kind: 'year', year: +g.year, note: `${g.year} ${c && c.place || ''}`.trim() }, title: `${g.year}, ${c && c.place || ''}`, sub: `${g.cands.length} photos`, pic: '' }) });
   const years = Object.keys(byYear).map(Number).sort((a, b) => b - a);
   const kindWords = pack ? (pack.kind === 'story' ? CHKINDS[pack.story_kind] || 'a day in BAPS history' : `Every ${pack.festival || ''}`) : '';
@@ -1596,12 +1625,17 @@ function paneChoose() {
       <div class="acts"><button class="sw" data-ch="${esc(JSON.stringify(it.e))}" data-first="" aria-pressed="${!!have}">${have ? (i === 0 ? 'A special picture ✓ (special)' : `A special picture ✓ (special ${i + 1})`) : 'Make this a special picture'}</button>${it.url ? `<a class="btn small" href="${esc(it.url)}" target="_blank" rel="noopener">${/baps\.org/.test(it.url) ? 'Open on baps.org' : 'Open the post'}</a>` : ''}</div></div>
       ${have ? `<div class="edit"><input type="text" data-ef="headline" data-ei="${i}" value="${esc(have.headline || '')}" placeholder="Headline (empty: the builder’s own)" aria-label="Headline"><textarea data-ef="story" data-ei="${i}" rows="4" placeholder="Story words (empty: the builder’s own)" aria-label="Story">${esc(have.story || '')}</textarea>${have.kind === 'year' || have.kind === 'photos' ? `<input type="text" data-ef="place" data-ei="${i}" value="${esc(have.place || '')}" placeholder="Place (empty: as the photos say)" aria-label="Place">` : ''}</div>` : ''}</div>` };
   const today = todayLondon();
+  const dm = dayMoments(dd, mmdd, byYear), momentItem = m => item(m.y, Object.assign({}, m, { sub: m.sub + ' · found by ' + m.why }));
+  const momentsHtml = `<div class="group"><h3>Special moments found this day</h3>
+      <p class="hint">${!HISTORY || !dd && DAYD[mmdd] === undefined ? 'Searching…' : `Searched ${dm.scanned.captions} captions, ${dm.scanned.articles} News articles and ${dm.scanned.stories} history stories of this day for dikshas, pratishthas, festivals, leaders, honours, first times and more. The strongest first; everything else is listed by year below.`}</p>
+      ${dm.list.slice(0, 15).map(momentItem).join('')}${dm.list.length > 15 ? `<p class="hint">And ${dm.list.length - 15} more, in the years below.</p>` : ''}${!dm.list.length && HISTORY && dd ? '<p class="hint">No special words found in this day’s captions, articles or stories.</p>' : ''}</div>`;
   return `<div class="group"><h3>The special picture for ${esc(niceD(date))}</h3>${own}
       <p class="status" id="ch-status" role="status"></p>
       ${date === today ? `<div class="acts" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn small" id="ch-remake" disabled title="Not switched on yet: it would start today’s 2pm picture run, so it waits for your word.">Remake now</button><span class="hint">Today’s picture: the morning run has gone, so a new choice needs a remake. Not switched on yet.</span></div>` : ''}</div>
     <div class="group"><h3>Your choices for this day</h3>${mineHtml}
       ${seg('ch-scope', chScope(), [['every', 'Every year on this day'], ['year', `This year only (${y0})`]])}
       <p class="hint">The first choice is the special picture at 2pm; the next ones follow as special 2, special 3. Each has a box for your own headline and story words; empty means the builder’s own. ${CHSRC === 'github' ? 'Saved in archive/special-days.json for the morning run.' : CHSRC === 'studio' ? 'Kept in the Studio; the morning run reads it at bapas-diary.com/special-days.json until the GitHub token is set.' : 'Kept on this device until the website can keep it.'}</p></div>
+    ${momentsHtml}
     <div class="group"><h3>Everything from this day, newest first</h3>
       ${!HISTORY || !dd && DAYD[mmdd] === undefined ? '<p class="hint">Loading the day’s stories, articles and photos…</p>' : ''}
       ${years.length ? years.map(y => `<div class="yr">${y}</div>${byYear[y].map(it => item(y, it)).join('')}`).join('') : HISTORY ? '<p class="hint">Nothing found for this day yet.</p>' : ''}</div>`;
