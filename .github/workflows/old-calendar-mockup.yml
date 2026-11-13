@@ -2,6 +2,7 @@
 # the moon and the sun by tools/old_calendar.py (Darpan, 13 Nov 2026). The live pages, with only their day data
 # patched from tools/mockups/old-calendar-days.json. Runs only on the mockup branch, never deploys anything.
 name: Old calendar mockup
+# run 2: no whole page picture of Today (too long to take); scrolls instead
 on:
   push:
     branches: [claude/project-thread-eawr12-mockup]
@@ -68,9 +69,18 @@ jobs:
                           except Exception as e: log.write(f'goto {e}\n')
                           pg.wait_for_timeout(6000)
                           name = f"shots/{tag}-{page}-{url.split('#')[1]}-{ver}"
-                          pg.screenshot(path=name + '.jpg', type='jpeg', quality=86)
-                          if page == 'today':
-                              pg.screenshot(path=name + '-full.jpg', type='jpeg', quality=80, full_page=True)
+                          try: pg.screenshot(path=name + '.jpg', type='jpeg', quality=86, timeout=60000)
+                          except Exception as e: log.write(f'{name} {e.__class__.__name__}\n')
+                          if page == 'today':   # further down: the years before 2010
+                              for k in (1, 2):
+                                  pg.mouse.wheel(0, h * 0.9); pg.wait_for_timeout(2500)
+                                  try: pg.screenshot(path=f'{name}-down{k}.jpg', type='jpeg', quality=86, timeout=60000)
+                                  except Exception as e: log.write(f'{name} down {e.__class__.__name__}\n')
+                          if page == 'calendar' and url.endswith('1999-11'):   # Diwali's day box
+                              try:
+                                  pg.evaluate("h => openDayBox(h)", '/photos/#date=1999-11-07'); pg.wait_for_timeout(7000)
+                                  pg.screenshot(path=f'{name}-daybox.jpg', type='jpeg', quality=86, timeout=60000)
+                              except Exception as e: log.write(f'{name} daybox {e.__class__.__name__}\n')
                           ctx.close()
               b.close()
           log.close()
