@@ -1003,7 +1003,7 @@ function render() {
     const h = FE && HITS.find(h => h.key === cur().sel);
     if (h) { ctx.save(); ctx.strokeStyle = GOLD; ctx.lineWidth = W / 400; ctx.strokeRect(h.x - 9, h.y - 9, h.w + 18, h.h + 18); ctx.restore() }
     placeEditor();
-    const ok = store.set('studio-settings-v1', { mode: S.mode, tab: S.tab, at: Date.now(), day: S.day, month: S.month, special: S.special }) && stash(S.mode);
+    const ok = saveState() && stash(S.mode);
     $('#autosave').textContent = ok ? `Every change is saved on this device as you go (${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}).` : '';
   });
 }
@@ -1320,7 +1320,7 @@ function lookPane(p, o) {
 
 function build() {
   const day = S.mode === 'day', pack = P[S.mode], o = cur(), sp = S.mode === 'special';
-  store.set('studio-settings-v1', { mode: S.mode, tab: S.tab, at: Date.now(), day: S.day, month: S.month, special: S.special });   // where he is, for when he comes back
+  saveState();   // where he is, for when he comes back
   document.querySelectorAll('.modes button').forEach(b => b.setAttribute('aria-pressed', String(b.id === 'mode-' + S.mode)));
   $('#mode-special').disabled = !INDEX.specials.length; $('#mode-special').title = INDEX.specials.length ? 'Every Diwali, Every Annakut, a day in BAPS history' : 'No special picture pack yet (the collage builder project makes them on days with a special picture)';
   const days = INDEX.days.includes(o.date) || !day ? INDEX.days : [...INDEX.days, o.date].sort();
@@ -1340,7 +1340,7 @@ function build() {
   $('#compare').hidden = S.mode === 'month' || waiting;
   $('#tip').textContent = S.mode === 'month' ? 'Click any day to change its photo, place or caption right there.' : 'Click any card to change its photo, place or caption right there.';
   $('#options').hidden = !(sp && pack && (pack.options || []).length); if (sp && pack && (pack.options || []).length) optionsRow(pack);
-  if (sp && !pack && o.date && !SPLOADING) { S.tab = 'choose'; $('#tabs').innerHTML = `<button role="tab" data-t="choose" aria-selected="true">Choose</button>`; $('#pane').innerHTML = paneChoose(); $('#meta').innerHTML = `<b>${esc(longDate(o.date))}</b><span>no special picture pack for this day yet</span>`; fe.hidden = true; wire(); return }
+  if (sp && !pack && o.date && !SPLOADING) { S.tab = 'choose'; $('#tabs').innerHTML = `<button role="tab" data-t="choose" aria-selected="true">Choose</button>`; $('#pane').innerHTML = paneChoose(); $('#meta').innerHTML = `<b>${esc(longDate(o.date))}</b><span>no special picture pack for this day yet</span>`; fe.hidden = true; wire(); restorePane(); return }
   if (!pack) { $('#pane').innerHTML = '<p class="hint">' + (WANT ? 'The photos for this day are not ready yet.' : sp && !INDEX.specials.length ? 'No special picture pack yet.' : 'Loading photos…') + '</p>' + (sp ? queuePanel() : ''); $('#meta').textContent = WANT ? longDate(WANT) : 'Loading photos…'; fe.hidden = true; wire(); return }
   selected();
   const total = groupsOf(pack).reduce((s, g) => s + g.cands.length, 0);
@@ -1350,7 +1350,18 @@ function build() {
   $('#pane').innerHTML = S.tab === 'choose' ? paneChoose() : S.tab === 'card' ? paneCard() : S.tab === 'words' ? paneWords() : S.tab === 'layout' ? paneLayout() : lookPane(S.mode === 'month' ? 'm' : 'd', o);
   if (S.mode !== 'month' && $('#compare').open) sideBySide();
   buildEditor(); wire(); render();
+  restorePane();
 }
+// where he was in the side panel comes back too (Darpan, 13 Nov 2026: "It forgets where I was")
+let PANE_AT = (saved && saved.tab === S.tab && saved.pane) || null, PANE_KEEP = (saved && saved.pane) || 0, PANE_T = 0;
+let PANE_BUILT = 0;
+function restorePane() {   // once the panel is tall enough (it fills in a few steps); given up after 12 seconds
+  PANE_BUILT = Date.now(); if (PANE_AT == null) return;
+  requestAnimationFrame(() => { const el = $('#pane'); if (PANE_AT != null && el.scrollHeight - el.clientHeight >= PANE_AT - 2) { el.scrollTop = PANE_AT; PANE_AT = null } });
+}
+setTimeout(() => { PANE_AT = null }, 12000);
+$('#pane').addEventListener('scroll', () => { clearTimeout(PANE_T); PANE_T = setTimeout(() => { const v = $('#pane').scrollTop; if (PANE_AT != null || (!v && Date.now() - PANE_BUILT < 600)) return; PANE_KEEP = v; saveState() }, 300) });
+const saveState = () => store.set('studio-settings-v1', { mode: S.mode, tab: S.tab, at: Date.now(), pane: PANE_KEEP, day: S.day, month: S.month, special: S.special });
 function wire() {
   const o = cur(), p = S.mode === 'month' ? 'm' : 'd';
   const on = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn) };
@@ -1381,10 +1392,10 @@ function wire() {
     on('d-t-full', 'click', () => { (o.txt = o.txt || {}).story = pk.story || ''; build() });
     on('d-t-short', 'click', () => { (o.txt = o.txt || {}).story = pk.story_short || String(pk.story || '').split(/(?<=[.!?])\s/)[0]; build() });
     document.querySelectorAll('#d-style button').forEach(b => b.addEventListener('click', () => { o.photoStyle = b.dataset.v; Object.values(stateOf(o)).forEach(y => { delete y.pick; delete y.crop }); build() }));
-    on('d-wa', 'input', e => { const w = o.wa[o.date] || (o.wa[o.date] = { text: '', whole: false }); w.text = e.target.value; store.set('studio-settings-v1', { mode: S.mode, tab: S.tab, at: Date.now(), day: S.day, month: S.month, special: S.special }) });
+    on('d-wa', 'input', e => { const w = o.wa[o.date] || (o.wa[o.date] = { text: '', whole: false }); w.text = e.target.value; saveState() });
     on('d-wawhole', 'input', e => { const w = o.wa[o.date] || (o.wa[o.date] = { text: waText(), whole: false }); w.whole = e.target.checked; build() });
     on('d-wareset', 'click', () => { delete o.wa[o.date]; o.intro = ''; keep(); build() });
-    const keep = () => store.set('studio-settings-v1', { mode: S.mode, tab: S.tab, at: Date.now(), day: S.day, month: S.month, special: S.special });
+    const keep = () => saveState();
     on('d-intro', 'input', e => { const v = e.target.value; if (introDay()) o.wa[o.date].intro = v; else o.intro = v; keep(); $('#wa-preview').textContent = waPreview() });
     on('d-introday', 'input', e => { if (e.target.checked) { const w = o.wa[o.date] || (o.wa[o.date] = { text: waText(), whole: false }); w.intro = introText() } else if (o.wa[o.date]) { delete o.wa[o.date].intro } keep(); build() });
     on('d-wa', 'input', () => { $('#wa-preview').textContent = waPreview() });
@@ -2096,7 +2107,7 @@ $('#exp-go').addEventListener('click', async () => {
   try {
     await loadIndex();
     const today = todayLondon();
-    const recent = Date.now() - SAVED_AT < 12 * 3600e3;   // back within 12 hours: the same day, tab and picture as he left them
+    const recent = SAVED_AT > 0;   // Darpan, 13 Nov 2026: "It forgets where I was": always the same day, tab and picture as he left them
     if (!recent && S.day.date !== today && INDEX.days.includes(today)) { S.day.date = today; unstash('day') }
     if (!INDEX.days.includes(S.day.date)) { S.day.date = INDEX.days.includes(today) ? today : INDEX.days.at(-1); unstash('day') }
     const want = new URLSearchParams(location.search).get('date');   // studio/?date=2026-11-23 opens that day
