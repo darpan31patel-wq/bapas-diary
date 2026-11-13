@@ -50,10 +50,7 @@ jobs:
           def snap(pg, path, clip):
               signal.alarm(45); print('snap', path, flush=True)
               cdp = pg.context.new_cdp_session(pg)
-              pg.evaluate("window.scrollTo(0, %d)" % max(0, clip['y'] - 10)); pg.wait_for_timeout(1500)
-              if clip['height'] > pg.viewport_size['height'] - 20: pg.set_viewport_size({'width': pg.viewport_size['width'], 'height': int(clip['height']) + 60}); pg.wait_for_timeout(1500)
-              clip = dict(clip, y=clip['y'] - pg.evaluate('scrollY'))
-              data = cdp.send('Page.captureScreenshot', {'format': 'jpeg', 'quality': 86, 'clip': dict(clip, scale=1)})['data']
+              data = cdp.send('Page.captureScreenshot', {'format': 'jpeg', 'quality': 86, 'captureBeyondViewport': True, 'clip': dict(clip, scale=1)})['data']
               open(path, 'wb').write(base64.b64decode(data)); signal.alarm(0)
           def box(pg, sel, pad=18):
               b = pg.evaluate("s=>{const r=document.querySelector(s).getBoundingClientRect();return {x:r.left+scrollX,y:r.top+scrollY,width:r.width,height:r.height}}", sel)
