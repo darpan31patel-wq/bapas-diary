@@ -2122,6 +2122,13 @@ def chosen_specials(day, items=()):
         elif kind == 'year':
             y = int(c.get('year') or 0)
             ev = year_story(y, day, list(items))
+            if ev and ev.get('paths'):   # a year only the UK diary has (1977): its story of the day is the picture's words
+                told = [e for e in tg_all() if e.get('channel') and e['date'][:10] == ev['date'][:10]]
+                if told:
+                    e = max(told, key=tg_rank)
+                    more = [c for c in [ev['line']] + ev['paras'] if c.lower().rstrip('.') not in (e.get('story') or '').lower()]   # a caption the story already says isn't said twice
+                    ev.update(paras=([e['story']] if e.get('story') else []) + more, line=e.get('line') or ev['line'],
+                              place=ev.get('place') or e.get('place') or '')
         elif kind == 'photos':
             ev = {'date': f"{c.get('year') or day.year}-{day:%m-%d}", 'line': c.get('headline') or ''}
         if ev is None:
@@ -3028,7 +3035,13 @@ def compose_special(ev, day, lead=None):
             im = Image.open(x['path']).convert('RGB')
             if np.asarray(im.convert('L').resize((64, 64)), dtype=float).std() >= 25:   # not a plain night sky or a blank frame
                 ims.append(im); plain.append(n in worded)
-    k = SPECIAL_FIRST.get(ev.get('url'))
+    tiny = [np.asarray(im.convert('L').resize((16, 16)), dtype=float) for im in ims]   # the same photo posted twice is shown once
+    keep = [k for k in range(len(ims)) if not any(np.abs(tiny[k] - tiny[j]).mean() < 8 for j in range(k))]
+    ims, plain = [ims[k] for k in keep], [plain[k] for k in keep]
+    if ev.get('paths') and lead is None:   # the UK diary's photos of a chosen year: one Bapa is recognised in is the big card
+        seen = [bool(bapa_face(im, ev['date'], TG_SAME_PERSON)[0]) for im in ims]
+        order = sorted(range(len(ims)), key=lambda k: not seen[k])
+        ims, plain = [ims[k] for k in order], [plain[k] for k in order]
     if k and lead is None and k < len(ims):   # Darpan's own choice of the big photo: it swaps places with the first
         ims[0], ims[k] = ims[k], ims[0]; plain[0], plain[k] = plain[k], plain[0]
     ims, plain = ims[:5], plain[:5]

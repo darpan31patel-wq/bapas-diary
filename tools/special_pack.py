@@ -70,7 +70,7 @@ def which_special(day, photos, tg_evs, special, items=()):
     drawn = what it was drawn from; None when there is none."""
     if make.special_off(day):   # Darpan switched this day's special picture off
         return None
-    chosen = make.chosen_specials(day, photos)
+    chosen = make.chosen_specials(day, list(items) or photos)   # all the day's photos, so a chosen year has every one of its own
     if chosen:   # Darpan's own choice wins (the Studio pack shows the first; the others are special 2, 3...)
         sp = make.compose_special(chosen[0], day)
         if sp is not None:
@@ -231,6 +231,11 @@ def main():
     out = os.path.join(root, str(day))
     os.makedirs(out, exist_ok=True)
     sp.convert('RGB').resize((2400, round(2400 * sp.height / sp.width)), Image.LANCZOS).save(os.path.join(out, 'real.jpg'), quality=85)
+    full = os.environ.get('SPECIAL_OUT')   # the remake run (special.yml) also wants the picture itself, as the morning run saves it
+    if full:
+        os.makedirs(full, exist_ok=True)
+        sp.save(os.path.join(full, 'bapas-diary-special.png'), optimize=True)
+        sp.convert('RGB').save(os.path.join(full, 'bapas-diary-special.jpg'), quality=95, optimize=True)
     pool, cards = Pool(out), []
     made = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
     if kind == 'festival':
