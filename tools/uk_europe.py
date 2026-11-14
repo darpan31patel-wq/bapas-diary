@@ -220,7 +220,7 @@ def build(mmdd, entry, out, towns_there=(), look='cords'):
     day = datetime.date(2000, int(mmdd[:2]), int(mmdd[3:]))   # a year with no festival dress and no 29 February trouble
     items = gather(entry, log, towns_there)
     good = look_at(items, log)
-    photos = choose(good, 48 if look in ('wall', 'hero') else MAX_CARDS)   # the wall looks hold more
+    photos = choose(good, 48 if look in ('wall', 'hero') else 24 if look == 'calm' else MAX_CARDS)   # the wall looks hold more, calm fewer and bigger
     years, have = [yr['year'] for yr in entry['years']], sorted({x['y'] for x in photos})
     for y in years:
         if y not in have:

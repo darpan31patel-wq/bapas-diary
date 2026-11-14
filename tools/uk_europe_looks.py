@@ -51,13 +51,14 @@ def compose_grouped(photos, day, entry, look, title, subtitle, foot, heroes=()):
     """'wall': like gold with up to 48 photos packed tight, tiny one line captions. 'hero': the wall between a full height
     darshan of each guru at the sides (heroes)."""
     wall = look in ('wall', 'hero')
+    calm = look == 'calm'   # Darpan, 14 Nov 22:46: same size photos, not jam packed, more separation between the years
     big = look == 'mosaic'
     BIG_FROM = 4                                                  # a year with fewer photos than this has no big one
     page = look == 'album'
     years = group(photos)
     img = make.background().convert('RGBA'); dr = ImageDraw.Draw(img)
     make.header_one(img, title, subtitle)
-    M, gap, between = px(40), (px(4) if wall else px(8)), (px(14) if wall else px(26))   # edge, between cells, between year blocks
+    M, gap, between = px(40), (px(4) if wall else px(10) if calm else px(8)), (px(14) if wall else px(70) if calm else px(26))   # edge, between cells, between year blocks
     top, bottom = px(150), H - px(84)
     left, right = M, W - M
     if look == 'hero' and heroes:                                 # a full height darshan of each guru at the side(s)
@@ -82,11 +83,11 @@ def compose_grouped(photos, day, entry, look, title, subtitle, foot, heroes=()):
     for y in years:                                               # the best photo first (the big one), then the rest
         years[y].sort(key=lambda x: -x['score'])
     cap_h = px(58) if page else 0                                 # room for a caption under each photo on a page
-    head_h = px(46) if wall else px(74)                                               # the year heading over each block
+    head_h = px(46) if wall else px(84) if calm else px(74)                                               # the year heading over each block
     pad = px(16) if page else 0
     ratio = .75 if wall else .8                                   # cell photo height / width
     best = None
-    for rows in range(2, 11):                                      # every block fills the height: the row count that gives the biggest photos
+    for rows in range(2, 6 if calm else 11):                                      # every block fills the height: the row count that gives the biggest photos
         grids = {y: cols_for(len(ps), rows, big and len(ps) >= BIG_FROM) for y, ps in years.items()}
         cols = sum(grids.values())
         s_w = (right - left - between * (len(years) - 1) - 2 * pad * len(years) - gap * (cols - len(years))) / cols
@@ -125,7 +126,8 @@ def compose_grouped(photos, day, entry, look, title, subtitle, foot, heroes=()):
         else:
             yf, pf = (garamond(px(30), 700), garamond(px(15), 500)) if wall else (garamond(px(46), 700), garamond(px(18), 500))
             yc, pc = make.GOLD, make.CAPTION_GOLD
-            dr.line((x0, by + head_h - px(10), x0 + bw, by + head_h - px(10)), fill=make.GOLD_SOFT, width=max(1, int(px(1.2))))
+            if not calm:
+                dr.line((x0, by + head_h - px(10), x0 + bw, by + head_h - px(10)), fill=make.GOLD_SOFT, width=max(1, int(px(1.2))))
         yt = str(y); yw = dr.textlength(yt, font=yf)
         line2 = f'{town}  ·  {guru}' if page else f'{town.title()}  ·  {guru}'
         while dr.textlength(line2, font=pf) > bw - 2 * pad - px(8) and pf.size > px(10):
@@ -137,8 +139,17 @@ def compose_grouped(photos, day, entry, look, title, subtitle, foot, heroes=()):
             while yw > bw - px(4) and yf.size > px(20):
                 yf = garamond(yf.size - 2, 700); yw = dr.textlength(yt, font=yf)
             hy = px(30) if wall else px(38)
-            dr.text((x0 + pad, by + hy), yt, font=yf, fill=yc, anchor='ls')
-            if yw + px(14) + dr.textlength(line2, font=pf) <= bw:
+            if calm:                                              # year centred over its block, the town under it
+                dr.text((x0 + bw / 2, by + px(40)), yt, font=yf, fill=yc, anchor='ms')
+                pf2 = pf
+                while dr.textlength(line2, font=pf2) > bw and pf2.size > px(10):
+                    pf2 = garamond(pf2.size - 1, 500)
+                dr.text((x0 + bw / 2, by + px(66)), line2, font=pf2, fill=pc, anchor='ms')
+            else:
+                dr.text((x0 + pad, by + hy), yt, font=yf, fill=yc, anchor='ls')
+            if calm:
+                pass
+            elif yw + px(14) + dr.textlength(line2, font=pf) <= bw:
                 dr.text((x0 + pad + yw + px(14), by + hy), line2, font=pf, fill=pc, anchor='ls')
             elif not wall:                                        # a narrow block: the town under the year
                 dr.text((x0 + pad, by + px(60)), line2, font=pf, fill=pc, anchor='ls')
@@ -171,6 +182,10 @@ def compose_grouped(photos, day, entry, look, title, subtitle, foot, heroes=()):
                     photo = photo.convert('RGB')
                 img.paste(photo, (int(px0), int(py0)))
                 dr.rectangle((px0 - 1, py0 - 1, px0 + cw, py0 + chh), outline=make.GOLD_SOFT, width=max(1, int(px(1))))
+        if calm and y != max(years):                             # a thin gold line between the years
+            lx = x0 + bw + between / 2
+            dr.line((lx, top + px(20), lx, bottom - px(20)), fill=make.GOLD_SOFT, width=max(1, int(px(1.2))))
+            make.diamond(dr, lx, top + px(10), px(5), make.GOLD); make.diamond(dr, lx, bottom - px(10), px(5), make.GOLD)
         x0 += bw + between
     img = img.convert('RGB')
     make.footer(img, small=True, cal=(foot, ''))
