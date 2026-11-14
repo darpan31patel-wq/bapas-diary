@@ -1547,7 +1547,10 @@ def under_card(x, card, gap, f, lh, style, rnd):
             break
     else:   # no whole sentence fits in n lines: the whole caption on one more line rather than trailing off (Darpan, 28 Oct 2026)
         f = garamond(f.size * .82, 500)
-        lines = wrap(probe, text, f, maxw, n + 1)
+        for more in ((1, 2, 3, 4) if WIDE.get(style, {}).get('whole') else (1,)):   # 'whole': as many lines as the caption needs (the UK and Europe backups)
+            lines = wrap(probe, text, f, maxw, n + more)
+            if not lines[-1].endswith('…'):
+                break
     lh = lh * f.size / cf_size
     # drawn four times bigger and shrunk: small text then keeps the font's true letter spacing (no 'Perform s') and smooth edges
     K = 4; fk = garamond(f.size * K, 500)

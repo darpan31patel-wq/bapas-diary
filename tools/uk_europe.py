@@ -28,8 +28,10 @@ MAX_CARDS = 30        # as many as the three cords hold while a card can still b
 MIN_FACE = .035       # his face at least this much of the photo's width, or he is not clearly seen
 MIN_SHARP = 12        # a face blurrier than this (a tiny old video still) is not a darshan
 STYLE = 'UKEU'        # the live cards on three cords, with a third line of room under each so a whole caption fits
-make.WIDE[STYLE] = dict(make.WIDE[make.LIVE_STYLE], lines=3, pill=3)
+make.WIDE[STYLE] = dict(make.WIDE[make.LIVE_STYLE], lines=3, pill=3, whole=True)
 make.FRAME_ASPECT[STYLE] = make.FRAME_ASPECT[make.LIVE_STYLE]
+ALBUM_TITLE = re.compile(r"^(?:Maharaj|Swamishri|Bapa)['’]s (?:Satsang )?Vicharan\b|^(?:UK|London)[,&\w ]*(?:UK & Europe)$", re.I)   # the album's heading, not what the photo shows
+HERO_MIN = 900        # a big card needs a photo at least this wide (never a small old video still blown up)
 ELSEWHERE = re.compile(r"[A-Z][a-z]+(?: [A-Z][a-z]+)?")   # a plain town name (not an album's title)
 HONORIFIC = re.compile(r'\b(?:Pragat\s+)?Brahmaswarup\s+(?=Pramukh|Mahant|Yogiji|Shastriji)')
 
@@ -73,7 +75,8 @@ def gather(entry, log, towns_there=()):
                     away[(y, town)] = away.get((y, town), 0) + 1
                     continue
                 town = ''   # an album's title, not a place
-            items.append(dict(y=y, d=d, p=town or towns, c=HONORIFIC.sub('', p.get('caption') or ''),
+            cap = HONORIFIC.sub('', p.get('caption') or '')
+            items.append(dict(y=y, d=d, p=town or towns, c='' if ALBUM_TITLE.search(cap) else cap,
                               i=p['large'], small=p.get('small'), look=p.get('look') or '', rank=p.get('rank'),
                               exact=bool(p.get('exact_day')), order=k, guru=yr['guru']))
         seen = set()
@@ -110,6 +113,12 @@ def said(c, town):
     return re.sub(rf'^(?:{make.NAME}\s+)?in {re.escape(town)}:\s*', '', c, flags=re.I) if town else c
 
 
+def paper(im):
+    """A notice, a newspaper cutting or a book's cover: mostly blank paper with print on it."""
+    g = make.np.asarray(im.convert('L').resize((160, 160)), dtype=float)
+    return (g > 225).mean() > .45 and make.colour(im) < .12
+
+
 def look_at(items, log):
     """Open each photo and find Bapa in it. Returns the ones in which he is clearly seen."""
     make.download_all(items, CACHE)
@@ -124,6 +133,9 @@ def look_at(items, log):
             im = Image.open(x['path']).convert('RGB')
         except Exception:
             log.append(f'{tag}: the photo would not open, left out')
+            continue
+        if paper(im):
+            log.append(f'{tag}: a printed page (a notice or a newspaper), not a photo of Bapa, left out')
             continue
         if x['y'] == 1970:   # Yogiji Maharaj's visit: the main face of an old photo (never a later photo put in the post)
             face, sim = make.guru_face(im)
@@ -186,7 +198,7 @@ def heroes(photos):
     """The big cards in the middle: the best close darshan of each guru the day has, side by side when it has both."""
     out = []
     for g in ('Pramukh Swami Maharaj', 'Mahant Swami Maharaj'):
-        mine = [x for x in photos if x['guru'] == g and x['fw'] >= .08 and x['sharp'] >= 40]
+        mine = [x for x in photos if x['guru'] == g and x['fw'] >= .08 and x['sharp'] >= 40 and x['im'].width >= HERO_MIN and not x.get('tg')]
         if mine:
             best = max(mine, key=lambda x: x['sim'] + x['front'] + min(x['fw'], .3) * 2 + (.4 if x['look'] == 'close up' else 0) + min(x['sharp'] / 400, .5))
             out.append(best)
@@ -217,6 +229,12 @@ def build(mmdd, entry, out, towns_there=()):
     if len(have) < 2:
         print(f'{mmdd}: fewer than 2 years have a photo of Bapa, no picture made')
         return False
+    said_once = set()   # a story's line belongs to all its photos: written under the first, not again under each
+    for x in photos:
+        k = (x['y'], make.caption(x))
+        if x.get('tg') and k in said_once:
+            x['c'] = ''
+        said_once.add(k)
     make.full_size(photos)
     hero = heroes(photos)
     title = f'{day.day} {day:%B}'
