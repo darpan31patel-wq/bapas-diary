@@ -54,11 +54,15 @@ jobs:
         if: steps.lists.outputs.ready == 'yes'
         env:
           TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          CLIENT_ID: ${{ secrets.RCLONE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.RCLONE_CLIENT_SECRET }}
         run: |
           pip install -q -r requirements.txt
           python3 tools/sorg_photos.py rows --photos swaminarayan-org-photos.jsonl --db bapas.db --out sorg-rows.json --captions sorg-captions.json
           curl -s https://rclone.org/install.sh | sudo bash >/dev/null
-          mkdir -p ~/.config/rclone && python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
+          git fetch -q --depth 1 origin main && git show FETCH_HEAD:tools/rclone_conf.py > "$RUNNER_TEMP/rclone_conf.py"   # his own Google login, as the copy into Drive used
+          mkdir -p ~/.config/rclone && python3 "$RUNNER_TEMP/rclone_conf.py" > ~/.config/rclone/rclone.conf
+          rclone lsf "gdrive:Bapa's Archive/sites/swaminarayan.org" --max-depth 1 > drive-top.txt || { echo '::error::Drive folder not reachable'; exit 1; }; echo "$(wc -l < drive-top.txt) folders in Drive"
           id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
           key=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1)
           echo "::add-mask::$id"; echo "::add-mask::$key"   # keep both out of the run logs
@@ -68,9 +72,10 @@ jobs:
           python3 tools/sorg_photos.py store --rows sorg-rows.json --have have.txt --minutes 200 \
             --send 'aws s3 sync "$OUT" "s3://$BUCKET/" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000, immutable" --content-type image/jpeg'
           { list o; list s; } > sorg-have.txt
-          echo "$(grep -c '^s/' sorg-have.txt) old site photos in the photo store"
+          n=$(grep -c '^s/' sorg-have.txt || true); echo "$n old site photos in the photo store"
+          [ "$n" -gt 0 ] || { echo '::error::No old site photos reached the photo store'; exit 1; }
           python3 tools/sorg_photos.py same --rows sorg-rows.json --db bapas.db --have sorg-have.txt --out sorg-same.json
-          python3 tools/sorg_photos.py db --rows sorg-rows.json --same sorg-same.json --out sorg.db
+          python3 tools/sorg_photos.py db --rows sorg-rows.json --same sorg-same.json --have sorg-have.txt --out sorg.db
           for y in $(python3 -c "import sqlite3; print(' '.join(str(y) for (y,) in sqlite3.connect('sorg.db').execute('SELECT DISTINCT year FROM photos ORDER BY year')))"); do
             python3 tools/web_faces.py scan --db sorg.db --shard "$y-0-1" --out "face2-$y-sorg.json.gz"
           done
@@ -82,7 +87,7 @@ jobs:
           shopt -s nullglob
           for f in sorg-rows.json sorg-have.txt sorg-captions.json sorg-same.json; do [ -s $f ] || echo >> $f; done   # GitHub refuses an empty file
           gh release upload swaminarayan-org-web sorg-rows.json sorg-have.txt sorg-captions.json sorg-same.json sorg.db sorg-reports.tgz sorg-reports.jsonl sorg-days.json sorg-geo.json face2-*-sorg.json.gz --clobber
-# round 6: the old site's photos, same photo check, face check, picture fingerprints, mockup 2 with Calendar from 1981,
+# round 7 (Drive login fixed): the old site's photos, same photo check, face check, picture fingerprints, mockup 2 with Calendar from 1981,
 # Through the years and Legacy (14 Nov 2026)
   deep:   # the picture fingerprints Legacy matches pairs by (same model as website-deeptags on vcys74)
     needs: prepare
