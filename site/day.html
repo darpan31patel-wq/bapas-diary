@@ -377,6 +377,11 @@ a.ss-big { text-decoration: none; }
 .day-story .paras{max-width:70ch}
 .day-story .paras.many{max-width:none;columns:34ch 3;column-gap:40px}   /* a long story uses the whole width on a wide screen (Darpan, 26 Oct 2026) */
 .day-story .more{margin:0;padding-top:8px;font:400 15px/1.55 var(--serif);color:var(--cream);opacity:.88;break-inside:avoid}
+/* baps.org Daily Satsang prasang, English first with a small quiet switch to the Gujarati (Darpan, 13 Nov 2026) */
+.bpr .flip{margin-left:10px;padding:0;border:0;background:none;font:500 13px var(--serif);font-style:normal;color:var(--gold-soft);text-decoration:underline;text-decoration-color:rgba(217,164,65,.45);text-underline-offset:3px;cursor:pointer}
+.bpr .flip:hover,.bpr .flip:focus-visible{color:var(--gold-hi)}
+.bpr .src{margin:6px 0 0;font:400 12px/1.4 var(--sans);color:var(--cream);opacity:.6}
+.bpr .src a{color:inherit}
 .day-story .diary{margin:8px 0 0;padding:0;list-style:none;max-width:70ch}
 .day-story .diary li{position:relative;margin:0 0 5px;padding-left:16px;font:400 15px/1.45 var(--serif);color:var(--cream);opacity:.9}
 .day-story .diary li::before{content:"";position:absolute;left:2px;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--gold-soft)}
@@ -1577,7 +1582,30 @@ function seasonSections(J, S) {
 // the baps.org News story of that day (tools/web_articles.py, from every News article read 4 to 6 Nov 2026): a gold line
 // under the year's heading that opens the story on baps.org (Darpan, 4 Nov 2026: "link these articles to the calender or today")
 const ART = {};
+// the baps.org Daily Satsang prasang of that day (tools/web_bprasang.py): under the year's heading, in English with a small
+// switch to the Gujarati as baps.org wrote it (Darpan, 13 Nov 2026: "keep a little button nearby that can translate ...
+// back into Gujarati"); opens in Gujarati when the whole site is in Gujarati
+const BPR = {};
+const prasangHTML = (d, [place, who, title, en, gu, src]) => {
+  const guFirst = !en.length || !!(window.BapaGujarati && BapaGujarati.on()), ps = l => l.map(t => `<p class="more">${esc(t)}</p>`).join('');
+  return `<div class="day-story bpr" translate="no"><p class="story-line"><b>Prasang</b>${esc([place, longDate(d) + ' ' + d.slice(0, 4)].filter(Boolean).join(', '))}` +
+    (en.length ? `<button type="button" class="flip">${guFirst ? 'English' : 'ગુજરાતી'}</button>` : '') + '</p>' +
+    `<div class="paras" lang="en"${guFirst ? ' hidden' : ''}>${ps(en)}</div><div class="paras" lang="gu"${guFirst ? '' : ' hidden'}>${ps(gu)}</div>` +
+    `<p class="src">${en.length ? 'English translation of the ' : 'From the '}<a href="${esc(src)}" target="_blank" rel="noopener">baps.org Daily Satsang</a> prerna parimal</p></div>`;
+};
+document.addEventListener('click', e => {
+  const b = e.target.closest('.bpr .flip'); if (!b) return;
+  const box = b.closest('.bpr'), [en, gu] = box.querySelectorAll('.paras');
+  const toGu = gu.hidden; en.hidden = toGu; gu.hidden = !toGu; b.textContent = toGu ? 'English' : 'ગુજરાતી';
+});
+async function prasangs(el, d) {
+  const md = d.slice(5);
+  const B = await (BPR[md] = BPR[md] || fetch('{{DATA}}../bprasang/' + md + '.json').then(r => r.ok ? r.json() : {}).catch(() => ({})));
+  el.parentNode.querySelectorAll('.bpr').forEach(x => x.remove());
+  el.insertAdjacentHTML('afterend', (B[d.slice(0, 4)] || []).map(p => prasangHTML(d, p)).join(''));
+}
 function storyLines() {
+  document.querySelectorAll('#groups .arts[data-d]').forEach(el => prasangs(el, el.dataset.d.slice(0, 4) + '-' + DAY.date));   // the card's own date, never a nearby day it borrowed
   document.querySelectorAll('#groups .arts[data-d]').forEach(async el => {
     const d = el.dataset.d, md = d.slice(5);
     const A = await (ART[md] = ART[md] || fetch('{{DATA}}../articles/' + md + '.json').then(r => r.ok ? r.json() : {}).catch(() => ({})));
