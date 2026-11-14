@@ -78,7 +78,9 @@ jobs:
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release download uk-europe -p index.json -D site/packs/uk-europe --clobber
+        run: |
+          gh release download uk-europe -p index.json -D site/packs/uk-europe --clobber
+          python tools/uk_europe_packs.py site   # each special pack of such a day says its backup is ready (field uk_europe)
       - name: Save them on the studio branch (one fresh commit, so old photos don't pile up)
         env:
           TOKEN: ${{ github.token }}
@@ -196,6 +198,7 @@ jobs:
               idx['updated'] = now
               json.dump(idx, open(f, 'w'), indent=1)
           PY
+          python tools/uk_europe_packs.py site || true   # the remade pack still says the day's UK and Europe backup is ready
           cd site
           git init -q -b studio
           git config user.name "Bapa's Diary bot"; git config user.email "actions@github.com"
