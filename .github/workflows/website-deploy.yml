@@ -110,10 +110,9 @@ jobs:
           gh release download image-search -p image-search.tgz && tar -xzf image-search.tgz   # -> image/
           # Darshan with no date (Darpan, 30 Oct 2026): only in Search, after every dated photo; photos in R2 under undated/
           gh release download undated-build -p undated-search.json || echo '{"album": "undated", "p": []}' > undated-search.json
-          # Daily Satsang prasangs in Search (Darpan, 13 Nov 2026): the translated ones (data/baps/prasang.json), and the
-          # Gujarati of any page read from baps.org but not translated yet (crawl/baps-org/dailysatsang.json on the database branch)
-          git fetch -q --depth 1 origin refs/heads/database && git show FETCH_HEAD:crawl/baps-org/dailysatsang.json > dailysatsang.json || echo '{}' > dailysatsang.json
-          python3 tools/web_reads.py --prasang data/baps/prasang.json --satsang dailysatsang.json --out reads.json
+          # Daily Satsang prasangs in Search (Darpan, 13 Nov 2026), only those with their English translation
+          # (data/baps/prasang.json); Darpan, 14 Nov 2026: "Wait for English", so no Gujarati only prasangs
+          python3 tools/web_reads.py --prasang data/baps/prasang.json --out reads.json
           python3 tools/build_search.py --db bapas.db --out out/search --tags tags.json --deep-tags deep-tags.json --people-faces people-faces.json --start-year today --image image --undated undated-search.json --news-ready news-ready.txt --reads reads.json
           python3 tools/web_darshan.py --db bapas.db --out out   # the Darshan tab's Indian dates and festivals (Darpan: yes Darshan tab, 29 Oct)
           python3 tools/site_menu.py out   # every page's tabs in the same order

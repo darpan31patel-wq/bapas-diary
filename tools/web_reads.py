@@ -81,7 +81,7 @@ def main():
         if not re.match(r'\d{4}-\d{2}-\d{2}$', page):
             continue
         p = done.get(page) or from_raw(page, raw.get(page) or {})
-        if not p or not (p.get('gu') or p.get('en')):
+        if not p or not p.get('en'):   # English first, always (Darpan, 14 Nov 2026: "Wait for English")
             continue
         url = (raw.get(page) or {}).get('url') or page_url(page)
         rows.append([p.get('d') or page, p.get('place') or '', 'prasang', p.get('title') or '',
