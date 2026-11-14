@@ -48,6 +48,8 @@ CHANNEL = {'history': 'Today in BAPS History', 'satpurush': 'Satpurush in UK & E
 
 def guru(d):
     # Darpan, 31 Oct 2026: before 13 Aug 2016 Swamishri is Pramukh Swami Maharaj, after it Mahant Swami Maharaj
+    if not d or d < '1971-01-23':   # Yogiji Maharaj was guru until 23 Jan 1971: older dates name no guru here
+        return None
     return 'Pramukh Swami Maharaj' if d < '2016-08-13' else 'Mahant Swami Maharaj'
 
 
@@ -322,8 +324,12 @@ def main():
                        f'{BAPS}/{al}/WebImages/{f}', None, al, f, 'baps.org News gallery', None, x['url'], gal]
                       + extra('baps.org', x['url'], x['title'], x.get('written'), 'the News story', 'the News story', gal, alt))
     # photos copied from the other BAPS websites and from baps.org writings, each with every detail its page gave
+    today = datetime.date.today().isoformat()
     for q in site_photos + writing_pics:
         day = q.get('date') or None
+        if day and day > today:   # a two figure year read the wrong way ("04 May 30"): keep it as written, no date
+            q = dict(q, date=None, date_to=None, date_from=f"{q.get('date_from') or ''} (read as {day}, which is in the future, so left without a date)")
+            day = None
         u = q.get('photo_url')
         site = q.get('site')
         dp = q.get('drive_path')
@@ -385,6 +391,7 @@ def main():
     grows = []
     for g in site_pages:
         d0 = g.get('date_first') or g.get('month') or None
+        if d0 and d0 > datetime.date.today().isoformat(): d0 = None
         grows.append([d0, g.get('date_last') if g.get('date_last') not in (None, '', d0) else None, g.get('site'),
                       g.get('section') or None, g.get('title') or None, g.get('place') or None, g.get('place_from') or None,
                       '\n'.join(g.get('headings') or []) or None,
