@@ -81,10 +81,37 @@ jobs:
             --title "Old BAPS website for the website" --notes "swaminarayan.org photos, day reports and towns for bapas-diary.com. Not used by the daily picture."
           shopt -s nullglob
           for f in sorg-rows.json sorg-have.txt sorg-captions.json sorg-same.json; do [ -s $f ] || echo >> $f; done   # GitHub refuses an empty file
-          gh release upload swaminarayan-org-web sorg-rows.json sorg-have.txt sorg-captions.json sorg-same.json sorg-reports.tgz sorg-reports.jsonl sorg-days.json sorg-geo.json face2-*-sorg.json.gz --clobber
-# round 5: the old site's photos, same photo check, face check, mockup 2 (14 Nov 2026)
-  mockup:
+          gh release upload swaminarayan-org-web sorg-rows.json sorg-have.txt sorg-captions.json sorg-same.json sorg.db sorg-reports.tgz sorg-reports.jsonl sorg-days.json sorg-geo.json face2-*-sorg.json.gz --clobber
+# round 6: the old site's photos, same photo check, face check, picture fingerprints, mockup 2 with Calendar from 1981,
+# Through the years and Legacy (14 Nov 2026)
+  deep:   # the picture fingerprints Legacy matches pairs by (same model as website-deeptags on vcys74)
     needs: prepare
+    if: needs.prepare.outputs.ready == 'yes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fingerprints of the old site's photos
+        run: |
+          git fetch -q origin claude/project-thread-vcys74 && mkdir dt && git archive FETCH_HEAD tools | tar -x -C dt
+          pip install -q --index-url https://download.pytorch.org/whl/cpu torch torchvision
+          pip install -q 'open_clip_torch>=2.31' 'timm>=1.0.15' transformers sentencepiece pillow numpy
+          gh release download swaminarayan-org-web -p sorg.db
+          for y in $(python3 -c "import sqlite3; print(' '.join(str(y) for (y,) in sqlite3.connect('sorg.db').execute('SELECT DISTINCT year FROM photos ORDER BY year')))"); do
+            python3 dt/tools/deep_tags.py shard --db sorg.db --shard "$y-0-1" --out photos
+          done
+          echo "$(find photos -type f | wc -l) photos"
+          python3 dt/tools/deep_tags.py embed --photos photos --out emb-sorg.npz
+          gh release upload swaminarayan-org-web emb-sorg.npz --clobber
+  mockup:
+    needs: [prepare, deep]
     if: needs.prepare.outputs.ready == 'yes'
     runs-on: ubuntu-latest
     timeout-minutes: 300
@@ -116,10 +143,39 @@ jobs:
                             'python3 tools/sorg_photos.py add --rows sorg-rows.json --db bapas.db --have sorg-have.txt --captions sorg-captions.json --same sorg-same.json\n', 1)
           fc = "mkdir faces && gh release download website-faces -p 'face2-*.json.gz' -D faces\n"
           run = run.replace(fc, fc + "gh release download swaminarayan-org-web -p 'face2-*-sorg.json.gz' -D faces\n", 1)
-          assert 'sorg_photos.py add' in run and 'sorg.json.gz' in run
+          # the Calendar reaches back to 1981, the first year of the old site's festival photos
+          cal = 'tar -x -C calsrc\n'
+          run = run.replace(cal, cal + "sed -i 's/^FIRST = (1999, 1)/FIRST = (1981, 1)/' calsrc/tools/web_calendar.py && grep -q '^FIRST = (1981, 1)' calsrc/tools/web_calendar.py\n", 1)
+          assert 'sorg_photos.py add' in run and 'sorg.json.gz' in run and 'FIRST = (1981' in run
           open('build.sh', 'w').write('set -eo pipefail\n' + run)
           PY
           bash build.sh
+      - name: Through the years with the old site's photos (its own thread's tools, branch lfiln1)
+        continue-on-error: true
+        run: |
+          pip install -q opencv-python-headless numpy pillow open_clip_torch torch --extra-index-url https://download.pytorch.org/whl/cpu
+          git fetch -q origin claude/project-thread-lfiln1 && mkdir ty && git archive FETCH_HEAD tools site models | tar -x -C ty
+          cp bapas.db ty.db && python3 ty/tools/news_ready.py --db ty.db --out news-ready.txt --prune
+          { curl -sf https://photos.bapas-diary.com/years.txt || true; sqlite3 ty.db "SELECT DISTINCT year FROM photos WHERE source = 'swaminarayan.org'"; } | grep -E '^[0-9]{4}$' | sort -un > ty-years.txt
+          mkdir hints && cp faces/face2-*.json.gz hints/
+          mkdir tys && gh release download faces-mockup -p faces.tgz -O - | tar -xz -C tys
+          python3 ty/tools/faces_years.py --db ty.db --years ty-years.txt --hints hints --out tys/faces --sheet sheet 2>&1 | grep -v WARN | tail -40
+          python3 ty/tools/build_faces.py --faces tys/faces --db ty.db --out ytt --site
+          rsync -a --delete ytt/ out/through-the-years/ && python3 tools/web_places.py --page out/through-the-years/index.html
+          echo "days with an old site close up: $(grep -o 'sorg-' tys/faces/faces.json | wc -l)"
+      - name: Legacy with the old site's photos (its own thread's picker, branch dmnrb9)
+        continue-on-error: true
+        run: |
+          pip install -q numpy
+          git fetch -q origin claude/project-thread-dmnrb9 && mkdir lg && git archive FETCH_HEAD tools site | tar -x -C lg
+          mkdir emb && gh release download deep-tags -p 'emb-*.npz' -p words.npz -D emb
+          gh release download swaminarayan-org-web -p emb-sorg.npz -D emb
+          [ -d hints ] || { mkdir hints && cp faces/face2-*.json.gz hints/; }
+          cp out/then-and-now/more.json old-more.json
+          python3 lg/tools/legacy_auto.py --db bapas.db --emb emb --faces hints --picks lg/site/then-now-picks.json \
+            --more old-more.json --out more.json --sheet legacy-new.json --week 12
+          cp more.json out/then-and-now/more.json
+          echo "Legacy pairs: $(jq length old-more.json) before, $(jq length more.json) now, with an old site photo: $(grep -o 'sorg-' more.json | wc -l)"
       - name: Photographs of the pages
         run: |
           pip install -q playwright && python3 -m playwright install --with-deps chromium >/dev/null
