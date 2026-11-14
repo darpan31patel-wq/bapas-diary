@@ -81,7 +81,7 @@ jobs:
           shopt -s nullglob
           for f in sorg-rows.json sorg-have.txt sorg-captions.json; do [ -s $f ] || echo >> $f; done   # GitHub refuses an empty file
           gh release upload swaminarayan-org-web sorg-rows.json sorg-have.txt sorg-captions.json sorg-reports.tgz sorg-reports.jsonl sorg-days.json sorg-geo.json face2-*-sorg.json.gz --clobber
-# round 3: day reports and towns from the lists so far (14 Nov 2026)
+# round 4: day reports and towns from the lists so far (14 Nov 2026)
   mockup:
     needs: prepare
     if: needs.prepare.outputs.ready == 'yes'
@@ -106,7 +106,7 @@ jobs:
           python3 - <<'PY'
           import re, yaml
           wf = yaml.safe_load(open('.github/workflows/website-deploy.yml'))
-          job = next(iter(wf['jobs'].values()))
+          job = wf['jobs']['deploy']
           step = next(s for s in job['steps'] if s.get('name', '').startswith('Photo search'))
           open('build.sh', 'w').write('set -eo pipefail\n' + step['run'])
           PY
