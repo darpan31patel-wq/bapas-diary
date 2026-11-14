@@ -81,7 +81,7 @@ jobs:
           shopt -s nullglob
           for f in sorg-rows.json sorg-have.txt sorg-captions.json; do [ -s $f ] || echo >> $f; done   # GitHub refuses an empty file
           gh release upload swaminarayan-org-web sorg-rows.json sorg-have.txt sorg-captions.json sorg-reports.tgz sorg-reports.jsonl sorg-days.json sorg-geo.json face2-*-sorg.json.gz --clobber
-# round 2: day reports and towns from the lists so far (14 Nov 2026)
+# round 3: day reports and towns from the lists so far (14 Nov 2026)
   mockup:
     needs: prepare
     if: needs.prepare.outputs.ready == 'yes'
@@ -101,6 +101,7 @@ jobs:
       - name: The whole site, built exactly like a deploy (not published)
         run: |
           export CAL_COMMIT=$(grep -oP 'CAL_COMMIT: \K[0-9a-f]{40}' .github/workflows/website-deploy.yml)
+          pip install -q pyyaml
           gh release download database -p bapas.db.gz -O - | gunzip > old.db
           python3 - <<'PY'
           import re, yaml
