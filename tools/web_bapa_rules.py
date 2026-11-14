@@ -366,22 +366,55 @@ def range_title(c):
     return (m.group(1) or '').strip() if m else None
 
 
+HONORIFIC = r"(?:(?:H\.?\s?H\.?|Param Pujya|P\.?\s?P\.?)\s+)?"
+PLACE_WORDS = r"(?:Auditorium|Nagar|Marg|Road|Hall|Chowk|Circle|School|College|Hospital|Ground|Stadium|Smruti|Mandap|Gate|Bhavan|Complex|Centre|Center|Park|Vidyamandir|Prasang)\b"
+FESTIVAL_AFTER = r"(?:Janma|Janmotsav|Jayanti|Smruti|Shatabdi|Mahotsav|Din|Diksha|Swagat|Sanstha)\b"
+OTHER_TITLES = r"(?:Pujya|Brahmaswarup|Guru|Guruhari|Sadguru|Yogi|Shri)\s+$"
+
+
+TWICE = re.compile(r"\b(with|at|for|to|the|a|an|and|of|in|on|by|from|had|is|Swami|Maharaj|assembly)\s+\1\b")
+
+
+def bapa_name(day=None):
+    """The words that mean Bapa on a photo of this day: 'Swamishri', and the guru of that day (Pramukh Swami Maharaj before
+    13 August 2016, Mahant Swami Maharaj from that day). The other guru keeps his full name (Darpan, 14 Nov 2026:
+    'Bapa with Pujya Mahant Swami' on a 2006 photo, never 'Bapa with Pujya Bapa'). With no day only 'Swamishri' counts."""
+    day = str(day or '')[:10]
+    guru = '' if not day else ('|Pramukh Swami(?: Maharaj)?' if day < PSM_UNTIL else '|Mahant Swami(?: Maharaj)?')
+    return rf"{HONORIFIC}(?:Swamishri|Bapa{guru})"
+
+
+def to_bapa(c, day=None):
+    """Swamishri, and the day's own guru, become 'Bapa', but not 'Pujya Mahant Swami', 'Brahmaswarup Pramukh Swami Maharaj'
+    or 'Pramukh Swami Auditorium' (a title before the name, or a place after it, keeps the full name)."""
+    pat = re.compile(bapa_name(day))
+    def one(m):
+        before, after = c[:m.start()], c[m.end():]
+        if re.search(OTHER_TITLES, before) or re.match(rf"\s+{PLACE_WORDS}", after) or (m.group(0) != 'Swamishri' and re.match(r"\s*(?:'s|’s)?\s+" + FESTIVAL_AFTER, after)):
+            return m.group(0)
+        return 'Bapa'
+    return pat.sub(one, c)
+
+
 def caption(x):
     """The caption without the name repeated on every card: 'Swamishri blesses all' becomes 'Blesses all'.
     Where dropping the name wouldn't read well ('Swamishri's divine gestures', 'Sadhus honour Swamishri'),
-    the name becomes 'Bapa'."""
+    the name becomes 'Bapa'. x['d'] is the photo's day: only Swamishri and that day's guru are Bapa (Darpan, 14 Nov 2026)."""
     if range_title(x.get('c')) is not None:   # only the album's dates: the card is a darshan
         return DARSHAN
+    day = x.get('d')
+    name = bapa_name(day)
     c = tidy(re.sub(r'\s+', ' ', x.get('c') or '').strip())
-    if not c or re.fullmatch(rf'(?:Pujya |Shri )?{NAME}(?: Maharaj)?', c):
+    if not c or re.fullmatch(rf'(?:Pujya |Shri )?{name}(?: Maharaj)?', c):
         return DARSHAN if x.get('c') else ''
     c = about_bapa(c)
-    m = re.match(rf'^{NAME}[\s,]+(.+)$', c)
-    if m and not re.match(r"(and|with|along|together|'s|’s)\b", m.group(1), re.I):
+    m = re.match(rf'^{name}[\s,]+(.+)$', c)
+    if m and not re.match(r"(and|with|along|together|'s|’s)\b", m.group(1), re.I) and not re.match(PLACE_WORDS, m.group(1)) and not re.match(FESTIVAL_AFTER, m.group(1)):
         c = m.group(1)[0].upper() + m.group(1)[1:]
-    c = re.sub(NAME, 'Bapa', c)
+    c = to_bapa(c, day)
+    c = TWICE.sub(r'\1', c)   # baps.org's slips, 'Interacts with with children', 'Pujya Kothari Swami Swami' (not 'Pagle Pagle', 'Sri Sri')
     w = c.split(' ', 1)
-    if w[0].lower() in ING and len(w) > 1:   # 'Performing sanctifying rituals' reads like the other cards: 'Performs sanctifying rituals'
+    if w[0].lower() in ING and len(w) > 1 and not w[1].startswith('of '):   # 'Performing sanctifying rituals' reads like the other cards: 'Performs sanctifying rituals' ('Offering of fruits' stays)
         c = ING[w[0].lower()] + ' ' + w[1]
     return c
 

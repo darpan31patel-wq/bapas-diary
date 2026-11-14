@@ -1151,7 +1151,29 @@ document.addEventListener('input', e => {
   const k = t.dataset.k; bag(k)[f] = t.value;
   document.querySelectorAll(`[data-f="${f}"][data-k="${k}"]`).forEach(el => { if (el !== t) el.value = t.value });
   render();
+  if (t.classList.contains('capedit')) capWarn(t);
 });
+// a caption that reads wrong gets a small saffron line under its box (Darpan, 14 Nov 2026: a 2006 London card went out
+// saying "Bapa with Bapa after their performance"). It only warns: the words are his to keep or change.
+function capProblem(v) {
+  const c = String(v || '').replace(/\s+/g, ' ').trim();
+  if (/\b(Bapa|Swamishri) with (Bapa|Swamishri)\b/i.test(c)) return 'says “Bapa with Bapa”';
+  if (/^(Bapa|Swamishri) and (Bapa|Swamishri)\b/i.test(c)) return 'starts “Bapa and Bapa”';
+  if (/\bPujya (Bapa|Swamishri)\b/i.test(c)) return 'says “Pujya Bapa”: is it the other guru, Pujya Mahant Swami or Pujya Pramukh Swami?';
+  if (/\bBrahmaswarup (Bapa|Swamishri)\b/i.test(c)) return 'says “Brahmaswarup Bapa”: is it Brahmaswarup Pramukh Swami Maharaj?';
+  const m = c.match(/\b([\p{L}\d]+) \1\b/iu);
+  if (m && !/^(sri|pagle|ghar|jay|wah|dodi|cho|je|khub)$/i.test(m[1])) return `has “${m[1]}” twice in a row`;
+  return '';
+}
+function capWarn(t) {
+  let p = t.nextElementSibling;
+  if (!p || !p.classList.contains('capwarn')) { p = document.createElement('p'); p.className = 'hint warn capwarn'; p.setAttribute('role', 'status'); t.after(p) }
+  const w = capProblem(t.value);
+  p.textContent = w ? `Check the words: this caption ${w}.` : '';
+  p.hidden = !w;
+}
+new MutationObserver(() => document.querySelectorAll('textarea.capedit').forEach(t => { if (!t.dataset.warned) { t.dataset.warned = 1; capWarn(t) } }))
+  .observe(document.documentElement, { childList: true, subtree: true });
 
 // ------------------------------------------------------------ the side panel
 const TABS = { day: [['card', 'Photo'], ['words', 'Years and words'], ['layout', 'Layout'], ['look', 'Look']], month: [['card', 'Photo'], ['words', 'Days and words'], ['layout', 'Layout'], ['look', 'Look']], special: [['choose', 'Choose'], ['card', 'Photo'], ['words', 'Cards and words'], ['layout', 'Layout'], ['look', 'Look']] };
