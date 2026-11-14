@@ -22,7 +22,10 @@ ALIASES = {'amdavad': 'ahmedabad', 'ahmadabad': 'ahmedabad', 'vadodara': 'vadoda
            'bombay': 'mumbai', 'calcutta': 'kolkata', 'madras': 'chennai', 'bharuch': 'bharuch', 'broach': 'bharuch',
            'surat': 'surat', 'kachchh': 'bhuj', 'akshardham': 'gandhinagar', 'shahibaug': 'ahmedabad',
            'vidyanagar': 'vallabh vidyanagar', 'neasden': 'london', 'nairobi': 'nairobi', 'bahrain': 'manama',
-           'kuwait': 'kuwait city', 'muscat': 'muscat', 'dar-es-salaam': 'dar es salaam', 'new york': 'new york city'}
+           'kuwait': 'kuwait city', 'muscat': 'muscat', 'dar-es-salaam': 'dar es salaam', 'new york': 'new york city', 'ghandhinagar': 'gandhinagar', 'new dehli': 'new delhi', 'n delhi': 'new delhi',
+           'kolkatta': 'kolkata', 'junagad': 'junagadh', 'vidynagar': 'vallabh vidyanagar', 'secundrabad': 'secunderabad',
+           'bhuvaneshwar': 'bhubaneswar', 'valbhipur': 'vallabhipur', 'mt abu': 'mount abu', 'l a': 'los angeles', 'atladara': 'atladra',
+           'paaliyaad': 'paliyad', 'jagannathpuri': 'puri', 'vartal': 'vadtal', 'dhuliya': 'dhule'}
 COUNTRY = {'IN': 'India', 'GB': 'UK', 'US': 'USA', 'KE': 'Kenya', 'TZ': 'Tanzania', 'UG': 'Uganda', 'CA': 'Canada',
            'AE': 'UAE', 'BH': 'Bahrain', 'KW': 'Kuwait', 'OM': 'Oman', 'AU': 'Australia', 'NZ': 'New Zealand',
            'ZA': 'South Africa', 'ZM': 'Zambia', 'MW': 'Malawi', 'SG': 'Singapore', 'MY': 'Malaysia', 'HK': 'Hong Kong',
@@ -61,7 +64,7 @@ def geo(a):
             f = line.rstrip('\n').split('\t')
             if len(f) < 15 or f[6] != 'P':
                 continue
-            for n in {f[1], f[2]} | set(f[3].split(',') if len(f[3]) < 400 else []):
+            for n in {f[1], f[2]} | set(f[3].split(',')):
                 k = key(n)
                 if k in want:
                     cand[k].append(dict(name=f[1], country=COUNTRY.get(f[8], f[8]), ll=[round(float(f[5]), 2), round(float(f[4]), 2)],

@@ -59,7 +59,9 @@ MONTHHEAD = re.compile(r'^\s*(' + MRX + r')\.?,?\s+(\d{4})\s*$', re.I)
 NOT_PLACE = re.compile(r'\b(festival|day|jayanti|mahotsav|celebration|utsav|parayan|sabha|ceremony|assembly|shibir|'
                        r'convention|pratishtha|samaiyo|samaiya|diksha|patotsav|annakut|diwali|janmashtami|ekadashi|'
                        r'purnima|punam|anniversary|inauguration|function|program|programme|parva|yatra|abhishek|'
-                       r'mandir|darshan|vidhi|puja|samarpan|samaroh|nirvan|vihar|katha)\b', re.I)
+                       r'mandir|darshan|vidhi|puja|samarpan|samaroh|nirvan|vihar|katha|din|panchmi|navmi|shivratri|maharaj|shri|'
+                       r'swamishri\'?s?|tribal|performs|symbolic|uttarayan|fuldol|yagna|pushpadolotsav|janmashtmi|thuesday|photo|'
+                       r'children\'?s|kishore|declared|prayer|meeting|condolence|bhagwan|baps|divya|new)\b', re.I)
 FOOT = re.compile(r'^\s*\|\s*Home\b', re.I)
 
 
@@ -91,6 +93,8 @@ def split_places(rest, known):
     if ';' in rest:   # "London; Youth Shibir": the places, then what the day was
         rest, tail = rest.split(';', 1)
     rest = re.sub(r'\s+-\s+', ', ', rest)   # "Mumbai - Karyakar Day"
+    rest = re.sub(r'\.\s+(?=[A-Z])', ', ', rest)
+    rest = re.sub(r'(?<=[a-z])-(?=[A-Z])', ', ', rest)   # "Atladra-Sarangpur"   # "Amdavad. Bal Karyakar Din"
     for seg in [flat(x).strip(' .:;') for x in re.split(r',', rest)]:
         if not seg:
             continue
@@ -99,7 +103,7 @@ def split_places(rest, known):
             continue
         low = seg.lower()
         if low in known or (re.fullmatch(r"[A-Z][A-Za-z.'\-]+(?: [A-Z][A-Za-z.'\-]+){0,2}", seg) and not NOT_PLACE.search(seg)
-                            and low not in ('india', 'uk', 'usa', 'u.k.', 'u.s.a.')):
+                            and low not in ('india', 'uk', 'usa', 'u.k.', 'u.s.a.', 'canada', 'botswana', 'zimbabwe', 'israel', 'kenya', 'tanzania', 'uganda', 'africa')):
             places.append(seg)
         else:
             other.append(seg)
