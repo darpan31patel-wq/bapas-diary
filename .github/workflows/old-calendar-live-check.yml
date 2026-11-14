@@ -1,0 +1,36 @@
+# Reads the live site's data for days before 2010 (Darpan, 14 Nov 2026: "cant see it"). Mockup branch only, never deploys.
+name: Old calendar live check
+on:
+  push:
+    branches: [claude/project-thread-eawr12-mockup]
+    paths: [.github/workflows/old-calendar-live-check.yml]
+permissions:
+  contents: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Read the live data
+        run: |
+          mkdir out && cd out
+          for u in data/calendar.json data/day/11-14.json data/day/11-16.json search/data/calendar.json sw.js offline/files.json calendar/; do
+            f=$(echo "$u" | tr '/' '_'); curl -s -o "$f" -w "%{http_code} %{size_download} $u\n" "https://bapas-diary.com/$u?x=$RANDOM" -H 'Cache-Control: no-cache' | tee -a log.txt
+          done
+          python3 - <<'PY' >> log.txt
+          import json
+          C = json.load(open('data_calendar.json'))
+          for k in ['1999-11', '2001-11', '2004-08', '2009-10', '2010-11']:
+              rows = C['m'].get(k) or []
+              print(k, len(rows), [r[:3] if r else r for r in rows[:18]])
+          D = json.load(open('data_day_11-16.json')); print('day 11-16 cal', {y: v for y, v in sorted(D.get('cal', {}).items())[:14]})
+          S = json.load(open('search_data_calendar.json')); print('search rows', len(S), S[0][:5], [r[:5] for r in S if r[0] in ('2001-11-14', '2001-11-16')])
+          PY
+          cat log.txt
+      - name: Keep it
+        if: always()
+        run: |
+          gh release delete old-calendar-live-check -y --cleanup-tag -R "$GITHUB_REPOSITORY" 2>/dev/null || true
+          gh release create old-calendar-live-check out/log.txt -R "$GITHUB_REPOSITORY" --title "Old calendar live check" --notes "Check only" --target "$GITHUB_SHA"
