@@ -1242,7 +1242,9 @@ const introText = () => { const o = S.day, w = o.wa[o.date]; return w && w.intro
 const introDay = () => { const w = S.day.wa[S.day.date]; return !!(w && w.intro != null) };
 const introChanged = () => !!introText();
 const waNow = () => Object.assign({ caption: waText(), whole: !!S.day.wa[S.day.date]?.whole }, introChanged() ? { intro: introText(), intro_all: !introDay() } : {});
-const waPreview = () => { const o = S.day, w = o.wa[o.date]; if (w && w.whole) return waText(); const top = introChanged() ? fillIntro(introText(), o.date) : introExample(o.date) + '   (a different line each day, the send picks it)'; return `${top}\n_Day ${dayN(o.date)} of the Smruti Project_\n\n${waText()}`.trim() };
+// "Replace my whole message" (Darpan, 14 Nov 2026: "this line is repeated twice now"): the send still puts its own
+// "_Day N of the Smruti Project_" line under whatever is saved, so the preview shows it and the box must not repeat it.
+const waPreview = () => { const o = S.day, w = o.wa[o.date]; if (w && w.whole) return `${waText()}\n_Day ${dayN(o.date)} of the Smruti Project_   (the send adds this line)`.trim(); const top = introChanged() ? fillIntro(introText(), o.date) : introExample(o.date) + '   (a different line each day, the send picks it)'; return `${top}\n_Day ${dayN(o.date)} of the Smruti Project_\n\n${waText()}`.trim() };
 function paneWords() {
   const day = S.mode !== 'month', pack = P[S.mode], o = cur();
   const list = keys().map(k => {
@@ -1300,8 +1302,9 @@ function paneWords() {
       ${check('d-introday', 'Just for this day (otherwise every day from now on)', introDay())}
       <p class="hint">${introChanged() ? (introDay() ? `Your own top line for ${esc(longDate(o.date))}.` : 'Your own top line, for every day.') : 'Empty = the usual words: one of 28 lines, picked by the send, so nothing of yours is sent unless you type here.'} You can write {DAY} and {MONTH}, filled in as “${esc(ordinal(new Date(o.date + 'T12:00').getDate()))}” and “${esc(new Date(o.date + 'T12:00').toLocaleString('en-GB', { month: 'long' }))}”.</p>
       <div class="row"><label for="d-wa">Words under the top line and Day N</label>
-      <textarea id="d-wa" rows="6" aria-label="WhatsApp caption" placeholder="${o.wa[o.date]?.whole ? 'Your whole 2pm caption' : 'No extra words today'}" style="width:100%">${esc(waText())}</textarea></div>
-      ${check('d-wawhole', 'Replace my whole message (top line and Day N too)', !!o.wa[o.date]?.whole)}
+      <textarea id="d-wa" rows="6" aria-label="WhatsApp caption" placeholder="${o.wa[o.date]?.whole ? 'Your whole 2pm message, without the Day line: the send adds “Day N of the Smruti Project” itself' : 'No extra words today'}" style="width:100%">${esc(waText())}</textarea></div>
+      ${check('d-wawhole', 'Replace my whole message (the top line too; the send still adds its Day N line)', !!o.wa[o.date]?.whole)}
+      ${o.wa[o.date]?.whole && /\bDay \d+ of the Smruti Project/i.test(waText()) ? '<p class="hint warn">Take the “Day … of the Smruti Project” line out of the box: the send adds it again, so it would go out twice.</p>' : ''}
       <div class="seg"><button class="btn small primary" id="d-wasave">Save the words for the 2pm send</button><button class="btn small" id="d-wareset">Back to the usual words</button></div>
       <p class="status" id="wa-status" role="status"></p>
       <p class="hint">As it goes out at 2pm:</p><pre class="preview" id="wa-preview">${esc(waPreview())}</pre>
