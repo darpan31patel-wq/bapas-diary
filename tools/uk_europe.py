@@ -18,7 +18,7 @@ picture, the day's special picture, shown.json, the release or the 2pm send."""
 import datetime, hashlib, json, os, re, sys
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, HERE)
+sys.path.insert(0, HERE); sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import make
 from make import Image
 
@@ -215,7 +215,7 @@ def foot_line(entry):
     return '   ·   '.join(f'{g} {", ".join(ys)}' for g, ys in groups.items())
 
 
-def build(mmdd, entry, out, towns_there=()):
+def build(mmdd, entry, out, towns_there=(), look='cords'):
     log = []
     day = datetime.date(2000, int(mmdd[:2]), int(mmdd[3:]))   # a year with no festival dress and no 29 February trouble
     items = gather(entry, log, towns_there)
@@ -240,9 +240,13 @@ def build(mmdd, entry, out, towns_there=()):
     make.full_size(photos)
     hero = heroes(photos)
     title = f'{day.day} {day:%B}'
-    img = make.compose_wide(photos, day, seed='uk-europe-' + mmdd, style=STYLE, title=title, subtitle='in the UK and Europe',
-                            cal=(foot_line(entry), ''), hero=hero)
-    folder = os.path.join(out, mmdd)
+    if look != 'cords':   # 'album', 'gold', 'mosaic': grouped by year (tools/uk_europe_looks.py)
+        import uk_europe_looks
+        img = uk_europe_looks.compose_grouped(photos, day, entry, look, title, 'in the UK and Europe', foot_line(entry))
+    else:
+        img = make.compose_wide(photos, day, seed='uk-europe-' + mmdd, style=STYLE, title=title, subtitle='in the UK and Europe',
+                                cal=(foot_line(entry), ''), hero=hero)
+    folder = os.path.join(out, mmdd + ('' if look == 'cords' else '-' + look))
     os.makedirs(folder, exist_ok=True)
     name = name_of(mmdd)
     img.convert('RGB').save(os.path.join(folder, name + '.png'), optimize=True)
@@ -278,15 +282,16 @@ def main():
         if mmdd not in days:
             print(f'{mmdd}: not a backup day in the list')
             continue
-        try:
-            if build(mmdd, days[mmdd], out, towns_there):
-                f = os.path.join(out, mmdd, 'pack.json')
-                p = json.load(open(f, encoding='utf-8')); p['list_made'] = L.get('made'); p['stamp'] = stamp(days[mmdd])
-                json.dump(p, open(f, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
-                made += 1
-        except Exception as e:   # one bad day never stops the others
-            import traceback; traceback.print_exc()
-            print(f'{mmdd}: failed, {e}')
+        for look in os.environ.get('UKEU_LOOKS', 'cords').split(','):   # test runs can draw the other looks too
+            try:
+                if build(mmdd, days[mmdd], out, towns_there, look):
+                    f = os.path.join(out, mmdd + ('' if look == 'cords' else '-' + look), 'pack.json')
+                    p = json.load(open(f, encoding='utf-8')); p['list_made'] = L.get('made'); p['stamp'] = stamp(days[mmdd])
+                    json.dump(p, open(f, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+                    made += 1
+            except Exception as e:   # one bad day never stops the others
+                import traceback; traceback.print_exc()
+                print(f'{mmdd} {look}: failed, {e}')
     return 0 if made else 2
 
 
