@@ -1,0 +1,115 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain, fetches nothing
+# from swaminarayan.org or baps.org, and changes nothing on the live website.
+# The old BAPS website's photos, day reports and towns, made ready for the website (Darpan, 13 Nov 2026: older years on
+# Today, the Calendar and Through the years; the vicharan report under a clicked Calendar day's photos; Travels for the
+# early years). One gentle round each time this file is pushed:
+#   1. reads the detail lists the "Collect other BAPS websites" thread puts in release `database`
+#   2. puts the new photos (not those baps.org already gave us) into the photo store at the five usual sizes, from Drive
+#   3. face checks them, so Bapa's own pages take only photos where he is recognised
+#   4. keeps everything in release `swaminarayan-org-web`, which the website build reads once Darpan says yes
+#   5. builds the whole site exactly like a deploy, without publishing it, and photographs the pages for his mockup
+name: swaminarayan-org-web
+on:
+  push:
+    branches: ['claude/project-thread-2l8drg']
+    paths: ['.github/workflows/swaminarayan-org-web-2l8drg.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: website-photos   # never at the same time as the other copies into the photo store
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    outputs:
+      ready: ${{ steps.lists.outputs.ready }}
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BUCKET: bapas-diary-photos
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: The detail lists
+        id: lists
+        run: |
+          gh release download database -p bapas.db.gz -p swaminarayan-org-photos.jsonl -p swaminarayan-org-pages.jsonl || true
+          if [ ! -s swaminarayan-org-pages.jsonl ]; then echo "The swaminarayan.org lists are not in the release yet"; echo ready=no >> "$GITHUB_OUTPUT"; exit 0; fi
+          touch swaminarayan-org-photos.jsonl
+          gunzip -f bapas.db.gz
+          echo "pages: $(wc -l < swaminarayan-org-pages.jsonl), photos: $(wc -l < swaminarayan-org-photos.jsonl)"
+          echo ready=yes >> "$GITHUB_OUTPUT"
+      - name: Day reports, prasangs and towns
+        if: steps.lists.outputs.ready == 'yes'
+        run: |
+          python3 tools/sorg_reports.py --pages swaminarayan-org-pages.jsonl --out reports --full sorg-reports.jsonl --days sorg-days.json --known places.json
+          tar -czf sorg-reports.tgz -C reports .
+          curl -sSfL https://download.geonames.org/export/dump/cities500.zip -o cities500.zip && unzip -oq cities500.zip
+          python3 tools/sorg_travels.py geo --days sorg-days.json --travels live/travels/index.html --geonames cities500.txt --out sorg-geo.json
+      - name: Photos into the photo store, then the face check
+        if: steps.lists.outputs.ready == 'yes'
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+        run: |
+          pip install -q -r requirements.txt
+          python3 tools/sorg_photos.py rows --photos swaminarayan-org-photos.jsonl --db bapas.db --out sorg-rows.json --captions sorg-captions.json
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          mkdir -p ~/.config/rclone && python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
+          id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
+          key=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1)
+          echo "::add-mask::$id"; echo "::add-mask::$key"   # keep both out of the run logs
+          export AWS_ACCESS_KEY_ID=$id AWS_SECRET_ACCESS_KEY=$key AWS_DEFAULT_REGION=auto R2="https://$CF_ACCOUNT.r2.cloudflarestorage.com"
+          list() { aws s3 ls "s3://$BUCKET/$1/sorg-" --recursive --endpoint-url "$R2" | awk '{ $1=$2=$3=""; sub(/^ +/, ""); print }' || true; }
+          list o > have.txt
+          python3 tools/sorg_photos.py store --rows sorg-rows.json --have have.txt --minutes 180 \
+            --send 'aws s3 sync "$OUT" "s3://$BUCKET/" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000, immutable" --content-type image/jpeg'
+          { list o; list s; } > sorg-have.txt
+          echo "$(grep -c '^s/' sorg-have.txt) old site photos in the photo store"
+          python3 tools/sorg_photos.py db --rows sorg-rows.json --out sorg.db
+          for y in $(python3 -c "import sqlite3; print(' '.join(str(y) for (y,) in sqlite3.connect('sorg.db').execute('SELECT DISTINCT year FROM photos ORDER BY year')))"); do
+            python3 tools/web_faces.py scan --db sorg.db --shard "$y-0-1" --out "face2-$y-sorg.json.gz"
+          done
+      - name: Keep it all in release swaminarayan-org-web
+        if: steps.lists.outputs.ready == 'yes'
+        run: |
+          gh release view swaminarayan-org-web >/dev/null 2>&1 || gh release create swaminarayan-org-web --prerelease \
+            --title "Old BAPS website for the website" --notes "swaminarayan.org photos, day reports and towns for bapas-diary.com. Not used by the daily picture."
+          gh release upload swaminarayan-org-web sorg-rows.json sorg-have.txt sorg-captions.json sorg-reports.tgz sorg-reports.jsonl sorg-days.json sorg-geo.json face2-*-sorg.json.gz --clobber
+  mockup:
+    needs: prepare
+    if: needs.prepare.outputs.ready == 'yes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PROJECT: bapas-diary
+      DOMAIN: bapas-diary.com
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: The whole site, built exactly like a deploy (not published)
+        run: |
+          export CAL_COMMIT=$(grep -oP 'CAL_COMMIT: \K[0-9a-f]{40}' .github/workflows/website-deploy.yml)
+          gh release download database -p bapas.db.gz -O - | gunzip > old.db
+          python3 - <<'PY'
+          import re, yaml
+          wf = yaml.safe_load(open('.github/workflows/website-deploy.yml'))
+          job = next(iter(wf['jobs'].values()))
+          step = next(s for s in job['steps'] if s.get('name', '').startswith('Photo search'))
+          open('build.sh', 'w').write('set -eo pipefail\n' + step['run'])
+          PY
+          bash build.sh
+      - name: Photographs of the pages
+        run: |
+          pip install -q playwright && python3 -m playwright install --with-deps chromium >/dev/null
+          python3 tools/sorg_mockup.py --site out --days sorg-days.json --reports out/data/reports --bapa bapa.db --old old.db --shots shots
+          tar -czf sorg-mockup.tgz shots
+          gh release upload swaminarayan-org-web sorg-mockup.tgz --clobber
