@@ -6,7 +6,7 @@
 # Every round also rebuilds the full detail list (Darpan, 13 Nov 2026: "all the captions, all the date information, any
 # location, where the actual resource is from"): tools/sites_index.py reads every saved page and writes pages.jsonl and
 # photos.jsonl (caption, date as written and as YYYY-MM-DD, place, gallery, page, Drive path, file details).
-# Round 1: 13 Nov 2026 evening. Round 2: 14 Nov 2026 after 07:30 UTC.
+# Round 1: 13 Nov 2026 evening (6,725 pages, 46,464 photos). Round 2: 14 Nov 2026 07:40 UTC.
 name: swaminarayan-org
 on:
   push:
@@ -19,7 +19,7 @@ concurrency:
 jobs:
   copy:
     runs-on: ubuntu-latest
-    timeout-minutes: 345
+    timeout-minutes: 360
     env:
       REMOTE: "gdrive:Bapa's Archive/sites/swaminarayan.org"
       GH_TOKEN: ${{ github.token }}
@@ -46,16 +46,20 @@ jobs:
           mkdir -p state
           rclone copy "$REMOTE/_state" state 2>/dev/null || true
           ls -la state
-      - name: Copy (stops by itself at 03:40 UTC or when everything is in)
+      - name: Copy (stops by itself 5h20 after starting, by 03:30 UTC at the latest, or when everything is in)
         run: |
           # every 20 minutes the new files move to Drive, so the runner's disk never fills
           ( while sleep 1200; do [ -d work/files ] && rclone move work/files "$REMOTE" --transfers 8 --min-age 30s \
               --stats 0 2>&1 | tail -2; done ) &
           mover=$!
-          python3 -I tools/swaminarayan_org.py --work work --state state --stop-at 03:40 --workers 3 --gap 0.7 \
+          # stop 5h20 after starting (the job's own limit is 5h45) and never after 03:30 UTC
+          stop=$(date -u -d '+320 minutes' +%H:%M); now=$(date -u +%H%M); s=${stop/:/}
+          if [ $((10#$s)) -gt 330 ] && { [ $((10#$now)) -lt 330 ] || [ $((10#$s)) -lt $((10#$now)) ]; }; then stop=03:30; fi
+          echo "stopping at $stop UTC"
+          python3 -I tools/swaminarayan_org.py --work work --state state --stop-at $stop --workers 3 --gap 0.7 \
             --heads state/heads.txt \
             | tee run.log | grep -E '^\{|stopping' || true
-          kill $mover || true
+          kill $mover || true; pkill -f 'rclone move work/files' || true; sleep 5
       - name: Into Drive
         if: always()
         run: |
