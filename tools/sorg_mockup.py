@@ -45,7 +45,14 @@ def choose(a):
     if days:
         d = sorted(days)[len(days) // 3]
         picks.append(('calendar', d))
+    if old or bapa:   # the Calendar now reaches back to 1981: a month before 1999
+        db = bapa or old
+        early = [d for (d,) in db.execute("SELECT DISTINCT date FROM photos WHERE date < '1999-01-01' AND date >= '1981-01-01' ORDER BY date")]
+        if early:
+            picks.append(('calendar', early[len(early) // 2]))
     picks.append(('travels', ''))
+    picks.append(('years', ''))
+    picks.append(('legacy', ''))
     seen, out = set(), []
     for p in picks:
         if p not in seen:
@@ -69,13 +76,25 @@ def shoot(a):
                       const D = Date; class F extends D {{ constructor(...x) {{ super(...(x.length ? x : [T])); }} static now() {{ return T; }} }}
                       window.Date = F; }})();""")
                 page = ctx.new_page()
-                url = {'today': '/', 'box': f'/photos/#date={d}', 'calendar': f'/calendar/#{d}', 'travels': '/travels/'}[kind]
+                url = {'today': '/', 'box': f'/photos/#date={d}', 'calendar': f'/calendar/#{d}', 'travels': '/travels/',
+                       'years': '/through-the-years/#psm', 'legacy': '/then-and-now/'}[kind]
                 try:
                     page.goto(base + url, wait_until='networkidle', timeout=90000)
                 except Exception as e:
                     print(kind, d, dev, 'slow:', e)
                 page.wait_for_timeout(4000)
                 name = f'{kind}-{d or "now"}-{dev}'
+                if kind in ('years', 'legacy'):   # scroll to the first of the old site's photos on the page
+                    hit = False
+                    for _ in range(80):
+                        hit = page.evaluate("""(() => { const e = [...document.querySelectorAll('img,[style*="sorg-"]')].find(e =>
+                          /sorg-/.test((e.currentSrc || e.src || '') + (e.dataset && e.dataset.src || '') + (e.getAttribute('style') || '')));
+                          if (e) { e.scrollIntoView({block: 'center'}); return true; } scrollBy(0, innerHeight * .9); return false; })()""")
+                        page.wait_for_timeout(400)
+                        if hit:
+                            break
+                    page.wait_for_timeout(2500)
+                    print(kind, dev, 'old site photo on the page:', hit)
                 full = kind in ('box',)
                 if kind == 'box':   # the report sits under the photos
                     page.evaluate("document.querySelector('.vr') && document.querySelector('.vr').scrollIntoView({block: 'start'})")
