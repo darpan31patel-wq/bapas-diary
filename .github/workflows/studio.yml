@@ -239,6 +239,12 @@ jobs:
       - name: Which days to make
         run: |
           mkdir -p have out
+          # the list is on the website once Darpan approves it there; a test run may read the website project's copy before that
+          if ! curl -sfL -o have/uk-europe-days.json https://bapas-diary.com/uk-europe-days.json; then
+            [ "$TO" != studio ] || { echo "The list is not on bapas-diary.com yet: nothing made"; exit 0; }
+            git fetch -q --depth 1 origin claude/project-thread-eawr12 && git show FETCH_HEAD:live/uk-europe-days.json > have/uk-europe-days.json
+          fi
+          echo "UKEU_LIST=$PWD/have/uk-europe-days.json" >> "$GITHUB_ENV"; export UKEU_LIST="$PWD/have/uk-europe-days.json"
           if [ "$TO" = studio ]; then gh release view uk-europe >/dev/null 2>&1 || gh release create uk-europe --title "UK and Europe backup pictures" --notes "Kept ready by the Studio photo packs run. The pictures themselves are in Drive: Bapa's Diary / UK and Europe backups."; fi
           gh release download uk-europe -p index.json -D have --clobber 2>/dev/null || echo '{"days": {}}' > have/index.json
           python tools/uk_europe.py list have/list.json
@@ -256,11 +262,12 @@ jobs:
           PY
       - name: Make them
         run: |
-          [ -s have/todo.txt ] || { echo "Every backup picture is ready"; exit 0; }
+          [ -s have/todo.txt ] || { echo "Nothing to make"; exit 0; }
           python tools/uk_europe.py "$(cat have/todo.txt)" out || [ $? = 2 ]
       - name: Keep them in Drive and on the release
         if: env.TO == 'studio'
         run: |
+          [ -f have/list.json ] || exit 0
           python3 - <<'PY'
           import json, os, glob, shutil, subprocess, datetime
           idx = json.load(open('have/index.json')); days = idx.setdefault('days', {})
