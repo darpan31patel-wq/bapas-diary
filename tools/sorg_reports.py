@@ -36,8 +36,23 @@ WDAYS = 'monday tuesday wednesday thursday friday saturday sunday'.split()
 WRX = '|'.join(WDAYS)
 # "22 April 2004 (V.S. 2060, Vaishakh sud 3) Thursday, Amdavad", "1 February 1999 : Monday (Maha vad 1) , Badalpur",
 # "24 Sept. 99: Friday (Bhadarva Sud 14, V.S. 2055), Mwanza", "24 April 2004, (V.S. 2060, ...) Saturday, London"
-DAYHEAD = re.compile(r'^\s*(\d{1,2})(?:st|nd|rd|th)?\s+(' + MRX + r')\.?,?\s+\'?(\d{4}|\d{2})\b\s*[,:]?\s*(?:\([^)]*\)\s*)?[,:]?\s*'
-                     r'(' + WRX + r')\b\s*(?:\([^)]*\)\s*)?[,:]?\s*(.*)$', re.I)
+# also "3-6-1999 : Thursday (Adhik Jeth Vad-9, 2055), Mumbai - Karyakar Day" (1999's pages write the date in figures)
+DAYHEAD = re.compile(r'^\s*(\d{1,2})(?:st|nd|rd|th)?(?:\s+|[-/.])(' + MRX + r'|\d{1,2})\.?,?(?:\s+|[-/.])\'?(\d{4}|\d{2})\b\s*[,:;]?\s*(?:\([^)]*\)\s*)?[,:;]?\s*'
+                     r'(?:(' + WRX + r')\b\s*(?:\([^)]*\)\s*)?[,:;]?\s*)?(.*)$', re.I)
+# from late 2007 the pages leave the weekday out ("6 October 2007, London; Youth Shibir"); a line like that is a day
+# heading only when it is short, names something after the date, and is not an audio or download line
+AUDIO = re.compile(r'\b(mp3|kb|mb|download|page \d)\b', re.I)
+
+
+def is_head(l):
+    m = DAYHEAD.match(l)
+    if not m or AUDIO.search(l):
+        return None
+    if not m[4] and (len(l) > 140 or not re.search(r'[A-Za-z]{3}', m[5] or '') or re.search(r'[.!?]["\u201d]?$', l)):
+        return None
+    return m
+
+
 # the itinerary's day labels: "1 to 4:", "15 & 16:", "19:"
 LABEL = re.compile(r'^\s*(\d{1,2})(?:\s*(?:to|&|-|and)\s*(\d{1,2}))?\s*:\s*$', re.I)
 MONTHHEAD = re.compile(r'^\s*(' + MRX + r')\.?,?\s+(\d{4})\s*$', re.I)
@@ -59,7 +74,10 @@ def year4(y):
 
 def day_iso(d, m, y):
     try:
-        return f'{year4(y):04d}-{MON[m.lower().rstrip(".")]:02d}-{int(d):02d}'
+        mo = int(m) if m.isdigit() else MON[m.lower().rstrip(".")]
+        if not 1 <= mo <= 12:
+            return ''
+        return f'{year4(y):04d}-{mo:02d}-{int(d):02d}'
     except (KeyError, ValueError):
         return ''
 
@@ -68,6 +86,11 @@ def split_places(rest, known):
     """'Mumbai, 221st Hari Jayanti Festival' -> (['Mumbai'], '221st Hari Jayanti Festival')
     'Mandvi, Koday, Talvana, Khakhar, Bhuj' -> (['Mandvi', 'Koday', 'Talvana', 'Khakhar', 'Bhuj'], '')"""
     places, other = [], []
+    rest = re.sub(r'\([^)]*\)', ' ', rest or '')
+    tail = ''
+    if ';' in rest:   # "London; Youth Shibir": the places, then what the day was
+        rest, tail = rest.split(';', 1)
+    rest = re.sub(r'\s+-\s+', ', ', rest)   # "Mumbai - Karyakar Day"
     for seg in [flat(x).strip(' .:;') for x in re.split(r',', rest)]:
         if not seg:
             continue
@@ -80,22 +103,41 @@ def split_places(rest, known):
             places.append(seg)
         else:
             other.append(seg)
+    if other and not places and other[-1].lower() in known:   # "228TH BIRTHDAY CELEBRATION OF ..., Sarangpur"
+        places.append(other.pop())
+    if tail.strip(' .'):
+        other.append(flat(tail).strip(' .'))
     return places, ', '.join(other)
 
 
+DATESTART = re.compile(r'^\d{1,2}(?:st|nd|rd|th)?(?:$|\s+(?:' + MRX + r')\b|[-/.]\d{1,2}[-/.]\d{2,4}\b)', re.I)
+
+
 def lines_of(words):
-    """the page's lines, with a date heading that the page source broke over two lines put back together
-    ("8 October\n2002 (V.S. 2058, Aso sud 2) Tuesday, Gandhidham, Bhuj")"""
+    """the page's lines, with a date heading that the page source broke over several lines put back together
+    ("8 October\n2002 (V.S. 2058, Aso sud 2) Tuesday, Gandhidham, Bhuj", "2\nMarch 2007, (Vikram\nSamvat 2063, Sud 14)
+    Friday,\nBhavnagar, Vallabhipur, Sarangpur"): up to five lines, until the weekday and the place after it"""
     raw = [flat(l) for l in (words or '').split('\n')]
-    out = []
-    for l in raw:
-        if not l:
-            out.append('')
-            continue
-        if out and out[-1] and re.fullmatch(r'\d{1,2}(?:st|nd|rd|th)?(?:\s+(?:' + MRX + r')\.?)?', out[-1], re.I):
-            out[-1] = out[-1] + ' ' + l
-        else:
-            out.append(l)
+    out, i = [], 0
+    wd = re.compile(r'\b(' + WRX + r')\b', re.I)
+    while i < len(raw):
+        l = raw[i]
+        if l and DATESTART.match(l) and len(l) < 120:
+            j, cur = i, l
+            while j + 1 < len(raw) and raw[j + 1] and j - i < 5:
+                m = wd.search(cur)
+                open_ = cur.count('(') > cur.count(')') or re.search(r'[,;(]\s*$', cur)
+                dated = re.match(r'^\d{1,2}\S*\s*(?:' + MRX + r')?\.?,?[\s\-/.]*\d{0,2}[\s\-/.]*\'?\d{2,4}\b', cur, re.I)
+                if dated and not open_ and (m and re.search(r'\w', cur[m.end():]) or not m and re.search(r'[A-Za-z]{3}', cur[dated.end():])):
+                    break
+                cur = cur + ' ' + raw[j + 1]
+                j += 1
+            if is_head(cur):
+                out.append(cur)
+                i = j + 1
+                continue
+        out.append(l)
+        i += 1
     return out
 
 
@@ -170,14 +212,16 @@ def read_page(pg, known):
     """one travelogue page -> (day reports, prasangs, itinerary); a prasang keeps its own title (the short heading just
     before its dated heading), and every dated heading after the first prasang is a prasang too"""
     lines = lines_of(pg.get('words', ''))
-    heads = [i for i, l in enumerate(lines) if DAYHEAD.match(l)]
+    heads = [i for i, l in enumerate(lines) if is_head(l)]
+    if any(is_head(lines[i])[4] for i in heads):   # a page that names the weekday does so on every day heading; its other
+        heads = [i for i in heads if is_head(lines[i])[4]]   # dated lines are audio, photo or download labels
     itin = {}
     for i, l in enumerate(lines):
         if re.search(r"itinerary", l, re.I) and len(l) < 40:
             itin.update(itinerary(lines, i, known))
     days, prs, title, in_pr = [], [], '', False
     for n, i in enumerate(heads):
-        m = DAYHEAD.match(lines[i])
+        m = is_head(lines[i])
         date = day_iso(m[1], m[2], m[3])
         end = heads[n + 1] if n + 1 < len(heads) else len(lines)
         body = []
@@ -188,11 +232,13 @@ def read_page(pg, known):
         while body and not body[-1]:
             body.pop()
         next_title = ''
-        if n + 1 < len(heads) and body and len(body[-1]) < 60 and not re.search(r'[.!?,;:"”]$', body[-1]):
+        if (n + 1 < len(heads) and body and len(body[-1]) < 60 and not re.search(r'[.!?,;:"\u201d]$', body[-1])
+                and re.match(r"[A-Z0-9'\u2018]", body[-1]) and not re.search(r'["\u201c\u201d]', body[-1]) and len(body[-1].split()) <= 8):
             next_title = body.pop()
         if title:
             in_pr = True
-        w = [p for p in paragraphs(body) if not re.fullmatch(r'(Download|\(.*KB\)|.*Mp3.*KB.*)', p, re.I)]
+        w = [p for p in paragraphs(body) if not re.fullmatch(r'(Download|\(.*KB\)|.*Mp3.*KB.*)', p, re.I)
+             and not (len(p) < 45 and p.rstrip().endswith(':'))]   # a section's own label ("Living with Swamishri :")
         places, occasion = split_places(m[5], known)
         it = dict(date=date, heading=flat(lines[i]), pl=places, o=occasion, w=w)
         if date and w:
@@ -246,8 +292,8 @@ def main():
             pg = json.loads(line)
         except ValueError:
             continue
-        url = pg.get('page_url', '')
-        if pg.get('section') != 'vicharan' and '/vicharan/' not in url:
+        url = pg.get('page_url') or pg.get('url') or ''   # round 1's lists said 'url'
+        if pg.get('section') != 'vicharan' and '/vicharan/' not in url or '/photo/' in url:   # travelogue pages only, not galleries
             continue
         days, prs, itin = read_page(pg, known)
         if not (days or prs or itin):
@@ -276,7 +322,7 @@ def main():
                                                date=it['date'], heading_as_written=it['heading'], title=it.get('t', ''),
                                                places=it['pl'], places_from='the day heading', occasion=it['o'],
                                                paragraphs=it['w'], page_url=url, page_title=pg.get('title', ''),
-                                               page_drive_path=pg.get('drive_path', '')), ensure_ascii=False) + '\n')
+                                               page_drive_path=pg.get('drive_path') or pg.get('file', '')), ensure_ascii=False) + '\n')
                 n_days += kind == 'r'
                 n_pr += kind == 'p'
     os.makedirs(a.out, exist_ok=True)
