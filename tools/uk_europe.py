@@ -220,7 +220,7 @@ def build(mmdd, entry, out, towns_there=(), look='cords'):
     day = datetime.date(2000, int(mmdd[:2]), int(mmdd[3:]))   # a year with no festival dress and no 29 February trouble
     items = gather(entry, log, towns_there)
     good = look_at(items, log)
-    photos = choose(good)
+    photos = choose(good, 48 if look in ('wall', 'hero') else MAX_CARDS)   # the wall looks hold more
     years, have = [yr['year'] for yr in entry['years']], sorted({x['y'] for x in photos})
     for y in years:
         if y not in have:
@@ -242,7 +242,7 @@ def build(mmdd, entry, out, towns_there=(), look='cords'):
     title = f'{day.day} {day:%B}'
     if look != 'cords':   # 'album', 'gold', 'mosaic': grouped by year (tools/uk_europe_looks.py)
         import uk_europe_looks
-        img = uk_europe_looks.compose_grouped(photos, day, entry, look, title, 'in the UK and Europe', foot_line(entry))
+        img = uk_europe_looks.compose_grouped(photos, day, entry, look, title, 'in the UK and Europe', foot_line(entry), heroes=hero)
     else:
         img = make.compose_wide(photos, day, seed='uk-europe-' + mmdd, style=STYLE, title=title, subtitle='in the UK and Europe',
                                 cal=(foot_line(entry), ''), hero=hero)

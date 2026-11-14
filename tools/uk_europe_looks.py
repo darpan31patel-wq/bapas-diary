@@ -47,26 +47,49 @@ def pack(n, c, r, big):
     return out
 
 
-def compose_grouped(photos, day, entry, look, title, subtitle, foot):
+def compose_grouped(photos, day, entry, look, title, subtitle, foot, heroes=()):
+    """'wall': like gold with up to 48 photos packed tight, tiny one line captions. 'hero': the wall between a full height
+    darshan of each guru at the sides (heroes)."""
+    wall = look in ('wall', 'hero')
     big = look == 'mosaic'
     BIG_FROM = 4                                                  # a year with fewer photos than this has no big one
     page = look == 'album'
     years = group(photos)
     img = make.background().convert('RGBA'); dr = ImageDraw.Draw(img)
     make.header_one(img, title, subtitle)
-    M, gap, between = px(40), px(8), px(26)                       # edge, between cells, between year blocks
+    M, gap, between = px(40), (px(4) if wall else px(8)), (px(14) if wall else px(26))   # edge, between cells, between year blocks
     top, bottom = px(150), H - px(84)
+    left, right = M, W - M
+    if look == 'hero' and heroes:                                 # a full height darshan of each guru at the side(s)
+        hw = int((bottom - top) * .6)
+        for k, hx in enumerate(heroes[:2]):
+            x = left if k == 0 else right - hw
+            photo = make.polish(make.crop_to(hx['im'], hx['face'], hw, int(bottom - top), 'frame', at=.3))
+            img.paste(photo, (int(x), int(top)))
+            dr.rectangle((x - 1, top - 1, x + hw, bottom), outline=make.GOLD_SOFT, width=max(1, int(px(1.5))))
+            yf = garamond(px(40), 700)
+            tag = f"{hx['y']}  {make.place(hx).upper()}"
+            tw = dr.textlength(tag, font=yf)
+            dr.rectangle((x, bottom - px(64), x + hw, bottom), fill=(30, 8, 12))
+            dr.text((x + hw / 2, bottom - px(18)), tag, font=yf, fill=make.GOLD, anchor='ms')
+            if k == 0:
+                left = x + hw + between * 2
+            else:
+                right = x - between * 2
+        photos = [x for x in photos if not any(x is h for h in heroes)]
+        years = group(photos)
+    M2 = 0
     for y in years:                                               # the best photo first (the big one), then the rest
         years[y].sort(key=lambda x: -x['score'])
     cap_h = px(58) if page else 0                                 # room for a caption under each photo on a page
-    head_h = px(74)                                               # the year heading over each block
+    head_h = px(46) if wall else px(74)                                               # the year heading over each block
     pad = px(16) if page else 0
-    ratio = .8                                                    # cell photo height / width
+    ratio = .75 if wall else .8                                   # cell photo height / width
     best = None
-    for rows in range(2, 9):                                      # every block fills the height: the row count that gives the biggest photos
+    for rows in range(2, 11):                                      # every block fills the height: the row count that gives the biggest photos
         grids = {y: cols_for(len(ps), rows, big and len(ps) >= BIG_FROM) for y, ps in years.items()}
         cols = sum(grids.values())
-        s_w = (W - 2 * M - between * (len(years) - 1) - 2 * pad * len(years) - gap * (cols - len(years))) / cols
+        s_w = (right - left - between * (len(years) - 1) - 2 * pad * len(years) - gap * (cols - len(years))) / cols
         s_h = ((bottom - top - head_h - 2 * pad - gap * (rows - 1)) / rows - cap_h) / ratio
         s = min(s_w, s_h)
         if best is None or s > best[0]:
@@ -76,8 +99,8 @@ def compose_grouped(photos, day, entry, look, title, subtitle, foot):
     ph = s * ratio
     widths = {y: c * s + (c - 1) * gap + 2 * pad for y, (c, r) in grids.items()}
     total = sum(widths.values()) + between * (len(years) - 1)
-    x0 = (W - total) / 2
-    cf, lh = garamond(px(17), 500), px(20)
+    x0 = left + (right - left - total) / 2
+    cf, lh = (garamond(px(13), 500), px(15)) if wall else (garamond(px(17), 500), px(20))
     rnd = random.Random(day.isoformat())
     for y in sorted(years):
         ps, (c, r) = years[y], grids[y]
@@ -100,7 +123,7 @@ def compose_grouped(photos, day, entry, look, title, subtitle, foot):
             yf, pf = garamond(px(44), 700), arimo_bold(px(15))
             yc, pc = make.YEAR_C2, make.PLACE_C2
         else:
-            yf, pf = garamond(px(46), 700), garamond(px(18), 500)
+            yf, pf = (garamond(px(30), 700), garamond(px(15), 500)) if wall else (garamond(px(46), 700), garamond(px(18), 500))
             yc, pc = make.GOLD, make.CAPTION_GOLD
             dr.line((x0, by + head_h - px(10), x0 + bw, by + head_h - px(10)), fill=make.GOLD_SOFT, width=max(1, int(px(1.2))))
         yt = str(y); yw = dr.textlength(yt, font=yf)
@@ -113,10 +136,11 @@ def compose_grouped(photos, day, entry, look, title, subtitle, foot):
         else:
             while yw > bw - px(4) and yf.size > px(20):
                 yf = garamond(yf.size - 2, 700); yw = dr.textlength(yt, font=yf)
-            dr.text((x0 + pad, by + px(38)), yt, font=yf, fill=yc, anchor='ls')
+            hy = px(30) if wall else px(38)
+            dr.text((x0 + pad, by + hy), yt, font=yf, fill=yc, anchor='ls')
             if yw + px(14) + dr.textlength(line2, font=pf) <= bw:
-                dr.text((x0 + pad + yw + px(14), by + px(38)), line2, font=pf, fill=pc, anchor='ls')
-            else:                                                 # a narrow block: the town under the year
+                dr.text((x0 + pad + yw + px(14), by + hy), line2, font=pf, fill=pc, anchor='ls')
+            elif not wall:                                        # a narrow block: the town under the year
                 dr.text((x0 + pad, by + px(60)), line2, font=pf, fill=pc, anchor='ls')
         used = max(row + span for _, row, span in pack(len(ps), c, r, big and len(ps) >= BIG_FROM))   # rows this block really uses
         gx0, gy0 = x0 + pad, by + head_h + pad + (r - used) * (ph + cap_h + gap) / 2
@@ -135,7 +159,7 @@ def compose_grouped(photos, day, entry, look, title, subtitle, foot):
                         dr.text((px0 + cw / 2, py0 + chh + px(6) + (i + .8) * lh), l, font=cf, fill=(70, 40, 40), anchor='ms')
             else:
                 if text:                                           # the caption in a dark fade at the foot of the photo
-                    lines = make.wrap(dr, text, cf, cw - px(16), 2 if span == 1 else 1)
+                    lines = make.wrap(dr, text, cf, cw - px(10), 1 if wall else (2 if span == 1 else 1))
                     fh = int(len(lines) * lh + px(14) + chh * .12)
                     fade = Image.new('RGBA', (int(cw), fh)); fd = ImageDraw.Draw(fade)
                     for j in range(fh):
