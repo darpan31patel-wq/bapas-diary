@@ -30,7 +30,7 @@ MIN_SHARP = 12        # a face blurrier than this (a tiny old video still) is no
 STYLE = 'UKEU'        # the live cards on three cords, with a third line of room under each so a whole caption fits
 make.WIDE[STYLE] = dict(make.WIDE[make.LIVE_STYLE], lines=3, pill=3, whole=True)
 make.FRAME_ASPECT[STYLE] = make.FRAME_ASPECT[make.LIVE_STYLE]
-ALBUM_TITLE = re.compile(r"^(?:Maharaj|Swamishri|Bapa)['’]s (?:Satsang )?Vicharan\b|^(?:UK|London)[,&\w ]*(?:UK & Europe)$", re.I)   # the album's heading, not what the photo shows
+ALBUM_TITLE = re.compile(r"(?:Maharaj|Swamishri|Bapa)['’]s (?:Satsang )?Vicharan\b|^(?:UK|London)[,&\w ]*(?:UK & Europe)$", re.I)   # the album's heading, not what the photo shows
 HERO_MIN = 480        # a big card needs a photo at least this wide, and never a small old video still blown up
 ELSEWHERE = re.compile(r"[A-Z][a-z]+(?: [A-Z][a-z]+)?")   # a plain town name (not an album's title)
 HONORIFIC = re.compile(r'\b(?:Pragat\s+)?Brahmaswarup\s+(?=Pramukh|Mahant|Yogiji|Shastriji)')
