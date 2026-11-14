@@ -3039,7 +3039,13 @@ def compose_special(ev, day, lead=None):
     keep = [k for k in range(len(ims)) if not any(np.abs(tiny[k] - tiny[j]).mean() < 8 for j in range(k))]
     ims, plain = [ims[k] for k in keep], [plain[k] for k in keep]
     if ev.get('paths') and lead is None:   # the UK diary's photos of a chosen year: one Bapa is recognised in is the big card
-        seen = [bapa_face(im, ev['date'], .15)[1] for im in ims]   # the likeliest Bapa first, even in a small old print
+        def likely(im):   # Bapa recognised and the most saffron first; a photo that is mostly a sheet of paper or a note last
+            sim = bapa_face(im, ev['date'], TG_SAME_PERSON)[0] is not None
+            h = cv2.cvtColor(np.array(im.resize((200, 150))), cv2.COLOR_RGB2HSV)
+            saffron = ((h[..., 0] >= 3) & (h[..., 0] <= 24) & (h[..., 1] > 90) & (h[..., 2] > 110)).mean()
+            paper = ((h[..., 1] < 40) & (h[..., 2] > 190)).mean()
+            return (.3 if sim else 0) + float(saffron - paper)
+        seen = [likely(im) for im in ims]
         order = sorted(range(len(ims)), key=lambda k: -seen[k])
         ims, plain = [ims[k] for k in order], [plain[k] for k in order]
     k = SPECIAL_FIRST.get(ev.get('url'))
