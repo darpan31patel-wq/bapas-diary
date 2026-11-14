@@ -263,6 +263,9 @@ def not_dupes(rs, path):
 
 def make_db(a):
     rs = not_dupes(json.load(open(a.rows, encoding='utf-8')), a.same)
+    if a.have:   # only the photos already in the photo store (the face check and fingerprints read them from there)
+        have = set(open(a.have).read().split('\n')) if os.path.exists(a.have) else set()
+        rs = [r for r in rs if f"s/{r['album']}/{r['file']}" in have]
     if os.path.exists(a.out):
         os.remove(a.out)
     db = sqlite3.connect(a.out)
@@ -309,7 +312,7 @@ def main():
     s = sub.add_parser('store'); s.add_argument('--rows', required=True); s.add_argument('--have')
     s.add_argument('--remote', default="gdrive:Bapa's Archive/sites/swaminarayan.org"); s.add_argument('--send', required=True)
     s.add_argument('--work', default='work'); s.add_argument('--chunk', type=int, default=300); s.add_argument('--minutes', type=float, default=300)
-    d = sub.add_parser('db'); d.add_argument('--rows', required=True); d.add_argument('--out', required=True); d.add_argument('--same')
+    d = sub.add_parser('db'); d.add_argument('--rows', required=True); d.add_argument('--out', required=True); d.add_argument('--same'); d.add_argument('--have')
     m = sub.add_parser('same'); m.add_argument('--rows', required=True); m.add_argument('--db', required=True); m.add_argument('--have')
     m.add_argument('--out', required=True); m.add_argument('--photos', default='https://photos.bapas-diary.com/'); m.add_argument('--bits', type=int, default=6)
     p = sub.add_parser('add'); p.add_argument('--rows', required=True); p.add_argument('--db', required=True); p.add_argument('--have')
