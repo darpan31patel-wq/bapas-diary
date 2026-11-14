@@ -2113,14 +2113,22 @@ def chosen_specials(day, items=()):
         if kind == 'story':
             evs = [e for e in tg_all() if e.get('posts') and (e.get('url') == ref or e['date'][:10] == ref[:10])]
             ev = dict(max(evs, key=tg_rank)) if evs else None
+            if ev and ev.get('channel'):   # the UK diary: its darshans as the day's picture has them (its channel's frame cut away)
+                d = year_story(int(ev['date'][:4]), day, [x for x in items if x.get('tg')])
+                if d:
+                    ev.update(urls=d['urls'], paths=d['paths'], kind='year', paras=([ev['story']] if ev.get('story') else []) + ([d['line']] + d['paras'] if d else []))
         elif kind == 'news':
             ev = news_story(ref)
         elif kind == 'year':
             y = int(c.get('year') or 0)
-            mine = [x for x in items if x['y'] == y and x.get('d', '')[:10] == f'{y}-{day:%m-%d}'] or [x for x in items if x['y'] == y]
-            if mine:
-                ev = {'date': mine[0].get('d', '')[:10] or f'{y}-{day:%m-%d}', 'place': mine[0].get('p', ''),
-                      'line': caption(mine[0]), 'urls': [x['i'] for x in mine[:8]]}
+            ev = year_story(y, day, list(items))
+            if ev and ev.get('paths'):   # a year only the UK diary has (1977): its story of the day is the picture's words
+                told = [e for e in tg_all() if e.get('channel') and e['date'][:10] == ev['date'][:10]]
+                if told:
+                    e = max(told, key=tg_rank)
+                    more = [c for c in [ev['line']] + ev['paras'] if c.lower().rstrip('.') not in (e.get('story') or '').lower()]   # a caption the story already says isn't said twice
+                    ev.update(paras=([e['story']] if e.get('story') else []) + more, line=e.get('line') or ev['line'],
+                              place=ev.get('place') or e.get('place') or '')
         elif kind == 'photos':
             ev = {'date': f"{c.get('year') or day.year}-{day:%m-%d}", 'line': c.get('headline') or ''}
         if ev is None:
@@ -2142,14 +2150,17 @@ def year_story(y, day, items, lead=None):
     """One year of the day as a special picture's story: that year's photos of the day (the chosen card's first) and every
     different caption among them as its words."""
     mine = [x for x in items if x['y'] == y and x.get('d', '')[:10] == f'{y}-{day:%m-%d}'] or [x for x in items if x['y'] == y]
-    mine = [x for x in mine if not x.get('tg')]
+    own = [x for x in mine if not x.get('tg')]
+    mine = own or [x for x in mine if 'path' in x]   # a year before baps.org's photos (1977): the UK diary's darshans, unframed as the picture shows them
     if lead is not None:
         mine = [lead] + [x for x in mine if x['i'] != lead['i']]
     if not mine:
         return None
     caps = list(dict.fromkeys(c for c in (caption(x) for x in mine) if c and c != DARSHAN))
     return {'kind': 'year', 'date': mine[0].get('d', '')[:10] or f'{y}-{day:%m-%d}', 'place': mine[0].get('p', ''),
-            'line': caps[0] if caps else f'{day.day} {day:%B} {y}', 'paras': caps[1:], 'urls': [x['i'] for x in mine[:8]]}
+            'line': caps[0] if caps else f'{day.day} {day:%B} {y}', 'paras': caps[1:], 'urls': [x['i'] for x in mine[:8]],
+            'paths': [x.get('path') for x in mine[:8]] if not own else None,
+            'places': [x.get('p') or '' for x in mine[:8]] if not own else None}
 
 
 def day_search(day, items, photos, tg_evs):
@@ -2173,10 +2184,10 @@ def day_search(day, items, photos, tg_evs):
         y = int(d[:4])
         score = 100 + (50 if e.get('special') else 0) + min(e.get('reposts', 1), 5)
         if e.get('channel'):   # the UK diary: its own channel's photos
-            try:
-                e['urls'] = [u for _, u in tg_photos(e.get('posts') or [], e['channel'], pairs=True)]
-            except Exception:
-                e['urls'] = []
+            d = year_story(y, day, [x for x in items if x.get('tg')])
+            e['urls'], e['paths'] = (d['urls'], d['paths']) if d else ([], None)
+            if d:
+                e['kind'], e['paras'] = 'year', ([e['story']] if e.get('story') else []) + [d['line']] + d['paras']
             score = 80
         if not ((e.get('posts') and e.get('photos')) or e.get('urls')):   # a story told without pictures: that year's photos of the day
             e['urls'] = [x['i'] for x in exact(y)[:8]]
@@ -3013,13 +3024,30 @@ def compose_special(ev, day, lead=None):
     except (OSError, ValueError):
         worded = set()
     plain = [False] * len(ims)
+    ready = dict(zip(ev.get('urls') or [], ev.get('paths') or []))   # photos the day's picture already holds (the UK diary's darshans)
     for n, u in urls:
         x = {'i': u, 'y': 0}
-        download_all([x], cache)
+        if ready.get(u) and os.path.exists(ready[u]):
+            x['path'] = ready[u]
+        else:
+            download_all([x], cache)
         if 'path' in x:
             im = Image.open(x['path']).convert('RGB')
             if np.asarray(im.convert('L').resize((64, 64)), dtype=float).std() >= 25:   # not a plain night sky or a blank frame
                 ims.append(im); plain.append(n in worded)
+    tiny = [np.asarray(im.convert('L').resize((16, 16)), dtype=float) for im in ims]   # the same photo posted twice is shown once
+    keep = [k for k in range(len(ims)) if not any(np.abs(tiny[k] - tiny[j]).mean() < 8 for j in range(k))]
+    ims, plain = [ims[k] for k in keep], [plain[k] for k in keep]
+    if ev.get('paths') and lead is None:   # the UK diary's photos of a chosen year: one Bapa is recognised in is the big card
+        def likely(im):   # Bapa recognised and the most saffron first; a photo that is mostly a sheet of paper or a note last
+            sim = bapa_face(im, ev['date'], TG_SAME_PERSON)[0] is not None
+            h = cv2.cvtColor(np.array(im.resize((200, 150))), cv2.COLOR_RGB2HSV)
+            saffron = ((h[..., 0] >= 3) & (h[..., 0] <= 24) & (h[..., 1] > 90) & (h[..., 2] > 110)).mean()
+            paper = ((h[..., 1] < 40) & (h[..., 2] > 190)).mean()
+            return (.3 if sim else 0) + float(saffron - paper)
+        seen = [likely(im) for im in ims]
+        order = sorted(range(len(ims)), key=lambda k: -seen[k])
+        ims, plain = [ims[k] for k in order], [plain[k] for k in order]
     k = SPECIAL_FIRST.get(ev.get('url'))
     if k and lead is None and k < len(ims):   # Darpan's own choice of the big photo: it swaps places with the first
         ims[0], ims[k] = ims[k], ims[0]; plain[0], plain[k] = plain[k], plain[0]

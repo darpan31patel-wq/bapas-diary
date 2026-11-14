@@ -119,7 +119,8 @@ def main():
     checked_file = os.path.join(specials_dir, 'checked.json')
     checked = json.load(open(checked_file)) if os.path.exists(checked_file) else {}
     for d in want:   # the special picture's pack, on the days the morning run makes one
-        if str(d) not in a.dates and (checked.get(str(d)) == 'none' or os.path.exists(os.path.join(specials_dir, str(d), 'pack.json'))):
+        # today's is made again every morning, so the Studio shows the special picture that is going out (Darpan, 14 Nov 2026)
+        if str(d) not in a.dates and d != today and (checked.get(str(d)) == 'none' or os.path.exists(os.path.join(specials_dir, str(d), 'pack.json'))):
             continue
         print('looking for a special picture on', d, flush=True)
         shutil.rmtree(os.path.join(specials_dir, str(d)), ignore_errors=True)
