@@ -76,7 +76,7 @@ def shorter_versions(text):
 def website_caption(c, day=None):
     """The caption the Bapa pages show: what Bapa does (make.caption), said shorter where the website's words are long;
     day ('YYYY-MM-DD', the photo's date) takes out 'on 6 August' when that is the photo's own day."""
-    return summarise(R.caption({'c': R.undate(c, day)})) if c else ''
+    return summarise(R.caption({'c': R.undate(c, day), 'd': day})) if c else ''
 
 
 def card_caption(c):
