@@ -92,7 +92,10 @@ def dates(s):
                 f = t = iso(g[2], g[1], g[0])
             elif kind == 'day2':
                 yy = int(g[2])
-                f = t = iso(1900 + yy if yy > 50 else 2000 + yy, g[1], g[0])
+                year = 1900 + yy if yy > 50 else 2000 + yy
+                if year > 2016:
+                    continue   # '04 May 30', '20 July 27': not a two figure year (nothing on these sites is after 2016)
+                f = t = iso(year, g[1], g[0])
             elif kind == 'mdy':
                 f = t = iso(g[2], g[0], g[1])
             else:
