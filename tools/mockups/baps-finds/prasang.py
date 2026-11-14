@@ -19,7 +19,7 @@ CANDS = [d for d in WANT if d in by] + sorted(by, reverse=True)
 
 CSS = """
 .bpr .flip{margin-left:10px;padding:0;border:0;background:none;font:500 13px var(--serif);font-style:normal;color:var(--gold-soft, var(--gold));text-decoration:underline;text-decoration-color:rgba(217,164,65,.45);text-underline-offset:3px;cursor:pointer}
-.bpr .src{margin:6px 0 0;font:400 12px/1.4 var(--sans);color:var(--cream, var(--paper));opacity:.6}
+.bpr .src,.bpr .paras p.src{margin:6px 0 0;font:400 12px/1.4 var(--sans);color:var(--cream, var(--paper));opacity:.6}
 .bpr .src a{color:inherit}
 .bpr [hidden]{display:none}
 .bpr.mock{outline:2px dashed rgba(217,164,65,.55);outline-offset:10px;border-radius:4px}
@@ -29,8 +29,8 @@ JS = """([css, cls, lineCls, label, stories, sel, where]) => {
   const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   const ps = l => l.map(t => `<p class="more">${esc(t)}</p>`).join('');
   const html = stories.map(s => `<div class="${cls} bpr mock" translate="no"><p class="${lineCls}"><b>Prasang</b>${esc(label)}` +
-    `<button type="button" class="flip">ગુજરાતી</button></p><div class="paras" lang="en">${ps(s.en)}</div>` +
-    `<div class="paras" lang="gu" hidden>${ps(s.gu)}</div><p class="src">English translation of the <a href="${esc(s.src)}">baps.org Daily Satsang</a> prerna parimal</p></div>`).join('');
+    `<button type="button" class="flip">ગુજરાતી</button></p><div class="paras" lang="en">${ps(s.en)}<p class="src">English translation</p></div>` +
+    `<div class="paras" lang="gu" hidden>${ps(s.gu)}</div></div>`).join('');
   const t = document.querySelector(sel); if (!t) return false;
   t.insertAdjacentHTML(where, html);
   document.querySelectorAll('.bpr .flip').forEach(b => b.onclick = () => { const [en, gu] = b.closest('.bpr').querySelectorAll('.paras');
