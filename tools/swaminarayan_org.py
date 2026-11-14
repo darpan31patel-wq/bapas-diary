@@ -132,6 +132,13 @@ class Copier:
                 t += dt.timedelta(days=1)
             self.stop_at = t
         self.done = threading.Event()
+        # what earlier rounds already put in Drive: photos are not fetched again, and pages are read from the copy
+        # of them made at the start of this round (so a round that ended without saving where it got to costs
+        # nothing but a quick re-read)
+        self.have = set()
+        if a.have and os.path.exists(a.have):
+            self.have = set(x for x in open(a.have, encoding='utf-8').read().split('\n') if x)
+        self.since_save = 0
 
     def add(self, url, force=False):
         u = norm(url)
@@ -240,7 +247,39 @@ class Copier:
                 with self.lock:
                     self.active -= 1
 
+    def save(self):
+        """where it got to, written now and then, so a round cut short still carries on from there"""
+        with self.lock:
+            left = list(self.q.queue) + list(self.retry)
+            seen = sorted(self.seen)
+            self.pages.flush()
+            self.files_log.flush()
+            counts = dict(self.counts)
+        for name, text in (('todo.txt', '\n'.join(left)), ('seen.txt', '\n'.join(seen))):
+            tmp = os.path.join(self.a.state, name + '.tmp')
+            with open(tmp, 'w', encoding='utf-8') as f:
+                f.write(text)
+            os.replace(tmp, os.path.join(self.a.state, name))
+        with open(os.path.join(self.a.state, 'last-run.json'), 'w') as f:
+            json.dump(dict(counts, left=len(left), finished=False, partial=True,
+                           at=dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds')), f)
+
     def one(self, url):
+        rel = local(url)
+        if rel in self.have:
+            copy = os.path.join(self.a.pages_dir, rel) if self.a.pages_dir else ''
+            if copy and os.path.exists(copy):
+                try:
+                    self.page(url, open(copy, 'rb').read())
+                except Exception as e:
+                    print('could not read', url, e, flush=True)
+                with self.lock:
+                    self.counts['pages_again'] = self.counts.get('pages_again', 0) + 1
+                return
+            if not PAGE.search(urllib.parse.urlsplit(url).path):
+                with self.lock:
+                    self.counts['already'] = self.counts.get('already', 0) + 1
+                return
         if True:
             status, kind, body, final = self.get(url)
             time.sleep(self.a.gap)
@@ -280,6 +319,8 @@ class Copier:
                     print('could not read', url, e, flush=True)
             if n % 500 == 0:
                 print(json.dumps(self.counts), 'waiting', self.q.qsize(), flush=True)
+            if n % 2000 == 0:
+                self.save()
 
     def run(self):
         self.retry = []
@@ -317,6 +358,8 @@ if __name__ == '__main__':
     ap.add_argument('--workers', type=int, default=3)
     ap.add_argument('--gap', type=float, default=0.7, help='seconds each reader waits between files')
     ap.add_argument('--heads', default='', help='addresses of saved files whose details are missing (asked once)')
+    ap.add_argument('--have', default='', help='paths already in Drive (rclone lsf -R)')
+    ap.add_argument('--pages-dir', default='', help='a copy of the pages already in Drive, read instead of fetched')
     ap.add_argument('--most', type=int, default=0, help='stop after this many files (a test)')
     a = ap.parse_args()
     c = Copier(a)

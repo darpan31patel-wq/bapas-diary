@@ -6,7 +6,7 @@
 # Every round also rebuilds the full detail list (Darpan, 13 Nov 2026: "all the captions, all the date information, any
 # location, where the actual resource is from"): tools/sites_index.py reads every saved page and writes pages.jsonl and
 # photos.jsonl (caption, date as written and as YYYY-MM-DD, place, gallery, page, Drive path, file details).
-# Round 1: 13 Nov 2026 evening (6,725 pages, 46,464 photos). Round 2: 14 Nov 2026 07:40 UTC.
+# Round 1: 13 Nov 2026 evening (6,725 pages, 46,464 photos). Round 2: 14 Nov 2026 07:40 UTC. Round 3: 13:40 UTC.
 name: swaminarayan-org
 on:
   push:
@@ -46,31 +46,37 @@ jobs:
           mkdir -p state
           rclone copy "$REMOTE/_state" state 2>/dev/null || true
           ls -la state
-      - name: Copy (stops by itself 5h20 after starting, by 03:30 UTC at the latest, or when everything is in)
+          # what is already in Drive: photos are skipped, pages are read from this copy instead of the site
+          rclone lsf -R --files-only "$REMOTE" --filter "- _state/**" --filter "- _index/**" > have.txt || : > have.txt
+          rclone copy "$REMOTE" pages --filter "- _state/**" --filter "- _index/**" --filter "+ *.{htm,html,HTM,HTML}" \
+            --filter "+ *.php*" --filter "- *" --transfers 16 --checkers 16 --stats 0 || true
+          wc -l have.txt
+      - name: Copy (stops by itself 4h30 after starting, by 03:30 UTC at the latest, or when everything is in)
         run: |
           # every 20 minutes the new files move to Drive, so the runner's disk never fills
-          ( while sleep 1200; do [ -d work/files ] && rclone move work/files "$REMOTE" --transfers 8 --min-age 30s \
-              --stats 0 2>&1 | tail -2; done ) &
+          # and where it got to goes to Drive too, so a round cut short still carries on from there
+          ( while sleep 600; do [ -d work/files ] && rclone move work/files "$REMOTE" --transfers 16 --checkers 16 \
+              --min-age 30s --stats 0 2>&1 | tail -2; rclone copy state "$REMOTE/_state" --stats 0 2>&1 | tail -1; done ) &
           mover=$!
-          # stop 5h20 after starting (the job's own limit is 5h45) and never after 03:30 UTC
-          stop=$(date -u -d '+320 minutes' +%H:%M); now=$(date -u +%H%M); s=${stop/:/}
+          # stop 4h30 after starting (the job's own limit is 6h; handing over the last files takes a while) and never after 03:30 UTC
+          stop=$(date -u -d '+270 minutes' +%H:%M); now=$(date -u +%H%M); s=${stop/:/}
           if [ $((10#$s)) -gt 330 ] && { [ $((10#$now)) -lt 330 ] || [ $((10#$s)) -lt $((10#$now)) ]; }; then stop=03:30; fi
           echo "stopping at $stop UTC"
           python3 -I tools/swaminarayan_org.py --work work --state state --stop-at $stop --workers 3 --gap 0.7 \
-            --heads state/heads.txt \
+            --heads state/heads.txt --have have.txt --pages-dir pages \
             | tee run.log | grep -E '^\{|stopping' || true
           kill $mover || true; pkill -f 'rclone move work/files' || true; sleep 5
       - name: Into Drive
         if: always()
         run: |
-          [ -d work/files ] && rclone move work/files "$REMOTE" --transfers 8 --stats-one-line --stats 0 || true
+          [ -d work/files ] && rclone move work/files "$REMOTE" --transfers 16 --checkers 16 --stats-one-line --stats 0 || true
           rclone copy state "$REMOTE/_state" --stats 0
       - name: Full detail for every page and photo
         if: always()
         run: |
-          # every saved page back from Drive (pages only, small), then the lists rebuilt from all of them
+          # every saved page back from Drive (pages only, small; most are here already), then the lists rebuilt
           rclone copy "$REMOTE" pages --filter "- _state/**" --filter "- _index/**" --filter "+ *.{htm,html,HTM,HTML}" \
-            --filter "+ *.php*" --filter "- *" --transfers 8 --stats 0
+            --filter "+ *.php*" --filter "- *" --transfers 16 --checkers 16 --stats 0
           python3 -I tools/sites_index.py --site swaminarayan.org --files pages --headers state/files.jsonl --out idx
           # saved files whose details (type, size, Last-Modified) round 1 did not keep: asked once next round
           rclone lsf -R --files-only "$REMOTE" --filter "- _state/**" --filter "- _index/**" \
