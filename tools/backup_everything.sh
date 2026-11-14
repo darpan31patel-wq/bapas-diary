@@ -116,6 +116,11 @@ if git -C mirror.git rev-parse -q --verify refs/heads/studio >/dev/null; then
     && aws s3 sync studio-copy "s3://$PHOTOS/studio/" --endpoint-url "$R2" --only-show-errors --exclude '*' --include '*.json' --cache-control 'no-cache' \
     && echo "Studio packs in R2 at photos.bapas-diary.com/studio/" || problem "Studio packs copy to R2 failed"
   rclone sync studio-copy "$DRIVE/studio-packs" --size-only --transfers 8 || problem "Studio packs copy to Drive failed"
+  # the Studio on bapas-diary.com must be allowed to read the copy (CORS), or the GitHub-free fallback would not work
+  H=$(curl -s -o /dev/null -D - -H 'Origin: https://bapas-diary.com' https://photos.bapas-diary.com/studio/packs/index.json | tr -d '\r')
+  echo "$H" | head -1; echo "$H" | grep -i '^access-control-allow-origin' || true
+  echo "$H" | head -1 | grep -q ' 200' && echo "$H" | grep -qi '^access-control-allow-origin: https://bapas-diary.com' \
+    || problem "The Studio cannot read its backup copy at photos.bapas-diary.com/studio/ (not found or not allowed)"
   rm -rf studio-copy
 else problem "No studio branch in the code copy"; fi
 
