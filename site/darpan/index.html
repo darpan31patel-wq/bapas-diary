@@ -846,8 +846,11 @@ function drawStory(ctx, pack, o, hits) {
     hits.push({ key: x.key, x: left, y: top, w: CW, h: CH });
     if (o.pegs && o.peg !== 'none') peg(ctx, left + CW / 2, top + 16, w / 220 * .9, o.peg, .72);
   };
+  // each card's own size and place (Darpan, 14 Nov 2026: "turn cards on or off ... also adjust size and position too"):
+  // size = 1 and no move is the builder's layout; the state keeps size, mx (left or right) and my (up or down) in picture pixels
+  const fit = x => { const st = stateOf(o)[x.key] || {}; return { k: st.size || 1, mx: st.mx || 0, my: st.my || 0 } };
   const B = L.big || [70, 200, 1180, 800];
-  if (big) card(big, B[0], B[1], B[2], B[3]);
+  if (big) { const f = fit(big), w = Math.round(B[2] * f.k), h = Math.round(B[3] * f.k); card(big, B[0] + (B[2] - w) / 2 + f.mx, B[1] + (B[3] - h) / 2 + f.my, w, h) }
   // the headline and story centred over the small cards, as the real picture (collage builder note, 13 Nov 2026): the
   // headline's lines balanced to about the same length, the story with its paragraphs and line breaks kept, set as large
   // as fits (36 down to 26) above the small cards, which sit at the foot of the picture when the story is long
@@ -872,7 +875,7 @@ function drawStory(ctx, pack, o, hits) {
   ctx.fillStyle = CAP_IVORY; ctx.textAlign = 'center';
   for (const line of st.lines) { if (line === null) { y += st.lh * .55; continue } ctx.fillText(line, cx, y + st.lh * .72); y += st.lh }
   const top = Math.min(foot, Math.max(620, y + 40));
-  if (small.length) small.forEach((x, k) => card(x, x0 - 30 + k * (sw + 54), top, Math.round(sw), Math.round(sw * .74)));
+  if (small.length) small.forEach((x, k) => { const f = fit(x), w = Math.round(sw * f.k), h = Math.round(sw * .74 * f.k); card(x, x0 - 30 + k * (sw + 54) + (sw - w) / 2 + f.mx, top + f.my, w, h) });
   ctx.textAlign = 'left';
   const name = o.showFooter ? o.footer : '';
   if (name) { ctx.font = `500 24px ${SERIF}`; ctx.textAlign = 'left'; const w = ctx.measureText(name).width, fy = H - 20; ctx.fillStyle = 'rgb(226,184,104)'; ctx.fillText(name, (W - w) / 2, fy); diamond(ctx, (W - w) / 2 - 28, fy - 8, 5); diamond(ctx, (W + w) / 2 + 28, fy - 8, 5) }
@@ -1072,7 +1075,7 @@ function buildEditor() {
     ${S.mode !== 'month' ? `<label for="fe-yl">Year on the card</label><input type="text" id="fe-yl" data-f="ylabel" data-k="${k}" value="${esc(x.st.ylabel ?? x.yl ?? k)}">
     <label for="fe-fest">Festival tag on the photo (empty for none)</label><input type="text" id="fe-fest" data-f="fest" data-k="${k}" value="${esc(x.st.fest ?? (x.c ? (x.c.festival || captionFest(x.c)) : ''))}">` : ''}
     <div class="row3"><button class="btn small" id="fe-prev" ${n < 2 ? 'disabled' : ''}>◀ Photo</button><button class="btn small" id="fe-next" ${n < 2 ? 'disabled' : ''}>Photo ▶</button>
-      <button class="btn small" id="fe-all">See all ${n}</button>${S.mode === 'day' || (S.mode === 'special' && !isStory()) ? '<button class="btn small" id="fe-hide">Hide this year</button>' : ''}<button class="btn small" id="fe-reset">Reset</button></div>`;
+      <button class="btn small" id="fe-all">See all ${n}</button>${S.mode !== 'month' ? `<button class="btn small" id="fe-hide">${S.mode === 'special' ? 'Hide this card' : 'Hide this year'}</button>` : ''}<button class="btn small" id="fe-reset">Reset</button></div>`;
   fe.hidden = false;
   $('#fe-x').onclick = closeEditor;
   const step = d => { const b = bag(k); b.pick = (x.pick + d + n) % n; delete b.caption; build() };
@@ -1216,6 +1219,12 @@ function paneCard() {
       ${range('c-dx', 'Left or right', st.dx || 0, -.4, .4, .01, v => Math.round(v * 100))}
       ${range('c-dy', 'Up or down', st.dy || 0, -.4, .4, .01, v => Math.round(v * 100))}
       <p class="hint">Automatic and Close up never cut Bapa’s head or pagh. Moving can, so check the picture.</p></div>
+    ${isStory() ? `<div class="group"><h3>The card on the picture</h3>
+      ${range('c-size', 'Card size', st.size || 1, .5, 1.6, .05, v => Math.round(v * 100) + '%')}
+      ${range('c-mx', 'Move left or right', st.mx || 0, -700, 700, 5, v => (v > 0 ? '+' : '') + v)}
+      ${range('c-my', 'Move up or down', st.my || 0, -500, 500, 5, v => (v > 0 ? '+' : '') + v)}
+      <div class="seg"><button class="btn small" id="c-hide">Take this card off the picture</button></div>
+      <p class="hint">A card you take off comes back with its “show” tick on the Cards and words tab. The small cards spread out again when one goes; Reset puts the builder’s layout back.</p></div>` : ''}
     <div class="group"><button class="btn" id="c-reset">Reset ${esc(label(k))}</button></div>${spareGroup(pack)}
     ${day ? `<div class="group"><h3>Kind of photo, every year</h3>
       ${seg('d-style', o.photoStyle, [['auto', 'As the daily run picks'], ['close', 'Close ups of Bapa'], ['action', 'What Bapa is doing']])}
@@ -1247,7 +1256,7 @@ function paneWords() {
   const day = S.mode !== 'month', pack = P[S.mode], o = cur();
   const list = keys().map(k => {
     const x = info(k), on = day ? (stateOf(o)[k]?.on ?? true) : true;
-    return `<div class="w ${on ? '' : 'off'}"><b>${esc(S.mode === 'special' ? label(k) : k)}${day && !isStory() ? `<br><label class="check" style="font:12px var(--sans)"><input type="checkbox" class="w-on" data-k="${k}" ${on ? 'checked' : ''}> show</label>` : ''}</b>
+    return `<div class="w ${on ? '' : 'off'}"><b>${esc(S.mode === 'special' ? label(k) : k)}${day ? `<br><label class="check" style="font:12px var(--sans)"><input type="checkbox" class="w-on" data-k="${k}" ${on ? 'checked' : ''}> show</label>` : ''}</b>
       <input type="text" class="place" data-f="place" data-k="${k}" value="${esc(x.place)}" aria-label="Place for ${esc(label(k))}">
       <textarea class="capedit" data-f="caption" data-k="${k}" rows="2" aria-label="Caption for ${esc(label(k))}">${esc(x.caption)}</textarea></div>`;
   }).join('');
@@ -1414,7 +1423,8 @@ function wire() {
   document.querySelectorAll('#c-sel button').forEach(b => b.addEventListener('click', () => { o.sel = S.mode === 'special' ? b.dataset.k : +b.dataset.k; build() }));
   document.querySelectorAll('#c-thumbs button').forEach(b => b.addEventListener('click', () => { const s = bag(k); s.pick = +b.dataset.i; delete s.caption; build() }));
   document.querySelectorAll('#c-crop button').forEach(b => b.addEventListener('click', () => { bag(k).crop = b.dataset.v; build() }));
-  ['zoom', 'dx', 'dy'].forEach(f => on('c-' + f, 'input', e => { bag(k)[f] = +e.target.value; syncOut('c-' + f); render() }));
+  ['zoom', 'dx', 'dy', 'size', 'mx', 'my'].forEach(f => on('c-' + f, 'input', e => { bag(k)[f] = +e.target.value; syncOut('c-' + f); render() }));
+  on('c-hide', 'click', () => { bag(k).on = false; build() });
   on('c-reset', 'click', () => { const s = bag(k); Object.keys(s).forEach(f => f !== 'on' && delete s[f]); build() });
   document.querySelectorAll('#pane .capchip').forEach(b => b.addEventListener('click', () => { const t = $('#c-cap'); if (!t) return; const v = b.dataset.v, cur2 = t.value.trim(); t.value = b.dataset.set || !cur2 ? v : cur2.includes(v) ? cur2 : cur2 + (/[.!?,]$/.test(cur2) ? ' ' : ', ') + v; t.dispatchEvent(new Event('input', { bubbles: true })) }));
   document.querySelectorAll('[data-last]').forEach(b => b.addEventListener('click', () => { const e = lastEntries()[+b.dataset.last]; if (e) applyLast(e) }));
@@ -1458,7 +1468,7 @@ function wire() {
     ['cal', 'lead', 'story', 'tomorrow'].forEach(f => on('d-t-' + f, 'input', e => { (o.txt = o.txt || {})[f] = e.target.value; render() }));
     on('d-t-reset', 'click', () => { o.txt = {}; build() });
     bind('d-year', 'showYear'); bind('d-place', 'showPlace'); bind('d-fest', 'festTags'); bind('d-story', 'showStory'); bind('d-cal', 'showCal'); bind('d-tom', 'showTomorrow'); bind('d-foot', 'showFooter', 0, 1); bind('d-footer', 'footer');
-    document.querySelectorAll('.w-on').forEach(b => b.addEventListener('change', () => { bag(b.dataset.k).on = b.checked; b.closest('.w').classList.toggle('off', !b.checked); render(); $('#meta').querySelector('span').textContent = `${dayCards(P.day, o).length} of ${P.day.years.length} years on the picture` }));
+    document.querySelectorAll('.w-on').forEach(b => b.addEventListener('change', () => { bag(b.dataset.k).on = b.checked; b.closest('.w').classList.toggle('off', !b.checked); render(); $('#meta').querySelectorAll('span')[S.mode === 'special' ? 1 : 0].textContent = S.mode === 'special' ? `${dayCards(P.special, o).length} of ${P.special.cards.length} cards on the picture` : `${dayCards(P.day, o).length} of ${P.day.years.length} years on the picture` }));
     const setAll = f => { groupsOf(P[S.mode]).forEach(y => { bag(y.key).on = f(y.year) }); build() };
     on('d-all', 'click', () => setAll(() => true)); on('d-pre', 'click', () => setAll(y => y <= 2016)); on('d-post', 'click', () => setAll(y => y >= 2016));
   } else {
@@ -1733,7 +1743,7 @@ async function saveChoices(how, where, quiet) {
     const j = r.ok ? await r.json() : {};
     if (!r.ok || !j.ok) throw new Error(j.error || `the website said ${r.status}`);
     CHSRC = j.source;
-    chSay('ok', 'Saved.' + (j.source === 'github' ? '' : ' Kept in the Studio: the 2pm picture project reads it at bapas-diary.com/special-days.json until the GitHub token is set.'));
+    chSay('ok', 'Saved. The 2pm picture project reads your choices at bapas-diary.com/special-days.json.');
     if (how) logChange(how, where);
     remakeSoon(chDate());
   } catch (e) { chSay('warn', 'Kept on this device, but not saved on the website: ' + ((e && e.message) || e) + '. It is sent again the next time you choose.') }
