@@ -338,10 +338,12 @@ function unstash(kind) {
   PER[kind].forEach(f => { o[f] = structuredClone(was && f in was ? was[f] : D[f]) }); o.sel = null;
 }
 const RAW = 'https://raw.githubusercontent.com/darpan31patel-wq/bapas-diary/studio/packs/';
+// the same packs, copied every night to R2 by the backups (Darpan, 13 Nov 2026: the Studio must still open if GitHub is lost)
+const R2PACKS = 'https://photos.bapas-diary.com/studio/packs/';
 let ROOT = '', INDEX = { days: [], months: [], specials: [] };
 const PACKS_BRANCH = new URLSearchParams(location.search).get('packs');   // ?packs=<branch> reads that branch's packs (a test run)
 async function loadIndex() {
-  for (const root of PACKS_BRANCH ? [RAW.replace('/studio/', `/${PACKS_BRANCH}/`)] : ['', 'packs/', RAW]) {
+  for (const root of PACKS_BRANCH ? [RAW.replace('/studio/', `/${PACKS_BRANCH}/`)] : ['', 'packs/', RAW, R2PACKS]) {
     try { const r = await fetch(root + 'index.json', { cache: 'no-store' }); if (r.ok) { INDEX = await r.json(); INDEX.specials = INDEX.specials || []; ROOT = root; return } } catch (e) {}
   }
   throw new Error('no index');
@@ -1902,7 +1904,7 @@ let ARTICLES = null, HISTORY = null;
 async function loadArticles() {
   if (ARTICLES) return;
   const RAWB = 'https://raw.githubusercontent.com/darpan31patel-wq/bapas-diary/claude/project-thread-02nrr0/site/darpan/';
-  const get = async name => { for (const u of [name, RAWB + name]) { try { const r = await fetch(u, { cache: 'force-cache' }); if (r.ok) return await r.json() } catch (e) {} } return [] };
+  const get = async name => { for (const u of [name, RAWB + name, 'https://photos.bapas-diary.com/studio/' + name]) { try { const r = await fetch(u, { cache: 'force-cache' }); if (r.ok) return await r.json() } catch (e) {} } return [] };
   [ARTICLES, HISTORY] = await Promise.all([get('articles.json'), get('history.json')]);
   if (S.tab === 'card') build();
 }
