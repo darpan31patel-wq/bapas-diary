@@ -78,7 +78,9 @@ jobs:
         run: |
           gh release view swaminarayan-org-web >/dev/null 2>&1 || gh release create swaminarayan-org-web --prerelease \
             --title "Old BAPS website for the website" --notes "swaminarayan.org photos, day reports and towns for bapas-diary.com. Not used by the daily picture."
+          shopt -s nullglob
           gh release upload swaminarayan-org-web sorg-rows.json sorg-have.txt sorg-captions.json sorg-reports.tgz sorg-reports.jsonl sorg-days.json sorg-geo.json face2-*-sorg.json.gz --clobber
+# round 1: day reports and towns from the lists so far (14 Nov 2026)
   mockup:
     needs: prepare
     if: needs.prepare.outputs.ready == 'yes'
