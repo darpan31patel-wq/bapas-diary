@@ -92,21 +92,74 @@ def about_bapa(c, day):
     return bool(SWAMISHRI.search(c) or MSM.search(c))
 
 
+GURU = re.compile(r'\bSwamishri\b|\bBapa\b|Pramukh\s+Swami|Mahant\s+Swami')
+DOTS = r'(?:\.\.\.+|…|\.\.)'
+LINK = r'(?:with|after|before|during|in|at|on|for|to|from|by|as|while|who|whom|which|where|when|also|eager|eagerly|sing|play|perform|present|dance|recite|' \
+       r'receive|offer|greet|\w+ing)\b'
+DOERS = r"(?:perform|present|sing|enact|recite|dance|play|offer|line|form|express|welcome|greet|honou?r|await|do|have|give|chant|pray|wave|celebrate)s?"
+
+
+def doer(cap):
+    """Who a caption is about when it is not Bapa: 'Youths perform a traditional dance' -> 'Youths'."""
+    m = re.match(rf"^((?:[A-Z][\w'’-]*)(?:,? [\w'’-]+){{0,7}}?) {DOERS}\b", cap or '')
+    return m.group(1) if m and not GURU.search(m.group(1)) else ''
+
+
+def carried_on(prev, prev_raw, raw, who, bapa_before):
+    """A '...' caption that names Bapa itself ('... with Swamishri after their performance') is about the people of the
+    photo before it. Putting 'Swamishri' in front made 'Swamishri with Swamishri after their performance', which went out
+    on a card as 'Bapa with Bapa after their performance' (Darpan, 14 Nov 2026). It carries on from the caption before:
+    the whole sentence when that one trails off ('Swamishri enjoys greeting the children...' + '... and the children
+    enjoy greeting Swamishri'), otherwise its people ('Youths perform a traditional dance' -> 'Youths with Swamishri
+    after their performance'). If neither can be told, the words stand as they are ('With Swamishri')."""
+    tail = re.sub(rf'^{DOTS}\s*', '', raw).strip()
+    tail = re.sub(rf'\s*{DOTS}$', '', tail)
+    rest = re.sub(r'^(?:(?:and|then|finally|now),?\s+)+', '', tail, flags=re.I)
+    low = tail[0].lower() + tail[1:] if re.match(r'(?:And|Then|During|With|After|Before|In|At|On|For|To|As|While|Who|Which|Where|When|The|A|An)\b', tail) else tail
+    before = re.sub(rf'\s*{DOTS}$', '', prev).strip()
+    if before and re.search(rf'{DOTS}\s*$', prev_raw) and not GURU.match(tail) and not re.match(r'(?:and )?(?:then|finally)\b', low) and len(before) + len(low) < 260:
+        if before.split()[-1].lower() == low.split()[0].lower():      # '...from Neasden station to...' + '... to South London'
+            low = low.split(' ', 1)[1] if ' ' in low else ''
+        first = low.split(' ', 1)[0]
+        join = ', ' if first in ('a', 'an', 'the') else ' and ' if re.fullmatch(r'[a-z]+s', first) and not re.match(LINK, low) else ' '
+        return ((before.rstrip(',') if join == ', ' else before) + join + low).strip(' ,')   # 'arrives at mandir...' + '... proceeds towards the mandir'
+    if GURU.match(rest):                                      # '... then Swamishri plays the kartal': its own sentence
+        return rest
+    if who and re.match(LINK, low):
+        return who + ' ' + low
+    if bapa_before and not who and not re.match(LINK, rest) and re.match(r'[a-z]+s\b', rest):   # '... instructs him to prostrate before the Lord. Swamishri thus inspired...'
+        return 'Swamishri ' + rest
+    return rest[0].upper() + rest[1:]
+
+
 def continued(rows, when):
     """A caption starting '...' carries on from the photo before it ('... and performs arti of Thakorji'):
-    when that one is of Bapa, this one is too, and reads 'Swamishri performs arti of Thakorji'. HTML in a caption is dropped."""
-    out, prev = [], ''
+    when that one is of Bapa, this one is too, and reads 'Swamishri performs arti of Thakorji'. One that already names
+    Bapa is about someone else with him (carried_on). HTML in a caption is dropped."""
+    out, prev, prev_raw, who = [], '', '', ''
     for album, file, cap in rows:
-        cap = re.sub(r'<[^>]+>', '', cap or '').replace('\ufffd', "'").strip()
+        cap = raw = re.sub(r'<[^>]+>', '', cap or '').replace('�', "'").strip()
+        cap = re.sub(r'\b[Ss]wamishri(?:\s+[Ss]wamishri\b)+', 'Swamishri', re.sub(r'\bswamishri\b', 'Swamishri', cap))   # the website's own 'Swamishri Swamishri conducts a class'
         m = re.match(r'^(?:\.\.\.|…|\.\.)\s*(?:(?:and|then|And|Then)\s+)*(.*)$', cap)
-        if m:
+        if cap[:1].islower() and GURU.search(cap):               # 'with Swamishri', 'sadhus and devotees doing darshan of Swamishri': a lower
+            cap = who + ' ' + cap if who and re.match(r'with\b', cap) else cap[0].upper() + cap[1:]   # case start means 'Swamishri ...' to make.py
+        elif m:
             rest = m.group(1).strip()
-            if (rest[:1].islower() or about_bapa(prev, when)) and rest[:1].isalpha() and not re.match(r'(Shri|Bhagwan|Thakorji|Pujya|Param)\b', rest) and not NOT_BAPA.search(rest):
-                cap = 'Swamishri ' + rest[0].lower() + rest[1:]
+            if raw == prev_raw:                                # the same words on the next photo
+                cap = prev
+            elif (rest[:1].islower() or about_bapa(prev, when)) and rest[:1].isalpha() and not re.match(r'(Shri|Bhagwan|Thakorji|Pujya|Param)\b', rest) and not NOT_BAPA.search(rest):
+                if GURU.search(rest) or (prev and re.search(rf'{DOTS}\s*$', prev_raw) and not about_bapa(prev, when)):   # '112 children...' + '... and youths from around the UK...'
+                    cap = carried_on(prev, prev_raw, raw, who, about_bapa(prev, when))
+                elif who and re.match(LINK, rest) and not re.match(r'(?:in|at|on|during|after|before|for|to|from|by|as|while|with)\b', rest):
+                    cap = who + ' ' + rest                      # 'Youths and children...' + '... perform a celebratory dance': theirs, not Bapa's
+                else:
+                    cap = 'Swamishri ' + rest[0].lower() + rest[1:]
             else:
                 cap = rest
+        else:
+            who = doer(cap) or (who if cap == prev else '')
         out.append((album, file, cap))
-        prev = cap
+        prev, prev_raw = cap, raw
     return out
 
 
