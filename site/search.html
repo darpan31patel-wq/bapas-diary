@@ -781,7 +781,14 @@ $('results').addEventListener('keydown', e => {
 });
 $('big-prev').addEventListener('click', () => step(-1));
 $('big-next').addEventListener('click', () => step(1));
-$('big').addEventListener('keydown', e => { if (e.key === 'ArrowLeft') step(-1); if (e.key === 'ArrowRight') step(1); });
+// left and right arrow keys move through the big photos whatever has the focus: the dialog itself loses it when its
+// text is redrawn or a button inside it goes, and then the keys fell on the page and did nothing (Darpan, 14 Nov 2026)
+document.addEventListener('keydown', e => {
+  if (!$('big').open || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  if (e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
+  if (e.key === 'ArrowRight') { e.preventDefault(); step(1); }
+});
 $('big-close').addEventListener('click', () => $('big').close());
 $('big').addEventListener('click', e => { if (e.target === $('big')) $('big').close(); });
 document.querySelector('.can').addEventListener('click', e => {
