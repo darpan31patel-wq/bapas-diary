@@ -69,7 +69,7 @@ h1 { margin: 0; font: 600 clamp(30px, 5vw, 50px)/1.1 var(--title); letter-spacin
 /* baps.org Daily Satsang prasang: English first, a small quiet switch to the Gujarati (Darpan, 13 Nov 2026) */
 .bpr .flip { margin-left: 10px; padding: 0; border: 0; background: none; font: 500 14px var(--serif); font-style: normal; color: var(--gold); text-decoration: underline; text-decoration-color: rgba(217, 164, 65, .45); text-underline-offset: 3px; cursor: pointer; }
 .bpr .flip:hover, .bpr .flip:focus-visible { color: var(--paper); }
-.bpr .src { margin: 6px 0 0; font: 400 12px/1.4 var(--sans); color: var(--paper); opacity: .6; }
+.bpr .src, .bpr .paras p.src { margin: 6px 0 0; font: 400 12px/1.4 var(--sans); color: var(--paper); opacity: .6; }
 .bpr .src a { color: inherit; }
 .bpr [hidden] { display: none; }
 /* the Calendar's own photo of the day, first and bigger, with what happened under it like a Today card: the year and
@@ -281,8 +281,7 @@ async function prasang(k, s) {
     const guFirst = !en.length || !!(window.BapaGujarati && BapaGujarati.on());
     s.querySelector('.grid').insertAdjacentHTML('beforebegin', `<div class="tell bpr" translate="no"><p class="line"><b>Prasang</b>${esc([place, nice(k, true)].filter(Boolean).join(', '))}` +
       (en.length ? `<button type="button" class="flip">${guFirst ? 'English' : 'ગુજરાતી'}</button>` : '') + '</p>' +
-      `<div class="paras" lang="en"${guFirst ? ' hidden' : ''}>${ps(en)}</div><div class="paras" lang="gu"${guFirst ? '' : ' hidden'}>${ps(gu)}</div>` +
-      `<p class="src">${en.length ? 'English translation of the ' : 'From the '}<a href="${esc(src)}" target="_blank" rel="noopener">baps.org Daily Satsang</a> prerna parimal</p></div>`);
+      `<div class="paras" lang="en"${guFirst ? ' hidden' : ''}>${ps(en)}<p class="src">English translation</p></div><div class="paras" lang="gu"${guFirst ? '' : ' hidden'}>${ps(gu)}</div></div>`);
   });
 }
 document.addEventListener('click', e => {
