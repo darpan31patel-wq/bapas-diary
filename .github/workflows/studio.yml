@@ -16,6 +16,9 @@ on:
       months:
         description: 'Month posters to make (YYYY-MM, comma separated), for example 2023-10,2022-12. This month and the next are made every day.'
         required: false
+      special:
+        description: "Remake one day's special picture from Darpan's choices now (YYYY-MM-DD, one date). The Studio's Remake now button."
+        required: false
       to:
         description: 'Branch to save the packs on (studio is the one the Studio reads; another name for a test run)'
         required: false
@@ -29,6 +32,7 @@ concurrency:
 
 jobs:
   packs:
+    if: ${{ !inputs.special }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -76,3 +80,114 @@ jobs:
           git config user.name "Bapa's Diary bot"; git config user.email "actions@github.com"
           git add -A && git commit -qm "Studio packs $(date -u +%F)"
           git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" "HEAD:${TO}"
+
+  # Darpan, 14 Nov 2026: every Studio change ready for the 2pm send, even one made at 1:45pm. The Studio starts this
+  # with the input special = a date, 90 seconds after his last change and from its Remake now button. It reads his
+  # choices again (archive/special-days.json and bapas-diary.com/special-days.json), makes that day's special picture
+  # from the first choice (the next ones as special 2, 3), saves its pack on the studio branch (packs/special/<date>/;
+  # packs/special/remake.json says what the last remake did) and, for today before 1:50pm UK time, replaces
+  # '<day> special.png' and '<day> special photo.jpg' in the Drive folder Bapa's Diary and on the 'today' release.
+  # The daily picture and its caption are not touched.
+  special:
+    if: ${{ inputs.special }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -q -r requirements.txt
+      - name: Bring the packs already made
+        run: |
+          mkdir -p site
+          git fetch -q --depth 1 origin studio
+          git archive origin/studio | tar -x -C site
+      - name: Open Darpan's archive in Drive
+        continue-on-error: true
+        timeout-minutes: 8
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          CLIENT_ID: ${{ secrets.RCLONE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.RCLONE_CLIENT_SECRET }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -n "$TOKEN" ] || { echo "The RCLONE_DRIVE_TOKEN secret isn't set"; exit 0; }
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          mkdir -p ~/.config/rclone && python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
+          gh release download database -p bapas.db.gz --clobber && gunzip -f bapas.db.gz
+          echo "ARCHIVE=gdrive:Bapa's Archive" >> "$GITHUB_ENV"
+      - name: Make the special picture and its pack
+        id: make
+        env:
+          DATE: ${{ inputs.special }}
+          SPECIAL_OUT: out
+        run: |
+          TODAY=$(TZ=Europe/London date +%F); D="${DATE:-$TODAY}"; D=$(date -d "$D" +%F)
+          echo "date=$D" >> "$GITHUB_OUTPUT"; echo "today=$TODAY" >> "$GITHUB_OUTPUT"
+          # made to one side first, so a run that fails leaves the pack the Studio already has
+          set +e; python tools/special_pack.py "$D" new; R=$?; set -e
+          if [ "$R" = 0 ]; then
+            mkdir -p site/packs/special; rm -rf "site/packs/special/$D"; mv "new/$D" "site/packs/special/$D"; echo "state=made" >> "$GITHUB_OUTPUT"
+          elif [ "$R" = 2 ]; then   # no special picture this day (he switched it off)
+            rm -rf "site/packs/special/$D"; echo "state=none" >> "$GITHUB_OUTPUT"
+          else
+            echo "state=failed" >> "$GITHUB_OUTPUT"; exit 1
+          fi
+      - name: Put today's special picture in Bapa's Diary (Drive) and on the release, until 1:50pm
+        id: drive
+        if: steps.make.outputs.date == steps.make.outputs.today
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FOLDER: 1P79txhqK5keX5j1HUje__RVki9YmSqaj
+          STATE: ${{ steps.make.outputs.state }}
+        run: |
+          if [ "$(TZ=Europe/London date +%H%M)" -ge 1350 ]; then echo "result=too late" >> "$GITHUB_OUTPUT"; exit 0; fi
+          DAY=$(TZ=Europe/London date +'%-d %B %Y')
+          echo "result=failed" >> "$GITHUB_OUTPUT"
+          if [ "$STATE" = none ]; then   # switched off: nothing special may go out at 2pm
+            rclone deletefile "gdrive:$DAY special.png" --drive-root-folder-id "$FOLDER" || true
+            rclone deletefile "gdrive:$DAY special photo.jpg" --drive-root-folder-id "$FOLDER" || true
+            echo "result=removed" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          rclone copyto out/bapas-diary-special.png "gdrive:$DAY special.png" --drive-root-folder-id "$FOLDER"
+          rclone copyto out/bapas-diary-special.jpg "gdrive:$DAY special photo.jpg" --drive-root-folder-id "$FOLDER"
+          for n in 2 3 4 5; do   # his next choices: special 2, special 3...
+            if [ -f "out/bapas-diary-special-$n.png" ]; then rclone copyto "out/bapas-diary-special-$n.png" "gdrive:$DAY special $n.png" --drive-root-folder-id "$FOLDER"; fi
+          done
+          gh release upload today out/bapas-diary-special.png out/bapas-diary-special.jpg --clobber || true
+          echo "result=replaced" >> "$GITHUB_OUTPUT"
+      - name: Save the pack on the studio branch
+        if: always() && steps.make.outputs.date != ''
+        env:
+          TOKEN: ${{ github.token }}
+          D: ${{ steps.make.outputs.date }}
+          DRIVE: ${{ steps.drive.outputs.result || 'not today' }}
+          STATE: ${{ steps.make.outputs.state || 'failed' }}
+        run: |
+          python3 - <<'PY'
+          import json, os, datetime
+          d, root = os.environ['D'], 'site/packs/special'
+          now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%MZ')
+          json.dump(dict(date=d, finished=now, made=os.environ['STATE'], drive=os.environ['DRIVE']),
+                    open(os.path.join(root, 'remake.json'), 'w'), indent=1)
+          f = os.path.join(root, 'checked.json')
+          c = json.load(open(f)) if os.path.exists(f) else {}
+          if os.environ['STATE'] == 'none':
+              c[d] = 'none'
+          elif os.path.exists(os.path.join(root, d, 'pack.json')):
+              c[d] = 'made'
+          json.dump(c, open(f, 'w'), indent=1)
+          f = 'site/packs/index.json'
+          if os.path.exists(f):
+              idx = json.load(open(f))
+              idx['specials'] = sorted(n for n in os.listdir(root) if os.path.exists(os.path.join(root, n, 'pack.json')))
+              idx['updated'] = now
+              json.dump(idx, open(f, 'w'), indent=1)
+          PY
+          cd site
+          git init -q -b studio
+          git config user.name "Bapa's Diary bot"; git config user.email "actions@github.com"
+          git add -A && git commit -qm "Studio packs $(date -u +%F): special remade for $D"
+          git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" HEAD:studio

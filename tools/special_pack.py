@@ -236,6 +236,13 @@ def main():
         os.makedirs(full, exist_ok=True)
         sp.save(os.path.join(full, 'bapas-diary-special.png'), optimize=True)
         sp.convert('RGB').save(os.path.join(full, 'bapas-diary-special.jpg'), quality=95, optimize=True)
+        if (drawn or {}).get('source') == 'chosen':   # his next choices of the day are special 2, 3... as the morning run makes them
+            n = 1
+            for ev in make.chosen_specials(day, list(items) or photos)[1:]:
+                more = make.compose_special(ev, day)
+                if more is not None:
+                    n += 1
+                    more.save(os.path.join(full, f'bapas-diary-special-{n}.png'), optimize=True)
     pool, cards = Pool(out), []
     made = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
     if kind == 'festival':

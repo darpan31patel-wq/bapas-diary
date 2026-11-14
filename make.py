@@ -3039,9 +3039,10 @@ def compose_special(ev, day, lead=None):
     keep = [k for k in range(len(ims)) if not any(np.abs(tiny[k] - tiny[j]).mean() < 8 for j in range(k))]
     ims, plain = [ims[k] for k in keep], [plain[k] for k in keep]
     if ev.get('paths') and lead is None:   # the UK diary's photos of a chosen year: one Bapa is recognised in is the big card
-        seen = [bool(bapa_face(im, ev['date'], TG_SAME_PERSON)[0]) for im in ims]
-        order = sorted(range(len(ims)), key=lambda k: not seen[k])
+        seen = [bapa_face(im, ev['date'], .15)[1] for im in ims]   # the likeliest Bapa first, even in a small old print
+        order = sorted(range(len(ims)), key=lambda k: -seen[k])
         ims, plain = [ims[k] for k in order], [plain[k] for k in order]
+    k = SPECIAL_FIRST.get(ev.get('url'))
     if k and lead is None and k < len(ims):   # Darpan's own choice of the big photo: it swaps places with the first
         ims[0], ims[k] = ims[k], ims[0]; plain[0], plain[k] = plain[k], plain[0]
     ims, plain = ims[:5], plain[:5]
