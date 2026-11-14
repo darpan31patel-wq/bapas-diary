@@ -27,6 +27,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 DECOR = re.compile(r'^(title|home|news|line\d*|dot|spacer|logo|banner|bullet|arrow|back|next|prev|top|bottom|head(er)?|'
                    r'menu|button|bg|border|corner|blank|clear|print|mp3|zip|download|map)\b', re.I)
+SECTIONS = {'vicharan', 'news', 'festivals', 'pramukhswami'}
+NOT_TOWN = re.compile(r'^(photos?|index|page|gallery|images?|news|vicharan|festivals?)$', re.I)
 BAPA = re.compile(r'\b(swamishri|pramukh swami|bapa|swami ?bapa|hdh|guruhari|his holiness)\b', re.I)
 
 
@@ -66,8 +68,15 @@ def rows(a):
             why['site decoration'] = why.get('site decoration', 0) + 1   # the site's own titles, lines and buttons
             continue
         d = p.get('date') or ''
-        if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', d):
+        try:
+            import datetime
+            datetime.date.fromisoformat(d)
+        except ValueError:   # no day, or a date that does not exist ("31 June")
             why['no day'] += 1
+            continue
+        section = re.sub(r'^https?://[^/]+/', '', p.get('page_url', '')).split('/')[0]
+        if section not in SECTIONS or not 1921 <= int(d[:4]) <= 2012:   # Bapa's own days only: not the history pages' old dates
+            why['not a day of Bapa'] = why.get('not a day of Bapa', 0) + 1
             continue
         album = album_of(p.get('page_url', ''))
         if (album, file) in seen:
@@ -78,9 +87,9 @@ def rows(a):
         if cap and (d, norm(cap)) in have:
             why['baps.org has it'] += 1
             continue
-        d1 = p.get('date_to') if re.fullmatch(r'\d{4}-\d{2}-\d{2}', p.get('date_to') or '') else d
+        d1 = p.get('date_to') if re.fullmatch(r'\d{4}-\d{2}-\d{2}', p.get('date_to') or '') and (p.get('date_to') or '') >= d else d
         out.append(dict(album=album, file=file, year=int(d[:4]), date=d if d1 == d else None,
-                        date_from=d, date_to=d1, place=(p.get('place') or '').strip(), caption=cap,
+                        date_from=d, date_to=d1, place='' if NOT_TOWN.match((p.get('place') or '').strip()) else (p.get('place') or '').strip(), caption=cap,
                         is_bapa=1 if BAPA.search(cap) else 0, drive_path=p.get('drive_path', ''), photo_url=url,
                         page_url=p.get('page_url', ''), date_from_why=p.get('date_from', ''), place_from=p.get('place_from', '')))
         why['kept'] += 1
@@ -136,6 +145,61 @@ def same_as_baps(out, dbpath, why, captions_out=None):
     return [r for r in out if (r['album'], r['file']) not in drop]
 
 
+def dhash(body):
+    from PIL import Image
+    import io
+    im = Image.open(io.BytesIO(body)).convert('L').resize((9, 8))
+    px = list(im.getdata())
+    return sum(1 << i for i in range(64) if px[(i // 8) * 9 + i % 8] > px[(i // 8) * 9 + i % 8 + 1])
+
+
+def same(a):
+    """The same darshan baps.org already gave us under another file name (from 2007 baps.org renamed the files): each
+    old site photo's tiny copy against the tiny copies of every baps.org photo within 3 days of it, by a picture
+    fingerprint. Writes the old site photos that are already there, so they are left out like the rest."""
+    import collections, datetime, urllib.parse, urllib.request
+    from concurrent.futures import ThreadPoolExecutor
+    rs = json.load(open(a.rows, encoding='utf-8'))
+    have = set(open(a.have).read().split('\n')) if a.have and os.path.exists(a.have) else set()
+    rs = [r for r in rs if f"s/{r['album']}/{r['file']}" in have]
+    days = set()
+    for r in rs:
+        d0 = datetime.date.fromisoformat(r['date_from'])
+        days.update((d0 + datetime.timedelta(days=k)).isoformat() for k in range(-3, 4))
+    db = sqlite3.connect(a.db)
+    old = collections.defaultdict(list)
+    for d, al, f in db.execute("SELECT coalesce(date, date_from), album, file FROM photos WHERE coalesce(source, '') != 'swaminarayan.org'"):
+        if d and d[:10] in days:
+            old[d[:10]].append((al, f))
+
+    def get(key):
+        for tier in ('t', 's'):
+            try:
+                req = urllib.request.Request(a.photos + tier + '/' + urllib.parse.quote(key), headers={'User-Agent': 'bapas-diary-build'})
+                return key, dhash(urllib.request.urlopen(req, timeout=30).read())
+            except Exception:
+                continue
+        return key, None
+    keys = {f'{al}/{f}' for v in old.values() for al, f in v} | {f"{r['album']}/{r['file']}" for r in rs}
+    print(f'fingerprints to take: {len(keys):,}', flush=True)
+    with ThreadPoolExecutor(32) as ex:
+        fp = dict(ex.map(get, sorted(keys)))
+    dupes = []
+    for r in rs:
+        h = fp.get(f"{r['album']}/{r['file']}")
+        if h is None:
+            continue
+        d0 = datetime.date.fromisoformat(r['date_from'])
+        near = [k for kk in range(-3, 4) for k in old.get((d0 + datetime.timedelta(days=kk)).isoformat(), [])]
+        for al, f in near:
+            o = fp.get(f'{al}/{f}')
+            if o is not None and bin(h ^ o).count('1') <= a.bits:
+                dupes.append(dict(album=r['album'], file=r['file'], baps_album=al, baps_file=f, caption=r['caption']))
+                break
+    json.dump(dupes, open(a.out, 'w', encoding='utf-8'), ensure_ascii=False)
+    print(f'old site photos baps.org already has under another name: {len(dupes):,} of {len(rs):,}')
+
+
 def drive_rel(r):
     """the photo's path inside the Drive copy (the site path)"""
     p = r.get('drive_path') or ''
@@ -189,8 +253,16 @@ def put(db, rs):
     db.commit()
 
 
+def not_dupes(rs, path):
+    if not path or not os.path.exists(path):
+        return rs
+    text = open(path, encoding='utf-8').read().strip()
+    gone = {(d['album'], d['file']) for d in (json.loads(text) if text else [])}
+    return [r for r in rs if (r['album'], r['file']) not in gone]
+
+
 def make_db(a):
-    rs = json.load(open(a.rows, encoding='utf-8'))
+    rs = not_dupes(json.load(open(a.rows, encoding='utf-8')), a.same)
     if os.path.exists(a.out):
         os.remove(a.out)
     db = sqlite3.connect(a.out)
@@ -203,6 +275,7 @@ def make_db(a):
 def add(a):
     text = open(a.rows, encoding='utf-8').read().strip() if os.path.exists(a.rows) else ''
     rs = json.loads(text) if text else []   # no photos yet: the release keeps an empty list file
+    rs = not_dupes(rs, a.same)
     if a.have:
         have = set(open(a.have).read().split('\n')) if os.path.exists(a.have) else set()
         rs = [r for r in rs if f"s/{r['album']}/{r['file']}" in have or f"o/{r['album']}/{r['file']}" in have]
@@ -236,11 +309,13 @@ def main():
     s = sub.add_parser('store'); s.add_argument('--rows', required=True); s.add_argument('--have')
     s.add_argument('--remote', default="gdrive:Bapa's Archive/sites/swaminarayan.org"); s.add_argument('--send', required=True)
     s.add_argument('--work', default='work'); s.add_argument('--chunk', type=int, default=300); s.add_argument('--minutes', type=float, default=300)
-    d = sub.add_parser('db'); d.add_argument('--rows', required=True); d.add_argument('--out', required=True)
+    d = sub.add_parser('db'); d.add_argument('--rows', required=True); d.add_argument('--out', required=True); d.add_argument('--same')
+    m = sub.add_parser('same'); m.add_argument('--rows', required=True); m.add_argument('--db', required=True); m.add_argument('--have')
+    m.add_argument('--out', required=True); m.add_argument('--photos', default='https://photos.bapas-diary.com/'); m.add_argument('--bits', type=int, default=6)
     p = sub.add_parser('add'); p.add_argument('--rows', required=True); p.add_argument('--db', required=True); p.add_argument('--have')
-    p.add_argument('--captions', help='from rows --captions')
+    p.add_argument('--captions', help='from rows --captions'); p.add_argument('--same', help='from same --out')
     a = ap.parse_args()
-    {'rows': rows, 'store': store, 'db': make_db, 'add': add}[a.cmd](a)
+    {'rows': rows, 'store': store, 'db': make_db, 'add': add, 'same': same}[a.cmd](a)
 
 
 if __name__ == '__main__':
