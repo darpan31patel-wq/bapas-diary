@@ -371,6 +371,11 @@ async function loadPack(kind, key) {
   const picks = groups.map(g => g.cands[pickOf(g)] || g.cands[0]).filter(Boolean);
   const rest = groups.flatMap(g => [...g.cands.slice(0, 6), ...[g.pickA, g.pickB, g.pickM].filter(i => i != null).map(i => g.cands[i])]).filter(c => c && !picks.includes(c));
   const real = new Image(); real.crossOrigin = 'anonymous'; real.onload = () => { pack.realImg = real; render() }; real.src = base + (pack.real || 'real.jpg');
+  // lighter packs (Collage builder note, 14 Nov 2026): picks.jpg is one sheet holding the builder's first choice of every year
+  // (long side 560), so the whole picture draws from one file of about 1 MB; each year's `pick` is its box on the sheet.
+  // Photos also come as small copies (<year>-small.jpg, long side 500) for swapping and browsing. The full size copies
+  // (<year>-best.jpg) are fetched only for the export and "Replace today's picture". A pack without `picks` loads as before.
+  if (pack.picks && pack.picks.f) sheetPicks(pack, groups);
   picks.forEach(c => photoOf(pack, c, false));
   Promise.all(picks.map(c => photoOf(pack, c, true))).then(() => rest.forEach(c => photoOf(pack, c, false)));
   return pack;
@@ -384,23 +389,51 @@ function pendingPhotos() {
 // the photos of a year (or day) are joined in two files, the best six and the rest; each file is fetched once,
 // the rest only when one of them is wanted
 const BINS = {};
-function photoOf(pack, c, wait) {
+// every photo record says which copy it holds (q): 'sheet' from picks.jpg, 'small', or 'best' (full size). The drawing
+// scales the crop box to the copy it has (see srcBox), so a smaller copy needs no other change; full = true fetches the best copy.
+function photoOf(pack, c, wait, full) {
   if (!c) return null;
   const have = IMG[c.key];
-  if (have) return wait ? have.ready : have.im;
-  const im = new Image(), rec = { im: null };
+  if (have && (!full || have.q === 'best' || c.img || !c.f)) return wait ? have.ready : have.im;
+  const im = new Image(), rec = { im: null, q: full || c.img || !c.small ? 'best' : 'small' };
+  const file = rec.q === 'small' ? c.small : c;
   rec.ready = new Promise(res => {
-    im.onload = () => { rec.im = im; res(); if (!wait) render() }; im.onerror = () => { rec.failed = true; res(); if (!wait) render() };
+    im.onload = () => { rec.im = im; IMG[c.key] = rec; res(); if (!wait || full) render() }; im.onerror = () => { rec.failed = true; if (!have) IMG[c.key] = rec; res(); if (!wait) render() };
     if (c.img) im.src = pack.base + c.img;
     else {
-      BINS[pack.base + c.f] ??= fetch(pack.base + c.f).then(r => r.blob());
-      BINS[pack.base + c.f].then(b => { im.src = URL.createObjectURL(b.slice(c.at[0], c.at[0] + c.at[1], 'image/jpeg')) }).catch(res);
+      BINS[pack.base + file.f] ??= fetch(pack.base + file.f).then(r => r.blob());
+      BINS[pack.base + file.f].then(b => { im.src = URL.createObjectURL(b.slice(file.at[0], file.at[0] + file.at[1], 'image/jpeg')) }).catch(res);
     }
   });
-  IMG[c.key] = rec;
-  return wait ? rec.ready : null;
+  if (!have) IMG[c.key] = rec;   // a better copy on its way replaces the record only once it has arrived
+  return wait ? rec.ready : (have ? have.im : null);
 }
-const allReady = () => Promise.all((S.mode === 'month' ? monthCards(P.month, S.month) : dayCards(P[S.mode], cur())).map(x => x.c && photoOf(P[S.mode], x.c, true)));
+// the picks sheet: one fetch, then each year's first choice is cut out into its own small canvas, ready to draw at once
+function sheetPicks(pack, groups) {
+  const sheet = new Image(); sheet.crossOrigin = 'anonymous';
+  const recs = [];
+  groups.forEach(g => {
+    const c = g.cands && g.cands[0], b = g.pick;
+    if (!c || !b || b.length !== 4 || !b[2] || !b[3] || IMG[c.key]) return;
+    const rec = { im: null, q: 'sheet' }; IMG[c.key] = rec; recs.push([rec, c, b]);
+    rec.ready = new Promise(res => { rec.res = res });
+  });
+  if (!recs.length) return;
+  sheet.onload = () => {
+    recs.forEach(([rec, c, b]) => {
+      if (rec.im) return;
+      const cv = document.createElement('canvas'); cv.width = b[2]; cv.height = b[3];
+      cv.getContext('2d').drawImage(sheet, b[0], b[1], b[2], b[3], 0, 0, b[2], b[3]);
+      rec.im = cv; rec.res();
+    });
+    render();
+  };
+  sheet.onerror = () => { recs.forEach(([rec, c]) => { if (!rec.im) { delete IMG[c.key]; photoOf(pack, c, false); rec.res() } }) };   // no sheet: the usual way
+  sheet.src = pack.base + pack.picks.f;
+}
+// a crop box worked out on the full size photo (c.w by c.h), scaled to the copy in hand
+const srcBox = (im, c, b) => { const k = (im.width || im.naturalWidth) / c.w; return k && k !== 1 ? [b[0] * k, b[1] * k, b[2] * k, b[3] * k] : b };
+const allReady = full => Promise.all((S.mode === 'month' ? monthCards(P.month, S.month) : dayCards(P[S.mode], cur())).map(x => x.c && photoOf(P[S.mode], x.c, true, full)));
 // a sheet of small thumbnails a year or day: cell i of a grid `cols` wide
 function thumb(pack, g, i) {
   if (!g.thumbs) return `<img src="${pack.base + g.cands[i].img}" alt="">`;
@@ -755,7 +788,7 @@ function drawPolaroid(ctx, x, left, top, PW, PH, B, BB, o) {
   ctx.strokeStyle = IVORY_EDGE; ctx.lineWidth = 1.5; ctx.strokeRect(left + .5, top + .5, CW - 1, CH - 1);
   const im = photoOf(P[S.mode], x.c);
   if (im) {
-    const [sx, sy, sw, sh] = cropBox(x.c, PW / PH, x.mode, x.zoom, x.dx, x.dy);
+    const [sx, sy, sw, sh] = srcBox(im, x.c, cropBox(x.c, PW / PH, x.mode, x.zoom, x.dx, x.dy));
     ctx.save(); ctx.filter = photoFilter(o); ctx.drawImage(im, sx, sy, sw, sh, left + B, top + B, PW, PH); ctx.restore();
   }
   ctx.strokeStyle = 'rgba(120,96,70,.6)'; ctx.lineWidth = 1; ctx.strokeRect(left + B, top + B, PW, PH);
@@ -801,7 +834,7 @@ function drawStory(ctx, pack, o, hits) {
     if (im) {
       const st = stateOf(o)[x.key] || {};
       let box;
-      if ((st.crop && st.crop !== 'auto') || (st.zoom && st.zoom !== 1) || st.dx || st.dy) box = cropBox(x.c, w / h, x.mode, x.zoom, x.dx, x.dy);
+      if ((st.crop && st.crop !== 'auto') || (st.zoom && st.zoom !== 1) || st.dx || st.dy) box = srcBox(im, x.c, cropBox(x.c, w / h, x.mode, x.zoom, x.dx, x.dy));
       else { const r = Math.max(w / im.width, h / im.height), sw = w / r, sh = h / r; box = [(im.width - sw) / 2, (im.height - sh) * .3, sw, sh] }   // as the run: centred, a little above the middle
       ctx.save(); ctx.filter = photoFilter(o); ctx.drawImage(im, box[0], box[1], box[2], box[3], left + e, top + e, w, h); ctx.restore();
     }
@@ -943,7 +976,7 @@ function drawMonth(ctx, pack, o, hits) {
       ctx.fillStyle = g; ctx.fillRect(left, 0, card_w, card_h); ctx.restore();
       ctx.strokeStyle = IVORY_EDGE; ctx.lineWidth = 2; ctx.strokeRect(left + 1, 1, card_w - 2, card_h - 2);
       const im = photoOf(P.month, x.c);
-      if (im) { const [sx, sy, sw, sh] = cropBox(x.c, pw / ph, x.mode, x.zoom, x.dx, x.dy); ctx.save(); ctx.filter = photoFilter(o); ctx.drawImage(im, sx, sy, sw, sh, left + border, border, pw, ph); ctx.restore() }
+      if (im) { const [sx, sy, sw, sh] = srcBox(im, x.c, cropBox(x.c, pw / ph, x.mode, x.zoom, x.dx, x.dy)); ctx.save(); ctx.filter = photoFilter(o); ctx.drawImage(im, sx, sy, sw, sh, left + border, border, pw, ph); ctx.restore() }
       else { ctx.fillStyle = 'rgb(232,220,198)'; ctx.fillRect(left + border, border, pw, ph); diamond(ctx, 0, border + ph / 2, 10, 'rgb(200,176,136)') }
       ctx.strokeStyle = 'rgb(150,130,100)'; ctx.lineWidth = 2; ctx.strokeRect(left + border - 1, border - 1, pw + 1, ph + 1);
       // band: '14  SUD PANCHAM'
@@ -1519,10 +1552,21 @@ function waitFor(d) {
   }, 30e3);
 }
 // any month (Darpan, 13 Nov 2026: "I want to be able to choose any month of any year and create a picture"): a month with
-// no pack is asked for from the same photo maker with a "months" input (the Collage builder project adds it to studio.yml;
-// until then GitHub answers 422 and the page says so plainly). The month's photos take longer than a day's.
+// no pack is asked for from the same photo maker with its "months" input (Collage builder note, 14 Nov 2026). The maker
+// writes packs/month/status.json on the studio branch, one entry a month: made (the pack is there), none (no photos listed
+// for that month) or failed, each with the time `at`. The page waits on that file and reads it every 90 seconds, gently.
+// One recent month takes about 15 minutes, three about 25, longer when another run is going.
 let WANTM = null, WAITM = null;
 const MONTH_MINS = 90;
+async function monthStatus(k) {   // the maker's word on a month, fresh from GitHub when a key is here, else from the plain address
+  try {
+    const r = ghKey() ? await gh('/contents/packs/month/status.json?ref=studio', { headers: { Accept: 'application/vnd.github.raw+json' } })
+      : await fetch(RAW + 'month/status.json', { cache: 'no-store' });
+    if (!r.ok) return null;
+    const st = await r.json(); return st && st[k] || null;
+  } catch (e) { return null }
+}
+const sinceAsk = (e, k) => { const t = Date.parse(e && e.at || ''); return isNaN(t) || t >= (asked()['m:' + k] || 0) - 5 * 60e3 };   // the entry is from this ask, not an old one
 function openMonth(k) {
   if (!k) return;
   FE = false; S.mode = 'month'; if (P.month) stash('month'); S.month.month = k; unstash('month');
@@ -1535,8 +1579,8 @@ function showWantM(msg) {
   if (!WANTM) { $('#want').hidden = true; return }
   const when = asked()['m:' + WANTM], mins = when ? Math.round((Date.now() - when) / 60e3) : null, busy = when && Date.now() - when < MONTH_MINS * 60e3;
   $('#want-p').textContent = msg || (busy
-    ? `The photos for ${longMonth(WANTM)} are being gathered (asked ${mins < 1 ? 'just now' : mins + ' min ago'}). A whole month takes longer than a day, often 20 to 40 minutes; the poster opens here by itself when they are ready.`
-    : `There are no photos for ${longMonth(WANTM)} yet. Press the button and GitHub gathers that month’s photos from your archive and builds the poster pack (often 20 to 40 minutes). It then opens here, ready to edit like February 2024.`);
+    ? `The photos for ${longMonth(WANTM)} are being gathered (asked ${mins < 1 ? 'just now' : mins + ' min ago'}). A whole month takes about 15 to 25 minutes, longer if another run is going; the poster opens here by itself when they are ready.`
+    : `There are no photos for ${longMonth(WANTM)} yet. Press the button and GitHub gathers that month’s photos from your archive and builds the poster pack (about 15 to 25 minutes). It then opens here, ready to edit like February 2024.`);
   $('#want-go').hidden = !!busy;
   $('#want-go').textContent = ghKey() ? 'Get this month’s photos ready' : 'Connect GitHub to make any month';
   $('#want').hidden = false;
@@ -1545,10 +1589,13 @@ function waitForM(k) {
   clearInterval(WAITM);
   WAITM = setInterval(async () => {
     if (WANTM !== k) return clearInterval(WAITM);
-    if (await freshIndex() && INDEX.months.includes(k)) { clearInterval(WAITM); WANTM = null; $('#want').hidden = true; load('month'); return }
+    const e = await monthStatus(k), fresh = e && sinceAsk(e, k);
+    if (fresh && e.state === 'none') { clearInterval(WAITM); const a = asked(); delete a['m:' + k]; store.set('studio-asked', a); showWantM(`The archive has no photos listed for ${longMonth(k)}, so no poster can be made for that month. Try another month.`); $('#want-go').hidden = false; return }
+    if (fresh && e.state === 'failed') { clearInterval(WAITM); const a = asked(); delete a['m:' + k]; store.set('studio-asked', a); showWantM(`Something went wrong while making ${longMonth(k)}. Press the button to ask again; if it fails twice, tell Claude.`); $('#want-go').hidden = false; return }
+    if ((fresh && e.state === 'made') || !e) { if ((await freshIndex() || await loadIndex().then(() => true, () => false)) && INDEX.months.includes(k)) { clearInterval(WAITM); WANTM = null; $('#want').hidden = true; load('month'); return } }
     if (Date.now() - (asked()['m:' + k] || 0) > MONTH_MINS * 60e3) { clearInterval(WAITM); showWantM(`The photos for ${longMonth(k)} have not arrived after ${MONTH_MINS} minutes. Press the button to ask again.`); $('#want-go').hidden = false }
     else showWantM();
-  }, 60e3);
+  }, 90e3);
 }
 $('#anym').addEventListener('change', e => { if (/^\d{4}-\d\d$/.test(e.target.value)) openMonth(e.target.value) });
 $('#want-go').addEventListener('click', async () => {
@@ -1560,7 +1607,7 @@ $('#want-go').addEventListener('click', async () => {
     if (r.status === 204) { const a = asked(); a[month ? 'm:' + d : d] = Date.now(); store.set('studio-asked', a); show(); (month ? waitForM : waitFor)(d) }
     else show(r.status === 401 ? 'GitHub did not accept the key on this device. Press Connect GitHub and paste a new one.'
       : r.status === 403 || r.status === 404 ? 'The GitHub key cannot start the photo maker. Make a new key with Actions set to Read and write for bapas-diary.'
-      : month && r.status === 422 ? 'The photo maker does not know months yet. The Collage builder project has to add the “months” input to its Studio packs run first (you were given the note to paste there). Nothing else is needed on the Studio.'
+      : r.status === 422 ? 'GitHub did not accept the request (422). Wait a minute and try again; if it keeps happening, tell Claude.'
       : `GitHub said no (${r.status}). Try again in a minute.`);
     if (r.status === 401) { store.set('studio-gh', ''); $('#want-go').textContent = month ? 'Connect GitHub to make any month' : 'Connect GitHub to make any date' }
   } catch (e) { show('Could not reach GitHub. Check the internet connection and try again.') }
@@ -2091,8 +2138,8 @@ async function showLog() {
 }
 showLog(); backupNote();
 $('#exp-go').addEventListener('click', async () => {
-  const btn = $('#exp-go'); btn.disabled = true; say('', 'Drawing the full size picture…');
-  await allReady();
+  const btn = $('#exp-go'); btn.disabled = true; say('', 'Fetching the full size photos and drawing the picture…');
+  await allReady(true);   // the export always uses the full size copies (<year>-best.jpg), whatever the screen showed
   if (how() === 'replace' && S.mode === 'special') {   // an extra picture beside the day's, never in its place
     try {
       if (!driveCode()) throw new Error('Connect Google Drive first: press Connect Google Drive at the top.');
