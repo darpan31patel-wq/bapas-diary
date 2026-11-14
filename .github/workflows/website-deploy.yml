@@ -6,7 +6,7 @@ name: website-deploy
 on:
   push:
     branches: ['claude/**']
-    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/search-people.js', 'site/search-image.js', 'tools/search_people.py', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'site/darpan/**', 'tools/web_offline.py', 'tools/web_secure.py', 'tools/web_tiny.py', 'tools/web_tablet.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/news_ready.py', 'tools/site_menu.py', 'functions/**', 'site/weekly/**', '.github/workflows/website-deploy.yml', 'tools/web_type.py', 'tools/web_notranslate.py', 'site/screensaver/**', 'tools/web_screensaver.py', 'tools/screensaver/**', 'tools/web_year.py', 'site/year/**', 'tools/web_bapa_now.py', 'tools/web_darshan.py', 'tools/web_festival.py', 'tools/web_places.py', 'tools/web_videos.py', 'tools/web_articles.py', 'tools/web_diwali.py', 'tools/youtube/**', 'data/youtube/**', 'tools/old_calendar.py', 'calendar/worked-out-calendar.json']
+    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/search-people.js', 'site/search-image.js', 'tools/search_people.py', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'site/darpan/**', 'tools/web_offline.py', 'tools/web_secure.py', 'tools/web_tiny.py', 'tools/web_tablet.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/news_ready.py', 'tools/site_menu.py', 'functions/**', 'site/weekly/**', '.github/workflows/website-deploy.yml', 'tools/web_type.py', 'tools/web_notranslate.py', 'site/screensaver/**', 'tools/web_screensaver.py', 'tools/screensaver/**', 'tools/web_year.py', 'site/year/**', 'tools/web_bapa_now.py', 'tools/web_darshan.py', 'tools/web_festival.py', 'tools/web_places.py', 'tools/web_videos.py', 'tools/web_articles.py', 'tools/web_diwali.py', 'tools/youtube/**', 'data/youtube/**', 'tools/old_calendar.py', 'calendar/worked-out-calendar.json', 'tools/sorg_photos.py', 'tools/sorg_travels.py', 'tools/sorg_reports.py']
   workflow_dispatch:   # a deploy by hand from the Actions page, for a commit that landed with [skip ci] by mistake (12 Nov 2026)
   workflow_call:   # website-hires (on main) rebuilds the site when a year of full size photos is in R2
 concurrency: website-deploy
@@ -46,6 +46,12 @@ jobs:
           # the Indian date, festivals and yearly days for every day from 1970 to 2009, worked out from the moon and the sun
           # (baps.org's calendars start in 2010); only this build's copy, never over a BAPS calendar day (Darpan, 13 Nov 2026)
           python3 tools/old_calendar.py add --db bapas.db
+          # the old BAPS website, swaminarayan.org (Darpan, 13 Nov 2026: older years on Today, the Calendar and Through the years):
+          # its photos that are in the photo store join this build's copy only (never the shared database release), and baps.org
+          # photos it also has take its own caption where baps.org gave only the story's title (tools/sorg_photos.py)
+          if gh release download swaminarayan-org-web -p sorg-rows.json -p sorg-have.txt -p sorg-captions.json -p sorg-reports.tgz -p sorg-days.json -p sorg-geo.json 2>/dev/null; then
+            python3 tools/sorg_photos.py add --rows sorg-rows.json --db bapas.db --have sorg-have.txt --captions sorg-captions.json
+          fi
           # News story photos (source 'news', 132,136 from 6 Nov 2026) join every page only once their files are in the photo store:
           # until then they come out of this build's copy of the database, so no page shows an empty tile (Darpan, 9 Nov 2026)
           python3 tools/news_ready.py --db bapas.db --out news-ready.txt --prune
@@ -59,6 +65,7 @@ jobs:
           # recognised, best darshan first; years whose faces are not looked at yet keep the caption based choice (is_bapa = 1)
           pip install -q -r requirements.txt
           mkdir faces && gh release download website-faces -p 'face2-*.json.gz' -D faces
+          gh release download swaminarayan-org-web -p 'face2-*-sorg.json.gz' -D faces 2>/dev/null || true   # the old site's photos, face checked
           python3 tools/web_faces.py pick --db bapas.db --faces faces --out bapa.db --top bapa-top.db
           # the On this day picture's rules (Darpan, 25 Oct 2026, tools/web_rules.py): captions say what Bapa does
           python3 tools/web_rules.py captions --db bapa.db --db bapa-top.db
@@ -105,6 +112,14 @@ jobs:
           python3 calsrc/tools/web_calendar.py --db bapa-top.db --site cal --photos-url https://photos.bapas-diary.com/ --search-url /search/ --photo-years photo-years.txt --pool bapa.db --sigs calendar-looks.json --faces faces --schedule schedule.json   # a different looking photo each day, and the days ahead (Darpan: yes perfect go live, 26 Oct)
           python3 tools/web_rules.py calfaces --site cal --faces faces   # Bapa's whole head in each Calendar photo (Darpan, 25 Oct 2026)
           rsync -a cal/ out/ && test -f out/calendar/index.html
+          # what Bapa did each day and where he was, from the old site's travelogue: under the photos of a clicked Calendar day,
+          # the Calendar's journey for days with no photo, and Travels stays for the days with no photo (Darpan, 13 Nov 2026)
+          if [ -f sorg-days.json ]; then
+            mkdir -p out/data/reports && tar -xzf sorg-reports.tgz -C out/data/reports
+            python3 tools/sorg_travels.py calendar --days sorg-days.json --cal out/data/calendar.json
+            python3 tools/sorg_travels.py add --days sorg-days.json --geo sorg-geo.json --travels out/travels/index.html
+            python3 tools/build_places.py --travels out/travels/index.html --menu live/menu.css --out out/travels/places/index.html
+          fi
           # Year in review: one page for each whole year (/year/2025/ ...), Bapa in person only, towns from the Travels page (Darpan, 29 Oct 2026)
           python3 tools/web_year.py --db bapa.db --faces faces --travels out/travels/index.html --out out
           sqlite3 bapas.db 'SELECT count(*) FROM calendar'

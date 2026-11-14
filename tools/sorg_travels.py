@@ -14,6 +14,7 @@ geo   finds each town the reports name on the map: first the towns Travels alrea
 add   puts a stay on the Journey for every run of days the reports tell and the Journey does not have yet (no photo of
       those days): each day goes to the town he ended the day in, and the days in one town in a row are one stay. The
       stays the photos already give are never moved or changed.
+calendar  the Calendar's days with no photo get the town the report names (out/data/calendar.json)
 """
 import argparse, collections, datetime, json, math, re, sys
 
@@ -153,6 +154,21 @@ def add(a):
     print(f'Travels: {sum(added.values())} stays added from the reports ({", ".join(f"{y}: {n}" for y, n in sorted(added.items()))})')
 
 
+def calendar(a):
+    """the Calendar's days with no photo get the town the report names, so its journey along the top reaches back too"""
+    days = json.load(open(a.days, encoding='utf-8'))
+    cal = json.load(open(a.cal, encoding='utf-8'))
+    n = 0
+    for d, v in days.items():
+        rows = cal.get('m', {}).get(d[:7])
+        i = int(d[8:]) - 1
+        if rows and i < len(rows) and isinstance(rows[i], list) and len(rows[i]) > 3 and not rows[i][3] and v['pl']:
+            rows[i][3] = v['pl'][-1]
+            n += 1
+    json.dump(cal, open(a.cal, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+    print(f'Calendar: {n} days given their town from the reports')
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest='cmd', required=True)
@@ -161,8 +177,10 @@ def main():
     g.add_argument('--geonames'); g.add_argument('--out', required=True)
     d = sub.add_parser('add')
     d.add_argument('--days', required=True); d.add_argument('--geo', required=True); d.add_argument('--travels', required=True)
+    c = sub.add_parser('calendar')
+    c.add_argument('--days', required=True); c.add_argument('--cal', required=True)
     a = ap.parse_args()
-    {'geo': geo, 'add': add}[a.cmd](a)
+    {'geo': geo, 'add': add, 'calendar': calendar}[a.cmd](a)
 
 
 if __name__ == '__main__':
