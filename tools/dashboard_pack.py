@@ -268,6 +268,10 @@ def main():
     left = [e for e in tg_evs if town(e) not in pictured and e.get('url') not in cards and not any(make.tells(x, e) for x in photos)
             and not (e.get('channel') and (e['date'][:4], town(e)[1]) in pictured)]
     told = max(left, key=make.tg_rank, default=None)
+    said = {town(e) for e in tg_evs} | ({town(story)} if story else set())   # the News stories of the day, as the morning run adds them
+    news = [e for e in make.news_stories(day) if town(e) not in said and not any(make.tells(x, e) for x in photos)]
+    left += news
+    told = told or (news[0] if news else None)
     wa = make.cal_caption(day, None)
     wa = wa + (('\n' if wa else '') + make.tg_caption(told, left) if told else '')
     pack = dict(date=str(day), title=make.cal_title(day) or f'{day.day} {day:%B}', subtitle='in Bapa’s Diary',

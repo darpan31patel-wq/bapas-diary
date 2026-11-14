@@ -256,7 +256,7 @@ def main():
         hero = [x['y'] for x in (drawn.get('hero') or [])]
         pins = make.fest_pins(name)
         pack = dict(date=str(day), kind='every_festival', festival=name, title=drawn.get('title') or f'Every {name}',
-                    subtitle='in Bapa’s Diary', footer=make.FOOTER, cal_line=cal[0], headline=None, story=None,
+                    subtitle='in Bapa’s Diary', footer=make.FOOTER, cal_line=cal[0], headline=None, story=None, whatsapp=cal[0],
                     layout=dict(name='wide', style=drawn.get('style') or make.LIVE_STYLE, rows=make.WIDE[make.LIVE_STYLE]['rows'],
                                 hero=hero, short_bottom=drawn.get('short_bottom', 0), dress=jsonable(make.FEST_DRESS.get(name)),
                                 pinned=bool(pins), size=[make.W, make.H]),
@@ -287,6 +287,7 @@ def main():
                     headline=ev.get('headline') or ev['line'],
                     story='\n\n'.join(make.special_words(ev, bool(lead))),   # the channel's whole post (Darpan, 13 Nov 2026: 'stop cutting everything out')
                     story_short=ev.get('whatsapp') or ev.get('story') or ev['line'],
+                    whatsapp=make.tg_caption(ev).strip(),   # the story as the 2pm caption words tell it ('On this day in ...'), Darpan, 14 Nov 2026
                     story_date=ev['date'][:10], story_place=ev.get('place') or '',
                     layout=dict(name='story', big=[70, 200, 1180, 800], small_from=1360, size=[make.W, make.H], unit=make.SCALE))
         # Darpan, 13 Nov 2026 ('if youre not sure make multiple and i will decide'): the other pictures the day could
@@ -305,7 +306,7 @@ def main():
             op.convert('RGB').resize((2400, round(2400 * op.height / op.width)), Image.LANCZOS).save(os.path.join(out, f'option-{n}.jpg'), quality=85)
             pack['options'].append(dict(picture=f'option-{n}.jpg', kind=e.get('kind', 'story'), headline=e.get('headline') or e['line'],
                                         story='\n\n'.join(make.special_words(e)), story_date=e['date'][:10], story_place=e.get('place') or '',
-                                        choose=choice(e)))
+                                        whatsapp=make.tg_caption(e).strip(), choose=choice(e)))
     pool.close()
     pack.update(real='real.jpg', cards=cards, cell=dp.CELL, cols=dp.COLS, made=made)
     json.dump(pack, open(os.path.join(out, 'pack.json'), 'w'), indent=1, ensure_ascii=False)

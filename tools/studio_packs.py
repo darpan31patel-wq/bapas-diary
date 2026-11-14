@@ -10,10 +10,37 @@ special pack (tools/special_pack.py) in site/packs/special/<date>/, kept as long
 packs/special/checked.json remembers the days already looked at, so a day with no special picture isn't looked at again.
 A month poster's pack (Darpan, 13 Nov 2026: 'choose any month of any year in the Studio and make its poster') is made
 for every month asked for with --months, and for this month and the next one on every run: see month_packs."""
-import argparse, datetime, json, os, re, shutil, subprocess, sys
+import argparse, datetime, json, os, re, shutil, subprocess, sys, urllib.error, urllib.request
 from zoneinfo import ZoneInfo
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RELEASE = f"https://github.com/{os.environ.get('GITHUB_REPOSITORY') or 'darpan31patel-wq/bapas-diary'}/releases/download/today/"
+DIARY = '1P79txhqK5keX5j1HUje__RVki9YmSqaj'   # the Drive folder Bapa's Diary, where the 2pm send takes everything from
+
+
+def sent_caption(today):
+    """The words that go under Darpan's 2pm caption today, exactly as they are written to Drive (Darpan, 14 Nov 2026:
+    'the full 2pm caption ... exactly as written to Drive' in the day pack's whatsapp field): '<d MMMM yyyy> caption.txt'
+    in Bapa's Diary when Drive can be read, else the morning run's caption.txt on the 'today' release, which is the
+    file the Google script copies there word for word. Returns (words, where from); ('', ...) on a day with no words;
+    None when the morning run hasn't made today's picture yet or nothing can be read, so the pack is left as it is."""
+    tidy = lambda t: t.replace('\r\n', '\n').strip()
+    if os.environ.get('ARCHIVE'):   # rclone is set up
+        r = subprocess.run(['rclone', 'cat', f'gdrive:{today.day} {today:%B %Y} caption.txt', '--drive-root-folder-id', DIARY],
+                           capture_output=True)
+        if r.returncode == 0 and r.stdout.strip():
+            return tidy(r.stdout.decode('utf-8')), 'drive'
+    def get(name):
+        try:
+            return urllib.request.urlopen(RELEASE + name, timeout=60).read().decode('utf-8')
+        except urllib.error.HTTPError as e:
+            return '' if e.code == 404 else None
+        except Exception:
+            return None
+    if (get('date.txt') or '').strip() != str(today):
+        return None
+    text = get('caption.txt')
+    return None if text is None else (tidy(text), 'morning run')
 
 
 def month_packs(packs, asked, today):
@@ -114,6 +141,17 @@ def main():
              and 'picks' not in json.load(open(os.path.join(days_dir, n, 'pack.json')))]
     if plain:
         subprocess.run([sys.executable, os.path.join(HERE, 'tools', 'dashboard_pack.py'), '--lighten'] + plain)
+    # today's pack carries the words that really go out at 2pm, not the guess made when the pack was made days before
+    made = os.path.join(days_dir, str(today), 'pack.json')
+    words = sent_caption(today) if os.path.exists(made) else None
+    if words:
+        pack = json.load(open(made, encoding='utf-8'))
+        if (pack.get('whatsapp'), pack.get('whatsapp_from')) != words:
+            pack['whatsapp'], pack['whatsapp_from'] = words
+            json.dump(pack, open(made, 'w', encoding='utf-8'), indent=1, ensure_ascii=False)
+        print(f'today\'s 2pm caption words ({words[1]}):', repr(words[0]))
+    else:
+        print('today\'s 2pm caption words could not be read: the day pack keeps the words it has')
     specials_dir = os.path.join(packs, 'special')
     os.makedirs(specials_dir, exist_ok=True)
     checked_file = os.path.join(specials_dir, 'checked.json')
