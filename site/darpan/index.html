@@ -1674,6 +1674,55 @@ function chOffToggle(date) {
   saveChoices(i >= 0 ? 'Special picture allowed again' : 'No special picture this day', longDate(date));
 }
 const chMove = (date, i, d) => { const mine = chFor(date), a = mine[i], b = mine[i + d]; if (!a || !b) return; const ia = CH.add.indexOf(a), ib = CH.add.indexOf(b); CH.add[ia] = b; CH.add[ib] = a; saveChoices('Special pictures reordered', longDate(date)) };
+// the remake (Darpan, 14 Nov 2026: "if I make a change on the studio dashboard as a special picture, it needs to trigger
+// something so the collage builder automatically builds it and puts it in the special picture dashboard and on Google Drive").
+// Every saved choice for today or a coming day asks the Collage builder's photo maker (studio.yml, input `special`) to
+// rebuild that day's special picture from the choices file; the maker publishes the new pack to the studio branch (shown
+// here as soon as it lands) and, for today, the new special file and caption in Drive. Several changes close together
+// become one ask (90 seconds after the last), so GitHub is not started again and again. Until the maker takes the
+// `special` input, GitHub answers 422 and the page says so plainly; the morning run still reads the choices.
+let REMAKE_T = 0, WAITS = null;
+const SP_MINS = 30;
+function remakeSoon(date) {
+  if (!date || date < todayLondon()) return;
+  clearTimeout(REMAKE_T);
+  const el = document.getElementById('ch-remake-p'); if (el) el.textContent = `The remake of ${longDate(date)} starts in a moment…`;
+  REMAKE_T = setTimeout(() => askRemake(date), 90e3);
+}
+async function askRemake(date) {
+  clearTimeout(REMAKE_T);
+  const say = msg => { const el = document.getElementById('ch-remake-p'); if (el) el.textContent = msg; else chSay('', msg) };
+  if (!ghKey()) { say('Connect GitHub (top of the page) and the remake will start by itself after each change. Until then the morning run uses your choice.'); return }
+  try {
+    const r = await gh('/actions/workflows/studio.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main', inputs: { special: date } }) });
+    if (r.status === 204) { const a = asked(); a['s:' + date] = Date.now(); store.set('studio-asked', a); say(`Asked ${timeNow()}. The Collage builder is remaking ${longDate(date)}’s special picture from your choices; it appears here, and in Drive, in about 5 to 10 minutes.`); waitForS(date) }
+    else if (r.status === 422) say('Your choice is saved. The Collage builder’s remake run is not there yet (it has to take a “special” input), so the morning run will use your choice; today’s picture cannot be remade until then.');
+    else if (r.status === 401) { store.set('studio-gh', ''); say('GitHub did not accept the key on this device. Press Connect GitHub and paste a new one.') }
+    else say(`GitHub said no (${r.status}). Your choice is saved; press Remake now to try again.`);
+  } catch (e) { say('Could not reach GitHub. Your choice is saved; press Remake now to try again.') }
+}
+const timeNow = () => new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+async function specialMade(date) {   // when the special pack of that day was made, straight from GitHub
+  try { const r = await gh(`/contents/packs/special/${date}/pack.json?ref=studio`, { headers: { Accept: 'application/vnd.github.raw+json' } }); if (!r.ok) return 0; return Date.parse((await r.json()).made || '') || 0 } catch (e) { return 0 }
+}
+function waitForS(date) {
+  clearInterval(WAITS);
+  WAITS = setInterval(async () => {
+    const when = asked()['s:' + date] || 0, el = document.getElementById('ch-remake-p');
+    const made = await specialMade(date);
+    if (made && made > when - 60e3) {
+      clearInterval(WAITS); WAITS = null;
+      const a = asked(); delete a['s:' + date]; store.set('studio-asked', a);
+      const rm = store.get('studio-remade') || {}; rm[date] = Date.now(); store.set('studio-remade', rm);
+      await freshIndex();
+      if (el) el.textContent = remakeWords(date);
+      if (S.mode === 'special' && S.special.date === date) { P.special = null; load('special') }
+      return;
+    }
+    if (Date.now() - when > SP_MINS * 60e3) { clearInterval(WAITS); WAITS = null; if (el) el.textContent = `The remake of ${longDate(date)} has not arrived after ${SP_MINS} minutes. Press Remake now to ask again.`; return }
+    if (el) el.textContent = `Remaking ${longDate(date)} (asked ${Math.round((Date.now() - when) / 60e3)} min ago)…`;
+  }, 60e3);
+}
 function chSay(cls, msg) { for (const el of [document.getElementById('ch-status'), $('#status')]) if (el) { el.className = 'status ' + cls; el.textContent = msg } }
 async function saveChoices(how, where, quiet) {
   store.set('studio-choices', CH); if (!quiet) build();
@@ -1683,8 +1732,9 @@ async function saveChoices(how, where, quiet) {
     const j = r.ok ? await r.json() : {};
     if (!r.ok || !j.ok) throw new Error(j.error || `the website said ${r.status}`);
     CHSRC = j.source;
-    chSay('ok', 'Saved. The picture will be remade at the next morning run (about 5am UK).' + (j.source === 'github' ? '' : ' Kept in the Studio for now: the 2pm picture project reads it at bapas-diary.com/special-days.json until the GitHub token is set.'));
+    chSay('ok', 'Saved.' + (j.source === 'github' ? '' : ' Kept in the Studio: the 2pm picture project reads it at bapas-diary.com/special-days.json until the GitHub token is set.'));
     if (how) logChange(how, where);
+    remakeSoon(chDate());
   } catch (e) { chSay('warn', 'Kept on this device, but not saved on the website: ' + ((e && e.message) || e) + '. It is sent again the next time you choose.') }
 }
 const dayData = async mmdd => { if (DAYD[mmdd] !== undefined) return DAYD[mmdd]; DAYD[mmdd] = null; try { const r = await fetch(`/data/day/${mmdd}.json`, { cache: 'force-cache' }); if (r.ok) DAYD[mmdd] = await r.json() } catch (e) {} if (S.tab === 'choose') build(); return DAYD[mmdd] };
@@ -1756,7 +1806,7 @@ function paneChoose() {
       ${dm.list.slice(0, 15).map(momentItem).join('')}${dm.list.length > 15 ? `<p class="hint">And ${dm.list.length - 15} more, in the years below.</p>` : ''}${!dm.list.length && HISTORY && dd ? '<p class="hint">No special words found in this day’s captions, articles or stories.</p>' : ''}</div>`;
   return `<div class="group"><h3>The special picture for ${esc(niceD(date))}</h3>${own}
       <p class="status" id="ch-status" role="status"></p>
-      ${date === today ? `<div class="acts" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn small" id="ch-remake" disabled title="Not switched on yet: it would start today’s 2pm picture run, so it waits for your word.">Remake now</button><span class="hint">Today’s picture: the morning run has gone, so a new choice needs a remake. Not switched on yet.</span></div>` : ''}</div>
+      ${date >= today ? `<div class="acts" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn small" id="ch-remake" title="Asks the Collage builder to rebuild this day’s special picture from your choices now">Remake now</button><span class="hint" id="ch-remake-p">${remakeWords(date)}</span></div>` : ''}</div>
     <div class="group"><h3>Your choices for this day</h3>${mineHtml}
       ${seg('ch-scope', chScope(), [['every', 'Every year on this day'], ['year', `This year only (${y0})`]])}
       <p class="hint">The first choice is the special picture at 2pm; the next ones follow as special 2, special 3. Each has a box for your own headline and story words; empty means the builder’s own. ${CHSRC === 'github' ? 'Saved in archive/special-days.json for the morning run.' : CHSRC === 'studio' ? 'Kept in the Studio; the morning run reads it at bapas-diary.com/special-days.json until the GitHub token is set.' : 'Kept on this device until the website can keep it.'}</p></div>
@@ -1772,9 +1822,11 @@ function optionsRow(pack) {
     <div><button class="btn small primary" data-instead="${i}" ${op.choose ? '' : 'disabled'}>Use this one instead</button></div></figure>`).join('');
   document.querySelectorAll('[data-instead]').forEach(b => b.addEventListener('click', () => { const op = pack.options[+b.dataset.instead]; if (op && op.choose && CH) chInstead(date, Object.assign({}, op.choose)) }));
 }
+const remakeWords = date => { const when = asked()['s:' + date]; if (when && Date.now() - when < SP_MINS * 60e3) { if (!WAITS) waitForS(date); return `Remaking ${longDate(date)} (asked ${Math.round((Date.now() - when) / 60e3)} min ago)…` } const rm = (store.get('studio-remade') || {})[date]; return (rm ? `Remade at ${new Date(rm).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} from your choices${date === todayLondon() ? ', in Drive too' : ''}. ` : '') + (date === todayLondon() ? 'Every change you save asks the Collage builder to remake today’s special picture; it lands here and in Drive in about 5 to 10 minutes. Remake now asks at once.' : 'Every change you save asks the Collage builder to remake this day’s special picture, so it is ready here before its day.') };
 function wireChoices() {
   const date = chDate(); if (!date) return;
   const on = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn) };
+  on('ch-remake', 'click', () => askRemake(date));
   document.querySelectorAll('[data-ch]').forEach(b => b.addEventListener('click', async () => { await loadChoices(); chToggle(date, JSON.parse(b.dataset.ch), !('first' in b.dataset)) }));
   on('ch-off', 'click', async () => { await loadChoices(); chOffToggle(date) });
   document.querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => { const e = chFor(date)[+b.dataset.rm]; if (e) chToggle(date, e) }));
