@@ -108,6 +108,12 @@ def main():
         if r.returncode:
             print('  could not make', d)
             shutil.rmtree(os.path.join(days_dir, str(d)), ignore_errors=True)
+    # packs made before the picks sheet and the small photos (13 Nov 2026) gain them from the photos they already
+    # hold: nothing is picked again, so a day Darpan has worked on stays as it is
+    plain = [os.path.join(days_dir, n) for n in sorted(os.listdir(days_dir)) if os.path.exists(os.path.join(days_dir, n, 'pack.json'))
+             and 'picks' not in json.load(open(os.path.join(days_dir, n, 'pack.json')))]
+    if plain:
+        subprocess.run([sys.executable, os.path.join(HERE, 'tools', 'dashboard_pack.py'), '--lighten'] + plain)
     specials_dir = os.path.join(packs, 'special')
     os.makedirs(specials_dir, exist_ok=True)
     checked_file = os.path.join(specials_dir, 'checked.json')

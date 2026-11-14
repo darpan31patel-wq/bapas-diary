@@ -9,6 +9,8 @@ writes dashboard/packs/2026-10-25/pack.json, the photos beside it and real.jpg (
 Every photo of the year where Bapa is recognised is kept too (Darpan, 26 Oct 2026: 'let me browse ALL the photos'):
 the best six in <year>-best.jpg, the rest smaller in <year>-more.jpg (photos joined end to end; pack.json gives each
 one's place), with a sheet of small thumbnails per year (<year>-thumbs.jpg), so the pack stays light.
+To open fast (website project, 13 Nov 2026) the pack also carries picks.jpg, one sheet with every card's chosen photo
+at card size, and <year>-small.jpg, the best six again at half the size. Both are extras: nothing else changes.
 Read only: nothing here changes the daily picture, shown.json or the release."""
 import datetime, json, os, re, sqlite3, sys
 
@@ -19,6 +21,9 @@ from PIL import ImageOps
 
 LONG = 1000   # the long side of each of the best six photos
 MORE = 720    # the long side of every other photo of the year
+SMALL = 500   # the best six again, small, for a quick first look (<year>-small.jpg)
+PICK = 560    # picks.jpg: the long side of each card's chosen photo, about the size a card shows it on a screen
+SHEET = 4096  # picks.jpg is never wider than this
 CELL = 160    # thumbnail sheet: square cells, COLS a row
 COLS = 10
 FACES = {}    # path -> Bapa's face box, as the daily pick found it
@@ -47,6 +52,56 @@ def thumbs(ims, faces, path):
         mid = ((f[0] + f[2] / 2) / im.width, (f[1] + f[3] / 2) / im.height) if f else (.5, .4)
         sheet.paste(ImageOps.fit(im, (CELL, CELL), Image.LANCZOS, centering=mid), ((i % COLS) * CELL, (i // COLS) * CELL))
     sheet.save(path, quality=72)
+
+
+def picks_sheet(picks, path):
+    """One picture holding the chosen photo of every card, whole (not cut to the frame), long side PICK, laid in rows
+    left to right, so the Studio can draw the day from a single file. picks: [(year entry, photo)]; each year entry
+    gains pick=[x, y, w, h], its photo's place on the sheet. Returns the pack's top level 'picks' entry."""
+    small, x, y, tall, wide = [], 0, 0, 0, 0
+    for entry, im in picks:
+        s = min(1, PICK / max(im.size))
+        im = im.resize((max(1, round(im.width * s)), max(1, round(im.height * s))), Image.LANCZOS)
+        if x and x + im.width > SHEET:
+            x, y, tall = 0, y + tall, 0
+        entry['pick'] = [x, y, im.width, im.height]
+        small.append((im, (x, y)))
+        x += im.width; tall = max(tall, im.height); wide = max(wide, x)
+    if not small:
+        return None
+    sheet = Image.new('RGB', (wide, y + tall))
+    for im, at in small:
+        sheet.paste(im, at)
+    sheet.save(path, quality=80, optimize=True, progressive=True)
+    return dict(f=os.path.basename(path), w=sheet.width, h=sheet.height, long=PICK)
+
+
+def lighten(out):
+    """Adds picks.jpg and the small photos to a pack made before them, from the photos it already holds, so its
+    choices, order and every other field stay exactly as they were (a pack Darpan may already have worked on)."""
+    import io
+    path = os.path.join(out, 'pack.json')
+    pack = json.load(open(path))
+    if 'picks' in pack:
+        return False
+    picks = []
+    for y in pack['years']:
+        name = f'{y["year"]}-small.jpg'
+        blob = open(os.path.join(out, name), 'wb')
+        for k, c in enumerate(y['cands'][:6]):
+            with open(os.path.join(out, c['f']), 'rb') as f:
+                f.seek(c['at'][0]); im = Image.open(io.BytesIO(f.read(c['at'][1]))).convert('RGB')
+            if k == 0:
+                picks.append((y, im))
+            t = min(1, SMALL / max(im.size)); sm = im.resize((max(1, round(im.width * t)), max(1, round(im.height * t))), Image.LANCZOS)
+            at = blob.tell(); sm.save(blob, 'JPEG', quality=78)
+            c['small'] = dict(f=name, at=[at, blob.tell() - at], w=sm.width, h=sm.height)
+        blob.close()
+        if os.path.getsize(blob.name) == 0:
+            os.remove(blob.name)
+    pack['picks'] = picks_sheet(picks, os.path.join(out, 'picks.jpg'))
+    json.dump(pack, open(path, 'w'), indent=1, ensure_ascii=False)
+    return True
 
 
 def festival_tag(x, reach=3):
@@ -133,6 +188,13 @@ def items_for(day, cache):
 
 
 def main():
+    if sys.argv[1] == '--lighten':   # python tools/dashboard_pack.py --lighten <pack folder> ...
+        for out in sys.argv[2:]:
+            try:
+                print(out, 'picks.jpg and small photos added' if lighten(out) else 'has them already')
+            except Exception as e:   # an old pack of another shape stays as it is
+                print(out, 'left as it is:', e)
+        return
     day = datetime.date.fromisoformat(sys.argv[1])
     out = os.path.join(sys.argv[2] if len(sys.argv) > 2 else 'dashboard/packs', str(day))
     os.makedirs(out, exist_ok=True)
@@ -148,7 +210,7 @@ def main():
     make.compose(photos, day, seed=f'{day:%m-%d}', style=make.LIVE_STYLE, history=story).convert('RGB') \
         .resize((2400, round(2400 * make.H / make.W)), Image.LANCZOS).save(os.path.join(out, 'real.jpg'), quality=85)
 
-    years = []
+    years, picks = [], []
     for w in make.WORKINGS:
         if w['pick'] is None:
             continue
@@ -165,7 +227,7 @@ def main():
             (more if face else rest).append(dict(x, face=face, crop='frame' if face else 'whole', special=make.is_special(x.get('c') or ''), nobapa=not face))
         more.sort(key=lambda x: -x['face'][3])
         cands, ims = [], []
-        blobs = {f: open(os.path.join(out, f'{w["year"]}-{f}.jpg'), 'wb') for f in ('best', 'more')}
+        blobs = {f: open(os.path.join(out, f'{w["year"]}-{f}.jpg'), 'wb') for f in ('best', 'more', 'small')}
         for k, x in enumerate(rows[:6] + more + rest):
             try:
                 im = x['im'].copy() if 'im' in x else Image.open(x['path']).convert('RGB')
@@ -175,6 +237,11 @@ def main():
             f = 'best' if k < 6 else 'more'
             at = blobs[f].tell(); im.save(blobs[f], 'JPEG', quality=82 if k < 6 else 76)
             ims.append(im)
+            tiny = None
+            if k < 6:   # the same photo again at half the size, for a quick first look
+                t = min(1, SMALL / max(im.size)); sm = im.resize((max(1, round(im.width * t)), max(1, round(im.height * t))), Image.LANCZOS)
+                sat = blobs['small'].tell(); sm.save(blobs['small'], 'JPEG', quality=78)
+                tiny = dict(f=f'{w["year"]}-small.jpg', at=[sat, blobs['small'].tell() - sat], w=sm.width, h=sm.height)
             d = str(x.get('d') or '')[:10]
             fest = festival_tag(x)   # the daily picture's tab (Darpan, 4 Nov 2026), or a nearby festival its own caption names (6 Nov 2026)
             lo, hi = album_span(x)
@@ -182,13 +249,16 @@ def main():
                               face=[round(v * s, 1) for v in x['face']] if x['face'] else None,
                               crop=x.get('crop', 'frame'), caption=make.caption(x), original=x.get('c') or '',
                               place=make.place(x), date=d, special=bool(x.get('special')), nice=bool(x.get('nice')),
-                              festival=fest, album_from=lo, album_to=hi, **({'nobapa': True} if x.get('nobapa') else {})))
+                              festival=fest, album_from=lo, album_to=hi, **({'small': tiny} if tiny else {}), **({'nobapa': True} if x.get('nobapa') else {})))
         for f, b in blobs.items():
             b.close()
             if os.path.getsize(b.name) == 0:
                 os.remove(b.name)
         thumbs(ims, [c['face'] for c in cands], os.path.join(out, f'{w["year"]}-thumbs.jpg'))
         years.append(dict(year=w['year'], mode=w['mode'], cands=cands, thumbs=f'{w["year"]}-thumbs.jpg'))
+        if ims:
+            picks.append((years[-1], ims[0]))
+    sheet = picks_sheet(picks, os.path.join(out, 'picks.jpg'))
     cal = make.cal_footer(day)
     # the words the morning run puts under Darpan's 2pm WhatsApp caption (caption.txt), so the Studio can show and change them
     town = lambda e: (e['date'][:10], make.re.split(r'[,(]', e.get('place') or '')[0].strip().lower())
@@ -203,7 +273,7 @@ def main():
     pack = dict(date=str(day), title=make.cal_title(day) or f'{day.day} {day:%B}', subtitle='in Bapa’s Diary',
                 footer=make.FOOTER, cal_line=cal[0] if cal else '', tomorrow=cal[1] if cal else '',
                 story=dict(year=story['date'][:4], line=story.get('line', '')) if story else None,
-                whatsapp=wa.strip(), years=years, cell=CELL, cols=COLS, every=True, albums=True, made=datetime.datetime.utcnow().isoformat(timespec='minutes') + 'Z')
+                whatsapp=wa.strip(), years=years, cell=CELL, cols=COLS, every=True, albums=True, picks=sheet, made=datetime.datetime.utcnow().isoformat(timespec='minutes') + 'Z')
     json.dump(pack, open(os.path.join(out, 'pack.json'), 'w'), indent=1, ensure_ascii=False)
     print(f'{day}: {len(years)} years, {sum(len(y["cands"]) for y in years)} photos -> {out}')
 

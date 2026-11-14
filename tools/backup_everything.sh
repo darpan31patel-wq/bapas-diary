@@ -3,7 +3,8 @@
 # I'm reliant on one thing." One gentle nightly run that puts a copy of every part of Bapa's Diary in a second company:
 #   code      -> GitLab (every branch, every night, only what changed) and a full git bundle on Sundays to Drive + R2
 #   database  -> bapas.db (photos, days, News articles) to Google Drive and the private R2 bucket bapas-diary-backups
-#   Studio    -> the Studio changes log and the missed searches / feedback (Cloudflare KV) to Drive
+#   Studio    -> the Studio changes log and the missed searches / feedback (read through the website) to Drive
+#   Studio packs -> the Studio's days, months and special pictures to photos.bapas-diary.com/studio/ (R2) and Drive
 #   sign ups  -> the weekly darshan email list (Resend) to Drive only (people's emails never go to R2)
 #   releases  -> the GitHub release files the builds need (database, faces, tags, bank...), Sundays, changes only
 #   checks    -> emails Darpan only when something is wrong: a backup step failed, the 2pm picture on GitHub is older
@@ -64,7 +65,7 @@ if git -C mirror.git fetch -q --prune origin '+refs/heads/*:refs/heads/*' '+refs
     if [ -z "$GLUSER" ]; then problem "GitLab would not open with the GITLAB_TOKEN secret (wrong or expired token)"
     else
       [ "$(gl -o /dev/null -w '%{http_code}' "$GLAPI/projects/$ENC")" = 200 ] || \
-        gl -X POST "$GLAPI/projects" --data-urlencode "path=${REPO#*/}" --data-urlencode "name=Bapa's Diary" \
+        gl -X POST "$GLAPI/projects" --data-urlencode "path=${REPO#*/}" --data-urlencode "name=Bapas Diary" \
           -d visibility=private -d initialize_with_readme=false | jq -c '{made: .path_with_namespace, error: .message}'
       GL="https://oauth2:$GITLAB_TOKEN@gitlab.com/$REPO.git"
       if git -C mirror.git push -q --prune "$GL" '+refs/heads/*:refs/heads/*' '+refs/tags/*:refs/tags/*' 2>&1 | sed "s#$GITLAB_TOKEN#***#g"; [ "${PIPESTATUS[0]}" = 0 ]; then
@@ -98,6 +99,31 @@ if [ $R2_OK = 1 ] && ! aws s3 ls "s3://$BUCKET/site/latest-site.zip" --endpoint-
 fi
 [ $R2_OK = 1 ] && r2_keep site   # the site copies each deploy leaves (website-deploy.yml)
 
+step "Studio photo packs, so the Studio opens days without GitHub (changes only)"
+# Darpan, 13 Nov 2026: "if i lose access to github like last time, i dont have access to the studio right?" The Studio
+# loads its days, months and special pictures from the studio branch on raw.githubusercontent.com. This copies that
+# packs/ folder (read from the code copy above, so no extra GitHub traffic) and the stories files the Studio reads
+# (articles.json, history.json) to photos.bapas-diary.com/studio/ in R2, and to Drive. It only reads the studio branch.
+PHOTOS=bapas-diary-photos
+if git -C mirror.git rev-parse -q --verify refs/heads/studio >/dev/null; then
+  rm -rf studio-copy && mkdir -p studio-copy
+  git -C mirror.git archive refs/heads/studio packs | tar -x -C studio-copy
+  for f in articles.json history.json; do
+    git -C mirror.git show "refs/heads/claude/project-thread-02nrr0:site/darpan/$f" > "studio-copy/$f" 2>/dev/null || rm -f "studio-copy/$f"
+  done
+  echo "$(find studio-copy -type f | wc -l) Studio files ($(du -sh studio-copy | cut -f1))"
+  aws s3 sync studio-copy/packs "s3://$PHOTOS/studio/packs/" --endpoint-url "$R2" --only-show-errors --size-only --exclude '*.json' \
+    && aws s3 sync studio-copy "s3://$PHOTOS/studio/" --endpoint-url "$R2" --only-show-errors --exclude '*' --include '*.json' --cache-control 'no-cache' \
+    && echo "Studio packs in R2 at photos.bapas-diary.com/studio/" || problem "Studio packs copy to R2 failed"
+  rclone sync studio-copy "$DRIVE/studio-packs" --size-only --transfers 8 || problem "Studio packs copy to Drive failed"
+  # the Studio on bapas-diary.com must be allowed to read the copy (CORS), or the GitHub-free fallback would not work
+  H=$(curl -s -o /dev/null -D - -H 'Origin: https://bapas-diary.com' https://photos.bapas-diary.com/studio/packs/index.json | tr -d '\r')
+  echo "$H" | head -1; echo "$H" | grep -i '^access-control-allow-origin' || true
+  echo "$H" | head -1 | grep -q ' 200' && echo "$H" | grep -qi '^access-control-allow-origin: https://bapas-diary.com' \
+    || problem "The Studio cannot read its backup copy at photos.bapas-diary.com/studio/ (not found or not allowed)"
+  rm -rf studio-copy
+else problem "No studio branch in the code copy"; fi
+
 step "GitHub releases the website and 2pm picture are built from (Sundays: only files that changed)"
 # database, faces, deep tags, image search, today, bank, backup ... everything except mockups and tests. Drive and R2
 # keep releases/TAG/FILE; releases/list.txt remembers each file's size and date so unchanged files are never fetched twice.
@@ -119,36 +145,27 @@ if [ "$DOW" = 7 ] || [ "${FULL:-}" = yes ]; then
   echo "$n release files copied, $(wc -l < now.txt) kept in all"
 fi
 
-step "Studio changes log, missed searches and feedback (Cloudflare KV)"
-CF=https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces
-cfapi() { curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$@"; }
-# the stores are found through the website's own bindings (STUDIO_LOG, MISSED), whatever Darpan named them
-BINDS=$(cfapi "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/bapas-diary" | jq -c '.result.deployment_configs.production.kv_namespaces // {}')
-for pair in STUDIO_LOG:studio-log MISSED:missed-searches; do
-  bind=${pair%%:*}; title=${pair#*:}
-  id=$(echo "$BINDS" | jq -r --arg b "$bind" '.[$b].namespace_id // empty')
-  [ -n "$id" ] || { problem "Could not find the $title store ($bind) on the website"; continue; }
-  python3 - "$CF/$id" "$title.json" <<'PY' || problem "Could not read the $title store"
-import json, os, sys, urllib.request
-base, out = sys.argv[1], sys.argv[2]
-h = {'Authorization': 'Bearer ' + os.environ['CLOUDFLARE_API_TOKEN']}
-def get(url, raw=False):
-    with urllib.request.urlopen(urllib.request.Request(url, headers=h), timeout=60) as r:
-        b = r.read(); return b.decode('utf-8', 'replace') if raw else json.loads(b)
-keys, cur = [], ''
-while True:
-    j = get(f'{base}/keys?limit=1000' + (f'&cursor={cur}' if cur else ''))
-    if not j.get('success'): sys.exit('no permission to read this store')
-    keys += [k['name'] for k in j['result']]
-    cur = j.get('result_info', {}).get('cursor') or ''
-    if not cur: break
-from urllib.parse import quote
-rows = {k: get(f'{base}/values/{quote(k, safe="")}', raw=True) for k in keys}
-json.dump(rows, open(out, 'w'), ensure_ascii=False, indent=1)
-print(f'{len(rows)} entries')
-PY
-  [ -f "$title.json" ] && { gzip -f "$title.json"; rclone copyto "$title.json.gz" "$DRIVE/studio/$DAY $title.json.gz" && drive_keep studio || problem "$title copy to Drive failed"; }
-done
+step "Studio changes log, missed searches and feedback (read through the website itself)"
+# the Cloudflare key may not read the stores, so these come the same way Darpan reads them: the Studio with its
+# password, /api/missed and /api/feedback with the MISSED_KEY word. Nothing is printed but the counts.
+SITE=https://bapas-diary.com
+if [ -n "${STUDIO_PASSWORD:-}" ]; then
+  printf %s "$STUDIO_PASSWORD" | curl -s -o /dev/null -c jar.txt --data-urlencode password@- "$SITE/darpan/api/log"
+  if curl -s -f -b jar.txt "$SITE/darpan/api/log" -o studio-log.json && jq -e '.entries' studio-log.json >/dev/null; then
+    echo "Studio changes log: $(jq '.entries | length' studio-log.json) entries"
+    gzip -f studio-log.json && { rclone copyto studio-log.json.gz "$DRIVE/studio/$DAY studio-log.json.gz" || problem "Studio log copy to Drive failed"; }
+  else problem "Could not open the Studio changes log (the STUDIO_PASSWORD secret may not match the website)"; fi
+  rm -f jar.txt
+fi
+if [ -n "${MISSED_KEY:-}" ]; then
+  for what in missed feedback; do
+    if printf %s "$MISSED_KEY" | curl -s -f -G --data-urlencode "key@-" "$SITE/api/$what" -o "$what.json" && jq -e . "$what.json" >/dev/null; then
+      echo "$what: saved"; gzip -f "$what.json"
+      rclone copyto "$what.json.gz" "$DRIVE/studio/$DAY $what.json.gz" || problem "$what copy to Drive failed"
+    else problem "Could not read $what from the website"; fi
+  done
+fi
+drive_keep studio
 
 step "Weekly darshan email sign ups (Resend), Drive only"
 if [ -n "${RESEND_API_KEY:-}" ]; then
@@ -162,6 +179,35 @@ for a in get('/audiences').get('data', []):
 json.dump(out, open('/dev/stdout', 'w'), indent=1)
 PY
   [ -s signups.json ] && { gzip -f signups.json; rclone copyto signups.json.gz "$DRIVE/signups/$DAY signups.json.gz" && drive_keep signups || problem "Sign up list copy to Drive failed"; }
+fi
+
+step "Standby website on Netlify (only when the site has changed)"
+# Darpan, 13 Nov 2026: a second home for the pages, so bapas-diary.netlify.app (or bapas-diary-standby) is always ready to
+# take over if Cloudflare ever fails. The plain pages work there; the Studio, sign up and feedback need Cloudflare.
+if [ -n "${NETLIFY_TOKEN:-}" ]; then
+  echo "::add-mask::$NETLIFY_TOKEN"
+  nl() { curl -s -H "Authorization: Bearer $NETLIFY_TOKEN" "$@"; }
+  NAPI=https://api.netlify.com/api/v1
+  SITE_ID=$(nl "$NAPI/sites?filter=all" | jq -r '[.[] | select(.name|test("^bapas-diary"))][0].id // empty')
+  if [ -z "$SITE_ID" ]; then
+    for name in bapas-diary bapas-diary-standby bapas-diary-backup; do
+      SITE_ID=$(nl -X POST -H 'Content-Type: application/json' -d "{\"name\":\"$name\"}" "$NAPI/sites" | jq -r '.id // empty')
+      [ -n "$SITE_ID" ] && break
+    done
+  fi
+  if [ -z "$SITE_ID" ]; then problem "Netlify would not open with the NETLIFY_TOKEN secret"
+  elif rclone copyto "$DRIVE/site/latest site.zip" site.zip; then
+    NOW=$(md5sum site.zip | cut -c1-32); WAS=$(rclone cat "$DRIVE/site/netlify.txt" 2>/dev/null)
+    if [ "$NOW" = "$WAS" ]; then echo "Netlify standby already has this site"
+    else
+      rm -rf standby && mkdir standby && unzip -q site.zip 'out/*' -d standby && (cd standby/out && zip -qr ../../standby.zip .)
+      URL=$(nl -X POST -H 'Content-Type: application/zip' --data-binary @standby.zip --max-time 1800 "$NAPI/sites/$SITE_ID/deploys" | jq -r '.ssl_url // .url // empty')
+      if [ -n "$URL" ]; then echo "Netlify standby updated: $URL"; printf %s "$NOW" | rclone rcat "$DRIVE/site/netlify.txt"
+      else problem "Netlify standby update failed"; fi
+      rm -rf standby standby.zip
+    fi
+    rm -f site.zip
+  else problem "No site copy in Drive for the Netlify standby"; fi
 fi
 
 step "Checks on the 2pm picture (reading only)"
