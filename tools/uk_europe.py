@@ -31,7 +31,7 @@ STYLE = 'UKEU'        # the live cards on three cords, with a third line of room
 make.WIDE[STYLE] = dict(make.WIDE[make.LIVE_STYLE], lines=3, pill=3, whole=True)
 make.FRAME_ASPECT[STYLE] = make.FRAME_ASPECT[make.LIVE_STYLE]
 ALBUM_TITLE = re.compile(r"^(?:Maharaj|Swamishri|Bapa)['’]s (?:Satsang )?Vicharan\b|^(?:UK|London)[,&\w ]*(?:UK & Europe)$", re.I)   # the album's heading, not what the photo shows
-HERO_MIN = 900        # a big card needs a photo at least this wide (never a small old video still blown up)
+HERO_MIN = 480        # a big card needs a photo at least this wide, and never a small old video still blown up
 ELSEWHERE = re.compile(r"[A-Z][a-z]+(?: [A-Z][a-z]+)?")   # a plain town name (not an album's title)
 HONORIFIC = re.compile(r'\b(?:Pragat\s+)?Brahmaswarup\s+(?=Pramukh|Mahant|Yogiji|Shastriji)')
 
@@ -110,13 +110,15 @@ def gather(entry, log, towns_there=()):
 def said(c, town):
     """'Pramukh Swami Maharaj in London: Morning Satsang sabha' -> 'Morning Satsang sabha' (the card already says London)."""
     c = HONORIFIC.sub('', c)
+    if ALBUM_TITLE.search(c):
+        return ''
     return re.sub(rf'^(?:{make.NAME}\s+)?in {re.escape(town)}:\s*', '', c, flags=re.I) if town else c
 
 
 def paper(im):
     """A notice, a newspaper cutting or a book's cover: mostly blank paper with print on it."""
     g = make.np.asarray(im.convert('L').resize((160, 160)), dtype=float)
-    return (g > 225).mean() > .45 and make.colour(im) < .12
+    return (g > 225).mean() > .35 and make.colour(im) < .2
 
 
 def look_at(items, log):
