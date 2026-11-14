@@ -201,7 +201,8 @@ def make_db(a):
 
 
 def add(a):
-    rs = json.load(open(a.rows, encoding='utf-8'))
+    text = open(a.rows, encoding='utf-8').read().strip() if os.path.exists(a.rows) else ''
+    rs = json.loads(text) if text else []   # no photos yet: the release keeps an empty list file
     if a.have:
         have = set(open(a.have).read().split('\n')) if os.path.exists(a.have) else set()
         rs = [r for r in rs if f"s/{r['album']}/{r['file']}" in have or f"o/{r['album']}/{r['file']}" in have]
@@ -214,7 +215,8 @@ def add(a):
         # baps.org gave many old News photos only the story's title ("Divya Satsang Parva Pachmarhi, MP, India" on all
         # eight); where the old site says what is in that very photo ("Swamishri lights the divo to inaugurate the
         # convention"), the build uses those words, so Today's rules can read what Bapa is doing
-        better = json.load(open(a.captions, encoding='utf-8'))
+        text = open(a.captions, encoding='utf-8').read().strip()
+        better = json.loads(text) if text else {}
         done = 0
         for k, v in better.items():
             al, f = k.split('/', 1)
