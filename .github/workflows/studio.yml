@@ -3,7 +3,8 @@ name: Studio photo packs
 # The photos Bapa's Diary Studio (the dashboard) offers for each date: today and the next six days, made after
 # the morning picture, kept on the branch 'studio'. The photos come from Darpan's archive in Drive (Bapa's Archive),
 # baps.org only for anything it lacks. Reads the day lists and shown.json, changes nothing else:
-# not the daily picture, the release, Drive or main. Run it by hand with dates to add any other day.
+# not the daily picture, the release, Drive or main. Run it by hand with dates to add any other day, or with months
+# (YYYY-MM) to make any month's poster pack in packs/month/ (this month and the next are made every day).
 on:
   schedule:
     - cron: '30 9 * * *'   # 9:30 UTC, after the morning picture and outside baps.org's busy early hours
@@ -11,6 +12,9 @@ on:
     inputs:
       dates:
         description: 'Extra dates to add (YYYY-MM-DD, comma separated). Leave blank for the next seven days.'
+        required: false
+      months:
+        description: 'Month posters to make (YYYY-MM, comma separated), for example 2023-10,2022-12. This month and the next are made every day.'
         required: false
       to:
         description: 'Branch to save the packs on (studio is the one the Studio reads; another name for a test run)'
@@ -60,7 +64,8 @@ jobs:
       - name: Make the new packs
         env:
           DATES: ${{ inputs.dates }}
-        run: python tools/studio_packs.py site --dates "$DATES"
+          MONTHS: ${{ inputs.months }}
+        run: python tools/studio_packs.py site --dates "$DATES" --months "$MONTHS"
       - name: Save them on the studio branch (one fresh commit, so old photos don't pile up)
         env:
           TOKEN: ${{ github.token }}
