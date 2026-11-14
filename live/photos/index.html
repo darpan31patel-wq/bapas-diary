@@ -213,7 +213,7 @@ async function pickFirst(day, place, byDay) {
 async function stories(day) {
   const A = await fetch(`/data/articles/${day.slice(5)}.json`).then(r => r.ok ? r.json() : {}).catch(() => ({}));
   $('arts').innerHTML = (A[day.slice(0, 4)] || []).slice(0, 2).map(([t, u]) =>
-    `<p class="artline">From the baps.org story: <a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a></p>`).join('');
+    `<p class="artline">On this day within BAPS: <a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a></p>`).join('');
 }
 
 // each day's Video Darshan, from /data/videos/YYYY.json (tools/web_videos.py): the day's first BAPS video on YouTube

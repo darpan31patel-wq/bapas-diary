@@ -1582,7 +1582,7 @@ function storyLines() {
     const d = el.dataset.d, md = d.slice(5);
     const A = await (ART[md] = ART[md] || fetch('{{DATA}}../articles/' + md + '.json').then(r => r.ok ? r.json() : {}).catch(() => ({})));
     el.innerHTML = (A[d.slice(0, 4)] || []).slice(0, 2).map(([t, u]) =>
-      `<p class="artline">From the baps.org story: <a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a></p>`).join('');
+      `<p class="artline">On this day within BAPS: <a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a></p>`).join('');
   });
 }
 
@@ -1675,7 +1675,7 @@ async function moments() {
     const attr = m.url ? `href="${esc(m.url)}" target="_blank" rel="noopener"` : `href="#y${m.y}" data-m="${i}"`;
     return `<li${i >= SHOW_MOMENTS ? ' hidden' : ''}><a class="mo" ${attr}>${url ? `<span class="mi"><img loading="lazy" decoding="async" alt="" src="${esc(url)}" style="object-position:${focus(m.p)}"></span>` : ''}` +
       `<span class="mt"><span class="my"><b>${m.y}</b>${where}</span><span class="mk">${esc(m.kind.slice(0, 2).join(' · '))}</span>` +
-      `<span class="ml">${esc(String(m.text).replace(/[\s,;:.-]+$/, ''))}</span>${m.url ? '<span class="ms">From the baps.org story</span>' : ''}</span></a></li>`;
+      `<span class="ml">${esc(String(m.text).replace(/[\s,;:.-]+$/, ''))}</span>${m.url ? '<span class="ms">On this day within BAPS</span>' : ''}</span></a></li>`;
   }).join('');
   $('momentlist').querySelectorAll('.mo[data-m]').forEach(a => a.addEventListener('click', e => {
     const m = out[+a.dataset.m], i = m.p ? everyPhoto.findIndex(x => x.p === m.p) : -1;
