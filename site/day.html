@@ -380,7 +380,7 @@ a.ss-big { text-decoration: none; }
 /* baps.org Daily Satsang prasang, English first with a small quiet switch to the Gujarati (Darpan, 13 Nov 2026) */
 .bpr .flip{margin-left:10px;padding:0;border:0;background:none;font:500 13px var(--serif);font-style:normal;color:var(--gold-soft);text-decoration:underline;text-decoration-color:rgba(217,164,65,.45);text-underline-offset:3px;cursor:pointer}
 .bpr .flip:hover,.bpr .flip:focus-visible{color:var(--gold-hi)}
-.bpr .src{margin:6px 0 0;font:400 12px/1.4 var(--sans);color:var(--cream);opacity:.6}
+.bpr .src,.bpr .paras .src{margin:6px 0 0;font:400 12px/1.4 var(--sans);color:var(--cream);opacity:.6}
 .bpr .src a{color:inherit}
 .day-story .diary{margin:8px 0 0;padding:0;list-style:none;max-width:70ch}
 .day-story .diary li{position:relative;margin:0 0 5px;padding-left:16px;font:400 15px/1.45 var(--serif);color:var(--cream);opacity:.9}
@@ -1590,8 +1590,7 @@ const prasangHTML = (d, [place, who, title, en, gu, src]) => {
   const guFirst = !en.length || !!(window.BapaGujarati && BapaGujarati.on()), ps = l => l.map(t => `<p class="more">${esc(t)}</p>`).join('');
   return `<div class="day-story bpr" translate="no"><p class="story-line"><b>Prasang</b>${esc([place, longDate(d) + ' ' + d.slice(0, 4)].filter(Boolean).join(', '))}` +
     (en.length ? `<button type="button" class="flip">${guFirst ? 'English' : 'ગુજરાતી'}</button>` : '') + '</p>' +
-    `<div class="paras" lang="en"${guFirst ? ' hidden' : ''}>${ps(en)}</div><div class="paras" lang="gu"${guFirst ? '' : ' hidden'}>${ps(gu)}</div>` +
-    `<p class="src">${en.length ? 'English translation of the ' : 'From the '}<a href="${esc(src)}" target="_blank" rel="noopener">baps.org Daily Satsang</a> prerna parimal</p></div>`;
+    `<div class="paras" lang="en"${guFirst ? ' hidden' : ''}>${ps(en)}<p class="src">English translation</p></div><div class="paras" lang="gu"${guFirst ? '' : ' hidden'}>${ps(gu)}</div></div>`;
 };
 document.addEventListener('click', e => {
   const b = e.target.closest('.bpr .flip'); if (!b) return;
