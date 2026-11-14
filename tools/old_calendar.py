@@ -106,7 +106,42 @@ def work_out(first, last, rules, template, about, of, day, tname):
             f = of.find(y, rule['month'], rule['tithi'], rule['when'], rule['usual'])
             if f and f in rows:
                 fest[f].append(name)
-                rows[f]['t'], rows[f]['month'] = rule['tithi'], rule['month']
+                rows[f]['t'], rows[f]['month'] = rule.get('label', rule['tithi']), rule['month']
+    # New Year (Annakut, Bestu Varas) by the rule the known years keep: the day after Diwali, unless Amas still holds
+    # for more than 4 hours after that day's sunrise, then the day after that. Right in 25 of 26 years: the BAPS
+    # calendar 2010 to 2027 (2023 the only miss) and the New Year assemblies with Bapa in Gondal, Delhi 1999 to 2009.
+    ny = next((n for n in rules if 'Bestu' in n or 'New Year' in n), None)
+    dw = 'Diwali' if 'Diwali' in rules else None
+    if ny and dw:
+        import ephem
+        for d in sorted(fest):
+            if dw in fest[d] and first <= d.year <= last:
+                d1 = d + dt.timedelta(days=1)
+                rise = of.sun_times(d1)[0]
+                lo, hi = rise - 0.2, rise + 1.0   # Padvo begins when the moon is 0 degrees past the sun again
+                el = lambda x: (lambda s_m: (s_m[1] - s_m[0] + 180) % 360 - 180)(of.longitudes(ephem.Date(x)))
+                if el(lo) < 0 <= el(hi):
+                    for _ in range(40):
+                        mid = (lo + hi) / 2
+                        lo, hi = (lo, mid) if el(mid) >= 0 else (mid, hi)
+                    late = (hi - rise) * 24 > 4
+                else:
+                    late = False
+                new = d1 + dt.timedelta(days=1 if late else 0)
+                for x in [x for x in list(fest) if x.year == d.year and abs((x - d).days) < 5 and ny in fest[x]]:
+                    fest[x].remove(ny)
+                fest[new].append(ny)
+                if new in rows:
+                    rows[new]['t'], rows[new]['month'] = 0, 'Kartak'
+                if late and d1 in rows:   # the day between keeps Amas, as BAPS writes it (2022, 2024 to 2026)
+                    rows[d1]['t'], rows[d1]['month'] = 29, 'Aso'
+                bb = next((n for n in rules if n.startswith('Bhai B')), None)   # Bhai Beej the day after New Year
+                if bb:
+                    for x in [x for x in list(fest) if x.year == d.year and abs((x - d).days) < 6 and bb in fest[x]]:
+                        fest[x].remove(bb)
+                    fest[new + dt.timedelta(days=1)].append(bb)
+                    if new + dt.timedelta(days=1) in rows:
+                        rows[new + dt.timedelta(days=1)]['t'], rows[new + dt.timedelta(days=1)]['month'] = 1, 'Kartak'
     # the Vikram Samvat: turns on the first Kartak Sud day after Aso
     vs, prev = None, None
     for d in sorted(rows):
@@ -155,10 +190,71 @@ def work_out(first, last, rules, template, about, of, day, tname):
     return out
 
 
+# Darpan, 13 Nov 2026: "match our guesstimations with the articles and pictures ... and just see if the festivals line
+# up". The dated News stories and photo captions before 2010 that name a festival, held in India (abroad a festival is
+# often kept on the weekend or by the local calendar), choose between rules that fit the BAPS calendar equally well.
+RECORD_WORDS = {'Diwali': r'\bdiwali\b', 'Annakut': r'new year.{0,3}(celebration|day|blessing)|bestu|nutan varsh', 'Janmashtami': r'janmashtami',
+                'Guru Purnima': r'guru ?pu?o?rnima', 'Rathyatra': r'rath ?yatra', 'Raksha Bandhan': r'raksha ?bandhan',
+                'Vasant Panch': r'vasant panch', 'Pushpadolotsav': r'fuldol|pushpadol|dhuleti', 'Holi': r'\bholi\b',
+                'Hari Navmi': r'swaminarayan jayanti|hari ?nav', 'Sharad Punam': r'sharad pu', 'Shivratri': r'shivratri',
+                'Dev Diwali': r'dev diwali', 'Jal Jhilani': r'jal ?jhilani', 'Yogi Jayanti': r'yogi ?jayanti',
+                'Ramnavmi': r'ram ?nav', 'Prabodhini': r'prabodhini', 'Bhai Beej': r'bhai b'}
+ABROAD = r'\b(usa|uk|london|canada|chicago|new jersey|houston|atlanta|africa|nairobi|australia|auckland|europe|america|' \
+         r'leicester|toronto|edison|robbinsville|los angeles|dubai|singapore|asia pacific|middle east|, il|, nj|, tx|, ga|, ca)\b'
+
+
+def records(db):
+    """[(date, text)] before 2010 from the News stories and the photo captions, in India only."""
+    import re
+    out = set()
+    for d, t, pl in db.execute("SELECT date, title, place FROM articles WHERE date < '2010' AND date != ''"):
+        out.add((d, f'{t} {pl or ""}'))
+    for d, c, pl in db.execute("SELECT date, caption, place FROM photos WHERE date < '2010' AND date_from IS NULL AND caption != ''"):
+        out.add((d, f'{c} {pl or ""}'))
+    return [(d, t.lower()) for d, t in out if re.match(r'\d{4}-\d\d-\d\d$', d or '') and not re.search(ABROAD, t.lower())]
+
+
+def better_rules(db, of, rules):
+    """For each festival, the tithi next to the one BAPS writes, or another time of day, when it fits the BAPS calendar
+    as well (within 2 years) and the records before 2010 better. Shivratri: Chaudas at night (18 of 18), not the Teras
+    the calendar writes; Sharad Punam: the Punam at sunrise, as Gondal kept it on 4 October 2009; New Year on the first sunrise of Kartak Sud Padvo, as Gondal kept it in 2001 and 2009."""
+    import re
+    recs = records(db)
+    for name, r in rules.items():
+        if 'fixed' in r:
+            continue
+        words = next((w for k, w in RECORD_WORDS.items() if k.lower() in name.lower()), None)
+        ds = [d for d, f in db.execute("SELECT date, festivals FROM calendar WHERE festivals != ''") if name in of.festivals(f)]
+        said = [d for d, t in recs if words and re.search(words, t) and not (name == 'Diwali' and 'dev diwali' in t)]
+        cands = []
+        for T in (r['tithi'] - 1, r['tithi'], r['tithi'] + 1):
+            if not 0 <= T < 30:
+                continue
+            for w in of.WHENS + ['midday']:
+                baps = sum(str(of.find(int(d[:4]), r['month'], T, w, r['usual'])) == d for d in ds)
+                got = {str(of.find(y, r['month'], T, w, r['usual'])) for y in {int(d[:4]) for d in said}}
+                cands.append((baps, sum(d in got for d in said), T == r['tithi'] and w == r['when'], T, w))
+        best = max(c[0] for c in cands)
+        ok = [c for c in cands if c[0] >= best - 2 and c[0] >= 0.7 * len(ds)]
+        rec, baps, same, T, w = max((c[1], c[0], c[2], c[3], c[4]) for c in ok)
+        if (T, w) != (r['tithi'], r['when']):
+            print(f'{name}: {w} tithi {T} instead of {r["when"]} tithi {r["tithi"]} (BAPS {baps} of {len(ds)}, records {rec} of {len(said)})', file=sys.stderr)
+            r.update(label=r['tithi'], tithi=T, when=w, right=baps, moved=True)
+    # festivals on the same Indian date stay together (Ramnavmi with Swaminarayan Jayanti)
+    for name, r in rules.items():
+        if r.get('moved'):
+            for other, o in rules.items():
+                if not o.get('moved') and 'fixed' not in o and (o['month'], o['tithi']) == (r['month'], r['label']):
+                    o.update(label=o['tithi'], tithi=r['tithi'], when=r['when'], moved=True)
+                    print(f'{other}: with {name}', file=sys.stderr)
+    return rules
+
+
 def make(a):
     of, day, tname = engine()
     db = sqlite3.connect(a.db)
     rules = {k: v for k, v in of.learn(db).items() if v['right'] >= 0.75 * v['of'] and 'Mahant Swami' not in k}
+    rules = better_rules(db, of, rules)
     about = {}
     for name, ab in db.execute("SELECT festivals, festival_about FROM calendar WHERE festivals != '' ORDER BY date"):
         for n in of.festivals(name):
