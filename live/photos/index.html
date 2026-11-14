@@ -214,7 +214,7 @@ async function reports(from, to, keys) {
     const box = document.createElement('div'); box.className = 'vr';
     box.innerHTML = list.map(r => {
       const where = (r.pl || []).filter((p, i, a) => i === 0 || p !== a[i - 1]).join(', ');
-      const top = r.k === 'p' ? `<b>Prasang</b>${esc(r.t || '')}${where ? ` <i>${esc(where)}</i>` : ''}` :
+      const top = r.k === 'p' ? `<b>Prasang</b>${esc(r.t || '')}${where ? `, <i>${esc(where)}</i>` : ''}` :
         `<b>Vicharan</b>${esc(WEEK[dt(k).getUTCDay()] + ' ' + nice(k, true))}${where ? ', ' + esc(where) : ''}${r.o ? ` <i>${esc(r.o)}</i>` : ''}`;
       return `<div class="tell"><p class="line">${top}</p><div class="paras${(r.w || []).length > 3 ? ' many' : ''}">` +
         (r.w || []).map(t => `<p>${esc(t)}</p>`).join('') + '</div></div>';
