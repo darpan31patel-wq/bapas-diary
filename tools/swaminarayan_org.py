@@ -23,7 +23,7 @@ HOSTS = {'swaminarayan.org', 'www.swaminarayan.org'}
 BASE = 'https://www.swaminarayan.org/'
 KEEP = re.compile(r'\.(?:html?|php|jpe?g|gif|png|bmp|pdf|txt|css|js)$', re.I)
 PAGE = re.compile(r'(?:\.(?:html?|php)|/)$', re.I)
-SKIP = re.compile(r'/(?:search|guestbook|ecard|cgi-bin)/|\.(?:asp|aspx)$', re.I)
+SKIP = re.compile(r'/(?:search|guestbook|ecard|cgi-bin|wp-json|wp-admin|feed|comments/feed)/|xmlrpc\.php|wp-login\.php|\.(?:asp|aspx)$', re.I)
 OTHER = re.compile(r'\.(?:mp3|wav|wma|ram?|rm|zip|wmv|avi|mpe?g|mp4|mov|flv|swf|exe)$', re.I)
 QUOTED = re.compile(r"""(?:href|src|background|action)\s*=\s*["']?([^"'\s>]+)|["']([^"'<>\s]+?\.(?:jpe?g|gif|png|"""
                     r"""html?|pdf|mp3|zip|wmv|ram?|rm))["']""", re.I)
@@ -32,7 +32,29 @@ IMGTAG = re.compile(r'<img\b[^>]*>', re.I)
 MONTHS = 'january february march april may june july august september october november december'.split()
 
 
+SITE = 'swaminarayan.org'
+EXTRA_SEEDS = []
+
+
+def decode_page(raw):
+    """UTF-8 where the page is (pramukhswami.org), else the old Windows text (swaminarayan.org)"""
+    try:
+        return raw.decode('utf-8')
+    except UnicodeDecodeError:
+        return raw.decode('cp1252', errors='replace')
+
+
+def set_site(site, base, extra):
+    """the same gentle copier for another site: pramukhswami.org and the rest (only its own host is read)"""
+    global SITE, BASE, HOSTS, EXTRA_SEEDS
+    SITE, BASE = site, base.rstrip('/') + '/'
+    HOSTS = {site, 'www.' + site}
+    EXTRA_SEEDS = extra
+
+
 def seeds():
+    if SITE != 'swaminarayan.org':
+        return [BASE] + EXTRA_SEEDS
     s = ['index.htm', 'sitemap/index.htm', 'vicharan/index.htm', 'vicharan/pastvicharan/index.htm',
          'news/index.htm', 'news/pastnews/index.htm', 'whatsnew/index.htm', 'festivals/index.htm',
          'pramukhswami/index.htm', 'publications/magazine/index.htm', 'download/index.htm']
@@ -49,14 +71,16 @@ def norm(url):
     if u.scheme not in ('http', 'https') or u.hostname not in HOSTS:
         return None
     path = urllib.parse.quote(urllib.parse.unquote(re.sub(r'/+', '/', u.path or '/')), safe="/%-_.~()!'$&+,;=:@")
-    if path.endswith('/'):
-        path += 'index.htm'    # a folder address is its index page (the copy needs a file name)
+    if path.endswith('/') and SITE == 'swaminarayan.org':
+        path += 'index.htm'    # a folder address is its index page there (other sites serve the folder address)
     q = '' if not u.query or not path.lower().endswith('.php') else '?' + u.query
-    return 'https://www.swaminarayan.org' + path + q
+    return BASE.rstrip('/') + path + q
 
 
 def local(url):
     p = urllib.parse.unquote(urllib.parse.urlsplit(url).path).lstrip('/')
+    if p == '' or p.endswith('/'):
+        p += 'index.htm'    # the copy needs a file name for a folder address
     q = urllib.parse.urlsplit(url).query
     if q:
         p += '__' + re.sub(r'[^\w=.-]+', '_', q)[:80] + '.html'
@@ -172,7 +196,7 @@ class Copier:
     def note(self, url, kind, size, h):
         row = dict(url=url, file=local(url), type=kind, bytes=size, last_modified=h.get('last-modified'),
                    etag=h.get('etag'), fetched_at=dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'),
-                   source='swaminarayan.org')
+                   source=SITE)
         with self.lock:
             self.files_log.write(json.dumps(row) + '\n')
 
@@ -192,7 +216,7 @@ class Copier:
             time.sleep(self.a.gap / max(1, self.a.workers))
 
     def page(self, url, body_bytes):
-        body = body_bytes.decode('cp1252', errors='replace')
+        body = decode_page(body_bytes)
         path = urllib.parse.urlsplit(url).path.lstrip('/')
         photos, other = [], []
         caps = {}
@@ -216,6 +240,8 @@ class Copier:
             if OTHER.search(urllib.parse.urlsplit(full).path):
                 other.append(full)
             self.add(full)
+        for m in re.finditer(r'https?://(?:www\.)?' + re.escape(SITE) + r'/[^"\'\s,)<>]+', body):
+            self.add(m.group(0))
         for p in photos:
             self.add(p['file'])
         text = words(body)
@@ -373,7 +399,13 @@ if __name__ == '__main__':
     ap.add_argument('--have', default='', help='paths already in Drive (rclone lsf -R)')
     ap.add_argument('--pages-dir', default='', help='a copy of the pages already in Drive, read instead of fetched')
     ap.add_argument('--most', type=int, default=0, help='stop after this many files (a test)')
+    ap.add_argument('--site', default='swaminarayan.org')
+    ap.add_argument('--base', default='', help='the site address, default https://www.<site>/')
+    ap.add_argument('--seeds', default='', help='a file of addresses to start from (the sitemap)')
     a = ap.parse_args()
+    if a.site != 'swaminarayan.org' or a.base:
+        extra = [x.strip() for x in open(a.seeds, encoding='utf-8')] if a.seeds and os.path.exists(a.seeds) else []
+        set_site(a.site, a.base or f'https://www.{a.site}/', [x for x in extra if x])
     c = Copier(a)
     if a.most:
         def watch():

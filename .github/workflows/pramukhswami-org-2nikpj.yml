@@ -1,0 +1,93 @@
+# pramukhswami.org (BAPS's site on Pramukh Swami Maharaj: his life, work, teachings, tributes and photo galleries),
+# copied page by page and photo by photo into Darpan's Drive archive ("Bapa's Archive/sites/pramukhswami.org/...")
+# with the same full detail lists as swaminarayan.org (Darpan, 13 Nov 2026: "Yes to all", and "Everything from the
+# other websites need to have full detail"). Archive only: touches nothing in the 2pm picture's chain, the website,
+# R2 or bapas.db, and never runs 03:45 to 07:30 UTC. Starts from the site's own sitemaps; its robots.txt allows it.
+# Round 1: 15 Nov 2026 09:40 UTC.
+name: pramukhswami-org
+on:
+  push:
+    branches: ['claude/project-thread-2nikpj']
+    paths: ['.github/workflows/pramukhswami-org-2nikpj.yml']
+permissions:
+  contents: write   # the page list into the release `database`
+concurrency:
+  group: pramukhswami-org
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      REMOTE: "gdrive:Bapa's Archive/sites/pramukhswami.org"
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Never in the 2pm picture's morning
+        run: |
+          m=$(( 10#$(date -u +%H) * 60 + 10#$(date -u +%M) ))
+          if [ $m -ge 225 ] && [ $m -lt 450 ]; then echo "::error::03:45 to 07:30 UTC is kept free"; exit 1; fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Drive access
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          CLIENT_ID: ${{ secrets.RCLONE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.RCLONE_CLIENT_SECRET }}
+        run: |
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          git fetch -q --depth 1 origin main && git show FETCH_HEAD:tools/rclone_conf.py > "$RUNNER_TEMP/rclone_conf.py"
+          mkdir -p ~/.config/rclone && python3 "$RUNNER_TEMP/rclone_conf.py" > ~/.config/rclone/rclone.conf
+      - name: Where the last round stopped
+        run: |
+          mkdir -p state
+          rclone copy "$REMOTE/_state" state 2>/dev/null || true
+          ls -la state
+          # what is already in Drive: photos are skipped, pages are read from this copy instead of the site
+          rclone lsf -R --files-only "$REMOTE" --filter "- _state/**" --filter "- _index/**" > have.txt || : > have.txt
+          rclone copy "$REMOTE" pages --filter "- _state/**" --filter "- _index/**" --filter "+ *.{htm,html,HTM,HTML}" \
+            --filter "+ *.php*" --filter "- *" --transfers 16 --checkers 16 --stats 0 || true
+          wc -l have.txt
+      - name: Copy (stops by itself 4h30 after starting, by 03:30 UTC at the latest, or when everything is in)
+        if: ${{ !contains(github.event.head_commit.message, '[lists only]') }}
+        run: |
+          # every 20 minutes the new files move to Drive, so the runner's disk never fills
+          # and where it got to goes to Drive too, so a round cut short still carries on from there
+          ( while sleep 600; do [ -d work/files ] && rclone move work/files "$REMOTE" --transfers 16 --checkers 16 \
+              --min-age 30s --stats 0 2>&1 | tail -2; rclone copy state "$REMOTE/_state" --stats 0 2>&1 | tail -1; done ) &
+          mover=$!
+          # stop 4h30 after starting (the job's own limit is 6h; handing over the last files takes a while) and never after 03:30 UTC
+          stop=$(date -u -d '+270 minutes' +%H:%M); now=$(date -u +%H%M); s=${stop/:/}
+          if [ $((10#$s)) -gt 330 ] && { [ $((10#$now)) -lt 330 ] || [ $((10#$s)) -lt $((10#$now)) ]; }; then stop=03:30; fi
+          echo "stopping at $stop UTC"
+          # the site's own sitemaps are the starting list
+          for sm in $(curl -s https://pramukhswami.org/wp-sitemap.xml https://pramukhswami.org/sitemap.xml | grep -o '<loc>[^<]*' | sed 's/<loc>//'); do
+            curl -s "$sm" | grep -o '<loc>[^<]*' | sed 's/<loc>//'; sleep 1; done | sort -u > seeds.txt; wc -l seeds.txt
+          python3 -I tools/swaminarayan_org.py --site pramukhswami.org --base https://pramukhswami.org/ --seeds seeds.txt --work work --state state --stop-at $stop --workers 3 --gap 0.7 \
+            --heads state/heads.txt --have have.txt --pages-dir pages \
+            | tee run.log | grep -E '^\{|stopping' || true
+          kill $mover || true; pkill -f 'rclone move work/files' || true; sleep 5
+      - name: Into Drive
+        if: always()
+        run: |
+          [ -d work/files ] && rclone move work/files "$REMOTE" --transfers 16 --checkers 16 --stats-one-line --stats 0 || true
+          rclone copy state "$REMOTE/_state" --stats 0
+      - name: Full detail for every page and photo
+        if: always()
+        run: |
+          # every saved page back from Drive (pages only, small; most are here already), then the lists rebuilt
+          rclone copy "$REMOTE" pages --filter "- _state/**" --filter "- _index/**" --filter "+ *.{htm,html,HTM,HTML}" \
+            --filter "+ *.php*" --filter "- *" --transfers 16 --checkers 16 --stats 0
+          python3 -I tools/sites_index.py --site pramukhswami.org --base https://pramukhswami.org/ --folders --files pages --headers state/files.jsonl --out idx
+          # saved files whose details (type, size, Last-Modified) round 1 did not keep: asked once next round
+          rclone lsf -R --files-only "$REMOTE" --filter "- _state/**" --filter "- _index/**" \
+            | python3 -c "import sys,urllib.parse as u; [print('https://pramukhswami.org/' + u.quote(l.rstrip('\n')[:-9] if l.rstrip('\n').endswith('index.htm') else l.rstrip('\n'), safe=\"/%-_.~()!'\$&+,;=:@\")) for l in sys.stdin]" \
+            | sort > drive.txt
+          python3 -c "import json,sys; [print(json.loads(l)['url']) for l in open('state/files.jsonl')]" | sort -u > known.txt || : > known.txt
+          comm -23 drive.txt known.txt > state/heads.txt; wc -l drive.txt state/heads.txt
+          rclone copy state "$REMOTE/_state" --stats 0
+          rclone copy idx "$REMOTE/_index" --stats 0
+          cp idx/pages.jsonl pramukhswami-org-pages.jsonl && cp idx/photos.jsonl pramukhswami-org-photos.jsonl
+          gh release upload database pramukhswami-org-pages.jsonl pramukhswami-org-photos.jsonl --clobber
+          cp state/last-run.json pramukhswami-org-last-run.json && gh release upload database pramukhswami-org-last-run.json --clobber
+          cat state/last-run.json

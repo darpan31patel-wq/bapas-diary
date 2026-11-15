@@ -37,6 +37,14 @@ OTHER = re.compile(r'\.(?:mp3|wav|wma|ram?|rm|zip|wmv|avi|mpe?g|mp4|mov|flv|swf)
 NOT_PLACE = {'index', 'photo', 'photos', 'image', 'images', 'gallery', 'page', 'main', 'default'}
 
 
+def decode_page(raw):
+    """UTF-8 where the page is (pramukhswami.org), else the old Windows text (swaminarayan.org)"""
+    try:
+        return raw.decode('utf-8')
+    except UnicodeDecodeError:
+        return raw.decode('cp1252', errors='replace')
+
+
 def text(s):
     s = re.sub(r'(?is)<(script|style)\b.*?</\1>', ' ', s)
     s = re.sub(r'(?i)<br\s*/?>|</(p|div|tr|td|h\d|li|table)>', '\n', s)
@@ -157,7 +165,7 @@ def heading_place(h):
 
 
 def index_page(site, url, rel, raw, headers, base_url):
-    body = raw.decode('cp1252', errors='replace')
+    body = decode_page(raw)
     tm = re.search(r'(?is)<title>(.*?)</title>', body)
     title = flat(html.unescape(tm[1])) if tm else ''
     if re.match(r'(?i)(file|page) not found', title):
@@ -166,6 +174,7 @@ def index_page(site, url, rel, raw, headers, base_url):
     heads = [h for h in heads if 2 < len(h) < 200]
     words = paragraphs(body)
     pdates = dates(title + '\n' + words)
+    tdates = dates(title + '\n' + '\n'.join(heads[:3]))   # a page's own date: only one written in its title or top headings
     section, month, ppath = path_bits(rel)
     hplace = next((heading_place(h) for h in heads if heading_place(h)), '')
     page_place = ppath or hplace
@@ -187,7 +196,7 @@ def index_page(site, url, rel, raw, headers, base_url):
         if tok.lower().startswith('<img'):
             src = re.search(r"""src\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))""", tok, re.I)
             src = next((g for g in src.groups() if g), '') if src else ''
-            if not src or re.search(r'\.gif$|/js/|\.js$', src, re.I):
+            if not src or re.search(r'\.gif$|/js/|\.js$|/wp-content/themes/|/wp-includes/|/wp-content/plugins/', src, re.I):
                 continue
             chrome = urllib.parse.urlsplit(urllib.parse.urljoin(url, src)).path.strip('/').split('/')
             if len(chrome) <= 3 and 'images' in chrome[:-1] and not re.search(r'\d', chrome[0]):
@@ -221,8 +230,8 @@ def index_page(site, url, rel, raw, headers, base_url):
             d, dfrom = cdates[-1], 'caption'
         elif above:
             d, dfrom = above[-1], 'written above the photo on the page'
-        elif pdates:
-            d, dfrom = pdates[0], 'page'
+        elif tdates:
+            d, dfrom = tdates[0], 'page title or heading'
         elif month:
             d, dfrom = {'written': '', 'from': month, 'to': month}, 'address'
         else:
@@ -272,6 +281,7 @@ def main():
     ap.add_argument('--base', default='', help='the site address, default https://www.<site>/')
     ap.add_argument('--headers', default='', help='files.jsonl from the copier (bytes, type, Last-Modified)')
     ap.add_argument('--out', default='out')
+    ap.add_argument('--folders', action='store_true', help='a saved folder/index.htm is the folder address on the site')
     a = ap.parse_args()
     base = a.base or f'https://www.{a.site}/'
     headers = {}
@@ -294,7 +304,10 @@ def main():
                 rel = os.path.relpath(full, a.files).replace(os.sep, '/')
                 if rel.startswith('_state/'):
                     continue
-                url = base + urllib.parse.quote(rel.split('__')[0])
+                addr = rel.split('__')[0]
+                if a.folders and (addr == 'index.htm' or addr.endswith('/index.htm')):
+                    addr = addr[:-len('index.htm')]   # the site serves the folder address (WordPress)
+                url = base + urllib.parse.quote(addr)
                 try:
                     page, photos = index_page(a.site, url, rel, open(full, 'rb').read(), headers, base)
                 except Exception as e:
