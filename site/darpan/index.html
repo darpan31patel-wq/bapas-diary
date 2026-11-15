@@ -22,6 +22,12 @@
 .ch .pic { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; background: #000; display: block }
 .ch p { margin: 0 } .ch .acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px }
 .ch.on { background: rgba(233,190,110,.07); border-radius: 8px; padding: 8px; border-top: 0; margin-top: 4px }
+.pickgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; margin: 6px 0 }
+.pickgrid label { position: relative; display: block; aspect-ratio: 1; border-radius: 6px; overflow: hidden; background: #000; cursor: pointer }
+.pickgrid img { width: 100%; height: 100%; object-fit: cover; display: block }
+.pickgrid input { position: absolute; top: 4px; left: 4px; width: 18px; height: 18px; margin: 0; accent-color: var(--gold) }
+.pickgrid label:has(input:checked) { outline: 3px solid var(--gold) }
+.ch details summary { cursor: pointer; font-size: 12px; color: var(--muted, #c9b8a0); margin-top: 4px }
 .ch .edit { grid-column: 1 / -1; display: grid; gap: 6px } .ch .edit textarea { font: 14px/1.4 var(--serif); white-space: pre-wrap }
 .yr { font: 700 20px/1 var(--serif); color: var(--gold); margin: 10px 0 2px }
 .mine { list-style: none; margin: 0; padding: 0 } .mine li { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 5px 0; border-bottom: 1px solid var(--line) }
@@ -1750,6 +1756,10 @@ async function saveChoices(how, where, quiet) {
 }
 const dayData = async mmdd => { if (DAYD[mmdd] !== undefined) return DAYD[mmdd]; DAYD[mmdd] = null; try { const r = await fetch(`/data/day/${mmdd}.json`, { cache: 'force-cache' }); if (r.ok) DAYD[mmdd] = await r.json() } catch (e) {} if (S.tab === 'choose') build(); return DAYD[mmdd] };
 const PHOTOS = 'https://photos.bapas-diary.com/';
+// his own pick of photos (kind photos): ticked on the Choose tab under a year, sent as photos.bapas-diary.com addresses
+// (s/<album>/<file>, the archive's group and file name in bapas.db) with the year and place
+const PICKSEL = { year: null, set: new Set() };
+const photoAddr = p => `${PHOTOS}s/${p[0]}/${p[1]}`;
 // the deep search of a day (Darpan, 13 Nov 2026: "It goes through all the captions of that day to find anything special.
 // I want it to do a deep search and find all the special moments of that day"): every caption of every year's photos,
 // every News article of the date, every history story and the calendar's festivals, looked through for the words that
@@ -1795,7 +1805,7 @@ function paneChoose() {
   const put = (y, item) => (byYear[y] = byYear[y] || []).push(item);
   uniqStories((HISTORY || []).filter(h => h.d.slice(5) === mmdd).map(h => ({ h }))).forEach(({ h }) => put(+h.d.slice(0, 4), { e: { kind: 'story', ref: h.d, note: h.l }, title: h.l, sub: [h.p, h.ch === 'satpurush' ? 'Satpurush UK diary' : 'Today in BAPS history', h.n ? h.n + (h.n > 1 ? ' photos' : ' photo') : ''].filter(Boolean).join(' · '), more: h.s, pic: '', url: h.u, special: !!h.x }));
   (ARTICLES || []).filter(a => a.d && a.d.slice(5) === mmdd).forEach(a => put(a.y, { e: { kind: 'news', ref: newsPath(a.u), note: a.t }, title: a.t, sub: [a.p, 'baps.org News', a.n ? a.n + ' photos' : 'no photos'].filter(Boolean).join(' · '), more: a.s, pic: '', url: a.u, special: a.b }));
-  (dd ? dd.years : []).forEach(Y => { const best = Y.p.find(p => p[3]) || Y.p[0], found = [...new Set(Y.p.flatMap(p => specialIn(p[2]).f))]; put(Y.y, { e: { kind: 'year', year: Y.y, note: `${Y.y} ${Y.place || ''}`.trim() }, title: `${Y.y}, ${Y.place || 'place unknown'}`, sub: `${Y.p.length} photo${Y.p.length > 1 ? 's' : ''} of this day${best && best[2] ? ' · ' + best[2] : ''}${found.length ? ' · captions mention ' + found.slice(0, 4).join(', ') : ''}`, pic: best ? `${PHOTOS}s/${best[0]}/${best[1]}` : '', special: found.length > 0 }) });
+  (dd ? dd.years : []).forEach(Y => { const best = Y.p.find(p => p[3]) || Y.p[0], found = [...new Set(Y.p.flatMap(p => specialIn(p[2]).f))]; put(Y.y, { pics: Y.p, place: Y.place || '', e: { kind: 'year', year: Y.y, note: `${Y.y} ${Y.place || ''}`.trim() }, title: `${Y.y}, ${Y.place || 'place unknown'}`, sub: `${Y.p.length} photo${Y.p.length > 1 ? 's' : ''} of this day${best && best[2] ? ' · ' + best[2] : ''}${found.length ? ' · captions mention ' + found.slice(0, 4).join(', ') : ''}`, pic: best ? `${PHOTOS}s/${best[0]}/${best[1]}` : '', special: found.length > 0 }) });
   if (!dd && pack && pack.kind !== 'story') groupsOf(pack).forEach(g => { if (!g.year || byYear[g.year]) return; const c = g.cands[0]; put(+g.year, { e: { kind: 'year', year: +g.year, note: `${g.year} ${c && c.place || ''}`.trim() }, title: `${g.year}, ${c && c.place || ''}`, sub: `${g.cands.length} photos`, pic: '' }) });
   const years = Object.keys(byYear).map(Number).sort((a, b) => b - a);
   const kindWords = pack ? (pack.kind === 'story' ? CHKINDS[pack.story_kind] || 'a day in BAPS history' : `Every ${pack.festival || ''}`) : '';
@@ -1809,6 +1819,8 @@ function paneChoose() {
   const item = (y, it) => { const have = chHave(date, it.e), i = have ? mine.indexOf(have) : -1; return `<div class="ch ${have ? 'on' : ''} ${it.pic ? '' : 'nopic'}">${it.pic ? `<img class="pic" src="${esc(it.pic)}" alt="" loading="lazy">` : ''}<div>
       <p><b>${esc(it.title)}</b>${it.special ? ' <span class="gold">★</span>' : ''}</p><p class="hint">${esc(it.sub)}</p>${it.more ? `<p class="hint">${esc(it.more)}</p>` : ''}
       <div class="acts"><button class="sw" data-ch="${esc(JSON.stringify(it.e))}" data-first="" aria-pressed="${!!have}">${have ? (i === 0 ? 'A special picture ✓ (special)' : `A special picture ✓ (special ${i + 1})`) : 'Make this a special picture'}</button>${it.url ? `<a class="btn small" href="${esc(it.url)}" target="_blank" rel="noopener">${/baps\.org/.test(it.url) ? 'Open on baps.org' : 'Open the post'}</a>` : ''}</div></div>
+      ${it.pics && it.pics.length > 1 ? `<details ${PICKSEL.year === y ? 'open' : ''}><summary>Pick some of the ${it.pics.length} photos yourself</summary><div class="pickgrid">${it.pics.map(p => `<label><input type="checkbox" data-pick="${esc(y + '|' + photoAddr(p))}" ${PICKSEL.year === y && PICKSEL.set.has(photoAddr(p)) ? 'checked' : ''}><img src="${esc(photoAddr(p))}" alt="" loading="lazy" title="${esc(p[2] || '')}"></label>`).join('')}</div>
+      <div class="acts"><button class="sw" data-pickgo="${y}" data-place="${esc(it.place || '')}" ${PICKSEL.year === y && PICKSEL.set.size ? '' : 'disabled'}>Make the ticked photos the special picture</button><span class="hint">Tick the photos, then press. Bapa’s own photos first; the builder draws the picture from them.</span></div></details>` : ''}
       ${have ? `<div class="edit"><input type="text" data-ef="headline" data-ei="${i}" value="${esc(have.headline || '')}" placeholder="Headline (empty: the builder’s own)" aria-label="Headline"><textarea data-ef="story" data-ei="${i}" rows="4" placeholder="Story words (empty: the builder’s own)" aria-label="Story">${esc(have.story || '')}</textarea>${have.kind === 'year' || have.kind === 'photos' ? `<input type="text" data-ef="place" data-ei="${i}" value="${esc(have.place || '')}" placeholder="Place (empty: as the photos say)" aria-label="Place">` : ''}</div>` : ''}</div>` };
   const today = todayLondon();
   const dm = dayMoments(dd, mmdd, byYear), momentItem = m => item(m.y, Object.assign({}, m, { sub: m.sub + ' · found by ' + m.why }));
@@ -1836,6 +1848,8 @@ function optionsRow(pack) {
 const remakeWords = date => { const when = asked()['s:' + date]; if (when && Date.now() - when < SP_MINS * 60e3) { if (!WAITS) waitForS(date); return `Remaking ${longDate(date)} (asked ${Math.round((Date.now() - when) / 60e3)} min ago)…` } const rm = (store.get('studio-remade') || {})[date]; return (rm ? `Remade at ${new Date(rm).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} from your choices${date === todayLondon() ? ', in Drive too' : ''}. ` : '') + (date === todayLondon() ? 'Every change you save asks the Collage builder to remake today’s special picture; it lands here and in Drive in about 5 to 10 minutes. Remake now asks at once.' : 'Every change you save asks the Collage builder to remake this day’s special picture, so it is ready here before its day.') };
 function wireChoices() {
   const date = chDate(); if (!date) return;
+  document.querySelectorAll('[data-pick]').forEach(b => b.addEventListener('change', () => { const [y, addr] = b.dataset.pick.split('|'); if (PICKSEL.year !== +y) { PICKSEL.year = +y; PICKSEL.set = new Set() } b.checked ? PICKSEL.set.add(addr) : PICKSEL.set.delete(addr); const go = document.querySelector(`[data-pickgo="${y}"]`); if (go) go.disabled = !PICKSEL.set.size }));
+  document.querySelectorAll('[data-pickgo]').forEach(b => b.addEventListener('click', async () => { await loadChoices(); const y = +b.dataset.pickgo; if (PICKSEL.year !== y || !PICKSEL.set.size) return; const e = { kind: 'photos', year: y, place: b.dataset.place || '', photos: [...PICKSEL.set] }; PICKSEL.year = null; PICKSEL.set = new Set(); chToggle(date, e, true) }));
   const on = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn) };
   on('ch-remake', 'click', () => askRemake(date));
   document.querySelectorAll('[data-ch]').forEach(b => b.addEventListener('click', async () => { await loadChoices(); chToggle(date, JSON.parse(b.dataset.ch), !('first' in b.dataset)) }));
