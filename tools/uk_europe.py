@@ -229,8 +229,8 @@ def build(mmdd, entry, out, towns_there=(), look=DEFAULT_LOOK):
     print(f'{mmdd}: {len(items)} photos looked at, {len(good)} with Bapa clearly seen, {len(photos)} on the picture, years {have} of {years}', flush=True)
     for l in log:
         print('   ', l)
-    if len(have) < 2:
-        print(f'{mmdd}: fewer than 2 years have a photo of Bapa, no picture made')
+    if len(photos) < 2:   # one of the years is enough for a backup (the other years are named in the line at the foot),
+        print(f'{mmdd}: fewer than 2 photos with Bapa clearly seen, no picture made')   # but not a single photo
         return False
     said_once = set()   # a story's line belongs to all its photos: written under the first, not again under each
     for x in photos:
