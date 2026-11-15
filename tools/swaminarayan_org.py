@@ -162,6 +162,20 @@ class Copier:
         self.have = set()
         if a.have and os.path.exists(a.have):
             self.have = set(x for x in open(a.have, encoding='utf-8').read().split('\n') if x)
+        # files saved last round that never reached Drive (a round cut off while handing over) are fetched again
+        fl = os.path.join(a.state, 'files.jsonl')
+        if self.have and os.path.exists(fl):
+            lost = set()
+            for line in open(fl, encoding='utf-8'):
+                try:
+                    r = json.loads(line)
+                except ValueError:
+                    continue
+                if r.get('file') and r['file'] not in self.have and r.get('url'):
+                    lost.add(r['url'])
+            for u in sorted(lost):
+                self.add(u, force=True)
+            print('saved before but not in Drive, fetched again:', len(lost), flush=True)
         self.since_save = 0
 
     def add(self, url, force=False):

@@ -6,7 +6,8 @@
 # tries to get past one). Each site starts from its home page and its own sitemaps. Pushing this file again
 # carries every site on from where it stopped.
 # Round 1: 15 Nov 2026 10:30 UTC: akshardham.com, na.baps.org, research.baps.org, bapscharities.org, kids.baps.org.
-# Round 2 (queued behind it): the same, carrying on, then londonmandir.baps.org.
+# Round 2, 15 Nov 17:50 UTC: the same, carrying on (research.baps.org was cut off handing over; copying now stops
+# after 3h and anything saved but not in Drive is fetched again), then londonmandir.baps.org.
 name: other-sites
 on:
   push:
@@ -64,7 +65,7 @@ jobs:
           rclone copy "$REMOTE" pages --filter "- _state/**" --filter "- _index/**" --filter "+ *.{htm,html,HTM,HTML}" \
             --filter "+ *.php*" --filter "- *" --transfers 16 --checkers 16 --stats 0 || true
           wc -l have.txt
-      - name: Copy (stops by itself 4h30 after starting, by 03:30 UTC at the latest, or when everything is in)
+      - name: Copy (stops by itself 3h after starting, by 03:30 UTC at the latest, or when everything is in)
         if: ${{ !contains(github.event.head_commit.message, '[lists only]') }}
         run: |
           # every 20 minutes the new files move to Drive, so the runner's disk never fills
@@ -72,8 +73,8 @@ jobs:
           ( while sleep 600; do [ -d work/files ] && rclone move work/files "$REMOTE" --transfers 16 --checkers 16 \
               --min-age 30s --stats 0 2>&1 | tail -2; rclone copy state "$REMOTE/_state" --stats 0 2>&1 | tail -1; done ) &
           mover=$!
-          # stop 4h30 after starting (the job's own limit is 6h; handing over the last files takes a while) and never after 03:30 UTC
-          stop=$(date -u -d '+270 minutes' +%H:%M); now=$(date -u +%H%M); s=${stop/:/}
+          # stop 3h after starting (the job's own limit is 6h; handing the last files to Drive can take over an hour) and never after 03:30 UTC
+          stop=$(date -u -d '+180 minutes' +%H:%M); now=$(date -u +%H%M); s=${stop/:/}
           if [ $((10#$s)) -gt 330 ] && { [ $((10#$now)) -lt 330 ] || [ $((10#$s)) -lt $((10#$now)) ]; }; then stop=03:30; fi
           echo "stopping at $stop UTC"
           # the site's own sitemaps are the starting list (one level of sitemap index followed)
@@ -89,7 +90,8 @@ jobs:
       - name: Into Drive
         if: always()
         run: |
-          [ -d work/files ] && rclone move work/files "$REMOTE" --transfers 16 --checkers 16 --stats-one-line --stats 0 || true
+          rclone copy state "$REMOTE/_state" --stats 0
+          [ -d work/files ] && timeout 110m rclone move work/files "$REMOTE" --transfers 16 --checkers 16 --stats-one-line --stats 0 || true
           rclone copy state "$REMOTE/_state" --stats 0
       - name: Full detail for every page and photo
         if: always()
