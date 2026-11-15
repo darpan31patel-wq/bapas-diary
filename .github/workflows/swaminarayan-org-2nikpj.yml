@@ -7,7 +7,8 @@
 # location, where the actual resource is from"): tools/sites_index.py reads every saved page and writes pages.jsonl and
 # photos.jsonl (caption, date as written and as YYYY-MM-DD, place, gallery, page, Drive path, file details).
 # Round 1: 13 Nov 2026 evening (6,725 pages, 46,464 photos). Round 2: 14 Nov 2026 07:40 UTC. Round 3: 13:40 UTC
-# (144,881 files in Drive, 3,242 left). Round 4: 19:30 UTC, the last files, then each saved file's own details.
+# (144,881 files in Drive, 3,242 left). Round 4: 19:30 UTC (151,417 files, 383 failed). 15 Nov 01:40 UTC: the lists
+# only, rebuilt with the two figure year fix (a commit message with [lists only] skips the copying).
 name: swaminarayan-org
 on:
   push:
@@ -53,6 +54,7 @@ jobs:
             --filter "+ *.php*" --filter "- *" --transfers 16 --checkers 16 --stats 0 || true
           wc -l have.txt
       - name: Copy (stops by itself 4h30 after starting, by 03:30 UTC at the latest, or when everything is in)
+        if: ${{ !contains(github.event.head_commit.message, '[lists only]') }}
         run: |
           # every 20 minutes the new files move to Drive, so the runner's disk never fills
           # and where it got to goes to Drive too, so a round cut short still carries on from there

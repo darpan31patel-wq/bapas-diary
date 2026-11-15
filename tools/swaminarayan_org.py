@@ -333,8 +333,20 @@ class Copier:
         left = []
         while not self.q.empty():
             left.append(self.q.get())
-        left += self.retry
-        if not left and self.a.heads and os.path.exists(self.a.heads):
+        # a file that failed in two rounds running is given up on (listed in gave-up.txt), so it never holds back the rest
+        fp = os.path.join(self.a.state, 'failed.txt')
+        before = set(x for x in open(fp, encoding='utf-8').read().split('\n') if x) if os.path.exists(fp) else set()
+        again = [u for u in self.retry if u in before]
+        if again:
+            with open(os.path.join(self.a.state, 'gave-up.txt'), 'a', encoding='utf-8') as f:
+                f.write(''.join(u + '\n' for u in again))
+        retry = [u for u in self.retry if u not in before]
+        with open(fp, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(retry))
+        self.counts['gave_up'] = len(again)
+        main_left = bool(left)
+        left += retry
+        if not main_left and self.a.heads and os.path.exists(self.a.heads):
             self.heads([x for x in open(self.a.heads, encoding='utf-8').read().split('\n') if x])
         self.pages.close()
         self.files_log.close()
