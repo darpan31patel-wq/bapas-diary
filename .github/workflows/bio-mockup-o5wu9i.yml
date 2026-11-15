@@ -1,0 +1,27 @@
+# Mockup only (thread "Look at Darpan's two shared pages"): Bapa's Jivan Charitra from the three study PDFs, shown on the
+# REAL live pages of bapas-diary.com in a browser here. Publishes nothing to the website; the pictures go to a release.
+name: bio-mockup-o5wu9i
+on:
+  push:
+    branches: [claude/project-thread-o5wu9i]
+    paths: [.github/workflows/bio-mockup-o5wu9i.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: bio-mockup-o5wu9i
+jobs:
+  shoot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          pip install -q playwright && python3 -m playwright install --with-deps chromium > /dev/null
+          curl -fsSL https://download.geonames.org/export/dump/cities500.zip -o c.zip && unzip -q c.zip
+          mkdir shots && python3 tools/mockups/bio/shoot.py tools/mockups/bio/bio.json cities500.txt shots
+          ls -la shots
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=bio-mockup-${{ github.run_number }}
+          gh release create "$tag" shots/* --target "${{ github.sha }}" --title "$tag" --notes "Mockup pictures only, nothing live" --prerelease
