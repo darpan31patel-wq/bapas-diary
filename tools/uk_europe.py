@@ -27,6 +27,7 @@ CACHE = os.path.join(HERE, '.cache')
 MAX_CARDS = 30        # as many as the three cords hold while a card can still be read on a phone (the Annakut picture has 29)
 MIN_FACE = .035       # his face at least this much of the photo's width, or he is not clearly seen
 MIN_SHARP = 12        # a face blurrier than this (a tiny old video still) is not a darshan
+DEFAULT_LOOK = 'calm'   # Darpan, 15 Nov 2026 'yes option 6': same size photos grouped by year, a gold line between the years (tools/uk_europe_looks.py)
 STYLE = 'UKEU'        # the live cards on three cords, with a third line of room under each so a whole caption fits
 make.WIDE[STYLE] = dict(make.WIDE[make.LIVE_STYLE], lines=3, pill=3, whole=True)
 make.FRAME_ASPECT[STYLE] = make.FRAME_ASPECT[make.LIVE_STYLE]
@@ -118,7 +119,7 @@ def said(c, town):
 def paper(im):
     """A notice, a newspaper cutting or a book's cover: mostly blank paper with print on it."""
     g = make.np.asarray(im.convert('L').resize((160, 160)), dtype=float)
-    return (g > 225).mean() > .35 and make.colour(im) < .2
+    return ((g > 225).mean() > .35 or (g > 190).mean() > .55) and make.colour(im) < .2
 
 
 def look_at(items, log):
@@ -215,7 +216,7 @@ def foot_line(entry):
     return '   ·   '.join(f'{g} {", ".join(ys)}' for g, ys in groups.items())
 
 
-def build(mmdd, entry, out, towns_there=(), look='cords'):
+def build(mmdd, entry, out, towns_there=(), look=DEFAULT_LOOK):
     log = []
     day = datetime.date(2000, int(mmdd[:2]), int(mmdd[3:]))   # a year with no festival dress and no 29 February trouble
     items = gather(entry, log, towns_there)
@@ -246,7 +247,7 @@ def build(mmdd, entry, out, towns_there=(), look='cords'):
     else:
         img = make.compose_wide(photos, day, seed='uk-europe-' + mmdd, style=STYLE, title=title, subtitle='in the UK and Europe',
                                 cal=(foot_line(entry), ''), hero=hero)
-    folder = os.path.join(out, mmdd + ('' if look == 'cords' else '-' + look))
+    folder = os.path.join(out, mmdd + ('' if look == DEFAULT_LOOK else '-' + look))
     os.makedirs(folder, exist_ok=True)
     name = name_of(mmdd)
     img.convert('RGB').save(os.path.join(folder, name + '.png'), optimize=True)
@@ -282,10 +283,10 @@ def main():
         if mmdd not in days:
             print(f'{mmdd}: not a backup day in the list')
             continue
-        for look in os.environ.get('UKEU_LOOKS', 'cords').split(','):   # test runs can draw the other looks too
+        for look in os.environ.get('UKEU_LOOKS', DEFAULT_LOOK).split(','):   # test runs can draw the other looks too
             try:
                 if build(mmdd, days[mmdd], out, towns_there, look):
-                    f = os.path.join(out, mmdd + ('' if look == 'cords' else '-' + look), 'pack.json')
+                    f = os.path.join(out, mmdd + ('' if look == DEFAULT_LOOK else '-' + look), 'pack.json')
                     p = json.load(open(f, encoding='utf-8')); p['list_made'] = L.get('made'); p['stamp'] = stamp(days[mmdd])
                     json.dump(p, open(f, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
                     made += 1

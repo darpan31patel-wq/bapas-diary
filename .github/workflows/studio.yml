@@ -26,7 +26,7 @@ on:
         description: "Add a day's UK and Europe backup picture to today's 2pm send: 'today', or a day (MM-DD). Until 1:50pm."
         required: false
       looks:
-        description: "UK and Europe test only: looks to draw, comma separated (cords, album, gold, mosaic)."
+        description: "UK and Europe test only: looks to draw, comma separated (calm is the live one; cords, album, gold, mosaic, wall, hero)."
         required: false
       to:
         description: 'Branch to save the packs on (studio is the one the Studio reads; another name for a test run)'
@@ -226,7 +226,7 @@ jobs:
       FOLDER: 1P79txhqK5keX5j1HUje__RVki9YmSqaj
       WANT: ${{ inputs.uk_europe || 'next' }}
       TO: ${{ inputs.to || 'studio' }}
-      UKEU_LOOKS: ${{ (inputs.to != '' && inputs.to != 'studio' && inputs.looks) || 'cords' }}
+      UKEU_LOOKS: ${{ (inputs.to != '' && inputs.to != 'studio' && inputs.looks) || 'calm' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
