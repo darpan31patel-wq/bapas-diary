@@ -58,7 +58,7 @@ for r in rows('Timeline'):
         ranges.append(item)
     # every row goes into Search, by its day, month or year as the biography gives it
     sd = d if prec.startswith('Day') or prec == 'Range' else d[:7] if prec.startswith('Month') or prec.startswith('Fortnight') else d[:4]
-    reads.append([sd, place, 'Jivan Charitra', h, [h + '.'] + w if w else [h + '.'], [], '', d])
+    reads.append([sd, place, 'Jivan Charitra', h, w if w else [h + '.'], [], '', d])
 for r in rows('Undated incidents'):
     reads.append([None, r['Location'] or '', 'Jivan Charitra', r['Virtue'] + ': ' + r['Incident'].rstrip('.'), [r['Incident']], [], '', r['Approximate period (Claude\'s estimate)']])
 

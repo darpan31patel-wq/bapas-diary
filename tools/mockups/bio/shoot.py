@@ -168,9 +168,10 @@ with sync_playwright() as p:
         pg = ctx.new_page()
         pg.on('console', lambda m: m.type == 'error' and note('console', m.text[:200]))
         try:
-            if addr.startswith('/#'):   # Today opens on today's date, then moves to the date in the address
-                pg.goto(SITE + '/', wait_until='load', timeout=90000); pg.wait_for_timeout(5000)
-                pg.evaluate(f"location.hash = '{addr[1:]}'")
+            if addr.startswith('/#'):   # Today only ever shows today: the browser's clock is set to that day
+                from datetime import datetime
+                ctx.clock.install(time=datetime(2026, int(addr[2:4]), int(addr[5:7]), 10, 0)); pg.clock.resume()
+                pg.goto(SITE + '/', wait_until='load', timeout=90000)
             else:
                 pg.goto(SITE + addr, wait_until='load', timeout=90000)
         except Exception as e:
