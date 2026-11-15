@@ -21,7 +21,7 @@ Tables (every photo, nothing cut out):
 
 The photo and video files themselves are fetched by tools/archive_download.py, which saves them next to this file.
 """
-import argparse, datetime, glob, json, os, re, sqlite3, sys, urllib.parse
+import argparse, datetime, glob, hashlib, json, os, re, sqlite3, sys, urllib.parse
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(HERE, 'tools'))
@@ -47,6 +47,11 @@ def photo_path(y, when, d0, d1, place, file, cap):
     town = clean(re.sub(r',\s*India$', '', place or ''), 40)
     stem, ext = os.path.splitext(file)
     name = f'{clean(cap, 80)} ({stem}){ext}' if clean(cap, 80) else file
+    if len(name.encode()) > 250:   # a file name (plus .part while saving) may be at most 255 bytes; only names that could never be saved change (News photos have long names and curly quotes, 10 Nov 2026)
+        short = clean(stem, 60) or 'photo'
+        name = f'{clean(cap, 50)} ({short} {hashlib.sha1(file.encode()).hexdigest()[:8]}){ext}'.lstrip()
+        while len(name.encode()) > 200:
+            name = name[1:]
     return f'photos/baps.org/{y}/{clean(day + " " + town, 70)}/{name}'
 
 
@@ -133,7 +138,11 @@ def newer(rows, crawl, scan):
             y, when, d0, d1, place = sib[:5]
         else:   # a new album no page has shown yet: its date and place are in the file name
             m = re.match(r'(\d{4})_(\d{2})_(\d{2})_\d+_([A-Za-z_]+?)_*(?:f|Edit)?\.jpg$', file)
-            y, when, d0, d1, place = int(m[1]), f'{m[1]}-{m[2]}-{m[3]}', None, None, m[4].replace('_', ' ')
+            if not m:   # 2018_05_26_032_Rajkot_001.jpg, 2025_02_23_2542_2.jpg: the date, and a place only if it names one
+                m = re.match(r'(\d{4})_(\d{2})_(\d{2})_\d+_?([A-Za-z_]*)', file)
+            if not m:   # no date in the name either: leave it for a page to show it
+                continue
+            y, when, d0, d1, place = int(m[1]), f'{m[1]}-{m[2]}-{m[3]}', None, None, m[4].replace('_', ' ').strip() or None
         out.append((y, when, d0, d1, place, album, file, None, None, 'scan', photo_path(y, when, d0, d1, place, file, '')))
     return out
 
@@ -168,6 +177,44 @@ def news(rows, crawl):
     return arts, links, out
 
 
+def webnext(rows, crawl):
+    """The photos of baps.org's new style News pages (crawl/news/webnext.json: per article its photos' full addresses on
+    static.wn.baps-apps.org, read in Darpan's Chrome), saved in Drive and R2 by tools/webnext_copy.py under album
+    webnext-<folder number> (13 Nov 2026). The Drive path is made exactly as webnext_copy.py makes it."""
+    have = {(r[5], r[6].lower()) for r in rows}
+    A = load_json(os.path.join(crawl, 'news', 'articles.json'), {})
+    out = []
+    for path, g in sorted(load_json(os.path.join(crawl, 'news', 'webnext.json'), {}).items()):
+        files, names = g.get('files') or [], g.get('names') or []
+        art = A.get(path) or {}
+        when = g.get('date') or art.get('date') or ''
+        place = art.get('place') or ''
+        town = re.sub(r',\s*India$', '', place)
+        folder = clean(f'{when} {town}', 70)
+        y = int(when[:4]) if when[:4].isdigit() else None
+        for i, src in enumerate(files):
+            m = re.search(r'/(\d+)/display/', src)
+            if 'static.wn.baps-apps.org' not in src or not m:
+                continue
+            album = f'webnext-{m[1]}'
+            file = urllib.parse.unquote(src.split('?')[0].rsplit('/', 1)[1])
+            if (album, file.lower()) in have:
+                continue
+            have.add((album, file.lower()))
+            stem, ext = os.path.splitext(file)
+            words = (names[i] if i < len(names) else '').replace('_', ' ').strip()
+            cap = clean(words, 80)
+            name = f'{cap} ({stem}){ext or ".jpg"}' if cap else file
+            if len(name.encode()) > 200:
+                name = f'{cap[:40]} ({stem[:60]}){ext or ".jpg"}'
+            local = f'photos/baps.org/{y or "undated"}/{folder}/{name}'
+            text = words or art.get('t') or ''
+            day = datetime.date.fromisoformat(when) if when else datetime.date(y or 2000, 7, 1)
+            out.append((y, when or None, None, None, place or None, album, file, text, int(build_db.about_bapa(text, day)),
+                        'news', path, local))
+    return out
+
+
 def load_json(path, default):
     try:
         return json.load(open(path, encoding='utf-8'))
@@ -198,6 +245,9 @@ def main():
     rows += newer(rows, a.crawl, a.scan)
     arts, links, extra = news(rows, a.crawl)
     rows += extra
+    wn = webnext(rows, a.crawl)   # the new style News pages' photos (13 Nov 2026), each with its article path at [10]
+    links += [(r[10], r[5], r[6], None) for r in wn]
+    rows += [r[:10] + r[11:] for r in wn]
     db.executemany('INSERT OR IGNORE INTO articles VALUES (?,?,?,?,?,?,?,?,?)', arts)
     db.executemany('INSERT OR IGNORE INTO article_photos VALUES (?,?,?,?)', links)
     seen = {}

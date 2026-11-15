@@ -1,19 +1,111 @@
 """Keeps the Studio's photo packs up to date (Darpan, 25 Oct 2026: 'perfect go live').
 
-    python tools/studio_packs.py site [--days 7] [--dates 2026-12-25,...]
+    python tools/studio_packs.py site [--days 7] [--dates 2026-12-25,...] [--months 2023-10,...]
 
 site is a copy of the studio branch. Makes a day pack (tools/dashboard_pack.py) for today and the next days that
 don't have one yet, plus any dates asked for, drops day packs more than 3 days old (unless asked for by date, which
 stay 60 days), and writes site/packs/index.json listing what the Studio can open. Read only for the daily picture.
 A day the morning run makes a special picture on (Every Diwali, Every Annakut, a day in BAPS history) also gets a
-special pack (tools/special_pack.py) in site/packs/special/<date>/, kept as long as its day pack (Darpan, 6 Nov 2026),
-and the next 3 special days up to 90 days ahead are kept ready too (9 Nov 2026);
-packs/special/checked.json remembers the days already looked at, so a day with no special picture isn't looked at again."""
-import argparse, datetime, json, os, shutil, subprocess, sys
+special pack (tools/special_pack.py) in site/packs/special/<date>/, kept as long as its day pack (Darpan, 6 Nov 2026);
+packs/special/checked.json remembers the days already looked at, so a day with no special picture isn't looked at again.
+The next 3 big special days up to 90 days ahead (Every festival days, big days in BAPS history, his own chosen days)
+have their special packs made early and kept until the day has passed (Darpan, 9 Nov 2026).
+A month poster's pack (Darpan, 13 Nov 2026: 'choose any month of any year in the Studio and make its poster') is made
+for every month asked for with --months, and for this month and the next one on every run: see month_packs."""
+import argparse, datetime, json, os, re, shutil, subprocess, sys, urllib.error, urllib.request
 from zoneinfo import ZoneInfo
 
-LOOKS = 30   # new days looked at for a special picture in one run (each is a full photo pick)
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RELEASE = f"https://github.com/{os.environ.get('GITHUB_REPOSITORY') or 'darpan31patel-wq/bapas-diary'}/releases/download/today/"
+DIARY = '1P79txhqK5keX5j1HUje__RVki9YmSqaj'   # the Drive folder Bapa's Diary, where the 2pm send takes everything from
+
+
+def sent_caption(today):
+    """The words that go under Darpan's 2pm caption today, exactly as they are written to Drive (Darpan, 14 Nov 2026:
+    'the full 2pm caption ... exactly as written to Drive' in the day pack's whatsapp field): '<d MMMM yyyy> caption.txt'
+    in Bapa's Diary when Drive can be read, else the morning run's caption.txt on the 'today' release, which is the
+    file the Google script copies there word for word. Returns (words, where from); ('', ...) on a day with no words;
+    None when the morning run hasn't made today's picture yet or nothing can be read, so the pack is left as it is."""
+    tidy = lambda t: t.replace('\r\n', '\n').strip()
+    if os.environ.get('ARCHIVE'):   # rclone is set up
+        r = subprocess.run(['rclone', 'cat', f'gdrive:{today.day} {today:%B %Y} caption.txt', '--drive-root-folder-id', DIARY],
+                           capture_output=True)
+        if r.returncode == 0 and r.stdout.strip():
+            return tidy(r.stdout.decode('utf-8')), 'drive'
+    def get(name):
+        try:
+            return urllib.request.urlopen(RELEASE + name, timeout=60).read().decode('utf-8')
+        except urllib.error.HTTPError as e:
+            return '' if e.code == 404 else None
+        except Exception:
+            return None
+    if (get('date.txt') or '').strip() != str(today):
+        return None
+    text = get('caption.txt')
+    return None if text is None else (tidy(text), 'morning run')
+
+
+def month_packs(packs, asked, today):
+    """packs/month/<YYYY-MM>/ for each month asked for, and for this month and the next: the month's photos are picked
+    by tools/poster_photos.py and packed by tools/dashboard_month_pack.py, as January 2010, January 2012 and February
+    2024 were. packs/month/status.json tells the Studio how each month went: 'made', 'none' (no photos are listed for
+    it, a month still to come for one) or 'failed' (the pack made before, if any, is kept). A month asked for is made
+    again; this month and the next only when the day lists hold a different number of photos than its pack was made
+    from. A month made here goes 60 days after it was last asked for or made; the months put there by hand stay."""
+    mdir = os.path.join(packs, 'month')
+    status_file = os.path.join(mdir, 'status.json')
+    status = json.load(open(status_file)) if os.path.exists(status_file) else {}
+    tool = lambda name, *args, **kw: subprocess.run([sys.executable, os.path.join(HERE, 'tools', name), *args], **kw)
+    nxt = (today.replace(day=1) + datetime.timedelta(days=32)).replace(day=1)
+    now = [f'{today:%Y-%m}', f'{nxt:%Y-%m}']
+    want = []
+    for m in [m.strip() for m in asked.split(',') if m.strip()] + now:
+        if not re.fullmatch(r'(19|20)\d\d-(0[1-9]|1[0-2])', m):
+            print('not a month (YYYY-MM):', m)
+        elif m not in want:
+            want.append(m)
+    for m in want:
+        was_asked = m in asked
+        pack = os.path.join(mdir, m, 'pack.json')
+        try:
+            listed = int(tool('poster_photos.py', '--month', m, '--count', capture_output=True, text=True).stdout.strip() or 0)
+            if not was_asked and os.path.exists(pack) and json.load(open(pack)).get('listed') == listed:
+                continue
+            at = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='minutes')
+            st = dict(status.get(m) or {}, at=at, listed=listed)
+            if was_asked:
+                st['asked'] = str(today)
+            status[m] = st
+            if not listed:
+                print('no photos are listed for', m)
+                st['state'] = 'none'
+                continue
+            print('making the month', m, f'({listed} photos listed)', flush=True)
+            st['state'] = 'failed'
+            work = os.path.join(HERE, 'preview', 'poster', m)
+            shutil.rmtree(work, ignore_errors=True)
+            new = os.path.join(mdir, '.new')
+            shutil.rmtree(new, ignore_errors=True)
+            if tool('poster_photos.py', '--month', m).returncode == 0 and tool('dashboard_month_pack.py', HERE, m, new).returncode == 0:
+                made = json.load(open(os.path.join(new, m, 'pack.json')))
+                made.update(listed=listed, made=at)
+                json.dump(made, open(os.path.join(new, m, 'pack.json'), 'w'), indent=1, ensure_ascii=False)
+                shutil.rmtree(os.path.join(mdir, m), ignore_errors=True)
+                shutil.move(os.path.join(new, m), os.path.join(mdir, m))
+                st['state'] = 'made'
+            else:
+                print('  could not make the month', m)
+            shutil.rmtree(new, ignore_errors=True)
+            shutil.rmtree(work, ignore_errors=True)
+            shutil.rmtree(os.path.join(HERE, '.cache', 'month'), ignore_errors=True)
+        except Exception as e:   # a month never stops the day packs being saved
+            print('  could not make the month', m, e)
+    for m in list(status):
+        last = max(status[m].get('asked', ''), status[m].get('at', '')[:10])
+        if m not in now and last and (today - datetime.date.fromisoformat(last)).days > 60:
+            shutil.rmtree(os.path.join(mdir, m), ignore_errors=True)
+            status.pop(m)
+    json.dump(status, open(status_file, 'w'), indent=1)
 
 
 def main():
@@ -21,8 +113,9 @@ def main():
     ap.add_argument('site')
     ap.add_argument('--days', type=int, default=7)
     ap.add_argument('--dates', default='')
-    ap.add_argument('--ahead', type=int, default=90, help='look this many days ahead for special pictures')
-    ap.add_argument('--next', type=int, default=3, help='keep the special packs of this many coming special days ready')
+    ap.add_argument('--months', default='')
+    ap.add_argument('--ahead', type=int, default=90, help='look this many days ahead for big special days')
+    ap.add_argument('--next', type=int, default=3, help='keep the special packs of this many coming big special days ready')
     a = ap.parse_args()
     packs = os.path.join(a.site, 'packs')
     days_dir = os.path.join(packs, 'day')
@@ -46,22 +139,43 @@ def main():
         if r.returncode:
             print('  could not make', d)
             shutil.rmtree(os.path.join(days_dir, str(d)), ignore_errors=True)
+    # packs made before the picks sheet and the small photos (13 Nov 2026) gain them from the photos they already
+    # hold: nothing is picked again, so a day Darpan has worked on stays as it is
+    plain = [os.path.join(days_dir, n) for n in sorted(os.listdir(days_dir)) if os.path.exists(os.path.join(days_dir, n, 'pack.json'))
+             and 'picks' not in json.load(open(os.path.join(days_dir, n, 'pack.json')))]
+    if plain:
+        subprocess.run([sys.executable, os.path.join(HERE, 'tools', 'dashboard_pack.py'), '--lighten'] + plain)
+    # today's pack carries the words that really go out at 2pm, not the guess made when the pack was made days before
+    made = os.path.join(days_dir, str(today), 'pack.json')
+    words = sent_caption(today) if os.path.exists(made) else None
+    if words:
+        pack = json.load(open(made, encoding='utf-8'))
+        if (pack.get('whatsapp'), pack.get('whatsapp_from')) != words:
+            pack['whatsapp'], pack['whatsapp_from'] = words
+            json.dump(pack, open(made, 'w', encoding='utf-8'), indent=1, ensure_ascii=False)
+        print(f'today\'s 2pm caption words ({words[1]}):', repr(words[0]))
+    else:
+        print('today\'s 2pm caption words could not be read: the day pack keeps the words it has')
     specials_dir = os.path.join(packs, 'special')
     os.makedirs(specials_dir, exist_ok=True)
     checked_file = os.path.join(specials_dir, 'checked.json')
     checked = json.load(open(checked_file)) if os.path.exists(checked_file) else {}
-    # the special pictures' days: the days asked for and the next days (as the day packs), then on up to AHEAD days
-    # until the next NEXT special days are ready (Darpan, 9 Nov 2026: 'the Studio's Special picture list always holds
-    # the next 2 or 3'). Each day is looked at once (checked.json); at most LOOKS new days a run, so a run stays short.
-    ahead = [today + datetime.timedelta(days=i) for i in range(a.ahead + 1)]
-    looks = 0
-    for d in want + [d for d in ahead if d not in want]:
-        ready = sum(1 for k, v in checked.items() if v == 'made' and k >= str(today))
-        if d not in want and (ready >= a.next or looks >= LOOKS):
-            break
-        if str(d) not in a.dates and (checked.get(str(d)) == 'none' or os.path.exists(os.path.join(specials_dir, str(d), 'pack.json'))):
+    # Darpan, 9 Nov 2026 ('the Studio's Special picture list always holds the next 2 or 3'): the next NEXT big special
+    # days (an Every <festival> day, a flagged big day in BAPS history, a day he chose himself) up to AHEAD days on
+    # get their packs now, and keep them until their day has passed. Every day has a special picture since 13 Nov 2026,
+    # so only these big days are looked for ahead; the others get theirs when they come within the next days, as before.
+    try:
+        r = subprocess.run([sys.executable, os.path.join(HERE, 'tools', 'special_pack.py'), '--big', str(today), str(a.ahead)],
+                           capture_output=True, text=True, timeout=600)
+        big = [datetime.date.fromisoformat(l[4:].strip()) for l in r.stdout.splitlines() if re.fullmatch(r'BIG \d{4}-\d\d-\d\d', l.strip())]
+    except Exception as e:
+        print('  the big special days ahead could not be listed:', e)
+        big = []
+    print('big special days ahead:', ', '.join(map(str, big[:a.next])) or 'none found')
+    for d in want + [d for d in big[:a.next] if d not in want]:   # the special picture's pack, on the days the morning run makes one
+        # today's is made again every morning, so the Studio shows the special picture that is going out (Darpan, 14 Nov 2026)
+        if str(d) not in a.dates and d != today and (checked.get(str(d)) == 'none' or os.path.exists(os.path.join(specials_dir, str(d), 'pack.json'))):
             continue
-        looks += 1
         print('looking for a special picture on', d, flush=True)
         shutil.rmtree(os.path.join(specials_dir, str(d)), ignore_errors=True)
         r = subprocess.run([sys.executable, os.path.join(HERE, 'tools', 'special_pack.py'), str(d), specials_dir])
@@ -91,6 +205,7 @@ def main():
     checked = {k: v for k, v in checked.items() if (today - datetime.date.fromisoformat(k)).days <= 3 or k in asked}
     json.dump(checked, open(checked_file, 'w'), indent=1)
     json.dump(asked, open(keep_file, 'w'), indent=1)
+    month_packs(packs, a.months, today)
     idx = dict(days=sorted(n for n in os.listdir(days_dir) if os.path.exists(os.path.join(days_dir, n, 'pack.json'))),
                specials=sorted(n for n in os.listdir(specials_dir) if os.path.exists(os.path.join(specials_dir, n, 'pack.json'))),
                months=sorted(n for n in os.listdir(os.path.join(packs, 'month')) if os.path.exists(os.path.join(packs, 'month', n, 'pack.json'))),

@@ -12,6 +12,10 @@ on:
       date:
         description: 'Date to make (YYYY-MM-DD). Leave blank for today.'
         required: false
+      if_needed:
+        description: "Only make it if today's isn't made yet (the Google script asks for this at 8:30am when GitHub is late)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -23,15 +27,17 @@ concurrency:
 jobs:
   make:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: ${{ github.ref == 'refs/heads/main' && 40 || 170 }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Already made today?
         id: done
-        if: github.event_name == 'schedule'
+        if: github.event_name == 'schedule' || inputs.if_needed
         run: |
-          if grep -q "^$(TZ=Europe/London date +%F) " log.md; then echo "skip=1" >> "$GITHUB_OUTPUT"; fi
+          # the newest log on main, so a run GitHub started late still sees a picture made in the meantime (Darpan, 12 Nov 2026)
+          git fetch -q --depth=1 origin "${GITHUB_REF_NAME}" && git show FETCH_HEAD:log.md > /tmp/log.md || cp log.md /tmp/log.md
+          if grep -q "^$(TZ=Europe/London date +%F) " /tmp/log.md; then echo "skip=1" >> "$GITHUB_OUTPUT"; fi
 
       - uses: actions/setup-python@v5
         if: steps.done.outputs.skip != '1'
@@ -84,6 +90,40 @@ jobs:
           DATE: ${{ inputs.date }}
           STYLES: ${{ github.ref != 'refs/heads/main' && 'H2' || '' }}
         run: |
+          if [ "${GITHUB_REF}" != "refs/heads/main" ] && [ "${DATE#before:}" != "$DATE" ]; then
+            # test branches only, 'before:2026-11-10,2026-11-14': each date made twice, by main as it is today and by this
+            # branch, and set one above the other (Darpan, 9 Nov 2026: test pictures next to today's picture for the same date)
+            git fetch -q --depth 1 origin main && git worktree add -q ../before FETCH_HEAD
+            export ARCHIVE_DB="$PWD/bapas.db"
+            mkdir -p compare
+            for d in $(echo "${DATE#before:}" | tr ',' ' '); do
+              (cd ../before && python make.py --date "$d" --out "out/$d" --cache "$GITHUB_WORKSPACE/cache") > "compare/$d-before-log.txt" 2>&1 || true
+              python make.py --date "$d" --out "out/$d" --cache cache > "compare/$d-after-log.txt" 2>&1 || true
+              for w in before after; do
+                o="out/$d"; [ "$w" = before ] && o="../before/out/$d"
+                cp "$o/bapas-diary.jpg" "compare/$d-$w.jpg" || true
+                cp "$o/summary.txt" "compare/$d-$w-summary.txt" || true
+                [ -e "$o/caption.txt" ] && cp "$o/caption.txt" "compare/$d-$w-caption.txt"
+              done
+              python - "$d" <<'PY' || true
+          import sys
+          from PIL import Image, ImageDraw, ImageFont
+          d = sys.argv[1]
+          a, b = (Image.open(f'compare/{d}-{w}.jpg').convert('RGB') for w in ('before', 'after'))
+          k = 2400 / a.width
+          a, b = (im.resize((2400, round(im.height * k))) for im in (a, b))
+          font = ImageFont.truetype('fonts/arimo-latin-700-normal.woff2', 44)
+          out = Image.new('RGB', (2400, a.height + b.height + 160), (24, 16, 16))
+          draw = ImageDraw.Draw(out)
+          draw.text((30, 16), f'{d}  BEFORE: the picture as main makes it today', font=font, fill=(240, 220, 170))
+          out.paste(a, (0, 80))
+          draw.text((30, a.height + 96), f'{d}  AFTER: with the News articles and photos', font=font, fill=(240, 220, 170))
+          out.paste(b, (0, a.height + 160))
+          out.save(f'compare/{d}-side-by-side.jpg', quality=90)
+          PY
+            done
+            rm -rf out && mkdir out && mv compare out/compare; echo "compare" > out/date.txt; exit 0
+          fi
           if [ "${GITHUB_REF}" != "refs/heads/main" ] && [ "${DATE#*,}" != "$DATE" ]; then
             # test branches only: several dates at once, original and unique caption picks side by side
             for d in ${DATE//,/ }; do
@@ -118,7 +158,7 @@ jobs:
             --notes "Rebuilt every morning. Your Google script collects bapas-diary.png from here at 8:30am."
           gh release upload today out/bapas-diary.png out/bapas-diary.jpg out/date.txt --clobber
           # the channel's story for the 2pm caption, and on big days the special picture; yesterday's are taken down
-          for f in caption.txt bapas-diary-special.png bapas-diary-special.jpg flags.txt bapas-diary-backup.png; do
+          for f in caption.txt bapas-diary-special.png bapas-diary-special.jpg bapas-diary-special-{2,3,4,5}.{png,jpg} flags.txt bapas-diary-backup.png; do
             if [ -e "out/$f" ]; then gh release upload today "out/$f" --clobber
             else gh release delete-asset today "$f" -y 2>/dev/null || true; fi
           done
@@ -146,8 +186,9 @@ jobs:
           cp out/summary.txt "preview/$(cat out/date.txt).txt"
           [ -e out/caption.txt ] && cp out/caption.txt "preview/$(cat out/date.txt)-caption.txt"
           [ -e out/bapas-diary-special.png ] && cp out/bapas-diary-special.png "preview/$(cat out/date.txt)-special.png"
+          for f in out/bapas-diary-special-*.png; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-${f#out/bapas-diary-}"; done
           [ -e out/flags.txt ] && cp out/flags.txt "preview/$(cat out/date.txt)-flags.txt"; fi
-          for f in out/all-photos.txt out/album-check.txt; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-$(basename "$f")"; done
+          for f in out/all-photos.txt out/album-check.txt out/search.txt; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-$(basename "$f")"; done
           for f in out/caption-*.jpg out/caption-*.png; do [ -e "$f" ] && cp "$f" "preview/$(cat out/date.txt)-$(basename "$f")"; done
           for d in out/photos-*; do [ -d "$d" ] && rm -rf "preview/$(cat out/date.txt)-$(basename "$d")" && cp -r "$d" "preview/$(cat out/date.txt)-$(basename "$d")"; done
           git config user.name "github-actions[bot]"

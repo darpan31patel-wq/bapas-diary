@@ -65,9 +65,16 @@ def gather(day):
     return items, photos, tg_evs, special
 
 
-def which_special(day, photos, tg_evs, special):
+def which_special(day, photos, tg_evs, special, items=()):
     """The special picture make.main() makes that day, as ('festival', picture, drawn) or ('story', picture, drawn),
     drawn = what it was drawn from; None when there is none."""
+    if make.special_off(day):   # Darpan switched this day's special picture off
+        return None
+    chosen = make.chosen_specials(day, list(items) or photos)   # all the day's photos, so a chosen year has every one of its own
+    if chosen:   # Darpan's own choice wins (the Studio pack shows the first; the others are special 2, 3...)
+        sp = make.compose_special(chosen[0], day)
+        if sp is not None:
+            return 'story', sp, dict(ev=chosen[0], lead=None, source='chosen')
     wins = 'Diwali' in make.festivals(day)
     drawn, every = {}, None
     if not special or wins:
@@ -96,12 +103,16 @@ def which_special(day, photos, tg_evs, special):
         special = max(shown, key=make.tg_rank, default=None)
         lead = next((x for x in photos if special and x.get('im') is not None and make.tells(x, special, make.RARE_DAYS)), None)
         source = 'year card'
+    options = []
+    if not special and make.DAILY_SPECIAL:   # a special picture every day: the day's most special item, the others as options
+        evs = make.daily_specials(day, list(items), photos, tg_evs)
+        special, options, lead, source = (evs[0] if evs else None), evs[1:], None, 'daily'
     if not special:
         return None
     sp = make.compose_special(special, day, lead=lead['im'] if lead else None)
     if sp is None:
         return None
-    return 'story', sp, dict(ev=special, lead=lead, source=source)
+    return 'story', sp, dict(ev=special, lead=lead, source=source, options=options)
 
 
 class Pool:
@@ -205,14 +216,33 @@ def jsonable(v):
     return json.loads(json.dumps(v, default=lambda o: list(o) if isinstance(o, tuple) else str(o)))
 
 
+def big_day(day):
+    """A day sure to have a big special picture, told without picking any photos: an Every <festival> day, a flagged big
+    day in BAPS history, or a day Darpan chose himself (archive/special-days.json), unless he switched the day off."""
+    if make.special_off(day):
+        return False
+    if any(f in make.BIG for f in make.festivals(day)):
+        return True
+    if any(e.get('special') and int(e['date'][:4]) < day.year for e in make.tg_events(f'{day:%m-%d}')):
+        return True
+    return any(make.on_day(c['day'], day) for c in make.special_choices()['add'])
+
+
 def main():
+    if sys.argv[1] == '--big':   # --big 2026-11-15 90: the big special days from that day on, one 'BIG <date>' a line
+        start = datetime.date.fromisoformat(sys.argv[2])
+        for k in range(int(sys.argv[3]) + 1):
+            d = start + datetime.timedelta(days=k)
+            if big_day(d):
+                print('BIG', d)
+        return
     day = datetime.date.fromisoformat(sys.argv[1])
     root = sys.argv[2] if len(sys.argv) > 2 else os.path.join('site', 'packs', 'special')
     seen = make.shown
     make.shown = lambda: {d: v for d, v in seen().items() if d < str(day)}   # only the days before it, as its own morning run sees them
     items, photos, tg_evs, special = gather(day)
     dp.album_days(items + photos)
-    got = which_special(day, photos, tg_evs, special)
+    got = which_special(day, photos, tg_evs, special, items)
     if not got:
         print(f'{day}: no special picture')
         sys.exit(2)
@@ -220,6 +250,18 @@ def main():
     out = os.path.join(root, str(day))
     os.makedirs(out, exist_ok=True)
     sp.convert('RGB').resize((2400, round(2400 * sp.height / sp.width)), Image.LANCZOS).save(os.path.join(out, 'real.jpg'), quality=85)
+    full = os.environ.get('SPECIAL_OUT')   # the remake run (special.yml) also wants the picture itself, as the morning run saves it
+    if full:
+        os.makedirs(full, exist_ok=True)
+        sp.save(os.path.join(full, 'bapas-diary-special.png'), optimize=True)
+        sp.convert('RGB').save(os.path.join(full, 'bapas-diary-special.jpg'), quality=95, optimize=True)
+        if (drawn or {}).get('source') == 'chosen':   # his next choices of the day are special 2, 3... as the morning run makes them
+            n = 1
+            for ev in make.chosen_specials(day, list(items) or photos)[1:]:
+                more = make.compose_special(ev, day)
+                if more is not None:
+                    n += 1
+                    more.save(os.path.join(full, f'bapas-diary-special-{n}.png'), optimize=True)
     pool, cards = Pool(out), []
     made = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
     if kind == 'festival':
@@ -233,7 +275,7 @@ def main():
         hero = [x['y'] for x in (drawn.get('hero') or [])]
         pins = make.fest_pins(name)
         pack = dict(date=str(day), kind='every_festival', festival=name, title=drawn.get('title') or f'Every {name}',
-                    subtitle='in Bapa’s Diary', footer=make.FOOTER, cal_line=cal[0], headline=None, story=None,
+                    subtitle='in Bapa’s Diary', footer=make.FOOTER, cal_line=cal[0], headline=None, story=None, whatsapp=cal[0],
                     layout=dict(name='wide', style=drawn.get('style') or make.LIVE_STYLE, rows=make.WIDE[make.LIVE_STYLE]['rows'],
                                 hero=hero, short_bottom=drawn.get('short_bottom', 0), dress=jsonable(make.FEST_DRESS.get(name)),
                                 pinned=bool(pins), size=[make.W, make.H]),
@@ -243,7 +285,7 @@ def main():
         y = int(ev['date'][:4])
         shown = [dict(lead, crop='frame')] if lead else []
         extra = []
-        for u in make.tg_photos(ev['posts'])[:8]:   # as compose_special: the channel's photos, blank frames left out
+        for u in (ev.get('urls') or make.tg_photos(ev.get('posts') or []))[:8]:   # as compose_special: the story's photos, blank frames left out
             x = {'i': u, 'y': y, 'd': ev['date'], 'p': ev.get('place') or '', 'c': ev.get('card') or ev.get('line') or '', 'tg': True}
             make.download_all([x], CACHE)
             if 'path' not in x:
@@ -259,12 +301,31 @@ def main():
             c = card(pool, out, f'card{k + 1}', y, 'story', x, others)
             c.update(role='big' if k == 0 else 'small', place=ev.get('place') or '')
             cards.append(c)
-        pack = dict(date=str(day), kind='story', source=drawn['source'], title=f'{day.day} {day:%B} in Bapa’s Diary',
+        pack = dict(date=str(day), kind='story', source=drawn['source'], title=f'{day.day} {day:%B}',
                     subtitle='A special day in BAPS history', footer=make.FOOTER, cal_line='',
                     headline=ev.get('headline') or ev['line'],
-                    story=(ev.get('whatsapp') if lead else None) or ev.get('story') or ev.get('whatsapp') or ev['line'],
+                    story='\n\n'.join(make.special_words(ev, bool(lead))),   # the channel's whole post (Darpan, 13 Nov 2026: 'stop cutting everything out')
+                    story_short=ev.get('whatsapp') or ev.get('story') or ev['line'],
+                    whatsapp=make.tg_caption(ev).strip(),   # the story as the 2pm caption words tell it ('On this day in ...'), Darpan, 14 Nov 2026
                     story_date=ev['date'][:10], story_place=ev.get('place') or '',
                     layout=dict(name='story', big=[70, 200, 1180, 800], small_from=1360, size=[make.W, make.H], unit=make.SCALE))
+        # Darpan, 13 Nov 2026 ('if youre not sure make multiple and i will decide'): the other pictures the day could
+        # have, each drawn and with the entry that makes it the day's special once it is put in archive/special-days.json
+        def choice(e):
+            k = e.get('kind', 'story')
+            c = dict(day=str(day), kind=k)
+            c.update(ref=e.get('article') or e['date'][:10]) if k in ('story', 'news') else c.update(year=int(e['date'][:4]))
+            return c
+        ev['article'] = ev.get('article')
+        pack.update(story_kind=ev.get('kind', 'story'), choose=choice(ev), options=[])
+        for n, e in enumerate(drawn.get('options') or [], 2):
+            op = make.compose_special(e, day)
+            if op is None:
+                continue
+            op.convert('RGB').resize((2400, round(2400 * op.height / op.width)), Image.LANCZOS).save(os.path.join(out, f'option-{n}.jpg'), quality=85)
+            pack['options'].append(dict(picture=f'option-{n}.jpg', kind=e.get('kind', 'story'), headline=e.get('headline') or e['line'],
+                                        story='\n\n'.join(make.special_words(e)), story_date=e['date'][:10], story_place=e.get('place') or '',
+                                        whatsapp=make.tg_caption(e).strip(), choose=choice(e)))
     pool.close()
     pack.update(real='real.jpg', cards=cards, cell=dp.CELL, cols=dp.COLS, made=made)
     json.dump(pack, open(os.path.join(out, 'pack.json'), 'w'), indent=1, ensure_ascii=False)
