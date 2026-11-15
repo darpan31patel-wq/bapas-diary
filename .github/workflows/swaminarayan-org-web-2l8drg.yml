@@ -70,7 +70,7 @@ jobs:
           list() { aws s3 ls "s3://$BUCKET/$1/sorg-" --recursive --endpoint-url "$R2" | awk '{ $1=$2=$3=""; sub(/^ +/, ""); print }' || true; }
           list o > have.txt
           python3 tools/sorg_photos.py store --rows sorg-rows.json --have have.txt --minutes 200 \
-            --send 'aws s3 sync "$OUT" "s3://$BUCKET/" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000, immutable" --content-type image/jpeg'
+            --send 'aws s3 cp --recursive "$OUT" "s3://$BUCKET/" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000, immutable" --content-type image/jpeg'
           { list o; list s; } > sorg-have.txt
           n=$(grep -c '^s/' sorg-have.txt || true); echo "$n old site photos in the photo store"
           [ "$n" -gt 0 ] || { echo '::error::No old site photos reached the photo store'; exit 1; }
@@ -87,7 +87,7 @@ jobs:
           shopt -s nullglob
           for f in sorg-rows.json sorg-have.txt sorg-captions.json sorg-same.json; do [ -s $f ] || echo >> $f; done   # GitHub refuses an empty file
           gh release upload swaminarayan-org-web sorg-rows.json sorg-have.txt sorg-captions.json sorg-same.json sorg.db sorg-reports.tgz sorg-reports.jsonl sorg-days.json sorg-geo.json face2-*-sorg.json.gz --clobber
-# round 7 (Drive login fixed): the old site's photos, same photo check, face check, picture fingerprints, mockup 2 with Calendar from 1981,
+# round 8 (Drive login fixed; the copy no longer lists the whole photo store for every 300 photos): the old site's photos, same photo check, face check, picture fingerprints, mockup 2 with Calendar from 1981,
 # Through the years and Legacy (14 Nov 2026)
   deep:   # the picture fingerprints Legacy matches pairs by (same model as website-deeptags on vcys74)
     needs: prepare
