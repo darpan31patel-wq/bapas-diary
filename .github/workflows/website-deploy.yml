@@ -6,7 +6,7 @@ name: website-deploy
 on:
   push:
     branches: ['claude/**']
-    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/search-people.js', 'site/search-image.js', 'tools/search_people.py', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'site/darpan/**', 'tools/web_offline.py', 'tools/web_secure.py', 'tools/web_tiny.py', 'tools/web_tablet.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/web_reads.py', 'tools/news_ready.py', 'tools/site_menu.py', 'functions/**', 'site/weekly/**', '.github/workflows/website-deploy.yml', 'tools/web_type.py', 'tools/web_notranslate.py', 'site/screensaver/**', 'tools/web_screensaver.py', 'tools/screensaver/**', 'tools/web_year.py', 'site/year/**', 'tools/web_bapa_now.py', 'tools/web_darshan.py', 'tools/web_festival.py', 'tools/web_places.py', 'tools/web_videos.py', 'tools/web_articles.py', 'tools/web_diwali.py', 'tools/web_bprasang.py', 'data/baps/**', 'tools/youtube/**', 'data/youtube/**', 'tools/old_calendar.py', 'calendar/worked-out-calendar.json', 'tools/sorg_travels.py', 'tools/sorg_reports.py']
+    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/search-people.js', 'site/search-image.js', 'tools/search_people.py', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'site/darpan/**', 'tools/web_offline.py', 'tools/web_secure.py', 'tools/web_tiny.py', 'tools/web_tablet.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/web_reads.py', 'tools/news_ready.py', 'tools/site_menu.py', 'functions/**', 'site/weekly/**', '.github/workflows/website-deploy.yml', 'tools/web_type.py', 'tools/web_notranslate.py', 'site/screensaver/**', 'tools/web_screensaver.py', 'tools/screensaver/**', 'tools/web_year.py', 'site/year/**', 'tools/web_bapa_now.py', 'tools/web_darshan.py', 'tools/web_festival.py', 'tools/web_places.py', 'tools/web_videos.py', 'tools/web_articles.py', 'tools/web_diwali.py', 'tools/web_bprasang.py', 'data/baps/**', 'tools/youtube/**', 'data/youtube/**', 'tools/old_calendar.py', 'calendar/worked-out-calendar.json', 'tools/sorg_travels.py', 'tools/sorg_reports.py', 'tools/sorg_photos.py']
   workflow_dispatch:   # a deploy by hand from the Actions page, for a commit that landed with [skip ci] by mistake (12 Nov 2026)
   workflow_call:   # website-hires (on main) rebuilds the site when a year of full size photos is in R2
 concurrency: website-deploy
@@ -43,6 +43,12 @@ jobs:
           mkdir out && rsync -a --exclude README.md live/ out/
           gh release download legacy-auto -p more.json -D out/then-and-now 2>/dev/null || echo '[]' > out/then-and-now/more.json   # weekly Legacy pairs (Darpan: just go live, 28 Oct)
           gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
+          # the old BAPS website's photos (swaminarayan.org) join this build's copy only, without the ones baps.org already gave us
+          # (Darpan, 15 Nov 2026: "Yes push old photos"); Today, the Calendar squares and Through the years take them only when
+          # the face check finds Bapa, a clicked day and Search show them all. The shared database release is not changed.
+          if gh release download swaminarayan-org-web -p sorg-rows.json -p sorg-have.txt -p sorg-captions.json -p sorg-same.json 2>/dev/null; then
+            python3 tools/sorg_photos.py add --rows sorg-rows.json --db bapas.db --have sorg-have.txt --captions sorg-captions.json --same sorg-same.json
+          fi
           # the Indian date, festivals and yearly days for every day from 1970 to 2009, worked out from the moon and the sun
           # (baps.org's calendars start in 2010); only this build's copy, never over a BAPS calendar day (Darpan, 13 Nov 2026)
           python3 tools/old_calendar.py add --db bapas.db
@@ -62,6 +68,7 @@ jobs:
           # recognised, best darshan first; years whose faces are not looked at yet keep the caption based choice (is_bapa = 1)
           pip install -q -r requirements.txt
           mkdir faces && gh release download website-faces -p 'face2-*.json.gz' -D faces
+          gh release download swaminarayan-org-web -p 'face2-*-sorg.json.gz' -D faces 2>/dev/null || true   # the old site's photos, face checked
           python3 tools/web_faces.py pick --db bapas.db --faces faces --out bapa.db --top bapa-top.db
           # the On this day picture's rules (Darpan, 25 Oct 2026, tools/web_rules.py): captions say what Bapa does
           python3 tools/web_rules.py captions --db bapa.db --db bapa-top.db
@@ -106,6 +113,7 @@ jobs:
           echo "photo years: $(tr '\n' ' ' < photo-years.txt)"
           # The scrolling years calendar (its own thread, branch pinned to the approved commit; Darpan: "perfect go live")
           git fetch -q --depth 1 origin "$CAL_COMMIT" && mkdir calsrc && git archive "$CAL_COMMIT" tools/web_calendar.py site/calendar.html fonts | tar -x -C calsrc
+          sed -i 's/^FIRST = (1999, 1)/FIRST = (1981, 1)/' calsrc/tools/web_calendar.py   # the Calendar from 1981, the old site's first festival year (Darpan, 15 Nov 2026)
           git fetch -q --depth 1 origin refs/heads/database && git show FETCH_HEAD:crawl/schedule/latest.json > schedule.json || echo '{}' > schedule.json   # where Bapa will be (Future Vicharan)
           python3 calsrc/tools/web_calendar.py --db bapa-top.db --site cal --photos-url https://photos.bapas-diary.com/ --search-url /search/ --photo-years photo-years.txt --pool bapa.db --sigs calendar-looks.json --faces faces --schedule schedule.json   # a different looking photo each day, and the days ahead (Darpan: yes perfect go live, 26 Oct)
           python3 tools/web_rules.py calfaces --site cal --faces faces   # Bapa's whole head in each Calendar photo (Darpan, 25 Oct 2026)
