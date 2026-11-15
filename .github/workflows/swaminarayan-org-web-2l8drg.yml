@@ -87,7 +87,7 @@ jobs:
           shopt -s nullglob
           for f in sorg-rows.json sorg-have.txt sorg-captions.json sorg-same.json; do [ -s $f ] || echo >> $f; done   # GitHub refuses an empty file
           gh release upload swaminarayan-org-web sorg-rows.json sorg-have.txt sorg-captions.json sorg-same.json sorg.db sorg-reports.tgz sorg-reports.jsonl sorg-days.json sorg-geo.json face2-*-sorg.json.gz --clobber
-# round 9 (fingerprints on 8 machines; photos already in the store are skipped): the old site's photos, same photo check, face check, picture fingerprints, mockup 2 with Calendar from 1981,
+# round 10 (no Previous/Contents buttons, each photo on its own day only, no dates taken from a story's memories, towns only): the old site's photos, same photo check, face check, picture fingerprints, mockup 2 with Calendar from 1981,
 # Through the years and Legacy (14 Nov 2026)
   deep:   # the picture fingerprints Legacy matches pairs by (same model as website-deeptags on vcys74)
     needs: prepare
@@ -109,6 +109,7 @@ jobs:
           python-version: '3.12'
       - name: Fingerprints of the old site's photos
         run: |
+          if gh release view swaminarayan-org-web --json assets -q '.assets[].name' | grep -qx 'emb-sorg-${{ matrix.part }}.npz'; then echo 'this part is made already'; exit 0; fi
           git fetch -q origin claude/project-thread-vcys74 && mkdir dt && git archive FETCH_HEAD tools | tar -x -C dt
           pip install -q --index-url https://download.pytorch.org/whl/cpu torch torchvision
           pip install -q 'open_clip_torch>=2.31' 'timm>=1.0.15' transformers sentencepiece pillow numpy
