@@ -87,13 +87,17 @@ jobs:
           shopt -s nullglob
           for f in sorg-rows.json sorg-have.txt sorg-captions.json sorg-same.json; do [ -s $f ] || echo >> $f; done   # GitHub refuses an empty file
           gh release upload swaminarayan-org-web sorg-rows.json sorg-have.txt sorg-captions.json sorg-same.json sorg.db sorg-reports.tgz sorg-reports.jsonl sorg-days.json sorg-geo.json face2-*-sorg.json.gz --clobber
-# round 8 (Drive login fixed; the copy no longer lists the whole photo store for every 300 photos): the old site's photos, same photo check, face check, picture fingerprints, mockup 2 with Calendar from 1981,
+# round 9 (fingerprints on 8 machines; photos already in the store are skipped): the old site's photos, same photo check, face check, picture fingerprints, mockup 2 with Calendar from 1981,
 # Through the years and Legacy (14 Nov 2026)
   deep:   # the picture fingerprints Legacy matches pairs by (same model as website-deeptags on vcys74)
     needs: prepare
     if: needs.prepare.outputs.ready == 'yes'
     runs-on: ubuntu-latest
     timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [0, 1, 2, 3, 4, 5, 6, 7]   # one machine reads about 2,500 photos in the time (like website-deeptags' shards)
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -110,14 +114,14 @@ jobs:
           pip install -q 'open_clip_torch>=2.31' 'timm>=1.0.15' transformers sentencepiece pillow numpy
           gh release download swaminarayan-org-web -p sorg.db
           for y in $(python3 -c "import sqlite3; print(' '.join(str(y) for (y,) in sqlite3.connect('sorg.db').execute('SELECT DISTINCT year FROM photos ORDER BY year')))"); do
-            python3 dt/tools/deep_tags.py shard --db sorg.db --shard "$y-0-1" --out photos
+            python3 dt/tools/deep_tags.py shard --db sorg.db --shard "$y-${{ matrix.part }}-8" --out photos
           done
           echo "$(find photos -type f | wc -l) photos"
-          python3 dt/tools/deep_tags.py embed --photos photos --out emb-sorg.npz
-          gh release upload swaminarayan-org-web emb-sorg.npz --clobber
+          python3 dt/tools/deep_tags.py embed --photos photos --out emb-sorg-${{ matrix.part }}.npz
+          gh release upload swaminarayan-org-web emb-sorg-${{ matrix.part }}.npz --clobber
   mockup:
     needs: [prepare, deep]
-    if: needs.prepare.outputs.ready == 'yes'
+    if: always() && needs.prepare.outputs.ready == 'yes'   # Legacy uses whichever fingerprint parts are ready
     runs-on: ubuntu-latest
     timeout-minutes: 300
     env:
@@ -174,7 +178,7 @@ jobs:
           pip install -q numpy
           git fetch -q origin claude/project-thread-dmnrb9 && mkdir lg && git archive FETCH_HEAD tools site | tar -x -C lg
           mkdir emb && gh release download deep-tags -p 'emb-*.npz' -p words.npz -D emb
-          gh release download swaminarayan-org-web -p emb-sorg.npz -D emb
+          gh release download swaminarayan-org-web -p 'emb-sorg-*.npz' -D emb || true
           [ -d hints ] || { mkdir hints && cp faces/face2-*.json.gz hints/; }
           cp out/then-and-now/more.json old-more.json
           python3 lg/tools/legacy_auto.py --db bapas.db --emb emb --faces hints --picks lg/site/then-now-picks.json \
