@@ -78,7 +78,8 @@ def vicharan_items(path, mmdd, place, per_caption=2):
         ids, c = line.split('|', 1)
         if c.endswith('...') and k + 1 < len(lines) and '|' in lines[k + 1] and not lines[k + 1].startswith('#'):
             nxt = lines[k + 1].split('|', 1)[1]                           # 'sanctifies water...' + 'Swamishri with the holy relics' carry on as one sentence
-            c = c[:-3].rstrip() + ' ' + re.sub(rf'^{NAME}\s+', '', nxt)
+            whole = re.sub(rf'^{NAME}\s+', '', nxt)
+            c = nxt if whole.lower().startswith(c[:-3].rstrip().lower()) else c[:-3].rstrip() + ' ' + whole   # the next line may already be the whole sentence (tools/build_db.py carried_on)
         if c[:1].islower():
             c = 'Swamishri ' + c
         for i in ids.split(',')[:per_caption]:
@@ -1109,7 +1110,12 @@ def tidy(c):
     c = re.sub(r'(?:\s*[-\u2013\u2014,;:]\s*)+$', '', c)                                       # 'Divine Moods -'
     c = re.sub(rf'[\s,]*(?:on |dated )?\b\d{{1,2}}(?:st|nd|rd|th)? {MONTH}(?: \d{{4}})?\s*$', '', c)   # 'Doing mala, 18 Oct 2016'
     c = re.sub(rf'[\s,]*(?:on |dated )?\b{MONTH} \d{{1,2}}(?:st|nd|rd|th)?(?:,? \d{{4}})?\s*$', '', c)   # 'on October 18, 2016'
-    c = re.sub(r'\b(the|a|an|of|to|in|on|and) \1\b', r'\1', c, flags=re.I)
+    c = re.sub(r'\b(the|a|an|of|to|in|on|and|for|at|with|by|from|his|is|was) \1\b', r'\1', c, flags=re.I)
+    c = re.sub(r'\b(Swami|Maharaj|Swamishri) \1\b', r'\1', c)                                  # 'Aksharvatsal Swami Swami addresses the assembly'
+    c = re.sub(r'\s+\S*\bf\.jpe?g\b', '', c, flags=re.I)                                         # 'during his morning pooja orlandojune29005-f.jpg'
+    c = re.sub(r'\s+\.\.?(?=\s|$)|(?<=\w)\.\.+$', '', c)                                           # 'prays to the deities ..', 'speech of a child .', 'pass..'
+    c = re.sub(r'^(?:(?:and|then|thereafter|finally),?\s+)+(?=[a-z])', '', c, flags=re.I)          # 'then blesses the assembly'
+    c = re.sub(r'^((?:Swamishri|Bapa)\s+)(?:(?:and )?(?:then|thereafter|finally),?\s+)+(?=[a-z]+s\b)', r'\1', c)   # 'Swamishri then performs the murti pratishtha'
     c = re.sub(r'\b(?:Mr|Mrs|Ms|Dr)\.? (?=[A-Z])', '', c)
     c = re.sub(r'\b([Dd])evotee(s?)\b', lambda m: ('B' if m.group(1) == 'D' else 'b') + 'hakta' + m.group(2), c)   # satsang word (Darpan, 18 Oct 2026)
     c = re.sub(r', (?:Shri|Smt\.?|Dr\.?|Mr\.?|Mrs\.?) [^,]+(?:, [^,]+)*,', '', c)   # 'Bapa and sponsors, Shri Mayurbhai and Shri Nimeshbhai, cut the ribbon'
@@ -1187,27 +1193,83 @@ def range_title(c):
     return (m.group(1) or '').strip() if m else None
 
 
+GURU_CHANGE = datetime.date(2016, 8, 13)   # Bapa is Pramukh Swami Maharaj before this day, Mahant Swami Maharaj from it
+TITLE = r"(?:(?:H\.?\s?H\.?|Param Pujya|Pujya|P\.?\s?P\.?)\s+)?"
+NOT_HIM = r"(?<!Brahmaswarup )(?<!Brahmswarup )(?<!Shri )(?<!guru )(?<!Guru )(?<!Yugpurush )(?<!['‘\"])"   # 'Brahmaswarup Pramukh Swami Maharaj', 'Pujya Mahant Swami': named as someone in the photo
+NOT_A_PLACE = r"(?!(?: Maharaj)? (?:Auditorium|Smruti|Vidya|Marg|Dwar|Computer|Nagar|Hall|Hospital|School|Institute|Janma|Janmotsav|Shatabdi|Centenary|Mahotsav|Jayanti|Road|Chowk|Gate|Vimalanandji)\b)(?!(?: Maharaj)?'s (?:Janma|Janmotsav|Shatabdi|Smruti)\b)"
+
+
+def bapa_name(x):
+    """The names that mean the Bapa of this card: 'Swamishri' always, and the guru of the photo's own day. The other guru
+    keeps his name: on a 2019 card 'Swamishri engrossed in darshan of Brahmaswarup Pramukh Swami Maharaj' is Mahant Swami
+    Maharaj before Pramukh Swami Maharaj's murti, and on a 2006 card 'Swamishri with Pujya Mahant Swami' is two people.
+    Calling every one of those 'Bapa' gave 'Bapa with Pujya Bapa' (found 14 Nov 2026, after 'Bapa with Bapa' went out)."""
+    try:
+        when = datetime.date.fromisoformat((x.get('d') or '')[:10])
+    except ValueError:
+        when = datetime.date(x['y'], 7, 1) if x.get('y') else None
+    if when is None:
+        own = r"Pramukh Swami(?: Maharaj)?|Mahant Swami(?: Maharaj)?|"
+    elif when < GURU_CHANGE:
+        own = r"Pramukh Swami(?: Maharaj)?|"
+    else:
+        own = r"Mahant Swami(?: Maharaj)?|"
+    return rf"{NOT_HIM}{TITLE}(?:{own}Swamishri|Bapa){NOT_A_PLACE}"
+
+
+CAPTION_FAULTS = [   # words that must never reach a card (Darpan, 14 Nov 2026: 'Bapa with Bapa after their performance'. 'Not checking are you?')
+    (r"^Bapa,? (?:with|and|along with|together with|before|meets?|greets?|blesses|honou?rs?|garlands?|doing darshan of) (?:\w+ )?Bapa\b(?! \w+s\b)", 'Bapa with himself'),
+    (r"\bBapa(?:'s)? Bapa\b", 'Bapa twice in a row'),
+    (r"\b(?:Brahmaswarup|Brahmswarup|Pragat|Pujya|Sadguru|Shri|guru|Yugpurush) Bapa\b", "another guru's name turned into Bapa"),
+    (r"\bBapa(?:'s)? (?:Maharaj|Swami|Auditorium|Smruti Mandir|Vidya Mandir|Marg|Dwar|Nagar|Janma Jayanti|Shatabdi)\b", "a place or festival name turned into Bapa"),
+    (r"^Bapa (?:sing|perform|play|present|dance|recite|enact|offer|greet|welcome|honou?r)\b", 'Bapa put in front of what other people do'),
+    (r"(?<!['‘\"“])\bSwamishri\b(?! -)", 'Swamishri left in the words'),
+    (r"^[a-z,;:.)\-]", 'starts part way through a sentence'),
+    (r"^\.\.|\.\.$|^…|\.jpe?g\b|https?:|www\.|\(\s*\)|\s[,;:.](?:\s|$)|�", 'loose marks from the website'),
+    (r"\b(the|a|an|of|to|in|on|and|for|at|with|by|from|his|is|was|are|were|their|this|it|as|be|has|have|Bapa|Swami|Maharaj) \1\b", 'the same word twice in a row'),
+    (r"^(?:And|Of|But|Or) ", 'starts with a joining word'),
+]
+HELD_BACK = {}   # website caption -> why its own words were not used, printed at the end of a run
+
+
+def caption_fault(c):
+    """Why these words must not go on a card, or '' when they read as a caption."""
+    for pat, why in CAPTION_FAULTS:
+        if re.search(pat, c or ''):
+            return why
+    return ''
+
+
 def caption(x):
     """The caption without the name repeated on every card: 'Swamishri blesses all' becomes 'Blesses all'.
     Where dropping the name wouldn't read well ('Swamishri's divine gestures', 'Sadhus honour Swamishri'),
-    the name becomes 'Bapa'."""
+    the name becomes 'Bapa'. Words that fail the check (caption_fault) never go on a card: the card says 'Darshan'
+    and the run reports them."""
     if x.get('cap'):   # a festival pin's caption (archive/fest), written to be shown as it is
         return x['cap']
     if range_title(x.get('c')) is not None:   # only the album's dates: the card is a darshan
         return DARSHAN
     c = tidy(re.sub(r'\s+', ' ', x.get('c') or '').strip())
-    if not c or re.fullmatch(rf'(?:Pujya |Shri )?{NAME}(?: Maharaj)?', c):
+    him = bapa_name(x)
+    if not c or re.fullmatch(rf'(?:Pujya |Shri )?{him}(?: Maharaj)?', c):
         return DARSHAN if x.get('c') else ''
     c = about_bapa(c)
-    m = re.match(rf'^{NAME}[\s,]+(.+)$', c)
+    m = re.match(rf'^{him}[\s,]+(.+)$', c)
     if m and not re.match(r"(and|with|along|together|'s|’s)\b", m.group(1), re.I):
         c = m.group(1)[0].upper() + m.group(1)[1:]
-    c = re.sub(NAME, 'Bapa', c)
+    c = re.sub(him, 'Bapa', c)
     w = c.split(' ', 1)
     if w[0].lower() in ING and len(w) > 1:   # 'Performing sanctifying rituals' reads like the other cards: 'Performs sanctifying rituals'
         c = ING[w[0].lower()] + ' ' + w[1]
-    c = re.sub(r'^(?:\(?[A-Za-z]\)|[-\u2013\u2014,;:]+)\s*', '', c.rstrip(' ,;:-\u2013\u2014'))   # 'Swamishri - forever relaxed', 'c) Bhagwan...'
-    return c[:1].upper() + c[1:]
+    c = re.sub(r'^(?:\(?[A-Za-z]\)|[-–—,;:]+)\s*', '', c.rstrip(' ,;:-–—'))   # 'Swamishri - forever relaxed', 'c) Bhagwan...'
+    c = c[:1].upper() + c[1:]
+    why = caption_fault(c)
+    if why:
+        if x.get('c') not in HELD_BACK:
+            HELD_BACK[x.get('c')] = why
+            print(f"  caption check: '{x.get('c')}' would read '{c}' ({why}); the card says {DARSHAN}")
+        return DARSHAN
+    return c
 
 
 # Darpan, 26 Oct 2026: a card said INDIA (a 2012 Ahmedabad album whose caption named 'Vavli, India'). A card's place is
