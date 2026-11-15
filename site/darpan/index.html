@@ -22,6 +22,12 @@
 .ch .pic { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; background: #000; display: block }
 .ch p { margin: 0 } .ch .acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px }
 .ch.on { background: rgba(233,190,110,.07); border-radius: 8px; padding: 8px; border-top: 0; margin-top: 4px }
+.pickgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; margin: 6px 0 }
+.pickgrid label { position: relative; display: block; aspect-ratio: 1; border-radius: 6px; overflow: hidden; background: #000; cursor: pointer }
+.pickgrid img { width: 100%; height: 100%; object-fit: cover; display: block }
+.pickgrid input { position: absolute; top: 4px; left: 4px; width: 18px; height: 18px; margin: 0; accent-color: var(--gold) }
+.pickgrid label:has(input:checked) { outline: 3px solid var(--gold) }
+.ch details summary { cursor: pointer; font-size: 12px; color: var(--muted, #c9b8a0); margin-top: 4px }
 .ch .edit { grid-column: 1 / -1; display: grid; gap: 6px } .ch .edit textarea { font: 14px/1.4 var(--serif); white-space: pre-wrap }
 .yr { font: 700 20px/1 var(--serif); color: var(--gold); margin: 10px 0 2px }
 .mine { list-style: none; margin: 0; padding: 0 } .mine li { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 5px 0; border-bottom: 1px solid var(--line) }
@@ -848,8 +854,11 @@ function drawStory(ctx, pack, o, hits) {
     hits.push({ key: x.key, x: left, y: top, w: CW, h: CH });
     if (o.pegs && o.peg !== 'none') peg(ctx, left + CW / 2, top + 16, w / 220 * .9, o.peg, .72);
   };
+  // each card's own size and place (Darpan, 14 Nov 2026: "turn cards on or off ... also adjust size and position too"):
+  // size = 1 and no move is the builder's layout; the state keeps size, mx (left or right) and my (up or down) in picture pixels
+  const fit = x => { const st = stateOf(o)[x.key] || {}; return { k: st.size || 1, mx: st.mx || 0, my: st.my || 0 } };
   const B = L.big || [70, 200, 1180, 800];
-  if (big) card(big, B[0], B[1], B[2], B[3]);
+  if (big) { const f = fit(big), w = Math.round(B[2] * f.k), h = Math.round(B[3] * f.k); card(big, B[0] + (B[2] - w) / 2 + f.mx, B[1] + (B[3] - h) / 2 + f.my, w, h) }
   // the headline and story centred over the small cards, as the real picture (collage builder note, 13 Nov 2026): the
   // headline's lines balanced to about the same length, the story with its paragraphs and line breaks kept, set as large
   // as fits (36 down to 26) above the small cards, which sit at the foot of the picture when the story is long
@@ -874,7 +883,7 @@ function drawStory(ctx, pack, o, hits) {
   ctx.fillStyle = CAP_IVORY; ctx.textAlign = 'center';
   for (const line of st.lines) { if (line === null) { y += st.lh * .55; continue } ctx.fillText(line, cx, y + st.lh * .72); y += st.lh }
   const top = Math.min(foot, Math.max(620, y + 40));
-  if (small.length) small.forEach((x, k) => card(x, x0 - 30 + k * (sw + 54), top, Math.round(sw), Math.round(sw * .74)));
+  if (small.length) small.forEach((x, k) => { const f = fit(x), w = Math.round(sw * f.k), h = Math.round(sw * .74 * f.k); card(x, x0 - 30 + k * (sw + 54) + (sw - w) / 2 + f.mx, top + f.my, w, h) });
   ctx.textAlign = 'left';
   const name = o.showFooter ? o.footer : '';
   if (name) { ctx.font = `500 24px ${SERIF}`; ctx.textAlign = 'left'; const w = ctx.measureText(name).width, fy = H - 20; ctx.fillStyle = 'rgb(226,184,104)'; ctx.fillText(name, (W - w) / 2, fy); diamond(ctx, (W - w) / 2 - 28, fy - 8, 5); diamond(ctx, (W + w) / 2 + 28, fy - 8, 5) }
@@ -1074,7 +1083,7 @@ function buildEditor() {
     ${S.mode !== 'month' ? `<label for="fe-yl">Year on the card</label><input type="text" id="fe-yl" data-f="ylabel" data-k="${k}" value="${esc(x.st.ylabel ?? x.yl ?? k)}">
     <label for="fe-fest">Festival tag on the photo (empty for none)</label><input type="text" id="fe-fest" data-f="fest" data-k="${k}" value="${esc(x.st.fest ?? (x.c ? (x.c.festival || captionFest(x.c)) : ''))}">` : ''}
     <div class="row3"><button class="btn small" id="fe-prev" ${n < 2 ? 'disabled' : ''}>◀ Photo</button><button class="btn small" id="fe-next" ${n < 2 ? 'disabled' : ''}>Photo ▶</button>
-      <button class="btn small" id="fe-all">See all ${n}</button>${S.mode === 'day' || (S.mode === 'special' && !isStory()) ? '<button class="btn small" id="fe-hide">Hide this year</button>' : ''}<button class="btn small" id="fe-reset">Reset</button></div>`;
+      <button class="btn small" id="fe-all">See all ${n}</button>${S.mode !== 'month' ? `<button class="btn small" id="fe-hide">${S.mode === 'special' ? 'Hide this card' : 'Hide this year'}</button>` : ''}<button class="btn small" id="fe-reset">Reset</button></div>`;
   fe.hidden = false;
   $('#fe-x').onclick = closeEditor;
   const step = d => { const b = bag(k); b.pick = (x.pick + d + n) % n; delete b.caption; build() };
@@ -1148,7 +1157,29 @@ document.addEventListener('input', e => {
   const k = t.dataset.k; bag(k)[f] = t.value;
   document.querySelectorAll(`[data-f="${f}"][data-k="${k}"]`).forEach(el => { if (el !== t) el.value = t.value });
   render();
+  if (t.classList.contains('capedit')) capWarn(t);
 });
+// a caption that reads wrong gets a small saffron line under its box (Darpan, 14 Nov 2026: a 2006 London card went out
+// saying "Bapa with Bapa after their performance"). It only warns: the words are his to keep or change.
+function capProblem(v) {
+  const c = String(v || '').replace(/\s+/g, ' ').trim();
+  if (/\b(Bapa|Swamishri) with (Bapa|Swamishri)\b/i.test(c)) return 'says “Bapa with Bapa”';
+  if (/^(Bapa|Swamishri) and (Bapa|Swamishri)\b/i.test(c)) return 'starts “Bapa and Bapa”';
+  if (/\bPujya (Bapa|Swamishri)\b/i.test(c)) return 'says “Pujya Bapa”: is it the other guru, Pujya Mahant Swami or Pujya Pramukh Swami?';
+  if (/\bBrahmaswarup (Bapa|Swamishri)\b/i.test(c)) return 'says “Brahmaswarup Bapa”: is it Brahmaswarup Pramukh Swami Maharaj?';
+  const m = c.match(/\b([\p{L}\d]+) \1\b/iu);
+  if (m && !/^(sri|pagle|ghar|jay|wah|dodi|cho|je|khub)$/i.test(m[1])) return `has “${m[1]}” twice in a row`;
+  return '';
+}
+function capWarn(t) {
+  let p = t.nextElementSibling;
+  if (!p || !p.classList.contains('capwarn')) { p = document.createElement('p'); p.className = 'hint warn capwarn'; p.setAttribute('role', 'status'); t.after(p) }
+  const w = capProblem(t.value);
+  p.textContent = w ? `Check the words: this caption ${w}.` : '';
+  p.hidden = !w;
+}
+new MutationObserver(() => document.querySelectorAll('textarea.capedit').forEach(t => { if (!t.dataset.warned) { t.dataset.warned = 1; capWarn(t) } }))
+  .observe(document.documentElement, { childList: true, subtree: true });
 
 // ------------------------------------------------------------ the side panel
 const TABS = { day: [['card', 'Photo'], ['words', 'Years and words'], ['layout', 'Layout'], ['look', 'Look']], month: [['card', 'Photo'], ['words', 'Days and words'], ['layout', 'Layout'], ['look', 'Look']], special: [['choose', 'Choose'], ['card', 'Photo'], ['words', 'Cards and words'], ['layout', 'Layout'], ['look', 'Look']] };
@@ -1218,6 +1249,12 @@ function paneCard() {
       ${range('c-dx', 'Left or right', st.dx || 0, -.4, .4, .01, v => Math.round(v * 100))}
       ${range('c-dy', 'Up or down', st.dy || 0, -.4, .4, .01, v => Math.round(v * 100))}
       <p class="hint">Automatic and Close up never cut Bapa’s head or pagh. Moving can, so check the picture.</p></div>
+    ${isStory() ? `<div class="group"><h3>The card on the picture</h3>
+      ${range('c-size', 'Card size', st.size || 1, .5, 1.6, .05, v => Math.round(v * 100) + '%')}
+      ${range('c-mx', 'Move left or right', st.mx || 0, -700, 700, 5, v => (v > 0 ? '+' : '') + v)}
+      ${range('c-my', 'Move up or down', st.my || 0, -500, 500, 5, v => (v > 0 ? '+' : '') + v)}
+      <div class="seg"><button class="btn small" id="c-hide">Take this card off the picture</button></div>
+      <p class="hint">A card you take off comes back with its “show” tick on the Cards and words tab. The small cards spread out again when one goes; Reset puts the builder’s layout back.</p></div>` : ''}
     <div class="group"><button class="btn" id="c-reset">Reset ${esc(label(k))}</button></div>${spareGroup(pack)}
     ${day ? `<div class="group"><h3>Kind of photo, every year</h3>
       ${seg('d-style', o.photoStyle, [['auto', 'As the daily run picks'], ['close', 'Close ups of Bapa'], ['action', 'What Bapa is doing']])}
@@ -1242,12 +1279,14 @@ const introText = () => { const o = S.day, w = o.wa[o.date]; return w && w.intro
 const introDay = () => { const w = S.day.wa[S.day.date]; return !!(w && w.intro != null) };
 const introChanged = () => !!introText();
 const waNow = () => Object.assign({ caption: waText(), whole: !!S.day.wa[S.day.date]?.whole }, introChanged() ? { intro: introText(), intro_all: !introDay() } : {});
-const waPreview = () => { const o = S.day, w = o.wa[o.date]; if (w && w.whole) return waText(); const top = introChanged() ? fillIntro(introText(), o.date) : introExample(o.date) + '   (a different line each day, the send picks it)'; return `${top}\n_Day ${dayN(o.date)} of the Smruti Project_\n\n${waText()}`.trim() };
+// "Replace my whole message" (Darpan, 14 Nov 2026: "this line is repeated twice now"): the send still puts its own
+// "_Day N of the Smruti Project_" line under whatever is saved, so the preview shows it and the box must not repeat it.
+const waPreview = () => { const o = S.day, w = o.wa[o.date]; if (w && w.whole) return `${waText()}\n_Day ${dayN(o.date)} of the Smruti Project_   (the send adds this line)`.trim(); const top = introChanged() ? fillIntro(introText(), o.date) : introExample(o.date) + '   (a different line each day, the send picks it)'; return `${top}\n_Day ${dayN(o.date)} of the Smruti Project_\n\n${waText()}`.trim() };
 function paneWords() {
   const day = S.mode !== 'month', pack = P[S.mode], o = cur();
   const list = keys().map(k => {
     const x = info(k), on = day ? (stateOf(o)[k]?.on ?? true) : true;
-    return `<div class="w ${on ? '' : 'off'}"><b>${esc(S.mode === 'special' ? label(k) : k)}${day && !isStory() ? `<br><label class="check" style="font:12px var(--sans)"><input type="checkbox" class="w-on" data-k="${k}" ${on ? 'checked' : ''}> show</label>` : ''}</b>
+    return `<div class="w ${on ? '' : 'off'}"><b>${esc(S.mode === 'special' ? label(k) : k)}${day ? `<br><label class="check" style="font:12px var(--sans)"><input type="checkbox" class="w-on" data-k="${k}" ${on ? 'checked' : ''}> show</label>` : ''}</b>
       <input type="text" class="place" data-f="place" data-k="${k}" value="${esc(x.place)}" aria-label="Place for ${esc(label(k))}">
       <textarea class="capedit" data-f="caption" data-k="${k}" rows="2" aria-label="Caption for ${esc(label(k))}">${esc(x.caption)}</textarea></div>`;
   }).join('');
@@ -1300,8 +1339,9 @@ function paneWords() {
       ${check('d-introday', 'Just for this day (otherwise every day from now on)', introDay())}
       <p class="hint">${introChanged() ? (introDay() ? `Your own top line for ${esc(longDate(o.date))}.` : 'Your own top line, for every day.') : 'Empty = the usual words: one of 28 lines, picked by the send, so nothing of yours is sent unless you type here.'} You can write {DAY} and {MONTH}, filled in as “${esc(ordinal(new Date(o.date + 'T12:00').getDate()))}” and “${esc(new Date(o.date + 'T12:00').toLocaleString('en-GB', { month: 'long' }))}”.</p>
       <div class="row"><label for="d-wa">Words under the top line and Day N</label>
-      <textarea id="d-wa" rows="6" aria-label="WhatsApp caption" placeholder="${o.wa[o.date]?.whole ? 'Your whole 2pm caption' : 'No extra words today'}" style="width:100%">${esc(waText())}</textarea></div>
-      ${check('d-wawhole', 'Replace my whole message (top line and Day N too)', !!o.wa[o.date]?.whole)}
+      <textarea id="d-wa" rows="6" aria-label="WhatsApp caption" placeholder="${o.wa[o.date]?.whole ? 'Your whole 2pm message, without the Day line: the send adds “Day N of the Smruti Project” itself' : 'No extra words today'}" style="width:100%">${esc(waText())}</textarea></div>
+      ${check('d-wawhole', 'Replace my whole message (the top line too; the send still adds its Day N line)', !!o.wa[o.date]?.whole)}
+      ${o.wa[o.date]?.whole && /\bDay \d+ of the Smruti Project/i.test(waText()) ? '<p class="hint warn">Take the “Day … of the Smruti Project” line out of the box: the send adds it again, so it would go out twice.</p>' : ''}
       <div class="seg"><button class="btn small primary" id="d-wasave">Save the words for the 2pm send</button><button class="btn small" id="d-wareset">Back to the usual words</button></div>
       <p class="status" id="wa-status" role="status"></p>
       <p class="hint">As it goes out at 2pm:</p><pre class="preview" id="wa-preview">${esc(waPreview())}</pre>
@@ -1413,7 +1453,8 @@ function wire() {
   document.querySelectorAll('#c-sel button').forEach(b => b.addEventListener('click', () => { o.sel = S.mode === 'special' ? b.dataset.k : +b.dataset.k; build() }));
   document.querySelectorAll('#c-thumbs button').forEach(b => b.addEventListener('click', () => { const s = bag(k); s.pick = +b.dataset.i; delete s.caption; build() }));
   document.querySelectorAll('#c-crop button').forEach(b => b.addEventListener('click', () => { bag(k).crop = b.dataset.v; build() }));
-  ['zoom', 'dx', 'dy'].forEach(f => on('c-' + f, 'input', e => { bag(k)[f] = +e.target.value; syncOut('c-' + f); render() }));
+  ['zoom', 'dx', 'dy', 'size', 'mx', 'my'].forEach(f => on('c-' + f, 'input', e => { bag(k)[f] = +e.target.value; syncOut('c-' + f); render() }));
+  on('c-hide', 'click', () => { bag(k).on = false; build() });
   on('c-reset', 'click', () => { const s = bag(k); Object.keys(s).forEach(f => f !== 'on' && delete s[f]); build() });
   document.querySelectorAll('#pane .capchip').forEach(b => b.addEventListener('click', () => { const t = $('#c-cap'); if (!t) return; const v = b.dataset.v, cur2 = t.value.trim(); t.value = b.dataset.set || !cur2 ? v : cur2.includes(v) ? cur2 : cur2 + (/[.!?,]$/.test(cur2) ? ' ' : ', ') + v; t.dispatchEvent(new Event('input', { bubbles: true })) }));
   document.querySelectorAll('[data-last]').forEach(b => b.addEventListener('click', () => { const e = lastEntries()[+b.dataset.last]; if (e) applyLast(e) }));
@@ -1457,7 +1498,7 @@ function wire() {
     ['cal', 'lead', 'story', 'tomorrow'].forEach(f => on('d-t-' + f, 'input', e => { (o.txt = o.txt || {})[f] = e.target.value; render() }));
     on('d-t-reset', 'click', () => { o.txt = {}; build() });
     bind('d-year', 'showYear'); bind('d-place', 'showPlace'); bind('d-fest', 'festTags'); bind('d-story', 'showStory'); bind('d-cal', 'showCal'); bind('d-tom', 'showTomorrow'); bind('d-foot', 'showFooter', 0, 1); bind('d-footer', 'footer');
-    document.querySelectorAll('.w-on').forEach(b => b.addEventListener('change', () => { bag(b.dataset.k).on = b.checked; b.closest('.w').classList.toggle('off', !b.checked); render(); $('#meta').querySelector('span').textContent = `${dayCards(P.day, o).length} of ${P.day.years.length} years on the picture` }));
+    document.querySelectorAll('.w-on').forEach(b => b.addEventListener('change', () => { bag(b.dataset.k).on = b.checked; b.closest('.w').classList.toggle('off', !b.checked); render(); $('#meta').querySelectorAll('span')[S.mode === 'special' ? 1 : 0].textContent = S.mode === 'special' ? `${dayCards(P.special, o).length} of ${P.special.cards.length} cards on the picture` : `${dayCards(P.day, o).length} of ${P.day.years.length} years on the picture` }));
     const setAll = f => { groupsOf(P[S.mode]).forEach(y => { bag(y.key).on = f(y.year) }); build() };
     on('d-all', 'click', () => setAll(() => true)); on('d-pre', 'click', () => setAll(y => y <= 2016)); on('d-post', 'click', () => setAll(y => y >= 2016));
   } else {
@@ -1732,13 +1773,17 @@ async function saveChoices(how, where, quiet) {
     const j = r.ok ? await r.json() : {};
     if (!r.ok || !j.ok) throw new Error(j.error || `the website said ${r.status}`);
     CHSRC = j.source;
-    chSay('ok', 'Saved.' + (j.source === 'github' ? '' : ' Kept in the Studio: the 2pm picture project reads it at bapas-diary.com/special-days.json until the GitHub token is set.'));
+    chSay('ok', 'Saved. The 2pm picture project reads your choices at bapas-diary.com/special-days.json.');
     if (how) logChange(how, where);
     remakeSoon(chDate());
   } catch (e) { chSay('warn', 'Kept on this device, but not saved on the website: ' + ((e && e.message) || e) + '. It is sent again the next time you choose.') }
 }
 const dayData = async mmdd => { if (DAYD[mmdd] !== undefined) return DAYD[mmdd]; DAYD[mmdd] = null; try { const r = await fetch(`/data/day/${mmdd}.json`, { cache: 'force-cache' }); if (r.ok) DAYD[mmdd] = await r.json() } catch (e) {} if (S.tab === 'choose') build(); return DAYD[mmdd] };
 const PHOTOS = 'https://photos.bapas-diary.com/';
+// his own pick of photos (kind photos): ticked on the Choose tab under a year, sent as photos.bapas-diary.com addresses
+// (s/<album>/<file>, the archive's group and file name in bapas.db) with the year and place
+const PICKSEL = { year: null, set: new Set() };
+const photoAddr = p => `${PHOTOS}s/${p[0]}/${p[1]}`;
 // the deep search of a day (Darpan, 13 Nov 2026: "It goes through all the captions of that day to find anything special.
 // I want it to do a deep search and find all the special moments of that day"): every caption of every year's photos,
 // every News article of the date, every history story and the calendar's festivals, looked through for the words that
@@ -1784,7 +1829,7 @@ function paneChoose() {
   const put = (y, item) => (byYear[y] = byYear[y] || []).push(item);
   uniqStories((HISTORY || []).filter(h => h.d.slice(5) === mmdd).map(h => ({ h }))).forEach(({ h }) => put(+h.d.slice(0, 4), { e: { kind: 'story', ref: h.d, note: h.l }, title: h.l, sub: [h.p, h.ch === 'satpurush' ? 'Satpurush UK diary' : 'Today in BAPS history', h.n ? h.n + (h.n > 1 ? ' photos' : ' photo') : ''].filter(Boolean).join(' · '), more: h.s, pic: '', url: h.u, special: !!h.x }));
   (ARTICLES || []).filter(a => a.d && a.d.slice(5) === mmdd).forEach(a => put(a.y, { e: { kind: 'news', ref: newsPath(a.u), note: a.t }, title: a.t, sub: [a.p, 'baps.org News', a.n ? a.n + ' photos' : 'no photos'].filter(Boolean).join(' · '), more: a.s, pic: '', url: a.u, special: a.b }));
-  (dd ? dd.years : []).forEach(Y => { const best = Y.p.find(p => p[3]) || Y.p[0], found = [...new Set(Y.p.flatMap(p => specialIn(p[2]).f))]; put(Y.y, { e: { kind: 'year', year: Y.y, note: `${Y.y} ${Y.place || ''}`.trim() }, title: `${Y.y}, ${Y.place || 'place unknown'}`, sub: `${Y.p.length} photo${Y.p.length > 1 ? 's' : ''} of this day${best && best[2] ? ' · ' + best[2] : ''}${found.length ? ' · captions mention ' + found.slice(0, 4).join(', ') : ''}`, pic: best ? `${PHOTOS}s/${best[0]}/${best[1]}` : '', special: found.length > 0 }) });
+  (dd ? dd.years : []).forEach(Y => { const best = Y.p.find(p => p[3]) || Y.p[0], found = [...new Set(Y.p.flatMap(p => specialIn(p[2]).f))]; put(Y.y, { pics: Y.p, place: Y.place || '', e: { kind: 'year', year: Y.y, note: `${Y.y} ${Y.place || ''}`.trim() }, title: `${Y.y}, ${Y.place || 'place unknown'}`, sub: `${Y.p.length} photo${Y.p.length > 1 ? 's' : ''} of this day${best && best[2] ? ' · ' + best[2] : ''}${found.length ? ' · captions mention ' + found.slice(0, 4).join(', ') : ''}`, pic: best ? `${PHOTOS}s/${best[0]}/${best[1]}` : '', special: found.length > 0 }) });
   if (!dd && pack && pack.kind !== 'story') groupsOf(pack).forEach(g => { if (!g.year || byYear[g.year]) return; const c = g.cands[0]; put(+g.year, { e: { kind: 'year', year: +g.year, note: `${g.year} ${c && c.place || ''}`.trim() }, title: `${g.year}, ${c && c.place || ''}`, sub: `${g.cands.length} photos`, pic: '' }) });
   const years = Object.keys(byYear).map(Number).sort((a, b) => b - a);
   const kindWords = pack ? (pack.kind === 'story' ? CHKINDS[pack.story_kind] || 'a day in BAPS history' : `Every ${pack.festival || ''}`) : '';
@@ -1798,6 +1843,8 @@ function paneChoose() {
   const item = (y, it) => { const have = chHave(date, it.e), i = have ? mine.indexOf(have) : -1; return `<div class="ch ${have ? 'on' : ''} ${it.pic ? '' : 'nopic'}">${it.pic ? `<img class="pic" src="${esc(it.pic)}" alt="" loading="lazy">` : ''}<div>
       <p><b>${esc(it.title)}</b>${it.special ? ' <span class="gold">★</span>' : ''}</p><p class="hint">${esc(it.sub)}</p>${it.more ? `<p class="hint">${esc(it.more)}</p>` : ''}
       <div class="acts"><button class="sw" data-ch="${esc(JSON.stringify(it.e))}" data-first="" aria-pressed="${!!have}">${have ? (i === 0 ? 'A special picture ✓ (special)' : `A special picture ✓ (special ${i + 1})`) : 'Make this a special picture'}</button>${it.url ? `<a class="btn small" href="${esc(it.url)}" target="_blank" rel="noopener">${/baps\.org/.test(it.url) ? 'Open on baps.org' : 'Open the post'}</a>` : ''}</div></div>
+      ${it.pics && it.pics.length > 1 ? `<details ${PICKSEL.year === y ? 'open' : ''}><summary>Pick some of the ${it.pics.length} photos yourself</summary><div class="pickgrid">${it.pics.map(p => `<label><input type="checkbox" data-pick="${esc(y + '|' + photoAddr(p))}" ${PICKSEL.year === y && PICKSEL.set.has(photoAddr(p)) ? 'checked' : ''}><img src="${esc(photoAddr(p))}" alt="" loading="lazy" title="${esc(p[2] || '')}"></label>`).join('')}</div>
+      <div class="acts"><button class="sw" data-pickgo="${y}" data-place="${esc(it.place || '')}" ${PICKSEL.year === y && PICKSEL.set.size ? '' : 'disabled'}>Make the ticked photos the special picture</button><span class="hint">Tick the photos, then press. Bapa’s own photos first; the builder draws the picture from them.</span></div></details>` : ''}
       ${have ? `<div class="edit"><input type="text" data-ef="headline" data-ei="${i}" value="${esc(have.headline || '')}" placeholder="Headline (empty: the builder’s own)" aria-label="Headline"><textarea data-ef="story" data-ei="${i}" rows="4" placeholder="Story words (empty: the builder’s own)" aria-label="Story">${esc(have.story || '')}</textarea>${have.kind === 'year' || have.kind === 'photos' ? `<input type="text" data-ef="place" data-ei="${i}" value="${esc(have.place || '')}" placeholder="Place (empty: as the photos say)" aria-label="Place">` : ''}</div>` : ''}</div>` };
   const today = todayLondon();
   const dm = dayMoments(dd, mmdd, byYear), momentItem = m => item(m.y, Object.assign({}, m, { sub: m.sub + ' · found by ' + m.why }));
@@ -1825,6 +1872,8 @@ function optionsRow(pack) {
 const remakeWords = date => { const when = asked()['s:' + date]; if (when && Date.now() - when < SP_MINS * 60e3) { if (!WAITS) waitForS(date); return `Remaking ${longDate(date)} (asked ${Math.round((Date.now() - when) / 60e3)} min ago)…` } const rm = (store.get('studio-remade') || {})[date]; return (rm ? `Remade at ${new Date(rm).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} from your choices${date === todayLondon() ? ', in Drive too' : ''}. ` : '') + (date === todayLondon() ? 'Every change you save asks the Collage builder to remake today’s special picture; it lands here and in Drive in about 5 to 10 minutes. Remake now asks at once.' : 'Every change you save asks the Collage builder to remake this day’s special picture, so it is ready here before its day.') };
 function wireChoices() {
   const date = chDate(); if (!date) return;
+  document.querySelectorAll('[data-pick]').forEach(b => b.addEventListener('change', () => { const [y, addr] = b.dataset.pick.split('|'); if (PICKSEL.year !== +y) { PICKSEL.year = +y; PICKSEL.set = new Set() } b.checked ? PICKSEL.set.add(addr) : PICKSEL.set.delete(addr); const go = document.querySelector(`[data-pickgo="${y}"]`); if (go) go.disabled = !PICKSEL.set.size }));
+  document.querySelectorAll('[data-pickgo]').forEach(b => b.addEventListener('click', async () => { await loadChoices(); const y = +b.dataset.pickgo; if (PICKSEL.year !== y || !PICKSEL.set.size) return; const e = { kind: 'photos', year: y, place: b.dataset.place || '', photos: [...PICKSEL.set] }; PICKSEL.year = null; PICKSEL.set = new Set(); chToggle(date, e, true) }));
   const on = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn) };
   on('ch-remake', 'click', () => askRemake(date));
   document.querySelectorAll('[data-ch]').forEach(b => b.addEventListener('click', async () => { await loadChoices(); chToggle(date, JSON.parse(b.dataset.ch), !('first' in b.dataset)) }));
