@@ -8,6 +8,8 @@ stay 60 days), and writes site/packs/index.json listing what the Studio can open
 A day the morning run makes a special picture on (Every Diwali, Every Annakut, a day in BAPS history) also gets a
 special pack (tools/special_pack.py) in site/packs/special/<date>/, kept as long as its day pack (Darpan, 6 Nov 2026);
 packs/special/checked.json remembers the days already looked at, so a day with no special picture isn't looked at again.
+The next 3 big special days up to 90 days ahead (Every festival days, big days in BAPS history, his own chosen days)
+have their special packs made early and kept until the day has passed (Darpan, 9 Nov 2026).
 A month poster's pack (Darpan, 13 Nov 2026: 'choose any month of any year in the Studio and make its poster') is made
 for every month asked for with --months, and for this month and the next one on every run: see month_packs."""
 import argparse, datetime, json, os, re, shutil, subprocess, sys, urllib.error, urllib.request
@@ -112,6 +114,8 @@ def main():
     ap.add_argument('--days', type=int, default=7)
     ap.add_argument('--dates', default='')
     ap.add_argument('--months', default='')
+    ap.add_argument('--ahead', type=int, default=90, help='look this many days ahead for big special days')
+    ap.add_argument('--next', type=int, default=3, help='keep the special packs of this many coming big special days ready')
     a = ap.parse_args()
     packs = os.path.join(a.site, 'packs')
     days_dir = os.path.join(packs, 'day')
@@ -156,7 +160,19 @@ def main():
     os.makedirs(specials_dir, exist_ok=True)
     checked_file = os.path.join(specials_dir, 'checked.json')
     checked = json.load(open(checked_file)) if os.path.exists(checked_file) else {}
-    for d in want:   # the special picture's pack, on the days the morning run makes one
+    # Darpan, 9 Nov 2026 ('the Studio's Special picture list always holds the next 2 or 3'): the next NEXT big special
+    # days (an Every <festival> day, a flagged big day in BAPS history, a day he chose himself) up to AHEAD days on
+    # get their packs now, and keep them until their day has passed. Every day has a special picture since 13 Nov 2026,
+    # so only these big days are looked for ahead; the others get theirs when they come within the next days, as before.
+    try:
+        r = subprocess.run([sys.executable, os.path.join(HERE, 'tools', 'special_pack.py'), '--big', str(today), str(a.ahead)],
+                           capture_output=True, text=True, timeout=600)
+        big = [datetime.date.fromisoformat(l[4:].strip()) for l in r.stdout.splitlines() if re.fullmatch(r'BIG \d{4}-\d\d-\d\d', l.strip())]
+    except Exception as e:
+        print('  the big special days ahead could not be listed:', e)
+        big = []
+    print('big special days ahead:', ', '.join(map(str, big[:a.next])) or 'none found')
+    for d in want + [d for d in big[:a.next] if d not in want]:   # the special picture's pack, on the days the morning run makes one
         # today's is made again every morning, so the Studio shows the special picture that is going out (Darpan, 14 Nov 2026)
         if str(d) not in a.dates and d != today and (checked.get(str(d)) == 'none' or os.path.exists(os.path.join(specials_dir, str(d), 'pack.json'))):
             continue

@@ -216,7 +216,26 @@ def jsonable(v):
     return json.loads(json.dumps(v, default=lambda o: list(o) if isinstance(o, tuple) else str(o)))
 
 
+def big_day(day):
+    """A day sure to have a big special picture, told without picking any photos: an Every <festival> day, a flagged big
+    day in BAPS history, or a day Darpan chose himself (archive/special-days.json), unless he switched the day off."""
+    if make.special_off(day):
+        return False
+    if any(f in make.BIG for f in make.festivals(day)):
+        return True
+    if any(e.get('special') and int(e['date'][:4]) < day.year for e in make.tg_events(f'{day:%m-%d}')):
+        return True
+    return any(make.on_day(c['day'], day) for c in make.special_choices()['add'])
+
+
 def main():
+    if sys.argv[1] == '--big':   # --big 2026-11-15 90: the big special days from that day on, one 'BIG <date>' a line
+        start = datetime.date.fromisoformat(sys.argv[2])
+        for k in range(int(sys.argv[3]) + 1):
+            d = start + datetime.timedelta(days=k)
+            if big_day(d):
+                print('BIG', d)
+        return
     day = datetime.date.fromisoformat(sys.argv[1])
     root = sys.argv[2] if len(sys.argv) > 2 else os.path.join('site', 'packs', 'special')
     seen = make.shown
