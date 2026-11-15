@@ -32,8 +32,11 @@ for line in open(GEO, encoding='utf-8'):
         score = pop + (10**9 if cc == 'IN' and adm == '09' else 0)   # Gujarat first among towns of one name
         if k not in geo or score > geo[k][0]: geo[k] = (score, [round(float(f[5]), 4), round(float(f[4]), 4)])
 
+HAND = {'Dharmaj': [72.80, 22.42], 'Matar': [72.67, 22.71], 'Bhadran': [72.90, 22.36], 'Chuda': [71.68, 22.48],
+        'Mojidad': [71.63, 22.58], 'Mahijda': [72.74, 22.79]}   # villages GeoNames does not list, placed by hand (approximate)
 def place(name, have):
     if name in have: return have[name]
+    if name in HAND: return {'name': name, 'country': 'India', 'll': HAND[name]}
     for k, v in have.items():
         if fold(k).split(' (')[0] == fold(name): return v
     want = ALIAS.get(name, name)
@@ -165,10 +168,17 @@ with sync_playwright() as p:
         pg = ctx.new_page()
         pg.on('console', lambda m: m.type == 'error' and note('console', m.text[:200]))
         try:
-            pg.goto(SITE + addr, wait_until='networkidle', timeout=90000)
+            if addr.startswith('/#'):   # Today opens on today's date, then moves to the date in the address
+                pg.goto(SITE + '/', wait_until='load', timeout=90000); pg.wait_for_timeout(5000)
+                pg.evaluate(f"location.hash = '{addr[1:]}'")
+            else:
+                pg.goto(SITE + addr, wait_until='load', timeout=90000)
         except Exception as e:
             note(name, 'load', e)
         pg.wait_for_timeout(6000)
+        if name.startswith('search'):
+            c = pg.query_selector('#cards')
+            if c: c.scroll_into_view_if_needed(); pg.evaluate('window.scrollBy(0, -260)'); pg.wait_for_timeout(2000)
         if sel:
             el = pg.query_selector(sel)
             note(name, 'found' if el else 'NO', sel)
