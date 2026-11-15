@@ -225,20 +225,24 @@ def store(a):
                 print('Stopping for now (out of time, or 04:30 to 07:30 UTC); the next run carries on.')
                 break
             part = todo[i:i + a.chunk]
+            t0 = time.time()
             shutil.rmtree(a.work, ignore_errors=True)
             os.makedirs(inbox)
             with open(os.path.join(a.work, 'list.txt'), 'w') as f:
                 f.write('\n'.join(drive_rel(r) for r in part) + '\n')
             subprocess.run(['rclone', 'copy', a.remote, inbox, '--files-from-raw', os.path.join(a.work, 'list.txt'),
-                            '--transfers', '4', '--checkers', '4', '--ignore-errors'], check=False)
+                            '--transfers', '16', '--checkers', '16', '--ignore-errors', '--no-traverse'], check=False)
+            t1 = time.time()
             jobs = [(os.path.join(inbox, drive_rel(r)), out, f"{r['album']}/{r['file']}") for r in part
                     if os.path.exists(os.path.join(inbox, drive_rel(r)))]
             for err in pool.map(H.make, jobs, chunksize=8):
                 if err:
                     print('  could not use', err)
+            t2 = time.time()
             if jobs and H.send(a.send, out):
                 sent += len(jobs)
-            print(f'  {min(i + a.chunk, len(todo)):,} of {len(todo):,} ({len(part) - len(jobs)} not in Drive yet)', flush=True)
+            print(f'  {min(i + a.chunk, len(todo)):,} of {len(todo):,} ({len(part) - len(jobs)} not in Drive yet; '
+                  f'Drive {t1 - t0:.0f}s, sizes {t2 - t1:.0f}s, photo store {time.time() - t2:.0f}s)', flush=True)
     shutil.rmtree(a.work, ignore_errors=True)
     print(f'{sent:,} photos now in the photo store')
 
@@ -311,7 +315,7 @@ def main():
     r.add_argument('--captions', help="the old site's caption for photos baps.org also has, for the database")
     s = sub.add_parser('store'); s.add_argument('--rows', required=True); s.add_argument('--have')
     s.add_argument('--remote', default="gdrive:Bapa's Archive/sites/swaminarayan.org"); s.add_argument('--send', required=True)
-    s.add_argument('--work', default='work'); s.add_argument('--chunk', type=int, default=300); s.add_argument('--minutes', type=float, default=300)
+    s.add_argument('--work', default='work'); s.add_argument('--chunk', type=int, default=1000); s.add_argument('--minutes', type=float, default=300)
     d = sub.add_parser('db'); d.add_argument('--rows', required=True); d.add_argument('--out', required=True); d.add_argument('--same'); d.add_argument('--have')
     m = sub.add_parser('same'); m.add_argument('--rows', required=True); m.add_argument('--db', required=True); m.add_argument('--have')
     m.add_argument('--out', required=True); m.add_argument('--photos', default='https://photos.bapas-diary.com/'); m.add_argument('--bits', type=int, default=6)
