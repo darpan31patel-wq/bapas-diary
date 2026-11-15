@@ -1609,7 +1609,10 @@ def under_card(x, card, gap, f, lh, style, rnd):
             break
     else:   # no whole sentence fits in n lines: the whole caption on one more line rather than trailing off (Darpan, 28 Oct 2026)
         f = garamond(f.size * .82, 500)
-        lines = wrap(probe, text, f, maxw, n + 1)
+        for more in ((1, 2, 3, 4) if WIDE.get(style, {}).get('whole') else (1,)):   # 'whole': as many lines as the caption needs (the UK and Europe backups)
+            lines = wrap(probe, text, f, maxw, n + more)
+            if not lines[-1].endswith('…'):
+                break
     lh = lh * f.size / cf_size
     # drawn four times bigger and shrunk: small text then keeps the font's true letter spacing (no 'Perform s') and smooth edges
     K = 4; fk = garamond(f.size * K, 500)
@@ -1712,7 +1715,7 @@ class WideCard(Card):
 ROWS = []   # where each cord's cards sit on the last picture drawn (x0, y, CH, CW, n), for a festival's decorations in the free space
 
 
-def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, hero=None, short_bottom=0):
+def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, hero=None, short_bottom=0, subtitle=None):
     """Three (W1, W2) or four (W3) cords of wide cards, every year on the day, sized to fill the picture.
     `hero`: cards to hang bigger (each as wide as two cards, from the top cord down to the second row's foot),
     the others either side of them (Darpan, 30 Oct 2026: 'do a special card' on the Every festival pictures).
@@ -1724,7 +1727,7 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
     if lay.get('oneline'):
         header_line(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
     elif lay.get('one_title'):
-        header_one(img, title or f'{day.day} {day:%B}', 'in Bapa’s Diary')
+        header_one(img, title or f'{day.day} {day:%B}', subtitle or 'in Bapa’s Diary')   # subtitle: the UK and Europe backups (tools/uk_europe.py)
     else:
         header(img, f'{day.day} {day:%B}', 'in Bapa’s Diary', compact=lay.get('compact', False))
     n = len(photos)
@@ -1803,7 +1806,7 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
                     if cx != hx:
                         later.append(lambda cx=cx, cy=cy: peg(img, cx, cy, s, short=.72))
                 if lay.get('pill') and shown_caption(hx_card):
-                    tag, pos = under_card(hx_card, hcard, gap, cf_a, lh_a, 'W2', rnd)
+                    tag, pos = under_card(hx_card, hcard, gap, cf_a, lh_a, style, rnd)
                     later.append(lambda tag=tag, hx=hx, by=qy + hcard.CH: img.paste(tag, (int(hx - tag.width / 2), int(by + px(6))), tag))
         x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
         slots = list(range(len(row)))
@@ -1827,7 +1830,7 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
             img.paste(hung, (int(mx - hung.width / 2), int(my - hung.height / 2)), hung)
             later.append(lambda cx=cx: peg(img, cx, sag(cx) + px(4), s, short=.72))
             if lay.get('pill') and shown_caption(x):
-                tag, pos = under_card(x, card, gap, cf_a, lh_a, 'W2', rnd)
+                tag, pos = under_card(x, card, gap, cf_a, lh_a, style, rnd)
                 bx, by = qx + card.CH * np.sin(t), qy + card.CH * np.cos(t)
                 later.append(lambda tag=tag, bx=bx, by=by: img.paste(tag, (int(bx - tag.width / 2), int(by + px(6))), tag))
         for f in later:

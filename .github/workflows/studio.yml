@@ -19,6 +19,15 @@ on:
       special:
         description: "Remake one day's special picture from Darpan's choices now (YYYY-MM-DD, one date). The Studio's Remake now button."
         required: false
+      uk_europe:
+        description: "UK and Europe backup pictures to make: days (MM-DD, comma separated), or 'next' for the ones not made yet or whose photo list changed, soonest first."
+        required: false
+      uk_europe_add:
+        description: "Add a day's UK and Europe backup picture to today's 2pm send: 'today', or a day (MM-DD). Until 1:50pm."
+        required: false
+      looks:
+        description: "UK and Europe test only: looks to draw, comma separated (calm is the live one; cords, album, gold, mosaic, wall, hero)."
+        required: false
       to:
         description: 'Branch to save the packs on (studio is the one the Studio reads; another name for a test run)'
         required: false
@@ -27,12 +36,10 @@ on:
 permissions:
   contents: write
 
-concurrency:
-  group: studio
-
 jobs:
   packs:
-    if: ${{ !inputs.special }}
+    if: ${{ !inputs.special && !inputs.uk_europe && !inputs.uk_europe_add }}
+    concurrency: studio   # the packs and a remake both write the studio branch: never at the same time
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -70,6 +77,13 @@ jobs:
           DATES: ${{ inputs.dates }}
           MONTHS: ${{ inputs.months }}
         run: python tools/studio_packs.py site --dates "$DATES" --months "$MONTHS"
+      - name: Bring the list of UK and Europe backup pictures (packs/uk-europe/index.json, made by the uk_europe job)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download uk-europe -p index.json -D site/packs/uk-europe --clobber
+          python tools/uk_europe_packs.py site   # each special pack of such a day says its backup is ready (field uk_europe)
       - name: Save them on the studio branch (one fresh commit, so old photos don't pile up)
         env:
           TOKEN: ${{ github.token }}
@@ -90,6 +104,7 @@ jobs:
   # The daily picture and its caption are not touched.
   special:
     if: ${{ inputs.special }}
+    concurrency: studio
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -186,8 +201,145 @@ jobs:
               idx['updated'] = now
               json.dump(idx, open(f, 'w'), indent=1)
           PY
+          python tools/uk_europe_packs.py site || true   # the remade pack still says the day's UK and Europe backup is ready
           cd site
           git init -q -b studio
           git config user.name "Bapa's Diary bot"; git config user.email "actions@github.com"
           git add -A && git commit -qm "Studio packs $(date -u +%F): special remade for $D"
           git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" HEAD:studio
+
+  # Darpan, 14 Nov 2026 (through his website project): a UK and Europe special picture kept ready, as a backup, for
+  # every calendar day Bapa was in the UK or Europe in 2 or more years (tools/uk_europe.py; the days and photos come
+  # from bapas-diary.com/uk-europe-days.json). Each one is kept in Drive as
+  #   Bapa's Diary / UK and Europe backups / <d MMMM> UK and Europe.png
+  # a folder and a name the 2pm send never reads, so a backup goes out only on a day he adds it (the job below).
+  # A lighter copy and what is on it sit on the release 'uk-europe' (<MM-DD>.jpg, <MM-DD>.json, index.json) for the
+  # Studio. Every night after the packs: up to 40 that are missing or whose photo list changed, the soonest days first.
+  # A test run (to = another branch) saves its pictures on that branch only: no Drive, no release.
+  uk_europe:
+    if: ${{ inputs.uk_europe || (github.event_name == 'schedule') }}
+    concurrency: uk-europe
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      GH_TOKEN: ${{ github.token }}
+      FOLDER: 1P79txhqK5keX5j1HUje__RVki9YmSqaj
+      WANT: ${{ inputs.uk_europe || 'next' }}
+      TO: ${{ inputs.to || 'studio' }}
+      UKEU_LOOKS: ${{ (inputs.to != '' && inputs.to != 'studio' && inputs.looks) || 'calm' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -q -r requirements.txt
+      - name: Open Drive
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          CLIENT_ID: ${{ secrets.RCLONE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.RCLONE_CLIENT_SECRET }}
+        run: |
+          [ -n "$TOKEN" ] || { echo "The RCLONE_DRIVE_TOKEN secret isn't set"; exit 0; }
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          mkdir -p ~/.config/rclone && python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
+      - name: Which days to make
+        run: |
+          mkdir -p have out
+          # the list is on the website once Darpan approves it there; a test run may read the website project's copy before that
+          if ! curl -sfL -o have/uk-europe-days.json https://bapas-diary.com/uk-europe-days.json; then
+            [ "$TO" != studio ] || { echo "The list is not on bapas-diary.com yet: nothing made"; exit 0; }
+            git fetch -q --depth 1 origin claude/project-thread-eawr12 && git show FETCH_HEAD:live/uk-europe-days.json > have/uk-europe-days.json
+          fi
+          echo "UKEU_LIST=$PWD/have/uk-europe-days.json" >> "$GITHUB_ENV"; export UKEU_LIST="$PWD/have/uk-europe-days.json"
+          if [ "$TO" = studio ]; then gh release view uk-europe >/dev/null 2>&1 || gh release create uk-europe --title "UK and Europe backup pictures" --notes "Kept ready by the Studio photo packs run. The pictures themselves are in Drive: Bapa's Diary / UK and Europe backups."; fi
+          gh release download uk-europe -p index.json -D have --clobber 2>/dev/null || echo '{"days": {}}' > have/index.json
+          python tools/uk_europe.py list have/list.json
+          python3 - <<'PY'
+          import json, os, datetime
+          want, lst = os.environ['WANT'].strip(), json.load(open('have/list.json'))
+          have = json.load(open('have/index.json')).get('days', {})
+          if want == 'next':
+              today = datetime.datetime.now(datetime.timezone.utc).strftime('%m-%d')
+              todo = [d for d in sorted(lst, key=lambda d: (d < today, d)) if (have.get(d) or {}).get('stamp') != lst[d]][:40]
+          else:
+              todo = [d.strip() for d in want.split(',') if d.strip()]
+          open('have/todo.txt', 'w').write(','.join(todo))
+          print(len(todo), 'to make:', ', '.join(todo))
+          PY
+      - name: Make them
+        run: |
+          [ -s have/todo.txt ] || { echo "Nothing to make"; exit 0; }
+          python tools/uk_europe.py "$(cat have/todo.txt)" out || [ $? = 2 ]
+      - name: Keep them in Drive and on the release
+        if: env.TO == 'studio'
+        run: |
+          [ -f have/list.json ] || exit 0
+          python3 - <<'PY'
+          import json, os, glob, shutil, subprocess, datetime
+          idx = json.load(open('have/index.json')); days = idx.setdefault('days', {})
+          lst = json.load(open('have/list.json'))
+          os.makedirs('up', exist_ok=True)
+          for f in sorted(glob.glob('out/*/pack.json')):
+              p = json.load(open(f)); d = p['day']; folder = os.path.dirname(f)
+              png = os.path.join(folder, p['name'] + '.png')
+              r = subprocess.run(['rclone', 'copyto', png, f"gdrive:UK and Europe backups/{p['name']}.png", '--drive-root-folder-id', os.environ['FOLDER']])
+              if r.returncode:
+                  print(d, 'could not be saved in Drive, tried again next run'); continue
+              shutil.copy(os.path.join(folder, 'picture.jpg'), f'up/{d}.jpg'); shutil.copy(f, f'up/{d}.json')
+              days[d] = dict(name=p['name'], drive=p['drive'], stamp=p['stamp'], made=p['made'], title=p['title'], years=p['years'],
+                             years_shown=p['years_shown'], cards=len(p['cards']), both_gurus=p['both_gurus'],
+                             picture=f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/uk-europe/{d}.jpg",
+                             pack=f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/uk-europe/{d}.json")
+          for d in [d for d in days if d not in lst]:   # no longer a backup day in the list
+              days.pop(d)
+          idx.update(updated=datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), wanted=len(lst), ready=len(days),
+                     about="The UK and Europe backup pictures that are ready. Each is in Drive: Bapa's Diary / UK and Europe backups / <name>.png. To add one to today's 2pm send, start the Studio photo packs run with uk_europe_add = today.")
+          json.dump(idx, open('up/index.json', 'w'), indent=1)
+          PY
+          gh release upload uk-europe up/* --clobber
+      - name: A test run keeps its pictures on the test branch
+        if: env.TO != 'studio'
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p t && cp -r out t/uk-europe && find t -name '*.png' -delete
+          cd t
+          git init -q -b test
+          git config user.name "Bapa's Diary bot"; git config user.email "actions@github.com"
+          git add -A && git commit -qm "UK and Europe backup pictures, test $(date -u +%F)"
+          git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" "HEAD:${TO}"
+
+  # The Studio's "Add the UK and Europe picture" button: copies the day's backup, inside Drive, into Bapa's Diary as
+  # '<today> special.png', or 'special 2.png', 'special 3.png'... when today already has one, the names the 2pm send
+  # takes. Until 1:50pm UK time. Nothing is made or changed here; the backup itself stays where it is.
+  uk_europe_add:
+    if: ${{ inputs.uk_europe_add }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FOLDER: 1P79txhqK5keX5j1HUje__RVki9YmSqaj
+      ADD: ${{ inputs.uk_europe_add }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Open Drive
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          CLIENT_ID: ${{ secrets.RCLONE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.RCLONE_CLIENT_SECRET }}
+        run: |
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          mkdir -p ~/.config/rclone && python3 tools/rclone_conf.py > ~/.config/rclone/rclone.conf
+      - name: Copy the backup into today's pictures
+        run: |
+          if [ "$(TZ=Europe/London date +%H%M)" -ge 1350 ]; then echo "Too late for today's 2pm send"; exit 1; fi
+          DAY=$(TZ=Europe/London date +'%-d %B %Y')
+          if [ "$ADD" = today ]; then WHICH=$(TZ=Europe/London date +'%-d %B'); else WHICH=$(date -d "2000-$ADD" +'%-d %B'); fi
+          FROM="UK and Europe backups/$WHICH UK and Europe.png"
+          rclone lsf "gdrive:$FROM" --drive-root-folder-id "$FOLDER" | grep -q . || { echo "No backup picture is ready for $WHICH"; exit 1; }
+          HAVE=$(rclone lsf "gdrive:" --drive-root-folder-id "$FOLDER" --files-only --include "$DAY special*.png")
+          NAME="$DAY special.png"; N=2
+          while echo "$HAVE" | grep -qxF "$NAME"; do NAME="$DAY special $N.png"; N=$((N + 1)); done
+          rclone copyto "gdrive:$FROM" "gdrive:$NAME" --drive-root-folder-id "$FOLDER"
+          echo "Added as: $NAME"
+
