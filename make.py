@@ -118,6 +118,9 @@ SHOW_SIZE = 3000   # the chosen ones are drawn from the archive's full size orig
 
 def baps_key(u):
     """('2776', 'p1010081f.jpg') for a baps.org photo address, None for others."""
+    m = re.search(r'photos\.bapas-diary\.com/s/([^/?#]+)/([^?#]+)', u or '')   # a photo he picked in the Studio: the archive's own album and file
+    if m:
+        return m.group(1), urllib.parse.unquote(m.group(2)).lower()
     if '/GalleryImages/' not in u or '/WebImages/' not in u:
         return None
     a, f = u.split('/GalleryImages/', 1)[1].split('/WebImages/', 1)
@@ -2156,6 +2159,9 @@ def special_choices():
     except Exception as e:
         print('  his Studio choices could not be read from the website:', e)
     _CHOICES = {'add': [x for x in add if isinstance(x, dict) and x.get('day')], 'off': [str(d) for d in off]}
+    kinds = [x.get('kind', 'story') for x in _CHOICES['add']]
+    print(f"  his special choices: {', '.join(f'{kinds.count(k)} {k}' for k in sorted(set(kinds))) or 'none'}; off {len(_CHOICES['off'])};",
+          'photo picks on', sorted({str(x['day']) for x in _CHOICES['add'] if x.get('kind') == 'photos'}) or 'no day')
     return _CHOICES
 
 
@@ -2204,8 +2210,10 @@ def chosen_specials(day, items=()):
                 ev[k] = c[k]
         if c.get('year'):
             ev['date'] = f"{c['year']}{ev['date'][4:]}"
+        if c.get('story'):   # his own words win, as he typed them (blank lines are paragraphs)
+            ev['paras'] = [p.strip() for p in re.split(r'\n\s*\n', str(c['story'])) if p.strip()]
         if c.get('photos'):
-            ev['urls'] = list(c['photos'])
+            ev['urls'], ev['paths'], ev['posts'] = list(c['photos']), None, []
         ev['chosen'] = True
         out.append(ev)
     return out
