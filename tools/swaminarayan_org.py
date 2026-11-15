@@ -317,6 +317,11 @@ class Copier:
             if status != 200:
                 with self.lock:
                     self.counts['missing'] += 1
+                    if status == 403:
+                        self.counts['refused'] = self.counts.get('refused', 0) + 1
+                        if self.counts['refused'] >= 3 and self.counts['pages'] + self.counts['photos'] == 0:
+                            print('The site refuses this reader (403): stopping at once, left for his Chrome', flush=True)
+                            self.done.set()
                 return
             if re.search(rb'(?i)<title>\s*(file|page) not found', body[:3000]):
                 with self.lock:

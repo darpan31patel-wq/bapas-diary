@@ -6,6 +6,7 @@
 # tries to get past one). Each site starts from its home page and its own sitemaps. Pushing this file again
 # carries every site on from where it stopped.
 # Round 1: 15 Nov 2026 10:30 UTC: akshardham.com, na.baps.org, research.baps.org, bapscharities.org, kids.baps.org.
+# Round 2 (queued behind it): the same, carrying on, then londonmandir.baps.org.
 name: other-sites
 on:
   push:
@@ -27,6 +28,9 @@ jobs:
           - { site: research.baps.org, base: 'https://research.baps.org/', key: research-baps-org }
           - { site: bapscharities.org, base: 'https://bapscharities.org/', key: bapscharities-org }
           - { site: kids.baps.org, base: 'https://kids.baps.org/', key: kids-baps-org }
+          # Neasden's own site: copied from here only if it answers normally (no check page, no 403), else it stops at
+          # once and is left to the News crawl thread for his Chrome (agreed 15 Nov 2026)
+          - { site: londonmandir.baps.org, base: 'https://londonmandir.baps.org/', key: londonmandir-baps-org }
     runs-on: ubuntu-latest
     timeout-minutes: 360
     env:
