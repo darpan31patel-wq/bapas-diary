@@ -29,6 +29,8 @@ DECOR = re.compile(r'^(title|home|news|line\d*|dot|spacer|logo|banner|bullet|arr
                    r'menu|button|bg|border|corner|blank|clear|print|mp3|zip|download|map)\b', re.I)
 SECTIONS = {'vicharan', 'news', 'festivals', 'pramukhswami'}
 NOT_TOWN = re.compile(r'^(photos?|index|page|gallery|images?|news|vicharan|festivals?)$', re.I)
+NAV = re.compile(r'^(previous|next|contents|question|answer|home|back|top|index|menu|click here|more|photos?|gallery)$', re.I)
+MONTHS = {'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'}
 BAPA = re.compile(r'\b(swamishri|pramukh swami|bapa|swami ?bapa|hdh|guruhari|his holiness)\b', re.I)
 
 
@@ -43,18 +45,63 @@ def album_of(page_url):
     return 'sorg-' + re.sub(r'[^A-Za-z0-9]+', '-', path).strip('-').lower()
 
 
+def town_key(t):
+    return re.sub(r'[^a-z]+', '', (t or '').lower())
+
+
+def best_pages(path):
+    """A photo several pages show (a gallery page, an index, a later story) belongs to one day only: the page that
+    sits closest to the photo's own folder, then the earliest."""
+    best = {}
+    for line in open(path, encoding='utf-8'):
+        try:
+            p = json.loads(line)
+        except ValueError:
+            continue
+        url, page = p.get('photo_url', ''), p.get('page_url', '')
+        if not url:
+            continue
+        pdir = page.rsplit('/', 1)[0] + '/'
+        near = len(os.path.commonprefix([pdir, url]))
+        k = (-near, p.get('date') or '9999', page)
+        if url not in best or k < best[url][0]:
+            best[url] = (k, page, best.get(url, (None, None, 0))[2] + 1)
+        else:
+            best[url] = (best[url][0], best[url][1], best[url][2] + 1)
+    return {u: (page, n) for u, (_, page, n) in best.items()}
+
+
 def rows(a):
-    have = set()
+    have, towns = set(), set()
     if a.db and os.path.exists(a.db):
         db = sqlite3.connect(a.db)
         for d, c in db.execute("SELECT coalesce(date, date_from), caption FROM photos WHERE coalesce(source, '') != 'swaminarayan.org'"):
             if d and c:
                 have.add((d[:10], norm(c)))
+        towns = {town_key(t) for (t,) in db.execute('SELECT DISTINCT place FROM photos') if t}
+    try:   # the reports' towns and their other spellings (Amdavad, Losangeles)
+        import sorg_travels as T
+        towns |= {town_key(k) for k in T.ALIASES} | {town_key(v) for v in T.ALIASES.values()}
+    except ImportError:
+        pass
+    towns -= {town_key(m) for m in MONTHS} | {''}
+    pages = best_pages(a.photos)
     out, seen, why = [], set(), {'kept': 0, 'small copy': 0, 'no day': 0, 'baps.org has it': 0, 'twice': 0}
     for line in open(a.photos, encoding='utf-8'):
         try:
             p = json.loads(line)
         except ValueError:
+            continue
+        url0 = p.get('photo_url', '')
+        if not re.search(r'\.(jpe?g|png|gif)$', url0, re.I):   # a page or a sound, not a photo
+            why['not a photo'] = why.get('not a photo', 0) + 1
+            continue
+        if NAV.match((p.get('caption') or p.get('alt') or '').strip()) or (
+                pages.get(url0, ('', 0))[1] >= 5 and not (p.get('caption') or p.get('alt'))):
+            why['site decoration'] = why.get('site decoration', 0) + 1   # Previous, Contents, Question buttons
+            continue
+        if pages.get(url0, (p.get('page_url', ''), 1))[0] != p.get('page_url', ''):
+            why['twice'] += 1   # the same photo on another page: kept once, on its own day's page
             continue
         if p.get('content_type') and not str(p['content_type']).startswith('image/'):   # the site's "File Not Found" page
             why['not a photo'] = why.get('not a photo', 0) + 1
@@ -74,6 +121,11 @@ def rows(a):
         except ValueError:   # no day, or a date that does not exist ("31 June")
             why['no day'] += 1
             continue
+        py = re.search(r'/((?:19|20)\d\d)/', url0)
+        if py and abs(int(py.group(1)) - int(d[:4])) > 1:
+            # a 2010 story's photos dated 1950 because the story names the 1950 day it remembers: not that day's photos
+            why['date from the story, not the photo'] = why.get('date from the story, not the photo', 0) + 1
+            continue
         section = re.sub(r'^https?://[^/]+/', '', p.get('page_url', '')).split('/')[0]
         if section not in SECTIONS or not 1921 <= int(d[:4]) <= 2012:   # Bapa's own days only: not the history pages' old dates
             why['not a day of Bapa'] = why.get('not a day of Bapa', 0) + 1
@@ -88,8 +140,11 @@ def rows(a):
             why['baps.org has it'] += 1
             continue
         d1 = p.get('date_to') if re.fullmatch(r'\d{4}-\d{2}-\d{2}', p.get('date_to') or '') and (p.get('date_to') or '') >= d else d
+        place = (p.get('place') or '').strip()
+        if NOT_TOWN.match(place) or (towns and town_key(place) not in towns):   # 'July', 'Yagna', 'Photogallery'
+            place = ''
         out.append(dict(album=album, file=file, year=int(d[:4]), date=d if d1 == d else None,
-                        date_from=d, date_to=d1, place='' if NOT_TOWN.match((p.get('place') or '').strip()) else (p.get('place') or '').strip(), caption=cap,
+                        date_from=d, date_to=d1, place=place, caption=cap,
                         is_bapa=1 if BAPA.search(cap) else 0, drive_path=p.get('drive_path', ''), photo_url=url,
                         page_url=p.get('page_url', ''), date_from_why=p.get('date_from', ''), place_from=p.get('place_from', '')))
         why['kept'] += 1
