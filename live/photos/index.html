@@ -66,6 +66,12 @@ h1 { margin: 0; font: 600 clamp(30px, 5vw, 50px)/1.1 var(--title); letter-spacin
 .vr { margin: 22px 0 6px; padding-top: 14px; border-top: 1px solid rgba(217, 164, 65, .2); }
 .vr .tell + .tell { margin-top: 18px; }
 .vr .line i { font-style: italic; color: var(--gold-hi); }
+/* baps.org Daily Satsang prasang: English first, a small quiet switch to the Gujarati (Darpan, 13 Nov 2026) */
+.bpr .flip { margin-left: 10px; padding: 0; border: 0; background: none; font: 500 14px var(--serif); font-style: normal; color: var(--gold); text-decoration: underline; text-decoration-color: rgba(217, 164, 65, .45); text-underline-offset: 3px; cursor: pointer; }
+.bpr .flip:hover, .bpr .flip:focus-visible { color: var(--paper); }
+.bpr .src, .bpr .paras p.src { margin: 6px 0 0; font: 400 12px/1.4 var(--sans); color: var(--paper); opacity: .6; }
+.bpr .src a { color: inherit; }
+.bpr [hidden] { display: none; }
 /* the Calendar's own photo of the day, first and bigger, with what happened under it like a Today card: the year and
    place, then the caption (Darpan, 4 Nov 2026: "show me mockup") */
 .grid .pick { grid-column: span 2; grid-row: span 2; display: flex; flex-direction: column; text-align: left;
@@ -192,7 +198,7 @@ async function load() {
       grid.append(b);
     });
     s.append(grid); $('days').append(s);
-    if (keys.length <= 31) tell(k, s);
+    if (keys.length <= 31) { tell(k, s); prasang(k, s); }
   });
   videos(from, to, keys);
   reports(from, to, keys);
@@ -264,6 +270,25 @@ async function videos(from, to, keys) {
 const dayFiles = {};
 const said = t => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 const tail = line => String(line || '').replace(/^[^:]{0,60}\bin [^:]+:\s*/, '');   // 'Pramukh Swami Maharaj in London: Dhanteras'
+// the baps.org Daily Satsang prasang of this exact day (tools/web_bprasang.py), English first with a small switch to the
+// Gujarati as baps.org wrote it (Darpan, 13 Nov 2026); opens in Gujarati when the whole site is in Gujarati
+const bprFiles = {};
+async function prasang(k, s) {
+  const md = k.slice(5), y = k.slice(0, 4);
+  const B = await (bprFiles[md] = bprFiles[md] || fetch(`/data/bprasang/${md}.json`).then(r => r.ok ? r.json() : {}).catch(() => ({})));
+  const ps = l => l.map(t => `<p>${esc(t)}</p>`).join('');
+  (B[y] || []).forEach(([place, who, title, en, gu, src]) => {
+    const guFirst = !en.length || !!(window.BapaGujarati && BapaGujarati.on());
+    s.querySelector('.grid').insertAdjacentHTML('beforebegin', `<div class="tell bpr" translate="no"><p class="line"><b>Prasang</b>${esc([place, nice(k, true)].filter(Boolean).join(', '))}` +
+      (en.length ? `<button type="button" class="flip">${guFirst ? 'English' : 'ગુજરાતી'}</button>` : '') + '</p>' +
+      `<div class="paras" lang="en"${guFirst ? ' hidden' : ''}>${ps(en)}<p class="src">English translation</p></div><div class="paras" lang="gu"${guFirst ? '' : ' hidden'}>${ps(gu)}</div></div>`);
+  });
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('.bpr .flip'); if (!b) return;
+  const [en, gu] = b.closest('.bpr').querySelectorAll('.paras');
+  const toGu = gu.hidden; en.hidden = toGu; gu.hidden = !toGu; b.textContent = toGu ? 'English' : 'ગુજરાતી';
+});
 async function tell(k, s) {
   const md = k.slice(5), y = +k.slice(0, 4);
   const D = await (dayFiles[md] = dayFiles[md] || fetch(`/data/day/${md}.json`).then(r => r.ok ? r.json() : null).catch(() => null));
