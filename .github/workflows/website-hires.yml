@@ -90,7 +90,7 @@ jobs:
         id: copy
         run: |
           aws s3 cp "s3://$BUCKET/years.txt" done.txt --endpoint-url "$R2" || : > done.txt
-          gh run download ${{ github.run_id }} -n have -R ${{ github.repository }} || : > have.txt   # listed once by the have job
+          gh run download ${{ github.run_id }} -n have -R ${{ github.repository }} && [ -s have.txt ] || { echo "::error::No list of what R2 holds, so nothing is copied (never copy everything again)"; exit 1; }   # listed once by the have job
           echo "$(wc -l < have.txt) photos already in R2 at full size; years finished: $(tr '\n' ' ' < done.txt)"
           # any finished year can grow: late December photos reach baps.org in January (28 Oct 2026), and the News story
           # photos (6 Nov 2026) added to every year from 1999, so every year is looked at again (Darpan, 13 Nov: "asap")
