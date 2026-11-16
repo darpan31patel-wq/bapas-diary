@@ -32,6 +32,14 @@
 .yr { font: 700 20px/1 var(--serif); color: var(--gold); margin: 10px 0 2px }
 .mine { list-style: none; margin: 0; padding: 0 } .mine li { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 5px 0; border-bottom: 1px solid var(--line) }
 .mine li b { color: var(--gold); font: 700 13px var(--sans); min-width: 5.4em } .mine li span { flex: 1 1 160px; min-width: 0 }
+.sprog { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 8px 0; display: grid; gap: 8px }
+.sprog h3 { margin: 0; font-size: 15px } .sprog .bar { height: 10px; border-radius: 6px; background: rgba(255,255,255,.08); overflow: hidden }
+.sprog .bar i { display: block; height: 100%; background: var(--gold); border-radius: 6px; transition: width .6s }
+.sprog ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; font-size: 13.5px }
+.sprog li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 6px; color: var(--muted) }
+.sprog li.done { color: var(--fg) } .sprog li.now { color: var(--gold); font-weight: 600 } .sprog li.bad { color: var(--saffron) }
+.sprog li b { font-weight: inherit } .sprog .acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center }
+@keyframes spin { to { transform: rotate(360deg) } } .sprog .spin { display: inline-block; animation: spin 1.2s linear infinite }
 .opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px }
 .opts figure { margin: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px; display: grid; gap: 6px }
 .opts img { width: 100%; aspect-ratio: 2796 / 1290; object-fit: cover; border-radius: 6px; background: #000 }
@@ -224,6 +232,7 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
       </div>
     </div>
     <p class="status" id="status" role="status"></p>
+    <div class="sprog" id="sprog" hidden aria-live="polite"></div>
     <p class="hint" id="tip">Click any card in the picture to change its photo, place or words.</p>
     <p class="hint" id="autosave" aria-live="polite"></p>
     <div id="options" hidden><h3 class="yr" style="font-size:17px">Other special pictures for this day</h3><p class="hint" id="options-p"></p><div class="opts" id="options-row"></div></div>
@@ -1720,50 +1729,128 @@ const chMove = (date, i, d) => { const mine = chFor(date), a = mine[i], b = mine
 // Every saved choice for today or a coming day asks the Collage builder's photo maker (studio.yml, input `special`) to
 // rebuild that day's special picture from the choices file; the maker publishes the new pack to the studio branch (shown
 // here as soon as it lands) and, for today, the new special file and caption in Drive. Several changes close together
-// become one ask (90 seconds after the last), so GitHub is not started again and again. Until the maker takes the
+// become one ask (30 seconds after the last), so GitHub is not started again and again. Until the maker takes the
 // `special` input, GitHub answers 422 and the page says so plainly; the morning run still reads the choices.
 let REMAKE_T = 0, WAITS = null;
-const SP_MINS = 30;
+const SP_MINS = 30, SEND_AFTER = 30;
+// step by step progress (Darpan, 16 Nov 2026: "there needs to be more feedback from the website, what's going on, like a
+// loading bar ... if you've accepted it, if you're looking for pictures"). The steps are read from GitHub itself: the run's
+// own state (waiting, running, done) and the step it is on, by the step names of the Collage builder's special job in
+// studio.yml. Kept on this device (studio-prog) so a reload carries on where it was.
+const STEPS = [
+  ['saved', 'Your choice is saved'],
+  ['send', 'Sending it to the Collage builder'],
+  ['accepted', 'Accepted: GitHub has the request'],
+  ['queued', 'Waiting its turn on GitHub'],
+  ['start', 'Starting up'],
+  ['archive', 'Opening your archive in Drive'],
+  ['build', 'Finding the photos and building the picture'],
+  ['drive', 'Putting it in Bapa’s Diary (Drive)'],
+  ['studio', 'Saving it for the Studio'],
+  ['ready', 'Ready: the new special picture is here'],
+];
+const STEPN = Object.fromEntries(STEPS.map(([k], i) => [k, i]));
+const progAll = () => store.get('studio-prog') || {};
+const progOf = date => progAll()[date] || null;
+function progSet(date, step, extra) {
+  const all = progAll(), p = all[date] || (all[date] = { t: {} });
+  if (step) { p.step = step; p.t[step] = p.t[step] || Date.now(); STEPS.slice(0, STEPN[step]).forEach(([k]) => { p.t[k] = p.t[k] || p.t[step] }) }
+  Object.assign(p, extra || {}); store.set('studio-prog', all); showProg(); return p;
+}
+const clock = t => new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+const mins = ms => { const s2 = Math.max(0, Math.round(ms / 1000)); return s2 < 60 ? `${s2} s` : `${Math.floor(s2 / 60)} min ${s2 % 60} s` };
+let PROGTICK = 0;
+function showProg() {
+  const el = $('#sprog'); if (!el) return;
+  const all = progAll(), today = todayLondon();
+  const date = Object.keys(all).filter(d => d >= today && all[d].step && (all[d].step !== 'ready' || Date.now() - all[d].t.ready < 10 * 60e3) && !all[d].gone).sort((a, b) => (all[b].t.saved || 0) - (all[a].t.saved || 0))[0];
+  if (!date) { el.hidden = true; clearInterval(PROGTICK); PROGTICK = 0; return }
+  const p = all[date], n = STEPN[p.step], start = p.t.saved || p.t.send || Date.now();
+  const skip = k => k === 'drive' && date !== today;
+  const shown = STEPS.filter(([k]) => !skip(k)), at = shown.findIndex(([k]) => k === p.step);
+  const pct = p.fail ? Math.round(at / (shown.length - 1) * 100) : Math.round((p.step === 'ready' ? 1 : (at + .5) / (shown.length - 1)) * 100);
+  const wait = p.step === 'send' && p.sendAt ? Math.max(0, Math.round((p.sendAt - Date.now()) / 1000)) : 0;
+  el.innerHTML = `<h3>${p.fail ? 'The special picture for ' + esc(longDate(date)) + ' did not finish' : p.step === 'ready' ? 'The special picture for ' + esc(longDate(date)) + ' is ready' : 'Making the special picture for ' + esc(longDate(date)) + '…'}</h3>
+    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>
+    <ol>${shown.map(([k, w], i) => { const done = i < at || p.step === 'ready', now = i === at && p.step !== 'ready'; return `<li class="${p.fail && now ? 'bad' : done ? 'done' : now ? 'now' : ''}"><span>${p.fail && now ? '✕' : done ? '✓' : now ? '<span class="spin">◌</span>' : '○'}</span><b>${esc(w)}${now && k === 'send' && wait ? ` (in ${wait} s, so changes close together go as one)` : ''}</b><span>${p.t[k] ? clock(p.t[k]) : ''}</span></li>` }).join('')}</ol>
+    <p class="hint">${p.fail ? esc(p.fail) : p.step === 'ready' ? `Took ${mins(p.t.ready - start)}. It is on the Special picture tab now${date === today && !p.late ? ', and in Drive for the 2pm send' : ''}.` : `${mins(Date.now() - start)} so far. Usually 5 to 10 minutes from sending; longer if another GitHub run is going.`}</p>
+    <div class="acts">${p.step === 'send' ? '<button class="btn small primary" id="sprog-now" type="button">Send it now</button>' : ''}${p.fail ? '<button class="btn small primary" id="sprog-again" type="button">Try again</button>' : ''}${p.run ? `<a class="btn small" href="https://github.com/darpan31patel-wq/bapas-diary/actions/runs/${p.run}" target="_blank" rel="noopener">See it on GitHub</a>` : ''}${p.step === 'ready' || p.fail ? '<button class="btn small" id="sprog-x" type="button">Hide</button>' : ''}${p.step === 'ready' && !(S.mode === 'special' && S.special.date === date) ? `<button class="btn small" id="sprog-open" type="button">Open it</button>` : ''}</div>`;
+  el.hidden = false;
+  const on = (id, fn) => { const b = document.getElementById(id); if (b) b.onclick = fn };
+  on('sprog-now', () => askRemake(date)); on('sprog-again', () => askRemake(date));
+  on('sprog-x', () => { progSet(date, null, { gone: true }) });
+  on('sprog-open', () => { S.mode = 'special'; openSpecial(date) });
+  const cr = document.getElementById('ch-remake-p'); if (cr && S.special.date === date) cr.textContent = p.fail || STEPS[n][1] + (p.step === 'ready' ? '' : '…');
+  if (!PROGTICK && p.step !== 'ready' && !p.fail) PROGTICK = setInterval(showProg, 1000);
+  if ((p.step === 'ready' || p.fail) && PROGTICK) { clearInterval(PROGTICK); PROGTICK = 0 }
+}
 function remakeSoon(date) {
   if (!date || date < todayLondon()) return;
   clearTimeout(REMAKE_T);
-  const el = document.getElementById('ch-remake-p'); if (el) el.textContent = `The remake of ${longDate(date)} starts in a moment…`;
-  REMAKE_T = setTimeout(() => askRemake(date), 90e3);
+  progSet(date, 'saved', { fail: '', run: 0, gone: false, late: false, t: { saved: Date.now() } });
+  if (!ghKey()) { progSet(date, 'saved', { fail: 'Your choice is saved. Connect GitHub (top of the page) and the Studio will ask the Collage builder by itself; until then the morning run uses your choice.' }); return }
+  progSet(date, 'send', { sendAt: Date.now() + SEND_AFTER * 1e3 });
+  REMAKE_T = setTimeout(() => askRemake(date), SEND_AFTER * 1e3);
 }
 async function askRemake(date) {
   clearTimeout(REMAKE_T);
-  const say = msg => { const el = document.getElementById('ch-remake-p'); if (el) el.textContent = msg; else chSay('', msg) };
-  if (!ghKey()) { say('Connect GitHub (top of the page) and the remake will start by itself after each change. Until then the morning run uses your choice.'); return }
+  if (!ghKey()) { progSet(date, 'saved', { fail: 'Connect GitHub (top of the page) and the remake will start by itself after each change. Until then the morning run uses your choice.' }); return }
+  const p0 = progOf(date); if (!p0 || !p0.t.saved) progSet(date, 'saved', { t: { saved: Date.now() } });
+  progSet(date, 'send', { fail: '', run: 0, gone: false, sendAt: 0 });
   try {
     const r = await gh('/actions/workflows/studio.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main', inputs: { special: date } }) });
-    if (r.status === 204) { const a = asked(); a['s:' + date] = Date.now(); store.set('studio-asked', a); say(`Asked ${timeNow()}. The Collage builder is remaking ${longDate(date)}’s special picture from your choices; it appears here, and in Drive, in about 5 to 10 minutes.`); waitForS(date) }
-    else if (r.status === 422) say('Your choice is saved. The Collage builder’s remake run is not there yet (it has to take a “special” input), so the morning run will use your choice; today’s picture cannot be remade until then.');
-    else if (r.status === 401) { store.set('studio-gh', ''); say('GitHub did not accept the key on this device. Press Connect GitHub and paste a new one.') }
-    else say(`GitHub said no (${r.status}). Your choice is saved; press Remake now to try again.`);
-  } catch (e) { say('Could not reach GitHub. Your choice is saved; press Remake now to try again.') }
+    if (r.status === 204) { const a = asked(); a['s:' + date] = Date.now(); store.set('studio-asked', a); progSet(date, 'accepted'); waitForS(date) }
+    else if (r.status === 422) progSet(date, 'send', { fail: 'Your choice is saved, but the Collage builder’s remake run did not take the request, so the morning run will use your choice.' });
+    else if (r.status === 401) { store.set('studio-gh', ''); progSet(date, 'send', { fail: 'GitHub did not accept the key on this device. Press Connect GitHub and paste a new one, then Try again.' }) }
+    else progSet(date, 'send', { fail: `GitHub said no (${r.status}). Your choice is saved; press Try again.` });
+  } catch (e) { progSet(date, 'send', { fail: 'Could not reach GitHub. Your choice is saved; press Try again.' }) }
 }
 const timeNow = () => new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 async function specialMade(date) {   // when the special pack of that day was made, straight from GitHub
   try { const r = await gh(`/contents/packs/special/${date}/pack.json?ref=studio`, { headers: { Accept: 'application/vnd.github.raw+json' } }); if (!r.ok) return 0; return Date.parse((await r.json()).made || '') || 0 } catch (e) { return 0 }
 }
+// which step of the Collage builder's special job is running, by its step names in studio.yml
+const stepOfJob = job => {
+  const steps = (job && job.steps) || [], cur = steps.find(st => st.status === 'in_progress') || [...steps].reverse().find(st => st.status === 'completed');
+  const nm = cur ? cur.name : '';
+  return /studio branch/i.test(nm) ? 'studio' : /Drive\)|Bapa.s Diary/i.test(nm) ? 'drive' : /Make the special/i.test(nm) ? 'build' : /archive/i.test(nm) ? 'archive' : 'start';
+};
+async function runFor(date) {   // this ask's run: the newest Studio packs run started after the ask
+  const when = asked()['s:' + date] || 0;
+  const r = await gh('/actions/workflows/studio.yml/runs?event=workflow_dispatch&per_page=6'); if (!r.ok) return null;
+  return ((await r.json()).workflow_runs || []).filter(x => Date.parse(x.created_at) >= when - 90e3).sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at))[0] || null;
+}
 function waitForS(date) {
   clearInterval(WAITS);
-  WAITS = setInterval(async () => {
-    const when = asked()['s:' + date] || 0, el = document.getElementById('ch-remake-p');
-    const made = await specialMade(date);
-    if (made && made > when - 60e3) {
-      clearInterval(WAITS); WAITS = null;
-      const a = asked(); delete a['s:' + date]; store.set('studio-asked', a);
-      const rm = store.get('studio-remade') || {}; rm[date] = Date.now(); store.set('studio-remade', rm);
-      await freshIndex();
-      if (el) el.textContent = remakeWords(date);
-      if (S.mode === 'special' && S.special.date === date) { P.special = null; load('special') }
-      return;
-    }
-    if (Date.now() - when > SP_MINS * 60e3) { clearInterval(WAITS); WAITS = null; if (el) el.textContent = `The remake of ${longDate(date)} has not arrived after ${SP_MINS} minutes. Press Remake now to ask again.`; return }
-    if (el) el.textContent = `Remaking ${longDate(date)} (asked ${Math.round((Date.now() - when) / 60e3)} min ago)…`;
-  }, 60e3);
+  const tick = async () => {
+    const when = asked()['s:' + date] || 0, p = progOf(date) || {};
+    try {
+      const run = p.run ? await (await gh(`/actions/runs/${p.run}`)).json() : await runFor(date);
+      if (run && run.id) {
+        if (!p.run) progSet(date, null, { run: run.id });
+        if (run.status === 'queued' || run.status === 'waiting' || run.status === 'requested' || run.status === 'pending') progSet(date, 'queued');
+        else if (run.status === 'in_progress') { const jr = await gh(`/actions/runs/${run.id}/jobs`); if (jr.ok) { const job = ((await jr.json()).jobs || []).find(j => j.status !== 'completed' || j.conclusion !== 'skipped'); const st = stepOfJob(job); if (STEPN[st] > STEPN[(progOf(date) || {}).step || 'saved']) progSet(date, st) } }
+        else if (run.status === 'completed' && run.conclusion !== 'success') { clearInterval(WAITS); WAITS = null; progSet(date, (progOf(date) || {}).step, { fail: `The Collage builder’s run stopped (${run.conclusion}). Your choice is saved; press Try again, and if it fails twice tell Claude.` }); return }
+        else if (run.status === 'completed') { if (STEPN[(progOf(date) || {}).step] < STEPN.studio) progSet(date, 'studio') }
+      }
+      const made = await specialMade(date);
+      if (made && made > when - 60e3) {
+        clearInterval(WAITS); WAITS = null;
+        const a = asked(); delete a['s:' + date]; store.set('studio-asked', a);
+        const rm = store.get('studio-remade') || {}; rm[date] = Date.now(); store.set('studio-remade', rm);
+        let late = false; try { const rj = await gh('/contents/packs/special/remake.json?ref=studio', { headers: { Accept: 'application/vnd.github.raw+json' } }); if (rj.ok) { const x = await rj.json(); late = x.date === date && /late/.test(x.drive || '') } } catch (e) {}
+        progSet(date, 'ready', { late, fail: late ? 'Made, but after 1:50pm, so it is on the Special picture tab only; the 2pm send was not changed.' : '' });
+        await freshIndex();
+        if (S.mode === 'special' && S.special.date === date) { P.special = null; load('special') }
+        return;
+      }
+    } catch (e) {}
+    if (Date.now() - when > SP_MINS * 60e3) { clearInterval(WAITS); WAITS = null; progSet(date, (progOf(date) || {}).step, { fail: `Nothing came back after ${SP_MINS} minutes. Press Try again.` }) }
+  };
+  tick(); WAITS = setInterval(tick, 15e3);
 }
+// a reload while a picture is being made carries on watching it
+setTimeout(() => { const all = progAll(); Object.keys(all).forEach(d => { const p = all[d]; if (p.step && p.step !== 'ready' && !p.fail && STEPN[p.step] >= STEPN.accepted && Date.now() - (asked()['s:' + d] || 0) < SP_MINS * 60e3) waitForS(d) }); showProg() }, 1500);
 function chSay(cls, msg) { for (const el of [document.getElementById('ch-status'), $('#status')]) if (el) { el.className = 'status ' + cls; el.textContent = msg } }
 async function saveChoices(how, where, quiet) {
   store.set('studio-choices', CH); if (!quiet) build();
@@ -1914,7 +2001,7 @@ async function askUkAdd(date) {
     else { if (b) b.disabled = false; say(r.status === 401 ? 'GitHub did not accept the key on this device. Press Connect GitHub and paste a new one.' : r.status === 422 ? 'The Collage builder’s run cannot take this yet (no uk_europe_add box). Nothing was changed.' : `GitHub said no (${r.status}). Press again to retry.`) }
   } catch (e) { if (b) b.disabled = false; say('Could not reach GitHub. Press again to retry.') }
 }
-const remakeWords = date => { const when = asked()['s:' + date]; if (when && Date.now() - when < SP_MINS * 60e3) { if (!WAITS) waitForS(date); return `Remaking ${longDate(date)} (asked ${Math.round((Date.now() - when) / 60e3)} min ago)…` } const rm = (store.get('studio-remade') || {})[date]; return (rm ? `Remade at ${new Date(rm).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} from your choices${date === todayLondon() ? ', in Drive too' : ''}. ` : '') + (date === todayLondon() ? 'Every change you save asks the Collage builder to remake today’s special picture; it lands here and in Drive in about 5 to 10 minutes. Remake now asks at once.' : 'Every change you save asks the Collage builder to remake this day’s special picture, so it is ready here before its day.') };
+const remakeWords = date => { const when = asked()['s:' + date]; if (when && Date.now() - when < SP_MINS * 60e3) { return `Remaking ${longDate(date)} (asked ${Math.round((Date.now() - when) / 60e3)} min ago)…` } const rm = (store.get('studio-remade') || {})[date]; return (rm ? `Remade at ${new Date(rm).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} from your choices${date === todayLondon() ? ', in Drive too' : ''}. ` : '') + (date === todayLondon() ? 'Every change you save asks the Collage builder to remake today’s special picture; it lands here and in Drive in about 5 to 10 minutes. Remake now asks at once.' : 'Every change you save asks the Collage builder to remake this day’s special picture, so it is ready here before its day.') };
 function wireChoices() {
   const date = chDate(); if (!date) return;
   document.querySelectorAll('[data-pick]').forEach(b => b.addEventListener('change', () => { const [y, addr] = b.dataset.pick.split('|'); if (PICKSEL.year !== +y) { PICKSEL.year = +y; PICKSEL.set = new Set() } b.checked ? PICKSEL.set.add(addr) : PICKSEL.set.delete(addr); const go = document.querySelector(`[data-pickgo="${y}"]`); if (go) go.disabled = !PICKSEL.set.size }));
