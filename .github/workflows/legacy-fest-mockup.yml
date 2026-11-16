@@ -2,7 +2,7 @@
 # tools/web_old_calendar.py from branch claude/project-thread-tq8ss2 (Darpan, 16 Nov 2026: "legacy is the tab that is
 # called legacy"). Only the pages' own files are swapped in the browser. Runs only on the mockup branch, never deploys.
 name: Legacy festivals mockup
-# run 4: early photos
+# run 5: pictures kept with the run (the release could not be made)
 on:
   push:
     branches: [claude/project-thread-eawr12-mockup]
@@ -134,6 +134,8 @@ jobs:
           cat shots/log.txt; ls -la shots
       - name: Keep them
         if: always()
-        run: |
-          gh release delete legacy-fest-mockup -y --cleanup-tag -R "$GITHUB_REPOSITORY" 2>/dev/null || true
-          gh release create legacy-fest-mockup shots/* -R "$GITHUB_REPOSITORY" --title "Legacy festivals mockup pictures" --notes "Mockup pictures only, not part of the website" --target "$GITHUB_SHA"
+        uses: actions/upload-artifact@v4
+        with:
+          name: legacy-fest-mockup
+          path: shots/
+          retention-days: 7
