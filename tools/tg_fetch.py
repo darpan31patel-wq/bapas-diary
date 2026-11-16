@@ -20,7 +20,8 @@ class Page(HTMLParser):
             self.posts.append(self.p)
         if not self.p:
             return
-        if tag == 'div' and 'tgme_widget_message_text' in cls and self.text_at is None:
+        if tag == 'div' and 'tgme_widget_message_text' in cls and 'js-message_reply_text' not in cls and self.text_at is None:
+            # (the quoted preview of the post it replies to is skipped: it once got glued onto the post's own words)
             self.text_at = 0
         elif self.text_at is not None and tag not in ('br', 'img'):
             self.text_at += 1
