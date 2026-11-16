@@ -104,6 +104,7 @@ jobs:
                 cp "$o/bapas-diary.jpg" "compare/$d-$w.jpg" || true
                 cp "$o/summary.txt" "compare/$d-$w-summary.txt" || true
                 [ -e "$o/caption.txt" ] && cp "$o/caption.txt" "compare/$d-$w-caption.txt"
+                for f in "$o"/bapas-diary-special*.jpg "$o"/search.txt; do [ -e "$f" ] && cp "$f" "compare/$d-$w-$(basename "$f")"; done
               done
               python - "$d" <<'PY' || true
           import sys
@@ -117,7 +118,7 @@ jobs:
           draw = ImageDraw.Draw(out)
           draw.text((30, 16), f'{d}  BEFORE: the picture as main makes it today', font=font, fill=(240, 220, 170))
           out.paste(a, (0, 80))
-          draw.text((30, a.height + 96), f'{d}  AFTER: with the News articles and photos', font=font, fill=(240, 220, 170))
+          draw.text((30, a.height + 96), f'{d}  AFTER: as this test branch makes it', font=font, fill=(240, 220, 170))
           out.paste(b, (0, a.height + 160))
           out.save(f'compare/{d}-side-by-side.jpg', quality=90)
           PY

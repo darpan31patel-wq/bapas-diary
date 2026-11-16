@@ -179,6 +179,7 @@ def items_for(day, cache):
             if (x.get('c') or '').endswith('...') and x['i'] in full:
                 x['c'] = full[x['i']]
         items += [x for x in extra if x['i'] not in have]
+    make.day_extras(day, items)
     make.album_towns(items)
     tg_extra, tg_evs, special = make.tg_day(day, items)
     items += tg_extra
@@ -206,6 +207,7 @@ def main():
     photos = make.pick_one_per_year(items, seed=f'{day:%m-%d}', aspect=make.FRAME_ASPECT[make.LIVE_STYLE], day=day)
     unwatch()
     make.tag_festivals(photos)
+    make.tell_days(day, photos)
     story = make.tg_story(tg_evs, photos)
     make.compose(photos, day, seed=f'{day:%m-%d}', style=make.LIVE_STYLE, history=story).convert('RGB') \
         .resize((2400, round(2400 * make.H / make.W)), Image.LANCZOS).save(os.path.join(out, 'real.jpg'), quality=85)
