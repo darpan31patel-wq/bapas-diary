@@ -222,8 +222,22 @@ def load_sites(folder):
         return pages, photos
     for fn in sorted(glob.glob(os.path.join(folder, '*-pages.jsonl'))):
         pages += [json.loads(l) for l in open(fn, encoding='utf-8') if l.strip()]
+    # a photo shown on many pages (logos, banners, the same picture in several reports) becomes ONE row: the line with
+    # the most detail is kept, and the row says how many pages show it and which ones
     for fn in sorted(glob.glob(os.path.join(folder, '*-photos.jsonl'))):
-        photos += [json.loads(l) for l in open(fn, encoding='utf-8') if l.strip()]
+        best, pages_of = {}, collections.defaultdict(list)
+        for l in open(fn, encoding='utf-8'):
+            if not l.strip(): continue
+            q = json.loads(l)
+            k = (q.get('photo_url'), q.get('size'))
+            pages_of[k].append(q.get('page_url'))
+            score = (bool(q.get('caption')), bool(q.get('date')), bool(q.get('place')), len(q.get('words_beside') or ''))
+            if k not in best or score > best[k][0]:
+                best[k] = (score, q)
+        for k, (_, q) in best.items():
+            ps = list(dict.fromkeys(x for x in pages_of[k] if x))
+            q = dict(q, also_on=(f'{len(ps)} pages: ' + '  '.join(ps[:20]) + (' ...' if len(ps) > 20 else '')) if len(ps) > 1 else None)
+            photos.append(q)
     return pages, photos
 
 
@@ -283,12 +297,13 @@ def main():
               # full detail for every source (Darpan, 13 Nov 2026)
               'Source website', 'Source page', 'Source page title', 'Date as written', 'Where the date came from',
               'Where the place came from', 'Gallery or heading', 'Alt text', 'Words beside the photo',
-              'Other size of the photo', 'File size (bytes)', 'File type', 'Date on the website server', 'Copied on']
+              'Other size of the photo', 'File size (bytes)', 'File type', 'Date on the website server', 'Copied on',
+              'Also shown on these pages']
     SRC = {'news': 'baps.org News gallery', 'page': 'baps.org vicharan page', 'button': 'baps.org daily page',
            'scan': 'baps.org album scan'}
     def extra(site=None, page=None, title=None, written=None, dfrom=None, pfrom=None, gal=None, alt=None, near=None,
-              other=None, size=None, typ=None, server=None, copied=None):
-        return [site, page, title, written, dfrom, pfrom, gal, alt, near, other, size, typ, server, copied]
+              other=None, size=None, typ=None, server=None, copied=None, also=None):
+        return [site, page, title, written, dfrom, pfrom, gal, alt, near, other, size, typ, server, copied, also]
     in_article = {}
     for x in articles:
         for al, f, alt, gal in x['pics']:
@@ -345,7 +360,8 @@ def main():
                               q.get('words_beside') or None,
                               (f"{q.get('size')} copy; other size {q.get('other_size_url')}" if q.get('other_size_url')
                                else (q.get('size') or None)),
-                              q.get('bytes'), q.get('content_type'), q.get('last_modified'), q.get('fetched_at')))
+                              q.get('bytes'), q.get('content_type'), q.get('last_modified'), q.get('fetched_at'),
+                              q.get('also_on')))
     photos.sort(key=lambda p: (p[0] or '', str(p[20]), str(p[21])))
     byday = collections.defaultdict(list)
     for p in photos: byday[p[0]].append(p)
@@ -525,9 +541,11 @@ def main():
         sheet(X, 'Days', D_COLS, dd, [11, 10, 20, 8, 26, 30, 24, 12, 26, 7, 8, 40, 40, 30, 20, 20, 50, 26, 8, 22, 30, 30],
               links=(14, 18, 21, 22), wrap=(6, 12, 13, 14, 17, 18, 23, 24), first=True)
         pp = [r for r in photos if inside(r[0])]
-        sheet(X, 'Photos', P_COLS, pp, [11, 11, 11, 6, 22, 60, 8, 11, 12, 7, 8, 8, 8, 30, 20, 34, 34, 34, 34, 40, 8, 26, 18, 9, 40, 30,
-                                       18, 40, 30, 20, 18, 18, 24, 30, 40, 30, 10, 12, 20, 18],
-              links=(16, 17, 18, 19, 25, 28))
+        for part in range(0, max(len(pp), 1), 1000000):   # Excel holds about a million rows on one sheet
+            sheet(X, 'Photos' + (f' {part // 1000000 + 1}' if part else ''), P_COLS, pp[part:part + 1000000],
+                  [11, 11, 11, 6, 22, 60, 8, 11, 12, 7, 8, 8, 8, 30, 20, 34, 34, 34, 34, 40, 8, 26, 18, 9, 40, 30,
+                   18, 40, 30, 20, 18, 18, 24, 30, 40, 30, 10, 12, 20, 18, 40],
+                  links=(16, 17, 18, 19, 25, 28))
         aa = [r for r in arows if inside(r[0])]
         sheet(X, 'Articles', A_COLS, aa, [11, 22, 40, 100, 16, 8, 40], links=(7,), wrap=(4,))
         sheet(X, 'On this day', O_COLS, [r for r in otd_rows if inside(r[0])],
