@@ -79,7 +79,7 @@ def schedule(path, today):
     return out
 
 
-def build(db, today, photo_years, vary=None, ahead=None):
+def build(db, today, photo_years, vary=None, ahead=None, more=None):
     place, photo = {}, {}
     rows = db.execute("SELECT date, place, album, file, caption, is_bapa FROM photos WHERE date IS NOT NULL "
                       "ORDER BY date, is_bapa DESC, album, file")
@@ -90,7 +90,10 @@ def build(db, today, photo_years, vary=None, ahead=None):
         photo.setdefault(date, [album, file, cap or ''])
     for date, url in db.execute("SELECT date, photo_url FROM diary WHERE photo_url IS NOT NULL"):
         album, file = url.split('/GalleryImages/')[-1].split('/')[0], url.rsplit('/', 1)[-1]
-        if db.execute("SELECT 1 FROM photos WHERE album = ? AND file = ?", (album, file)).fetchone():
+        # only a photo from that very day: since the Smruti Project (14 Oct 2026) the 2pm picture shows earlier years,
+        # and a 2026 square showed 2025's photo, the same photo twice on the Calendar (Darpan, 16 Nov 2026)
+        if db.execute("SELECT 1 FROM photos WHERE album = ? AND file = ? AND (date = ? OR (date IS NULL AND "
+                      "date_from <= ? AND coalesce(date_to, date_from) >= ?))", (album, file, date, date, date)).fetchone():
             cap = db.execute("SELECT caption FROM photos WHERE album = ? AND file = ?", (album, file)).fetchone()[0]
             photo[date] = [album, file, cap or '']
     trip = {}
@@ -108,6 +111,7 @@ def build(db, today, photo_years, vary=None, ahead=None):
             d += datetime.timedelta(1)
     if vary:
         vary(photo, photo_years)
+        spread_trips(trip, vary.pool, photo, more, vary.faces)
     cal = {d: [i or '', f or '', n or ''] for d, i, f, n in
            db.execute("SELECT date, indian_date, festivals, notes FROM calendar")}
 
@@ -148,6 +152,87 @@ def build(db, today, photo_years, vary=None, ahead=None):
         data['fut'] = (today + datetime.timedelta(1)).isoformat()   # the first day of the FUTURE CALENDAR
         data['v'] = vich                                           # what happens on a FUTURE VICHARAN day
     return data
+
+
+# ---------------------------------------------------------------- an album that covers several days
+# Darpan, 16 Nov 2026 (December 2001, the Navsari album 17 to 22 Dec showed one embrace on all six squares): "if there's
+# more than one close-up picture of Bapa, then use a different picture from the album for each day ... go through the
+# whole calendar and make sure you're not doing this again". An album with only a range of dates gave every day of the
+# range its one top photo. Now each day of the range takes its own photo from the album's photos of Bapa (--pool, the
+# Bapa only database: his face recognised), close ups first in On this day's order, then the others; a photo already
+# on another square is passed over, and one repeats only when the albums of that day have no other photo of him left.
+
+GURU_SWITCH = '2016-08-13'   # Swamishri before this day is Pramukh Swami Maharaj, after it Mahant Swami Maharaj
+LOOSE, FACE_MIN = .38, .07   # his face half recognised or better, and not a tiny far away face
+SAYS_BAPA = re.compile(r'(HH |His Holiness )?(Swamishri|Bapa|Pramukh Swami|Mahant Swami)\b')   # 'Swamishri performs murti-pratishtha'
+
+
+def spread_trips(trip, pool, dated, more=None, faces=None):
+    try:
+        rows = pool.execute(
+            'SELECT p.date_from, p.date_to, p.album, p.file, p.caption FROM photos p JOIN bapa_pick b USING (album, file) '
+            'WHERE p.date IS NULL AND p.date_from IS NOT NULL ORDER BY p.date_from, p.album, b.close DESC, b.rank, p.rowid').fetchall()
+    except sqlite3.Error:   # an older pool without On this day's ranking: the one photo each as before
+        return 0
+    albums, order = {}, []
+    for d0, d1, album, file, cap in rows:
+        if NOT_BAPA.search(cap or ''):
+            continue
+        k = (album, d0, d1 or d0)
+        if k not in albums:
+            albums[k] = []
+            order.append(k)
+        albums[k].append([album, file, cap or ''])
+    # after those, the album's other photos whose caption says Swamishri is there and where the face check half knows
+    # him, the closest first (--all, the whole database): an old album's small photos often fall short of a full match
+    # (Navsari 2001 has three full matches and six squares to fill)
+    if more is not None and faces:
+        seen = {(c[0], c[1]) for L in albums.values() for c in L}
+        extra = {}
+        for d0, d1, album, file, cap in more.execute(
+                'SELECT date_from, date_to, album, file, caption FROM photos WHERE date IS NULL AND date_from IS NOT NULL '
+                'AND is_bapa = 1 ORDER BY date_from, album, rowid'):
+            rec = faces.get(f'{album}/{file}')
+            cap = cap or ''
+            if (album, file) in seen or not rec or rec[0] < LOOSE or rec[4] < FACE_MIN or (NOT_BAPA.search(cap) and not SAYS_BAPA.match(cap)):
+                continue
+            other = 'Mahant Swami' if d0 < GURU_SWITCH else 'Pramukh Swami'
+            if other.lower() in cap.lower():
+                continue
+            k = (album, d0, d1 or d0)
+            extra.setdefault(k, []).append((-rec[4], [album, file, cap]))
+        for k, L in extra.items():
+            if k not in albums:
+                albums[k] = []
+                order.append(k)
+            albums[k] += [c for _, c in sorted(L, key=lambda x: x[0])]
+    cover = {}   # day -> the albums of Bapa's photos covering it, in the order the trips are read
+    for k in order:
+        a, b = datetime.date.fromisoformat(k[1]), datetime.date.fromisoformat(k[2])
+        if (b - a).days > TRIP_DAYS:
+            b = a
+        d = a
+        while d <= b:
+            cover.setdefault(d.isoformat(), []).append(k)
+            d += datetime.timedelta(1)
+    used = {(v[0], v[1]): 1 for v in dated.values() if v}
+    changed = 0
+    for day in sorted(cover):
+        if day in dated or day not in trip:
+            continue
+        first = trip[day][1][0]   # the album the day had before goes first, then the other albums of that day
+        cands = [c for k in sorted(cover[day], key=lambda k: k[0] != first) for c in albums[k]]
+        if not cands:
+            continue
+        pick = next((c for c in cands if (c[0], c[1]) not in used), None)
+        if pick is None:   # every photo of him in these albums is on a square already: the one shown least
+            pick = min(cands, key=lambda c: used[(c[0], c[1])])
+        used[(pick[0], pick[1])] = used.get((pick[0], pick[1]), 0) + 1
+        if pick != trip[day][1]:
+            trip[day] = [trip[day][0], pick]
+            changed += 1
+    print(f'trips: {changed} of {sum(1 for d in trip if d not in dated)} days of albums with a range of dates took their own photo')
+    return changed
 
 
 # ---------------------------------------------------------------- variety from day to day
@@ -302,6 +387,7 @@ def main():
     ap.add_argument('--faces', help='folder of face2-*.json.gz: where Bapa\'s face is in each photo')
     ap.add_argument('--schedule', help='the saved baps.org vicharan schedule (crawl/schedule/latest.json); '
                     'with it the calendar carries on into the coming months')
+    ap.add_argument('--all', help='the whole database (bapas.db): more photos of Bapa for the days of an album with a range of dates')
     ap.add_argument('--sig-dir', help='read photos from this folder (ALBUM/FILE) instead of --photos-url')
     a = ap.parse_args()
     today = datetime.date.fromisoformat(a.today) if a.today else datetime.date.today()
@@ -312,7 +398,7 @@ def main():
     page(a.site, a.photos_url, a.search_url)
     vary = Variety(sqlite3.connect(a.pool), a.sigs, a.photos_url, a.sig_dir, a.faces) if a.pool else None
     ahead = schedule(a.schedule, today) if a.schedule else None
-    data = build(sqlite3.connect(a.db), today, years, vary, ahead)
+    data = build(sqlite3.connect(a.db), today, years, vary, ahead, sqlite3.connect(a.all) if a.all else None)
     os.makedirs(os.path.join(a.site, 'data'), exist_ok=True)
     with open(os.path.join(a.site, 'data', 'calendar.json'), 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
