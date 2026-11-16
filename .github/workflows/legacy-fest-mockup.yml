@@ -2,7 +2,7 @@
 # tools/web_old_calendar.py from branch claude/project-thread-tq8ss2 (Darpan, 16 Nov 2026: "legacy is the tab that is
 # called legacy"). Only the pages' own files are swapped in the browser. Runs only on the mockup branch, never deploys.
 name: Legacy festivals mockup
-# run 2: stricter festival pairs
+# run 3: festival named in each caption
 on:
   push:
     branches: [claude/project-thread-eawr12-mockup]
