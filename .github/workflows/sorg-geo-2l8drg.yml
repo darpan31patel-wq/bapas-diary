@@ -1,6 +1,6 @@
 # Website only (bapas-diary.com): finds the old BAPS website's towns on the map again (sorg-geo.json in release
 # swaminarayan-org-web, read by the website build for Travels). One small job, run when this file is pushed.
-# 16 Nov 2026: Matar was put at Mataro in Spain; towns far from every town around them are now left out.
+# 16 Nov 2026: Matar was put at Mataro in Spain, Ashton and Stansted abroad; towns far from every town around them are now left out.
 name: sorg-geo
 on:
   push:
