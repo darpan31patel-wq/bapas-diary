@@ -8,6 +8,7 @@
 # Round 1: 15 Nov 2026 10:30 UTC: akshardham.com, na.baps.org, research.baps.org, bapscharities.org, kids.baps.org.
 # Round 2, 15 Nov 17:50 UTC: the same, carrying on (research.baps.org was cut off handing over; copying now stops
 # after 3h and anything saved but not in Drive is fetched again), then londonmandir.baps.org.
+# Round 3, 16 Nov 01:10 UTC: all sites at once, each on its own machine.
 name: other-sites
 on:
   push:
@@ -20,7 +21,7 @@ concurrency:
 jobs:
   copy:
     strategy:
-      max-parallel: 1     # one site at a time, one gentle reader set
+      max-parallel: 6     # every site on its own machine at once (Darpan, 16 Nov: "more machines ... Faster"); each site still gets only one gentle reader set
       fail-fast: false
       matrix:
         include:
