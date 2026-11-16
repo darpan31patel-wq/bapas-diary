@@ -1,0 +1,138 @@
+# Pictures of the live Travels, Legacy (Then and now) and Search pages with the festivals of 1970 to 2009 added by
+# tools/web_old_calendar.py from branch claude/project-thread-tq8ss2 (Darpan, 16 Nov 2026: "legacy is the tab that is
+# called legacy"). Only the pages' own files are swapped in the browser. Runs only on the mockup branch, never deploys.
+name: Legacy festivals mockup
+on:
+  push:
+    branches: [claude/project-thread-eawr12-mockup]
+    paths: [.github/workflows/legacy-fest-mockup.yml]
+permissions:
+  contents: write
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SITE: https://bapas-diary.com
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/project-thread-tq8ss2
+      - run: pip -q install playwright pillow && python3 -m playwright install --with-deps chromium >/dev/null
+      - name: Build the changed pages from the live ones
+        run: |
+          mkdir -p shots out/travels out/then-and-now out/data/fest
+          UA='Mozilla/5.0'
+          curl -fsS -A "$UA" $SITE/travels/ -o out/travels/index.html
+          curl -fsS -A "$UA" $SITE/then-and-now/ -o out/then-and-now/index.html
+          curl -fsS -A "$UA" $SITE/then-and-now/more.json -o out/then-and-now/more.json || echo '[]' > out/then-and-now/more.json
+          curl -fsS -A "$UA" $SITE/search/ -o search.html
+          for k in $(python3 -c "import sys; sys.path.insert(0,'tools'); import web_festival as W; print(' '.join(W.FESTS))"); do
+            curl -fsS -A "$UA" $SITE/data/fest/$k.json -o out/data/fest/$k.json || rm -f out/data/fest/$k.json
+          done
+          ls out/data/fest
+          gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
+          python3 tools/old_calendar.py add --db bapas.db
+          gh release download deep-tags -p deep-tags.json
+          cp out/travels/index.html travels-before.html; cp out/then-and-now/index.html legacy-before.html
+          python3 tools/web_old_calendar.py --db bapas.db --fest out/data/fest --deep-tags deep-tags.json --out out | tee shots/log.txt
+          python3 - <<'PY'
+          import json
+          P = json.load(open('out/then-and-now/fest-pairs.json'))
+          with open('shots/pairs.txt', 'w') as f:
+              for p in P:
+                  f.write(f"{p['moment']}\n  PSM {p['psm']['date']} {p['psm']['place']} | {p['psm']['cap']} | {p['psm']['album']}/{p['psm']['file']}\n"
+                          f"  MSM {p['msm']['date']} {p['msm']['place']} | {p['msm']['cap']} | {p['msm']['album']}/{p['msm']['file']}\n")
+          PY
+          cat shots/pairs.txt
+      - name: Contact sheet of the festival pairs
+        run: |
+          python3 - <<'PY'
+          import json, io, urllib.request, urllib.parse
+          from PIL import Image, ImageDraw, ImageFont
+          P = json.load(open('out/then-and-now/fest-pairs.json'))
+          W, H, T = 420, 315, 70
+          sheet = Image.new('RGB', (2 * W + 30, max(1, len(P)) * (H + T)), (20, 16, 12))
+          dr = ImageDraw.Draw(sheet)
+          try: font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 15)
+          except Exception: font = ImageFont.load_default()
+          for i, p in enumerate(P):
+              y = i * (H + T)
+              for j, g in enumerate(('psm', 'msm')):
+                  s = p[g]; x = j * (W + 30)
+                  u = f"https://photos.bapas-diary.com/l/{s['album']}/{urllib.parse.quote(s['file'])}"
+                  try:
+                      im = Image.open(io.BytesIO(urllib.request.urlopen(urllib.request.Request(u, headers={'User-Agent': 'Mozilla/5.0'}), timeout=30).read())).convert('RGB')
+                      im.thumbnail((W, H)); sheet.paste(im, (x + (W - im.width) // 2, y + T))
+                  except Exception as e:
+                      dr.text((x + 10, y + T + 10), f'no photo {e}', fill=(200, 80, 80), font=font)
+                  dr.text((x + 4, y + 4), f"{p['moment']}  {s['date']}  {s['place']}", fill=(217, 169, 78), font=font)
+                  dr.text((x + 4, y + 26), (s['cap'] or '')[:58], fill=(230, 230, 230), font=font)
+          sheet.save('shots/fest-pairs-sheet.jpg', quality=84)
+          PY
+      - name: Pictures
+        run: |
+          python3 - <<'PY'
+          import json, re
+          from urllib.parse import urlparse
+          from playwright.sync_api import sync_playwright
+          log = open('shots/log.txt', 'a')
+          OLD_SEARCH = open('search.html', encoding='utf-8').read()
+          NEW_SEARCH = OLD_SEARCH
+          ask = open('site/search-ask.js', encoding='utf-8').read()
+          a = "`The BAPS calendar in the diary runs from 2010 to 2027, and the main festivals are worked out back to ${OLD_FEST_FROM}.`"
+          b = re.search(r"`The BAPS calendar in the diary runs from 2010 to 2027, and from 1970.*?`", ask).group(0)
+          NEW_SEARCH = NEW_SEARCH.replace(a, b).replace("const early = found.some(x => !cal[x.d]);", "const early = found.some(x => x.d < '2010');")
+          log.write(f'search patched: {NEW_SEARCH != OLD_SEARCH}\n')
+          FILES = {'/travels/': ('out/travels/index.html', 'text/html'), '/travels/index.html': ('out/travels/index.html', 'text/html'),
+                   '/travels/fests.json': ('out/travels/fests.json', 'application/json'),
+                   '/then-and-now/': ('out/then-and-now/index.html', 'text/html'), '/then-and-now/index.html': ('out/then-and-now/index.html', 'text/html'),
+                   '/then-and-now/cal.json': ('out/then-and-now/cal.json', 'application/json'),
+                   '/then-and-now/fest-pairs.json': ('out/then-and-now/fest-pairs.json', 'application/json')}
+          def ours(route):
+              path = urlparse(route.request.url).path
+              if path in ('/search/', '/search/index.html'):
+                  return route.fulfill(status=200, content_type='text/html', body=NEW_SEARCH)
+              f, t = FILES[path]
+              route.fulfill(status=200, content_type=t, body=open(f, 'rb').read())
+          def wanted(u):
+              p = urlparse(u)
+              return p.netloc == 'bapas-diary.com' and (p.path in FILES or p.path in ('/search/', '/search/index.html'))
+          S = 'https://bapas-diary.com'
+          SHOTS = [('travels', S + '/travels/#2004-08-25', None), ('travels', S + '/travels/#2002-11-04', None),
+                   ('travels', S + '/travels/#2005-07-25', None),
+                   ('legacy', S + '/then-and-now/', None), ('legacy', S + '/then-and-now/', '#diwali'),
+                   ('legacy', S + '/then-and-now/', '#janmashtami'), ('legacy', S + '/then-and-now/', '#guru-purnima'),
+                   ('search', S + '/search/#q=Diwali', None)]
+          with sync_playwright() as p:
+              b = p.chromium.launch()
+              for w, h, dpr, tag in [(1600, 1000, 1, 'computer'), (390, 844, 2, 'phone')]:
+                  for n, (page, url, later) in enumerate(SHOTS):
+                      ctx = b.new_context(viewport={'width': w, 'height': h}, device_scale_factor=dpr, is_mobile=tag == 'phone', has_touch=tag == 'phone')
+                      ctx.route(wanted, ours)
+                      pg = ctx.new_page()
+                      pg.on('pageerror', lambda e, t=tag, u=url: log.write(f'{t} {u} pageerror: {e}\n'))
+                      try: pg.goto(url, wait_until='networkidle', timeout=45000)
+                      except Exception as e: log.write(f'goto {url} {e.__class__.__name__}\n')
+                      pg.wait_for_timeout(7000)
+                      if later:
+                          pg.evaluate("h => { location.hash = h; }", later); pg.wait_for_timeout(6000)
+                      name = f"shots/{tag}-{n}-{page}"
+                      try:
+                          if page == 'legacy':
+                              log.write(f"{name}: {pg.evaluate('() => document.body.innerText.slice(0, 600)')!r}\n")
+                          if page == 'travels':
+                              log.write(f"{name}: stayfest={pg.evaluate('() => (document.getElementById(\"stayfest\") || {}).textContent')!r}\n")
+                          pg.screenshot(path=name + '.jpg', type='jpeg', quality=86, timeout=60000)
+                      except Exception as e: log.write(f'{name} {e.__class__.__name__} {e}\n')
+                      ctx.close()
+              b.close()
+          log.close()
+          PY
+          cat shots/log.txt; ls -la shots
+      - name: Keep them
+        if: always()
+        run: |
+          gh release delete legacy-fest-mockup -y --cleanup-tag -R "$GITHUB_REPOSITORY" 2>/dev/null || true
+          gh release create legacy-fest-mockup shots/* -R "$GITHUB_REPOSITORY" --title "Legacy festivals mockup pictures" --notes "Mockup pictures only, not part of the website" --target "$GITHUB_SHA"
