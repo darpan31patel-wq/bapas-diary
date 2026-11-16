@@ -6,7 +6,9 @@ Darpan's Chrome on 19 Oct 2026 (id, posted, photos, videos, files, forwarded_fro
 telegram/lines.json: per story (key 'YYYY-MM-DD#n') the short words written for it: line, place, card, whatsapp,
 special, headline.
 
-    python tools/telegram.py            # rebuilds telegram/events.json
+    python tools/telegram.py            # rebuilds telegram/events.json, lists stories without lines in new-stories.json
+
+The copies are refreshed on GitHub (.github/workflows/telegram-refresh.yml): Telegram refuses Claude's own machines.
 """
 import collections, json, os, re
 from datetime import datetime
@@ -62,7 +64,7 @@ def main():
     by = collections.defaultdict(list)
     for s in S:
         by[s['date']].append(s)
-    events = []
+    events, new = [], []
     for d, v in sorted(by.items(), key=lambda kv: kv[0][5:] + kv[0][:4]):
         groups = {}
         for s in v:   # the same story reposted each year, grouped by its opening words (as lines.json was written)
@@ -70,7 +72,10 @@ def main():
             groups.setdefault(re.sub(r'\W+', '', ' '.join(b.split('\n')[2:6]).lower())[:60], []).append(s)
         for n, g in enumerate(groups.values()):
             w = lines.get(f'{d}#{n}')
-            if not w:
+            if not w:   # a story lines.json has no words for yet (new since the last refresh): listed for a thread to write
+                longest = max(g, key=lambda s: len(s['text']))
+                new.append(dict(key=f'{d}#{n}', date=d, text=longest['text'], posts=sorted({p for s in g for p in s['posts']}),
+                                url=f'https://t.me/TodayinBAPShistory/{longest["posts"][0]}'))
                 continue
             video = next((l for s in g for l in s['links'] if 'youtu' in l), None)
             longest = max(g, key=lambda s: len(s['text']))
@@ -83,6 +88,8 @@ def main():
                                story=body(longest['text']), video=re.sub(r'[?&](?!v=)[^&]*', '', video).replace('&', '?') if video else None,
                                url=f'https://t.me/TodayinBAPShistory/{pick["posts"][0]}'))
     json.dump(events, open(os.path.join(HERE, 'events.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    json.dump(new, open(os.path.join(HERE, 'new-stories.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    print(len(new), 'new stories still need lines in lines.json (telegram/new-stories.json)')
     print(len(events), 'stories on', len({e['date'][5:] for e in events}), 'days;',
           sum(e['special'] for e in events), 'special,', sum(bool(e['card']) and not e['guru'] for e in events), 'with Bapa,',
           sum(e['guru'] for e in events), 'earlier gurus')
