@@ -2,7 +2,7 @@
 # tools/web_old_calendar.py from branch claude/project-thread-tq8ss2 (Darpan, 16 Nov 2026: "legacy is the tab that is
 # called legacy"). Only the pages' own files are swapped in the browser. Runs only on the mockup branch, never deploys.
 name: Legacy festivals mockup
-# run 7: wait for the fade to finish
+# run 8: hold each pair still for its picture
 on:
   push:
     branches: [claude/project-thread-eawr12-mockup]
@@ -116,9 +116,10 @@ jobs:
                       pg.on('pageerror', lambda e, t=tag, u=url: log.write(f'{t} {u} pageerror: {e}\n'))
                       try: pg.goto(url, wait_until='networkidle', timeout=45000)
                       except Exception as e: log.write(f'goto {url} {e.__class__.__name__}\n')
+                      if page == 'legacy': pg.evaluate("() => setInterval(() => { try { clearTimeout(idle); } catch (e) {} }, 100)")
                       pg.wait_for_timeout(7000)
                       if later:
-                          pg.evaluate("h => { location.hash = h; }", later); pg.wait_for_timeout(15000)
+                          pg.evaluate("h => { setInterval(() => { try { clearTimeout(idle); } catch (e) {} }, 100); location.hash = h; }", later); pg.wait_for_timeout(8000)
                       name = f"shots/{tag}-{n}-{page}"
                       try:
                           if page == 'legacy':
