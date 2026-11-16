@@ -26,6 +26,13 @@ ALIASES = {'amdavad': 'ahmedabad', 'ahmadabad': 'ahmedabad', 'vadodara': 'vadoda
            'kolkatta': 'kolkata', 'junagad': 'junagadh', 'vidynagar': 'vallabh vidyanagar', 'secundrabad': 'secunderabad',
            'bhuvaneshwar': 'bhubaneswar', 'valbhipur': 'vallabhipur', 'mt abu': 'mount abu', 'l a': 'los angeles', 'atladara': 'atladra',
            'paaliyaad': 'paliyad', 'jagannathpuri': 'puri', 'vartal': 'vadtal', 'dhuliya': 'dhule'}
+# towns GeoNames puts somewhere else or does not have (its list has places of 500 people or more): Matar is Matar in
+# Kheda, not Mataro in Spain (found by the Jivan Charitra thread, 16 Nov 2026); Dumas is the seaside by Surat
+KNOWN = {'matar': dict(name='Matar', country='India', ll=[72.67, 22.71]),
+         'dumas': dict(name='Dumas', country='India', ll=[72.71, 21.08]),
+         'dummas': dict(name='Dumas', country='India', ll=[72.71, 21.08])}
+NOT_A_TOWN = {'egypt', 'fl', 'dar es', 'india', 'usa', 'uk', 'africa', 'america', 'europe'}
+FAR = 1500   # km: a town this far from every town around it in the reports is the wrong town of that name
 COUNTRY = {'IN': 'India', 'GB': 'UK', 'US': 'USA', 'KE': 'Kenya', 'TZ': 'Tanzania', 'UG': 'Uganda', 'CA': 'Canada',
            'AE': 'UAE', 'BH': 'Bahrain', 'KW': 'Kuwait', 'OM': 'Oman', 'AU': 'Australia', 'NZ': 'New Zealand',
            'ZA': 'South Africa', 'ZM': 'Zambia', 'MW': 'Malawi', 'SG': 'Singapore', 'MY': 'Malaysia', 'HK': 'Hong Kong',
@@ -64,14 +71,23 @@ def geo(a):
             f = line.rstrip('\n').split('\t')
             if len(f) < 15 or f[6] != 'P':
                 continue
+            own = {key(f[1]), key(f[2])}
             for n in {f[1], f[2]} | set(f[3].split(',')):
                 k = key(n)
                 if k in want:
                     cand[k].append(dict(name=f[1], country=COUNTRY.get(f[8], f[8]), ll=[round(float(f[5]), 2), round(float(f[4]), 2)],
-                                        pop=int(f[14] or 0), id=f[0], cc=f[8], adm=f[10]))
+                                        pop=int(f[14] or 0), id=f[0], cc=f[8], adm=f[10], own=k in own))
+    for k in cand:   # a town's own name beats another town's old or foreign spelling (Jacksonville is not Red Creek)
+        if any(c['own'] for c in cand[k]):
+            cand[k] = [c for c in cand[k] if c['own']]
     # each day's towns in order, to choose between two towns of the same name by the towns around them
     order = [key(p) for d in sorted(days) for p in days[d]['pl']]
     found = dict(have)
+    for k, v in KNOWN.items():
+        if k in want:
+            found[k] = dict(v, **{'from': 'known'})
+    for k in NOT_A_TOWN:
+        cand.pop(k, None)
     for _ in range(3):   # names with one town first, then the rest by their neighbours
         for i, k in enumerate(order):
             if k in found or k not in cand:
@@ -88,6 +104,8 @@ def geo(a):
                 c = max(cs, key=lambda c: c['pop'])
             else:
                 continue
+            if near and min(km(c['ll'], n) for n in near) > FAR:
+                continue   # Mataro in Spain between Nadiad and Anand: leave it out rather than guess
             found[k] = dict(name=c['name'], country=c['country'], ll=c['ll'], **{'from': f"geonames {c['id']}"})
     out, lost = {}, []
     for n in names:
@@ -97,6 +115,9 @@ def geo(a):
         else:
             lost.append(n)
     json.dump(out, open(a.out, 'w', encoding='utf-8'), ensure_ascii=False, indent=0)
+    for n, v in sorted(out.items()):
+        if v['country'] != 'India':
+            print(f'  outside India: {n} -> {v["name"]}, {v["country"]} ({v["from"]})')
     print(f'towns on the map: {len(out)} of {len(names)}; not found ({len(lost)}): {", ".join(lost)}')
 
 
