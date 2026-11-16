@@ -58,8 +58,8 @@ def inject(path, pairs, what):
 
 
 TRAVELS_CSS = ('\n/* the festivals during a stay, under its dates (Darpan, 14 Nov 2026) */\n'
-               '.stayfest { margin-top: 6px; color: var(--gold, #d9a94e); font-style: italic; font-size: 15px; letter-spacing: .01em; }\n'
-               '.stayfest:empty { display: none; }\n')
+               '.story .stayfest { margin-top: 6px; color: var(--gold, #d9a94e); font-style: italic; font-size: 15px; letter-spacing: .01em; }\n'
+               '.story .stayfest:empty { display: none; }\n')
 TRAVELS_JS = ('\n// the festivals during each stay (tools/web_old_calendar.py, Darpan, 14 Nov 2026)\n'
               'let FESTS = {}, STAYNOW = null; fetch(\'fests.json\').then(r => r.ok ? r.json() : {}).then(f => { FESTS = f;\n'
               '  if (STAYNOW) document.getElementById(\'stayfest\').textContent = stayFests(STAYNOW); }).catch(() => {});\n'
@@ -78,8 +78,8 @@ def travels(a, cal):
     with open(os.path.join(a.out, 'travels', 'fests.json'), 'w', encoding='utf-8') as fh:
         json.dump(days, fh, ensure_ascii=False, separators=(',', ':'))
     ok = inject(page, [
-        ('</style>', TRAVELS_CSS),
-        ('<span class="dates" id="dates"></span></div>', '<div class="stayfest" id="stayfest"></div>'),
+        ('<style>', TRAVELS_CSS),   # at the top of the first style block
+        ('Video Darshan</a></span></div>', '\n  <div class="stayfest" id="stayfest"></div>'),
         ("$('dates').textContent = fmtRange(tgt.a, tgt.b);", " STAYNOW = tgt; $('stayfest').textContent = stayFests(tgt);"),
         ('<script>', TRAVELS_JS),
     ], 'travels')
