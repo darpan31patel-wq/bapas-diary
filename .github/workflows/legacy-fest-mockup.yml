@@ -2,7 +2,7 @@
 # tools/web_old_calendar.py from branch claude/project-thread-tq8ss2 (Darpan, 16 Nov 2026: "legacy is the tab that is
 # called legacy"). Only the pages' own files are swapped in the browser. Runs only on the mockup branch, never deploys.
 name: Legacy festivals mockup
-# run 3: festival named in each caption
+# run 4: early photos
 on:
   push:
     branches: [claude/project-thread-eawr12-mockup]
@@ -62,7 +62,7 @@ jobs:
               y = i * (H + T)
               for j, g in enumerate(('psm', 'msm')):
                   s = p[g]; x = j * (W + 30)
-                  u = f"https://photos.bapas-diary.com/l/{s['album']}/{urllib.parse.quote(s['file'])}"
+                  u = f"https://photos.bapas-diary.com/{s['t']}/{s['album']}/{urllib.parse.quote(s['file'])}"
                   try:
                       im = Image.open(io.BytesIO(urllib.request.urlopen(urllib.request.Request(u, headers={'User-Agent': 'Mozilla/5.0'}), timeout=30).read())).convert('RGB')
                       im.thumbnail((W, H)); sheet.paste(im, (x + (W - im.width) // 2, y + T))
