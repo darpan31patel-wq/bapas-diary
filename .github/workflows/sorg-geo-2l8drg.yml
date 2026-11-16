@@ -1,0 +1,33 @@
+# Website only (bapas-diary.com): finds the old BAPS website's towns on the map again (sorg-geo.json in release
+# swaminarayan-org-web, read by the website build for Travels). One small job, run when this file is pushed.
+# 16 Nov 2026: Matar was put at Mataro in Spain; towns far from every town around them are now left out.
+name: sorg-geo
+on:
+  push:
+    branches: ['claude/project-thread-2l8drg']
+    paths: ['.github/workflows/sorg-geo-2l8drg.yml']
+permissions:
+  contents: write
+jobs:
+  geo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Towns on the map
+        run: |
+          gh release download swaminarayan-org-web -p sorg-days.json -p sorg-geo.json
+          mv sorg-geo.json old-geo.json
+          curl -sSfL https://download.geonames.org/export/dump/cities500.zip -o cities500.zip && unzip -oq cities500.zip
+          python3 tools/sorg_travels.py geo --days sorg-days.json --travels live/travels/index.html --geonames cities500.txt --out sorg-geo.json
+          python3 - <<'PY'
+          import json
+          a, b = json.load(open('old-geo.json')), json.load(open('sorg-geo.json'))
+          for n in sorted(set(a) | set(b)):
+              x, y = a.get(n), b.get(n)
+              if (x and x['ll']) != (y and y['ll']):
+                  print('changed:', n, (x or {}).get('name'), (x or {}).get('country'), '->', (y or {}).get('name'), (y or {}).get('country'))
+          PY
+          gh release upload swaminarayan-org-web sorg-geo.json --clobber
