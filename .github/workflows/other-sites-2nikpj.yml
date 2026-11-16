@@ -8,7 +8,11 @@
 # Round 1: 15 Nov 2026 10:30 UTC: akshardham.com, na.baps.org, research.baps.org, bapscharities.org, kids.baps.org.
 # Round 2, 15 Nov 17:50 UTC: the same, carrying on (research.baps.org was cut off handing over; copying now stops
 # after 3h and anything saved but not in Drive is fetched again), then londonmandir.baps.org.
-# Round 3, 16 Nov 01:10 UTC: all sites at once, each on its own machine.
+# Round 3, 16 Nov 01:10 UTC: all sites at once, each on its own machine. akshardham.com, na.baps.org (first page
+# only, the site builds itself in the browser), bapscharities.org and kids.baps.org finished.
+# Round 4, 16 Nov 08:05 UTC: only the two with work left (research.baps.org about 137,000 addresses, londonmandir
+# about 1,500). More time copying: pages are no longer pulled back from Drive first, and the lists are rebuilt only
+# when a site is finished (or a commit message says [lists]), which took most of round 3's time.
 name: other-sites
 on:
   push:
@@ -25,11 +29,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { site: akshardham.com, base: 'https://akshardham.com/', key: akshardham-com }
-          - { site: na.baps.org, base: 'https://na.baps.org/', key: na-baps-org }
           - { site: research.baps.org, base: 'https://research.baps.org/', key: research-baps-org }
-          - { site: bapscharities.org, base: 'https://bapscharities.org/', key: bapscharities-org }
-          - { site: kids.baps.org, base: 'https://kids.baps.org/', key: kids-baps-org }
           # Neasden's own site: copied from here only if it answers normally (no check page, no 403), else it stops at
           # once and is left to the News crawl thread for his Chrome (agreed 15 Nov 2026)
           - { site: londonmandir.baps.org, base: 'https://londonmandir.baps.org/', key: londonmandir-baps-org }
@@ -61,12 +61,11 @@ jobs:
           mkdir -p state
           rclone copy "$REMOTE/_state" state 2>/dev/null || true
           ls -la state
-          # what is already in Drive: photos are skipped, pages are read from this copy instead of the site
+          # what is already in Drive: those files are not fetched again
           rclone lsf -R --files-only "$REMOTE" --filter "- _state/**" --filter "- _index/**" > have.txt || : > have.txt
-          rclone copy "$REMOTE" pages --filter "- _state/**" --filter "- _index/**" --filter "+ *.{htm,html,HTM,HTML}" \
-            --filter "+ *.php*" --filter "- *" --transfers 16 --checkers 16 --stats 0 || true
+          mkdir -p pages
           wc -l have.txt
-      - name: Copy (stops by itself 3h after starting, by 03:30 UTC at the latest, or when everything is in)
+      - name: Copy (stops by itself 3h50 after starting, by 03:30 UTC at the latest, or when everything is in)
         if: ${{ !contains(github.event.head_commit.message, '[lists only]') }}
         run: |
           # every 20 minutes the new files move to Drive, so the runner's disk never fills
@@ -74,8 +73,8 @@ jobs:
           ( while sleep 600; do [ -d work/files ] && rclone move work/files "$REMOTE" --transfers 16 --checkers 16 \
               --min-age 30s --stats 0 2>&1 | tail -2; rclone copy state "$REMOTE/_state" --stats 0 2>&1 | tail -1; done ) &
           mover=$!
-          # stop 3h after starting (the job's own limit is 6h; handing the last files to Drive can take over an hour) and never after 03:30 UTC
-          stop=$(date -u -d '+180 minutes' +%H:%M); now=$(date -u +%H%M); s=${stop/:/}
+          # stop 3h50 after starting (the job's own limit is 6h; handing the last files to Drive can take over an hour) and never after 03:30 UTC
+          stop=$(date -u -d '+230 minutes' +%H:%M); now=$(date -u +%H%M); s=${stop/:/}
           if [ $((10#$s)) -gt 330 ] && { [ $((10#$now)) -lt 330 ] || [ $((10#$s)) -lt $((10#$now)) ]; }; then stop=03:30; fi
           echo "stopping at $stop UTC"
           # the site's own sitemaps are the starting list (one level of sitemap index followed)
@@ -92,12 +91,17 @@ jobs:
         if: always()
         run: |
           rclone copy state "$REMOTE/_state" --stats 0
-          [ -d work/files ] && timeout 110m rclone move work/files "$REMOTE" --transfers 16 --checkers 16 --stats-one-line --stats 0 || true
+          [ -d work/files ] && timeout 100m rclone move work/files "$REMOTE" --transfers 16 --checkers 16 --stats-one-line --stats 0 || true
           rclone copy state "$REMOTE/_state" --stats 0
       - name: Full detail for every page and photo
         if: always()
+        env:
+          MSG: ${{ github.event.head_commit.message }}
         run: |
-          # every saved page back from Drive (pages only, small; most are here already), then the lists rebuilt
+          # only once the site is finished (or the commit message says [lists]): rebuilding takes hours on a big site
+          if ! grep -q '"finished": true' state/last-run.json && ! echo "$MSG" | grep -q '\[lists\]'; then
+            echo "not finished yet: the lists wait for the last round"; rclone copy state "$REMOTE/_state" --stats 0; exit 0; fi
+          # every saved page back from Drive (pages only), then the lists rebuilt
           rclone copy "$REMOTE" pages --filter "- _state/**" --filter "- _index/**" --filter "+ *.{htm,html,HTM,HTML}" \
             --filter "+ *.php*" --filter "- *" --transfers 16 --checkers 16 --stats 0
           python3 -I tools/sites_index.py --site ${{ matrix.site }} --base ${{ matrix.base }} --folders --files pages --headers state/files.jsonl --out idx
