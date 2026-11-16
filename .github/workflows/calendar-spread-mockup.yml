@@ -1,0 +1,77 @@
+# Pictures of the live Calendar with each day of an album with a range of dates showing its own photo of Bapa
+# (Darpan, 16 Nov 2026: Navsari December 2001 showed one photo on six squares). The live page, with only its
+# /data/calendar.json patched from tools/mockups/calendar-spread-days.json. Runs only on the mockup branch, never deploys.
+name: Calendar spread mockup
+on:
+  push:
+    branches: [claude/project-thread-eawr12-mockup]
+    paths: [.github/workflows/calendar-spread-mockup.yml]
+permissions:
+  contents: write
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip -q install playwright && python3 -m playwright install --with-deps chromium >/dev/null
+      - name: Pictures
+        run: |
+          mkdir -p shots
+          python3 - <<'PY'
+          import json, urllib.request
+          from urllib.parse import urlparse
+          from playwright.sync_api import sync_playwright
+          P = json.load(open('tools/mockups/calendar-spread-days.json', encoding='utf-8'))
+          log = open('shots/log.txt', 'w')
+          CAL = json.loads(urllib.request.urlopen(urllib.request.Request('https://bapas-diary.com/data/calendar.json', headers={'User-Agent': 'Mozilla/5.0'})).read())
+          F = CAL.setdefault('f', {})
+          n = skip = 0
+          for d, x in P.items():
+              rows = CAL['m'].get(d[:7])
+              if not rows or len(rows) < int(d[8:]):
+                  skip += 1; continue
+              row = rows[int(d[8:]) - 1]
+              was = row[4:6] if len(row) > 5 else None
+              if was != x['was']:
+                  skip += 1; log.write(f'skip {d}: live {was} expected {x["was"]}\n'); continue
+              rows[int(d[8:]) - 1] = row[:4] + (x['now'] or [])
+              if x.get('f') and x['now']:
+                  F[f"{x['now'][0]}/{x['now'][1]}"] = x['f']
+              n += 1
+          log.write(f'patched {n}, skipped {skip}\n')
+          NEW = json.dumps(CAL, ensure_ascii=False)
+          MONTHS = ['2001-12', '2004-12', '2000-11', '2003-08']
+          with sync_playwright() as p:
+              b = p.chromium.launch()
+              for w, h, dpr, tag in [(1600, 1000, 1, 'computer'), (390, 844, 2, 'phone')]:
+                  for ver in ['now', 'new']:
+                      for mo in MONTHS:
+                          ctx = b.new_context(viewport={'width': w, 'height': h}, device_scale_factor=dpr, is_mobile=tag == 'phone', has_touch=tag == 'phone')
+                          if ver == 'new':
+                              ctx.route(lambda u: urlparse(u).path == '/data/calendar.json',
+                                        lambda r: r.fulfill(status=200, content_type='application/json', body=NEW))
+                          pg = ctx.new_page()
+                          pg.on('pageerror', lambda e, t=tag, v=ver: log.write(f'{t} {v} pageerror: {e}\n'))
+                          try: pg.goto(f'https://bapas-diary.com/calendar/#{mo}', wait_until='networkidle', timeout=40000)
+                          except Exception as e: log.write(f'goto {e}\n')
+                          pg.wait_for_timeout(7000)
+                          name = f'shots/{tag}-{mo}-{ver}'
+                          try: pg.screenshot(path=name + '.jpg', type='jpeg', quality=86, timeout=60000)
+                          except Exception as e: log.write(f'{name} {e.__class__.__name__}\n')
+                          if tag == 'phone':   # the rest of the month further down
+                              pg.mouse.wheel(0, h * 0.8); pg.wait_for_timeout(3000)
+                              try: pg.screenshot(path=name + '-down.jpg', type='jpeg', quality=86, timeout=60000)
+                              except Exception as e: log.write(f'{name} down {e.__class__.__name__}\n')
+                          ctx.close()
+              b.close()
+          log.close()
+          PY
+          cat shots/log.txt | tail -40; ls -la shots
+      - name: Keep them
+        if: always()
+        run: |
+          gh release delete calendar-spread-mockup -y --cleanup-tag -R "$GITHUB_REPOSITORY" 2>/dev/null || true
+          gh release create calendar-spread-mockup shots/* -R "$GITHUB_REPOSITORY" --title "Calendar spread mockup pictures" --notes "Mockup pictures only, not part of the website" --target "$GITHUB_SHA"
