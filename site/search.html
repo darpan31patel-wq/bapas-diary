@@ -559,7 +559,7 @@ function readCount(nPhotos, nPosts, nReads) {
   const parts = [nPhotos && n(nPhotos, 'photo', 'photos'), nPosts && n(nPosts, 'On this day story', 'On this day stories'),
     k('vicharan') && n(k('vicharan'), 'day report', 'day reports'), k('prasang') && n(k('prasang'), 'prasang', 'prasangs'),
     k('story') && n(k('story'), 'Akshardham story', 'Akshardham stories'), k('essay') && n(k('essay'), 'essay', 'essays'),
-    k('lekhmala') && n(k('lekhmala'), 'lekhmala', 'lekhmala')].filter(Boolean);
+    k('lekhmala') && n(k('lekhmala'), 'lekhmala', 'lekhmala'), k('Jivan Charitra') && n(k('Jivan Charitra'), 'Jivan Charitra story', 'Jivan Charitra stories')].filter(Boolean);
   return parts.length > 1 ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1] : parts[0];
 }
 var latestShown = false;
@@ -629,7 +629,7 @@ function postCard(p, want, i) {
 }
 // a Daily Satsang prasang: its own title, the start of its words (English when translated, else the Gujarati), its day and place
 // the old BAPS website's day reports ("Vicharan") and prasangs, and akshardham.com's stories, join them (16 Nov 2026)
-const READ_KIND = { prasang: 'Prasang', essay: 'Essay', lekhmala: 'Lekhmala', vicharan: 'Vicharan', story: 'Akshardham' };
+const READ_KIND = { prasang: 'Prasang', essay: 'Essay', lekhmala: 'Lekhmala', vicharan: 'Vicharan', story: 'Akshardham', 'Jivan Charitra': 'Jivan Charitra' };
 const readLang = p => p.en.length && !(p.gu.length && window.BapaGujarati && BapaGujarati.on()) ? 'en' : 'gu';
 function readCard(p, want, i) {
   const words = p[readLang(p)].join('\n'), text = words.length > 600 ? words.slice(0, 600) + '…' : words;

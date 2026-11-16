@@ -82,6 +82,8 @@ def reports(folder):
         for y, items in json.load(open(os.path.join(folder, name), encoding='utf-8')).items():
             d = f'{y}-{name[:5]}'
             for r in items:
+                if r.get('k') in ('jc', 'm'):   # Jivan Charitra lines: tools/web_bio.py adds those to Search itself
+                    continue
                 w = [t for t in (r.get('w') or []) if t.strip()]
                 if not w:
                     continue
