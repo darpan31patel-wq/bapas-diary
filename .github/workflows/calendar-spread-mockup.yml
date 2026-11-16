@@ -1,7 +1,8 @@
 # Pictures of the live Calendar with each day of an album with a range of dates showing its own photo of Bapa
-# run 3: pictures kept as a run artifact
 # (Darpan, 16 Nov 2026: Navsari December 2001 showed one photo on six squares). The live page, with only its
 # /data/calendar.json patched from tools/mockups/calendar-spread-days.json. Runs only on this branch, never deploys.
+# Also Today's rope with close ups and photos of Bapa doing something taking turns (Darpan, 16 Nov 2026), the live page with
+# only tools/mockups/today-mix.json's changes. The pictures are committed to mockups/shots/ on this branch.
 name: Calendar spread mockup
 on:
   push:
@@ -68,13 +69,44 @@ jobs:
                               except Exception as e: log.write(f'{name} down {e.__class__.__name__}\n')
                           ctx.close()
               b.close()
+          PAIRS = json.load(open('tools/mockups/today-mix.json', encoding='utf-8'))
+          home = urllib.request.urlopen(urllib.request.Request('https://bapas-diary.com/', headers={'User-Agent': 'Mozilla/5.0'})).read().decode('utf-8')
+          for a, b2 in PAIRS:
+              log.write(f'today change found: {home.count(a)}\n')
+              home = home.replace(a, b2)
+          SEED = """(() => { let s = %d; Math.random = () => { s = (s * 16807) %% 2147483647; return (s - 1) / 2147483646; }; })()"""
+          with sync_playwright() as p:
+              b = p.chromium.launch()
+              for w, h, dpr, tag in [(1600, 1000, 1, 'computer'), (390, 844, 2, 'phone')]:
+                  for ver in ['now', 'new']:
+                      for day in ['11-16', '11-10']:
+                          for seed in (7, 11):
+                              ctx = b.new_context(viewport={'width': w, 'height': h}, device_scale_factor=dpr, is_mobile=tag == 'phone', has_touch=tag == 'phone')
+                              ctx.add_init_script(SEED % seed)
+                              if ver == 'new':
+                                  ctx.route(lambda u: urlparse(u).path in ('/', '/index.html'),
+                                            lambda r: r.fulfill(status=200, content_type='text/html; charset=utf-8', body=home))
+                              pg = ctx.new_page()
+                              pg.on('pageerror', lambda e, t=tag, v=ver: log.write(f'today {t} {v} pageerror: {e}\n'))
+                              try: pg.goto(f'https://bapas-diary.com/#{day}', wait_until='networkidle', timeout=40000)
+                              except Exception as e: log.write(f'goto {e}\n')
+                              pg.wait_for_timeout(5000)
+                              try: pg.evaluate("() => document.getElementById('cards').scrollIntoView({block: 'start'})")
+                              except Exception as e: log.write(f'scroll {e}\n')
+                              pg.wait_for_timeout(4000)
+                              name = f'shots/today-{tag}-{day}-s{seed}-{ver}'
+                              for k in range(3 if tag == 'phone' else 2):
+                                  try: pg.screenshot(path=f'{name}-{k}.jpg', type='jpeg', quality=82, timeout=60000)
+                                  except Exception as e: log.write(f'{name} {e.__class__.__name__}\n')
+                                  pg.mouse.wheel(0, h * 0.85); pg.wait_for_timeout(2500)
+                              ctx.close()
+              b.close()
           log.close()
           PY
           cat shots/log.txt | tail -40; ls -la shots
       - name: Keep them
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: calendar-spread-mockup
-          path: shots/
-          retention-days: 7
+        run: |
+          rm -rf mockups/shots && mkdir -p mockups/shots && cp shots/* mockups/shots/
+          git config user.name "github-actions[bot]" && git config user.email "41898341+github-actions[bot]@users.noreply.github.com"
+          git add mockups/shots && git commit -qm "Calendar spread and Today mix mockup pictures [skip ci]" && git push origin HEAD:${GITHUB_REF_NAME}
