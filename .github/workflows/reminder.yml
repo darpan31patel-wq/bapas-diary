@@ -2,7 +2,8 @@ name: Monthly reminder
 
 # On the 1st of every month GitHub opens an issue, which emails Darpan: time to refresh the saved copies of the
 # two Telegram channels (Today in BAPS History, Satpurush in UK & Europe) that the picture's older cards and the
-# 2pm caption stories come from. Nothing refreshes them automatically (Darpan, 22 Oct 2026).
+# 2pm caption stories come from. Nothing refreshes them automatically (Darpan, 22 Oct 2026). The refresh itself runs
+# on GitHub (telegram-refresh.yml) because Telegram refuses Claude's own machines.
 
 on:
   schedule:

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Darpan, 9 Nov 2026 (after GitHub suspended his account for three days): "I never ever want to be in a situation where
 # I'm reliant on one thing." One gentle nightly run that puts a copy of every part of Bapa's Diary in a second company:
-#   code      -> GitLab (every branch, every night, only what changed) and a full git bundle on Sundays to Drive + R2
+#   code      -> GitLab (code branches only, every night, only what changed) and a full git bundle on Sundays to Drive + R2
 #   database  -> bapas.db (photos, days, News articles) to Google Drive and the private R2 bucket bapas-diary-backups
 #   Studio    -> the Studio changes log and the missed searches / feedback (read through the website) to Drive
 #   Studio packs -> the Studio's days, months and special pictures to photos.bapas-diary.com/studio/ (R2) and Drive
@@ -55,7 +55,7 @@ if git -C mirror.git fetch -q --prune origin '+refs/heads/*:refs/heads/*' '+refs
   echo "$(git -C mirror.git for-each-ref | wc -l) branches and tags"
   if [ -n "${GITLAB_TOKEN:-}" ]; then
     # Darpan only makes the account and one token; this finds his name, makes the private project bapas-diary the
-    # first time, copies every branch, and keeps the Cloudflare keys the emergency deploy (.gitlab-ci.yml) needs in it
+    # first time, copies the code branches, and keeps the Cloudflare keys the emergency deploy (.gitlab-ci.yml) needs in it
     echo "::add-mask::$GITLAB_TOKEN"
     gl() { curl -s -H "PRIVATE-TOKEN: $GITLAB_TOKEN" "$@"; }
     GLAPI=https://gitlab.com/api/v4
@@ -68,8 +68,31 @@ if git -C mirror.git fetch -q --prune origin '+refs/heads/*:refs/heads/*' '+refs
         gl -X POST "$GLAPI/projects" --data-urlencode "path=${REPO#*/}" --data-urlencode "name=Bapas Diary" \
           -d visibility=private -d initialize_with_readme=false | jq -c '{made: .path_with_namespace, error: .message}'
       GL="https://oauth2:$GITLAB_TOKEN@gitlab.com/$REPO.git"
-      if git -C mirror.git push -q --prune "$GL" '+refs/heads/*:refs/heads/*' '+refs/tags/*:refs/tags/*' 2>&1 | sed "s#$GITLAB_TOKEN#***#g"; [ "${PIPESTATUS[0]}" = 0 ]; then
-        echo "GitLab copy up to date: gitlab.com/$REPO"
+      # Darpan, 16 Nov 2026 ("yes"): GitLab gets the CODE only. The free project filled up on 15 Nov because some branches
+      # carry big photo packs (studio, database...). Any branch whose own files add more than 50 MB on top of main is
+      # left out (those files are already in Drive + R2 above, and in the Sunday bundle); it is also removed from GitLab.
+      SKIP=(); REFS=('+refs/heads/main:refs/heads/main' '+refs/tags/*:refs/tags/*')
+      while read -r b; do
+        [ "$b" = main ] && continue
+        size=$(git -C mirror.git rev-list --objects --disk-usage "refs/heads/$b" --not refs/heads/main 2>/dev/null || echo 0)
+        if [ "${size:-0}" -gt 52428800 ]; then SKIP+=("$b"); echo "  not to GitLab (photo packs, $((size / 1048576)) MB): $b"
+        else REFS+=("+refs/heads/$b:refs/heads/$b"); fi
+      done < <(git -C mirror.git for-each-ref --format='%(refname:lstrip=2)' refs/heads)
+      gl_push() { git -C mirror.git push -q "$GL" "$@" 2>&1 | sed "s#$GITLAB_TOKEN#***#g"; return "${PIPESTATUS[0]}"; }
+      # branches gone from GitHub, and the big ones, are removed from GitLab first so the space can be freed
+      GONE=()
+      while read -r b; do
+        [ -n "$b" ] || continue
+        git -C mirror.git show-ref -q --verify "refs/heads/$b" && ! printf '%s\n' "${SKIP[@]}" | grep -qxF "$b" && continue
+        GONE+=(":refs/heads/$b")
+      done < <(git -C mirror.git ls-remote --heads "$GL" 2>/dev/null | sed 's#.*refs/heads/##')
+      if [ ${#GONE[@]} -gt 0 ]; then
+        gl_push "${GONE[@]}" && echo "  removed ${#GONE[@]} branches from GitLab" || problem "Could not remove big branches from GitLab"
+        PID=$(gl "$GLAPI/projects/$ENC" | jq -r '.id // empty')
+        [ -n "$PID" ] && gl -o /dev/null -X POST "$GLAPI/projects/$PID/housekeeping?task=prune" -w '  GitLab clean up asked: %{http_code}\n'
+      fi
+      if gl_push "${REFS[@]}"; then
+        echo "GitLab copy up to date (code only, ${#SKIP[@]} photo pack branches left out): gitlab.com/$REPO"
       else problem "GitLab copy failed"; fi
       for v in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do   # kept masked in GitLab, never printed
         gl -o /dev/null -X PUT "$GLAPI/projects/$ENC/variables/$v" --data-urlencode "value=${!v}" -d masked=true -d raw=true \
