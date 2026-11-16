@@ -521,7 +521,7 @@
       const hit = ds.filter(d => Q.years.includes(+d.slice(0, 4)));
       if (hit.length === 1) return dateAnswer(Q, hit[0], `${Q.fest} ${hit[0].slice(0, 4)} (${fmt(hit[0], true)})`, gd(`${fGu} ${hit[0].slice(0, 4)} (${fmtGu(hit[0], true)})`));
       if (!hit.length) return { html: card(Q, `The diary does not have the date of ${esc(Q.fest)} in ${andList(Q.years.map(String))}.`, '',
-        [`The BAPS calendar in the diary runs from 2010 to 2027, and the main festivals are worked out back to ${OLD_FEST_FROM}.`, '']), keep: () => false };
+        [`The BAPS calendar in the diary runs from 2010 to 2027, and from 1970 to 2009 the festivals are worked out from the moon and the sun; older festivals back to ${OLD_FEST_FROM}.`, '']), keep: () => false };
       ds = hit;
     }
     ds = ds.filter(d => d <= TODAY);
@@ -542,7 +542,7 @@
     const days = bapaDays();
     const list = found.slice().reverse().map(x => ({ ...x.w.s, a: x.d, b: x.d, n: days[x.d] || 0, cap: `${Q.fest}, ${fmt(x.d)}` }));
     const dates = new Set(found.map(x => x.d));
-    const early = found.some(x => !cal[x.d]);
+    const early = found.some(x => x.d < '2010');   // 1970 to 2009 worked out (tools/old_calendar.py), older ones from OLD_FEST
     return { html: card(Q, en, gu, [`Every year from the BAPS calendar${early ? ' (before 2010, worked out from the Hindu calendar)' : ''}, with where Bapa was that day.`, 'BAPS કેલેન્ડરનું દરેક વર્ષ, અને તે દિવસે બાપા ક્યાં હતા.'],
       gurus({ P: gv('P'), M: gv('M') }, { P: gvGu('P'), M: gvGu('M') }) + rows(list, `${Q.fest}, year by year`, `${fGu}, વર્ષે વર્ષે`) + below(list.reduce((n, s) => n + s.n, 0))),
       keep: r => coversAny(r, dates) && bapaOnly(r) };
