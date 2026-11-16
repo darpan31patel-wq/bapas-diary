@@ -117,7 +117,7 @@ jobs:
           draw = ImageDraw.Draw(out)
           draw.text((30, 16), f'{d}  BEFORE: the picture as main makes it today', font=font, fill=(240, 220, 170))
           out.paste(a, (0, 80))
-          draw.text((30, a.height + 96), f'{d}  AFTER: with the News articles and photos', font=font, fill=(240, 220, 170))
+          draw.text((30, a.height + 96), f'{d}  AFTER: with this branch's change', font=font, fill=(240, 220, 170))
           out.paste(b, (0, a.height + 160))
           out.save(f'compare/{d}-side-by-side.jpg', quality=90)
           PY

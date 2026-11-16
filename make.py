@@ -606,7 +606,8 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
             # Darpan, 22 Oct 2026 (2010 showed Bapa side on at Sharad Purnima): a side profile always loses to a photo
             # where he faces the camera, and is never a nice action shot
             s_doing -= SIDE_LOSS * max(0, SIDE_FRONT - front) / SIDE_FRONT
-        if PICK == 'special' and GUEST.search(caption(x)) and not western(x.get('c')):   # Darpan (20 Oct 2026): not the honouring and meeting guests ones; 24 Oct: unless a western guest
+        x['guest'] = bool(GUEST.search(caption(x)) and not western(x.get('c')))
+        if PICK == 'special' and x['guest']:   # Darpan (20 Oct 2026): not the honouring and meeting guests ones; 24 Oct: unless a western guest
             s_close -= 2.5; s_doing -= 2.5
         # a really nice action shot: he is doing something, he is the subject, not small, nothing cut off (or a special
         # moment), and it scores well; anything less and the year is better served by a close darshan
@@ -674,6 +675,17 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
         for j, v in enumerate(cands.get(int(y), [])):
             if want.lower() in (v[2].get('c') or '').lower():
                 cands[int(y)][j] = (v[0] + 100, v[1] + 100, v[2])
+    # Darpan, 16 Nov 2026 ('meeting people photos still show up'): losing points was not enough, a meeting or honouring
+    # photo still won a year whose other photos had been shown that week. Now it is out whenever the year has any
+    # other photo of Bapa; only his own pin or the channel's story of that year (over 50 points) keeps one. A year whose
+    # every photo is a meeting keeps its best one (no year is dropped) and the run says so.
+    for y in years:
+        meet = [v for v in cands[y] if v[2].get('guest') and max(v[0], v[1]) <= 50]
+        rest = [v for v in cands[y] if not any(v is m for m in meet)]
+        if meet and rest and (any(v[2]['face'] for v in rest) or not any(v[2]['face'] for v in meet)):
+            cands[y] = rest
+        elif meet:
+            print(f"  {y}: only meeting people photos ('{caption(meet[0][2])}'), the best one stays so the year is not lost")
 
     def with_crop(v, k):
         """The photo as it would be shown in that mode: 'close' tight on the head, 'frame' filling the frame,
@@ -1157,9 +1169,27 @@ EVERYDAY = re.compile(   # the everyday lines that say nothing about that partic
     r"^greets (all|everyone|bhaktas|sadhus)$|folded hands|^observes prasad$|^engaged in (letter-writing|darshan|thought)|^(reads|reading) the shikshapatri|"
     r"^in thought|^seated$|^(has|having) (lunch|dinner|breakfast|his meal)$|^arrives|^departs|^listens attentively$|"
     r"^(honou?rs|honou?red|garlands|welcomes|meets|greets|receives|is honou?red|accepts|bless\w*)\b|with a (shawl|garland)|^honou?red", re.I)   # honouring, meeting or blessing someone is not special (Darpan, 20 Oct 2026)
+# who a guest is, after 'Bapa with', 'in conversation with', 'talks with' (Darpan, 16 Nov 2026)
+_WHO = (r"(?:Shri|Smt|Dr|Mr|Mrs|Ms|Prof|Sir|Lady|H\.?\s?E\.?|Hon\w*)\b(?!\.? (?:Harikrishna|Ghanshyam|Gunatitanand|Akshar|Gopalanand|Thakorji|Nilkanth|Radha|Lakshmi|Ganesh|Hanuman|Sahajanand|Bhagatji|Shastriji|Yogiji|Swaminarayan|Guru Parampara))|"
+        r"(?:Vice[- ])?President\b|(?:Deputy )?(?:Prime|Chief) Minister|Governor|Minister|Mayor|Ambassador|Consul|Senator|Congress\w*|"
+        r"dignitar\w*|guests?\b|visitors?\b|industrialists?|officials?\b|leaders?\b|delegat\w*|trustees|donors|well-?wishers|businessm[ae]n")
+_GROUP = r"(?:(?:leading|local|senior|prominent|eminent|tribal|elderly|the)\s+)+(?:\w+\s+)?(?:bhaktas|devotees|families)|(?:bhaktas|devotees|families)\b(?! of)"
 GUEST = re.compile(r"(?i:^(honou?rs|honou?red|garlands|welcomes|meets|receives|is honou?red|accepts)\b|with a (shawl|garland)|"
                    r"\bmeets?\b|\bmeeting\b|calls on|courtesy (call|visit))|"   # Darpan, 24 Oct 2026: 'Pujya Devprasadji Maharaj meets Bapa' too, wherever the word comes
-                   r"^Blesses (?:Shri |Smt\.? |Dr\.? |Mr\.? |Mrs\.? |H\.?E\.? )?[A-Z][a-z]+(?:bhai|ben|ji| [A-Z][a-z]+)")   # 'Blesses Shri Yashwantbhai Shah': a named guest   # guest photos lose when every year is a close up
+                   r"^Blesses (?:Shri |Smt\.? |Dr\.? |Mr\.? |Mrs\.? |H\.?E\.? )?[A-Z][a-z]+(?:bhai|ben|ji| [A-Z][a-z]+)|"
+                   # Darpan, 16 Nov 2026 ('meeting people photos still show up'): the other ways a caption tells of meeting or
+                   # honouring someone. 'Bapa with Shri Vijaybhai Rupani', 'In conversation with Shri ...', 'Bapa with the leading
+                   # local bhaktas', 'Sadhus garland Bapa', 'Is garlanded', 'honored with a garland', 'a memento to a honored guest'.
+                   # Never a murti ('Bapa with Shri Harikrishna Maharaj') and never his own sadhus ('In conversation with sadhus').
+                   rf"(?i:^(?:Bapa )?(?:along )?with (?:the |his |a |an )?(?:{_WHO}|{_GROUP})|"
+                   rf"\b(?:in |during (?:a |the )?)?conversation with (?:the |a |an )?(?:{_WHO})|"
+                   rf"\b(?:talks|talking|converses|conversing|chats|chatting|speaks|speaking|interacts|interacting|discusses|discussing) with (?:the |a |an )?(?:{_WHO})|"
+                   rf"^(?:{_WHO})\b.*\b(?:with|meets?|honou?rs?|garlands?) Bapa\b|"
+                   r"\b(?:garlands?|garlanded|honou?rs?|felicitates?) Bapa\b|\bis garlanded\b|\b(?:offers?|presents?|offered|presented) (?:a |the )?(?:garland|shawl)s? to Bapa\b|"
+                   r"\bhonou?red (?:with|by)\b|\bwelcomed and honou?red\b|\bhonou?red guests?\b|\bguests? honou?r|"
+                   r"\b(?:presents?|presented|gives|gave) (?:a |the )?(?:photo |special )?(?:memento|momento)|"
+                   r"\bwelcomed by (?:the )?(?:dignitar|guests|leaders|officials)|\barrives? for Bapa's darshan|"
+                   r"\breceives (?:the )?(?:Shri|Smt|Pujya|Dr|Mr|Mrs|H\.?\s?E\.?|guests?|dignitar))")   # 'Blesses Shri Yashwantbhai Shah': a named guest   # guest photos lose when every year is a close up
 
 
 # Darpan, 24 Oct 2026: "i dont like 'meeting other people' unless they are 'western' person, as bapa meets people all the time".
@@ -1178,7 +1208,7 @@ INDIAN = re.compile(r"\b(Shri|Smt|Pujya|P\.P\.|Sant|Swami\w*|Maharaj|Bapu|Muni|M
 def western(c):
     """True when the caption is about meeting or honouring a western guest, which stays special (Darpan, 24 Oct 2026)."""
     c = re.sub(r'\s+', ' ', c or '').strip()
-    return bool(GUEST.search(c) and WESTERN.search(c) and not INDIAN.search(re.sub(NAME, '', re.sub(r'\bBapa\b', '', c))))
+    return bool(GUEST.search(re.sub(NAME, 'Bapa', c)) and WESTERN.search(c) and not INDIAN.search(re.sub(NAME, '', re.sub(r'\bBapa\b', '', c))))
 
 
 def summarise(c):
