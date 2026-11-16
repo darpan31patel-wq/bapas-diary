@@ -1881,7 +1881,7 @@ async function ukIndex() {
   if (UKI) return UKI;
   UKI = { days: [] };
   for (const root of [ROOT, RAW, R2PACKS]) {
-    try { const r = await fetch(root + 'uk-europe/index.json', { cache: 'no-store' }); if (r.ok) { const j = await r.json(); UKI = { days: j.days || j.backups || (Array.isArray(j) ? j : []), base: root + 'uk-europe/' }; break } } catch (e) {}
+    try { const r = await fetch(root + 'uk-europe/index.json', { cache: 'no-store' }); if (r.ok) { const j = await r.json(); const ds = j.days || j.backups || (Array.isArray(j) ? j : []); UKI = { days: Array.isArray(ds) ? ds : Object.entries(ds).map(([k, v]) => Object.assign({ day: k }, v)), base: root + 'uk-europe/' }; break } } catch (e) {}
   }
   if (S.tab === 'choose') build();
   return UKI;
@@ -1891,10 +1891,13 @@ const UK_CLOSE = '13:50';
 const ukOpen = () => new Date().toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' }) < UK_CLOSE;
 function ukBackup(date, pack) {
   const mmdd = date.slice(5);
-  if (!UKI) { ukIndex(); return '' }
-  const inIndex = UKI.days.find(d => (d.day || d.date || '').slice(-5) === mmdd);
+  if (!UKI) ukIndex();
+  if (!UKI || !UKI.days) return '';
+  // the day's own pack carrying `uk_europe` is enough (Collage builder, 16 Nov 2026); else the ready list. The list is one
+  // entry per day, keyed by MM-DD (read as a plain list too)
+  const inIndex = (UKI.days || []).find(d => String(d.day || d.date || '').slice(-5) === mmdd);
   const u = pack && pack.uk_europe ? Object.assign({ base: pack.base }, pack.uk_europe) : inIndex ? Object.assign({ base: UKI.base }, inIndex) : null;
-  if (!u || !inIndex) return '';
+  if (!u || !u.picture) return '';
   const years = (u.years || []).join(', '), today = date === todayLondon(), sent = (store.get('studio-uk-added') || {})[date];
   const btn = today ? `<div class="acts"><button class="btn small primary" id="uk-add" ${ukOpen() && !sent ? '' : 'disabled'}>Add the UK and Europe picture to today’s 2pm send</button></div>
       <p class="hint" id="uk-add-p">${sent ? `Added at ${new Date(sent).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}. It goes out as the next special picture, after the others.` : ukOpen() ? 'It goes out at 2pm as the next special picture (special, or special 2 if there is one already). Works until 1:50pm.' : 'Too late for today’s 2pm send: adding closes at 1:50pm.'}</p>` : `<p class="hint">Kept ready for ${esc(longDate(date))}. On the day, a button here adds it to the 2pm send.</p>`;
