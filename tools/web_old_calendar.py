@@ -59,7 +59,10 @@ def inject(path, pairs, what):
 
 TRAVELS_CSS = ('\n/* the festivals during a stay, under its dates (Darpan, 14 Nov 2026) */\n'
                '.story .stayfest { margin-top: 6px; color: var(--gold, #d9a94e); font-style: italic; font-size: 15px; letter-spacing: .01em; }\n'
-               '.story .stayfest:empty { display: none; }\n')
+               '.story .stayfest:empty { display: none; }\n'
+               '/* the phone\'s full screen Travels (site/phone/phone.css) lays the stop out as a grid: the festivals go on a third row */\n'
+               'html.ph-travels body .story { grid-template-areas: "pic yp yp" "pic sub more" "pic fest fest"; }\n'
+               'html.ph-travels body .story .stayfest { grid-area: fest; margin: 0; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }\n')
 TRAVELS_JS = ('\n// the festivals during each stay (tools/web_old_calendar.py, Darpan, 14 Nov 2026)\n'
               'let FESTS = {}, STAYNOW = null; fetch(\'fests.json\').then(r => r.ok ? r.json() : {}).then(f => { FESTS = f;\n'
               '  if (STAYNOW) document.getElementById(\'stayfest\').textContent = stayFests(STAYNOW); }).catch(() => {});\n'
