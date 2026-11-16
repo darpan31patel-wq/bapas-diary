@@ -15,6 +15,9 @@
 # when a site is finished (or a commit message says [lists]), which took most of round 3's time.
 # Round 5, 16 Nov 14:00 UTC: most of research.baps.org's 137,000 addresses (and londonmandir's 20,000 extra pages)
 # were made up from links written without a leading slash; tools/swaminarayan_org.py sane() now drops them.
+# Round 6, 16 Nov 21:55 UTC: research.baps.org only (the job limit cut round 5 off while handing over: copying is 3h
+# again, listing Drive alone takes 50 minutes there). Page addresses deeper than four folders are the site's own
+# menu links stacked onto a page, so they are dropped too, and the lists leave them out.
 name: other-sites
 on:
   push:
@@ -34,7 +37,7 @@ jobs:
           - { site: research.baps.org, base: 'https://research.baps.org/', key: research-baps-org }
           # Neasden's own site: copied from here only if it answers normally (no check page, no 403), else it stops at
           # once and is left to the News crawl thread for his Chrome (agreed 15 Nov 2026)
-          - { site: londonmandir.baps.org, base: 'https://londonmandir.baps.org/', key: londonmandir-baps-org }
+          # londonmandir.baps.org finished 16 Nov (24,916 files)
     runs-on: ubuntu-latest
     timeout-minutes: 360
     env:
@@ -67,7 +70,7 @@ jobs:
           rclone lsf -R --files-only "$REMOTE" --filter "- _state/**" --filter "- _index/**" > have.txt || : > have.txt
           mkdir -p pages
           wc -l have.txt
-      - name: Copy (stops by itself 3h50 after starting, by 03:30 UTC at the latest, or when everything is in)
+      - name: Copy (stops by itself 3h after starting, by 03:30 UTC at the latest, or when everything is in)
         if: ${{ !contains(github.event.head_commit.message, '[lists only]') }}
         run: |
           # every 20 minutes the new files move to Drive, so the runner's disk never fills
@@ -75,8 +78,8 @@ jobs:
           ( while sleep 600; do [ -d work/files ] && rclone move work/files "$REMOTE" --transfers 16 --checkers 16 \
               --min-age 30s --stats 0 2>&1 | tail -2; rclone copy state "$REMOTE/_state" --stats 0 2>&1 | tail -1; done ) &
           mover=$!
-          # stop 3h50 after starting (the job's own limit is 6h; handing the last files to Drive can take over an hour) and never after 03:30 UTC
-          stop=$(date -u -d '+230 minutes' +%H:%M); now=$(date -u +%H%M); s=${stop/:/}
+          # stop 3h after starting (the job's own limit is 6h; handing the last files to Drive can take over an hour) and never after 03:30 UTC
+          stop=$(date -u -d '+180 minutes' +%H:%M); now=$(date -u +%H%M); s=${stop/:/}
           if [ $((10#$s)) -gt 330 ] && { [ $((10#$now)) -lt 330 ] || [ $((10#$s)) -lt $((10#$now)) ]; }; then stop=03:30; fi
           echo "stopping at $stop UTC"
           # the site's own sitemaps are the starting list (one level of sitemap index followed)
@@ -93,7 +96,7 @@ jobs:
         if: always()
         run: |
           rclone copy state "$REMOTE/_state" --stats 0
-          [ -d work/files ] && timeout 100m rclone move work/files "$REMOTE" --transfers 16 --checkers 16 --stats-one-line --stats 0 || true
+          [ -d work/files ] && timeout 90m rclone move work/files "$REMOTE" --transfers 16 --checkers 16 --stats-one-line --stats 0 || true
           rclone copy state "$REMOTE/_state" --stats 0
       - name: Full detail for every page and photo
         if: always()

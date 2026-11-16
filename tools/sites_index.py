@@ -307,6 +307,9 @@ def main():
                 addr = rel.split('__')[0]
                 if a.folders and (addr == 'index.htm' or addr.endswith('/index.htm')):
                     addr = addr[:-len('index.htm')]   # the site serves the folder address (WordPress)
+                seg = [x for x in addr.split('/') if x]
+                if a.folders and seg and seg[0] not in ('wp-content', 'wp-includes') and (len(seg) > 4 or len(seg) != len(set(seg))):
+                    continue   # a made-up address (menu links stacked onto a page address), the same page again
                 url = base + urllib.parse.quote(addr)
                 try:
                     page, photos = index_page(a.site, url, rel, open(full, 'rb').read(), headers, base)

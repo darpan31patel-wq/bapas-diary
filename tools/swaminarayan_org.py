@@ -84,8 +84,8 @@ def sane(path):
         last = seg[-1]
         if '.' in last and not re.search(r'(?i)\.(html?|php)$', last) and len(seg) > 3:
             return None    # a photo or file deep inside a page address is a made-up address
-        if len(seg) > 6:
-            return None
+        if len(seg) > 4:
+            return None    # deeper page addresses there are the site's own menu links stacked onto a page address
     return path
 
 
