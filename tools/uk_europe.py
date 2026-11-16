@@ -98,6 +98,10 @@ def gather(entry, log, towns_there=()):
                 seen.add((ch, n))
                 sat = ch == 'SatpurushInUKEurope'
                 own = (e.get('cards') or {}).get(str(n)) or {}
+                town = make.town_of(own.get('place') or e.get('place'))
+                if town and town not in towns_there and ELSEWHERE.fullmatch(town):   # the channel's post from India the day he flew home
+                    away[(y, town)] = away.get((y, town), 0) + 1
+                    continue
                 urls = make.tg_photos([n], ch, pairs=True) if sat else make.tg_photos([n], ch, numbered=True)
                 for k, (_, u) in enumerate(urls):
                     items.append(dict(y=y, d=d, p=own.get('place') or e.get('place') or towns,
