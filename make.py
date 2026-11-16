@@ -3237,7 +3237,8 @@ def story_block(dr, paras, tw, room, sizes=(36, 34, 32, 30, 28, 26)):
     while h > room and lines:   # still too long at the smallest size: whole sentences only
         l = lines.pop(); h -= gap if l is None else lh
     text = ' '.join(l for l in lines if l is not None)
-    cut = max(text.rfind('. '), text.rfind('! '), text.rfind('? '))
+    ends = [m.end() - 2 for m in re.finditer(r'(?<!\bHon)(?<!\bMr)(?<!\bDr)(?<!\bRt)(?<!\bSt)[.!?][”"’]? ', text + ' ')]
+    cut = ends[-1] if ends else -1   # never at 'Hon.' or 'Dr.' (16 Nov 2026: the Canada story ended '...included Hon.')
     if cut > 0:
         keep, n = [], 0
         for l in lines:
@@ -3334,7 +3335,7 @@ def compose_special(ev, day, lead=None):
         return None
     img = background(); dr = ImageDraw.Draw(img)
     header(img, f'{day.day} {day:%B}', 'A special day in BAPS history', compact=True, sub_y=136)   # Darpan, 13 Nov 2026: only the date (the story isn't always about Bapa), more space under it
-    yr, pl = ev['date'][:4], (ev.get('place') or '').upper()
+    yr, pl = ev['date'][:4], (town_of(ev.get('place')) or ev.get('place') or '').upper()   # the town, as on the daily cards ('NEW DELHI', not 'NEW DELHI, INDIA', which was cut off on the small cards)
 
     def card(im, w, h, label=True):
         e = round(px(12))
@@ -3349,6 +3350,10 @@ def compose_special(ev, day, lead=None):
         c.paste(polish(p), (e, e))
         yf, pf = garamond(max(w * .07, px(40)), 700), arimo_bold(max(w * .03, px(19)))   # Darpan, 13 Nov 2026: 'location names too small' on the small cards
         yw = d.textlength(yr, font=yf); sp = w * .03 if pl else 0
+        k = (w * .94) / (yw + sp + spaced(d, pl, pf, w * .006))
+        if k < 1:   # a small card: year and town made smaller until they fit inside it (16 Nov 2026: '009 NEW DELH')
+            yf, pf = garamond(yf.size * k, 700), arimo_bold(pf.size * k)
+            yw = d.textlength(yr, font=yf)
         x0 = (c.width - yw - sp - spaced(d, pl, pf, w * .006)) / 2; base = h + e + (c.height - h - e) * .72
         if label:
             d.text((x0, base), yr, font=yf, fill=YEAR_C2, anchor='ls')
@@ -3363,7 +3368,7 @@ def compose_special(ev, day, lead=None):
     head = ev.get('headline') or ev['line']
     # Darpan, 13 Nov 2026 ('stop cutting everything out'): the whole story always. A long one gets a smaller big card,
     # smaller small cards and smaller words, in that order, until every word is in; only then is anything left off
-    for hw, smax, sizes in ((1180, 330, (36, 34, 32, 30)), (1000, 270, (32, 30, 28)), (860, 230, (28, 27, 26, 25, 24)), (760, 200, (24, 23, 22))):
+    for hw, smax, sizes in ((1180, 330, (36, 34, 32, 30)), (1000, 270, (32, 30, 28)), (860, 230, (28, 27, 26, 25, 24)), (760, 200, (24, 23, 22)), (660, 170, (22, 21, 20, 19))):   # the last step for a long News story (16 Nov 2026: the Canada visit lost its end)
         x0 = px(hw + 180); tw = W - x0 - px(90)
         hf = garamond(px(60 if hw > 900 else 52), 700)
         heads = balanced(dr, head, hf, tw, 3)
@@ -3371,7 +3376,7 @@ def compose_special(ev, day, lead=None):
         sw = min(px(smax), (tw - px(54) * (len(small) - 1) - px(24)) / len(small)) if small else 0
         cards_h = (sw * .74 + px(24) + max(sw * .1, px(56)) + px(70)) if small else 0
         floor = H - px(90) - cards_h
-        lines, bf, lh, gap, whole = story_block(dr, paras, tw * .86, floor - y0, sizes) if paras else ([], None, 0, 0, True)
+        lines, bf, lh, gap, whole = story_block(dr, paras, tw * (.86 if hw > 660 else .98), floor - y0, sizes) if paras else ([], None, 0, 0, True)
         if whole:
             break
     hh = round(px(hw) * 800 / 1180)
