@@ -994,7 +994,7 @@ function card(y, {Y, place, stories}, want = true) {
   }
   el.innerHTML = '<div class="peg"></div>';
   el.append(ph);
-  const fest = festOf(cal), ti = Y && Y.d ? longDate(Y.d) : tithiOf(cal) || dayTi(Y, stories), ev = occasion(Y, stories, photos);
+  const fest = festOf(cal), ti = Y && Y.d ? longDate(Y.d) : tithiOf(cal) || dayTi(Y, stories), ev = photos.length ? occasion(Y, stories, photos) : '';   // a year with no photo says it in its box, once
   const lab = document.createElement('div'); lab.className = 'label';
   // the Indian date from the post itself in years the BAPS calendar doesn't cover, and the day's occasion (29 Oct 2026)
   lab.innerHTML = `<div class="yr">${y}</div><div class="pl">${esc(where || '')}</div>` +
