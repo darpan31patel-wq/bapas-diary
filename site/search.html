@@ -554,7 +554,12 @@ function render(byYear, want) {
 // when prasangs are found, only what was found is counted ("2 photos and 1 prasang", never "0 On this day stories")
 function readCount(nPhotos, nPosts, nReads) {
   const n = (k, one, many) => `<b>${k.toLocaleString()}</b> ${k === 1 ? one : many}`;
-  const parts = [nPhotos && n(nPhotos, 'photo', 'photos'), nPosts && n(nPosts, 'On this day story', 'On this day stories'), n(nReads, 'prasang', 'prasangs')].filter(Boolean);
+  // each kind of written thing by its own name: "3 photos, 2 day reports and 1 prasang" (Darpan, 16 Nov 2026)
+  const k = kind => hits.filter(h => h.kind === 'read' && (h.k === kind || (kind === 'prasang' && !READ_KIND[h.k]))).length;
+  const parts = [nPhotos && n(nPhotos, 'photo', 'photos'), nPosts && n(nPosts, 'On this day story', 'On this day stories'),
+    k('vicharan') && n(k('vicharan'), 'day report', 'day reports'), k('prasang') && n(k('prasang'), 'prasang', 'prasangs'),
+    k('story') && n(k('story'), 'Akshardham story', 'Akshardham stories'), k('essay') && n(k('essay'), 'essay', 'essays'),
+    k('lekhmala') && n(k('lekhmala'), 'lekhmala', 'lekhmala'), k('Jivan Charitra') && n(k('Jivan Charitra'), 'Jivan Charitra story', 'Jivan Charitra stories')].filter(Boolean);
   return parts.length > 1 ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1] : parts[0];
 }
 var latestShown = false;
@@ -623,7 +628,8 @@ function postCard(p, want, i) {
     </div></article>`;
 }
 // a Daily Satsang prasang: its own title, the start of its words (English when translated, else the Gujarati), its day and place
-const READ_KIND = { prasang: 'Prasang', essay: 'Essay', lekhmala: 'Lekhmala', 'Jivan Charitra': 'Jivan Charitra' };   // Jivan Charitra 1921 to 1975 (Darpan, 16 Nov 2026: "yes jivan charitra")
+// the old BAPS website's day reports ("Vicharan") and prasangs, and akshardham.com's stories, join them (16 Nov 2026)
+const READ_KIND = { prasang: 'Prasang', essay: 'Essay', lekhmala: 'Lekhmala', vicharan: 'Vicharan', story: 'Akshardham', 'Jivan Charitra': 'Jivan Charitra' };
 const readLang = p => p.en.length && !(p.gu.length && window.BapaGujarati && BapaGujarati.on()) ? 'en' : 'gu';
 function readCard(p, want, i) {
   const words = p[readLang(p)].join('\n'), text = words.length > 600 ? words.slice(0, 600) + '…' : words;
@@ -636,7 +642,7 @@ function readCard(p, want, i) {
 }
 function readStory(p, lang) {
   const other = lang === 'en' ? 'gu' : 'en', can = p.en.length && p.gu.length;
-  $('big-pic').innerHTML = `<div class="story" translate="no">${can || lang === 'en' ? `<div class="lang"><span>${lang === 'en' ? 'English translation' : 'ગુજરાતી'}</span>${can ? `<button type="button" id="read-flip" lang="${other}">${other === 'gu' ? 'ગુજરાતી' : 'English'}</button>` : ''}</div>` : ''}${p.title ? `<span class="ttl">${esc(p.title)}</span>` : ''}${esc(p[lang].join('\n\n'))}</div>`;
+  $('big-pic').innerHTML = `<div class="story" translate="no">${can ? `<div class="lang"><span>${lang === 'en' ? 'English translation' : 'ગુજરાતી'}</span>${can ? `<button type="button" id="read-flip" lang="${other}">${other === 'gu' ? 'ગુજરાતી' : 'English'}</button>` : ''}</div>` : ''}${p.title ? `<span class="ttl">${esc(p.title)}</span>` : ''}${esc(p[lang].join('\n\n'))}</div>`;
   if (can) $('read-flip').addEventListener('click', () => readStory(p, other));
 }
 var lastWant = [];
@@ -793,8 +799,7 @@ function showBig(i) {
     bigVideo(p);
   } else if (p.kind === 'read') {
     readStory(p, readLang(p));
-    const page = p.page !== p.d ? `, ${longDate(p.page)}` : '';
-    $('big-info').innerHTML = `<span class="badge">${READ_KIND[p.k] || 'Prasang'}</span>${p.place ? `<div class="meta">${esc(p.place)}</div>` : ''}${p.url ? `<div class="src">From <a href="${esc(p.url)}" target="_blank" rel="noopener">Daily Satsang on baps.org${esc(page)}</a></div>` : ''}<hr><div class="when">${esc(day)}</div>${calInfo(p.d)}<div class="gos">${p.d >= '1999' ? `<a class="go" href="/calendar/#${p.d}">Calendar &rsaquo;</a>` : ''}</div>`;
+    $('big-info').innerHTML = `<span class="badge">${READ_KIND[p.k] || 'Prasang'}</span>${p.place ? `<div class="meta">${esc(p.place)}</div>` : ''}<hr><div class="when">${esc(day)}</div>${calInfo(p.d)}<div class="gos">${p.d >= '1999' ? `<a class="go" href="/calendar/#${p.d}">Calendar &rsaquo;</a>` : ''}</div>`;
   } else {
     $('big-pic').innerHTML = `<div class="story">${esc(p.text)}</div>`;
     $('big-info').innerHTML = `<span class="badge">On this day</span>${p.m ? `<div class="mandir">${[...p.m].map(k => MANDIR[k][1]).join(' · ')}</div>` : ''}${p.place ? `<div class="meta">${esc(p.place)}</div>` : ''}<hr><div class="when">${esc(day)}</div>${calInfo(p.d)}`;
@@ -942,7 +947,8 @@ async function load() {
   const none = about.undated ? fetch('data/undated.json').then(r => r.json()).then(data => add(data.p.map(([file, tags, cap]) =>
     ({ kind: 'photo', u: 1, y: 0, g: ['', '', '', data.album], d: UNDATED, city: '', file, cap: cap || 'Darshan', tags: tags || '', m: '', b: true,
        hay: ('darshan ' + (cap || '') + ' ' + (tags || '')).toLowerCase() })))).catch(() => add([])) : null;
-  // the Daily Satsang prasangs: English and Gujarati words both find them
+  // the Daily Satsang prasangs, the old website's day reports and prasangs, akshardham.com's stories: English and
+// Gujarati words both find them
   const reads = about.reads ? fetch('data/reads.json').then(r => r.json()).then(list => add(list.map(([d, place, k, title, en, gu, url, page]) =>
     ({ kind: 'read', d, y: +d.slice(0, 4), place, k, title, en, gu, url, page, text: (en.length ? en : gu).join('\n'),
        hay: [title, place, ...en, ...gu].join(' ').toLowerCase() })))).catch(() => add([])) : null;

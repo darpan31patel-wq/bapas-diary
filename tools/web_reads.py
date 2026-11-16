@@ -18,6 +18,11 @@ Where the words come from:
   --satsang   the raw Daily Satsang pages (crawl/baps-org/dailysatsang.json): {page date: {url, head, text, imgs}};
               used for any page the prasang file does not have yet, Gujarati only, until its translation arrives
   --essays, --lekhmala   {page path: {title, date, text, imgs, url}} (later)
+  --reports   the old BAPS website's day reports and prasangs, out/data/reports/MM-DD.json (tools/sorg_reports.py),
+              kind "vicharan" for a day's report and "prasang" for its prasangs (Darpan, 16 Nov 2026: "I would also like
+              all this information to be on the search page")
+  --akshardham  akshardham.com's dated news stories (akshardham-com-pages.jsonl, release `database`), kind "story":
+              the words between the story's title and the "BAPS News" list, nothing of the site's menus
 Nothing is cut: every paragraph of every item is kept.
 """
 import argparse, json, os, re
@@ -66,12 +71,72 @@ def from_raw(page, day):
     return {'d': d, 'place': place, 'title': title, 'gu': lines, 'en': []}
 
 
+def reports(folder):
+    """Every day report and prasang of the old BAPS website, under its own day. English only, no source on the site."""
+    rows = []
+    if not folder or not os.path.isdir(folder):
+        return rows
+    for name in sorted(os.listdir(folder)):
+        if not re.match(r'\d\d-\d\d\.json$', name):
+            continue
+        for y, items in json.load(open(os.path.join(folder, name), encoding='utf-8')).items():
+            d = f'{y}-{name[:5]}'
+            for r in items:
+                if r.get('k') in ('jc', 'm'):   # Jivan Charitra lines: tools/web_bio.py adds those to Search itself
+                    continue
+                w = [t for t in (r.get('w') or []) if t.strip()]
+                if not w:
+                    continue
+                where = ', '.join(p for i, p in enumerate(r.get('pl') or []) if i == 0 or p != r['pl'][i - 1])
+                if r.get('k') == 'p':
+                    rows.append([d, where, 'prasang', r.get('t') or '', w, [], '', d])
+                else:
+                    rows.append([d, where, 'vicharan', r.get('o') or '', w, [], '', d])
+    return rows
+
+
+MONTH_DAY = re.compile(r'^(January|February|March|April|May|June|July|August|September|October|November|December) (\d{1,2}), (\d{4})$')
+
+
+def akshardham(path):
+    """akshardham.com's own dated stories: a title line, its date ("October 2, 2010"), the words, then "BAPS News"."""
+    rows, seen = [], set()
+    if not path or not os.path.exists(path):
+        return rows
+    months = 'January February March April May June July August September October November December'.split()
+    for line in open(path, encoding='utf-8'):
+        try:
+            r = json.loads(line)
+        except ValueError:
+            continue
+        url, title = r.get('page_url') or '', re.sub(r'\s+[\u2013-]\s+Swaminarayan Akshardham.*$', '', r.get('title') or '').strip()
+        if '/testimonial' in url or '/explore' in url or '/about-us' in url or not title or url in seen:
+            continue
+        lines = [t.strip() for t in (r.get('words') or '').split('\n') if t.strip()]
+        for i in range(len(lines) - 1):
+            m = MONTH_DAY.match(lines[i + 1])
+            if lines[i] == title and m:
+                body = []
+                for t in lines[i + 2:]:
+                    if t in ('BAPS News', 'BAPS Charities News', 'Loading..'):
+                        break
+                    body.append(t)
+                if body:
+                    d = f'{int(m[3]):04d}-{months.index(m[1]) + 1:02d}-{int(m[2]):02d}'
+                    rows.append([d, 'Akshardham, New Delhi', 'story', title, body, [], url, d])
+                    seen.add(url)
+                break
+    return rows
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--prasang', help='data/baps/prasang.json (translated prasangs)')
     ap.add_argument('--satsang', help='crawl/baps-org/dailysatsang.json (the raw pages)')
     ap.add_argument('--essays')
     ap.add_argument('--lekhmala')
+    ap.add_argument('--reports', help='out/data/reports (MM-DD.json from tools/sorg_reports.py)')
+    ap.add_argument('--akshardham', help='akshardham-com-pages.jsonl')
     ap.add_argument('--out', default='reads.json')
     a = ap.parse_args()
     load = lambda p: json.load(open(p, encoding='utf-8')) if p and os.path.exists(p) else {}
@@ -95,6 +160,7 @@ def main():
             en, gu = (body, []) if kind == 'essay' else (paras(e.get('en')), body)
             rows.append([date, e.get('place') or '', kind, e.get('title') or '', en, gu,
                          e.get('url') or SITE + '/' + key.lstrip('/'), date])
+    rows += reports(a.reports) + akshardham(a.akshardham)
     rows.sort(key=lambda r: (r[0], r[7]))
     with open(a.out, 'w', encoding='utf-8') as f:
         json.dump(rows, f, ensure_ascii=False, separators=(',', ':'))
