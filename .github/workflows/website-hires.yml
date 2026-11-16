@@ -15,10 +15,36 @@ on:
     types: [completed]
 permissions:
   contents: read
+  actions: read   # the hires machines download the have list the have job made
 concurrency:
   group: website-photos   # never at the same time as the older baps.org copy
 jobs:
+  # list what R2 already holds ONCE, and hand that list to all 12 machines (Darpan, 16 Nov 2026: "yes cheaper photo check";
+  # each machine listing the whole store itself, four times a day, was about $2.50 a month of Cloudflare charges)
+  have:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BUCKET: bapas-diary-photos
+    steps:
+      - name: What R2 already holds at full size
+        run: |
+          id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
+          key=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1)
+          echo "::add-mask::$id"; echo "::add-mask::$key"
+          export AWS_ACCESS_KEY_ID=$id AWS_SECRET_ACCESS_KEY=$key AWS_DEFAULT_REGION=auto
+          aws s3 ls "s3://$BUCKET/o/" --recursive --endpoint-url "https://$CF_ACCOUNT.r2.cloudflarestorage.com" | awk '{ $1=$2=$3=""; sub(/^ +/, ""); print }' > have.txt
+          echo "$(wc -l < have.txt) photos in R2 at full size"
+          [ -s have.txt ] || { echo "::error::Could not list R2"; exit 1; }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: have
+          path: have.txt
+          retention-days: 1
   hires:
+    needs: have
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -64,7 +90,7 @@ jobs:
         id: copy
         run: |
           aws s3 cp "s3://$BUCKET/years.txt" done.txt --endpoint-url "$R2" || : > done.txt
-          aws s3 ls "s3://$BUCKET/o/" --recursive --endpoint-url "$R2" | awk '{ $1=$2=$3=""; sub(/^ +/, ""); print }' > have.txt || true
+          gh run download ${{ github.run_id }} -n have -R ${{ github.repository }} || : > have.txt   # listed once by the have job
           echo "$(wc -l < have.txt) photos already in R2 at full size; years finished: $(tr '\n' ' ' < done.txt)"
           # any finished year can grow: late December photos reach baps.org in January (28 Oct 2026), and the News story
           # photos (6 Nov 2026) added to every year from 1999, so every year is looked at again (Darpan, 13 Nov: "asap")
