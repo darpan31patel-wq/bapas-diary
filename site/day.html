@@ -797,7 +797,7 @@ const tithiOf = c => c ? c[0] : '';
 // and a card's own year keeps the stories it tells in Y.day = [[line, title, [words], diary], ...] and Y.ti
 const said = t => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 const tail = line => String(line || '').replace(/^[^:]{0,60}\bin [^:]+:\s*/, '');   // 'Pramukh Swami Maharaj in London: Dhanteras'
-const told = (Y, stories) => (Y && Y.day || []).concat((stories || []).filter(s => s[3]).map(s => [s[2], s[3].h || '', s[3].w || [], s[3].l || 0]));
+const told = (Y, stories) => (Y && Y.day || []).concat((stories || []).filter(s => s[3]).map(s => [s[2], s[3].h || '', s[3].w || [], s[3].l || 0, s[3].k || '']));
 const dayTi = (Y, stories) => (Y && Y.ti) || ((stories || []).find(s => s[3] && s[3].ti) || [, , , {}])[3].ti || '';
 // the day's occasion, for the card's frame: the post's title, its line, or the next thing done that day, whichever the
 // photo captions don't already say
@@ -809,10 +809,10 @@ function occasion(Y, stories, photos) {
   return '';
 }
 // the whole story, for under the year's photos and in the wide view
-function storyHTML(line, h, w, l) {
+function storyHTML(line, h, w, l, k) {
   const top = h || tail(line) || line;
   const rest = (w || []).filter(t => said(t) !== said(top) && said(t) !== said(tail(line)));
-  return `<div class="day-story"><p class="story-line"><b>On this day</b>${esc(top)}</p>` +
+  return `<div class="day-story"><p class="story-line"><b>${k ? esc(k) : 'On this day'}</b>${esc(top)}</p>` +
     (rest.length ? (l ? `<ul class="diary">${rest.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : `<div class="paras${rest.length > 2 ? ' many' : ''}">${rest.map(t => `<p class="more">${esc(t)}</p>`).join('')}</div>`) : '') + '</div>';
 }
 function storyShort(Y, stories, photo) {   // a few words for the wide view: what else the post says about the day
@@ -1721,7 +1721,7 @@ function group(y, Y, where, cal, stories) {
   const fest = festOf(cal), ti = Y && Y.d ? longDate(Y.d) : tithiOf(cal) || dayTi(Y, stories), day = Y && Y.d || y + '-' + DAY.date;
   g.innerHTML = `<div class="yhead"><h3>${y}</h3><span class="caps">${esc(where || '')}</span>` +
     (ti ? `<span class="it">${esc(ti)}</span>` : '') + (fest ? `<span class="fest">${esc(fest)}</span>` : '') +
-    `<a class="go" href="${esc(SRC.search(day))}">See more &rsaquo;</a>${Y && Y.v ? watchVideo(Y.v, 'go vgo') : ''}</div>` +
+    `<a class="go" href="${esc(SRC.search(day))}">See more &rsaquo;</a>${Y && Y.v ? watchVideo(Y.v, 'go vgo') : (stories.find(s => s[3] && s[3].v) ? watchVideo(stories.find(s => s[3] && s[3].v)[3].v, 'go vgo') : '')}</div>` +
     `<div class="arts" data-d="${esc(day)}"></div>` +
     told(Y, stories).map(t => storyHTML(...t)).join('');
   const add = (list, note) => {

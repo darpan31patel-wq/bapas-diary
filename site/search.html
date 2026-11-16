@@ -623,7 +623,7 @@ function postCard(p, want, i) {
     </div></article>`;
 }
 // a Daily Satsang prasang: its own title, the start of its words (English when translated, else the Gujarati), its day and place
-const READ_KIND = { prasang: 'Prasang', essay: 'Essay', lekhmala: 'Lekhmala' };
+const READ_KIND = { prasang: 'Prasang', essay: 'Essay', lekhmala: 'Lekhmala', 'Jivan Charitra': 'Jivan Charitra' };   // Jivan Charitra 1921 to 1975 (Darpan, 16 Nov 2026: "yes jivan charitra")
 const readLang = p => p.en.length && !(p.gu.length && window.BapaGujarati && BapaGujarati.on()) ? 'en' : 'gu';
 function readCard(p, want, i) {
   const words = p[readLang(p)].join('\n'), text = words.length > 600 ? words.slice(0, 600) + '…' : words;
@@ -794,7 +794,7 @@ function showBig(i) {
   } else if (p.kind === 'read') {
     readStory(p, readLang(p));
     const page = p.page !== p.d ? `, ${longDate(p.page)}` : '';
-    $('big-info').innerHTML = `<span class="badge">${READ_KIND[p.k] || 'Prasang'}</span>${p.place ? `<div class="meta">${esc(p.place)}</div>` : ''}<div class="src">From <a href="${esc(p.url)}" target="_blank" rel="noopener">Daily Satsang on baps.org${esc(page)}</a></div><hr><div class="when">${esc(day)}</div>${calInfo(p.d)}<div class="gos">${p.d >= '1999' ? `<a class="go" href="/calendar/#${p.d}">Calendar &rsaquo;</a>` : ''}</div>`;
+    $('big-info').innerHTML = `<span class="badge">${READ_KIND[p.k] || 'Prasang'}</span>${p.place ? `<div class="meta">${esc(p.place)}</div>` : ''}${p.url ? `<div class="src">From <a href="${esc(p.url)}" target="_blank" rel="noopener">Daily Satsang on baps.org${esc(page)}</a></div>` : ''}<hr><div class="when">${esc(day)}</div>${calInfo(p.d)}<div class="gos">${p.d >= '1999' ? `<a class="go" href="/calendar/#${p.d}">Calendar &rsaquo;</a>` : ''}</div>`;
   } else {
     $('big-pic').innerHTML = `<div class="story">${esc(p.text)}</div>`;
     $('big-info').innerHTML = `<span class="badge">On this day</span>${p.m ? `<div class="mandir">${[...p.m].map(k => MANDIR[k][1]).join(' · ')}</div>` : ''}${p.place ? `<div class="meta">${esc(p.place)}</div>` : ''}<hr><div class="when">${esc(day)}</div>${calInfo(p.d)}`;
