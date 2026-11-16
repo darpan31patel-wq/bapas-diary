@@ -44,11 +44,17 @@ jobs:
         run: |
           pip install -q opencv-python-headless numpy pillow open_clip_torch torch --extra-index-url https://download.pytorch.org/whl/cpu
           gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
+          # the old BAPS website's photos (swaminarayan.org), as the website build adds them (Darpan, 15 Nov 2026: "Yes push old photos")
+          git fetch -q --depth 1 origin claude/project-thread-2l8drg && git show FETCH_HEAD:tools/sorg_photos.py > "$RUNNER_TEMP/sorg_photos.py"
+          if gh release download swaminarayan-org-web -p sorg-rows.json -p sorg-have.txt -p sorg-captions.json -p sorg-same.json 2>/dev/null; then
+            python3 "$RUNNER_TEMP/sorg_photos.py" add --rows sorg-rows.json --db bapas.db --have sorg-have.txt --captions sorg-captions.json --same sorg-same.json
+          fi
           # News story photos (source 'news') count only once their files are in the photo store, so every day is not chosen
           # again over photos that are not there yet (Darpan, 9 Nov 2026: 'yes push search news')
           python3 tools/news_ready.py --db bapas.db --out news-ready.txt --prune
-          curl -sf https://photos.bapas-diary.com/years.txt -o years.txt; echo "years in R2: $(tr '\n' ' ' < years.txt)"
+          { curl -sf https://photos.bapas-diary.com/years.txt || true; sqlite3 bapas.db "SELECT DISTINCT year FROM photos WHERE source = 'swaminarayan.org'"; } | grep -E '^[0-9]{4}$' | sort -un > years.txt; echo "years in R2: $(tr '\n' ' ' < years.txt)"
           mkdir hints && gh release download website-faces -p 'face2-*.json.gz' -D hints
+          gh release download swaminarayan-org-web -p 'face2-*-sorg.json.gz' -D hints 2>/dev/null || true
           gh release download faces-mockup -p faces.tgz   # a test copy starts from the live one too
           tar xzf faces.tgz
       - name: Close ups
