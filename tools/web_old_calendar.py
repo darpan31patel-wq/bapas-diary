@@ -94,10 +94,19 @@ LEGACY_LATE = ('\n// the festival pairs join the shuffle like the weekly ones; t
                '}).catch(() => {});\n')
 
 
-def fest_pairs(a):
-    """Both gurus at the same festival, from the festival cards (out/data/fest/KEY.json), the festive photos only."""
+def tidy(c):
+    """A caption fit to show: no markup, never a file name ('Diwali Celebration with MSM 20261108-127-Gondal')."""
+    c = re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', c or '')).strip()
+    return '' if re.search(r'\d{6,}|_|\bMSM\b|\bPSM\b|\b20\d\d \d+$', c) else c
+
+
+def fest_pairs(a, db):
+    """Both gurus at the same festival, from the festival cards (out/data/fest/KEY.json): only photos whose own caption
+    names the festival, with Bapa in them and his face found (Darpan, 29 Oct 2026: both photos must truly show what the
+    heading says); each photo's own town from the database."""
     import web_festival as W
     tags = json.load(open(a.deep_tags, encoding='utf-8')) if a.deep_tags and os.path.exists(a.deep_tags) else {}
+    town = lambda al, f: (db.execute('SELECT place FROM photos WHERE album = ? AND file = ?', (al, f)).fetchone() or [''])[0] or ''
     out = []
     for key, F in W.FESTS.items():
         path = os.path.join(a.fest, key + '.json')
@@ -107,24 +116,26 @@ def fest_pairs(a):
         for Y in json.load(open(path, encoding='utf-8')).get('years', []):
             for p in Y.get('p') or []:
                 score, said = W.festive(p, F, tags)
-                if score >= 3:   # its caption says the festival, or the festival is seen in it
-                    best['P' if Y['d'] < HANDOVER else 'M'].append((score, Y['y'], Y['d'], Y.get('place') or '', p))
+                cap = tidy(p[5] if len(p) > 5 and isinstance(p[5], str) and p[5] else p[2])
+                if said and cap and F['words'].search(cap) and p[3] and len(p) > 4 and p[4]:
+                    place = town(p[0], p[1]) or Y.get('place') or ''
+                    best['P' if Y['d'] < HANDOVER else 'M'].append((score, Y['y'], Y['d'], place, cap, p))
                     break        # the year's most festive photo
         # Pramukh Swami Maharaj's years before 2010 first (the newly tagged ones), then the most festive; Mahant Swami
         # Maharaj's most festive, the latest first
         ps = sorted(best['P'], key=lambda x: (x[1] >= 2010, -x[0], x[1]))
         ms = sorted(best['M'], key=lambda x: (-x[0], -x[1]))
-        for (s1, y1, d1, pl1, p1), (s2, y2, d2, pl2, p2) in list(zip(ps, ms))[:PAIRS_EACH]:
+        for (s1, y1, d1, pl1, c1, p1), (s2, y2, d2, pl2, c2, p2) in list(zip(ps, ms))[:PAIRS_EACH]:
             out.append({'moment': F['title'], 'fest': key,
-                        'psm': {'date': d1, 'place': pl1, 'cap': p1[2] or F['title'], 'album': p1[0], 'file': p1[1], 't': 'l'},
-                        'msm': {'date': d2, 'place': pl2, 'cap': p2[2] or F['title'], 'album': p2[0], 'file': p2[1], 't': 'l'}})
+                        'psm': {'date': d1, 'place': pl1, 'cap': c1, 'album': p1[0], 'file': p1[1], 't': 'l'},
+                        'msm': {'date': d2, 'place': pl2, 'cap': c2, 'album': p2[0], 'file': p2[1], 't': 'l'}})
     return out
 
 
-def legacy(a, cal):
+def legacy(a, cal, db):
     page = os.path.join(a.out, 'then-and-now', 'index.html')
     html = open(page, encoding='utf-8').read()
-    pairs = fest_pairs(a) if a.fest else []
+    pairs = fest_pairs(a, db) if a.fest else []
     more = os.path.join(a.out, 'then-and-now', 'more.json')
     dates = set(re.findall(r'"date": ?"(\d{4}-\d\d-\d\d)"', html))
     if os.path.exists(more):
@@ -156,6 +167,7 @@ if __name__ == '__main__':
     ap.add_argument('--deep-tags', help='what is in each photo (release deep-tags)')
     ap.add_argument('--out', required=True)
     a = ap.parse_args()
-    cal = calendar(sqlite3.connect(a.db))
+    db = sqlite3.connect(a.db)
+    cal = calendar(db)
     travels(a, cal)
-    legacy(a, cal)
+    legacy(a, cal, db)
