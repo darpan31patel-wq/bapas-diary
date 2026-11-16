@@ -344,10 +344,12 @@ function unstash(kind) {
   PER[kind].forEach(f => { o[f] = structuredClone(was && f in was ? was[f] : D[f]) }); o.sel = null;
 }
 const RAW = 'https://raw.githubusercontent.com/darpan31patel-wq/bapas-diary/studio/packs/';
+// the same packs, copied every night to R2 by the backups (Darpan, 13 Nov 2026: the Studio must still open if GitHub is lost)
+const R2PACKS = 'https://photos.bapas-diary.com/studio/packs/';
 let ROOT = '', INDEX = { days: [], months: [], specials: [] };
 const PACKS_BRANCH = new URLSearchParams(location.search).get('packs');   // ?packs=<branch> reads that branch's packs (a test run)
 async function loadIndex() {
-  for (const root of PACKS_BRANCH ? [RAW.replace('/studio/', `/${PACKS_BRANCH}/`)] : ['', 'packs/', RAW]) {
+  for (const root of PACKS_BRANCH ? [RAW.replace('/studio/', `/${PACKS_BRANCH}/`)] : ['', 'packs/', RAW, R2PACKS]) {
     try { const r = await fetch(root + 'index.json', { cache: 'no-store' }); if (r.ok) { INDEX = await r.json(); INDEX.specials = INDEX.specials || []; ROOT = root; return } } catch (e) {}
   }
   throw new Error('no index');
@@ -1155,7 +1157,29 @@ document.addEventListener('input', e => {
   const k = t.dataset.k; bag(k)[f] = t.value;
   document.querySelectorAll(`[data-f="${f}"][data-k="${k}"]`).forEach(el => { if (el !== t) el.value = t.value });
   render();
+  if (t.classList.contains('capedit')) capWarn(t);
 });
+// a caption that reads wrong gets a small saffron line under its box (Darpan, 14 Nov 2026: a 2006 London card went out
+// saying "Bapa with Bapa after their performance"). It only warns: the words are his to keep or change.
+function capProblem(v) {
+  const c = String(v || '').replace(/\s+/g, ' ').trim();
+  if (/\b(Bapa|Swamishri) with (Bapa|Swamishri)\b/i.test(c)) return 'says “Bapa with Bapa”';
+  if (/^(Bapa|Swamishri) and (Bapa|Swamishri)\b/i.test(c)) return 'starts “Bapa and Bapa”';
+  if (/\bPujya (Bapa|Swamishri)\b/i.test(c)) return 'says “Pujya Bapa”: is it the other guru, Pujya Mahant Swami or Pujya Pramukh Swami?';
+  if (/\bBrahmaswarup (Bapa|Swamishri)\b/i.test(c)) return 'says “Brahmaswarup Bapa”: is it Brahmaswarup Pramukh Swami Maharaj?';
+  const m = c.match(/\b([\p{L}\d]+) \1\b/iu);
+  if (m && !/^(sri|pagle|ghar|jay|wah|dodi|cho|je|khub)$/i.test(m[1])) return `has “${m[1]}” twice in a row`;
+  return '';
+}
+function capWarn(t) {
+  let p = t.nextElementSibling;
+  if (!p || !p.classList.contains('capwarn')) { p = document.createElement('p'); p.className = 'hint warn capwarn'; p.setAttribute('role', 'status'); t.after(p) }
+  const w = capProblem(t.value);
+  p.textContent = w ? `Check the words: this caption ${w}.` : '';
+  p.hidden = !w;
+}
+new MutationObserver(() => document.querySelectorAll('textarea.capedit').forEach(t => { if (!t.dataset.warned) { t.dataset.warned = 1; capWarn(t) } }))
+  .observe(document.documentElement, { childList: true, subtree: true });
 
 // ------------------------------------------------------------ the side panel
 const TABS = { day: [['card', 'Photo'], ['words', 'Years and words'], ['layout', 'Layout'], ['look', 'Look']], month: [['card', 'Photo'], ['words', 'Days and words'], ['layout', 'Layout'], ['look', 'Look']], special: [['choose', 'Choose'], ['card', 'Photo'], ['words', 'Cards and words'], ['layout', 'Layout'], ['look', 'Look']] };
@@ -1813,6 +1837,7 @@ function paneChoose() {
       <div class="acts"><button class="sw off" id="ch-off" aria-pressed="${off}">${off ? 'No special picture this day ✓' : 'No special picture this day'}</button></div></div></div>`
     : `<div class="ch nopic"><div><p class="hint">No special picture pack for ${esc(niceD(date))} yet. The morning run makes one from your choice below, or from the day’s most special item on its own.</p>
       <div class="acts"><button class="sw off" id="ch-off" aria-pressed="${off}">${off ? 'No special picture this day ✓' : 'No special picture this day'}</button></div></div></div>`;
+  const ukHtml = ukBackup(date, pack);
   const mineHtml = mine.length ? `<ol class="mine">${mine.map((e, i) => `<li><b>${i ? 'special ' + (i + 1) : 'special'}</b><span>${esc(chWords(e))} <small class="hint">(${/^\d{4}-/.test(e.day) ? niceD(e.day) + ' only' : 'every year'})</small></span>
       <button class="btn small" data-mv="${i}|-1" ${i ? '' : 'disabled'} aria-label="Move up">▲</button><button class="btn small" data-mv="${i}|1" ${i < mine.length - 1 ? '' : 'disabled'} aria-label="Move down">▼</button><button class="btn small" data-scope="${i}" title="Every year or this one day">${/^\d{4}-/.test(e.day) ? 'Make it every year' : 'Make it this year only'}</button><button class="btn small" data-rm="${i}">Take off</button></li>`).join('')}</ol>`
     : `<p class="hint">Nothing chosen for this day yet${off ? ', and no special picture at all' : ''}.</p>`;
@@ -1828,6 +1853,7 @@ function paneChoose() {
       <p class="hint">${!HISTORY || !dd && DAYD[mmdd] === undefined ? 'Searching…' : `Searched ${dm.scanned.captions} captions, ${dm.scanned.articles} News articles and ${dm.scanned.stories} history stories of this day for dikshas, pratishthas, festivals, leaders, honours, first times and more. The strongest first; everything else is listed by year below.`}</p>
       ${dm.list.slice(0, 15).map(momentItem).join('')}${dm.list.length > 15 ? `<p class="hint">And ${dm.list.length - 15} more, in the years below.</p>` : ''}${!dm.list.length && HISTORY && dd ? '<p class="hint">No special words found in this day’s captions, articles or stories.</p>' : ''}</div>`;
   return `<div class="group"><h3>The special picture for ${esc(niceD(date))}</h3>${own}
+      ${ukHtml}
       <p class="status" id="ch-status" role="status"></p>
       ${date >= today ? `<div class="acts" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn small" id="ch-remake" title="Asks the Collage builder to rebuild this day’s special picture from your choices now">Remake now</button><span class="hint" id="ch-remake-p">${remakeWords(date)}</span></div>` : ''}</div>
     <div class="group"><h3>Your choices for this day</h3>${mineHtml}
@@ -1845,6 +1871,49 @@ function optionsRow(pack) {
     <div><button class="btn small primary" data-instead="${i}" ${op.choose ? '' : 'disabled'}>Use this one instead</button></div></figure>`).join('');
   document.querySelectorAll('[data-instead]').forEach(b => b.addEventListener('click', () => { const op = pack.options[+b.dataset.instead]; if (op && op.choose && CH) chInstead(date, Object.assign({}, op.choose)) }));
 }
+// the UK and Europe backup (Darpan, 14 Nov 2026: "When there's 2 or more days that Bapa has been in the UK, Europe, I would
+// like a special card made. Keep it ready as a backup"). The Collage builder keeps one ready for every such day and says so
+// in two places on the studio branch: packs/uk-europe/index.json (every backup that is ready) and, on the day itself, the
+// field `uk_europe` in packs/special/<date>/pack.json. It shows here, already drawn, as one more choice; the button asks
+// studio.yml (input uk_europe_add = today) to copy it into today's 2pm send as the next special picture, until 1:50pm.
+let UKI = null;
+async function ukIndex() {
+  if (UKI) return UKI;
+  UKI = { days: [] };
+  for (const root of [ROOT, RAW, R2PACKS]) {
+    try { const r = await fetch(root + 'uk-europe/index.json', { cache: 'no-store' }); if (r.ok) { const j = await r.json(); UKI = { days: j.days || j.backups || (Array.isArray(j) ? j : []), base: root + 'uk-europe/' }; break } } catch (e) {}
+  }
+  if (S.tab === 'choose') build();
+  return UKI;
+}
+const ukLink = (u, base) => !u ? '' : /^https?:/.test(u) ? u : /^packs\//.test(u) ? RAW + u.slice(6) : (base || '') + u;
+const UK_CLOSE = '13:50';
+const ukOpen = () => new Date().toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' }) < UK_CLOSE;
+function ukBackup(date, pack) {
+  const mmdd = date.slice(5);
+  if (!UKI) { ukIndex(); return '' }
+  const inIndex = UKI.days.find(d => (d.day || d.date || '').slice(-5) === mmdd);
+  const u = pack && pack.uk_europe ? Object.assign({ base: pack.base }, pack.uk_europe) : inIndex ? Object.assign({ base: UKI.base }, inIndex) : null;
+  if (!u || !inIndex) return '';
+  const years = (u.years || []).join(', '), today = date === todayLondon(), sent = (store.get('studio-uk-added') || {})[date];
+  const btn = today ? `<div class="acts"><button class="btn small primary" id="uk-add" ${ukOpen() && !sent ? '' : 'disabled'}>Add the UK and Europe picture to today’s 2pm send</button></div>
+      <p class="hint" id="uk-add-p">${sent ? `Added at ${new Date(sent).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}. It goes out as the next special picture, after the others.` : ukOpen() ? 'It goes out at 2pm as the next special picture (special, or special 2 if there is one already). Works until 1:50pm.' : 'Too late for today’s 2pm send: adding closes at 1:50pm.'}</p>` : `<p class="hint">Kept ready for ${esc(longDate(date))}. On the day, a button here adds it to the 2pm send.</p>`;
+  const pic = ukLink(u.picture, u.base), day = new Date(date + 'T12:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
+  return `<div class="ukb" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"><a href="${esc(pic)}" target="_blank" rel="noopener" title="Open the picture full size"><img src="${esc(pic)}" alt="${esc(day)} in the UK and Europe" loading="lazy" style="width:100%;border-radius:6px;display:block"></a>
+      <p><b>${esc(day)} in the UK and Europe</b></p><p class="hint">The backup special picture, kept ready · ${esc(years)}${u.cards ? ' · ' + u.cards + ' photos on it' : ''}</p>${btn}</div>`;
+}
+async function askUkAdd(date) {
+  const el = document.getElementById('uk-add-p'), say = m => { if (el) el.textContent = m };
+  if (date !== todayLondon()) return;
+  if (!ukOpen()) { say('Too late for today’s 2pm send: adding closes at 1:50pm.'); return }
+  if (!ghKey()) { say('Connect GitHub (top of the page) first, then press again.'); return }
+  const b = document.getElementById('uk-add'); if (b) b.disabled = true;
+  try {
+    const r = await gh('/actions/workflows/studio.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main', inputs: { uk_europe_add: 'today' } }) });
+    if (r.status === 204) { const a = store.get('studio-uk-added') || {}; a[date] = Date.now(); store.set('studio-uk-added', a); say(`Asked ${timeNow()}. The Collage builder is copying the UK and Europe picture into today’s 2pm send as the next special picture; it is in Drive in about 5 minutes.`); logChange('UK and Europe picture added to the 2pm send', longDate(date)) }
+    else { if (b) b.disabled = false; say(r.status === 401 ? 'GitHub did not accept the key on this device. Press Connect GitHub and paste a new one.' : r.status === 422 ? 'The Collage builder’s run cannot take this yet (no uk_europe_add box). Nothing was changed.' : `GitHub said no (${r.status}). Press again to retry.`) }
+  } catch (e) { if (b) b.disabled = false; say('Could not reach GitHub. Press again to retry.') }
+}
 const remakeWords = date => { const when = asked()['s:' + date]; if (when && Date.now() - when < SP_MINS * 60e3) { if (!WAITS) waitForS(date); return `Remaking ${longDate(date)} (asked ${Math.round((Date.now() - when) / 60e3)} min ago)…` } const rm = (store.get('studio-remade') || {})[date]; return (rm ? `Remade at ${new Date(rm).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} from your choices${date === todayLondon() ? ', in Drive too' : ''}. ` : '') + (date === todayLondon() ? 'Every change you save asks the Collage builder to remake today’s special picture; it lands here and in Drive in about 5 to 10 minutes. Remake now asks at once.' : 'Every change you save asks the Collage builder to remake this day’s special picture, so it is ready here before its day.') };
 function wireChoices() {
   const date = chDate(); if (!date) return;
@@ -1852,6 +1921,7 @@ function wireChoices() {
   document.querySelectorAll('[data-pickgo]').forEach(b => b.addEventListener('click', async () => { await loadChoices(); const y = +b.dataset.pickgo; if (PICKSEL.year !== y || !PICKSEL.set.size) return; const e = { kind: 'photos', year: y, place: b.dataset.place || '', photos: [...PICKSEL.set] }; PICKSEL.year = null; PICKSEL.set = new Set(); chToggle(date, e, true) }));
   const on = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn) };
   on('ch-remake', 'click', () => askRemake(date));
+  on('uk-add', 'click', () => askUkAdd(date));
   document.querySelectorAll('[data-ch]').forEach(b => b.addEventListener('click', async () => { await loadChoices(); chToggle(date, JSON.parse(b.dataset.ch), !('first' in b.dataset)) }));
   on('ch-off', 'click', async () => { await loadChoices(); chOffToggle(date) });
   document.querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => { const e = chFor(date)[+b.dataset.rm]; if (e) chToggle(date, e) }));
@@ -2034,7 +2104,7 @@ let ARTICLES = null, HISTORY = null;
 async function loadArticles() {
   if (ARTICLES) return;
   const RAWB = 'https://raw.githubusercontent.com/darpan31patel-wq/bapas-diary/claude/project-thread-02nrr0/site/darpan/';
-  const get = async name => { for (const u of [name, RAWB + name]) { try { const r = await fetch(u, { cache: 'force-cache' }); if (r.ok) return await r.json() } catch (e) {} } return [] };
+  const get = async name => { for (const u of [name, RAWB + name, 'https://photos.bapas-diary.com/studio/' + name]) { try { const r = await fetch(u, { cache: 'force-cache' }); if (r.ok) return await r.json() } catch (e) {} } return [] };
   [ARTICLES, HISTORY] = await Promise.all([get('articles.json'), get('history.json')]);
   if (S.tab === 'card') build();
 }
