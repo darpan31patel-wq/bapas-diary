@@ -21,7 +21,7 @@ archive/days/MM-DD.json, one entry per year that has anything:
 Where each thing came from stays in these files and is never drawn on a picture. make.py reads them (day_info) and never
 needs any website to be up.
 """
-import collections, glob, gzip, json, os, re, sqlite3, sys
+import collections, glob, gzip, html, json, os, re, sqlite3, sys
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(HERE, 'archive', 'days')
@@ -108,7 +108,7 @@ def photos(folder, days):
         sim, other, w, h = f[0], f[11] if len(f) > 11 else 0, f[8], f[9]
         if sim < SAME_PERSON or other >= sim or max(w, h) < MIN_SIDE:   # Bapa clearly seen, and big enough to show
             continue
-        cap = ' '.join(re.sub(r'<[^>]+>', ' ', cap or '').split())
+        cap = ' '.join(html.unescape(re.sub(r'<[^>]+>', ' ', cap or '')).split())
         y = days[date[5:]].setdefault(date[:4], {})
         y.setdefault('ph', []).append([album, file, cap, rel] + ([place] if place else []))
         n += 1
@@ -169,8 +169,8 @@ def old_captions(folder):
         return {}
     out = {}
     for k, v in json.load(open(path, encoding='utf-8')).items():
-        new, old = ' '.join(re.sub(r'<[^>]+>', ' ', v.get('swaminarayan_org') or '').split()), ' '.join((v.get('baps_org') or '').split())
-        if new and new.lower() != old.lower() and len(new.split()) >= 3:
+        new, old = ' '.join(html.unescape(re.sub(r'<[^>]+>', ' ', v.get('swaminarayan_org') or '')).split()), ' '.join(html.unescape(v.get('baps_org') or '').split())
+        if new and new.lower().rstrip('. ') != old.lower().rstrip('. ') and len(new.split()) >= 3 and len(new) > len(old):   # only when the old website says more
             out[k.lower()] = [old, new]
     return out
 
