@@ -140,10 +140,10 @@ def main():
     reads = open(a.reads, encoding='utf-8').read()
     with sync_playwright() as p:
         br = p.chromium.launch()
-        for day in ['2026-11-16'] + pick_days(a.reports):
+        for day in ['2026-07-19', '2026-11-07'] + pick_days(a.reports)[:1]:
             today(br, day_html, day, 1600, 1000, 1, 'computer', a.out)
             today(br, day_html, day, 390, 844, 2, 'phone', a.out)
-        looks = [('day', '#date=2001-11-16', '.card.read'), ('word', '#q=Finland', '.card.read'), ('report', '#q=Bhuj%20Mandvi', '.card.read')]
+        looks = [('day', '#date=2001-11-16', '.card.read'), ('word', '#q=Finland', '.card.read'), ('report', '#q=Cincinnati', '.card.read')]
         for w, h, dpr, tag in ((1600, 1000, 1, 'computer'), (390, 844, 2, 'phone')):
             search(br, search_html, reads, looks, w, h, dpr, tag, a.out)
         br.close()
