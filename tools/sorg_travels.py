@@ -30,7 +30,9 @@ ALIASES = {'amdavad': 'ahmedabad', 'ahmadabad': 'ahmedabad', 'vadodara': 'vadoda
 # Kheda, not Mataro in Spain (found by the Jivan Charitra thread, 16 Nov 2026); Dumas is the seaside by Surat
 KNOWN = {'matar': dict(name='Matar', country='India', ll=[72.67, 22.71]),
          'dumas': dict(name='Dumas', country='India', ll=[72.71, 21.08]),
-         'dummas': dict(name='Dumas', country='India', ll=[72.71, 21.08])}
+         'dummas': dict(name='Dumas', country='India', ll=[72.71, 21.08]),
+         'ashton': dict(name='Ashton-under-Lyne', country='UK', ll=[-2.1, 53.49]),
+         'stansted': dict(name='Stansted', country='UK', ll=[0.2, 51.9])}
 NOT_A_TOWN = {'egypt', 'fl', 'dar es', 'india', 'usa', 'uk', 'africa', 'america', 'europe'}
 FAR = 1500   # km: a town this far from every town around it in the reports is the wrong town of that name
 COUNTRY = {'IN': 'India', 'GB': 'UK', 'US': 'USA', 'KE': 'Kenya', 'TZ': 'Tanzania', 'UG': 'Uganda', 'CA': 'Canada',
