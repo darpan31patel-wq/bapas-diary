@@ -77,7 +77,7 @@ if git -C mirror.git fetch -q --prune origin '+refs/heads/*:refs/heads/*' '+refs
         size=$(git -C mirror.git rev-list --objects --disk-usage "refs/heads/$b" --not refs/heads/main 2>/dev/null || echo 0)
         if [ "${size:-0}" -gt 52428800 ]; then SKIP+=("$b"); echo "  not to GitLab (photo packs, $((size / 1048576)) MB): $b"
         else REFS+=("+refs/heads/$b:refs/heads/$b"); fi
-      done < <(git -C mirror.git for-each-ref --format='%(refname:short)' refs/heads)
+      done < <(git -C mirror.git for-each-ref --format='%(refname:lstrip=2)' refs/heads)
       gl_push() { git -C mirror.git push -q "$GL" "$@" 2>&1 | sed "s#$GITLAB_TOKEN#***#g"; return "${PIPESTATUS[0]}"; }
       # branches gone from GitHub, and the big ones, are removed from GitLab first so the space can be freed
       GONE=()
