@@ -1917,7 +1917,13 @@ $('#drive-chip').addEventListener('click', () => { fillDrive(); $('#drv-status')
 $('#drive-off').addEventListener('click', () => { setDrive(''); fillDrive(); build(); const st = $('#drv-status'); st.className = 'status'; st.textContent = 'Disconnected from Google Drive on this device.' });
 $('#drive-test').addEventListener('click', async () => {
   const st = $('#drv-status'); st.className = 'status'; st.textContent = 'Asking your script…';
-  try { await checkDrive(); st.className = 'status ok'; st.textContent = 'All good: your script answered, the code is right and it is the newest version.' }
+  // the script's own version in plain words (Collage builder note, 16 Nov 2026: ping answers version 5 with extra: true)
+  try {
+    const ans = await askDrive({ mode: 'ping' });
+    if (!ans.ok) throw new Error(ans.error || 'Your script answered, but said no.');
+    if (!(ans.version >= 5) || !ans.extra) { st.className = 'status warn'; st.textContent = `Your Google script is an old version${ans.version ? ' (version ' + ans.version + ')' : ''}. In gets 2pm picture ready go to Deploy, Manage deployments, the pencil, Version: New version, Deploy. Then press Check the connection again.`; return }
+    st.className = 'status ok'; st.textContent = `Connected to Google Drive, script version ${ans.version} (extra pictures on).`;
+  }
   catch (e) { st.className = 'status warn'; st.textContent = e.message }
 });
 $('#drive-save').addEventListener('click', () => {
