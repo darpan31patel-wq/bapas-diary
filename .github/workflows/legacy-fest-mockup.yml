@@ -2,7 +2,7 @@
 # tools/web_old_calendar.py from branch claude/project-thread-tq8ss2 (Darpan, 16 Nov 2026: "legacy is the tab that is
 # called legacy"). Only the pages' own files are swapped in the browser. Runs only on the mockup branch, never deploys.
 name: Legacy festivals mockup
-# run 6: release again, with retries
+# run 7: wait for the fade to finish
 on:
   push:
     branches: [claude/project-thread-eawr12-mockup]
@@ -118,7 +118,7 @@ jobs:
                       except Exception as e: log.write(f'goto {url} {e.__class__.__name__}\n')
                       pg.wait_for_timeout(7000)
                       if later:
-                          pg.evaluate("h => { location.hash = h; }", later); pg.wait_for_timeout(6000)
+                          pg.evaluate("h => { location.hash = h; }", later); pg.wait_for_timeout(15000)
                       name = f"shots/{tag}-{n}-{page}"
                       try:
                           if page == 'legacy':
@@ -143,6 +143,6 @@ jobs:
         if: always()
         run: |
           for t in 1 2 3 4; do
-            gh release create legacy-fest-mockup-2 shots/* -R "$GITHUB_REPOSITORY" --title "Legacy festivals mockup pictures" --notes "Mockup pictures only, not part of the website" --target "$GITHUB_SHA" && break
+            gh release create legacy-fest-mockup-3 shots/* -R "$GITHUB_REPOSITORY" --title "Legacy festivals mockup pictures" --notes "Mockup pictures only, not part of the website" --target "$GITHUB_SHA" && break
             sleep $((t * 60))
           done
