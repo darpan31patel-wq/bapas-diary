@@ -44,6 +44,7 @@ def gather(day):
             if (x.get('c') or '').endswith('...') and x['i'] in full:
                 x['c'] = full[x['i']]
         items += [x for x in extra if x['i'] not in have]
+    make.day_extras(day, items)
     make.album_towns(items)
     make.settle_places(items, mmdd)
     tg_extra, tg_evs, special = make.tg_day(day, items)
@@ -62,6 +63,7 @@ def gather(day):
         print('  festival photos not checked:', e)
     make.full_size(photos)
     make.tag_festivals(photos)
+    make.tell_days(day, photos)
     return items, photos, tg_evs, special
 
 
