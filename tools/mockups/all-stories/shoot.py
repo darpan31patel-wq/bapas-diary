@@ -72,9 +72,13 @@ def today(br, html, day, w, h, dpr, tag, out):
         b = box(pg, '#board', 10)
         if b: snap(pg, f'{out}/{day}-{tag}-2-board.jpg', b, 3000 if tag == 'computer' else 2400)
         if info['first']:
-            pg.evaluate("y => { const s=[...document.querySelectorAll('#cards .slot')].find(x=>x.querySelector('.yr').textContent===y); s.id='mockslot'; }", info['first'])
-            b = box(pg, '#mockslot', 30, 0 if tag == 'phone' else 260)
-            if b: snap(pg, f'{out}/{day}-{tag}-3-card.jpg', b)
+            pg.evaluate("y => { const s=[...document.querySelectorAll('#cards .slot')].find(x=>x.querySelector('.yr').textContent===y); s.id='mockslot'; s.scrollIntoView({block:'center',inline:'center'}); }", info['first'])
+            pg.wait_for_timeout(2500)
+            if tag == 'phone':
+                pg.screenshot(path=f'{out}/{day}-{tag}-3-card.jpg', type='jpeg', quality=84)
+            else:
+                b = box(pg, '#mockslot', 30, 260)
+                if b: snap(pg, f'{out}/{day}-{tag}-3-card.jpg', b)
             b = box(pg, '#y' + info['first'], 18)
             if b: snap(pg, f'{out}/{day}-{tag}-4-year.jpg', b, 1800)
     except Exception as e: print(day, tag, 'stopped:', e, flush=True)
@@ -96,9 +100,11 @@ def search(br, html, reads, hashes, w, h, dpr, tag, out):
             pg.wait_for_timeout(20000); signal.alarm(0)
             print('search', name, tag, pg.evaluate("(document.getElementById('count')||{}).innerText"), flush=True)
             snap(pg, f'{out}/search-{name}-{tag}-1.jpg', {'x': 0, 'y': 0, 'width': w, 'height': h if tag == 'phone' else 1300})
-            if click:
-                pg.evaluate("s => { const c = document.querySelector(s); if (c) c.click(); }", click); pg.wait_for_timeout(3000)
-                snap(pg, f'{out}/search-{name}-{tag}-2-open.jpg', {'x': 0, 'y': pg.evaluate('scrollY'), 'width': w, 'height': h})
+            if click and pg.evaluate("s => { const c = document.querySelector(s); if (!c) return false; c.closest('section.day').id = 'mockday'; return true; }", click):
+                b = box(pg, '#mockday', 10)
+                if b: snap(pg, f'{out}/search-{name}-{tag}-2-day.jpg', b, 1600)
+                pg.evaluate("s => document.querySelector(s).click()", click); pg.wait_for_timeout(3000)
+                pg.screenshot(path=f'{out}/search-{name}-{tag}-3-open.jpg', type='jpeg', quality=84)
         except Exception as e: print('search', name, tag, 'stopped:', e, flush=True)
         finally:
             signal.alarm(0)
@@ -106,10 +112,27 @@ def search(br, html, reads, hashes, w, h, dpr, tag, out):
             except Exception: pass
 
 
+def pick_days(folder):
+    """Two dates where the old website wrote about years with no photo of Bapa, so the new boxes show (40 small reads)."""
+    n = {f[:5]: json.load(open(os.path.join(folder, f), encoding='utf-8')) for f in os.listdir(folder) if f.endswith('.json')}
+    best = []
+    for md in sorted(n, key=lambda k: -len(n[k]))[:40]:
+        try:
+            D = json.load(urllib.request.urlopen(urllib.request.Request(f'https://bapas-diary.com/data/day/{md}.json', headers={'User-Agent': 'Mozilla/5.0 mockup'}), timeout=30))
+        except Exception as e:
+            print(md, e); continue
+        have = {str(Y['y']) for Y in D.get('years', []) if Y.get('p') or Y.get('t')}
+        best.append((len([y for y in n[md] if y not in have]), md))
+    best.sort(reverse=True)
+    print('days with written years and no photo:', best[:6], flush=True)
+    return ['2026-' + md if md < '11-16' else '2025-' + md for _, md in best[:2]]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--reads', required=True)
     ap.add_argument('--out', default='shots')
+    ap.add_argument('--reports', default='reports')
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     day_html = patched('https://bapas-diary.com/', 'site/day.html')
@@ -117,10 +140,10 @@ def main():
     reads = open(a.reads, encoding='utf-8').read()
     with sync_playwright() as p:
         br = p.chromium.launch()
-        for day in ['2026-11-16', '2026-09-06', '2027-01-14']:
+        for day in ['2026-11-16'] + pick_days(a.reports):
             today(br, day_html, day, 1600, 1000, 1, 'computer', a.out)
             today(br, day_html, day, 390, 844, 2, 'phone', a.out)
-        looks = [('day', '#date=2001-11-16', '.card.read'), ('word', '#q=' + 'Queen%27s%20Baton', '.card.read'), ('place', '#q=Bhuj%20vicharan', None)]
+        looks = [('day', '#date=2001-11-16', '.card.read'), ('word', '#q=Finland', '.card.read'), ('report', '#q=Bhuj%20Mandvi', '.card.read')]
         for w, h, dpr, tag in ((1600, 1000, 1, 'computer'), (390, 844, 2, 'phone')):
             search(br, search_html, reads, looks, w, h, dpr, tag, a.out)
         br.close()
