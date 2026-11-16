@@ -26,7 +26,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PROJECT: bapas-diary
       DOMAIN: bapas-diary.com
-      CAL_COMMIT: 9d0e952d170abfdaecfea4548f714bccb2532a8e   # 8fab292 (tbkjl3: look C plus a day's photos in a box) plus the schedule's dates for the stay Bapa is in now and bigger festival words on tablets (branch claude/project-thread-q7xtjj)
+      CAL_COMMIT: 3730887d12497cd670f56088ee55dbde44cb406d   # 3730887 (kx7dyb: each day of an album takes its own photo of Bapa, Darpan 16 Nov 2026 "yes calendar different photos"); before that 9d0e952d170abfdaecfea4548f714bccb2532a8e, 8fab292 (tbkjl3: look C plus a day's photos in a box) plus the schedule's dates for the stay Bapa is in now and bigger festival words on tablets (branch claude/project-thread-q7xtjj)
     steps:
       - uses: actions/checkout@v4
         with:
@@ -115,7 +115,7 @@ jobs:
           git fetch -q --depth 1 origin "$CAL_COMMIT" && mkdir calsrc && git archive "$CAL_COMMIT" tools/web_calendar.py site/calendar.html fonts | tar -x -C calsrc
           sed -i 's/^FIRST = (1999, 1)/FIRST = (1981, 1)/' calsrc/tools/web_calendar.py   # the Calendar from 1981, the old site's first festival year (Darpan, 15 Nov 2026)
           git fetch -q --depth 1 origin refs/heads/database && git show FETCH_HEAD:crawl/schedule/latest.json > schedule.json || echo '{}' > schedule.json   # where Bapa will be (Future Vicharan)
-          python3 calsrc/tools/web_calendar.py --db bapa-top.db --site cal --photos-url https://photos.bapas-diary.com/ --search-url /search/ --photo-years photo-years.txt --pool bapa.db --sigs calendar-looks.json --faces faces --schedule schedule.json   # a different looking photo each day, and the days ahead (Darpan: yes perfect go live, 26 Oct)
+          python3 calsrc/tools/web_calendar.py --db bapa-top.db --all bapas.db --site cal --photos-url https://photos.bapas-diary.com/ --search-url /search/ --photo-years photo-years.txt --pool bapa.db --sigs calendar-looks.json --faces faces --schedule schedule.json   # a different looking photo each day, and the days ahead (Darpan: yes perfect go live, 26 Oct)
           python3 tools/web_rules.py calfaces --site cal --faces faces   # Bapa's whole head in each Calendar photo (Darpan, 25 Oct 2026)
           rsync -a cal/ out/ && test -f out/calendar/index.html
           # what Bapa did each day and where he was, from the old site's travelogue: under the photos of a clicked Calendar day,

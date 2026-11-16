@@ -950,10 +950,15 @@ function render() {
   // (Darpan, 16 Nov 2026: "Even if there isn't a media, it can just be the year with a box show with a summary text")
   const hasPhotos = b => b.Y && (b.Y.p.length || (b.Y.t || []).length);
   // the first impression is a mix: about half the cards open on a close up, half on an activity photo, shuffled at
-  // each visit (Darpan, 26 Oct 2026)
-  const withPhotos = years.filter(y => hasPhotos(byYear[y]));
-  const order = withPhotos.map((_, i) => i).sort(() => Math.random() - .5), closeUp = new Set(order.slice(0, Math.ceil(order.length / 2)));
-  cards = years.map(y => card(y, byYear[y], closeUp.has(withPhotos.indexOf(y))));
+  // each visit (Darpan, 26 Oct 2026); and never a row of close ups side by side: along the rope a close up, then Bapa
+  // doing something, then a close up again, from whichever the visit starts on (Darpan, 16 Nov 2026: "too many close up
+  // together, mix with action shots"). A year with only one kind shows it, and the next year takes the other kind.
+  let lastClose = Math.random() < .5;
+  cards = years.map(y => {
+    const c = card(y, byYear[y], !lastClose);
+    if (hasPhotos(byYear[y]) && c.close !== undefined) lastClose = c.close;
+    return c;
+  });
   under = null; SKY.row = -1; SKY.x = 1e9; SKY.wait = 1.5;   // the star sets off along the first rope
   [...$('groups').children].sort((a, b) => a.id.slice(1) - b.id.slice(1)).forEach(g => $('groups').append(g));
   storyLines();
@@ -970,6 +975,7 @@ function render() {
   start();
 }
 
+const CLOSE_UP = .25, WIDE = .2;
 function card(y, {Y, place, stories}, want = true) {
   const photos = Y ? (Y.p.length ? Y.p : Y.t || []) : [];
   const where = Y ? Y.place : place;
@@ -1033,9 +1039,13 @@ function card(y, {Y, place, stories}, want = true) {
     });
     el.addEventListener('pointerleave', evClose);
   }
-  const close = p => !!(p[4] && p[4][7]);   // want: this card opens on a close up (true) or an activity photo (false)
-  const first = photos.findIndex(p => p[3] && close(p) === want);
-  if (photos.length) show(c, first >= 0 ? first : Math.max(0, photos.findIndex(p => p[3])), true);   // open on a darshan of Bapa
+  // want: this card opens on a close up (true) or an activity photo (false). A close up = his face a quarter of the
+  // photo's height or more; an activity photo = a wide one, his face under a fifth of the height, so what he is doing
+  // shows (arti, reading, writing), but never a tiny far figure (under a twelfth of the height)
+  const h = p => p[4] ? p[4][5] : 0, close = p => h(p) >= CLOSE_UP, doing = p => h(p) >= .08 && h(p) < WIDE;
+  let first = photos.findIndex(p => p[3] && (want ? close(p) : doing(p)));
+  if (first < 0) first = Math.max(0, photos.findIndex(p => p[3]));   // open on a darshan of Bapa
+  if (photos.length) { show(c, first, true); c.close = !doing(photos[first]); }
   if (photos.length > 1) (c.pre = new Image()).src = SRC.photo(photos[(c.k + 1) % photos.length]);   // its next photo loads straight away, ready for the first fade
   group(y, Y, where, cal, stories);
   return c;
