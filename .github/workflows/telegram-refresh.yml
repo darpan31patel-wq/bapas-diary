@@ -50,7 +50,10 @@ jobs:
               if len(got) < 0.9 * len(was):
                   raise SystemExit(f'{new}: only {len(got)} posts read, {len(was)} saved before, nothing changed')
               merged = {p['id']: p for p in was}
-              merged.update({p['id']: p for p in got})
+              for p in got:   # a saved post keeps its saved words and links (lines.json was written on them), the rest is fresh
+                  if p['id'] in merged:
+                      p['text'], p['links'] = merged[p['id']]['text'], merged[p['id']]['links']
+                  merged[p['id']] = p
               json.dump(sorted(merged.values(), key=lambda p: p['id']), open(old, 'w', encoding='utf-8'), ensure_ascii=False, indent=0)
               print(old, len(was), '->', len(merged), 'posts')
           PY
