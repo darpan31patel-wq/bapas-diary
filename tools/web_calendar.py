@@ -164,6 +164,8 @@ def build(db, today, photo_years, vary=None, ahead=None, more=None):
 
 GURU_SWITCH = '2016-08-13'   # Swamishri before this day is Pramukh Swami Maharaj, after it Mahant Swami Maharaj
 LOOSE, FACE_MIN = .38, .07   # his face half recognised or better, and not a tiny far away face
+RITE = re.compile(r'murti[- ]pratishtha', re.I)   # the ceremony, not a murti
+SURE = .5                    # his face recognised (web_bapa_rules.SAME_PERSON)
 SAYS_BAPA = re.compile(r'(HH |His Holiness )?(Swamishri|Bapa|Pramukh Swami|Mahant Swami)\b')   # 'Swamishri performs murti-pratishtha'
 
 
@@ -189,12 +191,16 @@ def spread_trips(trip, pool, dated, more=None, faces=None):
     if more is not None and faces:
         seen = {(c[0], c[1]) for L in albums.values() for c in L}
         extra = {}
-        for d0, d1, album, file, cap in more.execute(
-                'SELECT date_from, date_to, album, file, caption FROM photos WHERE date IS NULL AND date_from IS NOT NULL '
-                'AND is_bapa = 1 ORDER BY date_from, album, rowid'):
+        for d0, d1, album, file, cap, bapa in more.execute(
+                'SELECT date_from, date_to, album, file, caption, is_bapa FROM photos WHERE date IS NULL AND date_from IS NOT NULL '
+                'ORDER BY date_from, album, rowid'):
             rec = faces.get(f'{album}/{file}')
             cap = cap or ''
-            if (album, file) in seen or not rec or rec[0] < LOOSE or rec[4] < FACE_MIN or (NOT_BAPA.search(cap) and not SAYS_BAPA.match(cap)):
+            if (album, file) in seen or not rec or rec[4] < FACE_MIN or (NOT_BAPA.search(RITE.sub('', cap)) and not SAYS_BAPA.match(cap)):
+                continue
+            # the caption says Swamishri and his face is half known, or his face is fully known and fills a tenth of the
+            # photo ('Performs the murti-pratishtha arti' carries on from the photo before, so no Swamishri in it)
+            if not ((bapa == 1 and rec[0] >= LOOSE) or (rec[0] >= SURE and rec[4] >= .09)):
                 continue
             other = 'Mahant Swami' if d0 < GURU_SWITCH else 'Pramukh Swami'
             if other.lower() in cap.lower():
@@ -224,7 +230,10 @@ def spread_trips(trip, pool, dated, more=None, faces=None):
         cands = [c for k in sorted(cover[day], key=lambda k: k[0] != first) for c in albums[k]]
         if not cands:
             continue
-        pick = next((c for c in cands if (c[0], c[1]) not in used), None)
+        # a photo with the same caption as one already shown is often the next frame of the same moment: those last
+        shown = {(c[0], c[2]) for c in cands if (c[0], c[1]) in used}
+        pick = next((c for c in cands if (c[0], c[1]) not in used and (c[0], c[2]) not in shown), None) or \
+            next((c for c in cands if (c[0], c[1]) not in used), None)
         if pick is None:   # every photo of him in these albums is on a square already: the one shown least
             pick = min(cands, key=lambda c: used[(c[0], c[1])])
         used[(pick[0], pick[1])] = used.get((pick[0], pick[1]), 0) + 1
