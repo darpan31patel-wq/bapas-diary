@@ -49,8 +49,10 @@ def context(br, w, h, dpr, day, routes):
     pg = ctx.new_page()
     pg.on('pageerror', lambda e: print('page error', e, flush=True))
     pg.clock.set_fixed_time(day + 'T09:00:00')
+    def answer(body, kind):
+        return lambda route, request=None: route.fulfill(status=200, content_type=kind, body=body)
     for match, body, kind in routes:
-        pg.route(match, lambda r, body=body, kind=kind: r.fulfill(status=200, content_type=kind, body=body))
+        pg.route(match, answer(body, kind))
     return ctx, pg
 
 
