@@ -66,11 +66,39 @@ def seeds():
     return [BASE + p for p in s]
 
 
+def sane(path):
+    """WordPress sites write links without the leading slash ("wp-content/...", "aarsh-gandhinagar/") and inside
+    scripts with escaped slashes ("\\/\\/site\\/wp-content"); read from a page deep in the site they make endless
+    made-up addresses (research.baps.org/news-events/a/b/aarsh-gandhinagar/aarsh-gandhinagar/cloud1.png). Those are
+    put right where the real address is plain (wp-content and wp-includes always sit at the top) and dropped
+    otherwise."""
+    if '\\' in path:
+        return None
+    m = re.search(r'/(wp-content|wp-includes)/', path)
+    if m and m.start() > 0:
+        path = path[m.start():]
+    seg = [x for x in path.split('/') if x]
+    if len(seg) != len(set(seg)):
+        return None
+    if seg and seg[0] not in ('wp-content', 'wp-includes'):
+        last = seg[-1]
+        if '.' in last and not re.search(r'(?i)\.(html?|php)$', last) and len(seg) > 3:
+            return None    # a photo or file deep inside a page address is a made-up address
+        if len(seg) > 6:
+            return None
+    return path
+
+
 def norm(url):
     u = urllib.parse.urlsplit(url)
     if u.scheme not in ('http', 'https') or u.hostname not in HOSTS:
         return None
-    path = urllib.parse.quote(urllib.parse.unquote(re.sub(r'/+', '/', u.path or '/')), safe="/%-_.~()!'$&+,;=:@")
+    raw = urllib.parse.unquote(re.sub(r'/+', '/', u.path or '/'))
+    if SITE != 'swaminarayan.org':
+        raw = sane(raw)
+        if raw is None:
+            return None
+    path = urllib.parse.quote(raw, safe="/%-_.~()!'$&+,;=:@")
     if path.endswith('/') and SITE == 'swaminarayan.org':
         path += 'index.htm'    # a folder address is its index page there (other sites serve the folder address)
     q = '' if not u.query or not path.lower().endswith('.php') else '?' + u.query

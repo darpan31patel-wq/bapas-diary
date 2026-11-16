@@ -13,6 +13,8 @@
 # Round 4, 16 Nov 08:05 UTC: only the two with work left (research.baps.org about 137,000 addresses, londonmandir
 # about 1,500). More time copying: pages are no longer pulled back from Drive first, and the lists are rebuilt only
 # when a site is finished (or a commit message says [lists]), which took most of round 3's time.
+# Round 5, 16 Nov 14:00 UTC: most of research.baps.org's 137,000 addresses (and londonmandir's 20,000 extra pages)
+# were made up from links written without a leading slash; tools/swaminarayan_org.py sane() now drops them.
 name: other-sites
 on:
   push:
