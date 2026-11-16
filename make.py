@@ -2699,7 +2699,8 @@ BIG = {'Diwali': r'diwali|deepavali|chopda|sharda.?pujan|lakshmi.?pujan|account 
        'Guru Purnima': r'guru.?purnima|guru.?pujan|guru.?bhakti',
        'Pramukh Swami Maharaj Jayanti': r'jayanti|birthday|janma|janmotsav',
        'Mahant Swami Maharaj Jayanti': r'jayanti|birthday|janma|janmotsav',
-       'Gunatitanand Swami Jayanti': r'gunatitanand|jayanti|birthday|janma'}
+       'Gunatitanand Swami Jayanti': r'gunatitanand|jayanti|birthday|janma',
+       'Pushpadolotsav': r'pushpadol|fuldol|dhuleti|colou?red water|saffron.scented'}
 FEST_MIN = 5
 
 
@@ -2707,8 +2708,12 @@ FEST_MIN = 5
 # corners and down the sides, little coloured bulbs along each cord, a lit diya at the foot of every card, and a row of
 # diyas along the bottom edge either side of the footer line (31 Oct 2026: 'more fireworks in the background and diyas
 # along the bottom')
+HOLI = [(255, 61, 127), (255, 212, 0), (53, 199, 89), (61, 183, 255), (255, 138, 26), (176, 92, 255)]
 FEST_DRESS = {'Diwali': dict(top=(10, 8, 26), glow=(150, 80, 20), fireworks=True, bulbs=True, foot='diya', diyas=True),
-              'Annakut': dict(glow=(190, 100, 20), sweets=True, corners='food')}   # Darpan, 31 Oct 2026: Indian food only, stacked in the free corners, nothing on the cards
+              'Annakut': dict(glow=(190, 100, 20), sweets=True, corners='food'),   # Darpan, 31 Oct 2026: Indian food only, stacked in the free corners, nothing on the cards
+              # Every Fuldol (Darpan, 16 Nov 2026): soft puffs of colour in the corners, a cord of coloured beads, a little
+              # tray of gulal heaps at the foot of every card
+              'Pushpadolotsav': dict(glow=(170, 40, 90), puffs=HOLI, beads=HOLI[:5], foot='gulal')}
 
 
 def drawn(size, draw):
@@ -2732,7 +2737,17 @@ def draw_diya(im, d, s):
     d.line((s * .2, s * .72, s * .8, s * .72), fill=(255, 210, 120), width=s // 40)
 
 
-FEST_PICS = {'diya': draw_diya}
+def draw_gulal(im, d, s):
+    """A brass tray with three heaps of coloured powder and a little colour in the air (Every Fuldol)."""
+    d.ellipse((s * .02, s * .66, s * .98, s * .9), fill=(214, 160, 50), outline=(140, 90, 20), width=s // 60)
+    for x, c in [(.24, HOLI[0]), (.5, HOLI[1]), (.76, HOLI[2])]:
+        d.pieslice((s * (x - .18), s * .42, s * (x + .18), s * .98), 180, 360, fill=c)
+    for x, y, c in [(.2, .3, HOLI[0]), (.5, .18, HOLI[1]), (.8, .28, HOLI[2])]:
+        r = s * .05
+        d.ellipse((s * x - r, s * y - r, s * x + r, s * y + r), fill=c + (150,))
+
+
+FEST_PICS = {'diya': draw_diya, 'gulal': draw_gulal}
 
 
 def burst(d, cx, cy, R, col, rnd):
@@ -2768,6 +2783,15 @@ def fest_background(spec, plain):
             burst(d, W * fx, H * fy, px(r), cols[i % len(cols)], rnd)
         g = layer.filter(ImageFilter.GaussianBlur(px(10)))
         img.alpha_composite(g); img.alpha_composite(g); img.alpha_composite(layer)
+    if spec.get('puffs'):   # soft clouds of Holi colour in the corners and down the sides, kept away from the cards
+        layer = Image.new('RGBA', (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(layer)
+        spots = [(.06, .1, 120), (.17, .06, 80), (.94, .1, 125), (.83, .06, 78), (.035, .45, 70), (.965, .5, 72), (.03, .85, 60), (.97, .88, 60)]
+        for i, (fx, fy, r) in enumerate(spots):
+            for k in range(5):
+                c = spec['puffs'][(i + k) % len(spec['puffs'])]
+                x, y, rr = W * fx + px(rnd.uniform(-70, 70)), H * fy + px(rnd.uniform(-50, 50)), px(r * rnd.uniform(.6, 1.1))
+                d.ellipse((x - rr, y - rr, x + rr, y + rr), fill=c + (120,))
+        img.alpha_composite(layer.filter(ImageFilter.GaussianBlur(px(18))))
     if spec.get('diyas'):   # a row of lit diyas along the bottom edge, either side of the footer line
         s_ = round(px(34)); ic = drawn(s_, draw_diya)
         x = px(30)
@@ -2802,6 +2826,22 @@ def lit_rope(img, pts, w=None):
 
 
 MARIGOLD = [(255, 159, 28), (255, 190, 40), (240, 120, 20)]
+
+
+def beads_rope(cols):
+    """The usual cord strung with round coloured beads, each with a little shine (Every Fuldol)."""
+    def go(img, pts, w=None):
+        plain_rope(img, pts, w)
+        d = ImageDraw.Draw(img)
+        step, acc, i = px(20), 0, 0
+        for (x0, y0), (x, y) in zip(pts, pts[1:]):
+            acc += math.hypot(x - x0, y - y0)
+            if acc < step:
+                continue
+            acc = 0; c = cols[i % len(cols)]; r = px(9); i += 1
+            d.ellipse((x - r, y - r, x + r, y + r), fill=c, outline=tuple(max(0, v - 60) for v in c))
+            d.ellipse((x - r * .5, y - r * .6, x - r * .05, y - r * .15), fill=tuple(min(255, v + 60) for v in c))
+    return go
 
 
 def sweets_rope(img, pts, w=None):
@@ -2885,6 +2925,8 @@ def fest_dressed(name, draw_picture):
             rope = lit_rope
         if spec.get('sweets'):
             rope = sweets_rope
+        if spec.get('beads'):
+            rope = beads_rope(spec['beads'])
         WideCard.make = dressed_card(FEST_PICS.get(spec.get('foot')), WideCard.make)
         img = draw_picture()
         if spec.get('corners') == 'food':
@@ -3054,7 +3096,7 @@ def cal_caption(day, every=None):
 # archive/fest/<festival>.json: {"name", "hero": year, "years": [{"y", "d", "p" town, "i" photo address, "alt" other
 # addresses, "c" caption as shown, "crop" (frame, whole or all), "face" [x, y, w, h] at web size, "box" the website's face box}]}. Each
 # festival wears its own dress (FEST_DRESS); Every Diwali: 29 years, Bapa with lights or fireworks (his yes, 3 Nov 2026).
-FEST_FILE = {'Diwali': 'diwali', 'Annakut': 'annakut'}
+FEST_FILE = {'Diwali': 'diwali', 'Annakut': 'annakut', 'Pushpadolotsav': 'fuldol'}   # Every Fuldol: 25 years (16 Nov 2026)
 
 
 def fest_pins(name):
@@ -3112,11 +3154,12 @@ def every_festival(day, cache):
         if len(photos) < FEST_MIN:
             return None, None
         hero = [x for x in photos if x['y'] == pins.get('hero')]
-        line = f'One darshan from each {name}, {photos[0]["y"]} to {photos[-1]["y"]}, each year on its own day'
+        shown = pins.get('name') or name   # the name he uses: Pushpadolotsav is 'Fuldol' on the picture
+        line = f'One darshan from each {shown}, {photos[0]["y"]} to {photos[-1]["y"]}, each year on its own day'
         short = 1 if (FEST_DRESS.get(name) or {}).get('corners') and not hero else 0   # room for the food stacks beside the bottom cord
-        img = fest_dressed(name, lambda: compose_wide(photos, day, seed=name, style=LIVE_STYLE, title=f'Every {name}', cal=(line, ''), hero=hero, short_bottom=short))
-        print(f'  every {name} (pinned):', ', '.join(f'{x["y"]} ({x["fday"]})' for x in photos))
-        return img, (name, photos[0]['y'], photos[-1]['y'])
+        img = fest_dressed(name, lambda: compose_wide(photos, day, seed=name, style=LIVE_STYLE, title=f'Every {shown}', cal=(line, ''), hero=hero, short_bottom=short))
+        print(f'  every {shown} (pinned):', ', '.join(f'{x["y"]} ({x["fday"]})' for x in photos))
+        return img, (shown, photos[0]['y'], photos[-1]['y'])
     cal_day(day)
     days = {}
     if name in FIXED.values():   # a birthday: the same English date every year, back to the first photos
