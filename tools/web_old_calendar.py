@@ -135,9 +135,14 @@ def fest_pairs(a, db):
         ms = sorted(best['M'], key=lambda x: (-x[0], -x[1]))
         for (s1, y1, d1, pl1, c1, p1), (s2, y2, d2, pl2, c2, p2) in list(zip(ps, ms))[:PAIRS_EACH]:
             out.append({'moment': F['title'], 'fest': key,
-                        'psm': {'date': d1, 'place': pl1, 'cap': c1, 'album': p1[0], 'file': p1[1], 't': 'l'},
-                        'msm': {'date': d2, 'place': pl2, 'cap': c2, 'album': p2[0], 'file': p2[1], 't': 'l'}})
+                        'psm': {'date': d1, 'place': pl1, 'cap': c1, 'album': p1[0], 'file': p1[1], 't': size(p1[0])},
+                        'msm': {'date': d2, 'place': pl2, 'cap': c2, 'album': p2[0], 'file': p2[1], 't': size(p2[0])}})
     return out
+
+
+def size(album):
+    """The photo store keeps baps.org albums large (l/); the early darshan photos only medium (m/early/)."""
+    return 'l' if album.isdigit() or album.startswith('webnext') else 'm'
 
 
 def legacy(a, cal, db):
