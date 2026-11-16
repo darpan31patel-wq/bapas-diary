@@ -1,5 +1,5 @@
 # Pictures of the live Calendar with each day of an album with a range of dates showing its own photo of Bapa
-# run 2: more photos per album
+# run 3: pictures kept as a run artifact
 # (Darpan, 16 Nov 2026: Navsari December 2001 showed one photo on six squares). The live page, with only its
 # /data/calendar.json patched from tools/mockups/calendar-spread-days.json. Runs only on the mockup branch, never deploys.
 name: Calendar spread mockup
@@ -73,6 +73,8 @@ jobs:
           cat shots/log.txt | tail -40; ls -la shots
       - name: Keep them
         if: always()
-        run: |
-          gh release delete calendar-spread-mockup -y --cleanup-tag -R "$GITHUB_REPOSITORY" 2>/dev/null || true
-          gh release create calendar-spread-mockup shots/* -R "$GITHUB_REPOSITORY" --title "Calendar spread mockup pictures" --notes "Mockup pictures only, not part of the website" --target "$GITHUB_SHA"
+        uses: actions/upload-artifact@v4
+        with:
+          name: calendar-spread-mockup
+          path: shots/
+          retention-days: 7
