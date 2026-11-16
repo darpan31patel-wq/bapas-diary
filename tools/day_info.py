@@ -7,7 +7,7 @@ FOLDER holds the files the website project keeps (nothing here is read from baps
   release swaminarayan-org-web:  sorg-reports.jsonl  sorg.db  sorg-same.json  sorg-days.json  sorg-captions.json
                                  face2-YEAR-sorg.json.gz
   release database:              akshardham-com-pages.jsonl  akshardham-com-photos.jsonl
-  the website branch:            prasang.json  (data/baps/prasang.json)
+  the website branch:            prasang.json  (data/baps/prasang.json)  bio.json  (data/bio/bio.json)
 
 archive/days/MM-DD.json, one entry per year that has anything:
   {"YYYY": {"pl": [towns Bapa was in, in order],
@@ -16,6 +16,7 @@ archive/days/MM-DD.json, one entry per year that has anything:
             "pr": [{"t": title, "pl": [towns], "w": [paragraphs]}],             prasangs of that day
             "ds": [{"t": title, "p": place, "who": "psm" or "msm", "w": [...]}],  Daily Satsang prasangs, in English
             "st": [{"t": title, "p": place, "w": [...], "ph": [Drive paths]}],   akshardham.com stories of that day
+            "jc": [{"t": heading, "p": place, "w": [...]}],                      the Jivan Charitra life story (1921 to 1975)
             "ph": [[album, file, caption, Drive path]]}}                         old website photos that show Bapa clearly
 
 Where each thing came from stays in these files and is never drawn on a picture. make.py reads them (day_info) and never
@@ -91,6 +92,26 @@ def satsang(folder, days):
         if re.fullmatch(r'\d{4}-\d\d-\d\d', d) and v.get('en'):
             days[d[5:]].setdefault(d[:4], {}).setdefault('ds', []).append(
                 {'t': (v.get('title') or '').strip(), 'p': v.get('place') or '', 'who': v.get('who') or '', 'w': [' '.join(p.split()) for p in v['en'] if p.strip()]})
+
+
+def life_story(folder, days):
+    """The Jivan Charitra study (Pramukh Swami Maharaj's life, 1921 to 1975, data/bio/bio.json on the website branch):
+    each day it gives, with its place, heading and story. Only days it is sure of (not 'Unsure (day)', not worked out);
+    the dates Darpan has not checked yet are not in the file at all."""
+    path = os.path.join(folder, 'bio.json')
+    if not os.path.exists(path):
+        return 0
+    n = 0
+    for years in json.load(open(path, encoding='utf-8')).get('days', {}).values():
+        for es in years.values():
+            for e in es:
+                d = e.get('d') or ''
+                if not re.fullmatch(r'\d{4}-\d\d-\d\d', d) or e.get('prec') != 'Day' or 'day' in (e.get('conf') or '').lower():
+                    continue
+                days[d[5:]].setdefault(d[:4], {}).setdefault('jc', []).append(
+                    {'t': (e.get('h') or '').strip(), 'p': e.get('pl') or '', 'w': [' '.join(p.split()) for p in e.get('w') or [] if p.strip()]})
+                n += 1
+    return n
 
 
 def photos(folder, days):
@@ -181,19 +202,20 @@ def main():
     reports(folder, days)
     towns_of_days(folder, days)
     satsang(folder, days)
+    n_jc = life_story(folder, days)
     n_ph = photos(folder, days)
     n_st = site_stories(folder, days)
     os.makedirs(OUT, exist_ok=True)
     for f in glob.glob(os.path.join(OUT, '??-??.json')):
         os.remove(f)
     for mmdd, years in sorted(days.items()):
-        years = {y: v for y, v in sorted(years.items()) if any(v.get(k) for k in ('w', 'pr', 'ds', 'st', 'ph', 'o', 'pl'))}
+        years = {y: v for y, v in sorted(years.items()) if any(v.get(k) for k in ('w', 'pr', 'ds', 'st', 'ph', 'o', 'pl', 'jc'))}
         json.dump(years, open(os.path.join(OUT, mmdd + '.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     caps = old_captions(folder)
     json.dump(caps, open(os.path.join(OUT, 'captions.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'), sort_keys=True)
     count = lambda k: sum(len(v.get(k) or []) if k != 'w' else bool(v.get('w')) for ys in days.values() for v in ys.values())
     print(f"{len(days)} days: {count('w')} day reports, {count('pr')} prasangs, {count('ds')} Daily Satsang prasangs, "
-          f"{n_st} akshardham.com stories, {n_ph} old website photos of Bapa, {len(caps)} old captions")
+          f"{n_st} akshardham.com stories, {n_jc} Jivan Charitra days, {n_ph} old website photos of Bapa, {len(caps)} old captions")
 
 
 if __name__ == '__main__':

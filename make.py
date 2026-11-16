@@ -2549,17 +2549,25 @@ def info_finds(day, items, photos, found, put, exact):
     mmdd = f'{day:%m-%d}'
     for y, v in day_info(day).items():
         key, mine = f'{y}-{mmdd}', exact(y)
+        life = [w for j in v.get('jc') or [] for w in ([j['t']] if j.get('t') else []) + j['w']]
+        if life and key in found and found[key].get('kind') == 'story':   # the life story tells the channel's day too: its words join, nothing is lost
+            e = found[key]
+            told = ' '.join(e.get('paras') or full_story(e) or [e.get('story') or e.get('line') or '']).lower()
+            e['paras'] = (e.get('paras') or full_story(e) or [w for w in [e.get('story') or e.get('whatsapp') or e.get('line')] if w]) + [w for w in life if w.lower()[:60] not in told]
+            e['score'] += 20; e['why'] += ' + Jivan Charitra'
+            life = []
         guru = 'Pramukh Swami Maharaj' if datetime.date(y, day.month, day.day) < GURU_CHANGE else 'Mahant Swami Maharaj'
         paras = list(v.get('w') or [])
         for p in v.get('pr') or []:
             paras += ([p['t']] if p.get('t') else []) + [w for w in p['w'] if w not in paras]
         sat = [w for d in v.get('ds') or [] for w in ([d['t']] if d.get('t') else []) + d['w']]
+        sat += life   # the Jivan Charitra's story of that day, after the reports
         words = ' '.join(paras + sat)
         if words and mine:
             line = day_line(v)
-            score = 45 + (25 if v.get('o') else 0) + (20 if line else 0) + min(len(MOMENT.findall(words)), 5) * 3 + min(len(words) // 300, 10) + (15 if sat else 0)
+            score = 45 + (25 if v.get('o') else 0) + (20 if line else 0) + min(len(MOMENT.findall(words)), 5) * 3 + min(len(words) // 300, 10) + (15 if sat else 0) + (20 if life else 0)
             why = ', '.join(w for w in ('day report' if paras else '', f"{v['o']}" if v.get('o') else '', 'a moment of its own' if line else '',
-                                        'Daily Satsang prasang' if sat else '') if w)
+                                        'Daily Satsang prasang' if any(v.get('ds') or []) else '', 'Jivan Charitra' if life else '') if w)
             if key in found and found[key].get('kind') == 'news' and not (v.get('pl') and same_town(town_of(found[key].get('place')), v['pl'])):
                 key = key + '-year'   # that day's article is about another town: Bapa's own day is a find of its own
             if key in found:   # the same day already found by its captions, an article or a history story: both count, and no word is lost
@@ -2580,7 +2588,7 @@ def info_finds(day, items, photos, found, put, exact):
                     ev['paras'] = paras + sat
                     ev['headline'] = (f"{v['o']} {y}" + (f' in {town}' if town else '') if v.get('o') else
                                       (f'{guru} {line[0].lower()}{line[1:]}' if line.split()[0].lower() in PAST.values() else line) if line and len(line) < 150 else
-                                      next((d['t'] for d in v.get('ds') or [] if d.get('t')), '') or f'{day.day} {day:%B} {y}' + (f' in {town}' if town else ''))
+                                      next((d['t'] for d in (v.get('jc') or []) + (v.get('ds') or []) if d.get('t')), '') or f'{day.day} {day:%B} {y}' + (f' in {town}' if town else ''))
                     put(key, score, ev, why)
         for st in v.get('st') or []:
             urls = ['archive:' + rel for rel in st.get('ph') or []]   # the files are only in his archive; no website is asked
