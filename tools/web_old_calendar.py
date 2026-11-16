@@ -26,6 +26,12 @@ MAIN = [('Diwali', r'^diwali\b'), ('Annakut', r'annakut'), ('New Year', r'bestu|
 HANDOVER = '2016-08-13'   # before this day Swamishri is Pramukh Swami Maharaj
 PAIRS_EACH = 2            # festival pairs for each festival
 NOT_PAIRED = {'psm', 'msm'}   # their own Jayantis: one guru's day, not the same festival for both
+# the festival named in the photo's own caption, nothing near it ('Performs his morning puja' is not Dhanteras)
+NAMED = {'diwali': r'diwali|deepavali|chopda|sharda pujan', 'annakut': r'annakut|new year', 'dhanteras': r'dhan ?teras|lakshmi pujan',
+         'kalichaudas': r'kali ?ch', 'bhaibij': r'bhai ?b(ee|i)j', 'janmashtami': r'janmashtami|janmotsav|krishna janm',
+         'holi': r'\bholi\b', 'fuldol': r'fuldol|pushpadol|dhuleti|colou?red water', 'gurupurnima': r'guru ?purnima|guru ?pujan',
+         'harinom': r'swaminarayan jayanti|hari ?jayanti|hari ?n(o|av)mi', 'vasant': r'vasant', 'rathyatra': r'rath ?yatra|chariot',
+         'raksha': r'raksha|rakhi|nadachhadi', 'sharad': r'sharad'}
 
 
 def main_fests(fests, notes=''):
@@ -116,8 +122,10 @@ def fest_pairs(a, db):
         for Y in json.load(open(path, encoding='utf-8')).get('years', []):
             for p in Y.get('p') or []:
                 score, said = W.festive(p, F, tags)
-                cap = tidy(p[5] if len(p) > 5 and isinstance(p[5], str) and p[5] else p[2])
-                if said and cap and F['words'].search(cap) and p[3] and len(p) > 4 and p[4]:
+                named = re.compile(NAMED.get(key, r'^$'), re.I)
+                caps = [tidy(p[5]) if len(p) > 5 and isinstance(p[5], str) else '', tidy(p[2])]
+                cap = next((c for c in caps if c and named.search(c) and len(c) <= 90), '')
+                if cap and p[3] and len(p) > 4 and p[4]:
                     place = town(p[0], p[1]) or Y.get('place') or ''
                     best['P' if Y['d'] < HANDOVER else 'M'].append((score, Y['y'], Y['d'], place, cap, p))
                     break        # the year's most festive photo
