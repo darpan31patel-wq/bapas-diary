@@ -28,7 +28,6 @@ WALL = {f'2016-{m:02d}': BAPS + f'DownloadableFile/2016{m:02d}_baps_wallpaper_h'
 LIFE = 'https://pramukhswami.org/PSM/media/life/'
 PSM_LIFE = [   # pramukhswami.org's life timeline photos, our own short words, English dates only
     ('t_1940_diksha.jpg', '1940', 'Becomes a sadhu, initiated by Shastriji Maharaj in Gondal'),
-    ('t_1950_appointed-as-pramukh.jpg', '1950', 'Made President of BAPS by Shastriji Maharaj, aged 28'),
     ('t_1971_pramukhswamimaharaj_appointed_guru.jpg', '1971', 'Becomes guru of BAPS'),
     ('t_1974_key_to_the_city.jpg', '1974', 'First journey abroad as guru'),
     ('t_1984_pope-john-paul-II.jpg', '1984', 'Meets Pope John Paul II, Vatican City'),
@@ -81,8 +80,9 @@ def msm_from_today(br):
     pg.evaluate("() => { const a = document.getElementById('all'); if (a) a.hidden = false; }"); time.sleep(1)
     for y in range(2025, 2016, -1):
         r = pg.evaluate("""(y) => { const g = document.getElementById('y' + y); if (!g) return null;
-            const i = g.querySelector('.thumb img, img'); const pl = g.querySelector('.place, .where, h3');
-            return i ? [i.currentSrc || i.src, pl ? pl.textContent.trim() : ''] : null }""", y)
+            const i = g.querySelector('.thumb img, img'); if (!i) return null;
+            const words = [...g.querySelectorAll('h2, h3, .place, .where, .yp, .card-place')].map(e => e.textContent.trim()).find(s => s && !/^\d{4}$/.test(s));
+            return [i.currentSrc || i.src, words || (i.alt || '').split('.')[0]] }""", y)
         if r: msm.append([y] + r)
     log('  msm photos', len(msm)); pg.context.close()
 
@@ -160,7 +160,7 @@ def month_pic(page, tag, key):
 
 def about(page, tag):
     P = [[life[f], y, t] for f, y, t in PSM_LIFE if life.get(f)]
-    M = [[s, str(y), p or 'Darshan'] for y, s, p in msm[:8]][::-1]
+    M = [[s, str(y), (p or 'Darshan')[:70]] for y, s, p in msm[:8]][::-1]
     page.goto(SITE + '/about/', wait_until='networkidle'); time.sleep(2)
     page.evaluate("""([P, M, mark]) => {
       const fig = ([src, y, t]) => `<figure style="flex:0 0 190px;margin:0;scroll-snap-align:start;background:linear-gradient(#fdf9f0,#efe4cd);padding:8px 8px 10px;border-radius:6px;box-shadow:0 10px 26px rgba(0,0,0,.4)"><img src="${src}" alt="" style="display:block;width:100%;aspect-ratio:4/3;object-fit:cover;object-position:50% 30%;border-radius:3px"><figcaption style="margin-top:8px;text-transform:none;letter-spacing:0"><b style="display:block;font:700 17px/1.1 Lora,Georgia,serif;color:#8a1c2b">${y}</b><span style="font:400 13px/1.35 Poppins,system-ui,sans-serif;color:#3b1219">${t}</span></figcaption></figure>`;
