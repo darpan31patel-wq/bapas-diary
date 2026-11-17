@@ -1,0 +1,50 @@
+# Website only (bapas-diary.com). Separate from the daily 2pm picture: touches nothing in that chain.
+# baps.org's daily darshan photos into the photo store (R2) for Through the years (baps.org find 2, Darpan 13 Nov 2026
+# "Yes to all"): image files only, one every few seconds, never 04:30 to 07:30 UTC, stops at once if baps.org asks for a
+# check. The list (data/baps-darshan/rows.json, tools/ds_darshan.py rows) and what is in the store go to release baps-darshan.
+name: baps-darshan-store
+on:
+  push:
+    branches: [claude/project-thread-0f0un6]
+    paths: [data/baps-darshan/rows.json, tools/ds_darshan.py, .github/workflows/baps-darshan-store.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: baps-darshan-store
+jobs:
+  store:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BUCKET: bapas-diary-photos
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Get ready
+        run: |
+          pip install -q pillow requests
+          id=$(curl -s -H "Authorization: Bearer $CF_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
+          key=$(printf %s "$CF_TOKEN" | sha256sum | cut -d' ' -f1)
+          echo "::add-mask::$id"; echo "::add-mask::$key"   # keep both out of the run logs
+          { echo "AWS_ACCESS_KEY_ID=$id"; echo "AWS_SECRET_ACCESS_KEY=$key"
+            echo "AWS_DEFAULT_REGION=auto"; echo "R2=https://$CF_ACCOUNT.r2.cloudflarestorage.com"; } >> "$GITHUB_ENV"
+      - name: Photos into the photo store
+        run: |
+          for t in o m; do aws s3 ls "s3://$BUCKET/$t/" --recursive --endpoint-url "$R2" | awk '{print $4}' | grep '/bapsds-' ; done > have.txt || true
+          echo "$(wc -l < have.txt) files already there"
+          python3 tools/ds_darshan.py store --rows data/baps-darshan/rows.json --have have.txt --minutes 120 --gap 3 \
+            --send 'aws s3 sync "$OUT" "s3://$BUCKET/" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000, immutable" --content-type image/jpeg'
+      - name: The list and what is in the store, into release baps-darshan
+        if: always()
+        run: |
+          for t in o m s; do aws s3 ls "s3://$BUCKET/$t/" --recursive --endpoint-url "$R2" | awk '{print $4}' | grep '/bapsds-' ; done > ds-have.txt || true
+          echo "$(wc -l < ds-have.txt) files in the store"
+          cp data/baps-darshan/rows.json ds-rows.json
+          gh release view baps-darshan >/dev/null 2>&1 || gh release create baps-darshan --prerelease --title "baps.org daily darshan" \
+            --notes "Website only: baps.org's daily darshan photos for Through the years. Not used by the daily picture."
+          gh release upload baps-darshan ds-rows.json ds-have.txt --clobber
