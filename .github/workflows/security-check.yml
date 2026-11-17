@@ -1,0 +1,84 @@
+# Website only (bapas-diary.com): READ ONLY security check (Darpan, 17 Nov 2026: "I don't want hackers getting into my app").
+# It only looks: it asks the live website the same questions a stranger could, and reads Cloudflare and GitHub settings.
+# It never changes anything, never prints a secret (only how many letters a password has), and never touches the 2pm picture.
+name: security-check
+on:
+  push:
+    branches: ['claude/project-thread-gl2rm3']
+    paths: ['.github/workflows/security-check.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      CF: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      ACC: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      AN: ${{ secrets.CF_ANALYTICS_TOKEN }}
+      SP: ${{ secrets.STUDIO_PASSWORD }}
+      MK: ${{ secrets.MISSED_KEY }}
+      SGT: ${{ secrets.STUDIO_GITHUB_TOKEN }}
+      S: https://bapas-diary.com
+    steps:
+      - name: 1 Secure address and safety headers
+        run: |
+          for u in http://bapas-diary.com/ http://www.bapas-diary.com/ https://www.bapas-diary.com/ http://photos.bapas-diary.com/s/3148/01_TP_1998_80_17.jpg; do
+            echo "$u -> $(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "$u")"; done
+          for p in / /search/ /darpan/ /interaction/ /api/feedback; do echo "== headers $p"; curl -sI "$S$p" | grep -iE '^(HTTP|strict|content-security|x-frame|x-content|referrer|permissions|access-control|x-robots|cache-control|server|set-cookie)' ; done
+          echo "== TLS"; for v in 1.0 1.1 1.2 1.3; do printf "TLS $v: "; curl -s -o /dev/null -w '%{http_code}\n' --tlsv$v --tls-max $v "$S/" || echo refused; done
+          echo "== photos host headers"; curl -sI https://photos.bapas-diary.com/s/3148/01_TP_1998_80_17.jpg | grep -iE '^(HTTP|access-control|strict|cache)'
+      - name: 2 Studio without the password
+        run: |
+          for p in /darpan/ /darpan/index.html /darpan/articles.json /darpan/history.json /darpan/api/log /darpan/api/settings /darpan/api/special-days /darpan/api/remake "/darpan/api/remake?p=/actions/runs/1" /darpan/%2e%2e/darpan/ /DARPAN/ /darpan//api/log /darpan/api/log/ /darpan.html /darpan/index /darpan/api/log.js; do
+            r=$(curl -s -o /tmp/b -w '%{http_code}' "$S$p"); echo "GET $p -> $r $(head -c 300 /tmp/b | tr '\n' ' ' | grep -oE 'Type your password|entries|settings|"file"|server|<title>[^<]*' | head -1)"; done
+          for p in /darpan/api/log /darpan/api/settings /darpan/api/special-days /darpan/api/remake; do
+            r=$(curl -s -o /tmp/b -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"test":"security check, nothing saved"}' "$S$p"); echo "POST $p -> $r $(grep -oE 'Type your password|ok' /tmp/b | head -1)"; done
+          echo "== a made up pass cookie"; curl -s -o /dev/null -w '%{http_code}\n' -b 'bd_darpan=9999999999.0000000000000000000000000000000000000000000000000000000000000000' "$S/darpan/api/log"
+          echo "== 10 wrong passwords at once (is anyone stopped?)"; for i in $(seq 10); do curl -s -o /dev/null -w '%{http_code} %{time_total}s\n' -X POST --data-urlencode "password=wrong-guess-$i" "$S/darpan/" & done; wait
+          echo "== the 11th"; curl -s -o /dev/null -w '%{http_code} %{time_total}s\n' -X POST -d "password=wrong" "$S/darpan/"
+          echo "Studio password letters: ${#SP}   Interaction word letters: ${#MK}"
+          case "$SP" in *[0-9]*) echo "password has a number";; esac; case "$SP" in *[A-Z]*) echo "password has a capital";; esac; case "$SP" in *[^A-Za-z0-9]*) echo "password has a symbol or space";; esac
+          case "$MK" in *[0-9]*) echo "word has a number";; esac
+      - name: 3 Private lists without the word
+        run: |
+          for p in /api/missed /api/feedback "/api/spellings?key=" "/api/visitors?key=" "/api/missed?key=a" /interaction/ /special-days.json /api/weekly; do
+            echo "GET $p -> $(curl -s -o /tmp/b -w '%{http_code}' "$S$p") $(head -c 120 /tmp/b | tr '\n' ' ')"; done
+          echo "== open to other websites (CORS)?"; for p in /api/feedback /darpan/api/log /special-days.json; do echo "$p: $(curl -s -D - -o /dev/null -H 'Origin: https://evil.example' "$S$p" | grep -i access-control || echo none)"; done
+      - name: 4 Files that should never be public
+        run: |
+          for p in /.git/config /.git/HEAD /.env /.env.local /wrangler.toml /package.json /package-lock.json /.github/workflows/website-deploy.yml /functions/darpan/_middleware.js /_headers /_redirects /.DS_Store /backup.zip /site.zip /bapas.db /bapas.db.gz /search/data/bapas.db /config.json /secrets.json /tools/ /server-status /admin /wp-admin /phpinfo.php /robots.txt /sitemap.xml /.well-known/security.txt; do
+            r=$(curl -s -o /tmp/b -w '%{http_code} %{content_type} %{size_download}' "$S$p"); echo "$p -> $r"; done
+      - name: 5 Other copies of the website
+        run: |
+          for u in https://bapas-diary.pages.dev/darpan/ https://bapas-diary.netlify.app/ https://bapas-diary.netlify.app/darpan/ https://bapas-diary.netlify.app/darpan/index.html https://bapas-diary.netlify.app/interaction/; do
+            echo "$u -> $(curl -s -o /tmp/b -w '%{http_code}' "$u") $(grep -oE 'Type your password|<title>[^<]*' /tmp/b | head -1)"; done
+          echo "== Cloudflare Pages preview copies (each one is a full website at its own address)"
+          curl -s -H "Authorization: Bearer $CF" "https://api.cloudflare.com/client/v4/accounts/$ACC/pages/projects/bapas-diary" | jq -c '.result | {production_branch, domains, preview: .deployment_configs.preview | {env_vars: (.env_vars|keys?), kv: (.kv_namespaces|keys?)}, production: .deployment_configs.production | {env_vars: (.env_vars|keys?), kv: (.kv_namespaces|keys?)}}'
+          curl -s -H "Authorization: Bearer $CF" "https://api.cloudflare.com/client/v4/accounts/$ACC/pages/projects/bapas-diary/deployments?env=preview&per_page=25" | jq -r '.result[]? | "\(.created_on[0:16]) \(.deployment_trigger.metadata.branch) \(.aliases // [] | join(","))"' | head -25
+          for a in $(curl -s -H "Authorization: Bearer $CF" "https://api.cloudflare.com/client/v4/accounts/$ACC/pages/projects/bapas-diary/deployments?env=preview&per_page=5" | jq -r '.result[]?.url'); do
+            echo "$a/darpan/ -> $(curl -s -o /tmp/b -w '%{http_code}' "$a/darpan/") $(grep -oE 'Type your password|<title>[^<]*' /tmp/b | head -1)"; done
+      - name: 6 Cloudflare settings (read only)
+        run: |
+          echo "token: $(curl -s -H "Authorization: Bearer $CF" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -c '.result | {status, expires_on}')"
+          Z=$(curl -s -H "Authorization: Bearer $CF" "https://api.cloudflare.com/client/v4/zones?name=bapas-diary.com" | jq -r '.result[0].id // empty'); echo "zone readable: ${Z:+yes}"
+          if [ -n "$Z" ]; then
+            for k in ssl always_use_https min_tls_version automatic_https_rewrites security_level browser_check tls_1_3 hotlink_protection; do echo "$k: $(curl -s -H "Authorization: Bearer $CF" "https://api.cloudflare.com/client/v4/zones/$Z/settings/$k" | jq -c '.result.value // .errors[0].message')"; done
+            echo "rate limit rules: $(curl -s -H "Authorization: Bearer $CF" "https://api.cloudflare.com/client/v4/zones/$Z/rulesets/phases/http_ratelimit/entrypoint" | jq -c '[.result.rules[]? | {description, expression}] // .errors[0].message')"
+            echo "firewall rules: $(curl -s -H "Authorization: Bearer $CF" "https://api.cloudflare.com/client/v4/zones/$Z/rulesets/phases/http_request_firewall_custom/entrypoint" | jq -c '[.result.rules[]? | {description, action}] // .errors[0].message')"
+            echo "DNS: $(curl -s -H "Authorization: Bearer $CF" "https://api.cloudflare.com/client/v4/zones/$Z/dns_records?per_page=50" | jq -c '[.result[]? | {type, name, proxied}] // .errors[0].message')"
+          fi
+          echo "== R2 photo bucket open listing?"
+          curl -s -H "Authorization: Bearer $CF" "https://api.cloudflare.com/client/v4/accounts/$ACC/r2/buckets" | jq -c '[.result.buckets[]?.name]'
+          for b in $(curl -s -H "Authorization: Bearer $CF" "https://api.cloudflare.com/client/v4/accounts/$ACC/r2/buckets" | jq -r '.result.buckets[]?.name'); do
+            echo "$b public r2.dev: $(curl -s -H "Authorization: Bearer $CF" "https://api.cloudflare.com/client/v4/accounts/$ACC/r2/buckets/$b/domains/managed" | jq -c '.result | {enabled, domain}')  custom: $(curl -s -H "Authorization: Bearer $CF" "https://api.cloudflare.com/client/v4/accounts/$ACC/r2/buckets/$b/domains/custom" | jq -c '[.result.domains[]? | .domain]')"; done
+          echo "photos root: $(curl -s -o /tmp/b -w '%{http_code}' https://photos.bapas-diary.com/) $(head -c 150 /tmp/b | tr '\n' ' ')"
+          echo "photos list attempt: $(curl -s -o /tmp/b -w '%{http_code}' 'https://photos.bapas-diary.com/?list-type=2') $(head -c 150 /tmp/b | tr '\n' ' ')"
+      - name: 7 What the website's GitHub key can do (read only)
+        run: |
+          if [ -z "$SGT" ]; then echo "STUDIO_GITHUB_TOKEN: not set as a GitHub secret"; else
+            curl -s -D /tmp/h -o /tmp/b -H "Authorization: Bearer $SGT" https://api.github.com/user; echo "kind: $(grep -i '^x-oauth-scopes' /tmp/h || echo 'fine grained (no classic scopes)')"; grep -i '^github-authentication-token-expiration' /tmp/h || echo "expires: never or not shown"
+            curl -s -H "Authorization: Bearer $SGT" https://api.github.com/repos/darpan31patel-wq/bapas-diary | jq -c '{permissions, visibility}'
+            echo "repos it can see: $(curl -s -H "Authorization: Bearer $SGT" 'https://api.github.com/user/repos?per_page=100' | jq -r '[.[]?.full_name] | length')"
+          fi
+          echo "main protected: $(curl -s -H "Authorization: Bearer ${SGT:-$GITHUB_TOKEN}" https://api.github.com/repos/darpan31patel-wq/bapas-diary/branches/main | jq -c '.protected')"
