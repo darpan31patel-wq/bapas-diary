@@ -3505,7 +3505,7 @@ def special_card(im, w, h, yr, pl, label=True, focus=None):
 DESIGN_COLOURS = {'gold': 'gold', 'ivory': CAPTION_IVORY, 'light': CAPTION_GOLD, 'white': (255, 255, 255), 'maroon': YEAR_C2}
 
 
-def compose_design(lay, day):
+def compose_design(lay, day, ready=None):
     """Darpan, 17 Nov 2026: the special picture page in the Studio is a designer. Layout version 2: 'items' drawn in
     order (the last on top) on the picture's 2796 x 1290 layout, each {type: text | photo, role, x, y, w, h, rotate}.
     x, y, w, h: the item's box (a framed photo's whole card, ivory edge and strip included); rotate in degrees, clockwise,
@@ -3525,7 +3525,8 @@ def compose_design(lay, day):
     roles = {str(i.get('role') or '') for i in items}
     if not roles & {'title', 'subtitle'}:
         header(img, f'{day.day} {day:%B}', 'A special day in BAPS history', compact=True, sub_y=136)
-    photos = [{'i': str(i['photo']), 'y': 0} for i in items if i.get('type') == 'photo' and i.get('photo')]
+    ready = ready or {}   # photos already in hand (the drawn special picture's own), by address
+    photos = [{'i': str(i['photo']), 'y': 0} for i in items if i.get('type') == 'photo' and i.get('photo') and str(i['photo']) not in ready]
     if photos:
         download_all(photos, os.path.join(HERE, '.cache'))
     got = {x['i']: x for x in photos}
@@ -3542,14 +3543,17 @@ def compose_design(lay, day):
         w, h = max(1, round(px(num(i.get('w'), 300)))), max(1, round(px(num(i.get('h'), 200))))
         if i.get('type') == 'photo':
             x = got.get(str(i.get('photo') or ''))
-            if not x or 'path' not in x:
+            if str(i.get('photo') or '') in ready:
+                im = ready[str(i['photo'])].convert('RGB')
+            elif not x or 'path' not in x:
                 print('  a photo in his design could not be found:', i.get('photo'))
                 continue
-            try:
-                im = ImageOps.exif_transpose(Image.open(x.get('full') or x['path'])).convert('RGB')
-            except Exception as err:
-                print('  a photo in his design would not open:', i.get('photo'), err)
-                continue
+            else:
+                try:
+                    im = ImageOps.exif_transpose(Image.open(x.get('full') or x['path'])).convert('RGB')
+                except Exception as err:
+                    print('  a photo in his design would not open:', i.get('photo'), err)
+                    continue
             for k, f in (('brightness', ImageEnhance.Brightness), ('contrast', ImageEnhance.Contrast), ('saturation', ImageEnhance.Color)):
                 v = num(i.get(k), 100)
                 if v != 100:
@@ -3565,7 +3569,7 @@ def compose_design(lay, day):
                 lab = None
             e = round(px(12)) if framed else 0
             pw = max(8, w - 2 * e)
-            strip = round(pw / 10) if framed else 0
+            strip = (round(px(num(i.get('strip')))) if 'strip' in i else round(pw / 10)) if framed else 0   # strip: its own height when given
             ph = max(8, h - 2 * e - strip)
             z = num(i.get('zoom'), 100); z = z / 100 if z > 5 else z or 1
             r = max(pw / im.width, ph / im.height) * max(z, .1)
@@ -3585,7 +3589,8 @@ def compose_design(lay, day):
                 card.paste(photo, (e, e))
                 if lab and (lab.get('year') or lab.get('place')):
                     yr, pl = str(lab.get('year') or ''), str(lab.get('place') or '').upper()
-                    yf, pf = garamond(strip * .62, 700), arimo_bold(strip * .27)
+                    ls = i.get('label_size') if isinstance(i.get('label_size'), list) and len(i['label_size']) == 2 else None
+                    yf, pf = (garamond(px(num(ls[0])), 700), arimo_bold(px(num(ls[1])))) if ls else (garamond(strip * .62, 700), arimo_bold(strip * .27))
                     sp = pw * .03 if yr and pl else 0
                     span = lambda: d.textlength(yr, font=yf) + sp + spaced(d, pl, pf, pw * .006)
                     while span() > pw * .94 and yf.size > 8:
@@ -3671,6 +3676,7 @@ def compose_design(lay, day):
             place(layer, i)
     if 'footer' not in roles:
         footer(img, small=True)
+    img.info['design'] = lay   # the design it was drawn from, for the Studio's pack
     return img
 
 
@@ -3756,7 +3762,7 @@ def compose_layout(ev, day):
 MOST_PHOTOS = 20   # Darpan, 17 Nov 2026: 'more photos and then make it 20 photos' on a story or News special picture
 
 
-def compose_special(ev, day, lead=None):
+def compose_special(ev, day, lead=None, lead_url=None):
     """Idea 3: on a big day in BAPS history, a second picture of that day's story: the channel's lead photo large,
     four more beside it under the story, in the daily picture's colours. lead: the year card's own photo of the
     moment (baps.org), shown large first when the special picture comes from a story the card shows."""
@@ -3780,6 +3786,7 @@ def compose_special(ev, day, lead=None):
         worded = set()
     plain = [False] * len(ims)
     ready = dict(zip(ev.get('urls') or [], ev.get('paths') or []))   # photos the day's picture already holds (the UK diary's darshans)
+    src = {id(ims[0]): lead_url or 'lead'} if ims else {}   # each photo's address, for the design the Studio opens
     for n, u in urls:
         x = {'i': u, 'y': 0, **({'rel': ev['rels'][u]} if (ev.get('rels') or {}).get(u) else {})}
         if ready.get(u) and os.path.exists(ready[u]):
@@ -3789,7 +3796,7 @@ def compose_special(ev, day, lead=None):
         if 'path' in x:
             im = Image.open(x['path']).convert('RGB')
             if np.asarray(im.convert('L').resize((64, 64)), dtype=float).std() >= 25:   # not a plain night sky or a blank frame
-                ims.append(im); plain.append(n in worded)
+                ims.append(im); plain.append(n in worded); src[id(im)] = u
                 if u in labels:
                     lab[id(im)] = labels[u]
     tiny = [np.asarray(im.convert('L').resize((16, 16)), dtype=float) for im in ims]   # the same photo posted twice is shown once
@@ -3865,32 +3872,51 @@ def compose_special(ev, day, lead=None):
         if whole:
             break
     gap_c = gap
+    # Darpan, 17 Nov 2026 ('one source of truth'): the picture is set out as a layout version 2, the same kind of design
+    # the Studio's designer makes, and drawn from it, so the Studio opens exactly the drawing that goes out
+    U = lambda v: round(v / SCALE, 1)   # picture pixels -> layout units
+    e, m = round(px(12)), round(px(30))
+    items, have = [], {}
+
+    def photo_item(im, x, y, pw, ph, labelled, role, small=False):
+        k = src.get(id(im)) or f'photo{len(have) + 1}'
+        have[k] = im
+        st = card_strip(pw) if labelled else 0
+        yr_, pl_ = lab.get(id(im), (yr, pl))
+        it = dict(type='photo', role=role, photo=k, date=ev['date'][:10], x=U(x), y=U(y), w=U(pw + 2 * e), h=U(ph + 2 * e + st),
+                  rotate=0, frame=True, strip=U(st), focus=[.5, .3], peg=True, label={'year': str(yr_ or ''), 'place': str(pl_ or '')} if labelled else False)
+        if labelled:   # the year and town as big as the drawn special picture has always had them (13 Nov 2026: 'location names too small')
+            it['label_size'] = [U(max(pw * .07, px(40))), U(max(pw * .03, px(19)))]
+        items.append(it)
     hh = round(px(hw) * 800 / 1180)
-    hero = card(ims[0], round(px(hw)), hh)
     hy = round(px(200) + (px(800) - hh) / 2)
-    img.paste(hero, (round(px(70)), hy), hero)
-    peg(img, px(70) + hero.width / 2, hy + px(28), px(1.5))
-    y = y0 - px(34) - hf.size * 1.2 * len(heads) + hf.size
-    # Darpan, 13 Nov 2026: the words centred over the photos, the title's lines of equal length
-    for line in heads:
-        gold_text(img, (x0 + (tw - dr.textlength(line, font=hf)) / 2, y - hf.size), line, hf); y += hf.size * 1.2
-    y = y0 + (bf.size if bf else 0)
-    for line in lines:
-        if line is None:
-            y += gap_p; continue
-        dr.text((x0 + tw / 2, y), line, font=bf, fill=CAPTION_IVORY, anchor='ms'); y += lh
+    photo_item(ims[0], px(70) + m, hy + m, round(px(hw)), hh, True, 'big')
+    if heads:
+        s_ = hf.size
+        base = y0 - px(34) - s_ * 1.2 * len(heads) + s_ - s_ + hf.getmetrics()[0]   # where the first line's letters sit
+        items.append(dict(type='text', role='headline', x=U(x0), y=U(base - (.1 * s_ + .8 * s_)), w=U(tw), h=U(s_ * 1.2 * len(heads)), rotate=0,
+                          text=head, lines=list(heads), size=U(s_), font='serif', weight=700, color='gold', line_height=1.2, align='center'))
+    if lines and bf:
+        s_ = bf.size; lhm = lh / s_
+        base = y0 + s_
+        hgt = sum(gap_p if v is None else lh for v in lines)
+        items.append(dict(type='text', role='story', x=U(x0), y=U(base - ((lhm - 1) / 2 * s_ + .8 * s_)), w=U(tw), h=U(hgt), rotate=0,
+                          text='\n\n'.join(paras), lines=['' if v is None else v for v in lines], size=U(s_), font='serif', weight=500,
+                          color='ivory', line_height=round(lhm, 4), para_gap=U(gap_p), align='center'))
     if small:
-        top = round(max(px(620) if rows == 1 else 0, min(y - (bf.size if bf else 0) + px(24), floor)))
+        y_end = y0 + (bf.size if bf else 0) + sum(gap_p if v is None else lh for v in lines) - (lh if lines else 0)
+        top = round(max(px(620) if rows == 1 else 0, min(y_end - (bf.size if bf else 0) + px(24), floor)))
         row_h = sw * .74 + px(24) + strip(sw) + px(44)
         for r in range(rows):
             row = small[r * per:(r + 1) * per]
             across = len(row) * sw + (len(row) - 1) * gap_c + px(24)
             for k, im in enumerate(row):
                 n = r * per + k
-                c = card(im, round(sw), round(sw * .74), label=not plain[n + 1])
                 cx = x0 + (tw - across) / 2 - px(30) + k * (sw + gap_c)
-                img.paste(c, (round(cx), round(top + r * row_h)), c); peg(img, cx + c.width / 2, top + r * row_h + px(28), px(1))
-    footer(img, small=True)
+                photo_item(im, cx + m, top + r * row_h + m, round(sw), round(sw * .74), not plain[n + 1], 'small')
+    design = {'version': 2, 'auto': True, 'items': items}
+    img = compose_design(design, day, ready=have)
+    img.info['design'] = design
     return img
 
 
@@ -4044,7 +4070,7 @@ def main():
     news = [e for e in news_stories(day) if town(e) not in said and not any(tells(x, e) for x in photos)]
     left += news
     told = told or (news[0] if news else None)
-    every, story_lead = None, None
+    every, story_lead, story_lead_url = None, None, None
     wins = 'Diwali' in festivals(day)   # Darpan, 3 Nov 2026: Diwali's own picture wins over the channel's story, which goes in the caption
     if not special or wins:   # a big festival with no special day in BAPS history: one darshan from each year's own festival day
         try:
@@ -4064,7 +4090,8 @@ def main():
         shown_stories = [e for e in tg_evs if not e.get('channel') and not e.get('guru') and e.get('posts')
                          and any(tells(x, e, RARE_DAYS) for x in photos)]
         special = max(shown_stories, key=tg_rank, default=None)
-        story_lead = next((x['im'] for x in photos if special and x.get('im') is not None and tells(x, special, RARE_DAYS)), None)
+        lead_x = next((x for x in photos if special and x.get('im') is not None and tells(x, special, RARE_DAYS)), None)
+        story_lead, story_lead_url = (lead_x['im'], lead_x['i']) if lead_x else (None, None)
     cal = cal_caption(day, every)
     text = cal + (('\n' if cal else '') + tg_caption(told, left) if told else '')
     if text.strip():
@@ -4099,7 +4126,7 @@ def main():
         if sp:
             save_special(sp, f"chosen by Darpan: {ev['date']} {ev.get('headline') or ev.get('line')}")
     if special:
-        sp = compose_special(special, day, lead=story_lead)
+        sp = compose_special(special, day, lead=story_lead, lead_url=story_lead_url)
         if sp:
             save_special(sp, f"{special['date']} {special.get('headline') or special.get('line')}")
     if DAILY_SPECIAL and not special_off(day) and not any(f.startswith('bapas-diary-special') for f in os.listdir(a.out)):
