@@ -29,8 +29,7 @@ jobs:
       - run: pip install -q -r requirements.txt
       - name: Learn from his Studio changes
         env:
-          STUDIO_LOG_URL: ${{ vars.STUDIO_LOG_URL }}
-          STUDIO_LOG_KEY: ${{ secrets.STUDIO_LOG_KEY }}
+          STUDIO_READ_KEY: ${{ secrets.STUDIO_READ_KEY }}
         run: python tools/learn.py | tee lessons.txt
       - name: Save what was learned
         run: |
