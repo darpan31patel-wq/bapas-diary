@@ -472,6 +472,7 @@ def make_looks(ev, day, photos, now=None, paras=None, only=None):
             continue
         faults, dp = check(img, items, paras)
         img.info['design'] = design_of(items, img.size)
+        img.info['faults'] = faults
         out[name] = dict(img=img, faults=faults, phone_dp=dp, design=img.info['design'])
     return out
 

@@ -375,7 +375,7 @@ def main():
                     story_date=ev['date'][:10], story_place=ev.get('place') or '',
                     layout=dict(name='story', big=[70, 200, 1180, 800], small_from=1360, size=[make.W, make.H], unit=make.SCALE),
                     spares=spares, most_photos=make.MOST_PHOTOS,
-                    design=sp.info.get('design'))   # the picture as a Studio design (layout version 2): the Studio opens the same drawing
+                    design=sp.info.get('design'), faults=sp.info.get('faults') or [])   # the picture as a Studio design (layout version 2): the Studio opens the same drawing
         # Darpan, 13 Nov 2026 ('if youre not sure make multiple and i will decide'): the other pictures the day could
         # have, each drawn and with the entry that makes it the day's special once it is put in archive/special-days.json
         def choice(e):
