@@ -3614,6 +3614,7 @@ def compose_design(lay, day):
             upper = bool(i.get('upper'))
             layer = Image.new('RGBA', (w, h), (0, 0, 0, 0)); d = ImageDraw.Draw(layer)
             width = lambda t: spaced(d, t, f, track) if track else d.textlength(t, font=f)
+            sz = px(size)
             if isinstance(i.get('lines'), list):
                 lines = [None if v is None or str(v) == '' else str(v) for v in i['lines']]
             else:
@@ -3624,7 +3625,14 @@ def compose_design(lay, day):
                     for row in para.split('\n'):
                         lines += wrap(d, (row.upper() if upper else row).strip(), f, w - indent, 999, shorten=False) or ['']
             asc, desc = f.getmetrics()
-            y = (lh - (asc + desc)) / 2 + asc
+            # the Studio's own line box (website project, 17 Nov 2026): the first baseline at y + (line height - size) / 2
+            # + 0.8 size, each next line one line height lower. Words running past h are still drawn, all of them: the
+            # box grows the same amount above and below, so it still turns about the same centre
+            need = sum(gap if v is None else lh for v in lines) + sz
+            extra = max(0, round(need - h))
+            if extra:
+                layer = Image.new('RGBA', (w, h + 2 * extra), (0, 0, 0, 0)); d = ImageDraw.Draw(layer)
+            y = extra + (lh - sz) / 2 + .8 * sz
             first = True
             for n, line in enumerate(lines):
                 if line is None:
