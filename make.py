@@ -20,15 +20,15 @@ SCALE = 2600 / 1290   # the picture is drawn this many times bigger than its 279
                       # people hold the phone upright and zoom until the height fills the screen (Darpan, 20 Oct 2026)
 W, H = round(2796 * SCALE), round(1290 * SCALE)
 px = lambda v: v * SCALE   # a length in layout pixels, in the picture's own pixels
-MAROON_OUT = (18, 4, 8)
-GOLD, GOLD_SOFT = (255, 207, 107), (217, 164, 65)
-FOOTER = 'Darpan’s Smruti Project'
+import style   # noqa: E402  every colour, the two fonts and the footer line (idea 2, 17 Nov 2026)
+MAROON_OUT = style.MAROON_EDGE
+GOLD, GOLD_SOFT = style.GOLD, style.GOLD_SOFT
+FOOTER = style.FOOTER
 GLOW = .5           # soft lamp light behind the title (0 = none)
 JALI = .13          # faint carved lattice at the edges (0 = none)
 
 
-def font(name, size):
-    return ImageFont.truetype(os.path.join(HERE, 'fonts', name + '.woff2'), max(8, round(size)))
+font = style.font
 
 
 
@@ -488,7 +488,7 @@ def workings_sheet(day):
     for r, w in enumerate(rows):
         y0 = 150 + r * (th + 144)
         d.text((pad, y0 + 20), str(w['year']), font=yf, fill=GOLD, anchor='la')
-        d.text((pad, y0 + 92), w['mode'].upper(), font=sf, fill=(226, 184, 104), anchor='la')
+        d.text((pad, y0 + 92), w['mode'].upper(), font=sf, fill=style.FOOTER_GOLD, anchor='la')
         for c, (score, x, status) in enumerate(w['rows']):
             x0 = lab + c * (tw + pad)
             img.paste(crop_to(x['im'], x['face'], tw, th, x.get('crop', 'frame')), (x0, y0))
@@ -910,8 +910,8 @@ def diamond(dr, cx, cy, r, fill):
     dr.polygon([(cx, cy - r), (cx + r, cy), (cx, cy + r), (cx - r, cy)], fill=fill)
 
 
-IVORY_TOP, IVORY_BOTTOM, IVORY_EDGE = (248, 242, 228), (234, 223, 200), (196, 178, 146)
-YEAR_C2, PLACE_C2 = (96, 20, 32), (88, 34, 34)
+IVORY_TOP, IVORY_BOTTOM, IVORY_EDGE = style.IVORY_TOP, style.IVORY_BOTTOM, style.IVORY_EDGE
+YEAR_C2, PLACE_C2 = style.MAROON, style.PLACE
 garamond = lambda s, w=700: font(f'eb-garamond-latin-{w}-normal', s)
 arimo_bold = lambda s: font('arimo-latin-700-normal', s)
 
@@ -936,7 +936,7 @@ def any_font(family, weight, size):
     return garamond(size, 700 if int(weight or 400) >= 650 else 500)
 
 
-def gold_text(img, xy, text, f, shadow=True, top=(255, 226, 150), bottom=(206, 152, 64)):
+def gold_text(img, xy, text, f, shadow=True, top=style.GOLD_TOP, bottom=style.GOLD_BOTTOM):
     """Text filled with a soft top to bottom gold gradient, over a faint dark shadow."""
     x, y = round(xy[0]), round(xy[1])
     box = [round(v) for v in ImageDraw.Draw(img).textbbox((x, y), text, font=f)]
@@ -982,7 +982,7 @@ def header(img, title, subtitle, compact=False, sub_y=None):
     sub = subtitle.upper()
     sw = spaced(dr, sub, sf, track)
     sy = px(sub_y or (114 if compact else 142))
-    draw_spaced(dr, (W - sw) / 2, sy, sub, sf, track, (240, 214, 160))
+    draw_spaced(dr, (W - sw) / 2, sy, sub, sf, track, style.CREAM)
     mid = sy + px(24)
     if TITLE_RULES:
         thin_rule(dr, mid, (W - sw) / 2 - 50 - 330, (W - sw) / 2 - 50, True)
@@ -1020,11 +1020,11 @@ def header_line(img, title, subtitle):
     gold_text(img, ((W - tw) / 2, base - 92 * .95 + 8), title, tf)
     mid = base - 12
     sx = (W - tw) / 2 - pad - sw                                           # subtitle ends a pad before the title
-    draw_spaced(dr, sx, base - sf.getmetrics()[0] - 1, sub, sf, track, (240, 214, 160))
+    draw_spaced(dr, sx, base - sf.getmetrics()[0] - 1, sub, sf, track, style.CREAM)
     thin_rule(dr, mid, sx - pad - rule, sx - pad, True)
     diamond(dr, sx - pad - rule - 14, mid + 1, 5, GOLD)
     fx = (W + tw) / 2 + pad                                                # footer starts a pad after the title
-    dr.text((fx, base), FOOTER, font=ff, fill=(226, 184, 104), anchor='ls')
+    dr.text((fx, base), FOOTER, font=ff, fill=style.FOOTER_GOLD, anchor='ls')
     thin_rule(dr, mid, fx + fw + pad, fx + fw + pad + rule, False)
     diamond(dr, fx + fw + pad + rule + 14, mid + 1, 5, GOLD)
 
@@ -1040,9 +1040,9 @@ def footer(img, small=False, history=None, cal=None):
     f = garamond(px(26 if small else 40), 500)
     w = dr.textlength(name, font=f)
     y = H - px(42 if small else 88)
-    dr.text(((W - w) / 2, y), name, font=f, fill=(226, 184, 104))
+    dr.text(((W - w) / 2, y), name, font=f, fill=style.FOOTER_GOLD)
     if tomorrow:
-        dr.text((W - px(30), H - px(15)), f'Tomorrow: {tomorrow}', font=garamond(px(24), 500), fill=(226, 184, 104), anchor='rs')
+        dr.text((W - px(30), H - px(15)), f'Tomorrow: {tomorrow}', font=garamond(px(24), 500), fill=style.FOOTER_GOLD, anchor='rs')
     box = dr.textbbox(((W - w) / 2, y), 'Dp', font=f)                      # the rules run through the middle of the letters
     mid = (box[1] + box[3]) / 2 - f.size * .06
     if TITLE_RULES:
@@ -1066,12 +1066,12 @@ def history_footer(img, ev, name=FOOTER):
     dr.text((x + lw, y), text, font=tf, fill=CAPTION_GOLD, anchor='ls')
     mid = y - tf.size * .33
     diamond(dr, x - px(26), mid, px(5), GOLD); diamond(dr, x + lw + tw + px(26), mid, px(5), GOLD)
-    dr.text((W - px(30), y), name, font=ff, fill=(226, 184, 104), anchor='rs')
+    dr.text((W - px(30), y), name, font=ff, fill=style.FOOTER_GOLD, anchor='rs')
 
 
 def background():
     small = Image.new('RGB', (64, 64)); pix = small.load()
-    inner, outer = (66, 16, 28), (22, 5, 10)
+    inner, outer = style.MAROON_GLOW, style.MAROON_OUT
     for j in range(64):
         for i in range(64):
             d = min(1, (((i - 32) / 32 / .85) ** 2 + ((j - 64 * .45) / 32 / .95) ** 2) ** .5)
@@ -1094,7 +1094,7 @@ def warm_glow(img):
     yy, xx = np.mgrid[0:sh, 0:sw]
     top = np.clip(1 - np.hypot((xx - sw / 2) / (sw * .42), (yy - sh * .06) / (sh * .42)), 0, 1) ** 1.6
     bottom = np.clip(1 - np.hypot((xx - sw / 2) / (sw * .55), (yy - sh * 1.02) / (sh * .30)), 0, 1) ** 1.6 * .45
-    light = np.array([132, 74, 34]) * np.clip(top + bottom, 0, 1)[..., None] * GLOW
+    light = np.array(style.LAMP) * np.clip(top + bottom, 0, 1)[..., None] * GLOW
     return ImageChops.add(img, Image.fromarray(light.astype('uint8')).resize((W, H), Image.BICUBIC))
 
 
@@ -1108,7 +1108,7 @@ def jali_edge(img, R=54):
     xs = np.minimum(np.arange(W), W - 1 - np.arange(W)); ys = np.minimum(np.arange(H), H - 1 - np.arange(H))
     fade = np.clip(1 - np.minimum(xs[None, :], ys[:, None]) / px(190), 0, 1) ** 1.3          # gone before the photos
     mask = ImageChops.multiply(m.resize((W, H), Image.LANCZOS), Image.fromarray((fade * 255 * JALI).astype('uint8')))
-    img.paste(Image.new('RGB', (W, H), (160, 84, 74)), (0, 0), mask)
+    img.paste(Image.new('RGB', (W, H), style.JALI_COLOUR), (0, 0), mask)
     return img
 
 
@@ -1486,7 +1486,7 @@ def wrap(d, text, f, maxw, lines, shorten=True, min_words=0):
     return out
 
 
-CAPTION_IVORY, CAPTION_GOLD = (250, 241, 222), (240, 214, 160)
+CAPTION_IVORY, CAPTION_GOLD = style.IVORY_TEXT, style.CREAM
 
 
 class Card:
@@ -1511,7 +1511,7 @@ class Card:
             self.soft_band(card, caption(x))
         if self.style == 'D' and num is not None:
             r = PW * .085; cx, cy = B + r + PW * .035, B + r + PW * .035
-            d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(96, 20, 32), outline=(226, 184, 104), width=max(1, round(PW * .008)))
+            d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(96, 20, 32), outline=style.FOOTER_GOLD, width=max(1, round(PW * .008)))
             nf = garamond(r * 1.25, 700)
             d.text((cx, cy + r * .06), str(num), font=nf, fill=GOLD, anchor='mm')
         d.rectangle((B - 1, B - 1, B + PW, B + PH), outline=(150, 130, 100), width=max(1, round(SCALE)))
@@ -1680,7 +1680,7 @@ def caption_list(img, photos, y0, y1):
         lead = f'{i + 1}.'
         dr.text((xl + 30, yb), lead, font=nf, fill=GOLD, anchor='rs')
         yt = f'{x["y"]}'
-        dr.text((xl + 42, yb), yt, font=nf, fill=(226, 184, 104), anchor='ls')
+        dr.text((xl + 42, yb), yt, font=nf, fill=style.FOOTER_GOLD, anchor='ls')
         tx = xl + 42 + dr.textlength(yt, font=nf) + 16
         text = wrap(dr, caption(x) or place(x), cf, xl + colw - 30 - tx, 1)
         dr.text((tx, yb), text[0] if text else '', font=cf, fill=CAPTION_GOLD, anchor='ls')
@@ -3766,13 +3766,89 @@ def compose_special(ev, day, lead=None, lead_url=None):
     """Idea 3: on a big day in BAPS history, a second picture of that day's story: the channel's lead photo large,
     four more beside it under the story, in the daily picture's colours. lead: the year card's own photo of the
     moment (baps.org), shown large first when the special picture comes from a story the card shows."""
+    urls = special_urls(ev)
+    if ev.get('layout'):
+        return compose_layout(ev, day)
+    look = ev.get('look') or SPECIAL_LOOK
+    if look == 'learned':   # the look he picks most in the Studio (tools/learn.py), else one big photo
+        import looks
+        look = looks.learned().get('look') or 'hero'
+    styled = look in ('hero', 'strip', 'then', 'phone')
+    got = special_photos(ev, lead, urls, most=8 if styled and not ev.get('many') else None, lead_url=lead_url)
+    if got is None:
+        return None
+    ims, plain, lab, most, src = got
+    if styled:   # the magazine looks (17 Nov 2026): the look he picked, else the first that passes the picture check
+        tries = [look] if ev.get('look') else [look] + [k for k in ('hero', 'strip', 'then') if k != look]
+        first = None
+        for k in tries:
+            made = special_looks(ev, day, ims, plain, lab, only=k, src=src).get(k)
+            if made and not serious(made['faults']):
+                return made['img']
+            first = first or made
+            print(f'  special look {k}: ' + ('; '.join(made['faults']) if made else 'the whole story does not fit') + ', trying the next')
+        if first:
+            return first['img']
+        ims, plain = ims[:MOST_PHOTOS if ev.get('many') else 5], plain[:MOST_PHOTOS if ev.get('many') else 5]
+    return compose_drawn(ev, day, ims, plain, lab, most, lead, src)
+
+
+DRAFTS = os.path.join(HERE, 'archive', 'drafts')   # the first draft of each day's special, to learn from his changes (idea 4)
+
+
+def save_draft(day, ev):
+    """What the morning's first draft of the special picture held, so tools/learn.py can see what he changed in the Studio."""
+    try:
+        os.makedirs(DRAFTS, exist_ok=True)
+        json.dump(dict(day=str(day), look=ev.get('look') or SPECIAL_LOOK, story=ev['date'][:10], headline=ev.get('headline') or ev.get('line'),
+                       photos=[u for _, u in special_urls(ev)][:20], faults={k: v['faults'] for k, v in LAST_LOOKS.items()}),
+                  open(os.path.join(DRAFTS, f'{day}.json'), 'w'), indent=1, ensure_ascii=False)
+    except Exception as e:
+        print('  draft not saved:', e)
+
+
+def serious(faults):
+    """Faults that keep a look from going to Drive when another look has none (a soft photo is only a warning)."""
+    return [f for f in faults if 'blown up' not in f]
+
+
+def special_urls(ev):
+    """The story's photos as (post number, address): Darpan's own choice first, real photos before video stills."""
     urls = [(None, u) for u in ev.get('urls') or []] or tg_photos(ev.get('posts') or [], numbered=True)   # Darpan's own choice may bring its photos
     if not ev.get('urls'):   # real photos before video stills (7 December's big card was a blurry still of a mandir model)
         real = {u for _, u in tg_photos(ev.get('posts') or [], pairs=True)}
         urls = [v for v in urls if v[1] in real] + [v for v in urls if v[1] not in real]
-    if ev.get('layout'):
-        return compose_layout(ev, day)
-    most = MOST_PHOTOS if ev.get('many') else 5
+    return urls
+
+
+def all_looks(ev, day, lead=None, lead_url=None):
+    """Every look of a special (the Studio pack's choices), {} when it has no photos."""
+    got = special_photos(ev, lead, special_urls(ev), most=8 if not ev.get('many') else None, lead_url=lead_url)
+    return special_looks(ev, day, *got[:3], src=got[4]) if got else {}
+
+
+SPECIAL_LOOK = os.environ.get('SPECIAL_LOOK', 'learned')   # the day's special picture: 'learned' (the look he picks most, else one big photo; Darpan, 17 Nov 2026: 'yes go live'), 'hero', 'strip', 'then', or 'drawn' (as before)
+DAY_ITEMS = []      # the day's photos of every year (with their files), for the 'now' of a then and now look
+LAST_LOOKS = {}     # every look of the last special picture made with special_looks(): {look: {img, faults, phone_dp}}
+
+
+def special_looks(ev, day, ims, plain, lab, only=None, src=None):
+    """The day's special in every look of looks.py (or only one), each with its picture check."""
+    import looks
+    yr, pl = ev['date'][:4], town_of(ev.get('place')) or ev.get('place') or ''
+    photos = [dict(im=im, year=lab.get(id(im), (yr, pl))[0], place=lab.get(id(im), (yr, pl))[1] or pl, date=ev['date'][:10],
+                   caption='', tg=not ev.get('news'), label=not plain[k], url=(src or {}).get(id(im))) for k, im in enumerate(ims)]
+    now = looks.pick_now(DAY_ITEMS, ev) if only in (None, 'then') else None
+    got = looks.make_looks(ev, day, photos, now, special_words(ev), only=only)
+    LAST_LOOKS.clear(); LAST_LOOKS.update(got)
+    for k, v in got.items():
+        print(f"  special look {k}: " + ('; '.join(v['faults']) if v['faults'] else 'checked, nothing wrong') + f", smallest words {v['phone_dp']} points on a phone")
+    return got
+
+
+def special_photos(ev, lead, urls, most=None, lead_url=None):
+    """The special picture's photos: (photos, which carry no year and place, their own year and town, how many)."""
+    most = most or (MOST_PHOTOS if ev.get('many') else 5)
     labels, lab = ev.get('labels') or {}, {}   # a mix: each photo's own year and town
     urls = urls[:max(8, most)]
     cache = os.path.join(HERE, '.cache')
@@ -3818,6 +3894,12 @@ def compose_special(ev, day, lead=None, lead_url=None):
     ims, plain = ims[:most], plain[:most]
     if not ims:
         return None
+    return ims, plain, lab, most, src
+
+
+def compose_drawn(ev, day, ims, plain, lab, most, lead=None, src=None):
+    """The special picture as drawn since 13 Nov 2026: the big card at the left, the story and small cards beside it."""
+    src = src or {}
     img = background(); dr = ImageDraw.Draw(img)
     header(img, f'{day.day} {day:%B}', 'A special day in BAPS history', compact=True, sub_y=136)   # Darpan, 13 Nov 2026: only the date (the story isn't always about Bapa), more space under it
     yr, pl = ev['date'][:4], (town_of(ev.get('place')) or ev.get('place') or '').upper()   # the town, as on the daily cards ('NEW DELHI', not 'NEW DELHI, INDIA', which was cut off on the small cards)
@@ -3964,6 +4046,7 @@ def main():
     settle_places(tg_extra, mmdd)
     download_all(items, a.cache)
     unframe(items)
+    DAY_ITEMS[:] = [x for x in items if not x.get('tg')]   # the 'now' photos of a then and now special look
     tall = 1 / 1.45 if len({x['y'] for x in items}) > 10 else 1 / 1.08
     photos = pick_one_per_year(items, seed=mmdd, aspect=FRAME_ASPECT.get(LIVE_STYLE, tall), day=day)
     if not photos:
@@ -4131,10 +4214,12 @@ def main():
             save_special(sp, f"{special['date']} {special.get('headline') or special.get('line')}")
     if DAILY_SPECIAL and not special_off(day) and not any(f.startswith('bapas-diary-special') for f in os.listdir(a.out)):
         try:   # the daily picture never waits on this
-            for ev in daily_specials(day, items, photos, tg_evs):   # the first is the day's special picture, the others are for him to choose from
+            for n, ev in enumerate(daily_specials(day, items, photos, tg_evs)):   # the first is the day's special picture, the others are for him to choose from
                 sp = compose_special(ev, day)
                 if sp:
                     save_special(sp, f"{ev.get('kind', 'story')}: {ev['date']} {ev.get('headline') or ev.get('line')}")
+                    if n == 0:
+                        save_draft(day, ev)
         except Exception as e:
             print('  no daily special picture:', e)
             traceback.print_exc()

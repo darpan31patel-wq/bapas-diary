@@ -22,8 +22,9 @@ from make import (ACTION_KEEP, CLOSE_MIN_FACE, DOING, JUST_A_FACE, SHARP_MIN, BR
 
 HERE = make.HERE
 IVORY_TOP, IVORY_BOTTOM, IVORY_EDGE = make.IVORY_TOP, make.IVORY_BOTTOM, make.IVORY_EDGE
-MAROON, MAROON_DEEP = (96, 20, 32), (22, 5, 10)
-GOLD, GOLD_SOFT, CREAM = (255, 207, 107), (226, 184, 104), (240, 214, 160)
+import style   # noqa: E402  the style kit: every picture's colours (idea 2, 17 Nov 2026)
+MAROON, MAROON_DEEP = style.MAROON, style.MAROON_OUT
+GOLD, GOLD_SOFT, CREAM = style.GOLD, style.FOOTER_GOLD, style.CREAM
 FOOTER = make.FOOTER
 SQ, PT, ST, LS = (2160, 2160), (2160, 2700), (1620, 2880), (3240, 1495)   # square, 4:5 portrait, phone story, the diary's own wide shape
 
@@ -196,7 +197,7 @@ def canvas(size, glow=.55, jali=.11):
     sw, sh = w // 8, h // 8
     yy, xx = np.mgrid[0:sh, 0:sw].astype(np.float32)
     d = np.clip(np.hypot((xx - sw / 2) / (sw / 2 * .9), (yy - sh * .45) / (sh / 2 * .95)), 0, 1)[..., None]
-    inner, outer = np.array([66, 16, 28]), np.array(MAROON_DEEP)
+    inner, outer = np.array(style.MAROON_GLOW), np.array(MAROON_DEEP)
     a = inner + (outer - inner) * d
     top = np.clip(1 - np.hypot((xx - sw / 2) / (sw * .5), (yy - sh * .02) / (sh * .32)), 0, 1) ** 1.6
     a += np.array([132, 74, 34]) * top[..., None] * glow
