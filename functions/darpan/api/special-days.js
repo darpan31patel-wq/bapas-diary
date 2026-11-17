@@ -29,14 +29,16 @@ async function fromGitHub(token) {
 }
 
 function clean(e) {
-  if (!e || !DAY.test(e.day || '') || !['story', 'news', 'year', 'photos'].includes(e.kind)) return null;
+  if (!e || !DAY.test(e.day || '') || !['story', 'news', 'year', 'photos', 'mix'].includes(e.kind)) return null;
   const out = { day: e.day, kind: e.kind };
   if (e.kind === 'story' || e.kind === 'news') { out.ref = s(e.ref, 300); if (!out.ref) return null; }
-  if (e.kind === 'year' || e.kind === 'photos') { out.year = Number(e.year) || 0; if (!out.year) return null; }
+  if (e.kind === 'year' || e.kind === 'photos' || e.kind === 'mix') { out.year = Number(e.year) || 0; if (!out.year) return null; }
   for (const f of ['note', 'headline', 'place']) if (e[f]) out[f] = s(e[f], f === 'headline' ? 300 : 200);
   if (e.story) out.story = s(e.story, 6000);
-  if (Array.isArray(e.photos) && e.photos.length) out.photos = e.photos.slice(0, 40).map((p) => s(p, 400)).filter(Boolean);
-  if (e.kind === 'photos' && !(out.photos || []).length) return null;
+  // his own mix (17 Nov 2026): photos from several years, each {src, year, date, place, caption}
+  if (e.kind === 'mix') out.photos = (Array.isArray(e.photos) ? e.photos : []).slice(0, 40).filter((p) => p && p.src).map((p) => ({ src: s(p.src, 400), year: Number(p.year) || 0, date: s(p.date, 10), place: s(p.place, 200), caption: s(p.caption, 600) }));
+  else if (Array.isArray(e.photos) && e.photos.length) out.photos = e.photos.slice(0, 40).map((p) => s(p, 400)).filter(Boolean);
+  if ((e.kind === 'photos' || e.kind === 'mix') && !(out.photos || []).length) return null;
   // his arrangement of the picture in the Studio (Darpan, 17 Nov 2026): extra photos, each card's size and place, the words'
   // size and place; kept as he made it, at most 20 KB
   if (e.layout && typeof e.layout === 'object') { const j = JSON.stringify(e.layout); if (j.length <= 20000) out.layout = JSON.parse(j); }
