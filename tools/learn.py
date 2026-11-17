@@ -7,7 +7,7 @@ one. Run once a week (learn.yml):
 
 Where it reads from: his special pictures as he left them in the Studio (bapas-diary.com/special-days.json, every
 layout he arranged, Final or not), the first drafts the morning run made (archive/drafts/<date>.json), and, when the
-STUDIO_LOG_URL and STUDIO_LOG_KEY settings are given, the Studio's own change log."""
+repository's STUDIO_READ_KEY secret is set, the Studio's own log of every Final (bapas-diary.com/api/studio-log)."""
 import datetime, json, os, re, statistics, sys, urllib.request
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -28,17 +28,44 @@ def on(c):
     return d if re.match(r'^\d{4}-\d\d-\d\d$', d) else None
 
 
-def studio_log():
-    url, k = os.environ.get('STUDIO_LOG_URL'), os.environ.get('STUDIO_LOG_KEY')
-    if not url or not k:
+LOG_URL = os.environ.get('STUDIO_LOG_URL') or 'https://bapas-diary.com/api/studio-log'
+
+
+def studio_log(since=None):
+    """The Studio's log of his Final pictures (website project, 17 Nov 2026): each entry has how (Final...), changes (his
+    changes in plain words: swaps, crops, sizes, moves, text style), layout (what he sent) and first (the first draft,
+    layout version 2). Read with the repository's secret STUDIO_READ_KEY; [] without it or when the site doesn't answer."""
+    k = os.environ.get('STUDIO_READ_KEY')
+    if not k:
+        print('studio log not read: no STUDIO_READ_KEY')
         return []
     try:
-        req = urllib.request.Request(url, headers={'Authorization': f'Bearer {k}', 'User-Agent': 'bapas-diary-learn'})
+        url = LOG_URL + (f'?since={since}' if since else '')
+        req = urllib.request.Request(url, headers={'X-Studio-Read-Key': k, 'User-Agent': 'bapas-diary-learn'})
         got = json.loads(urllib.request.urlopen(req, timeout=30).read().decode('utf-8'))
-        return got if isinstance(got, list) else got.get('log') or got.get('entries') or []
+        got = got if isinstance(got, list) else got.get('log') or got.get('entries') or got.get('items') or []
+        return [e for e in got if isinstance(e, dict)]
     except Exception as e:
         print('studio log not read:', e)
         return []
+
+
+def entry_day(e):
+    for k in ('day', 'date', 'special', 'for'):
+        v = str(e.get(k) or '')
+        if re.match(r'^\d{4}-\d\d-\d\d', v):
+            return v[:10]
+    v = str(e.get('at') or e.get('time') or e.get('when') or '')
+    return v[:10] if re.match(r'^\d{4}-\d\d-\d\d', v) else ''
+
+
+def change_words(e):
+    c = e.get('changes')
+    if isinstance(c, str):
+        return [p.strip() for p in re.split(r'[\n;]+', c) if p.strip()]
+    if isinstance(c, list):
+        return [str(p.get('text') or p.get('what') or p) if isinstance(p, dict) else str(p) for p in c]
+    return []
 
 
 def learn(today=None):
@@ -83,12 +110,43 @@ def learn(today=None):
             if on(c) >= week:
                 week_notes.append(f"{on(c)}: kept {k} of my first {len(top)} photos, added {len(set(his) - set(mine))} of his own"
                                   + (', and chose a different big photo' if mine and key(big['photo']) != mine[0] else ''))
-    med = lambda v: round(statistics.median(v), 2) if v else None
     log = studio_log()
+    kinds = {}
+    for e in log:
+        lay, first = e.get('layout'), e.get('first')
+        his = [i for i in (lay or {}).get('items') or [] if isinstance(i, dict)] if isinstance(lay, dict) else []
+        mine = [i for i in (first or {}).get('items') if isinstance(i, dict)] if isinstance(first, dict) and isinstance(first.get('items'), list) else []
+        for i in his:
+            if i.get('type') == 'text' and isinstance(i.get('size'), (int, float)):
+                (heads if i.get('role') == 'headline' else stories if i.get('role') == 'story' else []).append(float(i['size']))
+        hp = [i for i in his if i.get('type') == 'photo' and i.get('photo')]
+        mp = [i for i in mine if i.get('type') == 'photo' and i.get('photo')]
+        if hp and mp:
+            compared += 1
+            hk, mk = [key(i['photo']) for i in hp], [key(i['photo']) for i in mp]
+            kept += len(set(hk) & set(mk)); removed += len(set(mk) - set(hk)); added += len(set(hk) - set(mk))
+            big = lambda ps: key(max(ps, key=lambda i: float(i.get('w') or 0) * float(i.get('h') or 0))['photo'])
+            if big(hp) != big(mp):
+                swapped_big += 1
+            counts.append(len(hp))
+        if (lay or {}).get('look') if isinstance(lay, dict) else None:
+            looks[lay['look']] = looks.get(lay['look'], 0) + 1
+        words = change_words(e)
+        for w in words:
+            for k, rx in (('photo swaps', r'swap|replac|chang\w* (the )?photo'), ('photos removed', r'remov|took out|delet'),
+                          ('photos added', r'add'), ('crops', r'crop|zoom|focus'), ('text sizes', r'size|bigger|smaller'),
+                          ('moves', r'mov|position'), ('text style', r'font|colou?r|bold|weight|align|style')):
+                if re.search(rx, w, re.I):
+                    kinds[k] = kinds.get(k, 0) + 1
+        d = entry_day(e)
+        if d >= week and words:
+            week_notes.append(f"{d}: " + '; '.join(words[:6]))
+    med = lambda v: round(statistics.median(v), 2) if v else None
     got = dict(updated=str(today), layouts=len(counts), compared=compared, headline_size=med(heads), story_size=med(stories),
                photos=med(counts), big_share=med(shares), zoom=med(zooms), looks=looks,
                look=max(looks, key=looks.get) if looks and max(looks.values()) >= 3 else None,
-               big_swapped=swapped_big, kept=kept, removed=removed, added=added, studio_log_entries=len(log))
+               big_swapped=swapped_big, kept=kept, removed=removed, added=added, studio_log_entries=len(log),
+               change_kinds=kinds)
     return got, week_notes
 
 
@@ -106,6 +164,9 @@ def plain(got, notes):
         out.append(f"You like the story words at about size {got['story_size']:g}" + (f" and the headline at {got['headline_size']:g}" if got['headline_size'] else '') + '; the first drafts now start there.')
     if got['photos']:
         out.append(f"You usually use {got['photos']:g} photos" + (f", with the big photo about {round(got['big_share'] * 100)} percent of the width" if got['big_share'] else '') + '.')
+    if got.get('change_kinds'):
+        top = sorted(got['change_kinds'].items(), key=lambda kv: -kv[1])[:4]
+        out.append('What you change most: ' + ', '.join(f'{k} ({n})' for k, n in top) + '.')
     if got['look']:
         out.append(f"You picked the look '{got['look']}' most often, so the first draft now comes in that look.")
     if notes:
