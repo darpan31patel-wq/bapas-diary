@@ -235,6 +235,7 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
 .spcard { flex: 0 0 auto; width: 250px; display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 8px; align-items: start; border: 1px solid var(--line); border-radius: 8px; padding: 6px; background: var(--panel-2); font-size: 12.5px }
 .spcard img { width: 90px; border-radius: 4px; display: block } .spcard > div { display: grid; gap: 3px; min-width: 0 } .spcard b { color: var(--gold) } .spcard span:not(.seg) { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical }
 .spcard.on { border-color: var(--gold) } .spcard:not(:has(img)) { grid-template-columns: minmax(0, 1fr) } .spcard.more { display: flex; flex-direction: column; justify-content: center; gap: 6px; width: 210px }
+.finals { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 6px; font-size: 13px }
 .looks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px }
 .look { margin: 0; display: grid; gap: 4px; align-content: start; border: 1px solid var(--line); border-radius: 8px; padding: 6px; background: var(--panel-2) }
 .look img { width: 100%; border-radius: 4px; display: block } .look figcaption { font-size: 12.5px; display: grid } .look .twin { gap: 4px; margin: 0 }
@@ -981,6 +982,7 @@ const dItem = id => dItems().find(it => it.id === id);
 const dSel = () => SEL.map(dItem).filter(Boolean);
 const dNewId = () => 'i' + Math.random().toString(36).slice(2, 8);
 const D_COLORS = { gold: 'Gold', ivory: 'Ivory', light: 'Light gold', white: 'White', maroon: 'Maroon' };
+const dFill = c => D_FILL[c] ? D_FILL[c]() : /^#[0-9a-f]{6}$/i.test(c || '') ? c : CAP_IVORY;
 const D_FILL = { ivory: () => CAP_IVORY, light: () => CAP_GOLD, white: () => '#fff', maroon: () => MAROON };
 // the photo of an item: one of the pack's own (group key and pick), or any photo of that day from the website's archive (src)
 const SRCIMG = {};
@@ -1056,8 +1058,8 @@ function dText(ctx, it, L) {
   const g = it.color === 'gold';
   ctx.font = dFont(it); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
   let y = 0;
-  const run = (s, x, base) => { if (!s) return; if (L.track) { ctx.fillStyle = (D_FILL[it.color] || D_FILL.ivory)(); spacedText(ctx, s, x, base, L.track); return }
-    if (g) { goldText(ctx, s, x, base, it.size, 'left'); ctx.font = dFont(it) } else { ctx.fillStyle = (D_FILL[it.color] || D_FILL.ivory)(); ctx.fillText(s, x, base) } };
+  const run = (s, x, base) => { if (!s) return; if (L.track) { ctx.fillStyle = dFill(it.color); spacedText(ctx, s, x, base, L.track); return }
+    if (g) { goldText(ctx, s, x, base, it.size, 'left'); ctx.font = dFont(it) } else { ctx.fillStyle = dFill(it.color); ctx.fillText(s, x, base) } };
   L.lines.forEach(l => {
     if (l.gap) { y += L.lh * (it.pg ?? .55); return }
     const base = y + (L.lh - it.size) / 2 + it.size * .8, ind = l.first ? (it.ind || 0) : 0, room = it.w - ind;
@@ -1470,6 +1472,16 @@ function dTools() {
 // ------------------------------------------------------------ the Design tab: the chosen item's own controls, then the layers
 // the builder's looks of the day and Darpan's own templates (Collage builder note, 17 Nov 2026): pack.looks [{look, name, picture,
 // faults, phone_points, choose, layout?}], pack.templates [{picture, kind, from_day, layout}], pack.day_kind
+// his Finals, from the Collage builder's log packs/special/finals.json on the studio branch (its note, 17 Nov 2026), newest first
+let FINALS = null;
+function finalsGroup() {
+  if (FINALS === null) { FINALS = []; fetch(RAW + 'special/finals.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : []).then(j => { FINALS = Array.isArray(j) ? j : (j && (j.finals || j.entries)) || []; if (S.tab === 'design' && isDesign()) build() }).catch(() => {}) }
+  if (!FINALS.length) return '';
+  const when = t => { const d = new Date(t); return isNaN(d) ? String(t || '') : d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) };
+  const word = v => v === true ? 'done' : v === false ? 'not done' : typeof v === 'object' && v ? (v.ok === false ? 'not done' : v.name || v.result || 'done') : String(v || '');
+  return `<div class="group"><details><summary><b>Your Finals</b> <span class="hint">${FINALS.length}</span></summary><ol class="finals">${[...FINALS].reverse().slice(0, 40).map(e => `<li><b>${esc(longDate(e.date || e.day || ''))}</b> <span class="hint">${esc(when(e.at || e.time || e.when))}</span><br>
+    <span class="hint">${esc([e.photos ? (Array.isArray(e.photos) ? e.photos.length : e.photos) + ' photos' : '', e.quick ? 'the quick way' : '', e.result ? 'picture: ' + word(e.result) : '', e.drive ? 'Drive: ' + word(e.drive) : ''].filter(Boolean).join(' · '))}</span></li>`).join('')}</ol></details></div>`;
+}
 function looksGroup() {
   const pack = P.special, looks = (pack.looks || []).filter(l => l && l.picture), tpl = (pack.templates || []).filter(t => t && t.layout);
   if (!looks.length && !tpl.length) return '';
@@ -1493,7 +1505,8 @@ function dImport(lay) {
       return Object.assign(base, { t: 'text', name: (x.role || 'text').replace(/^./, m => m.toUpperCase()), text: x.text || (x.lines || []).join('\n'), h: x.fixed_height ? +x.h || 0 : 0, size, font: x.font === 'sans' ? 'sans' : 'serif', weight: +x.weight || 500,
         color: x.color || 'ivory', lh, pg: x.para_gap != null ? (+x.para_gap) / (size * lh) : .55, ind: +x.indent || 0, align: x.align || 'center', upper: !!x.upper, track: +x.letter_spacing || 0, deco: !!x.diamonds, balance: x.role === 'headline' }) }
     const own = find(x.photo), lb = x.label, foc = x.focus || [.5, .3];
-    const yp = lb === false ? null : typeof lb === 'string' ? { year: lb.split(' ')[0], place: lb.split(' ').slice(1).join(' ') } : lb && typeof lb === 'object' ? lb : { year: String(x.date || '').slice(0, 4), place: '' };
+    const cp = own ? (groupsOf(pack).find(g => g.key === own.g).cands[own.pick] || {}).place : '';
+    const yp = lb === false ? null : lb === true ? { year: String(x.date || '').slice(0, 4), place: x.place || cp || '' } : typeof lb === 'string' ? { year: lb.split(' ')[0], place: lb.split(' ').slice(1).join(' ') } : lb && typeof lb === 'object' ? lb : { year: String(x.date || '').slice(0, 4), place: '' };
     return Object.assign(base, { t: 'photo', name: `${yp ? yp.year || '' : ''} ${yp ? yp.place || '' : ''}`.trim() || 'Photo', h: +x.h || 300, frame: x.frame !== false, label: lb !== false, year: yp ? String(yp.year || '') : '', place: yp ? yp.place || '' : '',
       zoom: Math.max(1, (+x.zoom || 100) > 4 ? (+x.zoom || 100) / 100 : +x.zoom || 1), fx: f01(+foc[0]), fy: f01(+foc[1]), br: +x.brightness || 100, ct: +x.contrast || 100, sat: x.saturation == null ? 100 : +x.saturation, peg: x.peg !== false }, own || { src: x.photo || '', date: x.date || '' });
   });
@@ -1568,6 +1581,7 @@ function paneDesign() {
   return `${looksGroup()}${offs.length ? `<div class="group"><h3>Not from this day</h3><p class="hint warn">${offs.length} photo${offs.length > 1 ? 's are' : ' is'} from another day or place, marked in orange on the picture.</p><div class="seg"><button class="btn small primary" id="dp-dayfix2">Swap ${offs.length > 1 ? 'them' : 'it'} for photos from this day</button></div></div>` : ''}
     ${props}
     <div class="group"><h3>Layers</h3><p class="hint">Top of the list sits on top. Drag to change the order; the eye hides, the lock stops moving.</p><ol class="layers" id="dlayers">${layers}</ol></div>
+    ${finalsGroup()}
     <div class="group"><h3>Ready made layouts</h3><div class="lays">${LAYOUTS.map(([k, l]) => `<button type="button" data-dlay="${k}">${layIcon(k)}<span>${l}</span></button>`).join('')}</div>
       <p class="hint">Places the photos and words afresh. Undo puts it back.</p>
       <div class="seg"><button class="btn small" id="dp-restart">Start again from the builder’s picture</button></div></div>`;
@@ -1819,7 +1833,9 @@ function render() {
       fe.hidden = true; return;
     }
     if (stEl.dataset.arriving) { delete stEl.dataset.arriving; if (pend) stEl.textContent = `Photos arriving (${pend} still to come)…`; else stEl.textContent = '' }
-    if (isStory() && !S.special.design) { S.special.design = designFrom(pack, S.special); SEL = []; DH_.date = ''; setTimeout(build, 0) }   // the builder's picture, ready to design on
+    if (isStory() && !S.special.design) {   // the builder's own design when the pack has one (its note, 17 Nov 2026), else its layout turned into items
+      const own = pack.design && pack.design.items && pack.design.items.length ? { v: 2, items: dImport(pack.design), made: Date.now(), source: 'builder' } : null;
+      S.special.design = own || designFrom(pack, S.special); SEL = []; DH_.date = ''; setTimeout(build, 0) }   // the builder's picture, ready to design on
     S.mode === 'month' ? drawMonth(ctx, pack, S.month, HITS) : isLayered() ? drawLayered(ctx, pack, cur(), HITS) : isDesign() ? drawDesign(ctx, pack, S.special, HITS, true) : isStory() ? drawStory(ctx, pack, S.special, HITS) : drawDay(ctx, pack, cur(), HITS);
     if (isDesign()) dHist();
     const h = FE && !isDesign() && HITS.find(h => h.key === cur().sel);
@@ -2591,8 +2607,8 @@ function showProg() {
   const calm = !!p.note && !p.fail;
   el.innerHTML = `<h3>${calm ? 'Your changes for ' + esc(longDate(date)) + ' are saved' + (canAsk() ? ': press Final when you are ready' : '') : p.fail ? 'The special picture for ' + esc(longDate(date)) + ' did not finish' : p.step === 'ready' ? 'The special picture for ' + esc(longDate(date)) + ' is ready' : 'Making the special picture for ' + esc(longDate(date)) + '…'}</h3>
     <div class="bar"${calm ? ' hidden' : ''} role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>
-    <ol${calm ? ' hidden' : ''}>${shown.map(([k, w], i) => { const done = i < at || p.step === 'ready' || (calm && i === at), now = i === at && p.step !== 'ready' && !calm; return `<li class="${p.fail && now ? 'bad' : done ? 'done' : now ? 'now' : ''}"><span>${p.fail && now ? '✕' : done ? '✓' : now ? '<span class="spin">◌</span>' : '○'}</span><b>${esc(w)}${now && k === 'send' && wait ? ` (in ${wait} s, so changes close together go as one)` : ''}</b><span>${p.t[k] ? clock(p.t[k]) : ''}</span></li>` }).join('')}</ol>
-    <p class="hint">${calm ? esc(p.note) : p.fail ? esc(p.fail) : p.step === 'ready' ? `Took ${mins(p.t.ready - start)}. It is on the Special picture tab now${date === today && !p.late ? ', and in Drive for the 2pm send' : ''}.` : `${mins(Date.now() - start)} so far. Usually 5 to 10 minutes from sending; longer if another GitHub run is going.`}</p>
+    <ol${calm ? ' hidden' : ''}>${shown.map(([k, w], i) => { const done = i < at || p.step === 'ready' || (calm && i === at), now = i === at && p.step !== 'ready' && !calm; return `<li class="${p.fail && now ? 'bad' : done ? 'done' : now ? 'now' : ''}"><span>${p.fail && now ? '✕' : done ? '✓' : now ? '<span class="spin">◌</span>' : '○'}</span><b>${esc(p.final && k === 'build' ? 'Drawing your exact design' : p.final && k === 'archive' ? 'Getting your photos' : w)}${now && k === 'send' && wait ? ` (in ${wait} s, so changes close together go as one)` : ''}</b><span>${p.t[k] ? clock(p.t[k]) : ''}</span></li>` }).join('')}</ol>
+    <p class="hint">${calm ? esc(p.note) : p.fail ? esc(p.fail) : p.step === 'ready' ? `Took ${mins(p.t.ready - start)}. It is on the Special picture tab now${date === today && !p.late ? ', and in Drive for the 2pm send' : ''}.` : `${mins(Date.now() - start)} so far. ${p.final ? 'A Final usually takes 2 to 3 minutes' : 'Usually 5 to 10 minutes from sending'}; longer if another GitHub run is going.`}</p>
     <div class="acts">${calm ? (canAsk() ? '<button class="btn primary" id="sprog-go" type="button">Final: build this exact picture</button>' : '<button class="btn small primary" id="sprog-gh" type="button">Connect GitHub</button>') : ''}${p.step === 'ready' && p.dirty && canAsk() ? '<button class="btn primary" id="sprog-go" type="button">Final again: build it with your newest changes</button>' : ''}${p.step === 'send' && !calm ? '<button class="btn small primary" id="sprog-now" type="button">Send it now</button>' : ''}${p.fail ? '<button class="btn small primary" id="sprog-again" type="button">Try again</button>' : ''}${p.run ? `<a class="btn small" href="https://github.com/darpan31patel-wq/bapas-diary/actions/runs/${p.run}" target="_blank" rel="noopener">See it on GitHub</a>` : ''}${p.step === 'ready' || p.fail || (calm && !canAsk()) ? '<button class="btn small" id="sprog-x" type="button">Hide</button>' : ''}${p.step === 'ready' && !(S.mode === 'special' && S.special.date === date) ? `<button class="btn small" id="sprog-open" type="button">Open it</button>` : ''}</div>`;
   el.hidden = false;
   const on = (id, fn) => { const b = document.getElementById(id); if (b) b.onclick = fn };
@@ -2648,13 +2664,14 @@ async function finalGo(date) {
       if (e.kind === 'story' || e.kind === 'news') { const ph = lay.cards.map(c => c.photo).filter(Boolean); if (ph.length) e.photos = ph }
       const keep = LAYOUT_REMAKE; LAYOUT_REMAKE = false; try { await saveLayout(date, had) } finally { LAYOUT_REMAKE = keep } }
   }
-  return askRemake(date);
+  FINAL_ASK = true; try { return await askRemake(date) } finally { FINAL_ASK = false }
 }
+let FINAL_ASK = false;   // a Final: the builder draws only his design, no photo search (its note, 17 Nov 2026: 2 to 3 minutes)
 async function askRemake(date) {
   clearTimeout(REMAKE_T);
   if (!canAsk()) { progSet(date, 'saved', { note: WAITNOTE }); return }
   const p0 = progOf(date); if (!p0 || !p0.t.saved) progSet(date, 'saved', { t: { saved: Date.now() } });
-  progSet(date, 'send', { fail: '', note: '', dirty: false, skip: [], run: 0, gone: false, sendAt: 0 });
+  progSet(date, 'send', { fail: '', note: '', dirty: false, skip: [], run: 0, gone: false, sendAt: 0, final: FINAL_ASK });
   try {
     const dev = !!ghKey();   // this computer's own key, else the website asks (functions/darpan/api/remake.js)
     const r = dev ? await gh('/actions/workflows/studio.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main', inputs: { special: date } }) })
