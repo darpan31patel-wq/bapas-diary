@@ -1,0 +1,83 @@
+# Old BAPS websites that are gone now, copied from the Internet Archive's Wayback Machine into Darpan's Drive archive
+# ("Bapa's Archive/sites/web.archive.org/<old site>/...") with the same full detail lists as the live sites, plus the
+# day the Archive took each copy (Darpan, 13 Nov 2026: "Yes to all"; "Everything from the other websites need to have
+# full detail"). Archive only: touches nothing in the 2pm picture's chain, the website, R2 or bapas.db, never runs
+# 03:45 to 07:30 UTC, two gentle readers per old site. Pushing this file again carries each site on from where it
+# stopped. Lists: <key>-pages.jsonl and <key>-photos.jsonl in the release `database` once a site is finished.
+# Round 1: 17 Nov 2026 11:45 UTC: mandir.org, kids.swaminarayan.org, bapscare.org (bapscare.org no longer answers).
+name: wayback
+on:
+  push:
+    branches: ['claude/project-thread-2nikpj']
+    paths: ['.github/workflows/wayback-2nikpj.yml']
+permissions:
+  contents: write   # the lists into the release `database`
+concurrency:
+  group: wayback
+jobs:
+  copy:
+    strategy:
+      max-parallel: 3
+      fail-fast: false
+      matrix:
+        include:
+          - { host: mandir.org, key: wayback-mandir-org }
+          - { host: kids.swaminarayan.org, key: wayback-kids-swaminarayan-org }
+          - { host: bapscare.org, key: wayback-bapscare-org }
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      REMOTE: "gdrive:Bapa's Archive/sites/web.archive.org/${{ matrix.host }}"
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Never in the 2pm picture's morning
+        run: |
+          m=$(( 10#$(date -u +%H) * 60 + 10#$(date -u +%M) ))
+          if [ $m -ge 225 ] && [ $m -lt 450 ]; then echo "::error::03:45 to 07:30 UTC is kept free"; exit 1; fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Drive access
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          CLIENT_ID: ${{ secrets.RCLONE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.RCLONE_CLIENT_SECRET }}
+        run: |
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          git fetch -q --depth 1 origin main && git show FETCH_HEAD:tools/rclone_conf.py > "$RUNNER_TEMP/rclone_conf.py"
+          mkdir -p ~/.config/rclone && python3 "$RUNNER_TEMP/rclone_conf.py" > ~/.config/rclone/rclone.conf
+      - name: Where the last round stopped
+        run: |
+          mkdir -p state
+          rclone copy "$REMOTE/_state" state 2>/dev/null || true
+          rclone lsf -R --files-only "$REMOTE" --filter "- _state/**" --filter "- _index/**" > have.txt || : > have.txt
+          wc -l have.txt
+      - name: Copy from the Archive (3h at most, by 03:30 UTC at the latest)
+        run: |
+          ( while sleep 600; do [ -d work/files ] && rclone move work/files "$REMOTE" --transfers 16 --checkers 16 \
+              --min-age 30s --stats 0 2>&1 | tail -2; rclone copy state "$REMOTE/_state" --stats 0 2>&1 | tail -1; done ) &
+          mover=$!
+          stop=$(date -u -d '+180 minutes' +%H:%M); now=$(date -u +%H%M); s=${stop/:/}
+          if [ $((10#$s)) -gt 330 ] && { [ $((10#$now)) -lt 330 ] || [ $((10#$s)) -lt $((10#$now)) ]; }; then stop=03:30; fi
+          echo "stopping at $stop UTC"
+          python3 -I tools/wayback.py --host ${{ matrix.host }} --work work --state state --stop-at $stop --have have.txt | tee run.log || true
+          kill $mover || true; pkill -f 'rclone move work/files' || true; sleep 5
+      - name: Into Drive
+        if: always()
+        run: |
+          rclone copy state "$REMOTE/_state" --stats 0
+          [ -d work/files ] && timeout 90m rclone move work/files "$REMOTE" --transfers 16 --checkers 16 --stats-one-line --stats 0 || true
+          rclone copy state "$REMOTE/_state" --stats 0
+      - name: Full detail for every page and photo (once a site is finished)
+        if: always()
+        run: |
+          if ! grep -q '"finished": true' state/last-run.json; then echo "not finished yet"; exit 0; fi
+          rclone copy "$REMOTE" pages --filter "- _state/**" --filter "- _index/**" --filter "+ *.{htm,html,HTM,HTML,shtml,asp,php}" \
+            --filter "+ *__*" --filter "- *" --transfers 16 --checkers 16 --stats 0
+          python3 -I tools/sites_index.py --site ${{ matrix.host }} --base http://${{ matrix.host }}/ --files pages --headers state/files.jsonl --out idx
+          rclone copy idx "$REMOTE/_index" --stats 0
+          cp idx/pages.jsonl ${{ matrix.key }}-pages.jsonl && cp idx/photos.jsonl ${{ matrix.key }}-photos.jsonl
+          gh release upload database ${{ matrix.key }}-pages.jsonl ${{ matrix.key }}-photos.jsonl --clobber
+          cp state/last-run.json ${{ matrix.key }}-last-run.json && gh release upload database ${{ matrix.key }}-last-run.json --clobber
+          cat state/last-run.json
