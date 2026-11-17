@@ -2610,7 +2610,9 @@ $('#exp-go').addEventListener('click', async () => {
     const want = new URLSearchParams(location.search).get('date');   // studio/?date=2026-11-23 opens that day
     if (want && /^\d{4}-\d\d-\d\d$/.test(want) && want !== S.day.date) { S.mode = 'day'; return openDate(want) }
     if (!INDEX.months.includes(S.month.month) && !(recent && S.month.month)) { S.month.month = INDEX.months.at(-1); unstash('month') }
-    if (!INDEX.specials.includes(S.special.date) && !(recent && S.special.date)) { S.special.date = INDEX.specials.includes(today) ? today : (INDEX.specials.at(-1) || ''); unstash('special') }
+    // the special picture opens on today's date (Darpan, 17 Nov 2026: "the special picture page needs to open to todays date by default");
+    // the day he was on keeps its changes for when he picks it again
+    if (S.special.date !== today) { if (S.special.date) stash('special'); S.special.date = today; unstash('special') }
     const wantSp = new URLSearchParams(location.search).get('special');   // studio/?special=2026-11-08 opens that special picture
     if (wantSp && INDEX.specials.includes(wantSp)) { S.mode = 'special'; S.special.date = wantSp; unstash('special') }
     if (S.mode === 'special' && !S.special.date) S.mode = 'day';
