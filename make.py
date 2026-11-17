@@ -1694,7 +1694,7 @@ LAYOUT = {'H2': dict(M=70, min_gap=14, row_gap=40, lines=2, cap=360, top=212, bo
 FRAME_ASPECT = {'W': 1 / .75, 'W1': 1 / .74, 'W2': 1 / .9, 'W3': 1.5}   # photo width / height per style; the tall live cards work out at about .69 on a full day
 
 
-def under_card(x, card, gap, f, lh, style, rnd):
+def under_card(x, card, gap, f, lh, style, rnd, even=0):
     cf_size = f.size
     """Style F: a small ivory paper tag on a short thread under the polaroid.
     Style H: ivory caption on a soft dark plate under the polaroid."""
@@ -1717,8 +1717,11 @@ def under_card(x, card, gap, f, lh, style, rnd):
     n = WIDE.get(style, LAYOUT.get(style, {})).get('lines', 3)
     text, maxw = shown_caption(x), card.CW + min(gap, px(30)) - px(40)
     half = max(3, len(text.split()) * 2 // 3)
+    tries = ((1, 0, False, 0), (.9, 0, False, 0), (.82, 0, False, 0), (.82, 0, True, half), (.82, 0, True, 0))
+    if even:   # the daily picture: every caption the same size, a long one takes another line before any gets smaller (Darpan, 17 Nov 2026)
+        tries = tuple((1, k, False, 0) for k in range(even - n + 1)) + tries
     # the whole caption first, then a touch smaller; only then a natural cut, keeping at least two thirds of it; a shorter cut last
-    for shrink, extra, cut, keep in ((1, 0, False, 0), (.9, 0, False, 0), (.82, 0, False, 0), (.82, 0, True, half), (.82, 0, True, 0)):
+    for shrink, extra, cut, keep in tries:
         f2 = garamond(f.size * shrink, 500) if shrink < 1 else f
         lines = wrap(probe, text, f2, maxw, n + extra, shorten=cut, min_words=keep)
         if not lines[-1].endswith('…'):
@@ -1832,7 +1835,7 @@ class WideCard(Card):
 ROWS = []   # where each cord's cards sit on the last picture drawn (x0, y, CH, CW, n), for a festival's decorations in the free space
 
 
-def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, hero=None, short_bottom=0, subtitle=None):
+def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, hero=None, short_bottom=0, subtitle=None, daily=False):
     """Three (W1, W2) or four (W3) cords of wide cards, every year on the day, sized to fill the picture.
     `hero`: cards to hang bigger (each as wide as two cards, from the top cord down to the second row's foot),
     the others either side of them (Darpan, 30 Oct 2026: 'do a special card' on the Every festival pictures).
@@ -1879,14 +1882,26 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
     if lay.get('lift'):   # the cord's lowest point (the middle) sits at the top line and its ends rise into the free corners beside the title
         top_space, bottom_space = px(lay['lift']), H - px(46)
     cf_a, lh_a = garamond(px(CAPTION_SIZE), 500), round(px(CAPTION_SIZE * 1.2))
-    below = (lay.get('pill', 0) * lh_a + px(22)) if lay.get('pill') and CAPTIONS != 'none' else 0   # no captions: the cards take that room
-    probe = WideCard(100, lay['ratio'], lay['band'])
-    pw_w = min(px(440), ((W - 2 * M - gap * (cols - 1)) / cols) / (probe.CW / 100))   # as wide as the row allows
-    row_h = (bottom_space - top_space - (nrows - 1) * row_gap - nrows * below) / nrows
-    ph = min(pw_w * lay['ratio'], row_h - (probe.CH - probe.PH) / 100 * pw_w)     # as tall as the rows allow
-    pw = min(pw_w, ph / lay.get('min_ratio', .6))            # a photo is never wider than 16:9 ish, so shrink the card if it would be
-    card = WideCard(pw, ph / pw, lay['band'])
-    gap = min(px(60), (W - 2 * M - cols * card.CW) / max(1, cols - 1))
+    # the daily picture: captions all one size, a long one on a third line rather than in smaller letters (Darpan, 17 Nov 2026)
+    even = (lay.get('pill', 0) + 1) if lay.get('pill') and EVEN_CAPTIONS and daily else 0   # never the festival or UK and Europe pictures
+    gap0, pill = gap, lay.get('pill', 0)
+    while True:
+        below = (pill * lh_a + px(22)) if pill and CAPTIONS != 'none' else 0   # no captions: the cards take that room
+        probe = WideCard(100, lay['ratio'], lay['band'])
+        pw_w = min(px(440), ((W - 2 * M - gap0 * (cols - 1)) / cols) / (probe.CW / 100))   # as wide as the row allows
+        row_h = (bottom_space - top_space - (nrows - 1) * row_gap - nrows * below) / nrows
+        ph = min(pw_w * lay['ratio'], row_h - (probe.CH - probe.PH) / 100 * pw_w)     # as tall as the rows allow
+        pw = min(pw_w, ph / lay.get('min_ratio', .6))            # a photo is never wider than 16:9 ish, so shrink the card if it would be
+        card = WideCard(pw, ph / pw, lay['band'])
+        gap = min(px(60), (W - 2 * M - cols * card.CW) / max(1, cols - 1))
+        if not even or pill >= even:
+            break
+        maxw = card.CW + min(gap, px(30)) - px(40)
+        dp = ImageDraw.Draw(Image.new('L', (1, 1)))
+        need = max([len(wrap(dp, shown_caption(x), cf_a, maxw, even, shorten=False)) for x in photos if shown_caption(x)] or [0])
+        if need <= pill:
+            break
+        pill = even   # room for the third line under every row, then size the cards again
     pitch = card.CH + below + row_gap
     block = (nrows - 1) * pitch + card.CH + below
     if lay.get('fill') and nrows > 1:   # spare height goes between the rows rather than above and below them
@@ -1923,7 +1938,7 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
                     if cx != hx:
                         later.append(lambda cx=cx, cy=cy: peg(img, cx, cy, s, short=.72))
                 if lay.get('pill') and shown_caption(hx_card):
-                    tag, pos = under_card(hx_card, hcard, gap, cf_a, lh_a, style, rnd)
+                    tag, pos = under_card(hx_card, hcard, gap, cf_a, lh_a, style, rnd, even)
                     later.append(lambda tag=tag, hx=hx, by=qy + hcard.CH: img.paste(tag, (int(hx - tag.width / 2), int(by + px(6))), tag))
         x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
         slots = list(range(len(row)))
@@ -1947,7 +1962,7 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
             img.paste(hung, (int(mx - hung.width / 2), int(my - hung.height / 2)), hung)
             later.append(lambda cx=cx: peg(img, cx, sag(cx) + px(4), s, short=.72))
             if lay.get('pill') and shown_caption(x):
-                tag, pos = under_card(x, card, gap, cf_a, lh_a, style, rnd)
+                tag, pos = under_card(x, card, gap, cf_a, lh_a, style, rnd, even)
                 bx, by = qx + card.CH * np.sin(t), qy + card.CH * np.cos(t)
                 later.append(lambda tag=tag, bx=bx, by=by: img.paste(tag, (int(bx - tag.width / 2), int(by + px(6))), tag))
         for f in later:
@@ -2048,6 +2063,7 @@ def rope(img, pts, w=None):
         k -= seg
 
 
+EVEN_CAPTIONS = os.environ.get('EVEN_CAPTIONS', '1') != '0'   # daily picture captions all one size, up to three lines (17 Nov 2026 mockup)
 CAPTION_SIZE = 21   # caption text under each frame (was 24; smaller since 18 Oct 2026 so whole captions fit, people zoom in)
 SAG = 60            # how far the cords dip in the middle, in pixels (Darpan 18 Oct 2026: 20 then 34 looked too straight, he wanted more)
 LIVE_STYLE = 'W2'   # the daily picture: design B, wide cards hanging straight on three curved cords, PNG (Darpan locked it in, 18 Oct 2026)
@@ -2092,9 +2108,10 @@ def dump_photos(photos, folder):
 
 def compose(photos, day, seed, style=None, look=None, history=None, title=None, cal=None):
     if style in WIDE:
-        if cal is None and title is None:   # the daily picture: the BAPS calendar's title and bottom line for this day
+        daily = cal is None and title is None
+        if daily:   # the daily picture: the BAPS calendar's title and bottom line for this day
             title, cal = cal_title(day), cal_footer(day)
-        return compose_wide(photos, day, seed, style, history, title, cal)
+        return compose_wide(photos, day, seed, style, history, title, cal, daily=daily)
     rnd = random.Random(seed)
     img = background(); dr = ImageDraw.Draw(img)
     header(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
