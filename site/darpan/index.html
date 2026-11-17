@@ -1732,7 +1732,7 @@ $('#pick-opt').addEventListener('change', e => { S.month.option = e.target.value
 // (functions/darpan/api/special-days.js); the 2pm picture project reads it at its morning run and makes the pictures.
 const CHAPI = '/darpan/api/special-days';
 let CH = null, CHSRC = 'none', CHTIMER = 0, DAYD = {};
-const CHKINDS = { story: 'a day in BAPS history', news: 'a baps.org News article', year: 'a year’s photos of the day', photos: 'his own photos' };
+const CHKINDS = { story: 'a day in BAPS history', news: 'a baps.org News article', year: 'a year’s photos of the day', photos: 'his own photos', mix: 'his own mix from several years' };
 const chScope = () => store.get('studio-choice-scope') || 'every';   // 'every' = this day every year (MM-DD), 'year' = that one day
 const chDate = () => S.mode === 'day' ? S.day.date : S.special.date;
 const chDay = date => chScope() === 'year' ? date : date.slice(5);
@@ -1746,9 +1746,9 @@ async function loadChoices() {
 }
 const chFor = date => CH ? CH.add.filter(e => covers(e.day, date)) : [];
 const chOff = date => !!CH && CH.off.some(d => covers(d, date));
-const sameEntry = (a, b) => a.kind === b.kind && (a.kind === 'story' || a.kind === 'news' ? a.ref === b.ref : +a.year === +b.year && (a.kind !== 'photos' || JSON.stringify(a.photos || []) === JSON.stringify(b.photos || [])));
+const sameEntry = (a, b) => a.kind === b.kind && (a.kind === 'story' || a.kind === 'news' ? a.ref === b.ref : +a.year === +b.year && (a.kind !== 'photos' && a.kind !== 'mix' || JSON.stringify(a.photos || []) === JSON.stringify(b.photos || [])));
 const chHave = (date, e) => chFor(date).find(x => sameEntry(x, e));
-const chWords = e => e.kind === 'year' ? `${e.year}’s photos of the day` : e.kind === 'photos' ? `${e.year} ${e.place || ''}, his own photos` : (e.note || e.headline || e.ref);
+const chWords = e => e.kind === 'mix' ? `${e.headline || 'Your own mix'}: ${(e.photos || []).length} photos from ${[...new Set((e.photos || []).map(p => p.year))].join(', ')}` : e.kind === 'year' ? `${e.year}’s photos of the day` : e.kind === 'photos' ? `${e.year} ${e.place || ''}, his own photos` : (e.note || e.headline || e.ref);
 const newsPath = u => { try { return new URL(u).pathname } catch (e) { return u } };
 const chButton = e => { const d = chDate(); if (!d) return ''; const have = chHave(d, e), i = have ? chFor(d).indexOf(have) : -1; return `<button class="sw" data-ch="${esc(JSON.stringify(e))}" aria-pressed="${!!have}" title="${have ? 'Press again to take it off' : 'Make this the day’s special picture (it goes first; any others follow as special 2, 3)'}">${have ? (i === 0 ? 'The special picture ✓' : `Special ${i + 1} ✓`) : 'Make this the special picture'}</button>` };
 function chToggle(date, e, first) {
@@ -1953,6 +1953,22 @@ const PHOTOS = 'https://photos.bapas-diary.com/';
 // his own pick of photos (kind photos): ticked on the Choose tab under a year, sent as photos.bapas-diary.com addresses
 // (s/<album>/<file>, the archive's group and file name in bapas.db) with the year and place
 const PICKSEL = { year: null, set: new Set() };
+// his own mix (Darpan, 17 Nov 2026: "merge a few different bits together in one special picture"): photos ticked under any
+// years of the day go into one basket, with his own headline and words (or a story's words, one press). One year only is
+// kind photos as before; several years is kind mix, each photo with its year, date, place and caption.
+let MIX = { date: '', photos: [], headline: '', story: '' };
+const mixFor = date => { if (MIX.date !== date) { MIX = Object.assign({ date, photos: [], headline: '', story: '' }, (store.get('studio-mix') || {})[date] || {}, { date }) } return MIX };
+const mixKeep = () => { const all = store.get('studio-mix') || {}; Object.keys(all).forEach(d => { if (d < todayLondon()) delete all[d] }); all[MIX.date] = MIX; store.set('studio-mix', all) };
+const mixHas = (date, addr) => mixFor(date).photos.some(p => p.src === addr);
+function mixBar(date) {
+  const m = mixFor(date); if (!m.photos.length && !m.headline && !m.story) return `<div class="group"><h3>Your own mix</h3><p class="hint">Tick photos under any years below (Pick some of the photos yourself) and they gather here, so one special picture can hold photos from several years. Press “Use these words in my mix” on a story to bring its words.</p></div>`;
+  const yrs = [...new Set(m.photos.map(p => p.year))].sort();
+  return `<div class="group" id="mixbar"><h3>Your own mix: ${m.photos.length} photo${m.photos.length === 1 ? '' : 's'}${yrs.length ? ' from ' + yrs.join(', ') : ''}</h3>
+    <div class="pickgrid">${m.photos.map((p, i) => `<label title="${esc([p.year, p.place, p.caption].filter(Boolean).join(' · '))}"><input type="checkbox" checked data-mixoff="${i}"><img src="${esc(p.src)}" alt="" loading="lazy"></label>`).join('')}</div>
+    <div class="edit"><input type="text" id="mix-h" value="${esc(m.headline)}" placeholder="Headline (empty: the builder writes one)" aria-label="Headline for your mix"><textarea id="mix-s" rows="4" placeholder="Story words (empty: the builder writes them from the photos’ captions)" aria-label="Story for your mix">${esc(m.story)}</textarea></div>
+    <div class="acts"><button class="sw" id="mix-go" ${m.photos.length ? '' : 'disabled'}>Make my mix the special picture</button><button class="btn small" id="mix-clear">Empty the mix</button></div>
+    <p class="hint">Untick a photo to take it out. The first ticked is the big photo.</p></div>`;
+}
 const photoAddr = p => `${PHOTOS}s/${p[0]}/${p[1]}`;
 // the deep search of a day (Darpan, 13 Nov 2026: "It goes through all the captions of that day to find anything special.
 // I want it to do a deep search and find all the special moments of that day"): every caption of every year's photos,
@@ -2013,9 +2029,9 @@ function paneChoose() {
     : `<p class="hint">Nothing chosen for this day yet${off ? ', and no special picture at all' : ''}.</p>`;
   const item = (y, it) => { const have = chHave(date, it.e), i = have ? mine.indexOf(have) : -1; return `<div class="ch ${have ? 'on' : ''} ${it.pic ? '' : 'nopic'}">${it.pic ? `<img class="pic" src="${esc(it.pic)}" alt="" loading="lazy">` : ''}<div>
       <p><b>${esc(it.title)}</b>${it.special ? ' <span class="gold">★</span>' : ''}</p><p class="hint">${esc(it.sub)}</p>${it.more ? `<p class="hint">${esc(it.more)}</p>` : ''}
-      <div class="acts"><button class="sw" data-ch="${esc(JSON.stringify(it.e))}" data-first="" aria-pressed="${!!have}">${have ? (i === 0 ? 'A special picture ✓ (special)' : `A special picture ✓ (special ${i + 1})`) : 'Make this a special picture'}</button>${it.url ? `<a class="btn small" href="${esc(it.url)}" target="_blank" rel="noopener">${/baps\.org/.test(it.url) ? 'Open on baps.org' : 'Open the post'}</a>` : ''}</div></div>
-      ${it.pics && it.pics.length > 1 ? `<details ${PICKSEL.year === y ? 'open' : ''}><summary>Pick some of the ${it.pics.length} photos yourself</summary><div class="pickgrid">${it.pics.map(p => `<label><input type="checkbox" data-pick="${esc(y + '|' + photoAddr(p))}" ${PICKSEL.year === y && PICKSEL.set.has(photoAddr(p)) ? 'checked' : ''}><img src="${esc(photoAddr(p))}" alt="" loading="lazy" title="${esc(p[2] || '')}"></label>`).join('')}</div>
-      <div class="acts"><button class="sw" data-pickgo="${y}" data-place="${esc(it.place || '')}" ${PICKSEL.year === y && PICKSEL.set.size ? '' : 'disabled'}>Make the ticked photos the special picture</button><span class="hint">Tick the photos, then press. Bapa’s own photos first; the builder draws the picture from them.</span></div></details>` : ''}
+      <div class="acts"><button class="sw" data-ch="${esc(JSON.stringify(it.e))}" data-first="" aria-pressed="${!!have}">${have ? (i === 0 ? 'A special picture ✓ (special)' : `A special picture ✓ (special ${i + 1})`) : 'Make this a special picture'}</button>${it.e.kind === 'story' || it.e.kind === 'news' ? `<button class="btn small" data-mixwords="${esc(JSON.stringify([it.title, it.more || '']))}">Use these words in my mix</button>` : ''}${it.url ? `<a class="btn small" href="${esc(it.url)}" target="_blank" rel="noopener">${/baps\.org/.test(it.url) ? 'Open on baps.org' : 'Open the post'}</a>` : ''}</div></div>
+      ${it.pics && it.pics.length > 1 ? `<details ${mixFor(date).photos.some(p => p.year === y) ? 'open' : ''}><summary>Pick some of the ${it.pics.length} photos yourself</summary><div class="pickgrid">${it.pics.map(p => `<label><input type="checkbox" data-pick="${esc(y + '|' + photoAddr(p))}" data-cap="${esc(p[2] || '')}" data-place="${esc(it.place || '')}" ${mixHas(date, photoAddr(p)) ? 'checked' : ''}><img src="${esc(photoAddr(p))}" alt="" loading="lazy" title="${esc(p[2] || '')}"></label>`).join('')}</div>
+      <p class="hint">Ticked photos go into Your own mix at the top, together with any you tick in other years.</p></details>` : ''}
       ${have ? `<div class="edit"><input type="text" data-ef="headline" data-ei="${i}" value="${esc(have.headline || '')}" placeholder="Headline (empty: the builder’s own)" aria-label="Headline"><textarea data-ef="story" data-ei="${i}" rows="4" placeholder="Story words (empty: the builder’s own)" aria-label="Story">${esc(have.story || '')}</textarea>${have.kind === 'year' || have.kind === 'photos' ? `<input type="text" data-ef="place" data-ei="${i}" value="${esc(have.place || '')}" placeholder="Place (empty: as the photos say)" aria-label="Place">` : ''}</div>` : ''}</div>` };
   const today = todayLondon();
   const dm = dayMoments(dd, mmdd, byYear), momentItem = m => item(m.y, Object.assign({}, m, { sub: m.sub + ' · found by ' + m.why }));
@@ -2026,6 +2042,7 @@ function paneChoose() {
       ${ukHtml}
       <p class="status" id="ch-status" role="status"></p>
       ${date >= today ? `<div class="acts" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn small" id="ch-remake" title="Asks the Collage builder to rebuild this day’s special picture from your choices now">Remake now</button><span class="hint" id="ch-remake-p">${remakeWords(date)}</span></div>` : ''}</div>
+    ${date >= today ? mixBar(date) : ''}
     <div class="group"><h3>Your choices for this day</h3>${mineHtml}
       ${seg('ch-scope', chScope(), [['every', 'Every year on this day'], ['year', `This year only (${y0})`]])}
       <p class="hint">The first choice is the special picture at 2pm; the next ones follow as special 2, special 3. Each has a box for your own headline and story words; empty means the builder’s own. ${CHSRC === 'github' ? 'Saved in archive/special-days.json for the morning run.' : CHSRC === 'studio' ? 'Kept in the Studio; the morning run reads it at bapas-diary.com/special-days.json until the GitHub token is set.' : 'Kept on this device until the website can keep it.'}</p></div>
@@ -2090,8 +2107,16 @@ async function askUkAdd(date) {
 const remakeWords = date => { const when = asked()['s:' + date]; if (when && Date.now() - when < SP_MINS * 60e3) { return `Remaking ${longDate(date)} (asked ${Math.round((Date.now() - when) / 60e3)} min ago)…` } const rm = (store.get('studio-remade') || {})[date]; return (rm ? `Remade at ${new Date(rm).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} from your choices${date === todayLondon() ? ', in Drive too' : ''}. ` : '') + (date === todayLondon() ? 'Every change you save asks the Collage builder to remake today’s special picture; it lands here and in Drive in about 5 to 10 minutes. Remake now asks at once.' : 'Every change you save asks the Collage builder to remake this day’s special picture, so it is ready here before its day.') };
 function wireChoices() {
   const date = chDate(); if (!date) return;
-  document.querySelectorAll('[data-pick]').forEach(b => b.addEventListener('change', () => { const [y, addr] = b.dataset.pick.split('|'); if (PICKSEL.year !== +y) { PICKSEL.year = +y; PICKSEL.set = new Set() } b.checked ? PICKSEL.set.add(addr) : PICKSEL.set.delete(addr); const go = document.querySelector(`[data-pickgo="${y}"]`); if (go) go.disabled = !PICKSEL.set.size }));
-  document.querySelectorAll('[data-pickgo]').forEach(b => b.addEventListener('click', async () => { await loadChoices(); const y = +b.dataset.pickgo; if (PICKSEL.year !== y || !PICKSEL.set.size) return; const e = { kind: 'photos', year: y, place: b.dataset.place || '', photos: [...PICKSEL.set] }; PICKSEL.year = null; PICKSEL.set = new Set(); chToggle(date, e, true) }));
+  const m = mixFor(date), onm = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn) };
+  document.querySelectorAll('[data-pick]').forEach(b => b.addEventListener('change', () => { const [y, addr] = b.dataset.pick.split('|'); m.photos = m.photos.filter(p => p.src !== addr); if (b.checked) m.photos.push({ src: addr, year: +y, date: `${y}-${date.slice(5)}`, place: b.dataset.place || '', caption: b.dataset.cap || '' }); mixKeep(); build() }));
+  document.querySelectorAll('[data-mixoff]').forEach(b => b.addEventListener('change', () => { m.photos.splice(+b.dataset.mixoff, 1); mixKeep(); build() }));
+  document.querySelectorAll('[data-mixwords]').forEach(b => b.addEventListener('click', () => { const [t, more] = JSON.parse(b.dataset.mixwords); m.headline = t; m.story = more; mixKeep(); build(); const bar = document.getElementById('mixbar'); if (bar) bar.scrollIntoView({ block: 'center' }) }));
+  onm('mix-h', 'input', e => { m.headline = e.target.value; mixKeep() }); onm('mix-s', 'input', e => { m.story = e.target.value; mixKeep() });
+  onm('mix-clear', 'click', () => { m.photos = []; m.headline = ''; m.story = ''; mixKeep(); build() });
+  onm('mix-go', 'click', async () => { await loadChoices(); if (!m.photos.length) return; const yrs = [...new Set(m.photos.map(p => p.year))];
+    const e = yrs.length === 1 ? { kind: 'photos', year: yrs[0], place: m.photos[0].place || '', photos: m.photos.map(p => p.src) } : { kind: 'mix', year: yrs[0], photos: m.photos.map(p => Object.assign({}, p)), place: m.photos[0].place || '' };
+    if (m.headline.trim()) e.headline = m.headline.trim(); if (m.story.trim()) e.story = m.story;
+    chToggle(date, e, true) });
   const on = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn) };
   on('ch-remake', 'click', () => askRemake(date));
   on('uk-add', 'click', () => askUkAdd(date));
