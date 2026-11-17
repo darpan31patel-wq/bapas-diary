@@ -37,6 +37,9 @@ function clean(e) {
   if (e.story) out.story = s(e.story, 6000);
   if (Array.isArray(e.photos) && e.photos.length) out.photos = e.photos.slice(0, 40).map((p) => s(p, 400)).filter(Boolean);
   if (e.kind === 'photos' && !(out.photos || []).length) return null;
+  // his arrangement of the picture in the Studio (Darpan, 17 Nov 2026): extra photos, each card's size and place, the words'
+  // size and place; kept as he made it, at most 20 KB
+  if (e.layout && typeof e.layout === 'object') { const j = JSON.stringify(e.layout); if (j.length <= 20000) out.layout = JSON.parse(j); }
   return out;
 }
 
