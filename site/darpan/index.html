@@ -378,13 +378,13 @@ async function loadPack(kind, key) {
   const groups = groupsOf(pack);
   // the collage builder's packs (fields note, 9 Nov 2026) may add years (added: true, shown like any other card) and spares
   // (years with no sure photo of Bapa, offered as "add a year"); any other new field is simply kept
-  if (kind === 'special') { pack.spares = pack.spares || []; const want = new Set((S.special.added || []).map(String)); pack.spares.slice().forEach(sp => { if (want.has(String(sp.year))) { pack.spares.splice(pack.spares.indexOf(sp), 1); groups.push(sp); sp.added = true } }); groups.sort((a, b) => (a.year || 0) - (b.year || 0) || (a.role === 'big' ? -1 : 0)) }
+  if (kind === 'special' && pack.kind !== 'story') { pack.spares = pack.spares || []; const want = new Set((S.special.added || []).map(String)); pack.spares.slice().forEach(sp => { if (want.has(String(sp.year))) { pack.spares.splice(pack.spares.indexOf(sp), 1); groups.push(sp); sp.added = true } }); groups.sort((a, b) => (a.year || 0) - (b.year || 0) || (a.role === 'big' ? -1 : 0)) }
   // extra photos on a story special (Darpan, 17 Nov 2026: "add more photos onto the special picture card"): each one is a
   // small card choosing from the same photos, up to 10 cards in all; S.special.extra counts them
-  if (kind === 'special' && pack.kind === 'story') for (let i = 0; i < Math.min(S.special.extra || 0, 10 - groups.length); i++) groups.push(extraCard(groups));
-  const keyOfGroup = (g, gi) => kind === 'special' ? (pack.kind === 'story' ? 'c' + gi : 'y' + g.year) : (g.year ?? g.day);
+  if (kind === 'special' && pack.kind === 'story') { pack.spares = pack.spares || []; for (let i = 0; i < Math.min(S.special.extra || 0, mostPhotos(pack) - groups.length); i++) groups.push(takeSpare(pack, groups)) }
+  const keyOfGroup = (g, gi) => kind === 'special' ? (pack.kind === 'story' ? (g.key || 'c' + gi) : 'y' + g.year) : (g.year ?? g.day);
   groups.forEach((g, gi) => { g.key = keyOfGroup(g, gi); g.cands.forEach((c, i) => { c.key = `${base}${g.key}-${i}` }) });
-  pack.spares && pack.spares.forEach(g => { g.key = 'y' + g.year; g.cands.forEach((c, i) => { c.key = `${base}${g.key}-${i}` }) });
+  pack.spares && pack.spares.forEach((g, si) => { g.key = pack.kind === 'story' ? (g.key || 'sp' + si) : 'y' + g.year; g.cands.forEach((c, i) => { c.key = `${base}${g.key}-${i}` }) });
   // speed (2pm picture project note, 13 Nov 2026: "show the ready drawn pictures from the packs first and only redraw when he
   // changes something"): the page no longer waits for 13 MB of photos. The run's own picture (real.jpg) shows at once, the
   // photos the picture needs load first, the picture is drawn as soon as they are in, and the rest arrive behind it.
@@ -845,7 +845,7 @@ function drawStory(ctx, pack, o, hits) {
   const sub = o.subtitle || pack.subtitle;
   if (sub) { ctx.font = `600 22px ${SANS}`; ctx.fillStyle = CAP_GOLD; const t = sub.toUpperCase(); spacedText(ctx, t, W / 2 - spacedW(ctx, t, 6) / 2, 118, 6) }
   const cards = dayCards(pack, o), roleOf = x => (groupsOf(pack).find(g => g.key === x.key) || {}).role;
-  const big = cards.find(x => roleOf(x) !== 'small'), small = cards.filter(x => x !== big).slice(0, 9);   // up to 9 small cards (Darpan, 17 Nov 2026: more photos), two rows past 4
+  const big = cards.find(x => roleOf(x) !== 'small'), small = cards.filter(x => x !== big).slice(0, 19);   // up to 19 small cards (Darpan, 17 Nov 2026: more photos), in rows past 4
   const card = (x, left, top, w, h) => {   // ivory card with the photo filling its frame and the year and place under it
     const e = 12, CW = w + 2 * e, CH = h + 2 * e + w * .1;
     ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 24; ctx.shadowOffsetY = 12;
@@ -880,7 +880,7 @@ function drawStory(ctx, pack, o, hits) {
   // as fits (36 down to 26) above the small cards, which sit at the foot of the picture when the story is long
   const x0 = L.small_from || 1360, tw2 = W - x0 - 90, cx = x0 + tw2 / 2;
   const wd = { headline: T(o, 'headline', pack.headline || ''), story: T(o, 'story', pack.story || '') };
-  const sn = small.length, cols = sn <= 4 ? sn : Math.ceil(sn / 2), rows = sn ? Math.ceil(sn / cols) : 0;
+  const sn = small.length, cols = sn <= 4 ? sn : sn <= 10 ? Math.ceil(sn / 2) : Math.ceil(sn / 3), rows = sn ? Math.ceil(sn / cols) : 0;
   const sw = cols ? Math.min(330, (tw2 - 30 * (cols - 1)) / cols - 24) : 0, CH = sn ? Math.round(sw * .74) + 24 + sw * .1 : 0;
   const foot = sn ? H - rows * (CH + 20) - 36 : H - 70;   // where the small cards sit when the story is long
   // the headline's and the story's own size and place (Darpan, 17 Nov 2026: "adjust the position and size of the text of the
@@ -893,22 +893,35 @@ function drawStory(ctx, pack, o, hits) {
   let hl = wrapLines(ctx, wd.headline, tw2, 3);
   while (!hl.fits && hsz > 44 * hs) { hsz -= 4; ctx.font = `700 ${hsz}px ${SERIF}`; hl = wrapLines(ctx, wd.headline, tw2, 3) }
   if (hl.lines.length > 1) { let lo = tw2 * .45, hi = tw2; for (let i = 0; i < 12; i++) { const mid = (lo + hi) / 2, r = wrapLines(ctx, wd.headline, mid, 3); if (r.fits && r.lines.length === hl.lines.length) { hl = r; hi = mid } else lo = mid } }
+  const DRAWN = { headline: { text: wd.headline, x: Math.round(cx + (tl.hmx || 0) - tw2 / 2), y: Math.round(y + (tl.hmy || 0) - hsz * .78), w: Math.round(tw2), size: hsz, lines: hl.lines.slice() } };
   for (const line of hl.lines) { goldText(ctx, line, cx + (tl.hmx || 0), y + (tl.hmy || 0), hsz); y += hsz * 1.18 }
   y += 26;
   const paras = String(wd.story || '').replace(/\r/g, '').split(/\n\s*\n/).map(pg => pg.split('\n').map(l => l.trim()).filter(Boolean)).filter(pg => pg.length);
   const layoutStory = sz => { ctx.font = `500 ${sz}px ${SERIF}`; const lh = sz * 1.38, out = []; paras.forEach((pg, i) => { if (i) out.push(null); pg.forEach(l => wrapLines(ctx, l, tw2, 99).lines.forEach(t => out.push(t))) }); return { lines: out, lh, h: out.reduce((a2, l) => a2 + (l === null ? lh * .55 : lh), 0) } };
   let st = layoutStory(Math.round(36 * ss));
-  for (let sz = Math.round(36 * ss) - 1; sz >= Math.round((sn > 4 ? 20 : 26) * ss) && st.h > foot - 40 - y; sz--) st = layoutStory(sz);
+  for (let sz = Math.round(36 * ss) - 1; sz >= Math.round((sn > 10 ? 16 : sn > 4 ? 20 : 26) * ss) && st.h > foot - 40 - y; sz--) st = layoutStory(sz);
   const room = foot - 40 - y;
   if (st.h > room) { let h2 = 0, keep = []; for (const l of st.lines) { const add = l === null ? st.lh * .55 : st.lh; if (h2 + add > room) break; keep.push(l); h2 += add } if (keep.length && keep[keep.length - 1]) keep[keep.length - 1] = keep[keep.length - 1].replace(/[,;:]?$/, '…'); st.lines = keep; st.h = h2 }
   ctx.fillStyle = CAP_IVORY; ctx.textAlign = 'center';
+  const ssz = Math.round(st.lh / 1.38);
+  DRAWN.story = { text: wd.story, x: Math.round(cx + (tl.smx || 0) - tw2 / 2), y: Math.round(y + st.lh * .72 + (tl.smy || 0) - ssz * .78), w: Math.round(tw2), size: ssz, lines: st.lines.map(l => l === null ? '' : l) };
   for (const line of st.lines) { if (line === null) { y += st.lh * .55; continue } ctx.fillText(line, cx + (tl.smx || 0), y + st.lh * .72 + (tl.smy || 0)); y += st.lh }
   const top = Math.min(foot, Math.max(620, y + 40));
   if (sn) small.forEach((x, k) => { const f = fit(x), w = Math.round(sw * f.k), h = Math.round(sw * .74 * f.k), c = k % cols, r = Math.floor(k / cols); card(x, x0 - 30 + c * (sw + 54) + (sw - w) / 2 + f.mx, top + r * (CH + 20) + f.my, w, h) });
+  // what was drawn, in the Collage builder's layout form (its note, 17 Nov 2026): each card's outer box, photo address,
+  // the words on its strip and where the photo is held; the headline and story with their lines as broken here
+  const byKey = Object.fromEntries(cards.map(x => [x.key, x])), clamp = v => Math.max(0, Math.min(1, Math.round(v * 100) / 100));
+  DRAWN.cards = hits.filter(h => byKey[h.key]).map(h => { const x = byKey[h.key], c = x.c || {}, yt = o.showYear ? String(x.yl ?? '') : '', pl = o.showPlace ? (x.place || '') : '';
+    return Object.assign({ photo: c.src || '', x: Math.round(h.x), y: Math.round(h.y), w: Math.round(h.w), h: Math.round(h.h), focus: [clamp(.5 + (x.dx || 0)), clamp(.3 + (x.dy || 0))] },
+      yt || pl ? { year: yt, place: pl } : { label: false }, o.pegs && o.peg !== 'none' ? {} : { peg: false }, c.src ? {} : { file: c.f || c.img || '', at: c.at || null }) });
+  if (!o.titleAuto && o.title) DRAWN.title = { text: o.title };
+  if (o.subtitle) DRAWN.subtitle = { text: o.subtitle };
+  LAYDRAWN = DRAWN;
   ctx.textAlign = 'left';
   const name = o.showFooter ? o.footer : '';
   if (name) { ctx.font = `500 24px ${SERIF}`; ctx.textAlign = 'left'; const w = ctx.measureText(name).width, fy = H - 20; ctx.fillStyle = 'rgb(226,184,104)'; ctx.fillText(name, (W - w) / 2, fy); diamond(ctx, (W - w) / 2 - 28, fy - 8, 5); diamond(ctx, (W + w) / 2 + 28, fy - 8, 5) }
 }
+let LAYDRAWN = null;
 const isStory = () => S.mode === 'special' && !!P.special && P.special.kind === 'story';
 // ------------------------------------------------------------ a pack that carries its own design (Darpan, 10 Nov 2026: the Annakut
 // picture's sky, food stacks and diyas): layers.under behind the cards, layers.over on top, each card in its own box
@@ -1899,29 +1912,34 @@ function waitForS(date) {
 // a reload while a picture is being made carries on watching it
 setTimeout(() => { const all = progAll(); Object.keys(all).forEach(d => { const p = all[d]; if (p.step && p.step !== 'ready' && !p.fail && STEPN[p.step] >= STEPN.accepted && Date.now() - (asked()['s:' + d] || 0) < SP_MINS * 60e3) waitForS(d) }); showProg() }, 1500);
 // his arrangement of a story special goes with his choice for that day (Darpan, 17 Nov 2026: more photos, the headline's and
-// story's size and place, each card's size and place), as `layout` on the choice in special-days.json, so the Collage
-// builder's remake can draw it as he made it. Saved a few seconds after he stops; no remake is asked for a layout change
-// until the Collage builder says its remake reads it (LAYOUT_REMAKE).
-const LAYOUT_REMAKE = false;
-let LAYOUT_T = 0, LAYOUT_SENT = '';
-function layoutNow() {
-  const o = S.special, pack = P.special, cards = {};
-  groupsOf(pack).forEach(g => { const st = stateOf(o)[g.key] || {}, c = g.cands[st.pick ?? defaultPick(g, o.photoStyle)] || g.cands[0] || {};
-    cards[g.key] = Object.assign({ role: g.role || 'small', on: st.on ?? true, pick: st.pick ?? null, photo: (c.img || c.f || '') + (c.at ? '#' + c.at.join(',') : '') },
-      ...['size', 'mx', 'my', 'crop', 'zoom', 'dx', 'dy', 'caption', 'place'].filter(f => st[f] != null).map(f => ({ [f]: st[f] }))) });
-  return { extra: o.extra || 0, cards, words: Object.assign({ hs: 1, hmx: 0, hmy: 0, ss: 1, smx: 0, smy: 0 }, o.tl || {}),
-    headline: T(o, 'headline', pack.headline || ''), story: T(o, 'story', pack.story || ''), at: new Date().toISOString() };
+// story's size and place, each card's size and place), as `layout` on the choice in special-days.json, in the form the
+// Collage builder reads (its note, 17 Nov 2026): each card's outer box and photo address in draw order, the headline and
+// story with their lines exactly as broken here; the choice's photos list holds every photo on the picture. Saved a few
+// seconds after he stops, then the remake is asked for as with any other change. Only his own changes are sent: a day he
+// has not touched keeps the builder's own picture.
+const LAYOUT_REMAKE = true;
+let LAYOUT_T = 0;
+const layoutNow = () => LAYDRAWN ? JSON.parse(JSON.stringify(LAYDRAWN)) : null;
+const layoutSig = l => JSON.stringify(Object.assign({}, l || {}, { at: '' }));
+function hasEdits(o) {
+  const st = stateOf(o) || {};
+  return Object.values(st).some(v => v && Object.keys(v).length) || !!o.extra || Object.keys(o.tl || {}).length > 0 || Object.values(o.txt || {}).some(v => v != null) || !o.titleAuto || !!o.subtitle;
+}
+function layoutTarget(date, pack) {
+  const mine = chFor(date);
+  return mine.find(x => sameEntry(x, pack.choose)) || (pack.choose.kind === 'mix' ? mine.find(x => x.kind === 'mix') : null);
 }
 function layoutSoon() {
-  const date = S.special.date, pack = P.special; if (!date || date < todayLondon() || !pack || !pack.choose) return;
+  const date = S.special.date, pack = P.special; if (!date || date < todayLondon() || !pack || !pack.choose || !hasEdits(S.special)) return;
   if (!CH) { loadChoices().then(() => { if (CH) layoutSoon() }); return }
   clearTimeout(LAYOUT_T);
   LAYOUT_T = setTimeout(() => {
-    const lay = layoutNow(), sig = JSON.stringify(Object.assign({}, lay, { at: '' }));
-    if (sig === LAYOUT_SENT) return;
-    let e = chFor(date).find(x => sameEntry(x, pack.choose));
+    const lay = layoutNow(); if (!lay || !lay.cards || !lay.cards.length) return;
+    let e = layoutTarget(date, pack);
+    if (e && layoutSig(e.layout) === layoutSig(lay)) return;
     if (!e) { e = Object.assign({}, pack.choose, { day: pack.choose.day || chDay(date) }); CH.add.push(e) }
-    const had = !!e.layout; e.layout = lay; LAYOUT_SENT = sig;
+    const had = !!e.layout; lay.at = new Date().toISOString(); e.layout = lay;
+    if (e.kind === 'story' || e.kind === 'news') { const ph = lay.cards.map(c => c.photo).filter(Boolean); if (ph.length) e.photos = ph }
     saveLayout(date, had);
   }, 4000);
 }
@@ -1932,7 +1950,7 @@ async function saveLayout(date, had) {
     const j = r.ok ? await r.json() : {}; if (!r.ok || !j.ok) throw new Error(j.error || r.status);
     CHSRC = j.source; if (!had) logChange('Special picture arranged', longDate(date));
     if (LAYOUT_REMAKE) remakeSoon(date);
-  } catch (e) { LAYOUT_SENT = '' }
+  } catch (e) {}
 }
 function chSay(cls, msg) { for (const el of [document.getElementById('ch-status'), $('#status')]) if (el) { el.className = 'status ' + cls; el.textContent = msg } }
 async function saveChoices(how, where, quiet) {
@@ -1959,12 +1977,12 @@ const PICKSEL = { year: null, set: new Set() };
 let MIX = { date: '', photos: [], headline: '', story: '' };
 const mixFor = date => { if (MIX.date !== date) { MIX = Object.assign({ date, photos: [], headline: '', story: '' }, (store.get('studio-mix') || {})[date] || {}, { date }) } return MIX };
 const mixKeep = () => { const all = store.get('studio-mix') || {}; Object.keys(all).forEach(d => { if (d < todayLondon()) delete all[d] }); all[MIX.date] = MIX; store.set('studio-mix', all) };
-const mixHas = (date, addr) => mixFor(date).photos.some(p => p.src === addr);
+const mixHas = (date, addr) => mixFor(date).photos.some(p => (p.photo || p.src) === addr);
 function mixBar(date) {
   const m = mixFor(date); if (!m.photos.length && !m.headline && !m.story) return `<div class="group"><h3>Your own mix</h3><p class="hint">Tick photos under any years below (Pick some of the photos yourself) and they gather here, so one special picture can hold photos from several years. Press “Use these words in my mix” on a story to bring its words.</p></div>`;
   const yrs = [...new Set(m.photos.map(p => p.year))].sort();
   return `<div class="group" id="mixbar"><h3>Your own mix: ${m.photos.length} photo${m.photos.length === 1 ? '' : 's'}${yrs.length ? ' from ' + yrs.join(', ') : ''}</h3>
-    <div class="pickgrid">${m.photos.map((p, i) => `<label title="${esc([p.year, p.place, p.caption].filter(Boolean).join(' · '))}"><input type="checkbox" checked data-mixoff="${i}"><img src="${esc(p.src)}" alt="" loading="lazy"></label>`).join('')}</div>
+    <div class="pickgrid">${m.photos.map((p, i) => `<label title="${esc([p.year, p.place, p.caption].filter(Boolean).join(' · '))}"><input type="checkbox" checked data-mixoff="${i}"><img src="${esc(p.photo || p.src)}" alt="" loading="lazy"></label>`).join('')}</div>
     <div class="edit"><input type="text" id="mix-h" value="${esc(m.headline)}" placeholder="Headline (empty: the builder writes one)" aria-label="Headline for your mix"><textarea id="mix-s" rows="4" placeholder="Story words (empty: the builder writes them from the photos’ captions)" aria-label="Story for your mix">${esc(m.story)}</textarea></div>
     <div class="acts"><button class="sw" id="mix-go" ${m.photos.length ? '' : 'disabled'}>Make my mix the special picture</button><button class="btn small" id="mix-clear">Empty the mix</button></div>
     <p class="hint">Untick a photo to take it out. The first ticked is the big photo.</p></div>`;
@@ -2108,13 +2126,13 @@ const remakeWords = date => { const when = asked()['s:' + date]; if (when && Dat
 function wireChoices() {
   const date = chDate(); if (!date) return;
   const m = mixFor(date), onm = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn) };
-  document.querySelectorAll('[data-pick]').forEach(b => b.addEventListener('change', () => { const [y, addr] = b.dataset.pick.split('|'); m.photos = m.photos.filter(p => p.src !== addr); if (b.checked) m.photos.push({ src: addr, year: +y, date: `${y}-${date.slice(5)}`, place: b.dataset.place || '', caption: b.dataset.cap || '' }); mixKeep(); build() }));
+  document.querySelectorAll('[data-pick]').forEach(b => b.addEventListener('change', () => { const [y, addr] = b.dataset.pick.split('|'); m.photos = m.photos.filter(p => (p.photo || p.src) !== addr); if (b.checked) m.photos.push({ photo: addr, year: +y, date: `${y}-${date.slice(5)}`, place: b.dataset.place || '', caption: b.dataset.cap || '' }); mixKeep(); build() }));
   document.querySelectorAll('[data-mixoff]').forEach(b => b.addEventListener('change', () => { m.photos.splice(+b.dataset.mixoff, 1); mixKeep(); build() }));
   document.querySelectorAll('[data-mixwords]').forEach(b => b.addEventListener('click', () => { const [t, more] = JSON.parse(b.dataset.mixwords); m.headline = t; m.story = more; mixKeep(); build(); const bar = document.getElementById('mixbar'); if (bar) bar.scrollIntoView({ block: 'center' }) }));
   onm('mix-h', 'input', e => { m.headline = e.target.value; mixKeep() }); onm('mix-s', 'input', e => { m.story = e.target.value; mixKeep() });
   onm('mix-clear', 'click', () => { m.photos = []; m.headline = ''; m.story = ''; mixKeep(); build() });
   onm('mix-go', 'click', async () => { await loadChoices(); if (!m.photos.length) return; const yrs = [...new Set(m.photos.map(p => p.year))];
-    const e = yrs.length === 1 ? { kind: 'photos', year: yrs[0], place: m.photos[0].place || '', photos: m.photos.map(p => p.src) } : { kind: 'mix', year: yrs[0], photos: m.photos.map(p => Object.assign({}, p)), place: m.photos[0].place || '' };
+    const e = yrs.length === 1 ? { kind: 'photos', year: yrs[0], place: m.photos[0].place || '', photos: m.photos.map(p => p.photo || p.src) } : { kind: 'mix', year: yrs[0], photos: m.photos.map(p => ({ photo: p.photo || p.src, year: p.year, date: p.date, place: p.place, caption: p.caption })), place: m.photos[0].place || '' };
     if (m.headline.trim()) e.headline = m.headline.trim(); if (m.story.trim()) e.story = m.story;
     chToggle(date, e, true) });
   const on = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn) };
@@ -2352,13 +2370,17 @@ function spareGroup(pack) {
   return `<div class="group"><h3>Years you can add</h3><p class="hint">No photo with Bapa's face was found for these years, so they are not on the picture. Add one to put its card on, then choose its photo.</p>
     <div class="chips">${pack.spares.map(sp => `<button data-add="${sp.year}" title="${esc((sp.cands[0] || {}).caption || '')}">${sp.year}${sp.cands[0] && sp.cands[0].place ? ' ' + esc(sp.cands[0].place) : ''} (${sp.cands.length})</button>`).join('')}</div></div>`;
 }
+// the Collage builder's story packs carry empty places (spares, each with its own key, up to most_photos, 17 Nov 2026);
+// an older pack without them gets a copy of its last small card
+const mostPhotos = pack => pack.most_photos || 20;
+function takeSpare(pack, groups) { const g = (pack.spares || []).length ? pack.spares.shift() : extraCard(groups); g.role = 'small'; g.extra = true; return g }
 function extraCard(groups) {
   const smalls = groups.filter(g => g.role === 'small'), src = smalls[smalls.length - 1] || groups[0];
   return Object.assign({}, src, { role: 'small', extra: true, cands: src.cands.map(c => Object.assign({}, c)) });
 }
 function addPhoto() {
-  const pack = P.special, groups = groupsOf(pack); if (!pack || groups.length >= 10) return;
-  const g = extraCard(groups), gi = groups.length; groups.push(g); g.key = 'c' + gi; g.cands.forEach((c, i) => { c.key = `${pack.base}${g.key}-${i}` });
+  const pack = P.special, groups = groupsOf(pack); if (!pack || groups.length >= mostPhotos(pack)) return;
+  const gi = groups.length, g = takeSpare(pack, groups); groups.push(g); if (!g.key || groups.some(x => x !== g && x.key === g.key)) g.key = 'c' + gi; g.cands.forEach((c, i) => { c.key = `${pack.base}${g.key}-${i}` });
   const id = c => c ? (c.img || c.f || '') + ':' + (c.at ? c.at[0] : '') : '', used = new Set(dayCards(pack, S.special).map(x => id(x.c))), next = g.cands.findIndex(c => !used.has(id(c)));
   stateOf(S.special)[g.key] = Object.assign(stateOf(S.special)[g.key] || {}, { pick: next < 0 ? 0 : next });
   S.special.extra = (S.special.extra || 0) + 1; S.special.sel = g.key;
@@ -2367,14 +2389,14 @@ function addPhoto() {
 }
 function dropPhoto() {
   const pack = P.special, groups = groupsOf(pack), i = groups.map(g => !!g.extra).lastIndexOf(true); if (i < 0) return;
-  const g = groups.splice(i, 1)[0]; delete stateOf(S.special)[g.key]; S.special.extra = Math.max(0, (S.special.extra || 0) - 1);
+  const g = groups.splice(i, 1)[0]; delete stateOf(S.special)[g.key]; if (/^card\d/.test(g.key || '')) (pack.spares = pack.spares || []).unshift(g); S.special.extra = Math.max(0, (S.special.extra || 0) - 1);
   if (S.special.sel === g.key) S.special.sel = groups[0] && groups[0].key; build();
 }
 function addPhotoGroup(pack) {
   if (!isStory()) return '';
   const n = groupsOf(pack).length, ex = groupsOf(pack).filter(g => g.extra).length;
-  return `<div class="group"><h3>More photos on the picture</h3><p class="hint">${n} photo${n > 1 ? 's' : ''} on the picture now, up to 10. A new one is a small card; choose its photo like any other. Past 4 small cards they go in two rows.</p>
-    <div class="seg"><button class="btn small" id="c-addph" ${n >= 10 ? 'disabled' : ''}>Add a photo</button>${ex ? '<button class="btn small" id="c-dropph">Take off the last added photo</button>' : ''}</div></div>`;
+  return `<div class="group"><h3>More photos on the picture</h3><p class="hint">${n} photo${n > 1 ? 's' : ''} on the picture now, up to ${mostPhotos(pack)}. A new one is a small card; choose its photo like any other. Past 4 small cards they go in rows.</p>
+    <div class="seg"><button class="btn small" id="c-addph" ${n >= mostPhotos(pack) ? 'disabled' : ''}>Add a photo</button>${ex ? '<button class="btn small" id="c-dropph">Take off the last added photo</button>' : ''}</div></div>`;
 }
 function addSpare(year) {
   const pack = P.special, i = pack.spares.findIndex(sp => String(sp.year) === String(year)); if (i < 0) return;
