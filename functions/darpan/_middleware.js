@@ -88,7 +88,7 @@ button{font:700 12px 'Poppins',system-ui,sans-serif;letter-spacing:.16em;text-tr
 export async function onRequest(context) {
   const { request, env, next } = context;
   const url = new URL(request.url);
-  const password = env.STUDIO_PASSWORD || '';
+  const password = (env.STUDIO_PASSWORD || '').trim();   // a space or line break pasted in with the secret never locks him out (6 Nov 2026)
   if (!password) return lockPage('The Studio password has not been set up yet.', 503);
   const key = await keyFor(password);
 
