@@ -104,9 +104,15 @@ def years(page, tag, key):
       document.getElementById('cal').textContent = '';
       document.getElementById('count').textContent = '';
       document.getElementById('frame').style.cssText += ';' + mark;
+      const shownPlace = (document.getElementById('place').dataset.was || '');
+      const tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); let n; const fix = [];
+      while ((n = tw.nextNode())) { const el = n.parentElement; if (el.closest('nav, #years, .tab, #date, #place')) continue;
+        const v = n.nodeValue.trim(); if (/^(19|20)\\d\\d$/.test(v)) fix.push([n, String(y)]); else if (/^[A-Z][a-z]+(, [A-Z][a-z]+)?$/.test(v) && el.offsetHeight > 30) fix.push([n, where]); }
+      for (const [n, v] of fix) n.nodeValue = n.nodeValue.replace(n.nodeValue.trim(), v);
+      if (innerWidth < 700) { document.getElementById('date').textContent = when; }
       const t = document.querySelector('#tab-psm .yrs'); if (t) t.textContent = older[0] + ' to 13 August 2016';
       const list = document.getElementById('years'), first = list.firstElementChild;
-      if (first) for (const oy of older.slice().reverse()) {
+      if (first && innerWidth >= 700) for (const oy of older.slice().reverse()) {
         const b = first.cloneNode(true); b.dataset.y = oy; b.classList.remove('on', 'past');
         b.querySelectorAll('*').forEach(n => { if (/^\\d{4}$/.test(n.textContent.trim())) n.textContent = oy; });
         if (/^\\d{4}$/.test(b.textContent.trim())) b.textContent = oy;
