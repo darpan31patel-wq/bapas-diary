@@ -343,7 +343,7 @@ const stateOf = o => o.years || o.days || o.cards;
 // the photo packs: beside this page when it carries them (claude.ai), otherwise the studio branch on GitHub (tools/studio_packs.py)
 // every date (and month) keeps its own changes, so going to another day and back loses nothing (Darpan, 4 Nov 2026:
 // "remember when I make a change ... before I press save"). Kept on this device in studio-dates-v1.
-const PER = { day: ['years', 'titleAuto', 'title', 'txt'], month: ['days', 'titleAuto', 'title'], special: ['cards', 'titleAuto', 'title', 'txt', 'added'] };
+const PER = { day: ['years', 'titleAuto', 'title', 'txt'], month: ['days', 'titleAuto', 'title'], special: ['cards', 'titleAuto', 'title', 'txt', 'added', 'extra', 'tl', 'subtitle'] };   // extra, tl, subtitle kept per day too (17 Nov 2026)
 const dkey = kind => kind + ':' + keyOf(kind);
 function stash(kind) {
   const all = store.get('studio-dates-v1') || {}, o = S[kind];
@@ -374,7 +374,7 @@ let P = { day: null, month: null }, IMG = {};
 async function loadPack(kind, key) {
   const base = `${ROOT}${kind}/${key}/`;
   const pack = await (await fetch(base + 'pack.json')).json();
-  pack.base = base;
+  pack.base = base; pack.t0 = Date.now(); setTimeout(() => render(), 20.5e3);
   const groups = groupsOf(pack);
   // the collage builder's packs (fields note, 9 Nov 2026) may add years (added: true, shown like any other card) and spares
   // (years with no sure photo of Bapa, offered as "add a year"); any other new field is simply kept
@@ -384,6 +384,9 @@ async function loadPack(kind, key) {
   if (kind === 'special' && pack.kind === 'story') { pack.spares = pack.spares || []; for (let i = 0; i < Math.min(S.special.extra || 0, mostPhotos(pack) - groups.length); i++) groups.push(takeSpare(pack, groups)) }
   const keyOfGroup = (g, gi) => kind === 'special' ? (pack.kind === 'story' ? (g.key || 'c' + gi) : 'y' + g.year) : (g.year ?? g.day);
   groups.forEach((g, gi) => { g.key = keyOfGroup(g, gi); g.cands.forEach((c, i) => { c.key = `${base}${g.key}-${i}` }) });
+  // a story pack remade with its own card keys (card1, card2 ... from 17 Nov 2026) keeps his changes made under the
+  // Studio's older keys (c0, c1 ...), card by card in the same order (Darpan, 17 Nov 2026: "it forgot the previous changes")
+  if (kind === 'special' && pack.kind === 'story') { const st2 = stateOf(S.special) || {}; groups.forEach((g, gi) => { const old = 'c' + gi; if (g.key !== old && st2[old] && !st2[g.key]) { st2[g.key] = st2[old]; delete st2[old] } if (S.special.sel === old) S.special.sel = g.key }) }
   pack.spares && pack.spares.forEach((g, si) => { g.key = pack.kind === 'story' ? (g.key || 'sp' + si) : 'y' + g.year; g.cands.forEach((c, i) => { c.key = `${base}${g.key}-${i}` }) });
   // speed (2pm picture project note, 13 Nov 2026: "show the ready drawn pictures from the packs first and only redraw when he
   // changes something"): the page no longer waits for 13 MB of photos. The run's own picture (real.jpg) shows at once, the
@@ -424,7 +427,7 @@ function photoOf(pack, c, wait, full) {
     if (c.img) im.src = pack.base + c.img;
     else {
       BINS[pack.base + file.f] ??= fetch(pack.base + file.f).then(r => r.blob());
-      BINS[pack.base + file.f].then(b => { im.src = URL.createObjectURL(b.slice(file.at[0], file.at[0] + file.at[1], 'image/jpeg')) }).catch(res);
+      BINS[pack.base + file.f].then(b => { im.src = URL.createObjectURL(b.slice(file.at[0], file.at[0] + file.at[1], 'image/jpeg')) }).catch(() => { rec.failed = true; if (!have) IMG[c.key] = rec; res(); render() });
     }
   });
   if (!have) IMG[c.key] = rec;   // a better copy on its way replaces the record only once it has arrived
@@ -1072,7 +1075,7 @@ function render() {
     if (view.width !== W) { view.width = W; view.height = H }
     const ctx = view.getContext('2d'); ctx.setTransform(1, 0, 0, 1, 0, 0); HITS = [];
     const pend = pendingPhotos(), stEl = $('#status');
-    if (pend && pack.realImg && !isLayered()) {   // the run's own picture until the photos the picture needs are in
+    if (pend && pack.realImg && !isLayered() && Date.now() - (pack.t0 || 0) < 20e3) {   // at most 20 s: a photo that never comes is left out, not waited for   // the run's own picture until the photos the picture needs are in
       ctx.drawImage(pack.realImg, 0, 0, W, H);
       stEl.className = 'status'; stEl.textContent = `This is the morning run’s picture. Your photos are arriving (${pend} still to come)…`; stEl.dataset.arriving = '1';
       fe.hidden = true; return;
@@ -1827,33 +1830,37 @@ function showProg() {
   const pct = p.fail ? Math.round(at / (shown.length - 1) * 100) : Math.round((p.step === 'ready' ? 1 : (at + .5) / (shown.length - 1)) * 100);
   const wait = p.step === 'send' && p.sendAt ? Math.max(0, Math.round((p.sendAt - Date.now()) / 1000)) : 0;
   const calm = !!p.note && !p.fail;
-  el.innerHTML = `<h3>${calm ? 'Your choice for ' + esc(longDate(date)) + ' is saved' : p.fail ? 'The special picture for ' + esc(longDate(date)) + ' did not finish' : p.step === 'ready' ? 'The special picture for ' + esc(longDate(date)) + ' is ready' : 'Making the special picture for ' + esc(longDate(date)) + '…'}</h3>
+  el.innerHTML = `<h3>${calm ? 'Your changes for ' + esc(longDate(date)) + ' are saved' + (canAsk() ? ': press Go when you are ready' : '') : p.fail ? 'The special picture for ' + esc(longDate(date)) + ' did not finish' : p.step === 'ready' ? 'The special picture for ' + esc(longDate(date)) + ' is ready' : 'Making the special picture for ' + esc(longDate(date)) + '…'}</h3>
     <div class="bar"${calm ? ' hidden' : ''} role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>
     <ol${calm ? ' hidden' : ''}>${shown.map(([k, w], i) => { const done = i < at || p.step === 'ready' || (calm && i === at), now = i === at && p.step !== 'ready' && !calm; return `<li class="${p.fail && now ? 'bad' : done ? 'done' : now ? 'now' : ''}"><span>${p.fail && now ? '✕' : done ? '✓' : now ? '<span class="spin">◌</span>' : '○'}</span><b>${esc(w)}${now && k === 'send' && wait ? ` (in ${wait} s, so changes close together go as one)` : ''}</b><span>${p.t[k] ? clock(p.t[k]) : ''}</span></li>` }).join('')}</ol>
     <p class="hint">${calm ? esc(p.note) : p.fail ? esc(p.fail) : p.step === 'ready' ? `Took ${mins(p.t.ready - start)}. It is on the Special picture tab now${date === today && !p.late ? ', and in Drive for the 2pm send' : ''}.` : `${mins(Date.now() - start)} so far. Usually 5 to 10 minutes from sending; longer if another GitHub run is going.`}</p>
-    <div class="acts">${calm ? '<button class="btn small primary" id="sprog-gh" type="button">Connect GitHub</button>' : ''}${p.step === 'send' && !calm ? '<button class="btn small primary" id="sprog-now" type="button">Send it now</button>' : ''}${p.fail ? '<button class="btn small primary" id="sprog-again" type="button">Try again</button>' : ''}${p.run ? `<a class="btn small" href="https://github.com/darpan31patel-wq/bapas-diary/actions/runs/${p.run}" target="_blank" rel="noopener">See it on GitHub</a>` : ''}${p.step === 'ready' || p.fail || calm ? '<button class="btn small" id="sprog-x" type="button">Hide</button>' : ''}${p.step === 'ready' && !(S.mode === 'special' && S.special.date === date) ? `<button class="btn small" id="sprog-open" type="button">Open it</button>` : ''}</div>`;
+    <div class="acts">${calm ? (canAsk() ? '<button class="btn primary" id="sprog-go" type="button">Go: build the special picture</button>' : '<button class="btn small primary" id="sprog-gh" type="button">Connect GitHub</button>') : ''}${p.step === 'ready' && p.dirty && canAsk() ? '<button class="btn primary" id="sprog-go" type="button">Go again: build it with your newest changes</button>' : ''}${p.step === 'send' && !calm ? '<button class="btn small primary" id="sprog-now" type="button">Send it now</button>' : ''}${p.fail ? '<button class="btn small primary" id="sprog-again" type="button">Try again</button>' : ''}${p.run ? `<a class="btn small" href="https://github.com/darpan31patel-wq/bapas-diary/actions/runs/${p.run}" target="_blank" rel="noopener">See it on GitHub</a>` : ''}${p.step === 'ready' || p.fail || (calm && !canAsk()) ? '<button class="btn small" id="sprog-x" type="button">Hide</button>' : ''}${p.step === 'ready' && !(S.mode === 'special' && S.special.date === date) ? `<button class="btn small" id="sprog-open" type="button">Open it</button>` : ''}</div>`;
   el.hidden = false;
   const on = (id, fn) => { const b = document.getElementById(id); if (b) b.onclick = fn };
-  on('sprog-gh', () => openGh()); on('sprog-now', () => askRemake(date)); on('sprog-again', () => askRemake(date));
+  on('sprog-gh', () => openGh()); on('sprog-go', () => askRemake(date)); on('sprog-now', () => askRemake(date)); on('sprog-again', () => askRemake(date));
   on('sprog-x', () => { progSet(date, null, { gone: true }) });
   on('sprog-open', () => { S.mode = 'special'; openSpecial(date) });
   const cr = document.getElementById('ch-remake-p'); if (cr && S.special.date === date) cr.textContent = p.fail || p.note || STEPS[n][1] + (p.step === 'ready' ? '' : '…');
   if (!PROGTICK && p.step !== 'ready' && !p.fail && !calm) PROGTICK = setInterval(showProg, 1000);
   if ((p.step === 'ready' || p.fail || calm) && PROGTICK) { clearInterval(PROGTICK); PROGTICK = 0 }
 }
+// nothing is built while he works (Darpan, 17 Nov 2026: "i want there to be a function where it doesnt run fully, until i
+// click go, then it creates it properly"): every change is saved at once, and the panel waits with a Go button; Go starts
+// the Collage builder's remake once. Without Go, the 5am run uses his saved changes.
+const WAITNOTE = 'Your changes are saved, and the 5am run will build them. To build straight away, press Connect GitHub below, once on this computer.';
+const GO_NOTE = 'Your changes are saved. Nothing is built until you press Go, so take your time. Then the Collage builder builds it once, properly. If you do not press Go, the 5am run uses your changes.';
 function remakeSoon(date) {
   if (!date || date < todayLondon()) return;
   clearTimeout(REMAKE_T);
-  progSet(date, 'saved', { fail: '', note: '', run: 0, gone: false, late: false, t: { saved: Date.now() } });
-  if (!canAsk()) { progSet(date, 'saved', { note: 'Your choice is saved, and the 5am run will build it. To build it straight away after every change, press Connect GitHub below, once on this computer.' }); return }
-  progSet(date, 'send', { sendAt: Date.now() + SEND_AFTER * 1e3 });
-  REMAKE_T = setTimeout(() => askRemake(date), SEND_AFTER * 1e3);
+  const p = progOf(date);
+  if (p && p.step && p.step !== 'saved' && p.step !== 'ready' && !p.fail) { progSet(date, null, { dirty: true }); return }   // one is being built now: the panel keeps showing it, and offers Go again when it is done
+  progSet(date, 'saved', { fail: '', note: canAsk() ? GO_NOTE : WAITNOTE, run: 0, skip: [], gone: false, late: false, t: { saved: Date.now() } });
 }
 async function askRemake(date) {
   clearTimeout(REMAKE_T);
-  if (!canAsk()) { progSet(date, 'saved', { note: 'Your choice is saved, and the 5am run will build it. To build it straight away after every change, press Connect GitHub below, once on this computer.' }); return }
+  if (!canAsk()) { progSet(date, 'saved', { note: WAITNOTE }); return }
   const p0 = progOf(date); if (!p0 || !p0.t.saved) progSet(date, 'saved', { t: { saved: Date.now() } });
-  progSet(date, 'send', { fail: '', note: '', run: 0, gone: false, sendAt: 0 });
+  progSet(date, 'send', { fail: '', note: '', dirty: false, skip: [], run: 0, gone: false, sendAt: 0 });
   try {
     const dev = !!ghKey();   // this computer's own key, else the website asks (functions/darpan/api/remake.js)
     const r = dev ? await gh('/actions/workflows/studio.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main', inputs: { special: date } }) })
@@ -1861,7 +1868,7 @@ async function askRemake(date) {
     if (r.status === 204 || (!dev && r.ok)) { const a = asked(); a['s:' + date] = Date.now(); store.set('studio-asked', a); progSet(date, 'accepted'); waitForS(date) }
     else if (r.status === 422) progSet(date, 'send', { fail: 'Your choice is saved, but the Collage builder’s remake run did not take the request, so the morning run will use your choice.' });
     else if (r.status === 401 && dev) { store.set('studio-gh', ''); ghLine(); progSet(date, 'send', { fail: 'GitHub did not accept the key on this computer. Press Connect GitHub and paste a new one, then Try again.' }) }
-    else if (r.status === 503 && !dev) { SERVERGH = false; ghLine(); progSet(date, 'saved', { note: 'Your choice is saved, and the 5am run will build it. To build it straight away after every change, press Connect GitHub below, once on this computer.' }) }
+    else if (r.status === 503 && !dev) { SERVERGH = false; ghLine(); progSet(date, 'saved', { note: WAITNOTE }) }
     else progSet(date, 'send', { fail: `GitHub said no (${r.status}). Your choice is saved; press Try again.` });
   } catch (e) { progSet(date, 'send', { fail: 'Could not reach GitHub. Your choice is saved; press Try again.' }) }
 }
@@ -1878,7 +1885,8 @@ const stepOfJob = job => {
 async function runFor(date) {   // this ask's run: the newest Studio packs run started after the ask
   const when = asked()['s:' + date] || 0;
   const r = await ghr('/actions/workflows/studio.yml/runs?event=workflow_dispatch&per_page=6'); if (!r.ok) return null;
-  return ((await r.json()).workflow_runs || []).filter(x => Date.parse(x.created_at) >= when - 90e3).sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at))[0] || null;
+  const skip = (progOf(date) || {}).skip || [];
+  return ((await r.json()).workflow_runs || []).filter(x => !skip.includes(x.id) && Date.parse(x.created_at) >= when - 90e3).sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at))[0] || null;
 }
 function waitForS(date) {
   clearInterval(WAITS);
@@ -1890,6 +1898,7 @@ function waitForS(date) {
         if (!p.run) progSet(date, null, { run: run.id });
         if (run.status === 'queued' || run.status === 'waiting' || run.status === 'requested' || run.status === 'pending') progSet(date, 'queued');
         else if (run.status === 'in_progress') { const jr = await ghr(`/actions/runs/${run.id}/jobs`); if (jr.ok) { const job = ((await jr.json()).jobs || []).find(j => j.status !== 'completed' || j.conclusion !== 'skipped'); const st = stepOfJob(job); if (STEPN[st] > STEPN[(progOf(date) || {}).step || 'saved']) progSet(date, st) } }
+        else if (run.status === 'completed' && run.conclusion === 'cancelled') { progSet(date, null, { run: 0, skip: [...((progOf(date) || {}).skip || []), run.id] }) }   // a newer remake took its place (GitHub runs one at a time): follow that one
         else if (run.status === 'completed' && run.conclusion !== 'success') { clearInterval(WAITS); WAITS = null; progSet(date, (progOf(date) || {}).step, { fail: `The Collage builder’s run stopped (${run.conclusion}). Your choice is saved; press Try again, and if it fails twice tell Claude.` }); return }
         else if (run.status === 'completed') { if (STEPN[(progOf(date) || {}).step] < STEPN.studio) progSet(date, 'studio') }
       }
