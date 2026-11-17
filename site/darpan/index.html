@@ -231,6 +231,9 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
 .lays button:hover { border-color: var(--gold); color: var(--gold) }
 .dtype { position: absolute; z-index: 5; background: rgba(20,6,10,.88); color: #f4ead6; border: 2px solid var(--gold); border-radius: 4px; padding: 0; resize: both; box-sizing: border-box }
 #pane textarea#dp-text { width: 100%; box-sizing: border-box; font: 15px/1.45 var(--serif, Georgia), serif }
+.looks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px }
+.look { margin: 0; display: grid; gap: 4px; align-content: start; border: 1px solid var(--line); border-radius: 8px; padding: 6px; background: var(--panel-2) }
+.look img { width: 100%; border-radius: 4px; display: block } .look figcaption { font-size: 12.5px; display: grid } .look .twin { gap: 4px; margin: 0 }
 @media (max-width: 1400px) { .work.design { grid-template-columns: minmax(0, 1fr) 380px } .work.design .lib { grid-column: 1 / -1; grid-row: 2; position: static; max-height: none; padding: 0 16px 24px } }
 @media (max-width: 900px) { .work.design { grid-template-columns: minmax(0, 1fr) } }
 </style>
@@ -1109,6 +1112,7 @@ function drawDesign(ctx, pack, o, hits, marks) {
     hits.push({ key: it.g || it.id, id: it.id, x: it.x, y: it.y, w: it.w, h: hh, rot: it.rot || 0 });
   });
   LAYDRAWN = dV1(out);
+  const d = S.special.design; if (d && !d.first) { d.first = JSON.parse(JSON.stringify(out)); d.first0 = JSON.parse(dSnap()) }   // the first draft, for the weekly learning
   if (marks) dMarks(ctx);
 }
 // what Final sends: version 2, every item in drawing order, plus the version 1 form the builder reads today
@@ -1401,6 +1405,48 @@ function dTools() {
 }
 
 // ------------------------------------------------------------ the Design tab: the chosen item's own controls, then the layers
+// the builder's looks of the day and Darpan's own templates (Collage builder note, 17 Nov 2026): pack.looks [{look, name, picture,
+// faults, phone_points, choose, layout?}], pack.templates [{picture, kind, from_day, layout}], pack.day_kind
+function looksGroup() {
+  const pack = P.special, looks = (pack.looks || []).filter(l => l && l.picture), tpl = (pack.templates || []).filter(t => t && t.layout);
+  if (!looks.length && !tpl.length) return '';
+  const cur = (layoutTarget(S.special.date, pack) || {}).look || (pack.choose || {}).look || '';
+  const fig = (src, cap, body) => `<figure class="look"><img src="${esc(pack.base + src)}" alt="" loading="lazy"><figcaption>${cap}</figcaption>${body}</figure>`;
+  const lk = looks.map((l, i) => l.look === 'phone'
+    ? fig(l.picture, `<b>${esc(l.name || 'On a phone')}</b>${l.phone_points ? `<span class="hint">smallest words about ${esc(l.phone_points)} points on a phone</span>` : ''}`,
+      `<div class="twin">${['whatsapp-phone.jpg', 'whatsapp-hero.jpg'].map((f, j) => `<img src="${esc(pack.base + f)}" alt="${j ? 'Opened on a phone' : 'In a WhatsApp chat'}" loading="lazy">`).join('')}</div><p class="hint">Only to look at for now.</p>`)
+    : fig(l.picture, `<b>${esc(l.name || l.look)}</b>${cur === l.look ? ' <span class="gold">✓ chosen</span>' : ''}`,
+      `${(l.faults || []).length ? `<p class="hint warn">${l.faults.map(esc).join('. ')}</p>` : ''}<button class="btn small" data-look="${i}" ${l.choose ? '' : 'disabled'}>Use this look</button>`)).join('');
+  const tp = tpl.map((t, i) => fig(t.picture || '', `<b>${esc(t.kind || 'Your layout')}</b><span class="hint">${t.from_day ? 'made ' + esc(longDate(t.from_day)) : ''}</span>`, `<button class="btn small" data-tpl="${i}">Start from this</button>`)).join('');
+  return `<div class="group"><h3>Looks for this day</h3>${lk ? `<div class="looks">${lk}</div>` : ''}${tp ? `<h3 style="margin-top:10px">Your own layouts from days like this</h3><div class="looks">${tp}</div><p class="hint">Opens it in the designer with today's photos and words. Nothing is built until Final.</p>` : ''}</div>`;
+}
+// a layout version 2 (a template, a look) turned into designer items
+function dImport(lay) {
+  const pack = P.special, find = src => { for (const g of groupsOf(pack)) { const i = g.cands.findIndex(c => c.src && c.src === src); if (i >= 0) return { g: g.key, pick: i } } return null };
+  const f01 = v => v > 1 ? v / 100 : v;
+  return (lay.items || []).map(x => {
+    const base = { id: dNewId(), x: +x.x || 0, y: +x.y || 0, w: +x.w || 300, rot: +x.rotate || 0, role: x.role };
+    if (x.type === 'text') { const size = +x.size || 30, lh = +x.line_height || 1.3;
+      return Object.assign(base, { t: 'text', name: (x.role || 'text').replace(/^./, m => m.toUpperCase()), text: x.text || (x.lines || []).join('\n'), h: x.fixed_height ? +x.h || 0 : 0, size, font: x.font === 'sans' ? 'sans' : 'serif', weight: +x.weight || 500,
+        color: x.color || 'ivory', lh, pg: x.para_gap != null ? (+x.para_gap) / (size * lh) : .55, ind: +x.indent || 0, align: x.align || 'center', upper: !!x.upper, track: +x.letter_spacing || 0, deco: !!x.diamonds, balance: x.role === 'headline' }) }
+    const own = find(x.photo), lb = x.label, foc = x.focus || [.5, .3];
+    const yp = lb === false ? null : typeof lb === 'string' ? { year: lb.split(' ')[0], place: lb.split(' ').slice(1).join(' ') } : lb && typeof lb === 'object' ? lb : { year: String(x.date || '').slice(0, 4), place: '' };
+    return Object.assign(base, { t: 'photo', name: `${yp ? yp.year || '' : ''} ${yp ? yp.place || '' : ''}`.trim() || 'Photo', h: +x.h || 300, frame: x.frame !== false, label: lb !== false, year: yp ? String(yp.year || '') : '', place: yp ? yp.place || '' : '',
+      zoom: Math.max(1, (+x.zoom || 100) > 4 ? (+x.zoom || 100) / 100 : +x.zoom || 1), fx: f01(+foc[0]), fy: f01(+foc[1]), br: +x.brightness || 100, ct: +x.contrast || 100, sat: x.saturation == null ? 100 : +x.saturation, peg: x.peg !== false }, own || { src: x.photo || '', date: x.date || '' });
+  });
+}
+function useLook(i) {
+  const pack = P.special, l = (pack.looks || [])[i]; if (!l || !l.choose || !CH) return;
+  const date = S.special.date; let e = layoutTarget(date, pack);
+  if (!e) { e = Object.assign({ day: chDay(date) }, l.choose); CH.add = CH.add.filter(x => !covers(x.day, date)); CH.add.push(e) }
+  else { Object.assign(e, l.choose); delete e.layout; delete e.photos }
+  if (l.layout && l.layout.items) { S.special.design = { v: 2, items: dImport(l.layout), made: Date.now() }; SEL = [] }   // the look ready to change in the designer too
+  saveChoices('Look chosen', `${l.name || l.look} for ${longDate(date)}`, true); build();
+}
+function useTemplate(i) {
+  const t = (P.special.templates || [])[i]; if (!t || !t.layout) return;
+  S.special.design = Object.assign(S.special.design || { v: 2 }, { items: dImport(t.layout) }); SEL = []; build();
+}
 function paneDesign() {
   const items = dItems(), sel = dSel(), one = sel.length === 1 ? sel[0] : null;
   const num = (id, label, v, min, max, step, unit = '') => `<div class="row"><label for="${id}">${label}<output id="${id}-o">${v}${unit}</output></label><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${v}"></div>`;
@@ -1456,7 +1502,7 @@ function paneDesign() {
   const offs = items.filter(dOffDay);
   const layers = [...items].reverse().map(it => `<li draggable="true" data-lid="${it.id}" class="${SEL.includes(it.id) ? 'sel' : ''} ${it.hidden ? 'hid' : ''}">${icon(it.t === 'photo' ? 'photo' : 't', 15)}<span>${esc(it.name || it.role || it.t)}${dOffDay(it) ? ' <b class="warn">not this day</b>' : ''}${it.over ? ' <b class="warn">needs room</b>' : ''}</span>
     <button type="button" class="ib sm" data-leye="${it.id}" aria-pressed="${!it.hidden}" title="${it.hidden ? 'Show' : 'Hide'}">${icon('eye', 15)}</button><button type="button" class="ib sm" data-llock="${it.id}" aria-pressed="${!!it.locked}" title="${it.locked ? 'Unlock' : 'Lock'}">${icon('lock', 15)}</button></li>`).join('');
-  return `${offs.length ? `<div class="group"><h3>Not from this day</h3><p class="hint warn">${offs.length} photo${offs.length > 1 ? 's are' : ' is'} from another day or place, marked in orange on the picture.</p><div class="seg"><button class="btn small primary" id="dp-dayfix2">Swap ${offs.length > 1 ? 'them' : 'it'} for photos from this day</button></div></div>` : ''}
+  return `${looksGroup()}${offs.length ? `<div class="group"><h3>Not from this day</h3><p class="hint warn">${offs.length} photo${offs.length > 1 ? 's are' : ' is'} from another day or place, marked in orange on the picture.</p><div class="seg"><button class="btn small primary" id="dp-dayfix2">Swap ${offs.length > 1 ? 'them' : 'it'} for photos from this day</button></div></div>` : ''}
     ${props}
     <div class="group"><h3>Layers</h3><p class="hint">Top of the list sits on top. Drag to change the order; the eye hides, the lock stops moving.</p><ol class="layers" id="dlayers">${layers}</ol></div>
     <div class="group"><h3>Ready made layouts</h3><div class="lays">${LAYOUTS.map(([k, l]) => `<button type="button" data-dlay="${k}">${layIcon(k)}<span>${l}</span></button>`).join('')}</div>
@@ -1492,6 +1538,8 @@ function wireDesign() {
   rng('dp-br', 'br'); rng('dp-ct', 'ct'); rng('dp-sat', 'sat');
   if (one) { rng('dp-w', 'w'); rng('dp-x', 'x'); rng('dp-y', 'y'); rng('dp-rot', 'rot') }
   on('dp-dayfix', 'click', dDayFix); on('dp-dayfix2', 'click', dDayFix);
+  document.querySelectorAll('[data-look]').forEach(b => b.addEventListener('click', async () => { await loadChoices(); useLook(+b.dataset.look) }));
+  document.querySelectorAll('[data-tpl]').forEach(b => b.addEventListener('click', () => useTemplate(+b.dataset.tpl)));
   on('dp-restart', 'click', () => { S.special.design = null; SEL = []; build() });
   document.querySelectorAll('[data-dlay]').forEach(b => b.addEventListener('click', () => dLayoutApply(b.dataset.dlay)));
   document.querySelectorAll('#dlayers li').forEach(li => {
@@ -2113,7 +2161,7 @@ function build() {
   selected();
   const total = groupsOf(pack).reduce((s, g) => s + g.cands.length, 0);
   $('#meta').innerHTML = day ? `<b>${esc(pack.title)}</b><span>${dayCards(pack, o).length} of ${pack.years.length} years on the picture</span><span>${total} photos to choose from</span>`
-    : sp ? `<b>${esc(pack.title)}</b><span>${pack.kind === 'story' ? 'a day in BAPS history' : `Every ${esc(pack.festival || '')}${pack.first && pack.last ? `, ${pack.first} to ${pack.last}` : ''}`}</span><span>${dayCards(pack, o).length} of ${pack.cards.length} cards on the picture</span><span>${total} photos to choose from</span>`
+    : sp ? `<b>${esc(pack.title)}</b>${pack.day_kind ? `<span>${esc(pack.day_kind)}</span>` : ''}<span>${pack.kind === 'story' ? 'a day in BAPS history' : `Every ${esc(pack.festival || '')}${pack.first && pack.last ? `, ${pack.first} to ${pack.last}` : ''}`}</span><span>${dayCards(pack, o).length} of ${pack.cards.length} cards on the picture</span><span>${total} photos to choose from</span>`
     : `<b>${esc(pack.title)}</b><span>${pack.days.length} days</span><span>${{ A: 'close-up images', B: 'activity', M: 'mixed' }[o.option]}</span><span>${total} photos to choose from</span>`;
   dTools(); dLibrary();
   $('#pane').innerHTML = S.tab === 'design' ? (isDesign() ? paneDesign() : '<p class="hint">Getting the picture ready to design…</p>') : S.tab === 'choose' ? paneChoose() : S.tab === 'card' ? paneCard() : S.tab === 'words' ? paneWords() : S.tab === 'layout' ? paneLayout() : lookPane(S.mode === 'month' ? 'm' : 'd', o);
@@ -2503,7 +2551,30 @@ function remakeSoon(date) {
   if (p && p.step && p.step !== 'saved' && p.step !== 'ready' && !p.fail) { progSet(date, null, { dirty: true }); return }   // one is being built now: the panel keeps showing it, and offers Go again when it is done
   progSet(date, 'saved', { fail: '', note: canAsk() ? GO_NOTE : WAITNOTE, run: 0, skip: [], gone: false, late: false, t: { saved: Date.now() } });
 }
-async function finalGo(date) {   // Final: the exact design saved on the website first, then the Collage builder builds it
+// what he changed from the first draft, in plain words (logged at each Final for the 2pm picture project's weekly learning)
+function dDiff() {
+  const d = S.special.design; if (!d || !d.first0) return [];
+  const a = Object.fromEntries(d.first0.map(it => [it.id, it])), out = [], nm = it => it.name || it.role || it.t, num = v => Math.round(v || 0);
+  dItems().forEach(it => { const o = a[it.id]; if (!o) { out.push(`Added ${it.t === 'photo' ? 'photo' : 'text'} ${nm(it)}`); return }
+    if (it.hidden && !o.hidden) out.push(`Hid ${nm(it)}`);
+    if (it.t === 'photo') { if (it.pick !== o.pick || it.src !== o.src || it.g !== o.g) out.push(`Swapped the photo of ${nm(it)}${it.g === o.g && it.pick != null ? ` (photo ${(o.pick || 0) + 1} to ${it.pick + 1})` : ''}`);
+      if ((it.zoom || 1) !== (o.zoom || 1) || it.fx !== o.fx || it.fy !== o.fy) out.push(`Cropped ${nm(it)} (zoom ${Math.round((it.zoom || 1) * 100)}%, focus ${Math.round((it.fx ?? .5) * 100)} ${Math.round((it.fy ?? .3) * 100)})`);
+      if ((it.br ?? 100) !== (o.br ?? 100) || (it.ct ?? 100) !== (o.ct ?? 100) || (it.sat ?? 100) !== (o.sat ?? 100)) out.push(`Photo look of ${nm(it)}: brightness ${it.br ?? 100}, contrast ${it.ct ?? 100}, colour ${it.sat ?? 100}`);
+      if (it.frame !== o.frame || it.label !== o.label) out.push(`Card of ${nm(it)}: frame ${it.frame !== false ? 'on' : 'off'}, label ${it.label !== false ? 'on' : 'off'}`) }
+    else { if (it.text !== o.text) out.push(`Changed the words of ${nm(it)}`);
+      const st = ['size', 'lh', 'pg', 'ind', 'align', 'font', 'weight', 'color', 'upper'].filter(f => it[f] !== o[f]); if (st.length) out.push(`Text style of ${nm(it)}: ${st.map(f => f + ' ' + it[f]).join(', ')}`) }
+    if (Math.abs(it.x - o.x) > 3 || Math.abs(it.y - o.y) > 3) out.push(`Moved ${nm(it)} to ${num(it.x)}, ${num(it.y)}`);
+    if (Math.abs(it.w - o.w) > 3 || Math.abs((it.h || 0) - (o.h || 0)) > 3) out.push(`Resized ${nm(it)} to ${num(it.w)} by ${num(it.h || it._h)}`);
+    if ((it.rot || 0) !== (o.rot || 0)) out.push(`Turned ${nm(it)} ${it.rot}°`) });
+  d.first0.forEach(o => { if (!dItem(o.id)) out.push(`Took off ${nm(o)}`) });
+  const ids = dItems().map(it => it.id).filter(id => a[id]), was = d.first0.map(o => o.id).filter(id => dItem(id)); if (ids.join() !== was.join()) out.push('Changed the layer order');
+  return out;
+}
+async function finalGo(date) {
+  if (isDesign() && S.special.date === date) {   // every Final kept in the changes log, with the first draft beside it
+    const lay = layoutNow(), d = S.special.design;
+    try { fetch(LOGAPI, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ at: new Date().toISOString(), kind: 'special', for: date, how: 'Final', where: (P.special && P.special.headline) || '', changes: dDiff(), why: '', title: '', cards: [], layout: lay, first: d && d.first ? { version: 2, size: [DW, DH], items: d.first } : undefined }) }).catch(() => {}) } catch (e) {}
+  }   // Final: the exact design saved on the website first, then the Collage builder builds it
   clearTimeout(LAYOUT_T);
   const pack = P.special;
   if (S.special.date === date && pack && pack.choose && CH) {
