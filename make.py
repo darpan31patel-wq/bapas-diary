@@ -1722,6 +1722,13 @@ def under_card(x, card, gap, f, lh, style, rnd, even=0):
         top = even - n   # the most extra lines the layout made room for
         tries = tuple((1, k, False, 0) for k in range(top + 1)) + ((.9, top, False, 0), (.82, top, False, 0)) + tries   # then today's cut at a natural break, never a half sentence
     # the whole caption first, then a touch smaller; only then a natural cut, keeping at least two thirds of it; a shorter cut last
+    if even:   # too long for every line the layout allows, even a touch smaller: the longest clean cut at the normal size
+        whole = [t for t in [text] if not wrap(probe, t, garamond(f.size * .82, 500), maxw, even, shorten=False)[-1].endswith('…')]
+        if not whole:
+            for t in shorter_versions(text):
+                if len(t.split()) >= 3 and not wrap(probe, t, f, maxw, even, shorten=False)[-1].endswith('…'):
+                    text, tries = t, tuple((1, k, False, 0) for k in range(even - n + 1))
+                    break
     for shrink, extra, cut, keep in tries:
         f2 = garamond(f.size * shrink, 500) if shrink < 1 else f
         lines = wrap(probe, text, f2, maxw, n + extra, shorten=cut, min_words=keep)
