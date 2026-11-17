@@ -255,6 +255,8 @@ def main():
     full = os.environ.get('SPECIAL_OUT')   # the remake run (special.yml) also wants the picture itself, as the morning run saves it
     if full:
         os.makedirs(full, exist_ok=True)
+        if ((drawn or {}).get('ev') or {}).get('layout', {}).get('final'):   # he pressed Final: it goes to Drive now, for any day from today
+            open(os.path.join(full, 'final.txt'), 'w').write('final')
         sp.save(os.path.join(full, 'bapas-diary-special.png'), optimize=True)
         sp.convert('RGB').save(os.path.join(full, 'bapas-diary-special.jpg'), quality=95, optimize=True)
         if (drawn or {}).get('source') == 'chosen':   # his next choices of the day are special 2, 3... as the morning run makes them
@@ -296,7 +298,13 @@ def main():
             if np.asarray(im.convert('L').resize((64, 64)), dtype=float).std() >= 25:
                 x['im'] = im
                 (shown if len(shown) < (make.MOST_PHOTOS if ev.get('many') else 5) else extra).append(x)
-        year_too = [x for x in items if x['y'] == y and 'path' in x and not make.JUNK.search(x.get('c') or '')]   # that year's photos of the day
+        # that year's photos of that exact day, and on a story only from the story's own place (Darpan, 17 Nov 2026: the
+        # 17 November 2006 London pack offered Ahmedabad photos of that date, and one reached a card)
+        town = (make.town_of(ev.get('place')) or '').lower()
+        year_too = [x for x in items if x['y'] == y and 'path' in x and not make.JUNK.search(x.get('c') or '')
+                    and str(x.get('d') or '')[:10] == ev['date'][:10]
+                    and (not town or (make.town_of(make.place(x) or x.get('p')) or '').lower() in ('', town))
+                    and not ev.get('channel')]   # a UK diary story (17 Nov 2006 'Departure from London for Ahmedabad'): its own photos only
         pool_rest = extra + year_too
         for k, x in enumerate(shown):   # card 1 is the big one, cards 2 to 5 the small ones beside it under the story
             others = [o for o in shown if o is not x] + pool_rest

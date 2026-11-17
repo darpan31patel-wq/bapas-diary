@@ -150,16 +150,20 @@ jobs:
           else
             echo "state=failed" >> "$GITHUB_OUTPUT"; exit 1
           fi
-      - name: Put today's special picture in Bapa's Diary (Drive) and on the release, until 1:50pm
+          if [ "$D" = "$TODAY" ] || { [[ "$D" > "$TODAY" ]] && [ -f out/final.txt ]; }; then echo "drive=1" >> "$GITHUB_OUTPUT"; fi
+      # Darpan, 17 Nov 2026: when he presses Final in the Studio's designer, his design goes into Drive now, for today
+      # (until 1:50pm) or any later day; a day after today is saved under its own date for its own 2pm
+      - name: Put the special picture in Bapa's Diary (Drive), today until 1:50pm, or a later day he pressed Final on
         id: drive
-        if: steps.make.outputs.date == steps.make.outputs.today
+        if: steps.make.outputs.drive == '1'
         env:
           GH_TOKEN: ${{ github.token }}
           FOLDER: 1P79txhqK5keX5j1HUje__RVki9YmSqaj
           STATE: ${{ steps.make.outputs.state }}
         run: |
-          if [ "$(TZ=Europe/London date +%H%M)" -ge 1350 ]; then echo "result=too late" >> "$GITHUB_OUTPUT"; exit 0; fi
-          DAY=$(TZ=Europe/London date +'%-d %B %Y')
+          D=${{ steps.make.outputs.date }}; TODAY=${{ steps.make.outputs.today }}
+          if [ "$D" = "$TODAY" ] && [ "$(TZ=Europe/London date +%H%M)" -ge 1350 ]; then echo "result=too late" >> "$GITHUB_OUTPUT"; exit 0; fi
+          DAY=$(date -d "$D" +'%-d %B %Y')
           echo "result=failed" >> "$GITHUB_OUTPUT"
           if [ "$STATE" = none ]; then   # switched off: nothing special may go out at 2pm
             rclone deletefile "gdrive:$DAY special.png" --drive-root-folder-id "$FOLDER" || true
@@ -171,7 +175,7 @@ jobs:
           for n in 2 3 4 5; do   # his next choices: special 2, special 3...
             if [ -f "out/bapas-diary-special-$n.png" ]; then rclone copyto "out/bapas-diary-special-$n.png" "gdrive:$DAY special $n.png" --drive-root-folder-id "$FOLDER"; fi
           done
-          gh release upload today out/bapas-diary-special.png out/bapas-diary-special.jpg --clobber || true
+          if [ "$D" = "$TODAY" ]; then gh release upload today out/bapas-diary-special.png out/bapas-diary-special.jpg --clobber || true; fi
           echo "result=replaced" >> "$GITHUB_OUTPUT"
       - name: Save the pack on the studio branch
         if: always() && steps.make.outputs.date != ''
