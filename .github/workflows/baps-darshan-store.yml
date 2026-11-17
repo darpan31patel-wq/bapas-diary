@@ -35,14 +35,14 @@ jobs:
             echo "AWS_DEFAULT_REGION=auto"; echo "R2=https://$CF_ACCOUNT.r2.cloudflarestorage.com"; } >> "$GITHUB_ENV"
       - name: Photos into the photo store
         run: |
-          for t in o m; do aws s3 ls "s3://$BUCKET/$t/" --recursive --endpoint-url "$R2" | awk '{print $4}' | grep '/bapsds-' ; done > have.txt || true
+          for t in o m; do aws s3 ls "s3://$BUCKET/$t/bapsds-" --recursive --endpoint-url "$R2" | awk '{print $4}' ; done > have.txt || true
           echo "$(wc -l < have.txt) files already there"
           python3 tools/ds_darshan.py store --rows data/baps-darshan/rows.json --have have.txt --minutes 120 --gap 3 \
             --send 'aws s3 sync "$OUT" "s3://$BUCKET/" --endpoint-url "$R2" --only-show-errors --cache-control "public, max-age=31536000, immutable" --content-type image/jpeg'
       - name: The list and what is in the store, into release baps-darshan
         if: always()
         run: |
-          for t in o m s; do aws s3 ls "s3://$BUCKET/$t/" --recursive --endpoint-url "$R2" | awk '{print $4}' | grep '/bapsds-' ; done > ds-have.txt || true
+          for t in o m s; do aws s3 ls "s3://$BUCKET/$t/bapsds-" --recursive --endpoint-url "$R2" | awk '{print $4}' ; done > ds-have.txt || true
           echo "$(wc -l < ds-have.txt) files in the store"
           cp data/baps-darshan/rows.json ds-rows.json
           gh release view baps-darshan >/dev/null 2>&1 || gh release create baps-darshan --prerelease --title "baps.org daily darshan" \
