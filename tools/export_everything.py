@@ -360,7 +360,9 @@ def main():
                               q.get('words_beside') or None,
                               (f"{q.get('size')} copy; other size {q.get('other_size_url')}" if q.get('other_size_url')
                                else (q.get('size') or None)),
-                              q.get('bytes'), q.get('content_type'), q.get('last_modified'), q.get('fetched_at'),
+                              q.get('bytes'), q.get('content_type'),
+                              '; '.join(x for x in [q.get('last_modified'), f"Internet Archive copy of {q['archived_at']}"
+                                                    if q.get('archived_at') else None] if x) or None, q.get('fetched_at'),
                               q.get('also_on')))
     photos.sort(key=lambda p: (p[0] or '', str(p[20]), str(p[21])))
     byday = collections.defaultdict(list)
@@ -414,7 +416,9 @@ def main():
                       '\n'.join(f"{x.get('written')} ({x.get('from')}{' to ' + x['to'] if x.get('to') not in (None, x.get('from')) else ''})"
                                 for x in g.get('dates') or []) or None,
                       g.get('photos'), '\n'.join(g.get('media') or []) or None, g.get('words') or None, g.get('page_url'),
-                      f"Bapa's Archive/{g['drive_path']}" if g.get('drive_path') else None, g.get('last_modified'),
+                      f"Bapa's Archive/{g['drive_path']}" if g.get('drive_path') else None,
+                      '; '.join(x for x in [g.get('last_modified'), f"Internet Archive copy of {g['archived_at']}"
+                                            if g.get('archived_at') else None] if x) or None,
                       g.get('fetched_at')])
     grows.sort(key=lambda r: (r[0] or '9999', r[2] or '', r[12] or ''))
     page_by = collections.defaultdict(list)
