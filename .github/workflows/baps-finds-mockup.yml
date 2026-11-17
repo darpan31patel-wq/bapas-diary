@@ -17,7 +17,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: pip install -q playwright pillow requests && python -m playwright install --with-deps chromium > /dev/null
-      - run: python3 tools/mockups/baps-finds/$(head -1 tools/mockups/baps-finds/go.txt | cut -d: -f1 | sed "s/^\(prasang\|finds\)$/\1.py/;t;s/.*/shoot.py/") tools/mockups/baps-finds/out
+      - run: |
+          s=$(head -1 tools/mockups/baps-finds/go.txt | cut -d: -f1)
+          case "$s" in prasang|finds) ;; *) s=shoot ;; esac
+          python3 tools/mockups/baps-finds/$s.py tools/mockups/baps-finds/out
       - name: Save the pictures on this branch
         run: |
           git config user.name "github-actions[bot]"
