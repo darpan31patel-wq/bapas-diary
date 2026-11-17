@@ -128,7 +128,8 @@ def card_of(ph, w, h, label=True, zoom_to=.16):
     box = framed(ph['im'], ph.get('face'), w, h, zoom_to)
     crop = ph['im'].crop(tuple(round(v) for v in box)).resize((round(w), round(h)), Image.LANCZOS)
     c = special_card(crop, round(w), round(h), ph.get('year') if label else '', (ph.get('place') or '').upper() if label else '', label)
-    return c, dict(kind='photo', box=box, face=ph.get('face'), sharp=ph.get('sharp', 0), src=ph['im'].size,
+    return c, dict(kind='photo', box=box, face=ph.get('face'), sharp=ph.get('sharp', 0), src=ph['im'].size, url=ph.get('url'),
+                   label={'year': str(ph.get('year') or ''), 'place': ph.get('place') or ''} if label else False, date=ph.get('date'),
                    scale=w / (box[2] - box[0]), name=f"{ph.get('year') or ''} {ph.get('caption') or ''}".strip())
 
 
@@ -172,7 +173,8 @@ def kicker(dr, x, y, text, f, fill=style.CREAM, align='left', track=None):
     w = spaced(dr, text, f, track)
     x = x - w / 2 if align == 'center' else x
     draw_spaced(dr, x, y, text, f, track, fill)
-    return dict(kind='text', at=(x, y, x + w, y + f.size), size=f.size, text=text)
+    return dict(kind='text', at=(x, y, x + w, y + f.size), size=f.size, text=text, role='kicker', font='sans', weight=700,
+                track=track, color=fill, align=align)
 
 
 def words(img, paras, x, y, w, room, sizes, align='left'):
@@ -189,8 +191,14 @@ def words(img, paras, x, y, w, room, sizes, align='left'):
         lw = dr.textlength(l, font=bf)
         lx = x + (w - lw) / 2 if align == 'center' else x
         dr.text((lx, yy), l, font=bf, fill=style.IVORY_TEXT, anchor='ls')
-        recs.append(dict(kind='text', at=(lx, yy - bf.size * .8, lx + lw, yy + bf.size * .25), size=bf.size, text=l))
+        recs.append(dict(kind='text', at=(lx, yy - bf.size * .8, lx + lw, yy + bf.size * .25), size=bf.size, text=l, role='story',
+                         weight=500, color=style.IVORY_TEXT, align=align, lh=lh, para=False))
         yy += lh
+    for k, l in enumerate(lines):   # where a new paragraph starts, for the Studio's copy of the design
+        if l is None:
+            n = sum(1 for v in lines[:k] if v is not None)
+            if n < len(recs):
+                recs[n]['para'] = True
     return recs, yy - lh - y + bf.size * .3, bf.size
 
 
@@ -206,7 +214,8 @@ def headline(img, text, x, y, w, sizes=(76, 70, 64, 58, 52), lines=3, align='lef
         lw = dr.textlength(l, font=hf)
         lx = x + (w - lw) / 2 if align == 'center' else x
         gold_text(img, (lx, yy), l, hf)
-        recs.append(dict(kind='text', at=(lx, yy, lx + lw, yy + hf.size), size=hf.size, text=l))
+        recs.append(dict(kind='text', at=(lx, yy, lx + lw, yy + hf.size), size=hf.size, text=l, role='headline', weight=700,
+                         color='gold', align=align, lh=hf.size * 1.12))
         yy += hf.size * 1.12
     return recs, yy - y
 
@@ -226,7 +235,8 @@ def small_footer(img, items, x=None, align='right'):
     y = H - px(52)
     dr.text((x, y), style.FOOTER, font=f, fill=style.FOOTER_GOLD)
     diamond(dr, x - px(22), y + f.size * .62, px(5), style.GOLD)
-    items.append(dict(kind='text', at=(x, y, x + w, y + f.size), size=f.size, text=style.FOOTER))
+    items.append(dict(kind='text', at=(x, y, x + w, y + f.size), size=f.size, text=style.FOOTER, role='footer', weight=500,
+                      color=style.FOOTER_GOLD, align='left'))
 
 
 def date_line(day, ev):
@@ -461,7 +471,8 @@ def make_looks(ev, day, photos, now=None, paras=None, only=None):
         if img is None:
             continue
         faults, dp = check(img, items, paras)
-        out[name] = dict(img=img, faults=faults, phone_dp=dp)
+        img.info['design'] = design_of(items, img.size)
+        out[name] = dict(img=img, faults=faults, phone_dp=dp, design=img.info['design'])
     return out
 
 
@@ -533,3 +544,48 @@ def from_template(t, ev, day, urls):
     lay['items'] = [i for i in lay['items'] if not i.get('skip')]
     lay['template_from'] = t['day']
     return lay
+
+
+# ---------------------------------------------------------------- the look as a Studio design (layout version 2)
+
+def design_of(items, canvas=(W, H)):
+    """The finished look as a Studio design (layout version 2, the same kind the Studio's designer makes), so the Studio
+    opens exactly the drawing that goes out (Darpan, 17 Nov 2026: 'one source of truth'). Lengths in layout units."""
+    u = lambda v: round(v / make.SCALE, 1)
+    hexc = lambda c: c if isinstance(c, str) else '#%02x%02x%02x' % tuple(c)
+    out = []
+    for it in items:
+        if it['kind'] != 'photo':
+            continue
+        x0, y0, x1, y1 = it['at']; bx0, by0, bx1, by1 = it['box']; sw, sh = it['src']
+        cover = max((bx1 - bx0) / sw, (by1 - by0) / sh)   # how much of the photo the frame shows across, 1 = the whole width or height
+        out.append(dict(type='photo', role='photo', photo=it.get('url') or '', date=it.get('date'), x=u(x0), y=u(y0), w=u(x1 - x0), h=u(y1 - y0),
+                        frame=True, label=it.get('label') or False, peg=True,
+                        focus=[round(bx0 / max(1, sw - (bx1 - bx0)), 3) if sw > bx1 - bx0 + 1 else .5,
+                               round(by0 / max(1, sh - (by1 - by0)), 3) if sh > by1 - by0 + 1 else .5],
+                        zoom=round(100 / max(cover, .01))))
+    groups = []
+    for it in items:   # the lines of one headline, story or date line become one text item
+        if it['kind'] != 'text':
+            continue
+        g = groups[-1] if groups and groups[-1][0]['role'] == it.get('role') and it.get('role') in ('headline', 'story') else None
+        if g is None:
+            groups.append([it])
+        else:
+            g.append(it)
+    for g in groups:
+        a = g[0]
+        x0 = min(i['at'][0] for i in g); x1 = max(i['at'][2] for i in g)
+        y0 = min(i['at'][1] for i in g); y1 = max(i['at'][3] for i in g)
+        lines = []
+        for i in g:
+            if i.get('para') and lines:
+                lines.append('')
+            lines.append(i['text'])
+        size = u(a['size'])
+        out.append(dict(type='text', role={'kicker': 'subtitle'}.get(a.get('role'), a.get('role') or 'text'), text='\n'.join(lines).replace('\n\n\n', '\n\n'),
+                        lines=lines, x=u(x0), y=u(y0 - a['size'] * .15), w=u(x1 - x0) + 2, h=u(y1 - y0 + a['size'] * .5),
+                        size=size, font=a.get('font', 'serif'), weight=a.get('weight', 500), color=hexc(a.get('color', 'ivory')),
+                        align=a.get('align', 'left'), line_height=round(a['lh'] / a['size'], 2) if a.get('lh') else 1.3,
+                        letter_spacing=u(a['track']) if a.get('track') else 0, upper=a.get('role') == 'kicker'))
+    return {'version': 2, 'auto': True, 'look': True, 'size': [u(canvas[0]), u(canvas[1])], 'items': out}

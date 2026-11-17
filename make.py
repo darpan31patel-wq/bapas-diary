@@ -3774,15 +3774,15 @@ def compose_special(ev, day, lead=None, lead_url=None):
         import looks
         look = looks.learned().get('look') or 'hero'
     styled = look in ('hero', 'strip', 'then', 'phone')
-    got = special_photos(ev, lead, urls, most=8 if styled and not ev.get('many') else None)
+    got = special_photos(ev, lead, urls, most=8 if styled and not ev.get('many') else None, lead_url=lead_url)
     if got is None:
         return None
-    ims, plain, lab, most = got
+    ims, plain, lab, most, src = got
     if styled:   # the magazine looks (17 Nov 2026): the look he picked, else the first that passes the picture check
         tries = [look] if ev.get('look') else [look] + [k for k in ('hero', 'strip', 'then') if k != look]
         first = None
         for k in tries:
-            made = special_looks(ev, day, ims, plain, lab, only=k).get(k)
+            made = special_looks(ev, day, ims, plain, lab, only=k, src=src).get(k)
             if made and not serious(made['faults']):
                 return made['img']
             first = first or made
@@ -3790,7 +3790,7 @@ def compose_special(ev, day, lead=None, lead_url=None):
         if first:
             return first['img']
         ims, plain = ims[:MOST_PHOTOS if ev.get('many') else 5], plain[:MOST_PHOTOS if ev.get('many') else 5]
-    return compose_drawn(ev, day, ims, plain, lab, most, lead)
+    return compose_drawn(ev, day, ims, plain, lab, most, lead, src)
 
 
 DRAFTS = os.path.join(HERE, 'archive', 'drafts')   # the first draft of each day's special, to learn from his changes (idea 4)
@@ -3821,10 +3821,10 @@ def special_urls(ev):
     return urls
 
 
-def all_looks(ev, day, lead=None):
+def all_looks(ev, day, lead=None, lead_url=None):
     """Every look of a special (the Studio pack's choices), {} when it has no photos."""
-    got = special_photos(ev, lead, special_urls(ev), most=8 if not ev.get('many') else None)
-    return special_looks(ev, day, *got[:3]) if got else {}
+    got = special_photos(ev, lead, special_urls(ev), most=8 if not ev.get('many') else None, lead_url=lead_url)
+    return special_looks(ev, day, *got[:3], src=got[4]) if got else {}
 
 
 SPECIAL_LOOK = os.environ.get('SPECIAL_LOOK', 'learned')   # the day's special picture: 'learned' (the look he picks most, else one big photo; Darpan, 17 Nov 2026: 'yes go live'), 'hero', 'strip', 'then', or 'drawn' (as before)
@@ -3832,12 +3832,12 @@ DAY_ITEMS = []      # the day's photos of every year (with their files), for the
 LAST_LOOKS = {}     # every look of the last special picture made with special_looks(): {look: {img, faults, phone_dp}}
 
 
-def special_looks(ev, day, ims, plain, lab, only=None):
+def special_looks(ev, day, ims, plain, lab, only=None, src=None):
     """The day's special in every look of looks.py (or only one), each with its picture check."""
     import looks
     yr, pl = ev['date'][:4], town_of(ev.get('place')) or ev.get('place') or ''
     photos = [dict(im=im, year=lab.get(id(im), (yr, pl))[0], place=lab.get(id(im), (yr, pl))[1] or pl, date=ev['date'][:10],
-                   caption='', tg=not ev.get('news'), label=not plain[k]) for k, im in enumerate(ims)]
+                   caption='', tg=not ev.get('news'), label=not plain[k], url=(src or {}).get(id(im))) for k, im in enumerate(ims)]
     now = looks.pick_now(DAY_ITEMS, ev) if only in (None, 'then') else None
     got = looks.make_looks(ev, day, photos, now, special_words(ev), only=only)
     LAST_LOOKS.clear(); LAST_LOOKS.update(got)
@@ -3846,7 +3846,7 @@ def special_looks(ev, day, ims, plain, lab, only=None):
     return got
 
 
-def special_photos(ev, lead, urls, most=None):
+def special_photos(ev, lead, urls, most=None, lead_url=None):
     """The special picture's photos: (photos, which carry no year and place, their own year and town, how many)."""
     most = most or (MOST_PHOTOS if ev.get('many') else 5)
     labels, lab = ev.get('labels') or {}, {}   # a mix: each photo's own year and town
@@ -3894,11 +3894,12 @@ def special_photos(ev, lead, urls, most=None):
     ims, plain = ims[:most], plain[:most]
     if not ims:
         return None
-    return ims, plain, lab, most
+    return ims, plain, lab, most, src
 
 
-def compose_drawn(ev, day, ims, plain, lab, most, lead=None):
+def compose_drawn(ev, day, ims, plain, lab, most, lead=None, src=None):
     """The special picture as drawn since 13 Nov 2026: the big card at the left, the story and small cards beside it."""
+    src = src or {}
     img = background(); dr = ImageDraw.Draw(img)
     header(img, f'{day.day} {day:%B}', 'A special day in BAPS history', compact=True, sub_y=136)   # Darpan, 13 Nov 2026: only the date (the story isn't always about Bapa), more space under it
     yr, pl = ev['date'][:4], (town_of(ev.get('place')) or ev.get('place') or '').upper()   # the town, as on the daily cards ('NEW DELHI', not 'NEW DELHI, INDIA', which was cut off on the small cards)

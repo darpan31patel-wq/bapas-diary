@@ -389,12 +389,12 @@ def main():
         # version (idea 8); picking one puts its 'look' in the choice
         pack['looks'] = []
         try:
-            for name, v in make.all_looks(ev, day, lead['im'] if lead else None).items():
+            for name, v in make.all_looks(ev, day, lead['im'] if lead else None, lead['i'] if lead else None).items():
                 f = f'look-{name}.jpg'
                 im = v['img'].convert('RGB')
                 im.resize((2400 if name != 'phone' else 1200, round((2400 if name != 'phone' else 1200) * im.height / im.width)), Image.LANCZOS).save(os.path.join(out, f), quality=85)
                 pack['looks'].append(dict(look=name, name=looks.LOOK_NAMES[name], picture=f, faults=v['faults'], phone_points=v['phone_dp'],
-                                          choose=dict(choice(ev), look=name) if name != 'phone' else None))
+                                          choose=dict(choice(ev), look=name) if name != 'phone' else None, design=v.get('design')))
                 if name in ('hero', 'phone'):
                     looks.whatsapp_view(im).save(os.path.join(out, f'whatsapp-{name}.jpg'), quality=82)
         except Exception as e:   # the pack never waits on the looks
