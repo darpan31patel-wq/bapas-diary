@@ -6,6 +6,18 @@ Every morning GitHub Actions makes one picture of today's date in Bapa's Diary, 
 
 Test changes on the `preview` branch first, as `README.md` explains. Never push straight to `main` without Darpan's go ahead.
 
+## The website (bapas-diary.com)
+
+The website is a separate project from the daily picture and must never put it at risk.
+
+- **Hands off the daily picture.** Website work never edits `make.py`, `collect.py`, `daily.yml`, `bank.yml`, `studio.yml`, `google/`, `archive/`, or the `today` and `bank` releases. Never fetch baps.org between 04:30 and 07:30 UTC (the picture's morning). Go gently on GitHub: few runs, no bursts (the account was suspended 6 to 9 Nov 2026).
+- **Where it lives.** The site's code is on branch `claude/project-thread-eawr12`, the only branch that deploys (`website-deploy.yml` to Cloudflare Pages). Website timers sit on `main` only because GitHub runs timed workflows from `main`. Who owns what across the three projects: `handover/website-project-who-does-what.md` in the Claude project's files.
+- **Going live.** `website-deploy.yml` runs on a push to ANY `claude/**` branch, so every push of unapproved website work carries `[skip ci]` in its head commit. Show Darpan a mockup on the real page, never a made-up page. His yes in any thread is enough: never ask him to say yes twice or in another thread.
+- **His firm rules for the site.** Show Pramukh Swami Maharaj and Mahant Swami Maharaj together, never just one. Bapa pages show only photos with Bapa in them. The word Telegram never appears anywhere in the site (the deploy refuses it). No dates glued onto captions. Today shows today only. Clicking outside any open photo or popup closes it. People emoji use a light brown skin tone (🙏🏽).
+- **Secrets.** Never guess the Studio (`/darpan/`) password and never write any secret value in code, logs, memory or replies.
+- **Seeing it.** Claude's cloud sessions can open bapas-diary.com and photos.bapas-diary.com. After every deploy, `website-look-check.yml` opens each tab at computer, tablet and phone size and emails Darpan only when something new is wrong. Run the same check by hand with `python3 tools/look_check.py --out look` (pictures and `problems.json` in `look/`, never committed).
+- **Brand.** The PSM Pharmacy brand (teal, Outfit) is not for this site. Keep the maroon, gold and ivory devotional look.
+
 ## How Darpan likes to work
 
 - Darpan owns PSM Pharmacy and builds these projects with Claude. He has no tech background: explain in plain, warm, short steps.

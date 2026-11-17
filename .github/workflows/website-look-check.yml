@@ -1,0 +1,59 @@
+# Website only (bapas-diary.com): the automatic look check (Darpan, 17 Nov 2026: "Automatic look check after every
+# website update ... do it"). After every website deploy and after the evening full rebuild, a robot opens Today,
+# Calendar, Search, Travels, Through the years and Legacy on a computer, a tablet and a phone, saves a picture of each
+# (this run's Artifacts) and emails Darpan only when what it finds has changed since the last check (tools/look_check.py).
+# Separate from the daily 2pm picture: it reads nothing from that chain, changes nothing, and fetches nothing from
+# baps.org. It only opens the public website, like a visitor (without counting as one). The last list of problems is
+# kept in release "look-check". Timed and follow-on runs only happen from main, so this file lives on main.
+name: website-look-check
+on:
+  workflow_run:
+    workflows: [website-deploy, website-fresh-timer]
+    types: [completed]
+  workflow_dispatch:      # Actions, website-look-check, Run workflow: check the site now
+permissions:
+  contents: write         # only to keep problems.json in release "look-check"
+concurrency:
+  group: website-look-check
+  cancel-in-progress: true
+jobs:
+  look:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools/look_check.py
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Get Playwright
+        run: pip install -q playwright==1.48.0 && python -m playwright install --with-deps chromium
+      - name: Give the new site a minute to reach every Cloudflare server
+        if: ${{ github.event_name == 'workflow_run' }}
+        run: sleep 90
+      - name: Last check's problems
+        run: curl -sfL -o before.json "https://github.com/${{ github.repository }}/releases/download/look-check/problems.json" || echo '{"problems":[]}' > before.json
+      - name: Open every tab on computer, tablet and phone
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          SUMMARY_TO: ${{ secrets.SUMMARY_TO }}
+        run: python3 tools/look_check.py --out look --before before.json --send --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      - name: Pictures of every tab
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: look-check-pictures
+          path: look/
+          retention-days: 14
+      - name: Keep this check's problems for next time
+        if: ${{ success() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$(cat look/changed)" = yes ]; then
+            gh release view look-check >/dev/null 2>&1 || gh release create look-check --title "Website look check" --notes "Last list of problems found by website-look-check (tools/look_check.py). Website only." --latest=false
+            gh release upload look-check look/problems.json --clobber
+          fi
