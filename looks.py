@@ -110,7 +110,8 @@ def framed(im, face, w, h, zoom_to=.16):
     cw, ch = (im.width, im.width / a) if im.width / im.height < a else (im.height * a, im.height)
     if face:
         fx, fy, fw, fh = face
-        z = min(2.0, max(1.0, zoom_to * ch / fh * 1 / 1.0)) if fh / ch < zoom_to else 1.0
+        z = min(2.0, max(1.0, zoom_to * ch / fh)) if fh / ch < zoom_to else 1.0
+        z = max(1.0, min(z, 2.2 * cw / w))   # never zoomed past the photo's own sharpness (22 Nov test: a small old photo went blocky)
         cw, ch = cw / z, ch / z
         cx = fx + fw / 2
         top = fy - .5 * fh - .14 * ch            # the detector's box starts at the brow: half a face more for the head and pagh
@@ -143,7 +144,9 @@ def pick_now(items, ev):
     the story's own town first, recognised and as close and sharp as can be. None when there is no such photo."""
     y0 = int(ev['date'][:4])
     town = (make.town_of(ev.get('place')) or '').lower()
-    cands = [x for x in items if x.get('path') and int(x.get('y') or 0) >= y0 + 5 and not make.JUNK.search(x.get('c') or '')]
+    cands = [x for x in items if x.get('path') and int(x.get('y') or 0) >= y0 + 5 and not make.JUNK.search(x.get('c') or '')
+             and not (make.GUEST.search(x.get('c') or '') and not make.western(x.get('c') or ''))   # never a meeting photo
+             and not re.search(r'in conversation|converses|talks with', x.get('c') or '', re.I)]
     here = lambda x: (make.town_of(make.place(x) or x.get('p')) or '').lower() == town
     cands.sort(key=lambda x: (not (town and here(x)), -int(x['y'])))
     best = None
@@ -241,12 +244,14 @@ def hero(ev, day, photos, paras):
     for ch in (1150, 1060, 980, 900, 820):   # a long story makes the photo smaller, never the story shorter
         img = make.background(); dr = ImageDraw.Draw(img); items = []
         h = px(ch - 12 * 2 - 0) - card_strip(px(ch) * a)
-        w = min(px(1500), h * a)
+        w = min(px(1500), h * a, ph['im'].width * 3)   # a small photo stays a smaller card, the rest is quiet space
+        h = min(h, w / a)
         c, rec = card_of(ph, w, h)
         y = (H - c.height + px(30) * 2) / 2 - px(30) - px(6)
         put(img, rec, c, px(70) - px(30), y, items)
         make.peg(img, px(70) + c.width / 2 - px(30), y + px(30) + px(28), px(1.5))
-        x0 = px(70) + c.width - px(60) + px(120); tw = W - x0 - px(120)
+        x0 = px(70) + c.width - px(60) + px(120); tw = min(W - x0 - px(120), px(1350))   # short lines read easily
+        x0 += (W - px(120) - x0 - tw) / 2   # the words in the middle of the space beside the photo
         # the date, headline and story as one block, in the middle of the height beside the photo (quiet space above and below)
         probe = img.copy()
         hr, hh = headline(probe, ev.get('headline') or ev['line'], x0, 0, tw)
@@ -302,9 +307,10 @@ def strip(ev, day, photos, paras):
 
 def then_and_now(ev, day, photos, paras, now):
     """The story's photo and Bapa on the same date in a recent year, side by side, the whole story beside them."""
-    if not now:
-        return None, []
     then = photos[0]
+    # only when it means something: Bapa is in the story's photo, or the 'now' is from the story's own town
+    if not now or not (then.get('face') or (make.town_of(ev.get('place')) or '').lower() == (now.get('place') or '').lower()):
+        return None, []
     for ch in (900, 820, 740, 660):
         img = make.background(); dr = ImageDraw.Draw(img); items = []
         w = px(ch) * .78; h = px(ch) - card_strip(w)
@@ -388,7 +394,7 @@ def check(img, items, paras=None):
             faults.append(f"too near the edge: {it.get('text') or it.get('name')}"[:90])
         if it['kind'] == 'photo' and it.get('face'):
             fx, fy, fw, fh = it['face']; bx0, by0, bx1, by1 = it['box']
-            if fy - .5 * fh < by0 - 1:
+            if fy - .5 * fh < by0 - 1 and by0 > 1:   # cut by our frame (not a photo taken that way)
                 faults.append(f"head or pagh cut at the top: {it['name']}"[:90])
             if fx < bx0 - 1 or fx + fw > bx1 + 1 or fy + fh > by1 + 1:
                 faults.append(f"face cut by the frame: {it['name']}"[:90])
