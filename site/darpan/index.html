@@ -203,6 +203,36 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
 .log li b { color: var(--gold, #d9a441) }
 .log li p { margin: 2px 0 0 }
 .log .chg { opacity: .8 }
+/* the designer (17 Nov 2026) */
+.work.design { grid-template-columns: 290px minmax(0, 1fr) 400px }
+.lib { padding: 14px 0 24px max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 8px; max-height: calc(100vh - 70px); overflow-y: auto; position: sticky; top: 60px }
+.lib h3 { margin: 0; color: var(--gold); font-size: 14px; letter-spacing: .08em; text-transform: uppercase }
+.lib details { border-top: 1px solid var(--line); padding: 6px 0 } .lib summary { cursor: pointer; font-weight: 600 }
+.libgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 6px }
+.libgrid button { padding: 0; border: 1px solid var(--line); border-radius: 4px; background: #0d0406; aspect-ratio: 1; overflow: hidden; cursor: grab; position: relative }
+.libgrid button img, .libgrid button i { width: 100%; height: 100%; object-fit: cover; display: block }
+.libgrid button:hover { border-color: var(--gold) }
+.libst { border-top: 1px solid var(--line); padding: 8px 0; display: grid; gap: 4px } .libst p { margin: 0 }
+.dbar { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 0 0 8px; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2) }
+.dbar .grp { display: flex; gap: 2px; padding-right: 8px; border-right: 1px solid var(--line) }
+.dbar select { font: inherit; font-size: 13px; background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px }
+.ib { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--fg); cursor: pointer; padding: 0 }
+.ib:hover:not(:disabled) { border-color: var(--gold-deep); color: var(--gold) } .ib:disabled { opacity: .35; cursor: default }
+.ib.sm { width: 26px; height: 26px } .ib[aria-pressed="false"] { opacity: .45 }
+.seg.ic button { display: inline-flex; align-items: center; gap: 4px }
+.seg.sw2 button { padding: 3px } .seg.sw2 i { display: block; width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(0,0,0,.4) }
+.c-gold { background: linear-gradient(rgb(255,226,150), rgb(206,152,64)) } .c-ivory { background: #f4ead6 } .c-light { background: #e6c487 } .c-white { background: #fff } .c-maroon { background: #6b1a26 }
+.layers { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 2px }
+.layers li { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto auto; gap: 6px; align-items: center; padding: 4px 6px; border: 1px solid transparent; border-radius: 6px; cursor: grab; font-size: 13px }
+.layers li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap } .layers li.sel { border-color: var(--gold); background: var(--panel-2) } .layers li.hid span { opacity: .45 } .layers li.over { border-top: 2px solid var(--gold) }
+.layers .warn, .hint.warn b { color: var(--saffron) }
+.lays { display: grid; grid-template-columns: 1fr 1fr; gap: 6px }
+.lays button { display: grid; gap: 4px; justify-items: center; padding: 8px 4px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); color: var(--muted); cursor: pointer; font-size: 12px }
+.lays button:hover { border-color: var(--gold); color: var(--gold) }
+.dtype { position: absolute; z-index: 5; background: rgba(20,6,10,.88); color: #f4ead6; border: 2px solid var(--gold); border-radius: 4px; padding: 0; resize: both; box-sizing: border-box }
+#pane textarea#dp-text { width: 100%; box-sizing: border-box; font: 15px/1.45 var(--serif, Georgia), serif }
+@media (max-width: 1400px) { .work.design { grid-template-columns: minmax(0, 1fr) 380px } .work.design .lib { grid-column: 1 / -1; grid-row: 2; position: static; max-height: none; padding: 0 16px 24px } }
+@media (max-width: 900px) { .work.design { grid-template-columns: minmax(0, 1fr) } }
 </style>
 
 <header class="top">
@@ -221,14 +251,17 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
   <button class="btn primary" id="exp-open">Export…</button>
 </header>
 <div class="work">
+  <aside class="lib" id="dlib" hidden></aside>
   <main class="stage">
     <div class="meta" id="meta">Loading photos…</div>
     <div class="want" id="want" hidden><p id="want-p"></p><button class="btn primary" id="want-go" type="button">Get this day’s photos ready</button></div>
     <div class="easel" id="easel">
       <div class="zoombar"><span class="hint">Zoom the picture</span><button class="btn small" id="z-out" type="button" aria-label="Zoom out">−</button><output id="z-val">100%</output><button class="btn small" id="z-in" type="button" aria-label="Zoom in">+</button><button class="btn small" id="z-fit" type="button">Fit</button><span class="hint" id="z-tip">Ctrl and scroll, or pinch, on the picture zooms it too. Drag to move around when zoomed.</span></div>
+      <div class="dbar" id="dbar" hidden></div>
       <div class="zoombox" id="zoombox">
         <canvas id="view" width="2796" height="1290" aria-label="Live preview of the picture. Click a card to change it."></canvas>
         <div class="fe" id="fe" hidden></div>
+        <textarea id="dtype" class="dtype" hidden aria-label="Type the words"></textarea>
       </div>
     </div>
     <p class="status" id="status" role="status"></p>
@@ -343,7 +376,7 @@ const stateOf = o => o.years || o.days || o.cards;
 // the photo packs: beside this page when it carries them (claude.ai), otherwise the studio branch on GitHub (tools/studio_packs.py)
 // every date (and month) keeps its own changes, so going to another day and back loses nothing (Darpan, 4 Nov 2026:
 // "remember when I make a change ... before I press save"). Kept on this device in studio-dates-v1.
-const PER = { day: ['years', 'titleAuto', 'title', 'txt'], month: ['days', 'titleAuto', 'title'], special: ['cards', 'titleAuto', 'title', 'txt', 'added', 'extra', 'tl', 'subtitle'] };   // extra, tl, subtitle kept per day too (17 Nov 2026)
+const PER = { day: ['years', 'titleAuto', 'title', 'txt'], month: ['days', 'titleAuto', 'title'], special: ['cards', 'titleAuto', 'title', 'txt', 'added', 'extra', 'tl', 'subtitle', 'design'] };   // extra, tl, subtitle kept per day too (17 Nov 2026)
 const dkey = kind => kind + ':' + keyOf(kind);
 function stash(kind) {
   const all = store.get('studio-dates-v1') || {}, o = S[kind];
@@ -926,6 +959,588 @@ function drawStory(ctx, pack, o, hits) {
 }
 let LAYDRAWN = null;
 const isStory = () => S.mode === 'special' && !!P.special && P.special.kind === 'story';
+// ============================================================ THE DESIGNER (Darpan, 17 Nov 2026: "i need this to be more of a photo
+// editor", "add in tools and functions as you would in a photo editor", "add more graphical controls", "this is just a designer
+// page", "then github copies what ive done, once ive pressed final and then exports a final copy"). The story special picture is a
+// list of items (photos and text boxes) in the picture's own units (2796 by 1290), drawn in order, the last on top. He moves,
+// sizes, turns and styles them right on the picture. Nothing is built while he designs: Final sends the exact list to the
+// Collage builder (layout version 2), which draws it as it is.
+const DW = 2796, DH = 1290;
+const isDesign = () => isStory() && !!S.special.design;
+let SEL = [], DGUIDES = [], DHOVER = null;
+const dItems = () => (S.special.design && S.special.design.items) || [];
+const dItem = id => dItems().find(it => it.id === id);
+const dSel = () => SEL.map(dItem).filter(Boolean);
+const dNewId = () => 'i' + Math.random().toString(36).slice(2, 8);
+const D_COLORS = { gold: 'Gold', ivory: 'Ivory', light: 'Light gold', white: 'White', maroon: 'Maroon' };
+const D_FILL = { ivory: () => CAP_IVORY, light: () => CAP_GOLD, white: () => '#fff', maroon: () => MAROON };
+// the photo of an item: one of the pack's own (group key and pick), or any photo of that day from the website's archive (src)
+const SRCIMG = {};
+function dCand(it) { const g = it.g ? groupsOf(P.special).find(x => x.key === it.g) : null; return g ? g.cands[it.pick || 0] || g.cands[0] : null }
+function dImg(it) {
+  const c = dCand(it); if (c) return photoOf(P.special, c);
+  if (!it.src) return null;
+  let rec = SRCIMG[it.src];
+  if (!rec) { rec = SRCIMG[it.src] = { im: null }; const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => { rec.im = im; render() }; im.onerror = () => { rec.failed = true }; im.src = it.src }
+  return rec.im;
+}
+const dPhotoInfo = it => { const c = dCand(it) || {}; return { src: c.src || it.src || '', date: c.date || it.date || '', place: c.place || it.place || '', caption: c.caption || it.caption || '' } };
+function dOffDay(it) {   // a photo that is not from this exact day, or not from the story's place
+  if (it.t !== 'photo') return false;
+  const c = dCand(it); if (c) { const g = groupsOf(P.special).find(x => x.key === it.g); return !dayOk(P.special, g, c) }
+  return !!(it.date && it.date.slice(5) !== S.special.date.slice(5));
+}
+
+// ------------------------------------------------------------ the builder's layout, turned into items (his changes so far kept)
+function designFrom(pack, o) {
+  const c = document.createElement('canvas'); c.width = DW; c.height = DH; const hits = [];
+  drawStory(c.getContext('2d'), pack, o, hits);
+  const drawn = LAYDRAWN || {}, items = [], gk = k => groupsOf(pack).find(g => g.key === k);
+  const title = o.titleAuto ? pack.title : (o.title || pack.title), sub = o.subtitle || pack.subtitle;
+  items.push({ id: dNewId(), t: 'text', role: 'title', name: 'Title', text: title, x: DW / 2 - 900, y: 84 - 64 * .8 - 6, w: 1800, h: 0, size: 64, font: 'serif', weight: 700, color: 'gold', lh: 1.18, pg: .55, ind: 0, align: 'center', deco: true });
+  if (sub) items.push({ id: dNewId(), t: 'text', role: 'subtitle', name: 'Subtitle', text: sub, x: DW / 2 - 900, y: 118 - 22 * .8 - 3, w: 1800, h: 0, size: 22, font: 'sans', weight: 600, color: 'light', lh: 1.3, pg: .55, ind: 0, align: 'center', upper: true, track: 6 });
+  const cards = dayCards(pack, o), photo = (x, h) => { const st = stateOf(o)[x.key] || {}, g = gk(x.key);
+    return { id: dNewId(), t: 'photo', name: `${g && g.year || ''} ${x.place || ''}`.trim() || 'Photo', g: x.key, pick: g ? Math.max(0, g.cands.indexOf(x.c)) : 0, x: h.x, y: h.y, w: h.w, h: h.h, rot: 0,
+      frame: true, label: !!(o.showYear || o.showPlace), year: String(x.yl ?? (x.y == null ? '' : x.y)), place: x.place || '', zoom: st.zoom || 1, fx: clamp(.5 + (st.dx || 0) * 1.5, 0, 1), fy: clamp(.3 + (st.dy || 0) * 1.5, 0, 1), br: 100, ct: 100, sat: 100 } };
+  const hitOf = k => hits.find(h => h.key === k);
+  const big = cards.find(x => (gk(x.key) || {}).role !== 'small'), small = cards.filter(x => x !== big);
+  if (big && hitOf(big.key)) items.push(photo(big, hitOf(big.key)));
+  const H = drawn.headline, ST = drawn.story;
+  if (H) items.push({ id: dNewId(), t: 'text', role: 'headline', name: 'Headline', text: H.text, x: H.x, y: H.y, w: H.w, h: 0, size: H.size, font: 'serif', weight: 700, color: 'gold', lh: 1.18, pg: .55, ind: 0, align: 'center', balance: true });
+  if (ST) items.push({ id: dNewId(), t: 'text', role: 'story', name: 'Story', text: ST.text, x: ST.x, y: ST.y, w: ST.w, h: 0, size: Math.max(ST.size, 24), font: 'serif', weight: 500, color: 'ivory', lh: 1.38, pg: .55, ind: 0, align: 'center' });
+  small.forEach(x => { const h = hitOf(x.key); if (h) items.push(photo(x, h)) });
+  const sti = items.find(it => it.role === 'story');
+  if (sti) {   // the whole story, never cut: as large as fits above the small cards (the builder cut it with '…')
+    const tops = small.map(x => hitOf(x.key)).filter(h => h && h.y > sti.y).map(h => h.y), room = (tops.length ? Math.min(...tops) : DH - 70) - 30 - sti.y, cx = c.getContext('2d');
+    sti.size = Math.round(36 * ((o.tl || {}).ss || 1)); while (sti.size > 20 && dLayout(cx, sti).height > room) sti.size -= 1;
+  }
+  if (o.showFooter && o.footer) items.push({ id: dNewId(), t: 'text', role: 'footer', name: 'Footer', text: o.footer, x: DW / 2 - 600, y: DH - 20 - 24 * .8 - 4, w: 1200, h: 0, size: 24, font: 'serif', weight: 500, color: 'light', lh: 1.2, pg: .55, ind: 0, align: 'center', deco: true });
+  return { v: 2, items, made: Date.now() };
+}
+
+// ------------------------------------------------------------ text: wrapped to its box, never cut off (Darpan, 17 Nov 2026:
+// "the last few words are getting cut off"); a box set shorter than its words shows a red edge in the Studio only
+const dFont = it => `${it.weight || 500} ${it.size}px ${it.font === 'sans' ? SANS : SERIF}`;
+function dLayout(ctx, it) {
+  ctx.font = dFont(it);
+  const text = it.upper ? String(it.text || '').toUpperCase() : String(it.text || ''), track = it.track || 0;
+  const mw = s => track ? spacedW(ctx, s, track) : ctx.measureText(s).width;
+  const lh = it.size * (it.lh || 1.3), out = [], paras = text.replace(/\r/g, '').split(/\n\s*\n/);
+  paras.forEach((pg, pi) => {
+    if (pi) out.push({ gap: true });
+    pg.split('\n').forEach((hard, hi) => {
+      const words = hard.trim().split(/\s+/).filter(Boolean); let cur = '', first = hi === 0;
+      const room = () => it.w - (first ? (it.ind || 0) : 0);
+      const push = end => { out.push({ t: cur, first, end, w: mw(cur) }); first = false; cur = '' };
+      words.forEach(w => { const t = cur ? cur + ' ' + w : w; if (!cur || mw(t) <= room()) cur = t; else { push(false); cur = w } });
+      if (cur || !words.length) push(true);
+    });
+  });
+  if (it.balance && out.filter(l => !l.gap).length > 1) {   // a headline's lines about the same length, as the builder does
+    const n = out.filter(l => !l.gap).length; let lo = it.w * .45, hi = it.w, best = null;
+    for (let i = 0; i < 12; i++) { const mid = (lo + hi) / 2, r = dLayout(ctx, Object.assign({}, it, { w: mid, balance: false })); if (r.lines.filter(l => !l.gap).length === n) { best = r; hi = mid } else lo = mid }
+    if (best) return Object.assign(best, { w: it.w });
+  }
+  const height = out.reduce((a, l) => a + (l.gap ? lh * (it.pg ?? .55) : lh), 0);
+  return { lines: out, lh, height, track };
+}
+function dText(ctx, it, L) {
+  const g = it.color === 'gold';
+  ctx.font = dFont(it); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+  let y = 0;
+  const run = (s, x, base) => { if (!s) return; if (L.track) { ctx.fillStyle = (D_FILL[it.color] || D_FILL.ivory)(); spacedText(ctx, s, x, base, L.track); return }
+    if (g) { goldText(ctx, s, x, base, it.size, 'left'); ctx.font = dFont(it) } else { ctx.fillStyle = (D_FILL[it.color] || D_FILL.ivory)(); ctx.fillText(s, x, base) } };
+  L.lines.forEach(l => {
+    if (l.gap) { y += L.lh * (it.pg ?? .55); return }
+    const base = y + (L.lh - it.size) / 2 + it.size * .8, ind = l.first ? (it.ind || 0) : 0, room = it.w - ind;
+    if (it.align === 'justify' && !l.end && !L.track) {
+      const ws = l.t.split(' '); ctx.font = dFont(it); const wsum = ws.reduce((a, w) => a + ctx.measureText(w).width, 0), gap = ws.length > 1 ? (room - wsum) / (ws.length - 1) : 0;
+      let x = ind; ws.forEach(w => { run(w, x, base); ctx.font = dFont(it); x += ctx.measureText(w).width + gap });
+    } else {
+      const x = it.align === 'right' ? it.w - l.w : it.align === 'center' ? ind + (room - l.w) / 2 : ind;
+      run(l.t, x, base);
+      if (it.deco && L.lines.length === 1) { diamond(ctx, x - 26, base - it.size * .34, Math.max(4, it.size * .08)); diamond(ctx, x + l.w + 26, base - it.size * .34, Math.max(4, it.size * .08)) }
+    }
+    y += L.lh;
+  });
+}
+// ------------------------------------------------------------ a photo: the ivory card with its strip, or the bare photo
+function dPhoto(ctx, it, o) {
+  const w = it.w, h = it.h, frame = it.frame !== false, e = frame ? 12 : 0, pw = w - 2 * e, ph = frame ? h - 2 * e - pw * .1 : h;
+  if (frame) {
+    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 24; ctx.shadowOffsetY = 12;
+    const gr = ctx.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, IVORY_TOP); gr.addColorStop(1, IVORY_BOT);
+    ctx.fillStyle = gr; ctx.fillRect(0, 0, w, h); ctx.restore();
+    ctx.strokeStyle = IVORY_EDGE; ctx.lineWidth = 1.5; ctx.strokeRect(.5, .5, w - 1, h - 1);
+  } else { ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 20; ctx.shadowOffsetY = 10; ctx.fillStyle = '#1a0a0d'; ctx.fillRect(0, 0, w, h); ctx.restore() }
+  const im = dImg(it);
+  if (im && pw > 2 && ph > 2) {
+    const z = Math.max(1, it.zoom || 1), r = Math.max(pw / im.width, ph / im.height) * z, sw = pw / r, sh = ph / r;
+    const sx = (im.width - sw) * clamp(it.fx ?? .5, 0, 1), sy = (im.height - sh) * clamp(it.fy ?? .3, 0, 1);
+    ctx.save(); ctx.filter = [photoFilter(o), `brightness(${(it.br ?? 100) / 100}) contrast(${(it.ct ?? 100) / 100}) saturate(${(it.sat ?? 100) / 100})`].filter(f => f && f !== 'none').join(' ') || 'none';
+    ctx.drawImage(im, sx, sy, sw, sh, e, e, pw, ph); ctx.restore();
+  } else { ctx.fillStyle = 'rgba(80,60,50,.35)'; ctx.fillRect(e, e, pw, ph) }
+  if (frame) {
+    ctx.strokeStyle = 'rgba(120,96,70,.6)'; ctx.lineWidth = 1; ctx.strokeRect(e, e, pw, ph);
+    if (it.label !== false) {
+      const yt = String(it.year || ''), pl = String(it.place || '').toUpperCase();
+      ctx.font = `700 ${pw * .07}px ${SERIF}`; const yw = yt ? ctx.measureText(yt).width : 0, ps = pw * .03, track = pw * .006;
+      ctx.font = `700 ${ps}px ${SANS}`; const pw2 = pl ? spacedW(ctx, pl, track) : 0, sp = yt && pl ? pw * .03 : 0;
+      const x0 = (w - yw - sp - pw2) / 2, base = ph + e + (h - ph - e) * .72;
+      ctx.textAlign = 'left'; ctx.fillStyle = MAROON; ctx.font = `700 ${pw * .07}px ${SERIF}`; if (yt) ctx.fillText(yt, x0, base);
+      ctx.fillStyle = PLACE; ctx.font = `700 ${ps}px ${SANS}`; if (pl) spacedText(ctx, pl, x0 + yw + sp, base - pw * .008, track);
+    }
+    if (o.pegs && o.peg !== 'none' && it.peg !== false) peg(ctx, w / 2, 16, pw / 220 * .9, o.peg, .72);
+  }
+}
+// ------------------------------------------------------------ the whole picture, items in order; the Studio's own marks go on top
+function drawDesign(ctx, pack, o, hits, marks) {
+  background(ctx, DW, DH, o);
+  const out = [];
+  dItems().forEach(it => {
+    if (it.hidden) return;
+    let hh = it.h;
+    ctx.save();
+    if (it.t === 'text') { const L = dLayout(ctx, it); hh = it.h || L.height; it.over = it.h && L.height > it.h + 1 ? Math.ceil((L.height - it.h) / L.lh) : 0; it._h = hh;
+      ctx.translate(it.x + it.w / 2, it.y + hh / 2); if (it.rot) ctx.rotate(it.rot * Math.PI / 180); ctx.translate(-it.w / 2, -hh / 2); dText(ctx, it, L);
+      out.push(dExport(it, L)) }
+    else { ctx.translate(it.x + it.w / 2, it.y + it.h / 2); if (it.rot) ctx.rotate(it.rot * Math.PI / 180); ctx.translate(-it.w / 2, -it.h / 2); dPhoto(ctx, it, o); out.push(dExport(it)) }
+    ctx.restore();
+    hits.push({ key: it.g || it.id, id: it.id, x: it.x, y: it.y, w: it.w, h: hh, rot: it.rot || 0 });
+  });
+  LAYDRAWN = dV1(out);
+  if (marks) dMarks(ctx);
+}
+// what Final sends: version 2, every item in drawing order, plus the version 1 form the builder reads today
+function dExport(it, L) {
+  const R = v => Math.round(v), base = { type: it.t, role: it.role || (it.t === 'photo' ? 'photo' : 'text'), x: R(it.x), y: R(it.y), w: R(it.w), rotate: Math.round((it.rot || 0) * 10) / 10 };
+  if (it.t === 'text') return Object.assign(base, { h: R(it.h || L.height), fixed_height: !!it.h, text: it.text || '', lines: L.lines.map(l => l.gap ? '' : l.t), size: R(it.size), font: it.font === 'sans' ? 'sans' : 'serif', weight: it.weight || 500,
+    color: it.color || 'ivory', line_height: Math.round((it.lh || 1.3) * 100) / 100, para_gap: Math.round((it.pg ?? .55) * 100) / 100, indent: R(it.ind || 0), align: it.align || 'center', upper: !!it.upper, letter_spacing: it.track || 0, diamonds: !!it.deco });
+  const pi = dPhotoInfo(it), c = dCand(it);
+  return Object.assign(base, { h: R(it.h), photo: pi.src, file: c && !c.src ? (c.f || c.img || '') : undefined, at: c && !c.src ? c.at || null : undefined, date: pi.date, frame: it.frame !== false,
+    label: it.frame !== false && it.label !== false ? { year: String(it.year || ''), place: String(it.place || '') } : false, focus: [Math.round((it.fx ?? .5) * 100) / 100, Math.round((it.fy ?? .3) * 100) / 100], zoom: Math.round((it.zoom || 1) * 100) / 100,
+    brightness: it.br ?? 100, contrast: it.ct ?? 100, saturation: it.sat ?? 100, peg: it.frame !== false && it.peg !== false });
+}
+function dV1(items) {
+  const lay = { version: 2, size: [DW, DH], items };
+  lay.cards = items.filter(x => x.type === 'photo').map(x => Object.assign({ photo: x.photo, x: x.x, y: x.y, w: x.w, h: x.h, focus: x.focus }, x.label ? x.label : { label: false }, x.peg ? {} : { peg: false }, x.photo ? {} : { file: x.file || '', at: x.at || null }));
+  const t1 = r => items.find(x => x.type === 'text' && x.role === r);
+  const H = t1('headline'), ST = t1('story'), T = t1('title'), SU = t1('subtitle');
+  if (H) lay.headline = { text: H.text, x: H.x, y: H.y, w: H.w, size: H.size, align: H.align, lines: H.lines };
+  if (ST) lay.story = { text: ST.text, x: ST.x, y: ST.y, w: ST.w, h: ST.h, size: ST.size, align: ST.align, lines: ST.lines, line_height: ST.line_height, para_gap: ST.para_gap, indent: ST.indent };
+  if (T) lay.title = { text: T.text }; if (SU) lay.subtitle = { text: SU.text };
+  return lay;
+}
+// ------------------------------------------------------------ the Studio's own marks (never in an export): selection, handles,
+// guides, photos not from this day, words that need a taller box
+const HS = 16;
+function dCorners(it) { const h = it._h || it.h, cx = it.x + it.w / 2, cy = it.y + h / 2, a = (it.rot || 0) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+  const P2 = (lx, ly) => [cx + lx * c - ly * s, cy + lx * s + ly * c];
+  return { cx, cy, a, P2, w: it.w, h } }
+function dHandles(it) {
+  const { P2, w, h } = dCorners(it), hw = w / 2, hh = h / 2;
+  const hs = it.t === 'photo' ? { nw: [-hw, -hh], ne: [hw, -hh], sw: [-hw, hh], se: [hw, hh] } : { w: [-hw, 0], e: [hw, 0], s: [0, hh], se: [hw, hh] };
+  const out = Object.fromEntries(Object.entries(hs).map(([k, [x, y]]) => [k, P2(x, y)])); out.rot = P2(0, -hh - 70); return out;
+}
+function dMarks(ctx) {
+  const k = DW / Math.max(1, view.clientWidth || DW), lw = Math.max(2, 2 * k);
+  ctx.save();
+  dItems().forEach(it => {
+    if (it.hidden) return;
+    const { cx, cy, a, w, h } = dCorners(it), on = SEL.includes(it.id), off = dOffDay(it);
+    if (!on && !off && !it.over && DHOVER !== it.id) return;
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(a);
+    if (off) { ctx.setLineDash([14 * k, 8 * k]); ctx.strokeStyle = '#ff7a3d'; ctx.lineWidth = lw * 1.5; ctx.strokeRect(-w / 2 - 6, -h / 2 - 6, w + 12, h + 12); ctx.setLineDash([]);
+      ctx.font = `700 ${Math.round(15 * k)}px ${SANS}`; const t = 'NOT FROM THIS DAY', tw = ctx.measureText(t).width; ctx.fillStyle = '#ff7a3d'; ctx.fillRect(-w / 2 - 6, -h / 2 - 6 - 24 * k, tw + 16 * k, 24 * k); ctx.fillStyle = '#2a0d14'; ctx.fillText(t, -w / 2 + 2 * k, -h / 2 - 6 - 7 * k) }
+    if (it.over) { ctx.strokeStyle = '#ff4d4d'; ctx.lineWidth = lw * 2; ctx.beginPath(); ctx.moveTo(-w / 2, h / 2); ctx.lineTo(w / 2, h / 2); ctx.stroke();
+      ctx.font = `700 ${Math.round(15 * k)}px ${SANS}`; ctx.fillStyle = '#ff4d4d'; ctx.fillText(`${it.over} more line${it.over > 1 ? 's' : ''}: make the box taller`, -w / 2, h / 2 + 22 * k) }
+    if (on || DHOVER === it.id) { ctx.strokeStyle = on ? '#ffd27a' : 'rgba(255,210,122,.55)'; ctx.lineWidth = lw; ctx.setLineDash(on ? [] : [8 * k, 6 * k]); ctx.strokeRect(-w / 2, -h / 2, w, h); ctx.setLineDash([]) }
+    if (it.locked && on) { ctx.font = `${Math.round(22 * k)}px ${SANS}`; ctx.fillStyle = '#ffd27a'; ctx.fillText('🔒', w / 2 - 28 * k, -h / 2 + 26 * k) }
+    ctx.restore();
+  });
+  if (SEL.length === 1 && dSel()[0] && !dSel()[0].locked) {
+    const it = dSel()[0], H2 = dHandles(it), r = HS * k * .6;
+    const top = dCorners(it).P2(0, -(it._h || it.h) / 2);
+    ctx.strokeStyle = '#ffd27a'; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(top[0], top[1]); ctx.lineTo(H2.rot[0], H2.rot[1]); ctx.stroke();
+    Object.entries(H2).forEach(([n, [x, y]]) => { ctx.beginPath(); if (n === 'rot') ctx.arc(x, y, r * 1.2, 0, 7); else ctx.rect(x - r, y - r, 2 * r, 2 * r); ctx.fillStyle = n === 'rot' ? '#ffd27a' : '#fff'; ctx.fill(); ctx.strokeStyle = '#8a5a14'; ctx.lineWidth = lw * .8; ctx.stroke() });
+  }
+  if (SEL.length > 1) { const b = dBox(dSel()); ctx.setLineDash([10 * k, 6 * k]); ctx.strokeStyle = '#ffd27a'; ctx.lineWidth = lw; ctx.strokeRect(b.x - 8, b.y - 8, b.w + 16, b.h + 16); ctx.setLineDash([]) }
+  ctx.strokeStyle = '#ff5fd2'; ctx.lineWidth = lw; DGUIDES.forEach(([ax, v]) => { ctx.beginPath(); if (ax === 'x') { ctx.moveTo(v, 0); ctx.lineTo(v, DH) } else { ctx.moveTo(0, v); ctx.lineTo(DW, v) } ctx.stroke() });
+  ctx.restore();
+}
+const dBox = list => { const xs = [], ys = []; list.forEach(it => { const { P2, w, h } = dCorners(it); [[-w / 2, -h / 2], [w / 2, -h / 2], [-w / 2, h / 2], [w / 2, h / 2]].forEach(([a, b]) => { const p = P2(a, b); xs.push(p[0]); ys.push(p[1]) }) });
+  const x = Math.min(...xs), y = Math.min(...ys); return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y } };
+
+// ------------------------------------------------------------ undo and redo for every step (any change is kept 0.3 s after it settles)
+const DH_ = { date: '', past: [], future: [], last: '' };
+const dSnap = () => JSON.stringify(dItems().map(it => { const c = Object.assign({}, it); delete c.over; delete c._h; return c }));
+let DH_T = 0;
+function dHist() {
+  clearTimeout(DH_T);
+  DH_T = setTimeout(() => {
+    if (!S.special.design) return;
+    const s = dSnap();
+    if (DH_.date !== S.special.date) { Object.assign(DH_, { date: S.special.date, past: [], future: [], last: s }); return }
+    if (s === DH_.last) return;
+    DH_.past.push(DH_.last); if (DH_.past.length > 150) DH_.past.shift(); DH_.future = []; DH_.last = s;
+    S.special.design.edited = true; saveState(); stash('special'); layoutSoon(); dTools();
+  }, 300);
+}
+function dUndo(back) {
+  const from = back ? DH_.past : DH_.future, to = back ? DH_.future : DH_.past; if (!from.length) return;
+  to.push(DH_.last); DH_.last = from.pop(); S.special.design.items = JSON.parse(DH_.last); S.special.design.edited = true;
+  SEL = SEL.filter(id => dItem(id)); build(); layoutSoon();
+}
+
+// ------------------------------------------------------------ on the picture: click to choose, shift-click for several, drag to
+// move (with guides to line things up), corners to size, the round handle to turn, double click to type
+const dPt = ev => { const r = view.getBoundingClientRect(); return [(ev.clientX - r.left) * DW / r.width, (ev.clientY - r.top) * DH / r.height] };
+const dScale = () => DW / Math.max(1, view.getBoundingClientRect().width);
+function dHitAt(x, y) {
+  const list = dItems().filter(it => !it.hidden);
+  for (let i = list.length - 1; i >= 0; i--) { const it = list[i], { cx, cy, a, w, h } = dCorners(it), c = Math.cos(-a), s = Math.sin(-a), lx = (x - cx) * c - (y - cy) * s, ly = (x - cx) * s + (y - cy) * c; if (Math.abs(lx) <= w / 2 && Math.abs(ly) <= h / 2) return it }
+  return null;
+}
+function dHandleAt(x, y) {
+  if (SEL.length !== 1) return null; const it = dSel()[0]; if (!it || it.locked) return null;
+  const r = HS * dScale(); for (const [n, [hx, hy]] of Object.entries(dHandles(it))) if (Math.hypot(x - hx, y - hy) <= r) return n;
+  return null;
+}
+let DDRAG = null;
+function dDown(ev) {
+  if (!isDesign() || ev.button !== 0) return;
+  const [x, y] = dPt(ev), hn = dHandleAt(x, y);
+  if (hn) { const it = dSel()[0]; DDRAG = { mode: hn === 'rot' ? 'rot' : 'size', hn, x, y, it, o: Object.assign({}, it, { h: it.h || it._h }) } }
+  else {
+    const it = dHitAt(x, y);
+    if (!it) { if (!ev.shiftKey && SEL.length) { SEL = []; build() } return }   // empty picture: a drag pans when zoomed
+    if (ev.shiftKey || ev.metaKey || ev.ctrlKey) { SEL = SEL.includes(it.id) ? SEL.filter(i => i !== it.id) : [...SEL, it.id]; build(); ev.stopPropagation(); return }
+    if (!SEL.includes(it.id)) { SEL = [it.id]; build() }
+    DDRAG = { mode: 'move', x, y, start: dSel().filter(s => !s.locked).map(s => [s, s.x, s.y]), moved: false };
+  }
+  ev.stopPropagation(); ev.preventDefault(); view.setPointerCapture(ev.pointerId);
+}
+function dSnapMove(dx, dy, alt) {
+  const k = dScale(), tol = 10 * k, moving = DDRAG.start.map(([s]) => s), b0 = dBox(moving), b = { x: b0.x + dx, y: b0.y + dy, w: b0.w, h: b0.h };
+  DGUIDES = []; if (alt) return [dx, dy];
+  const tx = [0, DW / 2, DW], ty = [0, DH / 2, DH];
+  dItems().filter(it => !it.hidden && !moving.includes(it)).forEach(it => { const o = dBox([it]); tx.push(o.x, o.x + o.w / 2, o.x + o.w); ty.push(o.y, o.y + o.h / 2, o.y + o.h) });
+  const best = (vals, tgts) => { let m = null; vals.forEach((v, i) => tgts.forEach(t => { const d = t - v; if (Math.abs(d) <= tol && (!m || Math.abs(d) < Math.abs(m.d))) m = { d, t, i } })); return m };
+  const sx = best([b.x, b.x + b.w / 2, b.x + b.w], tx), sy = best([b.y, b.y + b.h / 2, b.y + b.h], ty);
+  if (sx) { dx += sx.d; DGUIDES.push(['x', sx.t]) } if (sy) { dy += sy.d; DGUIDES.push(['y', sy.t]) }
+  return [dx, dy];
+}
+function dMove(ev) {
+  if (!isDesign()) return;
+  const [x, y] = dPt(ev);
+  if (!DDRAG) { const it = dHitAt(x, y), hn = dHandleAt(x, y); view.style.cursor = hn === 'rot' ? 'grab' : hn ? ({ nw: 'nwse-resize', se: 'nwse-resize', ne: 'nesw-resize', sw: 'nesw-resize', e: 'ew-resize', w: 'ew-resize', s: 'ns-resize' })[hn] : it ? (it.locked ? 'not-allowed' : 'move') : '';
+    const id = it ? it.id : null; if (id !== DHOVER) { DHOVER = id; render() } return }
+  const dx = x - DDRAG.x, dy = y - DDRAG.y;
+  if (DDRAG.mode === 'move') {
+    if (!DDRAG.moved && Math.hypot(dx, dy) < 4 * dScale()) return; DDRAG.moved = true;
+    const [mx, my] = dSnapMove(dx, dy, ev.altKey); DDRAG.start.forEach(([s, sx, sy]) => { s.x = Math.round(sx + mx); s.y = Math.round(sy + my) });
+  } else if (DDRAG.mode === 'rot') {
+    const it = DDRAG.it, { cx, cy } = dCorners(it); let a = Math.atan2(y - cy, x - cx) * 180 / Math.PI + 90; if (a > 180) a -= 360;
+    if (ev.shiftKey) a = Math.round(a / 15) * 15; else if (Math.abs(a) < 3) a = 0; it.rot = Math.round(a * 10) / 10;
+  } else {
+    const it = DDRAG.it, o = DDRAG.o, a = (o.rot || 0) * Math.PI / 180, lx = dx * Math.cos(a) + dy * Math.sin(a), ly = -dx * Math.sin(a) + dy * Math.cos(a), hn = DDRAG.hn;
+    let x0 = o.x, y0 = o.y, w = o.w, h = o.h;
+    if (it.t === 'photo') {   // corners keep the photo's shape; shift sizes freely
+      const sgx = hn.includes('e') ? 1 : -1, sgy = hn.includes('s') ? 1 : -1;
+      let nw = Math.max(80, o.w + sgx * lx), nh = Math.max(60, o.h + sgy * ly);
+      if (!ev.shiftKey) { const k = Math.max(nw / o.w, nh / o.h); nw = Math.max(80, o.w * k); nh = o.h * nw / o.w }
+      w = nw; h = nh; x0 = sgx > 0 ? o.x : o.x + o.w - w; y0 = sgy > 0 ? o.y : o.y + o.h - h;
+      Object.assign(it, { x: Math.round(x0), y: Math.round(y0), w: Math.round(w), h: Math.round(h) });
+    } else {
+      if (hn === 'e' || hn === 'se') w = Math.max(120, o.w + lx);
+      if (hn === 'w') { w = Math.max(120, o.w - lx); x0 = o.x + o.w - w }
+      if (hn === 's' || hn === 'se') h = Math.max(it.size * 1.2, o.h + ly);
+      Object.assign(it, { x: Math.round(x0), w: Math.round(w) }); if (hn === 's' || hn === 'se') it.h = Math.round(h);
+    }
+  }
+  render(); dLive();
+}
+function dUp(ev) {
+  if (!DDRAG) return; const was = DDRAG; DDRAG = null; DGUIDES = [];
+  try { view.releasePointerCapture(ev.pointerId) } catch (e) {}
+  DRAGGED = true; setTimeout(() => { DRAGGED = false }, 0);
+  if (was.mode !== 'move' || was.moved) build(); else render();
+}
+// typing straight on the picture: a box over the words, the same size as on the picture
+function dType(it) {
+  const t = $('#dtype'), k = view.clientWidth / DW;
+  t.hidden = false; t.value = it.text || ''; t.dataset.id = it.id;
+  Object.assign(t.style, { left: view.offsetLeft + it.x * k + 'px', top: view.offsetTop + it.y * k + 'px', width: it.w * k + 'px', minHeight: Math.max(40, (it._h || it.h || 60) * k) + 'px',
+    font: `${it.weight || 500} ${Math.max(9, it.size * k)}px ${it.font === 'sans' ? SANS : SERIF}`, lineHeight: (it.lh || 1.3), textAlign: it.align === 'justify' ? 'justify' : it.align || 'center', textIndent: (it.ind || 0) * k + 'px', textTransform: it.upper ? 'uppercase' : 'none' });
+  t.focus(); t.select();
+}
+function dLive() {   // the numbers on the Design tab follow a drag
+  const it = SEL.length === 1 && dSel()[0]; if (!it) return;
+  [['dp-x', it.x], ['dp-y', it.y], ['dp-w', it.w], ['dp-h', it.h || ''], ['dp-rot', it.rot || 0]].forEach(([id, v]) => { const el = document.getElementById(id); if (el && document.activeElement !== el) el.value = v; const o = document.getElementById(id + '-o'); if (o) o.textContent = v });
+}
+
+// ------------------------------------------------------------ tools: align, spread, order, turn, copy, bin, lock, layouts
+function dAlign(how) {
+  const list = dSel().filter(it => !it.locked); if (!list.length) return;
+  const ref = list.length > 1 ? dBox(list) : { x: 0, y: 0, w: DW, h: DH };
+  list.forEach(it => { const b = dBox([it]), ox = it.x - b.x, oy = it.y - b.y;
+    if (how === 'l') it.x = Math.round(ref.x + ox); if (how === 'c') it.x = Math.round(ref.x + (ref.w - b.w) / 2 + ox); if (how === 'r') it.x = Math.round(ref.x + ref.w - b.w + ox);
+    if (how === 't') it.y = Math.round(ref.y + oy); if (how === 'm') it.y = Math.round(ref.y + (ref.h - b.h) / 2 + oy); if (how === 'b') it.y = Math.round(ref.y + ref.h - b.h + oy) });
+  build();
+}
+function dSpread(ax) {
+  const list = dSel().filter(it => !it.locked); if (list.length < 3) return;
+  const bs = list.map(it => [it, dBox([it])]).sort((a, b) => ax === 'x' ? a[1].x - b[1].x : a[1].y - b[1].y);
+  const first = bs[0][1], last = bs[bs.length - 1][1], tot = bs.reduce((s, [, b]) => s + (ax === 'x' ? b.w : b.h), 0);
+  const gap = ((ax === 'x' ? last.x + last.w - first.x : last.y + last.h - first.y) - tot) / (bs.length - 1); let at = ax === 'x' ? first.x : first.y;
+  bs.forEach(([it, b]) => { if (ax === 'x') { it.x = Math.round(it.x + at - b.x); at += b.w + gap } else { it.y = Math.round(it.y + at - b.y); at += b.h + gap } });
+  build();
+}
+function dSameSize() { const list = dSel().filter(it => it.t === 'photo' && !it.locked); if (list.length < 2) return; const f = list[0]; list.slice(1).forEach(it => { it.w = f.w; it.h = f.h }); build() }
+function dOrder(step) {   // +1 forward, -1 back, +99 to the front, -99 to the back
+  const items = dItems(), sel = items.filter(it => SEL.includes(it.id)); if (!sel.length) return;
+  if (Math.abs(step) > 1) { const rest = items.filter(it => !SEL.includes(it.id)); S.special.design.items = step > 0 ? [...rest, ...sel] : [...sel, ...rest] }
+  else { const idx = sel.map(it => items.indexOf(it)).sort((a, b) => step > 0 ? b - a : a - b); idx.forEach(i => { const j = i + step; if (j < 0 || j >= items.length || SEL.includes(items[j].id)) return; [items[i], items[j]] = [items[j], items[i]] }) }
+  build();
+}
+function dTurn(d) { dSel().filter(it => !it.locked).forEach(it => { let a = (it.rot || 0) + d; if (a > 180) a -= 360; if (a < -180) a += 360; it.rot = Math.round(a * 10) / 10 }); build() }
+function dCopy() { const items = dItems(), add = dSel().map(it => Object.assign(JSON.parse(JSON.stringify(it)), { id: dNewId(), x: it.x + 40, y: it.y + 40, locked: false })); items.push(...add); SEL = add.map(it => it.id); build() }
+function dBin() { const keep = dItems().filter(it => !SEL.includes(it.id) || it.locked); S.special.design.items = keep; SEL = SEL.filter(id => dItem(id)); build() }
+function dLock() { const all = dSel().every(it => it.locked); dSel().forEach(it => { it.locked = !all }); build() }
+function dAddText(story) {
+  const it = { id: dNewId(), t: 'text', role: story ? 'story' : 'text', name: story ? 'Story box' : 'Text box', text: story ? 'Type the story here' : 'Type here', x: 1400, y: 560, w: 900, h: 0, size: story ? 30 : 44, font: 'serif', weight: story ? 500 : 700, color: story ? 'ivory' : 'gold', lh: story ? 1.38 : 1.18, pg: .55, ind: 0, align: 'center' };
+  dItems().push(it); SEL = [it.id]; build(); return it;
+}
+function dAddStory(head, words, src) {   // a story of that day: its heading and its words, together, chosen together so they move as one
+  const n = dItems().filter(it => it.role === 'heading' || it.role === 'story').length, y = 300 + (n % 4) * 120, x = 1380;
+  const a = { id: dNewId(), t: 'text', role: 'heading', name: 'Heading: ' + String(head).slice(0, 30), text: head, x, y, w: 1300, h: 0, size: 40, font: 'serif', weight: 700, color: 'gold', lh: 1.18, pg: .55, ind: 0, align: 'left', from: src || '' };
+  const b = { id: dNewId(), t: 'text', role: 'story', name: 'Words: ' + String(head).slice(0, 30), text: words || '', x, y: y + 64, w: 1300, h: 0, size: 26, font: 'serif', weight: 500, color: 'ivory', lh: 1.38, pg: .55, ind: 0, align: 'left', from: src || '' };
+  dItems().push(a); if (words) dItems().push(b); SEL = words ? [a.id, b.id] : [a.id]; build();
+}
+function dAddPhoto(ph, at) {   // ph: {g, pick} of the pack, or {src, year, place, caption, date} of the archive
+  const w = 420, h = Math.round((w - 24) * .74 + 24 + (w - 24) * .1), x = at ? at[0] - w / 2 : 1400 + (dItems().length % 5) * 40, y = at ? at[1] - h / 2 : 600 + (dItems().length % 5) * 30;
+  const g = ph.g ? groupsOf(P.special).find(x2 => x2.key === ph.g) : null, c = g ? g.cands[ph.pick] : null;
+  const it = Object.assign({ id: dNewId(), t: 'photo', name: `${ph.year || (g && g.year) || ''} ${ph.place || (c && c.place) || ''}`.trim() || 'Photo', x: Math.round(x), y: Math.round(y), w, h, rot: 0, frame: true, label: true,
+    year: String(ph.year || (g && g.year) || ''), place: ph.place || (c && c.place) || '', zoom: 1, fx: .5, fy: .3, br: 100, ct: 100, sat: 100 }, ph.g ? { g: ph.g, pick: ph.pick } : { src: ph.src, date: ph.date, caption: ph.caption || '' });
+  if (c) photoOf(P.special, c, true).then(render);
+  dItems().push(it); SEL = [it.id]; build();
+}
+// ready made layouts: the photos and the main words placed afresh; anything can be moved after
+const LAYOUTS = [['classic', 'One big and small ones'], ['two', 'Two big side by side'], ['grid', 'A grid of 12'], ['line', 'A timeline across the years']];
+function dLayoutApply(kind) {
+  const items = dItems().filter(it => !it.hidden), ph = items.filter(it => it.t === 'photo'), words = items.filter(it => it.t === 'text' && !['title', 'subtitle', 'footer'].includes(it.role));
+  const hl = words.find(it => it.role === 'headline' || it.role === 'heading'), st = words.filter(it => it !== hl);
+  const cardH = w => Math.round((w - 24) * .74 + 24 + (w - 24) * .1);
+  const grid = (list, x, y, w, h, cols) => { const rows = Math.ceil(list.length / cols) || 1, cw = Math.min((w - 30 * (cols - 1)) / cols, ((h - 30 * (rows - 1)) / rows - 24) / (.84) + 24), ch = cardH(cw);
+    const gw = cols * cw + (cols - 1) * 30, x1 = x + (w - gw) / 2; list.forEach((it, i) => Object.assign(it, { x: Math.round(x1 + (i % cols) * (cw + 30)), y: Math.round(y + Math.floor(i / cols) * (ch + 30)), w: Math.round(cw), h: ch, rot: 0 })); return y + rows * (ch + 30) };
+  const text = (x, y, w) => { let at = y; [hl, ...st].filter(Boolean).forEach(it => { Object.assign(it, { x, y: Math.round(at), w, rot: 0 }); const c = document.createElement('canvas').getContext('2d'); at += (it.h || dLayout(c, it).height) + 24 }); return at };
+  if (kind === 'classic') { const [b, ...sm] = ph; if (b) Object.assign(b, { x: 70, y: 180, w: 1204, h: 942, rot: 0 }); const end = text(1360, 190, 1346); grid(sm.slice(0, 19), 1330, Math.max(end + 10, DH - Math.ceil(sm.length / Math.min(4, Math.max(1, sm.length))) * 330 - 50), 1406, DH - 60 - Math.max(end + 10, 560), Math.min(sm.length <= 4 ? sm.length : sm.length <= 10 ? Math.ceil(sm.length / 2) : Math.ceil(sm.length / 3), 7) || 1) }
+  if (kind === 'two') { const [a, b, ...sm] = ph; [a, b].filter(Boolean).forEach((it, i) => Object.assign(it, { x: 60 + i * 900, y: 220, w: 870, h: cardH(870), rot: 0 })); const end = text(1880, 190, 846); if (sm.length) grid(sm, 1860, end + 10, 876, DH - 60 - end - 10, Math.min(3, sm.length)) }
+  if (kind === 'grid') { const list = ph.slice(0, 12); grid(list, 60, 170, 1700, 1080, 4); text(1820, 200, 900); ph.slice(12).forEach(it => it.hidden = true) }
+  if (kind === 'line') { const list = [...ph].sort((a, b) => String(a.year).localeCompare(String(b.year))), n = Math.max(1, list.length), w = Math.min(460, (DW - 120 - 30 * (n - 1)) / n), ch = cardH(w);
+    text(250, 170, DW - 500); list.forEach((it, i) => Object.assign(it, { x: Math.round(60 + (DW - 120 - (n * w + (n - 1) * 30)) / 2 + i * (w + 30)), y: Math.round(DH - 70 - ch), w: Math.round(w), h: ch, rot: 0 })) }
+  build();
+}
+function dDayFix() {   // every photo not from this day swapped for an unused one that is, or taken off when there is none
+  const pack = P.special, used = new Set(dItems().filter(it => it.t === 'photo').map(it => (dPhotoInfo(it).src || it.g + ':' + it.pick)));
+  dItems().filter(dOffDay).forEach(it => {
+    const g = it.g ? groupsOf(pack).find(x => x.key === it.g) : null, gs = g ? [g, ...groupsOf(pack).filter(x => x !== g)] : groupsOf(pack);
+    for (const gg of gs) { const i = gg.cands.findIndex(c => dayOk(pack, gg, c) && !used.has(c.src || gg.key + ':' + gg.cands.indexOf(c))); if (i >= 0) { Object.assign(it, { g: gg.key, pick: i, place: gg.cands[i].place || it.place }); delete it.src; delete it.date; used.add(gg.cands[i].src || gg.key + ':' + i); photoOf(pack, gg.cands[i], true).then(render); return } }
+    it.hidden = true;
+  });
+  build();
+}
+function dKey(e) {
+  if (!isDesign() || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) || document.querySelector('dialog[open]')) return;
+  const mod = e.metaKey || e.ctrlKey, k = e.key.toLowerCase();
+  if (mod && k === 'z') { e.preventDefault(); dUndo(!e.shiftKey); return }
+  if (mod && k === 'y') { e.preventDefault(); dUndo(false); return }
+  if (mod && k === 'a') { e.preventDefault(); SEL = dItems().filter(it => !it.hidden).map(it => it.id); build(); return }
+  if (!SEL.length) return;
+  if (mod && k === 'd') { e.preventDefault(); dCopy(); return }
+  if (k === 'delete' || k === 'backspace') { e.preventDefault(); dBin(); return }
+  if (k === 'escape') { SEL = []; build(); return }
+  if (k === ']') { dOrder(e.shiftKey ? 99 : 1); return } if (k === '[') { dOrder(e.shiftKey ? -99 : -1); return }
+  const mv = { arrowleft: [-1, 0], arrowright: [1, 0], arrowup: [0, -1], arrowdown: [0, 1] }[k];
+  if (mv) { e.preventDefault(); e.stopPropagation(); const s = e.shiftKey ? 20 : 2; dSel().filter(it => !it.locked).forEach(it => { it.x += mv[0] * s; it.y += mv[1] * s }); render(); dLive(); dHist() }
+}
+
+// ------------------------------------------------------------ the toolbar over the picture (icons, each with its words on hover)
+const IC = {
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>', redo: '<path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/>',
+  text: '<path d="M5 6V4h14v2"/><path d="M12 4v16"/><path d="M9 20h6"/>', story: '<path d="M4 6h16M4 10h16M4 14h16M4 18h10"/>',
+  al: '<path d="M4 3v18"/><rect x="7" y="6" width="12" height="4"/><rect x="7" y="14" width="7" height="4"/>', ac: '<path d="M12 3v18"/><rect x="5" y="6" width="14" height="4"/><rect x="8" y="14" width="8" height="4"/>', ar: '<path d="M20 3v18"/><rect x="5" y="6" width="12" height="4"/><rect x="10" y="14" width="7" height="4"/>',
+  at: '<path d="M3 4h18"/><rect x="6" y="7" width="4" height="12"/><rect x="14" y="7" width="4" height="7"/>', am: '<path d="M3 12h18"/><rect x="6" y="5" width="4" height="14"/><rect x="14" y="8" width="4" height="8"/>', ab: '<path d="M3 20h18"/><rect x="6" y="5" width="4" height="12"/><rect x="14" y="10" width="4" height="7"/>',
+  dx: '<path d="M3 4v16M21 4v16"/><rect x="9" y="8" width="6" height="8"/>', dy: '<path d="M4 3h16M4 21h16"/><rect x="8" y="9" width="8" height="6"/>', same: '<rect x="3" y="7" width="8" height="10"/><rect x="13" y="7" width="8" height="10"/>',
+  fwd: '<rect x="8" y="8" width="12" height="12" fill="currentColor"/><path d="M4 16V4h12"/>', back: '<rect x="4" y="4" width="12" height="12"/><path d="M8 20h12V8" /><rect x="10" y="10" width="10" height="10" fill="currentColor" opacity=".35"/>',
+  tl: '<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v6h6"/>', tr: '<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/>', bin: '<path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/>',
+  lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>', eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  up: '<path d="m6 15 6-6 6 6"/>', down: '<path d="m6 9 6 6 6-6"/>', photo: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 17-5-5-9 7"/>', t: '<path d="M5 6V4h14v2"/><path d="M12 4v16"/>',
+  jl: '<path d="M4 6h16M4 10h10M4 14h16M4 18h10"/>', jc: '<path d="M4 6h16M7 10h10M4 14h16M7 18h10"/>', jr: '<path d="M4 6h16M10 10h10M4 14h16M10 18h10"/>', jj: '<path d="M4 6h16M4 10h16M4 14h16M4 18h16"/>',
+};
+const icon = (n, s = 18) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
+function dTools() {
+  const bar = $('#dbar'); if (!bar) return;
+  bar.hidden = !isDesign(); if (bar.hidden) return;
+  const n = SEL.length, b = (id, ic, tip, dis) => `<button type="button" class="ib" id="${id}" title="${tip}" aria-label="${tip}" ${dis ? 'disabled' : ''}>${icon(ic)}</button>`;
+  bar.innerHTML = `<div class="grp">${b('db-undo', 'undo', 'Undo (Ctrl Z)', !DH_.past.length)}${b('db-redo', 'redo', 'Redo (Ctrl Shift Z)', !DH_.future.length)}</div>
+    <div class="grp">${b('db-text', 'text', 'Add a text box')}${b('db-story', 'story', 'Add a story box')}</div>
+    <div class="grp">${b('db-al', 'al', 'Line up on the left', !n)}${b('db-ac', 'ac', 'Line up on the middle', !n)}${b('db-ar', 'ar', 'Line up on the right', !n)}${b('db-at', 'at', 'Line up at the top', !n)}${b('db-am', 'am', 'Line up across the middle', !n)}${b('db-ab', 'ab', 'Line up at the bottom', !n)}</div>
+    <div class="grp">${b('db-dx', 'dx', 'Spread evenly across (3 or more)', n < 3)}${b('db-dy', 'dy', 'Spread evenly down (3 or more)', n < 3)}${b('db-same', 'same', 'Same size as the first chosen photo', n < 2)}</div>
+    <div class="grp">${b('db-fwd', 'fwd', 'Bring forward (shift: to the front)', !n)}${b('db-back', 'back', 'Send back (shift: to the back)', !n)}${b('db-tl', 'tl', 'Turn left 5° (shift: 90°)', !n)}${b('db-tr', 'tr', 'Turn right 5° (shift: 90°)', !n)}</div>
+    <div class="grp">${b('db-copy', 'copy', 'Copy (Ctrl D)', !n)}${b('db-lock', 'lock', 'Lock or unlock', !n)}${b('db-bin', 'bin', 'Take off the picture (Delete)', !n)}</div>
+    <div class="grp"><select id="db-lay" aria-label="Ready made layouts"><option value="">Layouts…</option>${LAYOUTS.map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select></div>
+    <span class="hint" style="flex:1 1 180px">${n ? `${n} chosen. Drag to move, corners to size, the round handle to turn. Shift-click to choose more.` : 'Click anything on the picture. Shift-click for several. Double click words to type.'}</span>`;
+  const on = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', fn) };
+  on('db-undo', () => dUndo(true)); on('db-redo', () => dUndo(false)); on('db-text', () => dAddText(false)); on('db-story', () => dAddText(true));
+  ['l', 'c', 'r', 't', 'm', 'b'].forEach(h => on('db-a' + h, () => dAlign(h))); on('db-dx', () => dSpread('x')); on('db-dy', () => dSpread('y')); on('db-same', dSameSize);
+  on('db-fwd', e => dOrder(e.shiftKey ? 99 : 1)); on('db-back', e => dOrder(e.shiftKey ? -99 : -1)); on('db-tl', e => dTurn(e.shiftKey ? -90 : -5)); on('db-tr', e => dTurn(e.shiftKey ? 90 : 5));
+  on('db-copy', dCopy); on('db-lock', dLock); on('db-bin', dBin);
+  const lay = $('#db-lay'); if (lay) lay.addEventListener('change', () => { if (lay.value) dLayoutApply(lay.value) });
+}
+
+// ------------------------------------------------------------ the Design tab: the chosen item's own controls, then the layers
+function paneDesign() {
+  const items = dItems(), sel = dSel(), one = sel.length === 1 ? sel[0] : null;
+  const num = (id, label, v, min, max, step, unit = '') => `<div class="row"><label for="${id}">${label}<output id="${id}-o">${v}${unit}</output></label><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${v}"></div>`;
+  let props = '';
+  if (!sel.length) props = `<div class="group"><h3>Design</h3><p class="hint">Click anything on the picture to change it: a photo, the headline, the story, the title. Shift-click to choose several and move them together. Add photos and stories from the library on the left; only ${esc(longDate(S.special.date).replace(/ \d{4}$/, ''))} shows there.</p></div>`;
+  else if (!one) props = `<div class="group"><h3>${sel.length} chosen</h3><p class="hint">Drag any of them on the picture to move them together. The toolbar over the picture lines them up, spreads them evenly, makes photos the same size, turns them or takes them off.</p>
+    ${sel.every(it => it.t === 'photo') ? num('dp-br', 'Brightness', sel[0].br ?? 100, 50, 150, 1, '%') + num('dp-ct', 'Contrast', sel[0].ct ?? 100, 50, 150, 1, '%') + num('dp-sat', 'Colour', sel[0].sat ?? 100, 0, 200, 1, '%') : ''}</div>`;
+  else if (one.t === 'text') {
+    const seg2 = (id, v, opts) => `<div class="seg ic" id="${id}">${opts.map(([k, l, ic]) => `<button type="button" data-v="${k}" aria-pressed="${k === v}" title="${l}">${ic ? icon(ic, 16) : l}</button>`).join('')}</div>`;
+    props = `<div class="group"><h3>${esc(one.name || 'Text')}</h3>
+      <textarea id="dp-text" rows="${one.role === 'story' ? 8 : 3}" aria-label="The words">${esc(one.text || '')}</textarea>
+      <p class="hint">A blank line starts a new paragraph. Double click the words on the picture to type there.</p>
+      <div class="row"><label>Font</label>${seg2('dp-font', one.font || 'serif', [['serif', 'Serif'], ['sans', 'Sans']])}</div>
+      <div class="row"><label>Style</label>${seg2('dp-weight', String(one.weight || 500), [['500', 'Regular'], ['700', 'Bold']])}</div>
+      <div class="row"><label>Colour</label><div class="seg sw2" id="dp-color">${Object.entries(D_COLORS).map(([k, l]) => `<button type="button" data-v="${k}" aria-pressed="${k === (one.color || 'ivory')}" title="${l}"><i class="c-${k}"></i></button>`).join('')}</div></div>
+      <div class="row"><label>Alignment</label>${seg2('dp-align', one.align || 'center', [['left', 'Left', 'jl'], ['center', 'Centre', 'jc'], ['right', 'Right', 'jr'], ['justify', 'Justify', 'jj']])}</div>
+      ${num('dp-size', 'Font size', one.size, 12, 140, 1, 'px')}
+      ${num('dp-lh', 'Line spacing', one.lh || 1.3, .9, 2.4, .02)}
+      ${num('dp-pg', 'Gap between paragraphs', one.pg ?? .55, 0, 2, .05)}
+      ${num('dp-ind', 'First line indent', one.ind || 0, 0, 200, 2, 'px')}
+      ${num('dp-track', 'Letter spacing', one.track || 0, 0, 20, .5)}
+      ${check('dp-upper', 'CAPITALS', !!one.upper)}
+      <h3 style="margin-top:12px">The box</h3>
+      ${num('dp-w', 'Width', Math.round(one.w), 120, DW, 2)}
+      <div class="row"><label for="dp-h">Height<output id="dp-h-o">${one.h ? Math.round(one.h) : 'grows with the words'}</output></label><input type="range" id="dp-h" min="0" max="${DH}" step="2" value="${Math.round(one.h || 0)}"></div>
+      ${one.over ? `<p class="hint warn"><b>${one.over} more line${one.over > 1 ? 's' : ''} than the box holds.</b> Nothing is cut off; the words run past the box.</p>` : ''}
+      <div class="seg"><button class="btn small" id="dp-hauto">Box grows with the words</button><button class="btn small" id="dp-fit">Words fit the box</button></div>
+      ${num('dp-x', 'Left edge', Math.round(one.x), -400, DW, 1)}${num('dp-y', 'Top edge', Math.round(one.y), -200, DH, 1)}${num('dp-rot', 'Turn', one.rot || 0, -180, 180, .5, '°')}</div>`;
+  } else {
+    const g = one.g ? groupsOf(P.special).find(x => x.key === one.g) : null, pi = dPhotoInfo(one), off = dOffDay(one);
+    const swaps = g ? g.cands.map((c, i) => dayOk(P.special, g, c) || i === one.pick ? `<button data-dsw="${i}" aria-pressed="${i === one.pick}" title="${esc(c.caption || '')}">${thumb(P.special, g, i)}</button>` : '').join('') : '';
+    props = `<div class="group"><h3>${esc(one.name || 'Photo')}</h3>
+      ${off ? `<p class="hint warn"><b>This photo is not from this day.</b> ${esc([pi.place, pi.date ? longDate(pi.date) : ''].filter(Boolean).join(', '))}. <button class="btn small" id="dp-dayfix">Swap every one for photos from this day</button></p>` : ''}
+      <p class="hint">${esc([pi.place, pi.date ? longDate(pi.date) : '', pi.caption].filter(Boolean).join(' · '))}</p>
+      ${swaps ? `<details ${g.cands.length < 30 ? 'open' : ''}><summary>Swap the photo</summary><div class="thumbs" id="dp-swaps">${swaps}</div></details>` : ''}
+      <h3 style="margin-top:12px">The photo</h3>
+      ${num('dp-zoom', 'Zoom', one.zoom || 1, 1, 4, .05, '×')}
+      ${num('dp-fx', 'Photo left or right', Math.round((one.fx ?? .5) * 100), 0, 100, 1)}
+      ${num('dp-fy', 'Photo up or down', Math.round((one.fy ?? .3) * 100), 0, 100, 1)}
+      ${num('dp-br', 'Brightness', one.br ?? 100, 50, 150, 1, '%')}
+      ${num('dp-ct', 'Contrast', one.ct ?? 100, 50, 150, 1, '%')}
+      ${num('dp-sat', 'Colour', one.sat ?? 100, 0, 200, 1, '%')}
+      <div class="seg"><button class="btn small" id="dp-look0">Photo back to normal</button></div>
+      <h3 style="margin-top:12px">The card</h3>
+      ${check('dp-frame', 'Ivory card around the photo', one.frame !== false)}
+      ${check('dp-label', 'Year and place on the card', one.label !== false)}
+      ${check('dp-peg', 'Peg on top (when pegs are on in Look)', one.peg !== false)}
+      <div class="row"><label for="dp-year">Year</label><input type="text" id="dp-year" value="${esc(one.year || '')}"></div>
+      <div class="row"><label for="dp-place">Place</label><input type="text" id="dp-place" value="${esc(one.place || '')}"></div>
+      ${num('dp-w', 'Width', Math.round(one.w), 80, DW, 2)}${num('dp-h', 'Height', Math.round(one.h), 60, DH, 2)}
+      ${num('dp-x', 'Left edge', Math.round(one.x), -400, DW, 1)}${num('dp-y', 'Top edge', Math.round(one.y), -200, DH, 1)}${num('dp-rot', 'Turn', one.rot || 0, -180, 180, .5, '°')}</div>`;
+  }
+  const offs = items.filter(dOffDay);
+  const layers = [...items].reverse().map(it => `<li draggable="true" data-lid="${it.id}" class="${SEL.includes(it.id) ? 'sel' : ''} ${it.hidden ? 'hid' : ''}">${icon(it.t === 'photo' ? 'photo' : 't', 15)}<span>${esc(it.name || it.role || it.t)}${dOffDay(it) ? ' <b class="warn">not this day</b>' : ''}${it.over ? ' <b class="warn">needs room</b>' : ''}</span>
+    <button type="button" class="ib sm" data-leye="${it.id}" aria-pressed="${!it.hidden}" title="${it.hidden ? 'Show' : 'Hide'}">${icon('eye', 15)}</button><button type="button" class="ib sm" data-llock="${it.id}" aria-pressed="${!!it.locked}" title="${it.locked ? 'Unlock' : 'Lock'}">${icon('lock', 15)}</button></li>`).join('');
+  return `${offs.length ? `<div class="group"><h3>Not from this day</h3><p class="hint warn">${offs.length} photo${offs.length > 1 ? 's are' : ' is'} from another day or place, marked in orange on the picture.</p><div class="seg"><button class="btn small primary" id="dp-dayfix2">Swap ${offs.length > 1 ? 'them' : 'it'} for photos from this day</button></div></div>` : ''}
+    ${props}
+    <div class="group"><h3>Layers</h3><p class="hint">Top of the list sits on top. Drag to change the order; the eye hides, the lock stops moving.</p><ol class="layers" id="dlayers">${layers}</ol></div>
+    <div class="group"><h3>Ready made layouts</h3><div class="lays">${LAYOUTS.map(([k, l]) => `<button type="button" data-dlay="${k}">${layIcon(k)}<span>${l}</span></button>`).join('')}</div>
+      <p class="hint">Places the photos and words afresh. Undo puts it back.</p>
+      <div class="seg"><button class="btn small" id="dp-restart">Start again from the builder’s picture</button></div></div>`;
+}
+const layIcon = k => `<svg viewBox="0 0 60 28" width="60" height="28" aria-hidden="true"><rect x=".5" y=".5" width="59" height="27" rx="2" fill="none" stroke="currentColor" opacity=".5"/>${{
+  classic: '<rect x="3" y="5" width="24" height="19" fill="currentColor" opacity=".7"/><path d="M31 6h25M31 9h25M31 12h18" stroke="currentColor"/><rect x="31" y="16" width="5" height="7" fill="currentColor" opacity=".5"/><rect x="38" y="16" width="5" height="7" fill="currentColor" opacity=".5"/><rect x="45" y="16" width="5" height="7" fill="currentColor" opacity=".5"/><rect x="52" y="16" width="5" height="7" fill="currentColor" opacity=".5"/>',
+  two: '<rect x="3" y="6" width="19" height="16" fill="currentColor" opacity=".7"/><rect x="24" y="6" width="19" height="16" fill="currentColor" opacity=".7"/><path d="M46 8h11M46 11h11M46 14h8" stroke="currentColor"/>',
+  grid: [0, 1, 2, 3].flatMap(c => [0, 1, 2].map(r => `<rect x="${3 + c * 9}" y="${3 + r * 7.5}" width="8" height="6.5" fill="currentColor" opacity=".6"/>`)).join('') + '<path d="M41 8h16M41 11h16M41 14h12" stroke="currentColor"/>',
+  line: '<path d="M10 5h40M14 9h32" stroke="currentColor"/>' + [0, 1, 2, 3, 4, 5].map(i => `<rect x="${3 + i * 9.2}" y="15" width="8" height="10" fill="currentColor" opacity=".6"/>`).join(''),
+}[k]}</svg>`;
+function wireDesign() {
+  const on = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn) };
+  const sel = dSel(), one = sel.length === 1 ? sel[0] : null, set = (f, v, rebuild) => { sel.forEach(it => { it[f] = v }); rebuild ? build() : render(); dHist() };
+  const rng = (id, f, k = 1) => on(id, 'input', e => { const v = +e.target.value / k; set(f, v); const o = document.getElementById(id + '-o'); if (o) o.textContent = e.target.value + (o.textContent.match(/[a-z%°×]+$/i) || [''])[0] });
+  if (one && one.t === 'text') {
+    on('dp-text', 'input', e => { one.text = e.target.value; render(); dHist() });
+    [['dp-font', 'font'], ['dp-weight', 'weight', true], ['dp-color', 'color'], ['dp-align', 'align']].forEach(([id, f, n]) => document.querySelectorAll(`#${id} button`).forEach(b => b.addEventListener('click', () => set(f, n ? +b.dataset.v : b.dataset.v, true))));
+    rng('dp-size', 'size'); rng('dp-lh', 'lh'); rng('dp-pg', 'pg'); rng('dp-ind', 'ind'); rng('dp-track', 'track'); on('dp-upper', 'input', e => set('upper', e.target.checked));
+    on('dp-h', 'input', e => { one.h = +e.target.value || 0; $('#dp-h-o').textContent = one.h || 'grows with the words'; render(); dHist() });
+    on('dp-hauto', 'click', () => { one.h = 0; build() });
+    on('dp-fit', 'click', () => { const c = document.createElement('canvas').getContext('2d'), box = one.h || one._h; if (!box) return; while (one.size > 12 && dLayout(c, one).height > box) one.size -= 1; while (dLayout(c, Object.assign({}, one, { size: one.size + 1 })).height <= box && one.size < 140) one.size += 1; build() });
+  }
+  if (one && one.t === 'photo') {
+    document.querySelectorAll('[data-dsw]').forEach(b => b.addEventListener('click', () => { one.pick = +b.dataset.dsw; const g = groupsOf(P.special).find(x => x.key === one.g), c = g && g.cands[one.pick]; if (c) { one.place = c.place || one.place; photoOf(P.special, c, true).then(render) } build() }));
+    rng('dp-zoom', 'zoom'); rng('dp-fx', 'fx', 100); rng('dp-fy', 'fy', 100);
+    on('dp-look0', 'click', () => { Object.assign(one, { br: 100, ct: 100, sat: 100, zoom: 1, fx: .5, fy: .3 }); build() });
+    on('dp-frame', 'input', e => set('frame', e.target.checked, true)); on('dp-label', 'input', e => set('label', e.target.checked)); on('dp-peg', 'input', e => set('peg', e.target.checked));
+    on('dp-year', 'input', e => set('year', e.target.value)); on('dp-place', 'input', e => set('place', e.target.value));
+    rng('dp-h', 'h');
+  }
+  rng('dp-br', 'br'); rng('dp-ct', 'ct'); rng('dp-sat', 'sat');
+  if (one) { rng('dp-w', 'w'); rng('dp-x', 'x'); rng('dp-y', 'y'); rng('dp-rot', 'rot') }
+  on('dp-dayfix', 'click', dDayFix); on('dp-dayfix2', 'click', dDayFix);
+  on('dp-restart', 'click', () => { S.special.design = null; SEL = []; build() });
+  document.querySelectorAll('[data-dlay]').forEach(b => b.addEventListener('click', () => dLayoutApply(b.dataset.dlay)));
+  document.querySelectorAll('#dlayers li').forEach(li => {
+    li.addEventListener('click', e => { if (e.target.closest('button')) return; const id = li.dataset.lid; SEL = e.shiftKey ? (SEL.includes(id) ? SEL.filter(i => i !== id) : [...SEL, id]) : [id]; build() });
+    li.addEventListener('dragstart', e => { e.dataTransfer.setData('text/x-layer', li.dataset.lid); e.dataTransfer.effectAllowed = 'move' });
+    li.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('text/x-layer')) { e.preventDefault(); li.classList.add('over') } });
+    li.addEventListener('dragleave', () => li.classList.remove('over'));
+    li.addEventListener('drop', e => { e.preventDefault(); const from = e.dataTransfer.getData('text/x-layer'), items = dItems(), a = items.findIndex(it => it.id === from), b = items.findIndex(it => it.id === li.dataset.lid); if (a < 0 || b < 0 || a === b) return; const [m] = items.splice(a, 1); items.splice(b, 0, m); build() });
+  });
+  document.querySelectorAll('[data-leye]').forEach(b => b.addEventListener('click', () => { const it = dItem(b.dataset.leye); it.hidden = !it.hidden; if (it.hidden) SEL = SEL.filter(i => i !== it.id); build() }));
+  document.querySelectorAll('[data-llock]').forEach(b => b.addEventListener('click', () => { const it = dItem(b.dataset.llock); it.locked = !it.locked; build() }));
+}
+
+// ------------------------------------------------------------ the library on the left: only that exact day, every year
+let LIBTAB = 'photos';
+function dLibrary() {
+  const lib = $('#dlib'); if (!lib) return;
+  const on = isDesign(); document.querySelector('.work').classList.toggle('design', on); lib.hidden = !on; if (!on) return;
+  const date = S.special.date, mmdd = date.slice(5), pack = P.special, dd = DAYD[mmdd] === undefined ? (dayData(mmdd), null) : DAYD[mmdd];
+  if (!HISTORY) loadArticles().then(() => isDesign() && dLibrary());
+  const day = longDate(date).replace(/ \d{4}$/, '');
+  let body = '';
+  if (LIBTAB === 'photos') {
+    const byY = {};
+    groupsOf(pack).forEach(g => g.cands.forEach((c, i) => { if (!dayOk(pack, g, c)) return; const y = g.year || String(pack.story_date || '').slice(0, 4); const k = (c.src || '') + (c.f || '') + ':' + (c.at ? c.at[0] : i); (byY[y] = byY[y] || { seen: new Set(), list: [] }); if (byY[y].seen.has(k)) return; byY[y].seen.add(k); byY[y].list.push({ html: thumb(pack, g, i), d: { g: g.key, pick: i }, tip: c.caption || '', place: c.place || '' }) }));
+    (dd ? dd.years : []).forEach(Y => { const y = String(Y.y); (byY[y] = byY[y] || { seen: new Set(), list: [] }); Y.p.forEach(p => { const src = photoAddr(p); if (byY[y].seen.has(src)) return; byY[y].seen.add(src); byY[y].list.push({ html: `<img src="${esc(src)}" alt="" loading="lazy">`, d: { src, year: Y.y, place: Y.place || '', caption: p[2] || '', date: `${Y.y}-${mmdd}` }, tip: p[2] || '', place: Y.place || '' }) }) });
+    const ys = Object.keys(byY).sort((a, b) => b - a);
+    body = ys.length ? ys.map(y => `<details ${String(pack.story_date || '').startsWith(y) ? 'open' : ''}><summary>${esc(y)} <span class="hint">${byY[y].list.length} photo${byY[y].list.length > 1 ? 's' : ''}${byY[y].list[0] && byY[y].list[0].place ? ', ' + esc(byY[y].list[0].place) : ''}</span></summary>
+      <div class="libgrid">${byY[y].list.map(p => `<button type="button" draggable="true" data-lib="${esc(JSON.stringify(p.d))}" title="${esc(p.tip)}">${p.html}</button>`).join('')}</div></details>`).join('') : `<p class="hint">${dd === null ? 'Loading the photos of ' + esc(day) + '…' : 'No photos of ' + esc(day) + ' yet.'}</p>`;
+  } else {
+    const items = [];
+    uniqStories((HISTORY || []).filter(h => h.d.slice(5) === mmdd).map(h => ({ h }))).forEach(({ h }) => items.push({ y: +h.d.slice(0, 4), t: h.l, s: h.s || '', p: h.p || '', src: h.u || '' }));
+    (ARTICLES || []).filter(a => a.d && a.d.slice(5) === mmdd).forEach(a => items.push({ y: a.y, t: a.t, s: a.s || '', p: a.p || '', src: a.u || '' }));
+    if (pack.headline) items.push({ y: +String(pack.story_date || date).slice(0, 4), t: pack.headline, s: pack.story || '', p: pack.story_place || '', src: 'pack', own: true });
+    items.sort((a, b) => b.y - a.y || (b.own ? 1 : 0) - (a.own ? 1 : 0));
+    body = items.length ? items.map((it, i) => `<div class="libst"><p><b>${esc(it.t)}</b><br><span class="hint">${esc([it.y, it.p].filter(Boolean).join(' · '))}${it.own ? ' · this picture’s story' : ''}</span></p>${it.s ? `<p class="hint">${esc(it.s.slice(0, 220))}${it.s.length > 220 ? '…' : ''}</p>` : ''}
+      <div class="seg"><button type="button" class="btn small" data-libst="${i}">Add as a story box</button><button type="button" class="btn small" data-libmain="${i}">Use as the main story</button></div></div>`).join('')
+      : `<p class="hint">${HISTORY ? 'No stories of ' + esc(day) + ' yet.' : 'Loading the stories…'}</p>`;
+    lib._items = items;
+  }
+  lib.innerHTML = `<h3>${esc(day)} only</h3><p class="hint">Every year, nothing from other days. Drag onto the picture, or click to add.</p>
+    <div class="seg ic" id="libtabs"><button type="button" data-v="photos" aria-pressed="${LIBTAB === 'photos'}">Photos</button><button type="button" data-v="stories" aria-pressed="${LIBTAB === 'stories'}">Stories and posts</button></div>
+    <div class="libbody">${body}</div>`;
+  lib.querySelectorAll('#libtabs button').forEach(b => b.addEventListener('click', () => { LIBTAB = b.dataset.v; dLibrary() }));
+  lib.querySelectorAll('[data-lib]').forEach(b => { b.addEventListener('click', () => dAddPhoto(JSON.parse(b.dataset.lib))); b.addEventListener('dragstart', e => { e.dataTransfer.setData('text/x-photo', b.dataset.lib); e.dataTransfer.effectAllowed = 'copy' }) });
+  lib.querySelectorAll('[data-libst]').forEach(b => { const it = lib._items[+b.dataset.libst]; b.addEventListener('click', () => dAddStory(it.t, it.s, it.src)) });
+  lib.querySelectorAll('[data-libmain]').forEach(b => { const it = lib._items[+b.dataset.libmain]; b.addEventListener('click', () => { const h = dItems().find(x => x.role === 'headline'), s = dItems().find(x => x.role === 'story'); if (h) h.text = it.t; if (s && it.s) s.text = it.s; if (!h && !s) dAddStory(it.t, it.s, it.src); else build() }) });
+}
+
 // ------------------------------------------------------------ a pack that carries its own design (Darpan, 10 Nov 2026: the Annakut
 // picture's sky, food stacks and diyas): layers.under behind the cards, layers.over on top, each card in its own box
 const LAYER = {};
@@ -1065,6 +1680,17 @@ function drawMonth(ctx, pack, o, hits) {
 // ------------------------------------------------------------ render, with the chosen card ringed in gold
 let HITS = [], raf = 0, FE = false;
 const view = $('#view');
+setTimeout(() => {   // the designer's own hands on the picture (its functions are further down)
+// a photo dragged from the library lands where it is dropped
+view.addEventListener('dragover', e => { if (isDesign() && e.dataTransfer.types.includes('text/x-photo')) e.preventDefault() });
+view.addEventListener('drop', e => { if (!isDesign()) return; const d = e.dataTransfer.getData('text/x-photo'); if (!d) return; e.preventDefault(); dAddPhoto(JSON.parse(d), dPt(e)) });
+view.addEventListener('pointerdown', dDown);
+view.addEventListener('pointermove', dMove);
+view.addEventListener('pointerup', dUp); view.addEventListener('pointercancel', dUp);
+view.addEventListener('pointerleave', () => { if (DHOVER && !DDRAG) { DHOVER = null; render() } });
+view.addEventListener('dblclick', e => { if (!isDesign()) return; const it = dHitAt(...dPt(e)); if (it && it.t === 'text' && !it.locked) dType(it) });
+document.addEventListener('keydown', dKey, true);
+}, 0);
 const cur = () => S[S.mode];
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 function render() {
@@ -1081,8 +1707,10 @@ function render() {
       fe.hidden = true; return;
     }
     if (stEl.dataset.arriving) { delete stEl.dataset.arriving; if (pend) stEl.textContent = `Photos arriving (${pend} still to come)…`; else stEl.textContent = '' }
-    S.mode === 'month' ? drawMonth(ctx, pack, S.month, HITS) : isLayered() ? drawLayered(ctx, pack, cur(), HITS) : isStory() ? drawStory(ctx, pack, S.special, HITS) : drawDay(ctx, pack, cur(), HITS);
-    const h = FE && HITS.find(h => h.key === cur().sel);
+    if (isStory() && !S.special.design) { S.special.design = designFrom(pack, S.special); SEL = []; DH_.date = ''; setTimeout(build, 0) }   // the builder's picture, ready to design on
+    S.mode === 'month' ? drawMonth(ctx, pack, S.month, HITS) : isLayered() ? drawLayered(ctx, pack, cur(), HITS) : isDesign() ? drawDesign(ctx, pack, S.special, HITS, true) : isStory() ? drawStory(ctx, pack, S.special, HITS) : drawDay(ctx, pack, cur(), HITS);
+    if (isDesign()) dHist();
+    const h = FE && !isDesign() && HITS.find(h => h.key === cur().sel);
     if (h) { ctx.save(); ctx.strokeStyle = GOLD; ctx.lineWidth = W / 400; ctx.strokeRect(h.x - 9, h.y - 9, h.w + 18, h.h + 18); ctx.restore() }
     placeEditor();
     const ok = saveState() && stash(S.mode);
@@ -1183,6 +1811,7 @@ document.addEventListener('keydown', e => {   // + and − zoom the picture when
 });
 setZoom(+store.get('studio-zoom') || 1);
 view.addEventListener('click', ev => {
+  if (isDesign()) return;   // the designer has its own clicks
   if (DRAGGED) { DRAGGED = false; return }
   const r = view.getBoundingClientRect(), x = (ev.clientX - r.left) * view.width / r.width, y = (ev.clientY - r.top) * view.height / r.height;
   const h = HITS.find(h => x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h);
@@ -1254,7 +1883,8 @@ function paneCard() {
   const nb = g.cands.filter(c2 => !c2.nobapa).length, rest = g.cands.length - nb;
   const cell = i => { const c2 = g.cands[i]; return `<button data-i="${i}" class="${c2.nobapa ? 'nob' : ''}" aria-pressed="${i === x.pick}" title="${esc(c2.caption)}" aria-label="${esc(c2.caption)}">${thumb(pack, g, i)}${tags(i)}</button>` };
   const firstRest = g.cands.findIndex(c2 => c2.nobapa);
-  const grid = g.cands.map((_, i) => (i === firstRest && i > 0 ? `<p class="hint" style="grid-column:1/-1;margin:6px 0 0">The other ${rest} photo${rest > 1 ? 's' : ''} from ${esc(label(k))} (Bapa’s face not found automatically)</p>` : '') + cell(i)).join('');
+  const offN = S.mode === 'special' ? g.cands.filter(c2 => !dayOk(pack, g, c2)).length : 0;
+  const grid = g.cands.map((_, i) => S.mode === 'special' && !dayOk(pack, g, g.cands[i]) && i !== x.pick ? '' : (i === firstRest && i > 0 ? `<p class="hint" style="grid-column:1/-1;margin:6px 0 0">The other ${rest} photo${rest > 1 ? 's' : ''} from ${esc(label(k))} (Bapa’s face not found automatically)</p>` : '') + cell(i)).join('');
   const changed = kk => { const b = stateOf(o)[kk]; return b && Object.keys(b).some(f => f !== 'on') };
   // Darpan, 9 Nov 2026: plain words on the album each photo comes from, now the packs carry the album's first and last day
   const spans = {}; g.cands.forEach(c2 => { if (c2.album_from && c2.album_to && c2.album_from !== c2.album_to) { const kk = c2.album_from + '|' + c2.album_to; spans[kk] = (spans[kk] || 0) + 1 } });
@@ -1263,25 +1893,8 @@ function paneCard() {
   const dayNote2 = spanAll && dates.length === 1 ? '' : dayNote;
   const lastPanel = lastTime(k);
   const chip = kk => S.mode === 'special' ? String((groupsOf(pack).find(g2 => g2.key === kk) || {}).year ?? kk) : kk;
-  return `${S.mode === 'special' ? queuePanel() : ''}
-    <div class="group">
-      <div class="cardhead"><button class="btn" id="c-prev" aria-label="Previous">◀</button><b>${esc(label(k))}</b><button class="btn" id="c-next" aria-label="Next">▶</button></div>
-      <div class="chips" id="c-sel">${shownKeys().map(kk => `<button data-k="${kk}" class="${kk === k ? 'sel' : ''}" aria-pressed="${changed(kk) ? 'true' : 'false'}" title="${(groupsOf(pack).find(g2 => g2.key === kk) || {}).added ? 'A year added from the baps.org News articles' : ''}">${chip(kk)}${(groupsOf(pack).find(g2 => g2.key === kk) || {}).added ? ' <small>new</small>' : ''}</button>`).join('')}</div>
-      <p class="hint">Click a card in the picture or a ${day ? 'year' : 'day'} here. A white one has your own changes.</p>${lastPanel}
-      ${g.year && !isStory() ? `<div class="acts" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${chButton({ kind: 'year', year: +g.year, note: `${g.year} ${x.place || ''}`.trim() })}<span class="hint">${esc(String(g.year))}’s photos of this day as the special picture</span></div>` : ''}</div>
-    <div class="group"><h3>Choose the photo</h3>
-      ${g.cands.length ? `<p class="hint">All ${g.cands.length} photo${g.cands.length > 1 ? 's' : ''} from ${esc(label(k))} in your archive${rest && nb ? `: the ${nb} where Bapa’s face was found come first` : ''}.</p>${dayNote2}${albumNote}
-      <div class="thumbs" id="c-thumbs">${grid}</div>
-      <p class="hint">${c ? esc([c.place, c.date || (day ? g.year : ''), c.festival].filter(Boolean).join(' · ')) : ''}${day ? '' : ' · ' + esc([g.tithi, ...g.fest].join(' · '))}</p>` : '<p class="hint">No photo for this day yet.</p>'}</div>
-    ${storiesPanel(g, pack)}
-    <div class="group"><h3>Place, caption${S.mode === 'special' ? ' and year' : ', year and festival tag'}</h3>
-      <div class="row"><label for="c-place">Place${day ? ' on the card' : ' (bubbles)'}</label><input type="text" class="place" id="c-place" data-f="place" data-k="${k}" value="${esc(x.place)}"></div>
-      <textarea class="capedit" id="c-cap" data-f="caption" data-k="${k}" aria-label="Caption" rows="2">${esc(x.caption)}</textarea>
-      <div class="chips cap" id="c-caphelp">${capHelps(x, g, pack).map(([t, v]) => `<button class="capchip" data-v="${esc(v)}" data-set="${t.startsWith('baps.org') ? 1 : ''}" title="${t.startsWith('baps.org') ? 'Use the baps.org caption' : 'Add these words to the caption'}">${esc(t)}</button>`).join('')}</div>
-      ${day ? `<div class="row"><label for="c-yl">Year on the card</label><input type="text" id="c-yl" data-f="ylabel" data-k="${k}" value="${esc(st.ylabel ?? (g.year == null ? '' : String(g.year)))}" placeholder="Empty for no year"></div>
-      ${S.mode === 'special' ? '' : `<div class="row"><label for="c-fest">Festival tag on the photo</label><input type="text" id="c-fest" data-f="fest" data-k="${k}" value="${esc(st.fest ?? (c ? (c.festival || captionFest(c)) : ''))}" placeholder="For example Annakut (empty for none)"></div>`}` : ''}
-      ${c && c.original ? `<p class="hint">Website caption: “${esc(c.original)}”</p>` : ''}</div>
-    <div class="group"><h3>Crop</h3>
+  // on the special picture the photo tools come first, above the posts (Darpan, 17 Nov 2026: "this section needs to be much much higher")
+  const sp = S.mode === 'special', CROPCARD = `    <div class="group"><h3>Crop</h3>
       ${seg('c-crop', st.crop || 'auto', [['auto', 'Automatic'], ['close', 'Close up'], ['frame', 'Wider'], ['whole', 'Fill frame']])}
       ${range('c-zoom', 'Zoom', st.zoom || 1, .6, 2.5, .05, v => Math.round(v * 100) + '%')}
       ${range('c-dx', 'Left or right', st.dx || 0, -.4, .4, .01, v => Math.round(v * 100))}
@@ -1292,8 +1905,33 @@ function paneCard() {
       ${range('c-mx', 'Move left or right', st.mx || 0, -700, 700, 5, v => (v > 0 ? '+' : '') + v)}
       ${range('c-my', 'Move up or down', st.my || 0, -500, 500, 5, v => (v > 0 ? '+' : '') + v)}
       <div class="seg"><button class="btn small" id="c-hide">Take this card off the picture</button></div>
-      <p class="hint">A card you take off comes back with its “show” tick on the Cards and words tab. The small cards spread out again when one goes; Reset puts the builder’s layout back.</p></div>` : ''}
-    <div class="group"><button class="btn" id="c-reset">Reset ${esc(label(k))}</button></div>${addPhotoGroup(pack)}${spareGroup(pack)}
+      <p class="hint">A card you take off comes back with its “show” tick on the Cards and words tab. The small cards spread out again when one goes; Reset puts the builder’s layout back.</p></div>` : ''}`;
+  const offs = sp ? offDayCards(pack) : [];
+  const offHtml = offs.length ? `<div class="group"><h3>Not from this day</h3><p class="hint warn">${offs.map(x2 => `<b>${esc(label(x2.key))}</b>: ${esc([x2.c.place, x2.c.date ? niceDay(x2.c.date) : ''].filter(Boolean).join(', '))}`).join('<br>')}</p>
+      <div class="seg"><button class="btn small primary" id="c-dayfix">Swap ${offs.length > 1 ? 'them' : 'it'} for photos from this day</button></div></div>` : '';
+  return `${S.mode === 'special' ? queuePanel() : ''}${offHtml}
+    <div class="group">
+      <div class="cardhead"><button class="btn" id="c-prev" aria-label="Previous">◀</button><b>${esc(label(k))}</b><button class="btn" id="c-next" aria-label="Next">▶</button></div>
+      <div class="chips" id="c-sel">${shownKeys().map(kk => `<button data-k="${kk}" class="${kk === k ? 'sel' : ''}" aria-pressed="${changed(kk) ? 'true' : 'false'}" title="${(groupsOf(pack).find(g2 => g2.key === kk) || {}).added ? 'A year added from the baps.org News articles' : ''}">${chip(kk)}${(groupsOf(pack).find(g2 => g2.key === kk) || {}).added ? ' <small>new</small>' : ''}</button>`).join('')}</div>
+      <p class="hint">Click a card in the picture or a ${day ? 'year' : 'day'} here. A white one has your own changes.</p>${lastPanel}
+      ${g.year && !isStory() ? `<div class="acts" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${chButton({ kind: 'year', year: +g.year, note: `${g.year} ${x.place || ''}`.trim() })}<span class="hint">${esc(String(g.year))}’s photos of this day as the special picture</span></div>` : ''}</div>
+    ${sp ? addPhotoGroup(pack) + CROPCARD : ''}
+    <div class="group"><h3>Choose the photo</h3>
+      ${g.cands.length ? `<p class="hint">All ${g.cands.length} photo${g.cands.length > 1 ? 's' : ''} from ${esc(label(k))} in your archive${rest && nb ? `: the ${nb} where Bapa’s face was found come first` : ''}.</p>${dayNote2}${albumNote}
+      ${offN ? `<p class="hint">${offN} photo${offN > 1 ? 's' : ''} from another day or another place ${offN > 1 ? 'are' : 'is'} left out, so only ${esc(niceDay(`${g.year || String(pack.story_date || '').slice(0, 4)}-${pack.date.slice(5)}`))}${pack.kind === 'story' && spPlace(pack) ? ' in ' + esc(spPlace(pack).replace(/\b\w/g, m => m.toUpperCase())) : ''} shows.</p>` : ''}
+      ${S.mode === 'special' && c && !dayOk(pack, g, c) ? `<p class="hint warn"><b>This card is not from this day.</b> Its photo is from ${esc([c.place, c.date ? niceDay(c.date) : ''].filter(Boolean).join(', '))}. Choose one of the photos below, or take the card off.</p>` : ''}
+      <div class="thumbs" id="c-thumbs">${grid}</div>
+      <p class="hint">${c ? esc([c.place, c.date || (day ? g.year : ''), c.festival].filter(Boolean).join(' · ')) : ''}${day ? '' : ' · ' + esc([g.tithi, ...g.fest].join(' · '))}</p>` : '<p class="hint">No photo for this day yet.</p>'}</div>
+    ${sp ? '' : storiesPanel(g, pack)}
+    <div class="group"><h3>Place, caption${S.mode === 'special' ? ' and year' : ', year and festival tag'}</h3>
+      <div class="row"><label for="c-place">Place${day ? ' on the card' : ' (bubbles)'}</label><input type="text" class="place" id="c-place" data-f="place" data-k="${k}" value="${esc(x.place)}"></div>
+      <textarea class="capedit" id="c-cap" data-f="caption" data-k="${k}" aria-label="Caption" rows="2">${esc(x.caption)}</textarea>
+      <div class="chips cap" id="c-caphelp">${capHelps(x, g, pack).map(([t, v]) => `<button class="capchip" data-v="${esc(v)}" data-set="${t.startsWith('baps.org') ? 1 : ''}" title="${t.startsWith('baps.org') ? 'Use the baps.org caption' : 'Add these words to the caption'}">${esc(t)}</button>`).join('')}</div>
+      ${day ? `<div class="row"><label for="c-yl">Year on the card</label><input type="text" id="c-yl" data-f="ylabel" data-k="${k}" value="${esc(st.ylabel ?? (g.year == null ? '' : String(g.year)))}" placeholder="Empty for no year"></div>
+      ${S.mode === 'special' ? '' : `<div class="row"><label for="c-fest">Festival tag on the photo</label><input type="text" id="c-fest" data-f="fest" data-k="${k}" value="${esc(st.fest ?? (c ? (c.festival || captionFest(c)) : ''))}" placeholder="For example Annakut (empty for none)"></div>`}` : ''}
+      ${c && c.original ? `<p class="hint">Website caption: “${esc(c.original)}”</p>` : ''}</div>
+    ${sp ? '' : CROPCARD}
+    <div class="group"><button class="btn" id="c-reset">Reset ${esc(label(k))}</button></div>${sp ? '' : addPhotoGroup(pack)}${spareGroup(pack)}${sp ? storiesPanel(g, pack) : ''}
     ${day ? `<div class="group"><h3>Kind of photo, every year</h3>
       ${seg('d-style', o.photoStyle, [['auto', 'As the daily run picks'], ['close', 'Close ups of Bapa'], ['action', 'What Bapa is doing']])}
       <p class="hint">Changing this resets every year’s photo choice. Places and captions you typed stay.</p></div>` : ''}`;
@@ -1448,7 +2086,9 @@ function build() {
   const days = INDEX.days.includes(o.date) || !day ? INDEX.days : [...INDEX.days, o.date].sort();
   const sps = !sp || !o.date || INDEX.specials.includes(o.date) ? INDEX.specials : [...INDEX.specials, o.date].sort();   // any day can be chosen for (13 Nov 2026)
   const months = INDEX.months.includes(o.month) || S.mode !== 'month' ? INDEX.months : [...INDEX.months, o.month].sort();   // any month (Darpan, 13 Nov 2026)
-  const list = day ? days.map(k => [k, longDate(k)]) : sp ? sps.map(k => [k, longDate(k)]) : months.map(k => [k, longMonth(k)]), now = S.mode === 'month' ? o.month : o.date;
+  // today first, then the days to come; an older day only when he is on it (Darpan, 17 Nov 2026: "why do you need to show me previous dates"); the any date box still reaches every day
+  const ahead = k => k >= todayLondon() || k === o.date;
+  const list = day ? days.filter(ahead).map(k => [k, longDate(k)]) : sp ? sps.filter(ahead).map(k => [k, longDate(k)]) : months.map(k => [k, longMonth(k)]), now = S.mode === 'month' ? o.month : o.date;
   $('#any-l').hidden = S.mode === 'month'; if (S.mode !== 'month') $('#any').value = o.date || '';
   $('#anym-l').hidden = S.mode !== 'month'; if (S.mode === 'month') $('#anym').value = o.month || '';
   if (!((day && WANT) || (S.mode === 'month' && WANTM))) $('#want').hidden = true;
@@ -1459,10 +2099,12 @@ function build() {
   $('#pick-opt').hidden = S.mode !== 'month';
   $('#pick-opt').innerHTML = [['A', 'Close-up images'], ['B', 'Activity'], ['M', 'Mixed']].map(([k, l]) => `<option value="${k}" ${k === S.month.option ? 'selected' : ''}>${l}</option>`).join('');
   driveChip();
-  if (!TABS[S.mode].some(t => t[0] === S.tab)) S.tab = 'card';
-  $('#tabs').innerHTML = TABS[S.mode].map(([k, l]) => `<button role="tab" data-t="${k}" aria-selected="${k === S.tab}">${l}</button>`).join('');
+  const tabs = sp && pack && isStory() ? [['choose', 'Choose'], ['design', 'Design'], ['look', 'Look']] : TABS[S.mode];
+  if (isDesign()) FE = false;
+  if (!tabs.some(t => t[0] === S.tab)) S.tab = sp && pack && isStory() ? 'design' : 'card';
+  $('#tabs').innerHTML = tabs.map(([k, l]) => `<button role="tab" data-t="${k}" aria-selected="${k === S.tab}">${l}</button>`).join('');
   $('#compare').hidden = S.mode === 'month' || waiting;
-  $('#tip').textContent = S.mode === 'month' ? 'Click any day to change its photo, place or caption right there.' : 'Click any card to change its photo, place or caption right there.';
+  $('#tip').textContent = sp && pack && isStory() ? 'Click anything on the picture to change it. Shift-click to choose several. Drag to move, pull a corner to size, double click words to type. Ctrl Z undoes.' : S.mode === 'month' ? 'Click any day to change its photo, place or caption right there.' : 'Click any card to change its photo, place or caption right there.';
   $('#options').hidden = !(sp && pack && (pack.options || []).length); if (sp && pack && (pack.options || []).length) optionsRow(pack);
   if (sp && !pack && o.date && !SPLOADING) { S.tab = 'choose'; $('#tabs').innerHTML = `<button role="tab" data-t="choose" aria-selected="true">Choose</button>`; $('#pane').innerHTML = paneChoose(); $('#meta').innerHTML = `<b>${esc(longDate(o.date))}</b><span>no special picture pack for this day yet</span>`; fe.hidden = true; wire(); restorePane(); return }
   if (!pack) { $('#pane').innerHTML = '<p class="hint">' + (day && WANT ? 'The photos for this day are not ready yet.' : S.mode === 'month' && WANTM ? 'The photos for this month are not ready yet.' : sp && !INDEX.specials.length ? 'No special picture pack yet.' : 'Loading photos…') + '</p>' + (sp ? queuePanel() : ''); $('#meta').textContent = day && WANT ? longDate(WANT) : S.mode === 'month' && WANTM ? longMonth(WANTM) : 'Loading photos…'; fe.hidden = true; wire(); return }
@@ -1471,7 +2113,8 @@ function build() {
   $('#meta').innerHTML = day ? `<b>${esc(pack.title)}</b><span>${dayCards(pack, o).length} of ${pack.years.length} years on the picture</span><span>${total} photos to choose from</span>`
     : sp ? `<b>${esc(pack.title)}</b><span>${pack.kind === 'story' ? 'a day in BAPS history' : `Every ${esc(pack.festival || '')}${pack.first && pack.last ? `, ${pack.first} to ${pack.last}` : ''}`}</span><span>${dayCards(pack, o).length} of ${pack.cards.length} cards on the picture</span><span>${total} photos to choose from</span>`
     : `<b>${esc(pack.title)}</b><span>${pack.days.length} days</span><span>${{ A: 'close-up images', B: 'activity', M: 'mixed' }[o.option]}</span><span>${total} photos to choose from</span>`;
-  $('#pane').innerHTML = S.tab === 'choose' ? paneChoose() : S.tab === 'card' ? paneCard() : S.tab === 'words' ? paneWords() : S.tab === 'layout' ? paneLayout() : lookPane(S.mode === 'month' ? 'm' : 'd', o);
+  dTools(); dLibrary();
+  $('#pane').innerHTML = S.tab === 'design' ? (isDesign() ? paneDesign() : '<p class="hint">Getting the picture ready to design…</p>') : S.tab === 'choose' ? paneChoose() : S.tab === 'card' ? paneCard() : S.tab === 'words' ? paneWords() : S.tab === 'layout' ? paneLayout() : lookPane(S.mode === 'month' ? 'm' : 'd', o);
   if (S.mode !== 'month' && $('#compare').open) sideBySide();
   buildEditor(); wire(); render();
   restorePane();
@@ -1493,6 +2136,7 @@ function wire() {
   const segOn = (id, key, num) => document.querySelectorAll(`#${id} button`).forEach(b => b.addEventListener('click', () => { o[key] = num ? +b.dataset.v : b.dataset.v; build() }));
   document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => { S.tab = b.dataset.t; build() }));
   if (!P[S.mode]) { wireChoices(); return }
+  if (S.tab === 'design' && isDesign()) wireDesign();
   // the chosen card
   const k = o.sel, ks = shownKeys(), go = d => { o.sel = ks[(ks.indexOf(k) + d + ks.length) % ks.length]; build() };
   on('c-prev', 'click', () => go(-1)); on('c-next', 'click', () => go(1));
@@ -1516,6 +2160,7 @@ function wire() {
     on('d-t-storyl', 'input', e => { (o.txt = o.txt || {}).story = e.target.value; render() });
     ['hs', 'hmx', 'hmy', 'ss', 'smx', 'smy'].forEach(f => on('d-' + f, 'input', e => { (o.tl = o.tl || {})[f] = +e.target.value; syncOut('d-' + f); render() }));
     on('d-tl-reset', 'click', () => { o.tl = {}; build() });
+    on('c-dayfix', 'click', () => dayFix());
     const pk = P[S.mode] || {};
     on('d-t-full', 'click', () => { (o.txt = o.txt || {}).story = pk.story || ''; build() });
     on('d-t-short', 'click', () => { (o.txt = o.txt || {}).story = pk.story_short || String(pk.story || '').split(/(?<=[.!?])\s/)[0]; build() });
@@ -1834,10 +2479,10 @@ function showProg() {
     <div class="bar"${calm ? ' hidden' : ''} role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>
     <ol${calm ? ' hidden' : ''}>${shown.map(([k, w], i) => { const done = i < at || p.step === 'ready' || (calm && i === at), now = i === at && p.step !== 'ready' && !calm; return `<li class="${p.fail && now ? 'bad' : done ? 'done' : now ? 'now' : ''}"><span>${p.fail && now ? '✕' : done ? '✓' : now ? '<span class="spin">◌</span>' : '○'}</span><b>${esc(w)}${now && k === 'send' && wait ? ` (in ${wait} s, so changes close together go as one)` : ''}</b><span>${p.t[k] ? clock(p.t[k]) : ''}</span></li>` }).join('')}</ol>
     <p class="hint">${calm ? esc(p.note) : p.fail ? esc(p.fail) : p.step === 'ready' ? `Took ${mins(p.t.ready - start)}. It is on the Special picture tab now${date === today && !p.late ? ', and in Drive for the 2pm send' : ''}.` : `${mins(Date.now() - start)} so far. Usually 5 to 10 minutes from sending; longer if another GitHub run is going.`}</p>
-    <div class="acts">${calm ? (canAsk() ? '<button class="btn primary" id="sprog-go" type="button">Go: build the special picture</button>' : '<button class="btn small primary" id="sprog-gh" type="button">Connect GitHub</button>') : ''}${p.step === 'ready' && p.dirty && canAsk() ? '<button class="btn primary" id="sprog-go" type="button">Go again: build it with your newest changes</button>' : ''}${p.step === 'send' && !calm ? '<button class="btn small primary" id="sprog-now" type="button">Send it now</button>' : ''}${p.fail ? '<button class="btn small primary" id="sprog-again" type="button">Try again</button>' : ''}${p.run ? `<a class="btn small" href="https://github.com/darpan31patel-wq/bapas-diary/actions/runs/${p.run}" target="_blank" rel="noopener">See it on GitHub</a>` : ''}${p.step === 'ready' || p.fail || (calm && !canAsk()) ? '<button class="btn small" id="sprog-x" type="button">Hide</button>' : ''}${p.step === 'ready' && !(S.mode === 'special' && S.special.date === date) ? `<button class="btn small" id="sprog-open" type="button">Open it</button>` : ''}</div>`;
+    <div class="acts">${calm ? (canAsk() ? '<button class="btn primary" id="sprog-go" type="button">Final: build this exact picture</button>' : '<button class="btn small primary" id="sprog-gh" type="button">Connect GitHub</button>') : ''}${p.step === 'ready' && p.dirty && canAsk() ? '<button class="btn primary" id="sprog-go" type="button">Final again: build it with your newest changes</button>' : ''}${p.step === 'send' && !calm ? '<button class="btn small primary" id="sprog-now" type="button">Send it now</button>' : ''}${p.fail ? '<button class="btn small primary" id="sprog-again" type="button">Try again</button>' : ''}${p.run ? `<a class="btn small" href="https://github.com/darpan31patel-wq/bapas-diary/actions/runs/${p.run}" target="_blank" rel="noopener">See it on GitHub</a>` : ''}${p.step === 'ready' || p.fail || (calm && !canAsk()) ? '<button class="btn small" id="sprog-x" type="button">Hide</button>' : ''}${p.step === 'ready' && !(S.mode === 'special' && S.special.date === date) ? `<button class="btn small" id="sprog-open" type="button">Open it</button>` : ''}</div>`;
   el.hidden = false;
   const on = (id, fn) => { const b = document.getElementById(id); if (b) b.onclick = fn };
-  on('sprog-gh', () => openGh()); on('sprog-go', () => askRemake(date)); on('sprog-now', () => askRemake(date)); on('sprog-again', () => askRemake(date));
+  on('sprog-gh', () => openGh()); on('sprog-go', () => finalGo(date)); on('sprog-now', () => askRemake(date)); on('sprog-again', () => askRemake(date));
   on('sprog-x', () => { progSet(date, null, { gone: true }) });
   on('sprog-open', () => { S.mode = 'special'; openSpecial(date) });
   const cr = document.getElementById('ch-remake-p'); if (cr && S.special.date === date) cr.textContent = p.fail || p.note || STEPS[n][1] + (p.step === 'ready' ? '' : '…');
@@ -1848,13 +2493,25 @@ function showProg() {
 // click go, then it creates it properly"): every change is saved at once, and the panel waits with a Go button; Go starts
 // the Collage builder's remake once. Without Go, the 5am run uses his saved changes.
 const WAITNOTE = 'Your changes are saved, and the 5am run will build them. To build straight away, press Connect GitHub below, once on this computer.';
-const GO_NOTE = 'Your changes are saved. Nothing is built until you press Go, so take your time. Then the Collage builder builds it once, properly. If you do not press Go, the 5am run uses your changes.';
+const GO_NOTE = 'Your design is saved as you go. Nothing is built until you press Final, so take your time. Final sends exactly what you see to the Collage builder, which builds it and puts it in Drive. If you do not press Final, the 5am run uses your design.';
 function remakeSoon(date) {
   if (!date || date < todayLondon()) return;
   clearTimeout(REMAKE_T);
   const p = progOf(date);
   if (p && p.step && p.step !== 'saved' && p.step !== 'ready' && !p.fail) { progSet(date, null, { dirty: true }); return }   // one is being built now: the panel keeps showing it, and offers Go again when it is done
   progSet(date, 'saved', { fail: '', note: canAsk() ? GO_NOTE : WAITNOTE, run: 0, skip: [], gone: false, late: false, t: { saved: Date.now() } });
+}
+async function finalGo(date) {   // Final: the exact design saved on the website first, then the Collage builder builds it
+  clearTimeout(LAYOUT_T);
+  const pack = P.special;
+  if (S.special.date === date && pack && pack.choose && CH) {
+    const lay = layoutNow();
+    if (lay && lay.cards) { let e = layoutTarget(date, pack); if (!e) { e = Object.assign({}, pack.choose, { day: pack.choose.day || chDay(date) }); CH.add.push(e) }
+      const had = !!e.layout; lay.at = new Date().toISOString(); lay.final = true; e.layout = lay;
+      if (e.kind === 'story' || e.kind === 'news') { const ph = lay.cards.map(c => c.photo).filter(Boolean); if (ph.length) e.photos = ph }
+      const keep = LAYOUT_REMAKE; LAYOUT_REMAKE = false; try { await saveLayout(date, had) } finally { LAYOUT_REMAKE = keep } }
+  }
+  return askRemake(date);
 }
 async function askRemake(date) {
   clearTimeout(REMAKE_T);
@@ -1932,6 +2589,7 @@ const layoutNow = () => LAYDRAWN ? JSON.parse(JSON.stringify(LAYDRAWN)) : null;
 const layoutSig = l => JSON.stringify(Object.assign({}, l || {}, { at: '' }));
 function hasEdits(o) {
   const st = stateOf(o) || {};
+  if (o.design) return !!o.design.edited || Object.values(st).some(v => v && Object.keys(v).length) || Object.keys(o.tl || {}).length > 0 || Object.values(o.txt || {}).some(v => v != null);
   return Object.values(st).some(v => v && Object.keys(v).length) || !!o.extra || Object.keys(o.tl || {}).length > 0 || Object.values(o.txt || {}).some(v => v != null) || !o.titleAuto || !!o.subtitle;
 }
 function layoutTarget(date, pack) {
@@ -2283,7 +2941,7 @@ function drawAt(width) {
   const [W, H] = S.mode === 'month' ? [3840, 2160] : [2796, 1290], k = width / W;
   const c = document.createElement('canvas'); c.width = Math.round(W * k); c.height = Math.round(H * k);
   const ctx = c.getContext('2d'); ctx.scale(k, k);
-  S.mode === 'month' ? drawMonth(ctx, P.month, S.month, []) : isLayered() ? drawLayered(ctx, P[S.mode], cur(), []) : isStory() ? drawStory(ctx, P.special, S.special, []) : drawDay(ctx, P[S.mode], cur(), []);
+  S.mode === 'month' ? drawMonth(ctx, P.month, S.month, []) : isLayered() ? drawLayered(ctx, P[S.mode], cur(), []) : isDesign() ? drawDesign(ctx, P.special, S.special, [], false) : isStory() ? drawStory(ctx, P.special, S.special, []) : drawDay(ctx, P[S.mode], cur(), []);
   return c;
 }
 const blobOf = (c, type, q) => new Promise(r => c.toBlob(r, type, q));
@@ -2339,8 +2997,8 @@ function historyFor(g, pack) {
   if (!HISTORY || S.mode === 'month') return [];
   const y = +g.year; if (!y) return [];
   const sp = S.mode === 'special', story = sp && pack.kind === 'story';
-  const base = story ? pack.story_date : sp ? (g.day || `${y}-${pack.date.slice(5)}`) : `${y}-${pack.date.slice(5)}`;
-  const t0 = new Date(base + 'T12:00').getTime(), span = sp ? 7 : 3;
+  const base = `${y}-${pack.date.slice(5)}`;   // the special picture page shows that exact date only (Darpan, 17 Nov 2026: "everything for the special feature, needs to be FROM THIS DAY")
+  const t0 = new Date(base + 'T12:00').getTime(), span = sp ? 0 : 3;
   return uniqStories(HISTORY.filter(h => h.d.startsWith(y + '-')).map(h => ({ h, off: Math.round((new Date(h.d + 'T12:00').getTime() - t0) / 864e5) }))
     .filter(x => Math.abs(x.off) <= span)).sort((a, b) => Math.abs(a.off) - Math.abs(b.off) || b.h.n - a.h.n).slice(0, 6);
 }
@@ -2368,8 +3026,8 @@ function storiesFor(g, pack) {
   if (!ARTICLES || S.mode === 'month') return null;
   const y = +g.year; if (!y) return [];
   const sp = S.mode === 'special', story = sp && pack.kind === 'story';
-  const base = story ? pack.story_date : sp ? (g.day || `${y}-${pack.date.slice(5)}`) : `${y}-${pack.date.slice(5)}`;
-  const t0 = new Date(base + 'T12:00').getTime(), span = sp ? 7 : 3, words = sp && pack.festival ? FESTWORDS[pack.festival] || new RegExp(pack.festival, 'i') : null;
+  const base = `${y}-${pack.date.slice(5)}`;
+  const t0 = new Date(base + 'T12:00').getTime(), span = sp ? 0 : 3, words = sp && pack.festival ? FESTWORDS[pack.festival] || new RegExp(pack.festival, 'i') : null;
   return ARTICLES.filter(a => a.y === y && a.d).map(a => ({ a, off: Math.round((new Date(a.d + 'T12:00').getTime() - t0) / 864e5) }))
     .filter(x => Math.abs(x.off) <= span && (!words || x.off === 0 || words.test(x.a.t) || (x.a.b && Math.abs(x.off) <= 2)))
     .sort((p2, q) => (q.a.b - p2.a.b) || (Math.abs(p2.off) - Math.abs(q.off)) || (q.a.n - p2.a.n)).slice(0, 6);
@@ -2382,6 +3040,19 @@ function spareGroup(pack) {
 // the Collage builder's story packs carry empty places (spares, each with its own key, up to most_photos, 17 Nov 2026);
 // an older pack without them gets a copy of its last small card
 const mostPhotos = pack => pack.most_photos || 20;
+// only photos from that exact day and that day's event (Darpan, 17 Nov 2026: "everything for the special feature, needs to be
+// FROM THIS DAY"): the photo's own date must be the picture's date in its year, and on a story special its place must be the
+// story's place (the 17 Nov 2006 London pack also carried that day's Ahmedabad photos)
+const spPlace = pack => { const gs = groupsOf(pack), first = String(pack.story_place || '').split(',')[0].trim().toLowerCase(), all = gs.flatMap(g => g.cands.map(c => String(c.place || '').toLowerCase()));
+  if (first && all.includes(first)) return first; const big = gs.find(g => g.role === 'big') || gs[0]; return big && big.cands[0] ? String(big.cands[0].place || '').toLowerCase() : '' };
+function dayOk(pack, g, c) {
+  if (S.mode !== 'special' || !pack || !c) return true;
+  const y = g && g.year ? String(g.year) : String(pack.story_date || '').slice(0, 4);
+  if (c.date && y && c.date !== `${y}-${pack.date.slice(5)}`) return false;
+  if (pack.kind === 'story') { const pl = spPlace(pack); if (pl && c.place && String(c.place).toLowerCase() !== pl) return false }
+  return true;
+}
+const offDayCards = pack => S.mode === 'special' && pack ? dayCards(pack, S.special).filter(x => !dayOk(pack, groupsOf(pack).find(g => g.key === x.key), x.c)) : [];
 function takeSpare(pack, groups) { const g = (pack.spares || []).length ? pack.spares.shift() : extraCard(groups); g.role = 'small'; g.extra = true; return g }
 function extraCard(groups) {
   const smalls = groups.filter(g => g.role === 'small'), src = smalls[smalls.length - 1] || groups[0];
@@ -2390,11 +3061,19 @@ function extraCard(groups) {
 function addPhoto() {
   const pack = P.special, groups = groupsOf(pack); if (!pack || groups.length >= mostPhotos(pack)) return;
   const gi = groups.length, g = takeSpare(pack, groups); groups.push(g); if (!g.key || groups.some(x => x !== g && x.key === g.key)) g.key = 'c' + gi; g.cands.forEach((c, i) => { c.key = `${pack.base}${g.key}-${i}` });
-  const id = c => c ? (c.img || c.f || '') + ':' + (c.at ? c.at[0] : '') : '', used = new Set(dayCards(pack, S.special).map(x => id(x.c))), next = g.cands.findIndex(c => !used.has(id(c)));
+  const id = c => c ? (c.img || c.f || '') + ':' + (c.at ? c.at[0] : '') : '', used = new Set(dayCards(pack, S.special).map(x => id(x.c))), next = (i => i < 0 ? g.cands.findIndex(c => !used.has(id(c))) : i)(g.cands.findIndex(c => !used.has(id(c)) && dayOk(pack, g, c)));
   stateOf(S.special)[g.key] = Object.assign(stateOf(S.special)[g.key] || {}, { pick: next < 0 ? 0 : next });
   S.special.extra = (S.special.extra || 0) + 1; S.special.sel = g.key;
   photoOf(pack, g.cands[next < 0 ? 0 : next], true).then(render);
   Promise.all(g.cands.slice(0, 6).map(c => photoOf(pack, c, true))).then(build); build();
+}
+function dayFix() {   // every card not from this day gets the first unused photo that is; a card with none from this day comes off
+  const pack = P.special; if (!pack) return; undoMark();
+  const id = c => c ? (c.img || c.f || '') + ':' + (c.at ? c.at[0] : '') + ':' + (c.src || '') : '';
+  offDayCards(pack).forEach(x => { const g = groupsOf(pack).find(g2 => g2.key === x.key), used = new Set(dayCards(pack, S.special).map(y => id(y.c)));
+    const i = g.cands.findIndex(c => dayOk(pack, g, c) && !used.has(id(c))), b = stateOf(S.special)[g.key] = stateOf(S.special)[g.key] || {};
+    if (i < 0) b.on = false; else { b.pick = i; delete b.caption; delete b.place; photoOf(pack, g.cands[i], true).then(render) } });
+  build();
 }
 function dropPhoto() {
   const pack = P.special, groups = groupsOf(pack), i = groups.map(g => !!g.extra).lastIndexOf(true); if (i < 0) return;
@@ -2429,7 +3108,7 @@ function storiesPanelDb(g, list) {
     ${a.g.length ? `<p class="hint">Galleries: ${a.g.map(([n, k]) => esc(n) + (k ? ` (${k})` : '')).join(', ')}</p>` : ''}
     ${a.s ? `<p class="hint">${esc(a.s)}</p>` : ''}
     <div class="chips cap"><button class="capchip" data-set="1" data-v="${esc(a.t.replace(/,\s*[^,]+,\s*[^,]+$/, ''))}">Use the title as the caption</button>${a.s ? `<button class="capchip" data-v="${esc(a.s.split(/(?<=[.!?])\s/)[0])}">Add the first line</button>` : ''}<a class="btn small" href="${esc(a.u)}" target="_blank" rel="noopener">Open on baps.org</a>${off === 0 ? chButton({ kind: 'news', ref: newsPath(a.u), note: a.t }) : ''}</div></div>`).join('')
-    : `<p class="hint">No News story of ${esc(String(g.year))} within ${S.mode === 'special' ? 'a week' : '3 days'} of this day.</p>`}</div>`;
+    : `<p class="hint">${S.mode === 'special' ? `No News story of ${esc(String(g.year))} from this very day.` : `No News story of ${esc(String(g.year))} within 3 days of this day.`}</p>`}</div>`;
 }
 // caption helper (Darpan, 9 Nov 2026): the photo's own baps.org words, the festival and the place, one tap each
 function capHelps(x, g, pack) {
