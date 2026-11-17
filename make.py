@@ -1719,7 +1719,8 @@ def under_card(x, card, gap, f, lh, style, rnd, even=0):
     half = max(3, len(text.split()) * 2 // 3)
     tries = ((1, 0, False, 0), (.9, 0, False, 0), (.82, 0, False, 0), (.82, 0, True, half), (.82, 0, True, 0))
     if even:   # the daily picture: every caption the same size, a long one takes another line before any gets smaller (Darpan, 17 Nov 2026)
-        tries = tuple((1, k, False, 0) for k in range(even - n + 1)) + tries
+        top = even - n   # the most extra lines the layout made room for
+        tries = tuple((1, k, False, 0) for k in range(top + 1)) + ((.9, top, False, 0), (.82, top, False, 0), (1, top, True, half)) + tries
     # the whole caption first, then a touch smaller; only then a natural cut, keeping at least two thirds of it; a shorter cut last
     for shrink, extra, cut, keep in tries:
         f2 = garamond(f.size * shrink, 500) if shrink < 1 else f
@@ -1882,8 +1883,8 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
     if lay.get('lift'):   # the cord's lowest point (the middle) sits at the top line and its ends rise into the free corners beside the title
         top_space, bottom_space = px(lay['lift']), H - px(46)
     cf_a, lh_a = garamond(px(CAPTION_SIZE), 500), round(px(CAPTION_SIZE * 1.2))
-    # the daily picture: captions all one size, a long one on a third line rather than in smaller letters (Darpan, 17 Nov 2026)
-    even = (lay.get('pill', 0) + 1) if lay.get('pill') and EVEN_CAPTIONS and daily else 0   # never the festival or UK and Europe pictures
+    # the daily picture: captions all one size and whole, a long one on a third or fourth line rather than in smaller letters (Darpan, 17 Nov 2026)
+    even = (lay.get('pill', 0) + 2) if lay.get('pill') and EVEN_CAPTIONS and daily else 0   # never the festival or UK and Europe pictures
     gap0, pill = gap, lay.get('pill', 0)
     while True:
         below = (pill * lh_a + px(22)) if pill and CAPTIONS != 'none' else 0   # no captions: the cards take that room
@@ -1901,7 +1902,7 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
         need = max([len(wrap(dp, shown_caption(x), cf_a, maxw, even, shorten=False)) for x in photos if shown_caption(x)] or [0])
         if need <= pill:
             break
-        pill = even   # room for the third line under every row, then size the cards again
+        pill = need   # room for the longest caption's lines under every row, then size the cards again
     pitch = card.CH + below + row_gap
     block = (nrows - 1) * pitch + card.CH + below
     if lay.get('fill') and nrows > 1:   # spare height goes between the rows rather than above and below them
