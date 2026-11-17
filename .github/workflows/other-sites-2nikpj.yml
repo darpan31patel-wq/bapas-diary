@@ -18,6 +18,7 @@
 # Round 6, 16 Nov 21:55 UTC: research.baps.org only (the job limit cut round 5 off while handing over: copying is 3h
 # again, listing Drive alone takes 50 minutes there). Page addresses deeper than four folders are the site's own
 # menu links stacked onto a page, so they are dropped too, and the lists leave them out.
+# Round 7, 17 Nov 07:40 UTC: research.baps.org finished; mysticindia.com and bapscare.org, each on its own machine.
 name: other-sites
 on:
   push:
@@ -34,7 +35,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { site: research.baps.org, base: 'https://research.baps.org/', key: research-baps-org }
+          # research.baps.org finished 17 Nov (7,395 pages)
+          - { site: mysticindia.com, base: 'https://www.mysticindia.com/', key: mysticindia-com }
+          - { site: bapscare.org, base: 'https://www.bapscare.org/', key: bapscare-org }
           # Neasden's own site: copied from here only if it answers normally (no check page, no 403), else it stops at
           # once and is left to the News crawl thread for his Chrome (agreed 15 Nov 2026)
           # londonmandir.baps.org finished 16 Nov (24,916 files)
