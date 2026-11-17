@@ -1720,7 +1720,7 @@ def under_card(x, card, gap, f, lh, style, rnd, even=0):
     tries = ((1, 0, False, 0), (.9, 0, False, 0), (.82, 0, False, 0), (.82, 0, True, half), (.82, 0, True, 0))
     if even:   # the daily picture: every caption the same size, a long one takes another line before any gets smaller (Darpan, 17 Nov 2026)
         top = even - n   # the most extra lines the layout made room for
-        tries = tuple((1, k, False, 0) for k in range(top + 1)) + ((.9, top, False, 0), (.82, top, False, 0), (1, top, True, half)) + tries
+        tries = tuple((1, k, False, 0) for k in range(top + 1)) + ((.9, top, False, 0), (.82, top, False, 0)) + tries   # then today's cut at a natural break, never a half sentence
     # the whole caption first, then a touch smaller; only then a natural cut, keeping at least two thirds of it; a shorter cut last
     for shrink, extra, cut, keep in tries:
         f2 = garamond(f.size * shrink, 500) if shrink < 1 else f
