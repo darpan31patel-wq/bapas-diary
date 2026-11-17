@@ -13,7 +13,7 @@ layout, and one entry per card in the order the picture shows them: its year (an
 picture uses first and every other photo it could use, each in the same shape as a day pack's photos.
 It decides exactly as make.main() does which special picture the day gets. Read only: nothing here changes the daily
 picture, the special picture, shown.json or the release."""
-import datetime, json, os, re, sys
+import datetime, json, os, re, shutil, sys
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, HERE)
@@ -113,7 +113,7 @@ def which_special(day, photos, tg_evs, special, items=()):
         special, options, lead, source = (evs[0] if evs else None), evs[1:], None, 'daily'
     if not special:
         return None
-    sp = make.compose_special(special, day, lead=lead['im'] if lead else None)
+    sp = make.compose_special(special, day, lead=lead['im'] if lead else None, lead_url=lead['i'] if lead else None)
     if sp is None:
         return None
     return 'story', sp, dict(ev=special, lead=lead, source=source, options=options)
@@ -232,6 +232,48 @@ def big_day(day):
     return any(make.on_day(c['day'], day) for c in make.special_choices()['add'])
 
 
+def final_log(full, day, lay, fast):
+    """Darpan, 17 Nov 2026 (idea 4): every Final he presses is logged; this run says which day, which photos and
+    whether the quick way drew it (the Studio run adds the time and the Drive result to finals.json)."""
+    photos = [i.get('photo') for i in (lay or {}).get('items') or [] if i.get('type') == 'photo' and i.get('photo')]
+    json.dump(dict(date=str(day), photos=photos, fast=bool(fast)), open(os.path.join(full, 'final.json'), 'w'), indent=1, ensure_ascii=False)
+    open(os.path.join(full, 'final.txt'), 'w').write('final')
+
+
+def first_design(day):
+    """His first choice of the day, when it is a finished Studio design (layout version 2 with Final pressed)."""
+    if make.special_off(day):
+        return None
+    for c in make.special_choices()['add']:
+        if make.on_day(c['day'], day):
+            lay = c.get('layout')
+            if isinstance(lay, dict) and lay.get('final') and str(lay.get('version')) == '2' and lay.get('items'):
+                return lay
+            return None
+    return None
+
+
+def fast_final(day, root, prev, lay):
+    """Darpan, 17 Nov 2026 (idea 3, 'Fast Final'): when he presses Final on his own design, the day's photo search is
+    skipped and only his design is drawn, so it reaches Drive in a few minutes. The day's pack is kept as it was, with
+    the new picture and his design in it."""
+    out = os.path.join(root, str(day))
+    if os.path.abspath(prev) != os.path.abspath(out):
+        shutil.copytree(prev, out, dirs_exist_ok=True)
+    img = make.compose_design(lay, day)
+    img.convert('RGB').resize((2400, round(2400 * img.height / img.width)), Image.LANCZOS).save(os.path.join(out, 'real.jpg'), quality=85)
+    full = os.environ.get('SPECIAL_OUT')
+    if full:
+        os.makedirs(full, exist_ok=True)
+        img.save(os.path.join(full, 'bapas-diary-special.png'), optimize=True)
+        img.convert('RGB').save(os.path.join(full, 'bapas-diary-special.jpg'), quality=95, optimize=True)
+        final_log(full, day, lay, True)
+    pack = json.load(open(os.path.join(out, 'pack.json'), encoding='utf-8'))
+    pack.update(real='real.jpg', design=lay, final=True, made=datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%MZ"))
+    json.dump(pack, open(os.path.join(out, 'pack.json'), 'w'), indent=1, ensure_ascii=False)
+    print(f'{day}: his finished design drawn the quick way -> {out}')
+
+
 def main():
     if sys.argv[1] == '--big':   # --big 2026-11-15 90: the big special days from that day on, one 'BIG <date>' a line
         start = datetime.date.fromisoformat(sys.argv[2])
@@ -242,6 +284,10 @@ def main():
         return
     day = datetime.date.fromisoformat(sys.argv[1])
     root = sys.argv[2] if len(sys.argv) > 2 else os.path.join('site', 'packs', 'special')
+    prev = os.environ.get('SPECIAL_PREV') or ''   # the day's pack as the Studio has it now
+    lay = first_design(day)
+    if lay and prev and os.path.exists(os.path.join(prev, 'pack.json')):
+        return fast_final(day, root, prev, lay)
     seen = make.shown
     make.shown = lambda: {d: v for d, v in seen().items() if d < str(day)}   # only the days before it, as its own morning run sees them
     items, photos, tg_evs, special = gather(day)
@@ -258,7 +304,7 @@ def main():
     if full:
         os.makedirs(full, exist_ok=True)
         if ((drawn or {}).get('ev') or {}).get('layout', {}).get('final'):   # he pressed Final: it goes to Drive now, for any day from today
-            open(os.path.join(full, 'final.txt'), 'w').write('final')
+            final_log(full, day, drawn['ev']['layout'], False)
         sp.save(os.path.join(full, 'bapas-diary-special.png'), optimize=True)
         sp.convert('RGB').save(os.path.join(full, 'bapas-diary-special.jpg'), quality=95, optimize=True)
         if (drawn or {}).get('source') == 'chosen':   # his next choices of the day are special 2, 3... as the morning run makes them
@@ -328,7 +374,8 @@ def main():
                     whatsapp=make.tg_caption(ev).strip(),   # the story as the 2pm caption words tell it ('On this day in ...'), Darpan, 14 Nov 2026
                     story_date=ev['date'][:10], story_place=ev.get('place') or '',
                     layout=dict(name='story', big=[70, 200, 1180, 800], small_from=1360, size=[make.W, make.H], unit=make.SCALE),
-                    spares=spares, most_photos=make.MOST_PHOTOS)
+                    spares=spares, most_photos=make.MOST_PHOTOS,
+                    design=sp.info.get('design'))   # the picture as a Studio design (layout version 2): the Studio opens the same drawing
         # Darpan, 13 Nov 2026 ('if youre not sure make multiple and i will decide'): the other pictures the day could
         # have, each drawn and with the entry that makes it the day's special once it is put in archive/special-days.json
         def choice(e):
