@@ -1115,10 +1115,10 @@ function drawDesign(ctx, pack, o, hits, marks) {
 function dExport(it, L) {
   const R = v => Math.round(v), base = { type: it.t, role: it.role || (it.t === 'photo' ? 'photo' : 'text'), x: R(it.x), y: R(it.y), w: R(it.w), rotate: Math.round((it.rot || 0) * 10) / 10 };
   if (it.t === 'text') return Object.assign(base, { h: R(it.h || L.height), fixed_height: !!it.h, text: it.text || '', lines: L.lines.map(l => l.gap ? '' : l.t), size: R(it.size), font: it.font === 'sans' ? 'sans' : 'serif', weight: it.weight || 500,
-    color: it.color || 'ivory', line_height: Math.round((it.lh || 1.3) * 100) / 100, para_gap: Math.round((it.pg ?? .55) * 100) / 100, indent: R(it.ind || 0), align: it.align || 'center', upper: !!it.upper, letter_spacing: it.track || 0, diamonds: !!it.deco });
+    color: it.color || 'ivory', line_height: Math.round((it.lh || 1.3) * 100) / 100, para_gap: Math.round(L.lh * (it.pg ?? .55)), indent: R(it.ind || 0), align: it.align || 'center', upper: !!it.upper, letter_spacing: it.track || 0, diamonds: !!it.deco });
   const pi = dPhotoInfo(it), c = dCand(it);
   return Object.assign(base, { h: R(it.h), photo: pi.src, file: c && !c.src ? (c.f || c.img || '') : undefined, at: c && !c.src ? c.at || null : undefined, date: pi.date, frame: it.frame !== false,
-    label: it.frame !== false && it.label !== false ? { year: String(it.year || ''), place: String(it.place || '') } : false, focus: [Math.round((it.fx ?? .5) * 100) / 100, Math.round((it.fy ?? .3) * 100) / 100], zoom: Math.round((it.zoom || 1) * 100) / 100,
+    label: it.frame !== false && it.label !== false ? { year: String(it.year || ''), place: String(it.place || '') } : false, focus: [Math.round((it.fx ?? .5) * 100) / 100, Math.round((it.fy ?? .3) * 100) / 100], zoom: Math.round((it.zoom || 1) * 100),
     brightness: it.br ?? 100, contrast: it.ct ?? 100, saturation: it.sat ?? 100, peg: it.frame !== false && it.peg !== false });
 }
 function dV1(items) {
