@@ -2555,10 +2555,17 @@ def day_info(day):
 
 
 def day_line(v):
+    line = _day_line(v)   # no dashes on a card (Darpan's rule), and no stray comma before a bracket
+    return re.sub(r',\s*\(', ' (', re.sub(r'\s+[-\u2013\u2014]+\s+', ': ', line))
+
+
+def _day_line(v):
     """The one moment of a day report that a card can say in a line, in the old website's own sentence, turned to read
     like the other cards ('Swamishri performed the murti-pratishtha rituals of...' -> 'Performs the murti-pratishtha
     rituals of...'). '' when the report tells of no one-off moment, or its sentence doesn't turn cleanly."""
-    for s in sentences(' '.join(v.get('w') or [])):
+    said = sentences(' '.join(v.get('w') or []))
+    travel = lambda s: bool(re.match(r"(?:\S+\s+){0,8}?Swamishri (?:then |also )?(?:arrived|departed|left|reached|returned|travelled)\b", s))
+    for s in [s for s in said if not travel(s)]:   # what he did, never how he got there ('Departs for Khambhda village to perform...' is not the moment, 17 Nov 2026)
         if not MOMENT.search(s) or len(s) > 260 or re.search(r'[“”"]', s):
             continue
         if GUEST.search(s) and not western(s):   # meeting and honouring guests is every day (Darpan, 20 Oct 2026)
@@ -2631,8 +2638,8 @@ def tell_days(day, photos):
         if not v or x.get('tg') or x.get('cap') or x.get('d', '')[:10] != f"{x['y']}-{day:%m-%d}":
             continue
         c = caption(x)
-        if c and c != DARSHAN and not EVERYDAY.search(c) and not JUST_A_FACE.search(c):
-            continue
+        if c and c != DARSHAN and (MOMENT.search(c) or SPECIAL.search(c) or not EVERYDAY.search(c) and not JUST_A_FACE.search(c)):
+            continue   # (16 Nov 2026: 'Blesses the murti-pratishtha assembly' is a moment of its own and keeps its words)
         line = day_line(v)
         if not line or not same_town(place(x), v.get('pl') or []) or caption_fault(line):
             continue
