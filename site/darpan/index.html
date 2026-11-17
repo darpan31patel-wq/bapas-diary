@@ -2088,7 +2088,9 @@ function build() {
   const months = INDEX.months.includes(o.month) || S.mode !== 'month' ? INDEX.months : [...INDEX.months, o.month].sort();   // any month (Darpan, 13 Nov 2026)
   // today first, then the days to come; an older day only when he is on it (Darpan, 17 Nov 2026: "why do you need to show me previous dates"); the any date box still reaches every day
   const ahead = k => k >= todayLondon() || k === o.date;
-  const list = day ? days.filter(ahead).map(k => [k, longDate(k)]) : sp ? sps.filter(ahead).map(k => [k, longDate(k)]) : months.map(k => [k, longMonth(k)]), now = S.mode === 'month' ? o.month : o.date;
+  // and every day of the next 90 days, so a future day can always be looked at (Darpan, 17 Nov 2026: "I still want to be able to access future dates")
+  const next90 = have => { const out = new Set(have.filter(ahead)), t = new Date(todayLondon() + 'T12:00'); for (let i = 0; i <= 90; i++) out.add(new Date(t.getTime() + i * 864e5).toISOString().slice(0, 10)); return [...out].sort() };
+  const list = day ? next90(days).map(k => [k, longDate(k) + (days.includes(k) ? '' : ' (not made yet)')]) : sp ? next90(sps).map(k => [k, longDate(k) + (sps.includes(k) ? '' : ' (no special yet)')]) : months.map(k => [k, longMonth(k)]), now = S.mode === 'month' ? o.month : o.date;
   $('#any-l').hidden = S.mode === 'month'; if (S.mode !== 'month') $('#any').value = o.date || '';
   $('#anym-l').hidden = S.mode !== 'month'; if (S.mode === 'month') $('#anym').value = o.month || '';
   if (!((day && WANT) || (S.mode === 'month' && WANTM))) $('#want').hidden = true;
