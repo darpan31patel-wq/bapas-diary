@@ -2296,6 +2296,14 @@ def chosen_specials(day, items=()):
                               place=ev.get('place') or e.get('place') or '')
         elif kind == 'photos':
             ev = {'date': f"{c.get('year') or day.year}-{day:%m-%d}", 'line': c.get('headline') or ''}
+        elif kind == 'mix':   # Darpan, 17 Nov 2026: photos from several stories or News items in one picture, his own words
+            ps = [p for p in c.get('photos') or [] if isinstance(p, dict) and p.get('photo')][:MOST_PHOTOS]
+            if ps:
+                first = str(ps[0].get('date') or '')
+                ev = {'date': first[:10] if re.match(r'\d{4}-\d\d-\d\d', first) else f'{day.year}-{day:%m-%d}', 'line': c.get('headline') or '',
+                      'place': ps[0].get('place') or '', 'urls': [p['photo'] for p in ps], 'paths': None, 'posts': [], 'many': True,
+                      'labels': {p['photo']: (str(p.get('date') or '')[:4], p.get('place') or '') for p in ps},
+                      'paras': [p['caption'] for p in ps if p.get('caption')] if not c.get('story') else []}
         if ev is None:
             print('  chosen special not found:', c)
             continue
@@ -2307,8 +2315,10 @@ def chosen_specials(day, items=()):
         if c.get('story'):   # his own words win, as he typed them (blank lines are paragraphs)
             ev['paras'] = [p.strip() for p in re.split(r'\n\s*\n', str(c['story'])) if p.strip()]
         if c.get('photos'):
-            ev['urls'], ev['paths'], ev['posts'] = list(c['photos'])[:MOST_PHOTOS], None, []
+            ev['urls'], ev['paths'], ev['posts'] = [p.get('photo') if isinstance(p, dict) else p for p in c['photos']][:MOST_PHOTOS], None, []
             ev['many'] = True   # Darpan, 17 Nov 2026: as many photos as he turned on in the Studio, up to 20
+        if isinstance(c.get('layout'), dict):   # his own arrangement from the Studio, drawn exactly (compose_layout)
+            ev['layout'] = c['layout']
         ev['chosen'] = True
         out.append(ev)
     return out
@@ -3414,12 +3424,131 @@ def special_words(ev, from_card=False):
     """The words under a story special picture's title, as paragraphs: the channel's whole post; else the saved story,
     else its one line (never the title again)."""
     if ev.get('paras'):   # a News article's own words, a year's captions, or Darpan's own
-        return list(ev['paras'])
+        ps = list(ev['paras'])
+        if ev.get('kind') == 'year' and len(ps) > 3 and all(len(p) < 120 and '\n' not in p for p in ps):
+            # a year's photo captions run on as sentences, four to a paragraph, not one short line each (17 Nov 2026:
+            # 20 November 2012's seventeen captions left no room for the photos); every caption is still there
+            sent = [p.strip().rstrip('.') + '.' for p in ps]
+            ps = [' '.join(sent[k:k + 4]) for k in range(0, len(sent), 4)]
+        return ps
     full = full_story(ev)
     if full:
         return full
     words = (ev.get('whatsapp') if from_card else None) or ev.get('story') or ev.get('whatsapp') or ev['line']
     return [words] if words != (ev.get('headline') or ev['line']) else []
+
+
+# One card of a special picture: the photo filling w x h on ivory, its year and town on the strip under it (none when label
+# is False), with its soft shadow. Shared by the drawn special picture and the one he arranges in the Studio
+def card_strip(w):   # the ivory strip under a card for its year and town (a smaller card, a narrower strip)
+    return round(max(w * .1, px(56) * min(1, w / px(230))))
+
+def special_card(im, w, h, yr, pl, label=True, focus=None):
+    e = round(px(12))
+    c = Image.new('RGBA', (w + 2 * e, h + 2 * e + (card_strip(w) if label else 0))); d = ImageDraw.Draw(c)   # no empty strip under a card with no year and place
+    for j in range(c.height):
+        t = j / c.height
+        d.line((0, j, c.width, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(IVORY_TOP, IVORY_BOTTOM)) + (255,))
+    d.rectangle((0, 0, c.width - 1, c.height - 1), outline=IVORY_EDGE, width=max(1, round(SCALE)))
+    r = max(w / im.width, h / im.height)
+    p = im.resize((round(im.width * r), round(im.height * r)), Image.LANCZOS)
+    fx, fy = focus or (.5, .3)   # the point of the photo kept in view (his Studio crop), else the middle and a little high
+    l, t = round((p.width - w) * fx), round((p.height - h) * fy)
+    p = p.crop((l, t, l + w, t + h))
+    c.paste(polish(p), (e, e))
+    yf, pf = garamond(max(w * .07, px(40)), 700), arimo_bold(max(w * .03, px(19)))   # Darpan, 13 Nov 2026: 'location names too small' on the small cards
+    yr, pl = str(yr or ''), str(pl or '').upper()
+    yw = d.textlength(yr, font=yf); sp = w * .03 if pl and yr else 0
+    k = (w * .94) / (yw + sp + spaced(d, pl, pf, w * .006))
+    if k < 1:   # a small card: year and town made smaller until they fit inside it (16 Nov 2026: '009 NEW DELH')
+        yf, pf = garamond(yf.size * k, 700), arimo_bold(pf.size * k)
+        yw = d.textlength(yr, font=yf)
+    x0 = (c.width - yw - sp - spaced(d, pl, pf, w * .006)) / 2; base = h + e + (c.height - h - e) * .72
+    if label:
+        d.text((x0, base), yr, font=yf, fill=YEAR_C2, anchor='ls')
+        draw_spaced(d, x0 + yw + sp, base - pf.getmetrics()[0] - w * .008, pl, pf, w * .006, PLACE_C2)
+    m, dy = round(px(30)), round(px(36))
+    sh = Image.new('RGBA', (c.width + 2 * m, c.height + 2 * m))
+    ImageDraw.Draw(sh).rectangle((m, dy, c.width + m, c.height + dy), fill=(0, 0, 0, 150))
+    sh = sh.filter(ImageFilter.GaussianBlur(px(12))); sh.alpha_composite(c, (m, m))
+    return sh
+
+
+def compose_layout(ev, day):
+    """Darpan, 17 Nov 2026: the special picture exactly as he arranged it in the Studio. ev['layout'] (from his choice in
+    special-days.json), every number in the picture's layout units (2796 x 1290, x to the right, y down from the top):
+      cards:    [{photo, x, y, w, h, year, place, label, focus, peg}] in drawing order (a later card lies on top).
+                x, y, w, h: the card's whole outer box, ivory edge and year strip included. photo: its address (as in his
+                choice's photos). year, place: the strip's words (both left out or label false: no strip). focus: [fx, fy]
+                0 to 1, the part of the photo kept when it is cropped to the card (default [0.5, 0.3]). peg: false for none.
+      headline: {text, x, y, w, size, lines, align}   gold, bold. y is the top of the first line. size in layout units.
+      story:    {text, x, y, w, size, lines, align}   ivory. A blank line in text starts a new paragraph, a line break is kept.
+                lines: the lines exactly as the Studio broke them (then text is not wrapped again). align: center (default),
+                left or right, within x to x + w.
+      title, subtitle: {text} to change the date line or the line under it.
+    Nothing is moved, shrunk or left out: what he placed is what is drawn."""
+    lay = ev['layout']
+    img = background(); dr = ImageDraw.Draw(img)
+    header(img, (lay.get('title') or {}).get('text') or f'{day.day} {day:%B}',
+           (lay.get('subtitle') or {}).get('text') or 'A special day in BAPS history', compact=True, sub_y=136)
+    num = lambda v, d=0: float(v) if isinstance(v, (int, float)) else d
+    cards = [c for c in lay.get('cards') or [] if isinstance(c, dict) and c.get('photo')]
+    xs = [{'i': c['photo'], 'y': 0} for c in cards]
+    if xs:
+        download_all(xs, os.path.join(HERE, '.cache'))
+    e = round(px(12)); m = round(px(30))
+    for c, x in zip(cards, xs):
+        if 'path' not in x:
+            print('  his card photo could not be found:', c['photo'])
+            continue
+        try:
+            im = ImageOps.exif_transpose(Image.open(x.get('full') or x['path'])).convert('RGB')
+        except Exception as err:
+            print('  his card photo would not open:', c['photo'], err)
+            continue
+        ow, oh = round(px(num(c.get('w'), 300))), round(px(num(c.get('h'), 260)))
+        label = c.get('label', True) is not False and bool(c.get('year') or c.get('place'))
+        pw = max(8, ow - 2 * e)
+        ph = max(8, oh - 2 * e - (card_strip(pw) if label else 0))
+        f = c.get('focus') if isinstance(c.get('focus'), list) and len(c['focus']) == 2 else None
+        card = special_card(im, pw, ph, c.get('year') or '', c.get('place') or '', label, tuple(min(1, max(0, num(v, .5))) for v in f) if f else None)
+        cx, cy = px(num(c.get('x'))), px(num(c.get('y')))
+        img.paste(card, (round(cx - m), round(cy - m)), card)
+        if c.get('peg', True) is not False:
+            peg(img, cx + ow / 2, cy + px(16), px(1.5) if ow > px(700) else px(1))
+
+    def words(box, bold, gold):
+        if not isinstance(box, dict):
+            return
+        text = str(box.get('text') or '')
+        size = num(box.get('size'), 60 if bold else 34)
+        f = garamond(px(size), 700 if bold else 500)
+        x, y, w = px(num(box.get('x'))), px(num(box.get('y'))), px(num(box.get('w'), 1300))
+        lh = px(size * (1.2 if bold else 1.39))
+        if isinstance(box.get('lines'), list):
+            lines = [str(v) if v is not None else '' for v in box['lines']]
+        else:
+            lines = []
+            for k, para in enumerate(re.split(r'\n\s*\n', text.strip())):
+                if k:
+                    lines.append(None)
+                for row in para.split('\n'):
+                    lines += wrap(dr, row.strip(), f, w, 999, shorten=False) or ['']
+        y += f.size
+        for line in lines:
+            if line is None:
+                y += px(size * .5); continue
+            lw = dr.textlength(line, font=f)
+            lx = x if box.get('align') == 'left' else x + w - lw if box.get('align') == 'right' else x + (w - lw) / 2
+            if gold:
+                gold_text(img, (lx, y - f.size), line, f)
+            else:
+                dr.text((lx, y), line, font=f, fill=CAPTION_IVORY, anchor='ls')
+            y += lh
+    words(lay.get('headline'), True, True)
+    words(lay.get('story'), False, False)
+    footer(img, small=True)
+    return img
 
 
 MOST_PHOTOS = 20   # Darpan, 17 Nov 2026: 'more photos and then make it 20 photos' on a story or News special picture
@@ -3433,7 +3562,10 @@ def compose_special(ev, day, lead=None):
     if not ev.get('urls'):   # real photos before video stills (7 December's big card was a blurry still of a mandir model)
         real = {u for _, u in tg_photos(ev.get('posts') or [], pairs=True)}
         urls = [v for v in urls if v[1] in real] + [v for v in urls if v[1] not in real]
+    if ev.get('layout'):
+        return compose_layout(ev, day)
     most = MOST_PHOTOS if ev.get('many') else 5
+    labels, lab = ev.get('labels') or {}, {}   # a mix: each photo's own year and town
     urls = urls[:max(8, most)]
     cache = os.path.join(HERE, '.cache')
     ims = [lead.convert('RGB')] if lead is not None else []
@@ -3456,6 +3588,8 @@ def compose_special(ev, day, lead=None):
             im = Image.open(x['path']).convert('RGB')
             if np.asarray(im.convert('L').resize((64, 64)), dtype=float).std() >= 25:   # not a plain night sky or a blank frame
                 ims.append(im); plain.append(n in worded)
+                if u in labels:
+                    lab[id(im)] = labels[u]
     tiny = [np.asarray(im.convert('L').resize((16, 16)), dtype=float) for im in ims]   # the same photo posted twice is shown once
     keep = [k for k in range(len(ims)) if not any(np.abs(tiny[k] - tiny[j]).mean() < 8 for j in range(k))]
     ims, plain = [ims[k] for k in keep], [plain[k] for k in keep]
@@ -3479,35 +3613,8 @@ def compose_special(ev, day, lead=None):
     header(img, f'{day.day} {day:%B}', 'A special day in BAPS history', compact=True, sub_y=136)   # Darpan, 13 Nov 2026: only the date (the story isn't always about Bapa), more space under it
     yr, pl = ev['date'][:4], (town_of(ev.get('place')) or ev.get('place') or '').upper()   # the town, as on the daily cards ('NEW DELHI', not 'NEW DELHI, INDIA', which was cut off on the small cards)
 
-    def strip(w):   # the ivory strip under a card for its year and town (a smaller card, a narrower strip)
-        return round(max(w * .1, px(56) * min(1, w / px(230))))
-
-    def card(im, w, h, label=True):
-        e = round(px(12))
-        c = Image.new('RGBA', (w + 2 * e, h + 2 * e + (strip(w) if label else 0))); d = ImageDraw.Draw(c)   # no empty strip under a card with no year and place
-        for j in range(c.height):
-            t = j / c.height
-            d.line((0, j, c.width, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(IVORY_TOP, IVORY_BOTTOM)) + (255,))
-        d.rectangle((0, 0, c.width - 1, c.height - 1), outline=IVORY_EDGE, width=max(1, round(SCALE)))
-        r = max(w / im.width, h / im.height)
-        p = im.resize((round(im.width * r), round(im.height * r)), Image.LANCZOS)
-        p = p.crop(((p.width - w) // 2, round((p.height - h) * .3), (p.width - w) // 2 + w, round((p.height - h) * .3) + h))
-        c.paste(polish(p), (e, e))
-        yf, pf = garamond(max(w * .07, px(40)), 700), arimo_bold(max(w * .03, px(19)))   # Darpan, 13 Nov 2026: 'location names too small' on the small cards
-        yw = d.textlength(yr, font=yf); sp = w * .03 if pl else 0
-        k = (w * .94) / (yw + sp + spaced(d, pl, pf, w * .006))
-        if k < 1:   # a small card: year and town made smaller until they fit inside it (16 Nov 2026: '009 NEW DELH')
-            yf, pf = garamond(yf.size * k, 700), arimo_bold(pf.size * k)
-            yw = d.textlength(yr, font=yf)
-        x0 = (c.width - yw - sp - spaced(d, pl, pf, w * .006)) / 2; base = h + e + (c.height - h - e) * .72
-        if label:
-            d.text((x0, base), yr, font=yf, fill=YEAR_C2, anchor='ls')
-            draw_spaced(d, x0 + yw + sp, base - pf.getmetrics()[0] - w * .008, pl, pf, w * .006, PLACE_C2)
-        m, dy = round(px(30)), round(px(36))
-        sh = Image.new('RGBA', (c.width + 2 * m, c.height + 2 * m))
-        ImageDraw.Draw(sh).rectangle((m, dy, c.width + m, c.height + dy), fill=(0, 0, 0, 150))
-        sh = sh.filter(ImageFilter.GaussianBlur(px(12))); sh.alpha_composite(c, (m, m))
-        return sh
+    strip = card_strip
+    card = lambda im, w, h, label=True: special_card(im, w, h, *lab.get(id(im), (yr, pl)), label)
     small = ims[1:]
     paras = special_words(ev, lead is not None)
     head = ev.get('headline') or ev['line']
@@ -3541,13 +3648,14 @@ def compose_special(ev, day, lead=None):
                 floor = H - px(90) - cards_h
                 got = story_block(dr, paras, tw * (.86 if hw > 660 else .98), floor - y0, sizes) if paras else ([], None, 0, 0, True)
                 if got[4]:
-                    size = got[1].size if got[1] else 0   # the story's words as big as before first, then the biggest cards
-                    if best is None or (size, sw) > (best[5][1].size if best[5][1] else 0, best[0] + 1):
-                        best = (sw, rows, per, gap, floor, got)
+                    # the words and the cards both as big as they can be: each measured against its biggest size here
+                    score = (got[1].size / px(sizes[0]) if got[1] else 1) + (sw / px(smax) if small else 1)
+                    if best is None or score > best[6] + .01:
+                        best = (sw, rows, per, gap, floor, got, score)
                     break
         whole = best is not None
         if whole:
-            sw, rows, per, gap, floor, (lines, bf, lh, gap_p, whole) = best
+            sw, rows, per, gap, floor, (lines, bf, lh, gap_p, whole), _ = best
         elif hw == 660:   # nothing fits whole even at the smallest: the last try, as before
             sw, rows, per, gap = top_sw, 1, len(small), px(36)
             floor = H - px(90) - (grid(1, sw)[1] if small else 0)
