@@ -17,6 +17,9 @@ export async function onRequestPost({ request, env }) {
     at, kind: ['month', 'special'].includes(e.kind) ? e.kind : 'day', for: s(e.for, 10), how: s(e.how, 60), where: s(e.where, 200),
     changes: (Array.isArray(e.changes) ? e.changes : []).slice(0, 80).map((c) => s(c, 300)), why: s(e.why, 2000),
     title: s(e.title, 200),
+    // a special picture's Final: the design as sent, and the first draft it started from (17 Nov 2026, for the weekly learning)
+    ...(e.layout && typeof e.layout === 'object' && JSON.stringify(e.layout).length <= 60000 ? { layout: e.layout } : {}),
+    ...(e.first && typeof e.first === 'object' && JSON.stringify(e.first).length <= 60000 ? { first: e.first } : {}),
     // every card as it went out, so what he chose can be read here by itself (6 Nov 2026)
     cards: (Array.isArray(e.cards) ? e.cards : []).slice(0, 60).map((c) => ({
       card: s(c.card, 40), shown: c.shown !== false, photo: Number(c.photo) || 0, of: Number(c.of) || 0, caption: s(c.caption, 300), place: s(c.place, 80),
