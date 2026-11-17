@@ -3813,7 +3813,7 @@ def all_looks(ev, day, lead=None):
     return special_looks(ev, day, *got[:3]) if got else {}
 
 
-SPECIAL_LOOK = os.environ.get('SPECIAL_LOOK', 'drawn')   # the day's special picture: 'drawn' (as before) or 'hero', 'strip', 'then' (looks.py)
+SPECIAL_LOOK = os.environ.get('SPECIAL_LOOK', 'learned')   # the day's special picture: 'learned' (the look he picks most, else one big photo; Darpan, 17 Nov 2026: 'yes go live'), 'hero', 'strip', 'then', or 'drawn' (as before)
 DAY_ITEMS = []      # the day's photos of every year (with their files), for the 'now' of a then and now look
 LAST_LOOKS = {}     # every look of the last special picture made with special_looks(): {look: {img, faults, phone_dp}}
 

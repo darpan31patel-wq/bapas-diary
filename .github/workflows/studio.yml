@@ -76,17 +76,7 @@ jobs:
         env:
           DATES: ${{ inputs.dates }}
           MONTHS: ${{ inputs.months }}
-          TO: ${{ inputs.to || 'studio' }}
-        run: |
-          if [ "$TO" != studio ] && [ -n "$DATES" ]; then   # TEST ONLY (looks mockups), removed before the pull request
-            for d in ${DATES//,/ }; do python tools/special_pack.py "$d" site/packs/special || true; done
-            mkdir -p preview-looks && for d in ${DATES//,/ }; do cp -r "site/packs/special/$d" preview-looks/ || true; done
-            git config user.name "Bapa's Diary bot"; git config user.email "actions@github.com"
-            git add preview-looks && git commit -qm "Looks test $DATES" && git push -q origin "HEAD:${GITHUB_REF_NAME}"
-            echo "test run: stopping here on purpose so nothing else is pushed"; exit 1
-          else
-            python tools/studio_packs.py site --dates "$DATES" --months "$MONTHS"
-          fi
+        run: python tools/studio_packs.py site --dates "$DATES" --months "$MONTHS"
       - name: Bring the list of UK and Europe backup pictures (packs/uk-europe/index.json, made by the uk_europe job)
         continue-on-error: true
         env:
