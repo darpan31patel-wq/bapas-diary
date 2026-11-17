@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "sh",
+      "args": [
+        "-c",
+        "if [ \"$(id -u)\" = 0 ]; then exec npx -y @playwright/mcp@latest --headless --isolated --no-sandbox; else exec npx -y @playwright/mcp@latest --headless --isolated; fi"
+      ]
+    }
+  }
+}
