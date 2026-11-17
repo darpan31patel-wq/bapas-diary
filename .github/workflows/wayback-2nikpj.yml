@@ -2,9 +2,11 @@
 # ("Bapa's Archive/sites/web.archive.org/<old site>/...") with the same full detail lists as the live sites, plus the
 # day the Archive took each copy (Darpan, 13 Nov 2026: "Yes to all"; "Everything from the other websites need to have
 # full detail"). Archive only: touches nothing in the 2pm picture's chain, the website, R2 or bapas.db, never runs
-# 03:45 to 07:30 UTC, two gentle readers per old site. Pushing this file again carries each site on from where it
+# 03:45 to 07:30 UTC, one gentle reader per old site. Pushing this file again carries each site on from where it
 # stopped. Lists: <key>-pages.jsonl and <key>-photos.jsonl in the release `database` once a site is finished.
 # Round 1: 17 Nov 2026 11:45 UTC: mandir.org, kids.swaminarayan.org, bapscare.org (bapscare.org no longer answers).
+# Round 2: 17 Nov 15:40 UTC: 1,606 files in (mandir.org 535 of 10,513, kids 879 of 1,447, bapscare 805 of 810). The
+# Archive slowed the two readers down, so now one reader at the Archive's own pace, copying for 4h.
 name: wayback
 on:
   push:
@@ -53,12 +55,12 @@ jobs:
           rclone copy "$REMOTE/_state" state 2>/dev/null || true
           rclone lsf -R --files-only "$REMOTE" --filter "- _state/**" --filter "- _index/**" > have.txt || : > have.txt
           wc -l have.txt
-      - name: Copy from the Archive (3h at most, by 03:30 UTC at the latest)
+      - name: Copy from the Archive (4h at most, by 03:30 UTC at the latest)
         run: |
           ( while sleep 600; do [ -d work/files ] && rclone move work/files "$REMOTE" --transfers 16 --checkers 16 \
               --min-age 30s --stats 0 2>&1 | tail -2; rclone copy state "$REMOTE/_state" --stats 0 2>&1 | tail -1; done ) &
           mover=$!
-          stop=$(date -u -d '+180 minutes' +%H:%M); now=$(date -u +%H%M); s=${stop/:/}
+          stop=$(date -u -d '+240 minutes' +%H:%M); now=$(date -u +%H%M); s=${stop/:/}
           if [ $((10#$s)) -gt 330 ] && { [ $((10#$now)) -lt 330 ] || [ $((10#$s)) -lt $((10#$now)) ]; }; then stop=03:30; fi
           echo "stopping at $stop UTC"
           python3 -I tools/wayback.py --host ${{ matrix.host }} --work work --state state --stop-at $stop --have have.txt | tee run.log || true

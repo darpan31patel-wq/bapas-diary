@@ -1,7 +1,7 @@
 """Old BAPS websites that are gone now, copied from the Internet Archive's Wayback Machine (Darpan, 13 Nov 2026:
 "Yes to all"). For one old host (mandir.org, kids.swaminarayan.org, ...) it asks the Archive's list (CDX) for every
 address it ever kept, takes the last good copy of each (pages, photos, PDFs, sounds) and saves the file exactly as
-it was (the raw "id_" copy, without the Archive's own bar). Gentle: two readers, a pause between files, a long wait
+it was (the raw "id_" copy, without the Archive's own bar). Gentle: one reader, four seconds between files (the Archive's own pace), a long wait
 whenever the Archive says slow down. Never touches the 2pm picture, the website, R2 or bapas.db.
 
 Saved as <work>/files/<path on the old site>; files.jsonl notes for each file the old address, the Archive copy it
@@ -33,7 +33,7 @@ def get(url, tries=4):
         except urllib.error.HTTPError as e:
             if e.code in (404, 403, 410):
                 return e.code, '', b''
-            time.sleep(30 * (i + 1) if e.code in (429, 503) else 5 * (i + 1))
+            time.sleep(90 * (i + 1) if e.code in (429, 503) else 5 * (i + 1))   # the Archive asks to slow down: wait well
         except Exception:
             time.sleep(10 * (i + 1))
     return None, '', b''
@@ -93,8 +93,8 @@ def main():
     ap.add_argument('--work', default='work')
     ap.add_argument('--state', default='state')
     ap.add_argument('--stop-at', default='', help='UTC HH:MM to stop by')
-    ap.add_argument('--workers', type=int, default=2)
-    ap.add_argument('--gap', type=float, default=1.5)
+    ap.add_argument('--workers', type=int, default=1)
+    ap.add_argument('--gap', type=float, default=4.0)
     ap.add_argument('--have', default='', help='paths already in Drive (rclone lsf -R)')
     a = ap.parse_args()
     os.makedirs(a.state, exist_ok=True)
