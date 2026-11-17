@@ -24,17 +24,30 @@ KEEP = re.compile(r'(?i)\.(html?|php|asp|aspx|shtml|jpe?g|gif|png|bmp|tiff?|pdf|
                   r'flv|swf|doc|txt|zip)$|/$|^[^.]*$')
 
 
+SEEN = {}   # what the Archive answered, counted, so a slow round says why
+
+
 def get(url, tries=4):
     req = urllib.request.Request(url, headers={'User-Agent': UA})
     for i in range(tries):
         try:
             with urllib.request.urlopen(req, timeout=120) as r:
+                SEEN[r.status] = SEEN.get(r.status, 0) + 1
                 return r.status, r.headers.get('Content-Type', ''), r.read()
         except urllib.error.HTTPError as e:
+            SEEN[e.code] = SEEN.get(e.code, 0) + 1
             if e.code in (404, 403, 410):
                 return e.code, '', b''
-            time.sleep(90 * (i + 1) if e.code in (429, 503) else 5 * (i + 1))   # the Archive asks to slow down: wait well
-        except Exception:
+            wait = 5 * (i + 1)
+            if e.code in (429, 503):
+                try:
+                    wait = max(60, int(e.headers.get('Retry-After') or 0))   # the Archive asks to slow down
+                except ValueError:
+                    wait = 60
+            time.sleep(wait)
+        except Exception as e:
+            k = type(e).__name__
+            SEEN[k] = SEEN.get(k, 0) + 1
             time.sleep(10 * (i + 1))
     return None, '', b''
 
@@ -163,6 +176,8 @@ def main():
                 log.write(json.dumps(row, ensure_ascii=False) + '\n')
                 counts['saved'] += 1
                 counts['bytes'] += len(body)
+                if counts['saved'] % 50 == 0:
+                    print(json.dumps(dict(counts, answers=SEEN, at=dt.datetime.now(dt.timezone.utc).strftime('%H:%M'))), flush=True)
                 if counts['saved'] % 500 == 0:
                     log.flush()
                     dlog.flush()
@@ -178,7 +193,7 @@ def main():
     with open(fp, 'w', encoding='utf-8') as f:
         f.write('\n'.join(failed_now))
     left = len([r for r in todo if r['original'] not in set(open(donep, encoding='utf-8').read().split('\n'))])
-    out = dict(counts, left=left, finished=left == 0, at=dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'))
+    out = dict(counts, answers=SEEN, left=left, finished=left == 0, at=dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'))
     with open(os.path.join(a.state, 'last-run.json'), 'w') as f:
         json.dump(out, f)
     print(json.dumps(out), flush=True)
