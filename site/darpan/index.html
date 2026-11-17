@@ -2585,7 +2585,7 @@ setTimeout(() => { const all = progAll(); Object.keys(all).forEach(d => { const 
 // story with their lines exactly as broken here; the choice's photos list holds every photo on the picture. Saved a few
 // seconds after he stops, then the remake is asked for as with any other change. Only his own changes are sent: a day he
 // has not touched keeps the builder's own picture.
-const LAYOUT_REMAKE = true;
+let LAYOUT_REMAKE = true;
 let LAYOUT_T = 0;
 const layoutNow = () => LAYDRAWN ? JSON.parse(JSON.stringify(LAYDRAWN)) : null;
 const layoutSig = l => JSON.stringify(Object.assign({}, l || {}, { at: '' }));
