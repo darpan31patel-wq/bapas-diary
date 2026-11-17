@@ -142,7 +142,8 @@ jobs:
           TODAY=$(TZ=Europe/London date +%F); D="${DATE:-$TODAY}"; D=$(date -d "$D" +%F)
           echo "date=$D" >> "$GITHUB_OUTPUT"; echo "today=$TODAY" >> "$GITHUB_OUTPUT"
           # made to one side first, so a run that fails leaves the pack the Studio already has
-          set +e; python tools/special_pack.py "$D" new; R=$?; set -e
+          # Final on his own design: the pack the Studio has now is kept and only his design is drawn (the quick way)
+          set +e; SPECIAL_PREV="site/packs/special/$D" python tools/special_pack.py "$D" new; R=$?; set -e
           if [ "$R" = 0 ]; then
             mkdir -p site/packs/special; rm -rf "site/packs/special/$D"; mv "new/$D" "site/packs/special/$D"; echo "state=made" >> "$GITHUB_OUTPUT"
           elif [ "$R" = 2 ]; then   # no special picture this day (he switched it off)
@@ -198,6 +199,15 @@ jobs:
           elif os.path.exists(os.path.join(root, d, 'pack.json')):
               c[d] = 'made'
           json.dump(c, open(f, 'w'), indent=1)
+          # Darpan, 17 Nov 2026 (idea 4): every Final he pressed, newest last: day, time, photos, quick way or not, Drive result
+          if os.path.exists('out/final.json'):
+              f = os.path.join(root, 'finals.json')
+              try:
+                  log = json.load(open(f))
+              except (OSError, ValueError):
+                  log = []
+              log.append(dict(json.load(open('out/final.json')), at=now, made=os.environ['STATE'], drive=os.environ['DRIVE']))
+              json.dump(log[-200:], open(f, 'w'), indent=1)
           f = 'site/packs/index.json'
           if os.path.exists(f):
               idx = json.load(open(f))
