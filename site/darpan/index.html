@@ -274,17 +274,21 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
       <p class="hint" style="font-size:13.5px">Once on each device: in your “gets 2pm picture ready” script, choose <b>studioCode</b>, press Run, and paste the line it shows here. You can also paste the Web app URL (it ends /exec) and the code after the # one at a time.</p>
       <div class="row3" style="display:flex;gap:8px;flex-wrap:wrap"><input type="text" id="drive-code" placeholder="https://script.google.com/macros/s/…/exec#…" aria-label="Studio code from your script" style="flex:1 1 260px;min-width:0"><button class="btn" id="drive-save" type="button">Connect</button></div>
     </div>
+    <div class="ghrow" style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px;display:flex;flex-direction:column;gap:8px">
+      <h3 style="margin:0;font-size:15px">GitHub (builds the special pictures)</h3>
+      <p class="status" id="drv-gh"></p>
+      <div class="acts" style="justify-content:flex-start"><button class="btn" id="drv-gh-btn" type="button">Connect GitHub</button></div></div>
     <p class="status" id="drv-status" role="status"></p>
     <div class="acts"><button class="btn" value="cancel">Close</button></div>
   </form>
 </dialog>
 <dialog id="ghd" aria-labelledby="ghd-h">
   <form method="dialog" class="in">
-    <h2 id="ghd-h">Make photos for any date</h2>
-    <div id="ghd-on" hidden><p class="status ok">● Connected on this device. The Studio can get any date’s photos ready.</p>
+    <h2 id="ghd-h">Connect GitHub</h2>
+    <div id="ghd-on" hidden><p class="status ok">● Connected on this computer. Special pictures start building by themselves after each change, and the Studio can get any date’s photos ready.</p>
       <div class="acts" style="justify-content:flex-start"><button class="btn" id="gh-off" type="button">Disconnect</button></div></div>
     <div id="ghd-off">
-      <p class="hint" style="font-size:13.5px">Once on each device, so the Studio may ask GitHub to make a day’s photos:</p>
+      <p class="hint" style="font-size:13.5px">Once on each computer, so special pictures build straight away after each change (and any date’s photos can be made):</p>
       <ol class="hint" style="font-size:13.5px;padding-left:20px;margin:6px 0">
         <li>Open <a id="gh-new" target="_blank" rel="noopener" href="https://github.com/settings/personal-access-tokens/new?name=Bapa%27s+Diary+Studio&amp;description=Lets+the+Studio+make+photos+for+any+date&amp;expires_in=none&amp;actions=write&amp;contents=read">this GitHub page</a> (signed in as you).</li>
         <li>Under <b>Repository access</b> choose <b>Only select repositories</b> and pick <b>bapas-diary</b>.</li>
@@ -1421,7 +1425,7 @@ function build() {
   $('#pick').setAttribute('aria-label', S.mode === 'month' ? 'Which month' : 'Which day');
   $('#pick-opt').hidden = S.mode !== 'month';
   $('#pick-opt').innerHTML = [['A', 'Close-up images'], ['B', 'Activity'], ['M', 'Mixed']].map(([k, l]) => `<option value="${k}" ${k === S.month.option ? 'selected' : ''}>${l}</option>`).join('');
-  const dc = driveCode(); $('#drive-chip').className = 'chip' + (dc ? ' on' : ''); $('#drive-chip').textContent = dc ? 'Drive connected' : 'Connect Google Drive';
+  driveChip();
   if (!TABS[S.mode].some(t => t[0] === S.tab)) S.tab = 'card';
   $('#tabs').innerHTML = TABS[S.mode].map(([k, l]) => `<button role="tab" data-t="${k}" aria-selected="${k === S.tab}">${l}</button>`).join('');
   $('#compare').hidden = S.mode === 'month' || waiting;
@@ -1664,10 +1668,29 @@ $('#want-go').addEventListener('click', async () => {
   finally { btn.disabled = false }
 });
 $('#any').addEventListener('change', e => { if (/^\d{4}-\d\d-\d\d$/.test(e.target.value)) (S.mode === 'special' ? openSpecial : openDate)(e.target.value) });
+// the website itself can ask GitHub when the Pages secret STUDIO_GITHUB_TOKEN is set (functions/darpan/api/remake.js), so
+// no computer needs its own key; a key on this computer still works as before (Darpan, 17 Nov 2026: "make it work")
+const RMAPI = '/darpan/api/remake';
+let SERVERGH = false;
+const canAsk = () => !!ghKey() || SERVERGH;
+const ghr = (path, opt = {}) => ghKey() ? gh(path, opt) : fetch(RMAPI + '?p=' + encodeURIComponent(path), { cache: 'no-store' });
+function ghLine() {
+  const el = $('#drv-gh'), b = $('#drv-gh-btn');
+  if (el) { el.className = 'status' + (canAsk() ? ' ok' : ' warn'); el.textContent = ghKey() ? '● Connected on this computer. Special pictures start building by themselves after each change.' : SERVERGH ? '● Connected for the website, so every computer can build special pictures straight away.' : '○ Not connected on this computer yet, so a special picture you change waits for the 5am run. Press Connect GitHub to build straight away.' }
+  if (b) { b.textContent = ghKey() ? 'GitHub on this computer' : 'Connect GitHub'; b.hidden = SERVERGH && !ghKey() }
+  driveChip();
+}
+fetch(RMAPI, { cache: 'no-store' }).then(r => r.ok ? r.json() : {}).then(j => { SERVERGH = !!j.server; ghLine() }).catch(() => {});
+function driveChip() {   // Drive and GitHub together on one chip (Darpan, 17 Nov 2026: "add this button in")
+  let g = false; try { g = canAsk() } catch (e) {}
+  const dc = driveCode(); $('#drive-chip').className = 'chip' + (dc && g ? ' on' : '');
+  $('#drive-chip').textContent = (dc ? 'Drive connected' : 'Connect Google Drive') + (g ? ' · GitHub connected' : ' · GitHub not connected');
+}
+$('#drv-gh-btn').addEventListener('click', () => openGh());
 function openGh() {
   const on = !!ghKey(); $('#ghd-on').hidden = !on; $('#ghd-off').hidden = on; $('#ghd-status').textContent = ''; $('#gh-code').value = ''; $('#ghd').showModal();
 }
-$('#gh-off').addEventListener('click', () => { store.set('studio-gh', ''); openGh(); showWant() });
+$('#gh-off').addEventListener('click', () => { store.set('studio-gh', ''); openGh(); showWant(); ghLine() });
 $('#gh-save').addEventListener('click', async () => {
   const k = $('#gh-code').value.trim(), st = $('#ghd-status');
   if (!k) return;
@@ -1675,7 +1698,7 @@ $('#gh-save').addEventListener('click', async () => {
   try {
     const r = await fetch(API + '/actions/workflows/studio.yml', { headers: { Authorization: 'Bearer ' + k, Accept: 'application/vnd.github+json' } });
     if (!r.ok) { st.className = 'status warn'; st.textContent = r.status === 401 ? 'GitHub did not accept that key. Copy it again (it starts github_pat_).' : 'That key cannot see bapas-diary. Under Repository access pick bapas-diary.'; return }
-    store.set('studio-gh', k); st.className = 'status ok'; st.textContent = 'Connected. You can now make any date.';
+    store.set('studio-gh', k); st.className = 'status ok'; st.textContent = 'Connected. Special pictures now build straight away.'; ghLine();
     $('#ghd-on').hidden = false; $('#ghd-off').hidden = true; showWant();
   } catch (e) { st.className = 'status warn'; st.textContent = 'Could not reach GitHub. Try again.' }
 });
@@ -1770,44 +1793,48 @@ function showProg() {
   const shown = STEPS.filter(([k]) => !skip(k)), at = shown.findIndex(([k]) => k === p.step);
   const pct = p.fail ? Math.round(at / (shown.length - 1) * 100) : Math.round((p.step === 'ready' ? 1 : (at + .5) / (shown.length - 1)) * 100);
   const wait = p.step === 'send' && p.sendAt ? Math.max(0, Math.round((p.sendAt - Date.now()) / 1000)) : 0;
-  el.innerHTML = `<h3>${p.fail ? 'The special picture for ' + esc(longDate(date)) + ' did not finish' : p.step === 'ready' ? 'The special picture for ' + esc(longDate(date)) + ' is ready' : 'Making the special picture for ' + esc(longDate(date)) + '…'}</h3>
-    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>
-    <ol>${shown.map(([k, w], i) => { const done = i < at || p.step === 'ready', now = i === at && p.step !== 'ready'; return `<li class="${p.fail && now ? 'bad' : done ? 'done' : now ? 'now' : ''}"><span>${p.fail && now ? '✕' : done ? '✓' : now ? '<span class="spin">◌</span>' : '○'}</span><b>${esc(w)}${now && k === 'send' && wait ? ` (in ${wait} s, so changes close together go as one)` : ''}</b><span>${p.t[k] ? clock(p.t[k]) : ''}</span></li>` }).join('')}</ol>
-    <p class="hint">${p.fail ? esc(p.fail) : p.step === 'ready' ? `Took ${mins(p.t.ready - start)}. It is on the Special picture tab now${date === today && !p.late ? ', and in Drive for the 2pm send' : ''}.` : `${mins(Date.now() - start)} so far. Usually 5 to 10 minutes from sending; longer if another GitHub run is going.`}</p>
-    <div class="acts">${p.step === 'send' ? '<button class="btn small primary" id="sprog-now" type="button">Send it now</button>' : ''}${p.fail ? '<button class="btn small primary" id="sprog-again" type="button">Try again</button>' : ''}${p.run ? `<a class="btn small" href="https://github.com/darpan31patel-wq/bapas-diary/actions/runs/${p.run}" target="_blank" rel="noopener">See it on GitHub</a>` : ''}${p.step === 'ready' || p.fail ? '<button class="btn small" id="sprog-x" type="button">Hide</button>' : ''}${p.step === 'ready' && !(S.mode === 'special' && S.special.date === date) ? `<button class="btn small" id="sprog-open" type="button">Open it</button>` : ''}</div>`;
+  const calm = !!p.note && !p.fail;
+  el.innerHTML = `<h3>${calm ? 'Your choice for ' + esc(longDate(date)) + ' is saved' : p.fail ? 'The special picture for ' + esc(longDate(date)) + ' did not finish' : p.step === 'ready' ? 'The special picture for ' + esc(longDate(date)) + ' is ready' : 'Making the special picture for ' + esc(longDate(date)) + '…'}</h3>
+    <div class="bar"${calm ? ' hidden' : ''} role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>
+    <ol${calm ? ' hidden' : ''}>${shown.map(([k, w], i) => { const done = i < at || p.step === 'ready' || (calm && i === at), now = i === at && p.step !== 'ready' && !calm; return `<li class="${p.fail && now ? 'bad' : done ? 'done' : now ? 'now' : ''}"><span>${p.fail && now ? '✕' : done ? '✓' : now ? '<span class="spin">◌</span>' : '○'}</span><b>${esc(w)}${now && k === 'send' && wait ? ` (in ${wait} s, so changes close together go as one)` : ''}</b><span>${p.t[k] ? clock(p.t[k]) : ''}</span></li>` }).join('')}</ol>
+    <p class="hint">${calm ? esc(p.note) : p.fail ? esc(p.fail) : p.step === 'ready' ? `Took ${mins(p.t.ready - start)}. It is on the Special picture tab now${date === today && !p.late ? ', and in Drive for the 2pm send' : ''}.` : `${mins(Date.now() - start)} so far. Usually 5 to 10 minutes from sending; longer if another GitHub run is going.`}</p>
+    <div class="acts">${calm ? '<button class="btn small primary" id="sprog-gh" type="button">Connect GitHub</button>' : ''}${p.step === 'send' && !calm ? '<button class="btn small primary" id="sprog-now" type="button">Send it now</button>' : ''}${p.fail ? '<button class="btn small primary" id="sprog-again" type="button">Try again</button>' : ''}${p.run ? `<a class="btn small" href="https://github.com/darpan31patel-wq/bapas-diary/actions/runs/${p.run}" target="_blank" rel="noopener">See it on GitHub</a>` : ''}${p.step === 'ready' || p.fail || calm ? '<button class="btn small" id="sprog-x" type="button">Hide</button>' : ''}${p.step === 'ready' && !(S.mode === 'special' && S.special.date === date) ? `<button class="btn small" id="sprog-open" type="button">Open it</button>` : ''}</div>`;
   el.hidden = false;
   const on = (id, fn) => { const b = document.getElementById(id); if (b) b.onclick = fn };
-  on('sprog-now', () => askRemake(date)); on('sprog-again', () => askRemake(date));
+  on('sprog-gh', () => openGh()); on('sprog-now', () => askRemake(date)); on('sprog-again', () => askRemake(date));
   on('sprog-x', () => { progSet(date, null, { gone: true }) });
   on('sprog-open', () => { S.mode = 'special'; openSpecial(date) });
-  const cr = document.getElementById('ch-remake-p'); if (cr && S.special.date === date) cr.textContent = p.fail || STEPS[n][1] + (p.step === 'ready' ? '' : '…');
-  if (!PROGTICK && p.step !== 'ready' && !p.fail) PROGTICK = setInterval(showProg, 1000);
-  if ((p.step === 'ready' || p.fail) && PROGTICK) { clearInterval(PROGTICK); PROGTICK = 0 }
+  const cr = document.getElementById('ch-remake-p'); if (cr && S.special.date === date) cr.textContent = p.fail || p.note || STEPS[n][1] + (p.step === 'ready' ? '' : '…');
+  if (!PROGTICK && p.step !== 'ready' && !p.fail && !calm) PROGTICK = setInterval(showProg, 1000);
+  if ((p.step === 'ready' || p.fail || calm) && PROGTICK) { clearInterval(PROGTICK); PROGTICK = 0 }
 }
 function remakeSoon(date) {
   if (!date || date < todayLondon()) return;
   clearTimeout(REMAKE_T);
-  progSet(date, 'saved', { fail: '', run: 0, gone: false, late: false, t: { saved: Date.now() } });
-  if (!ghKey()) { progSet(date, 'saved', { fail: 'Your choice is saved. Connect GitHub (top of the page) and the Studio will ask the Collage builder by itself; until then the morning run uses your choice.' }); return }
+  progSet(date, 'saved', { fail: '', note: '', run: 0, gone: false, late: false, t: { saved: Date.now() } });
+  if (!canAsk()) { progSet(date, 'saved', { note: 'Your choice is saved, and the 5am run will build it. To build it straight away after every change, press Connect GitHub below, once on this computer.' }); return }
   progSet(date, 'send', { sendAt: Date.now() + SEND_AFTER * 1e3 });
   REMAKE_T = setTimeout(() => askRemake(date), SEND_AFTER * 1e3);
 }
 async function askRemake(date) {
   clearTimeout(REMAKE_T);
-  if (!ghKey()) { progSet(date, 'saved', { fail: 'Connect GitHub (top of the page) and the remake will start by itself after each change. Until then the morning run uses your choice.' }); return }
+  if (!canAsk()) { progSet(date, 'saved', { note: 'Your choice is saved, and the 5am run will build it. To build it straight away after every change, press Connect GitHub below, once on this computer.' }); return }
   const p0 = progOf(date); if (!p0 || !p0.t.saved) progSet(date, 'saved', { t: { saved: Date.now() } });
-  progSet(date, 'send', { fail: '', run: 0, gone: false, sendAt: 0 });
+  progSet(date, 'send', { fail: '', note: '', run: 0, gone: false, sendAt: 0 });
   try {
-    const r = await gh('/actions/workflows/studio.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main', inputs: { special: date } }) });
-    if (r.status === 204) { const a = asked(); a['s:' + date] = Date.now(); store.set('studio-asked', a); progSet(date, 'accepted'); waitForS(date) }
+    const dev = !!ghKey();   // this computer's own key, else the website asks (functions/darpan/api/remake.js)
+    const r = dev ? await gh('/actions/workflows/studio.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main', inputs: { special: date } }) })
+      : await fetch(RMAPI, { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date }) });
+    if (r.status === 204 || (!dev && r.ok)) { const a = asked(); a['s:' + date] = Date.now(); store.set('studio-asked', a); progSet(date, 'accepted'); waitForS(date) }
     else if (r.status === 422) progSet(date, 'send', { fail: 'Your choice is saved, but the Collage builder’s remake run did not take the request, so the morning run will use your choice.' });
-    else if (r.status === 401) { store.set('studio-gh', ''); progSet(date, 'send', { fail: 'GitHub did not accept the key on this device. Press Connect GitHub and paste a new one, then Try again.' }) }
+    else if (r.status === 401 && dev) { store.set('studio-gh', ''); ghLine(); progSet(date, 'send', { fail: 'GitHub did not accept the key on this computer. Press Connect GitHub and paste a new one, then Try again.' }) }
+    else if (r.status === 503 && !dev) { SERVERGH = false; ghLine(); progSet(date, 'saved', { note: 'Your choice is saved, and the 5am run will build it. To build it straight away after every change, press Connect GitHub below, once on this computer.' }) }
     else progSet(date, 'send', { fail: `GitHub said no (${r.status}). Your choice is saved; press Try again.` });
   } catch (e) { progSet(date, 'send', { fail: 'Could not reach GitHub. Your choice is saved; press Try again.' }) }
 }
 const timeNow = () => new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 async function specialMade(date) {   // when the special pack of that day was made, straight from GitHub
-  try { const r = await gh(`/contents/packs/special/${date}/pack.json?ref=studio`, { headers: { Accept: 'application/vnd.github.raw+json' } }); if (!r.ok) return 0; return Date.parse((await r.json()).made || '') || 0 } catch (e) { return 0 }
+  try { const r = await ghr(`/contents/packs/special/${date}/pack.json?ref=studio`, { headers: { Accept: 'application/vnd.github.raw+json' } }); if (!r.ok) return 0; return Date.parse((await r.json()).made || '') || 0 } catch (e) { return 0 }
 }
 // which step of the Collage builder's special job is running, by its step names in studio.yml
 const stepOfJob = job => {
@@ -1817,7 +1844,7 @@ const stepOfJob = job => {
 };
 async function runFor(date) {   // this ask's run: the newest Studio packs run started after the ask
   const when = asked()['s:' + date] || 0;
-  const r = await gh('/actions/workflows/studio.yml/runs?event=workflow_dispatch&per_page=6'); if (!r.ok) return null;
+  const r = await ghr('/actions/workflows/studio.yml/runs?event=workflow_dispatch&per_page=6'); if (!r.ok) return null;
   return ((await r.json()).workflow_runs || []).filter(x => Date.parse(x.created_at) >= when - 90e3).sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at))[0] || null;
 }
 function waitForS(date) {
@@ -1825,11 +1852,11 @@ function waitForS(date) {
   const tick = async () => {
     const when = asked()['s:' + date] || 0, p = progOf(date) || {};
     try {
-      const run = p.run ? await (await gh(`/actions/runs/${p.run}`)).json() : await runFor(date);
+      const run = p.run ? await (await ghr(`/actions/runs/${p.run}`)).json() : await runFor(date);
       if (run && run.id) {
         if (!p.run) progSet(date, null, { run: run.id });
         if (run.status === 'queued' || run.status === 'waiting' || run.status === 'requested' || run.status === 'pending') progSet(date, 'queued');
-        else if (run.status === 'in_progress') { const jr = await gh(`/actions/runs/${run.id}/jobs`); if (jr.ok) { const job = ((await jr.json()).jobs || []).find(j => j.status !== 'completed' || j.conclusion !== 'skipped'); const st = stepOfJob(job); if (STEPN[st] > STEPN[(progOf(date) || {}).step || 'saved']) progSet(date, st) } }
+        else if (run.status === 'in_progress') { const jr = await ghr(`/actions/runs/${run.id}/jobs`); if (jr.ok) { const job = ((await jr.json()).jobs || []).find(j => j.status !== 'completed' || j.conclusion !== 'skipped'); const st = stepOfJob(job); if (STEPN[st] > STEPN[(progOf(date) || {}).step || 'saved']) progSet(date, st) } }
         else if (run.status === 'completed' && run.conclusion !== 'success') { clearInterval(WAITS); WAITS = null; progSet(date, (progOf(date) || {}).step, { fail: `The Collage builder’s run stopped (${run.conclusion}). Your choice is saved; press Try again, and if it fails twice tell Claude.` }); return }
         else if (run.status === 'completed') { if (STEPN[(progOf(date) || {}).step] < STEPN.studio) progSet(date, 'studio') }
       }
@@ -1838,7 +1865,7 @@ function waitForS(date) {
         clearInterval(WAITS); WAITS = null;
         const a = asked(); delete a['s:' + date]; store.set('studio-asked', a);
         const rm = store.get('studio-remade') || {}; rm[date] = Date.now(); store.set('studio-remade', rm);
-        let late = false; try { const rj = await gh('/contents/packs/special/remake.json?ref=studio', { headers: { Accept: 'application/vnd.github.raw+json' } }); if (rj.ok) { const x = await rj.json(); late = x.date === date && /late/.test(x.drive || '') } } catch (e) {}
+        let late = false; try { const rj = await ghr('/contents/packs/special/remake.json?ref=studio', { headers: { Accept: 'application/vnd.github.raw+json' } }); if (rj.ok) { const x = await rj.json(); late = x.date === date && /late/.test(x.drive || '') } } catch (e) {}
         progSet(date, 'ready', { late, fail: late ? 'Made, but after 1:50pm, so it is on the Special picture tab only; the 2pm send was not changed.' : '' });
         await freshIndex();
         if (S.mode === 'special' && S.special.date === date) { P.special = null; load('special') }
@@ -1996,7 +2023,7 @@ async function askUkAdd(date) {
   const el = document.getElementById('uk-add-p'), say = m => { if (el) el.textContent = m };
   if (date !== todayLondon()) return;
   if (!ukOpen()) { say('Too late for today’s 2pm send: adding closes at 1:50pm.'); return }
-  if (!ghKey()) { say('Connect GitHub (top of the page) first, then press again.'); return }
+  if (!ghKey()) { say('GitHub is not connected on this computer yet. Connect it, then press again.'); openGh(); return }
   const b = document.getElementById('uk-add'); if (b) b.disabled = true;
   try {
     const r = await gh('/actions/workflows/studio.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main', inputs: { uk_europe_add: 'today' } }) });
@@ -2071,7 +2098,7 @@ async function sendToDrive(mode, png, jpg) {
 }
 function fillDrive() {
   const dc = driveCode();
-  $('#drv-on').hidden = !dc; $('#drv-off').hidden = !!dc;
+  $('#drv-on').hidden = !dc; $('#drv-off').hidden = !!dc; ghLine();
 }
 $('#drive-chip').addEventListener('click', () => { fillDrive(); $('#drv-status').textContent = ''; $('#drv').showModal() });
 $('#drive-off').addEventListener('click', () => { setDrive(''); fillDrive(); build(); const st = $('#drv-status'); st.className = 'status'; st.textContent = 'Disconnected from Google Drive on this device.' });
