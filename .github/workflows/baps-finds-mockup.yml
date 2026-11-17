@@ -6,7 +6,7 @@ name: baps-finds-mockup
 on:
   push:
     branches: [claude/project-thread-0f0un6]
-    paths: [tools/mockups/baps-finds/shoot.py, tools/mockups/baps-finds/prasang.py, tools/mockups/baps-finds/go.txt]
+    paths: [tools/mockups/baps-finds/shoot.py, tools/mockups/baps-finds/finds.py, tools/mockups/baps-finds/prasang.py, tools/mockups/baps-finds/go.txt]
 permissions:
   contents: write
 concurrency: baps-finds-mockup
@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: pip install -q playwright pillow requests && python -m playwright install --with-deps chromium > /dev/null
-      - run: python3 tools/mockups/baps-finds/$(head -1 tools/mockups/baps-finds/go.txt | grep -q prasang && echo prasang.py || echo shoot.py) tools/mockups/baps-finds/out
+      - run: python3 tools/mockups/baps-finds/$(head -1 tools/mockups/baps-finds/go.txt | cut -d: -f1 | sed "s/^\(prasang\|finds\)$/\1.py/;t;s/.*/shoot.py/") tools/mockups/baps-finds/out
       - name: Save the pictures on this branch
         run: |
           git config user.name "github-actions[bot]"
