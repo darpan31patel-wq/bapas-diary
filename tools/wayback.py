@@ -117,6 +117,9 @@ def main():
     counts = dict(saved=0, missing=0, failed=0, bytes=0)
     log = open(os.path.join(a.state, 'files.jsonl'), 'a', encoding='utf-8')
     dlog = open(donep, 'a', encoding='utf-8')
+    fp = os.path.join(a.state, 'failed.txt')
+    failed_before = set(x for x in open(fp, encoding='utf-8').read().split('\n') if x) if os.path.exists(fp) else set()
+    failed_now = []
     it = iter(todo)
     halt = threading.Event()
 
@@ -135,6 +138,11 @@ def main():
             with lock:
                 if st is None:
                     counts['failed'] += 1
+                    if r['original'] in failed_before:
+                        dlog.write(r['original'] + '\n')    # failed in two rounds: given up, so the site can finish
+                        counts['gave_up'] = counts.get('gave_up', 0) + 1
+                    else:
+                        failed_now.append(r['original'])
                     continue
                 dlog.write(r['original'] + '\n')
                 if st != 200:
@@ -167,6 +175,8 @@ def main():
         t.join()
     log.close()
     dlog.close()
+    with open(fp, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(failed_now))
     left = len([r for r in todo if r['original'] not in set(open(donep, encoding='utf-8').read().split('\n'))])
     out = dict(counts, left=left, finished=left == 0, at=dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'))
     with open(os.path.join(a.state, 'last-run.json'), 'w') as f:
