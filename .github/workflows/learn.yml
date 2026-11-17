@@ -1,0 +1,48 @@
+name: Weekly Studio lessons
+
+# Every Sunday morning: learn from Darpan's Studio changes (which photos he swaps, removes or adds, the word sizes and
+# look he picks) so the first drafts look more like his finished pictures, then tell him what was learned in plain
+# words. The lessons go to archive/learned.json (the builder reads it) and come to him as a GitHub issue, which emails
+# him (Darpan, 17 Nov 2026, idea 4: 'report what was learned in plain words once a week').
+
+on:
+  schedule:
+    - cron: '0 8 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: main-commits
+  cancel-in-progress: false
+
+jobs:
+  learn:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -q -r requirements.txt
+      - name: Learn from his Studio changes
+        env:
+          STUDIO_LOG_URL: ${{ vars.STUDIO_LOG_URL }}
+          STUDIO_LOG_KEY: ${{ secrets.STUDIO_LOG_KEY }}
+        run: python tools/learn.py | tee lessons.txt
+      - name: Save what was learned
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add archive/learned.json archive/learned
+          git commit -qm "Studio lessons $(date -u +%F) [skip ci]" || exit 0
+          for k in 1 2 3; do git pull -q --rebase && git push -q && break; sleep 5; done
+      - name: Tell him in plain words (GitHub emails him)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          grep -v "his Studio choices\|his special choices" lessons.txt > body.txt
+          gh issue create --title "What I learned from your Studio changes this week ($(date +'%-d %B'))" --body-file body.txt

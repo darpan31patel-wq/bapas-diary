@@ -19,6 +19,7 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, 'tools'))
 import make
+import looks
 from make import Image
 import numpy as np
 import dashboard_pack as dp
@@ -52,6 +53,7 @@ def gather(day):
     make.settle_places(tg_extra, mmdd)
     make.download_all(items, CACHE)
     make.unframe(items)
+    make.DAY_ITEMS[:] = [x for x in items if not x.get('tg')]
     tall = 1 / 1.45 if len({x['y'] for x in items}) > 10 else 1 / 1.08
     aspect = make.FRAME_ASPECT.get(make.LIVE_STYLE, tall)
     photos = make.pick_one_per_year(items, seed=mmdd, aspect=aspect, day=day)
@@ -336,6 +338,33 @@ def main():
             return c
         ev['article'] = ev.get('article')
         pack.update(story_kind=ev.get('kind', 'story'), choose=choice(ev), options=[])
+        # Darpan, 17 Nov 2026 (idea 6): the same special in two or three looks, each checked (idea 7), and a phone
+        # version (idea 8); picking one puts its 'look' in the choice
+        pack['looks'] = []
+        try:
+            for name, v in make.all_looks(ev, day, lead['im'] if lead else None).items():
+                f = f'look-{name}.jpg'
+                im = v['img'].convert('RGB')
+                im.resize((2400 if name != 'phone' else 1200, round((2400 if name != 'phone' else 1200) * im.height / im.width)), Image.LANCZOS).save(os.path.join(out, f), quality=85)
+                pack['looks'].append(dict(look=name, name=looks.LOOK_NAMES[name], picture=f, faults=v['faults'], phone_points=v['phone_dp'],
+                                          choose=dict(choice(ev), look=name) if name != 'phone' else None))
+                if name in ('hero', 'phone'):
+                    looks.whatsapp_view(im).save(os.path.join(out, f'whatsapp-{name}.jpg'), quality=82)
+        except Exception as e:   # the pack never waits on the looks
+            print('  no looks:', e)
+        # Darpan, 17 Nov 2026 (idea 3): his own Final layouts are templates; the newest one from the same kind of day
+        # (festival, departure, mandir opening, birthday) is offered filled with today's photos and words
+        pack['day_kind'], pack['templates'] = looks.kind_of(f"{pack['headline']} {pack['story']}"), []
+        try:
+            same = [t for t in looks.templates() if t['kind'] == pack['day_kind'] and not str(day).endswith(t['day'][-5:])]
+            for n, t in enumerate(same[:2], 1):
+                lay = looks.from_template(t, ev, day, [u for _, u in make.special_urls(ev)])
+                im = make.compose_design(lay, day).convert('RGB')
+                f = f'template-{n}.jpg'
+                im.resize((2400, round(2400 * im.height / im.width)), Image.LANCZOS).save(os.path.join(out, f), quality=85)
+                pack['templates'].append(dict(picture=f, kind=t['kind'], from_day=t['day'], layout=lay))
+        except Exception as e:
+            print('  no templates:', e)
         for n, e in enumerate(drawn.get('options') or [], 2):
             op = make.compose_special(e, day)
             if op is None:
