@@ -916,6 +916,26 @@ garamond = lambda s, w=700: font(f'eb-garamond-latin-{w}-normal', s)
 arimo_bold = lambda s: font('arimo-latin-700-normal', s)
 
 
+def any_font(family, weight, size):
+    """A Studio design's font: serif (EB Garamond) or sans (Arimo) at the nearest weight there is. A weight not kept in
+    fonts/ is fetched once from the same font files the website uses; if that fails, the nearest one kept."""
+    name = 'arimo' if family == 'sans' else 'eb-garamond'
+    have = (400, 700) if name == 'arimo' else (400, 500, 600, 700, 800)
+    w = min(have, key=lambda v: abs(v - int(weight or 400)))
+    for v in sorted(have, key=lambda v: abs(v - w)):
+        f = os.path.join(HERE, 'fonts', f'{name}-latin-{v}-normal.woff2')
+        if not os.path.exists(f):
+            try:
+                data = fetch(f'https://cdn.jsdelivr.net/npm/@fontsource/{name}@5.0.0/files/{name}-latin-{v}-normal.woff2', tries=2, timeout=20)
+                if len(data) > 5000:
+                    open(f, 'wb').write(data)
+            except Exception:
+                continue
+        if os.path.exists(f):
+            return ImageFont.truetype(f, max(8, round(size)))
+    return garamond(size, 700 if int(weight or 400) >= 650 else 500)
+
+
 def gold_text(img, xy, text, f, shadow=True, top=(255, 226, 150), bottom=(206, 152, 64)):
     """Text filled with a soft top to bottom gold gradient, over a faint dark shadow."""
     x, y = round(xy[0]), round(xy[1])
@@ -2327,7 +2347,8 @@ def chosen_specials(day, items=()):
 def year_story(y, day, items, lead=None):
     """One year of the day as a special picture's story: that year's photos of the day (the chosen card's first) and every
     different caption among them as its words."""
-    mine = [x for x in items if x['y'] == y and x.get('d', '')[:10] == f'{y}-{day:%m-%d}'] or [x for x in items if x['y'] == y]
+    # Darpan, 17 Nov 2026: only photos of that exact day in that year, never a day before or after
+    mine = [x for x in items if x['y'] == y and str(x.get('d', ''))[:10] == f'{y}-{day:%m-%d}']
     own = [x for x in mine if not x.get('tg')]
     mine = own or [x for x in mine if 'path' in x]   # a year before baps.org's photos (1977): the UK diary's darshans, unframed as the picture shows them
     if lead is not None:
@@ -3481,6 +3502,170 @@ def special_card(im, w, h, yr, pl, label=True, focus=None):
     return sh
 
 
+DESIGN_COLOURS = {'gold': 'gold', 'ivory': CAPTION_IVORY, 'light': CAPTION_GOLD, 'white': (255, 255, 255), 'maroon': YEAR_C2}
+
+
+def compose_design(lay, day):
+    """Darpan, 17 Nov 2026: the special picture page in the Studio is a designer. Layout version 2: 'items' drawn in
+    order (the last on top) on the picture's 2796 x 1290 layout, each {type: text | photo, role, x, y, w, h, rotate}.
+    x, y, w, h: the item's box (a framed photo's whole card, ivory edge and strip included); rotate in degrees, clockwise,
+    about the box's centre.
+      text:  text, lines (as the Studio broke them; '' between paragraphs), size, font serif | sans, weight, color gold |
+             ivory | light | white | maroon (or #rrggbb), line_height (times the size), para_gap, indent (first line of
+             each paragraph), align left | center | right | justify, upper, letter_spacing, diamonds (a small gold diamond
+             each side of a line). Words are never cut or shrunk.
+      photo: photo (address), date, frame (ivory card: 12 border, a strip under the photo one tenth of its width), label
+             ({year, place}, a 'year place' line, true for its own date and place, or false), peg, focus [x, y] 0 to 1,
+             zoom, brightness, contrast, saturation (100 is as taken).
+    The background is always drawn; the date line, the line under it and the project's name only when the design has
+    no item with role title, subtitle or footer."""
+    img = background()
+    num = lambda v, d=0.0: float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else d
+    items = [i for i in lay.get('items') or [] if isinstance(i, dict)]
+    roles = {str(i.get('role') or '') for i in items}
+    if not roles & {'title', 'subtitle'}:
+        header(img, f'{day.day} {day:%B}', 'A special day in BAPS history', compact=True, sub_y=136)
+    photos = [{'i': str(i['photo']), 'y': 0} for i in items if i.get('type') == 'photo' and i.get('photo')]
+    if photos:
+        download_all(photos, os.path.join(HERE, '.cache'))
+    got = {x['i']: x for x in photos}
+
+    def place(layer, i):   # the item's own drawing (its box, w x h) turned and put in its place
+        bw, bh = layer.size
+        cx, cy = px(num(i.get('x'))) + px(num(i.get('w'))) / 2, px(num(i.get('y'))) + px(num(i.get('h'))) / 2
+        r = num(i.get('rotate'))
+        if r:
+            layer = layer.rotate(-r, resample=Image.BICUBIC, expand=True)
+        img.paste(layer, (round(cx - layer.width / 2), round(cy - layer.height / 2)), layer)
+
+    for i in items:
+        w, h = max(1, round(px(num(i.get('w'), 300)))), max(1, round(px(num(i.get('h'), 200))))
+        if i.get('type') == 'photo':
+            x = got.get(str(i.get('photo') or ''))
+            if not x or 'path' not in x:
+                print('  a photo in his design could not be found:', i.get('photo'))
+                continue
+            try:
+                im = ImageOps.exif_transpose(Image.open(x.get('full') or x['path'])).convert('RGB')
+            except Exception as err:
+                print('  a photo in his design would not open:', i.get('photo'), err)
+                continue
+            for k, f in (('brightness', ImageEnhance.Brightness), ('contrast', ImageEnhance.Contrast), ('saturation', ImageEnhance.Color)):
+                v = num(i.get(k), 100)
+                if v != 100:
+                    im = f(im).enhance(max(0, v / 100))
+            framed = i.get('frame', True) is not False
+            lab = i.get('label')
+            if lab is True:
+                lab = {'year': str(i.get('date') or '')[:4], 'place': town_of(i.get('place')) or i.get('place') or ''}
+            elif isinstance(lab, str):
+                yr, _, pl = lab.strip().partition(' ')
+                lab = {'year': yr, 'place': pl} if yr.isdigit() else {'year': '', 'place': lab}
+            elif not isinstance(lab, dict):
+                lab = None
+            e = round(px(12)) if framed else 0
+            pw = max(8, w - 2 * e)
+            strip = round(pw / 10) if framed else 0
+            ph = max(8, h - 2 * e - strip)
+            z = num(i.get('zoom'), 100); z = z / 100 if z > 5 else z or 1
+            r = max(pw / im.width, ph / im.height) * max(z, .1)
+            p = im.resize((max(1, round(im.width * r)), max(1, round(im.height * r))), Image.LANCZOS)
+            f = i.get('focus') if isinstance(i.get('focus'), list) and len(i['focus']) == 2 else [.5, .3]
+            fx, fy = (min(1, max(0, num(v, 50) / (100 if num(v, 50) > 1 else 1))) for v in f)
+            l, t = round((p.width - pw) * fx), round((p.height - ph) * fy)
+            canvas = Image.new('RGB', (pw, ph), (0, 0, 0)); canvas.paste(p, (-l, -t))
+            photo = polish(canvas)
+            card = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+            if framed:
+                d = ImageDraw.Draw(card)
+                for j in range(h):
+                    t2 = j / h
+                    d.line((0, j, w, j), fill=tuple(round(a + (b - a) * t2) for a, b in zip(IVORY_TOP, IVORY_BOTTOM)) + (255,))
+                d.rectangle((0, 0, w - 1, h - 1), outline=IVORY_EDGE, width=max(1, round(SCALE)))
+                card.paste(photo, (e, e))
+                if lab and (lab.get('year') or lab.get('place')):
+                    yr, pl = str(lab.get('year') or ''), str(lab.get('place') or '').upper()
+                    yf, pf = garamond(strip * .62, 700), arimo_bold(strip * .27)
+                    sp = pw * .03 if yr and pl else 0
+                    span = lambda: d.textlength(yr, font=yf) + sp + spaced(d, pl, pf, pw * .006)
+                    while span() > pw * .94 and yf.size > 8:
+                        yf, pf = garamond(yf.size * .92, 700), arimo_bold(pf.size * .92)
+                    x0 = (w - span()) / 2; base = e + ph + (h - e - ph) * .68
+                    d.text((x0, base), yr, font=yf, fill=YEAR_C2, anchor='ls')
+                    draw_spaced(d, x0 + d.textlength(yr, font=yf) + sp, base - pf.getmetrics()[0] - pw * .008, pl, pf, pw * .006, PLACE_C2)
+                m, dy = round(px(30)), round(px(36))   # the soft shadow under a card
+                sh = Image.new('RGBA', (w + 2 * m, h + 2 * m))
+                ImageDraw.Draw(sh).rectangle((m, dy, w + m, h + dy), fill=(0, 0, 0, 150))
+                sh = sh.filter(ImageFilter.GaussianBlur(px(12))); sh.alpha_composite(card, (m, m))
+                layer = sh
+            else:
+                card.paste(photo, (0, 0)); layer = card
+            if framed and i.get('peg', True) is not False:   # the peg on the card's top edge, turned with it
+                peg(layer, layer.width / 2, round(px(30)) + px(16), px(1.5) if w > px(700) else px(1))
+            place(layer, i)
+        elif i.get('type') == 'text':
+            size = num(i.get('size'), 34)
+            f = any_font('sans' if i.get('font') == 'sans' else 'serif', num(i.get('weight'), 500), px(size))
+            colour = i.get('color') or 'ivory'
+            fill = DESIGN_COLOURS.get(colour) or (tuple(int(colour[k:k + 2], 16) for k in (1, 3, 5)) if re.match(r'^#[0-9a-fA-F]{6}$', str(colour)) else CAPTION_IVORY)
+            lhm = num(i.get('line_height'), 1.3); lh = px(lhm * size if lhm <= 5 else lhm)
+            gap = px(num(i.get('para_gap'), size * .5)); indent = px(num(i.get('indent')))
+            track = px(num(i.get('letter_spacing')))
+            upper = bool(i.get('upper'))
+            layer = Image.new('RGBA', (w, h), (0, 0, 0, 0)); d = ImageDraw.Draw(layer)
+            width = lambda t: spaced(d, t, f, track) if track else d.textlength(t, font=f)
+            if isinstance(i.get('lines'), list):
+                lines = [None if v is None or str(v) == '' else str(v) for v in i['lines']]
+            else:
+                lines = []
+                for k, para in enumerate(re.split(r'\n\s*\n', str(i.get('text') or '').strip())):
+                    if k:
+                        lines.append(None)
+                    for row in para.split('\n'):
+                        lines += wrap(d, (row.upper() if upper else row).strip(), f, w - indent, 999, shorten=False) or ['']
+            asc, desc = f.getmetrics()
+            y = (lh - (asc + desc)) / 2 + asc
+            first = True
+            for n, line in enumerate(lines):
+                if line is None:
+                    y += gap; first = True; continue
+                t = line.upper() if upper else line
+                last = n + 1 >= len(lines) or lines[n + 1] is None
+                ind = indent if first else 0
+                tw = width(t)
+                al = i.get('align') or 'center'
+                lx = ind if al in ('left', 'justify') else w - tw if al == 'right' else (w - tw) / 2
+                words = t.split(' ')
+                if al == 'justify' and not last and len(words) > 1:   # the space spread between the words, the paragraph's last line left as it is
+                    ww = [width(v) for v in words]
+                    sp = (w - ind - sum(ww)) / (len(words) - 1)
+                    xx = ind
+                    for v, vw in zip(words, ww):
+                        pos = (xx, y)
+                        if fill == 'gold':
+                            gold_text(layer, (xx, y - asc), v, f)
+                        elif track:
+                            draw_spaced(d, xx, y - asc, v, f, track, fill)
+                        else:
+                            d.text(pos, v, font=f, fill=fill, anchor='ls')
+                        xx += vw + sp
+                else:
+                    if fill == 'gold':
+                        gold_text(layer, (lx, y - asc), t, f) if not track else draw_spaced(d, lx, y - asc, t, f, track, GOLD)
+                    elif track:
+                        draw_spaced(d, lx, y - asc, t, f, track, fill)
+                    else:
+                        d.text((lx, y), t, font=f, fill=fill, anchor='ls')
+                if i.get('diamonds'):
+                    mid = y - asc * .35
+                    diamond(d, lx - px(26), mid, px(5), GOLD); diamond(d, lx + tw + px(26), mid, px(5), GOLD)
+                y += lh; first = False
+            place(layer, i)
+    if 'footer' not in roles:
+        footer(img, small=True)
+    return img
+
+
 def compose_layout(ev, day):
     """Darpan, 17 Nov 2026: the special picture exactly as he arranged it in the Studio. ev['layout'] (from his choice in
     special-days.json), every number in the picture's layout units (2796 x 1290, x to the right, y down from the top):
@@ -3495,6 +3680,8 @@ def compose_layout(ev, day):
       title, subtitle: {text} to change the date line or the line under it.
     Nothing is moved, shrunk or left out: what he placed is what is drawn."""
     lay = ev['layout']
+    if lay.get('version') == 2 or isinstance(lay.get('items'), list):
+        return compose_design(lay, day)
     img = background(); dr = ImageDraw.Draw(img)
     header(img, (lay.get('title') or {}).get('text') or f'{day.day} {day:%B}',
            (lay.get('subtitle') or {}).get('text') or 'A special day in BAPS history', compact=True, sub_y=136)
