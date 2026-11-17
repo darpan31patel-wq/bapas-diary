@@ -231,6 +231,10 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
 .lays button:hover { border-color: var(--gold); color: var(--gold) }
 .dtype { position: absolute; z-index: 5; background: rgba(20,6,10,.88); color: #f4ead6; border: 2px solid var(--gold); border-radius: 4px; padding: 0; resize: both; box-sizing: border-box }
 #pane textarea#dp-text { width: 100%; box-sizing: border-box; font: 15px/1.45 var(--serif, Georgia), serif }
+.dspec { display: flex; gap: 8px; overflow-x: auto; margin: 0 0 8px; padding-bottom: 4px }
+.spcard { flex: 0 0 auto; width: 250px; display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 8px; align-items: start; border: 1px solid var(--line); border-radius: 8px; padding: 6px; background: var(--panel-2); font-size: 12.5px }
+.spcard img { width: 90px; border-radius: 4px; display: block } .spcard > div { display: grid; gap: 3px; min-width: 0 } .spcard b { color: var(--gold) } .spcard span:not(.seg) { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical }
+.spcard.on { border-color: var(--gold) } .spcard:not(:has(img)) { grid-template-columns: minmax(0, 1fr) } .spcard.more { display: flex; flex-direction: column; justify-content: center; gap: 6px; width: 210px }
 .looks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px }
 .look { margin: 0; display: grid; gap: 4px; align-content: start; border: 1px solid var(--line); border-radius: 8px; padding: 6px; background: var(--panel-2) }
 .look img { width: 100%; border-radius: 4px; display: block } .look figcaption { font-size: 12.5px; display: grid } .look .twin { gap: 4px; margin: 0 }
@@ -260,6 +264,7 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
     <div class="want" id="want" hidden><p id="want-p"></p><button class="btn primary" id="want-go" type="button">Get this day’s photos ready</button></div>
     <div class="easel" id="easel">
       <div class="zoombar"><span class="hint">Zoom the picture</span><button class="btn small" id="z-out" type="button" aria-label="Zoom out">−</button><output id="z-val">100%</output><button class="btn small" id="z-in" type="button" aria-label="Zoom in">+</button><button class="btn small" id="z-fit" type="button">Fit</button><span class="hint" id="z-tip">Ctrl and scroll, or pinch, on the picture zooms it too. Drag to move around when zoomed.</span></div>
+      <div class="dspec" id="dspec" hidden></div>
       <div class="dbar" id="dbar" hidden></div>
       <div class="zoombox" id="zoombox">
         <canvas id="view" width="2796" height="1290" aria-label="Live preview of the picture. Click a card to change it."></canvas>
@@ -1100,6 +1105,7 @@ function dPhoto(ctx, it, o) {
 function drawDesign(ctx, pack, o, hits, marks) {
   background(ctx, DW, DH, o);
   const out = [];
+  if (!DDRAG) dFlow(ctx);
   dItems().forEach(it => {
     if (it.hidden) return;
     let hh = it.h;
@@ -1133,6 +1139,7 @@ function dV1(items) {
   if (H) lay.headline = { text: H.text, x: H.x, y: H.y, w: H.w, size: H.size, align: H.align, lines: H.lines };
   if (ST) lay.story = { text: ST.text, x: ST.x, y: ST.y, w: ST.w, h: ST.h, size: ST.size, align: ST.align, lines: ST.lines, line_height: ST.line_height, para_gap: ST.para_gap, indent: ST.indent };
   if (T) lay.title = { text: T.text }; if (SU) lay.subtitle = { text: SU.text };
+  const fr = S.special.design && S.special.design.from; if (fr) lay.from = fr;   // the post the picture now tells, when he switched it
   return lay;
 }
 // ------------------------------------------------------------ the Studio's own marks (never in an export): selection, handles,
@@ -1354,6 +1361,36 @@ function dDayFix() {   // every photo not from this day swapped for an unused on
   });
   build();
 }
+// "Use as the main story" switches the whole picture to that post (Darpan, 17 Nov 2026: "it only changes the text, not the
+// pictures"): its headline, its words, and its own photos of that day, that year and that place on the photo cards
+async function useMain(it) {
+  const pack = P.special, date = S.special.date, mmdd = date.slice(5), place = String(it.p || '').split(',')[0].trim().toLowerCase();
+  const same = pl => !place || !pl || String(pl).toLowerCase().includes(place) || place.includes(String(pl).toLowerCase());
+  const photos = [];
+  groupsOf(pack).forEach(g => { const y = +(g.year || String(pack.story_date || '').slice(0, 4)); if (y !== +it.y) return;
+    g.cands.forEach((c, i) => { if (dayOk(pack, g, c) && same(c.place) && !photos.some(p => p.g === g.key && p.pick === i) && !photos.some(p => c.src && p.srcKey === c.src)) photos.push({ g: g.key, pick: i, year: y, place: c.place || '', srcKey: c.src || '' }) }) });
+  const dd = await dayData(mmdd);
+  (dd ? dd.years : []).filter(Y => +Y.y === +it.y && same(Y.place)).forEach(Y => Y.p.forEach(p => { const src = photoAddr(p); if (!photos.some(x => x.src === src)) photos.push({ src, year: Y.y, place: Y.place || '', caption: p[2] || '', date: `${Y.y}-${mmdd}` }) }));
+  const items = dItems(), h = items.find(x => x.role === 'headline'), st = items.find(x => x.role === 'story');
+  if (h) h.text = it.t; if (st) st.text = it.s || st.text; if (!h && !st) { dAddStory(it.t, it.s, it.src); return }
+  const slots = items.filter(x => x.t === 'photo');
+  if (photos.length) slots.forEach((x, i) => { const ph = photos[i];
+    if (!ph) { x.hidden = true; return }
+    x.hidden = false; delete x.g; delete x.pick; delete x.src; delete x.date;
+    Object.assign(x, ph.g ? { g: ph.g, pick: ph.pick } : { src: ph.src, date: ph.date, caption: ph.caption }, { year: String(ph.year), place: ph.place, name: `${ph.year} ${ph.place}`.trim(), zoom: 1, fx: .5, fy: .3 });
+    if (ph.g) { const g = groupsOf(pack).find(gg => gg.key === ph.g); photoOf(pack, g.cands[ph.pick], true).then(render) } });
+  S.special.design.from = { year: +it.y, title: it.t, place: it.p || '', link: it.src || '' };
+  SEL = []; build();
+  const n = Math.min(photos.length, slots.length), stEl = $('#status');
+  stEl.className = 'status ' + (photos.length ? 'ok' : 'warn');
+  stEl.textContent = photos.length ? `Now telling “${it.t}”: ${n} of its ${photos.length} photo${photos.length > 1 ? 's' : ''} on the cards${photos.length > slots.length ? '; the rest are in the library to add' : ''}.` : `Now telling “${it.t}”. No photos of that day and place are in the archive yet, so the photos stayed as they were.`;
+}
+// the story never sits under the headline: a headline that grows onto more lines pushes the story box down
+function dFlow(ctx) {
+  const items = dItems().filter(x => !x.hidden), h = items.find(x => x.role === 'headline');
+  if (!h) return; const hb = h.y + (h.h || dLayout(ctx, h).height) + 24;
+  items.filter(x => x.role === 'story' && x !== h && x.y >= h.y && x.x < h.x + h.w && x.x + x.w > h.x && x.y < hb).forEach(x => { x.y = Math.round(hb) });
+}
 function dKey(e) {
   if (!isDesign() || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) || document.querySelector('dialog[open]')) return;
   const mod = e.metaKey || e.ctrlKey, k = e.key.toLowerCase();
@@ -1384,7 +1421,33 @@ const IC = {
   jl: '<path d="M4 6h16M4 10h10M4 14h16M4 18h10"/>', jc: '<path d="M4 6h16M7 10h10M4 14h16M7 18h10"/>', jr: '<path d="M4 6h16M10 10h10M4 14h16M10 18h10"/>', jj: '<path d="M4 6h16M4 10h16M4 14h16M4 18h16"/>',
 };
 const icon = (n, s = 18) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
+// the day's special pictures in one row at the top (Darpan, 17 Nov 2026: "how do I make another special card? And there should be
+// 2 or 3 special cards already made for each day"): the one being designed, the others he chose (special 2, 3), the builder's
+// ready made ones to add, and Make another special
+let MAKEMORE = false;
+function dSpecials() {
+  const el = $('#dspec'); if (!el) return; el.hidden = !isDesign(); if (el.hidden) return;
+  const date = S.special.date, pack = P.special, mine = CH ? chFor(date) : [], off = CH ? chOff(date) : false;
+  if (!CH) loadChoices().then(() => isDesign() && dSpecials());
+  const rest = mine.filter(e => !(pack.choose && sameEntry(e, pack.choose))), ops = (pack.options || []).filter(op => op.choose && !mine.some(m => sameEntry(m, op.choose)));
+  el.innerHTML = `<div class="spcard on"><img src="${esc(pack.base + (pack.real || 'real.jpg'))}" alt=""><div><b>Special 1</b><span>${esc(pack.headline || pack.title)}</span><span class="hint">being designed here</span></div></div>
+    ${rest.map((e, i) => `<div class="spcard"><div><b>Special ${i + 2}</b><span>${esc(chWords(e))}</span><span class="hint">built by the Collage builder, goes after special 1</span><button class="btn small" data-sp-off="${i}">Take it off</button></div></div>`).join('')}
+    ${ops.map((op, i) => `<div class="spcard ready"><img src="${esc(pack.base + (op.picture || `option-${i + 2}.jpg`))}" alt="" loading="lazy"><div><b>Ready made</b><span>${esc(op.headline || '')}</span><span class="seg"><button class="btn small primary" data-sp-add="${i}">Add as special ${rest.length + 2}</button><button class="btn small" data-sp-use="${i}">Use instead of special 1</button></span></div></div>`).join('')}
+    <div class="spcard more"><button class="btn primary" id="sp-more" type="button">+ Make another special</button>${!ops.length ? '<span class="hint">No ready made ones for this day yet.</span>' : ''}<label class="hint"><input type="checkbox" id="sp-none" ${off ? 'checked' : ''}> No special picture this day</label></div>`;
+  const on = (sel, fn) => el.querySelectorAll(sel).forEach(b => b.addEventListener('click', () => fn(b)));
+  on('[data-sp-off]', b => { const e = rest[+b.dataset.spOff]; if (e) chToggle(date, e, false) });
+  on('[data-sp-add]', b => { const op = ops[+b.dataset.spAdd]; if (op) addSpecial(date, op.choose) });
+  on('[data-sp-use]', b => { const op = ops[+b.dataset.spUse]; if (op) chInstead(date, Object.assign({}, op.choose)) });
+  on('#sp-more', () => { MAKEMORE = true; LIBTAB = 'stories'; dLibrary(); const lib = $('#dlib'); if (lib) lib.scrollIntoView({ behavior: 'smooth', block: 'start' }) });
+  const no = $('#sp-none'); if (no) no.addEventListener('change', () => chOffToggle(date));
+}
+function addSpecial(date, e) {   // special 1 (this picture) is kept first, so another special always goes after it
+  const pack = P.special;
+  if (pack && pack.choose && !chFor(date).some(x => sameEntry(x, pack.choose))) CH.add.push(Object.assign({}, pack.choose, { day: pack.choose.day || chDay(date) }));
+  if (!chHave(date, e)) chToggle(date, Object.assign({}, e), false); else build();
+}
 function dTools() {
+  dSpecials();
   const bar = $('#dbar'); if (!bar) return;
   bar.hidden = !isDesign(); if (bar.hidden) return;
   const n = SEL.length, b = (id, ic, tip, dis) => `<button type="button" class="ib" id="${id}" title="${tip}" aria-label="${tip}" ${dis ? 'disabled' : ''}>${icon(ic)}</button>`;
@@ -1571,22 +1634,23 @@ function dLibrary() {
       <div class="libgrid">${byY[y].list.map(p => `<button type="button" draggable="true" data-lib="${esc(JSON.stringify(p.d))}" title="${esc(p.tip)}">${p.html}</button>`).join('')}</div></details>`).join('') : `<p class="hint">${dd === null ? 'Loading the photos of ' + esc(day) + '…' : 'No photos of ' + esc(day) + ' yet.'}</p>`;
   } else {
     const items = [];
-    uniqStories((HISTORY || []).filter(h => h.d.slice(5) === mmdd).map(h => ({ h }))).forEach(({ h }) => items.push({ y: +h.d.slice(0, 4), t: h.l, s: h.s || '', p: h.p || '', src: h.u || '' }));
-    (ARTICLES || []).filter(a => a.d && a.d.slice(5) === mmdd).forEach(a => items.push({ y: a.y, t: a.t, s: a.s || '', p: a.p || '', src: a.u || '' }));
+    uniqStories((HISTORY || []).filter(h => h.d.slice(5) === mmdd).map(h => ({ h }))).forEach(({ h }) => items.push({ y: +h.d.slice(0, 4), t: h.l, s: h.s || '', p: h.p || '', src: h.u || '', e: { kind: 'story', ref: h.d, note: h.l } }));
+    (ARTICLES || []).filter(a => a.d && a.d.slice(5) === mmdd).forEach(a => items.push({ y: a.y, t: a.t, s: a.s || '', p: a.p || '', src: a.u || '', e: { kind: 'news', ref: newsPath(a.u), note: a.t } }));
     if (pack.headline) items.push({ y: +String(pack.story_date || date).slice(0, 4), t: pack.headline, s: pack.story || '', p: pack.story_place || '', src: 'pack', own: true });
     items.sort((a, b) => b.y - a.y || (b.own ? 1 : 0) - (a.own ? 1 : 0));
     body = items.length ? items.map((it, i) => `<div class="libst"><p><b>${esc(it.t)}</b><br><span class="hint">${esc([it.y, it.p].filter(Boolean).join(' · '))}${it.own ? ' · this picture’s story' : ''}</span></p>${it.s ? `<p class="hint">${esc(it.s.slice(0, 220))}${it.s.length > 220 ? '…' : ''}</p>` : ''}
-      <div class="seg"><button type="button" class="btn small" data-libst="${i}">Add as a story box</button><button type="button" class="btn small" data-libmain="${i}">Use as the main story</button></div></div>`).join('')
+      <div class="seg"><button type="button" class="btn small" data-libmain="${i}" title="The headline, words and this post's own photos">Use for special 1</button><button type="button" class="btn small" data-libst="${i}" title="Its heading and words as one more box on this picture">Add as a story box</button>${it.e && !it.own ? (CH && chHave(date, it.e) ? '<span class="gold">✓ a special</span>' : `<button type="button" class="btn small ${MAKEMORE ? 'primary' : ''}" data-libsp="${i}" title="A separate special picture of its own, after special 1">Make it another special</button>`) : ''}</div></div>`).join('')
       : `<p class="hint">${HISTORY ? 'No stories of ' + esc(day) + ' yet.' : 'Loading the stories…'}</p>`;
     lib._items = items;
   }
-  lib.innerHTML = `<h3>${esc(day)} only</h3><p class="hint">Every year, nothing from other days. Drag onto the picture, or click to add.</p>
+  lib.innerHTML = `<h3>${esc(day)} only</h3><p class="hint">${MAKEMORE && LIBTAB === 'stories' ? '<b class="gold">Pick a post below and press Make it another special.</b>' : 'Everything of this day, every year. Drag onto the picture, or click to add.'}</p>
     <div class="seg ic" id="libtabs"><button type="button" data-v="photos" aria-pressed="${LIBTAB === 'photos'}">Photos</button><button type="button" data-v="stories" aria-pressed="${LIBTAB === 'stories'}">Stories and posts</button></div>
     <div class="libbody">${body}</div>`;
   lib.querySelectorAll('#libtabs button').forEach(b => b.addEventListener('click', () => { LIBTAB = b.dataset.v; dLibrary() }));
   lib.querySelectorAll('[data-lib]').forEach(b => { b.addEventListener('click', () => dAddPhoto(JSON.parse(b.dataset.lib))); b.addEventListener('dragstart', e => { e.dataTransfer.setData('text/x-photo', b.dataset.lib); e.dataTransfer.effectAllowed = 'copy' }) });
   lib.querySelectorAll('[data-libst]').forEach(b => { const it = lib._items[+b.dataset.libst]; b.addEventListener('click', () => dAddStory(it.t, it.s, it.src)) });
-  lib.querySelectorAll('[data-libmain]').forEach(b => { const it = lib._items[+b.dataset.libmain]; b.addEventListener('click', () => { const h = dItems().find(x => x.role === 'headline'), s = dItems().find(x => x.role === 'story'); if (h) h.text = it.t; if (s && it.s) s.text = it.s; if (!h && !s) dAddStory(it.t, it.s, it.src); else build() }) });
+  lib.querySelectorAll('[data-libsp]').forEach(b => { const it = lib._items[+b.dataset.libsp]; b.addEventListener('click', async () => { await loadChoices(); MAKEMORE = false; addSpecial(date, it.e) }) });
+  lib.querySelectorAll('[data-libmain]').forEach(b => { const it = lib._items[+b.dataset.libmain]; b.addEventListener('click', () => useMain(it)) });
 }
 
 // ------------------------------------------------------------ a pack that carries its own design (Darpan, 10 Nov 2026: the Annakut
@@ -2149,7 +2213,7 @@ function build() {
   $('#pick-opt').hidden = S.mode !== 'month';
   $('#pick-opt').innerHTML = [['A', 'Close-up images'], ['B', 'Activity'], ['M', 'Mixed']].map(([k, l]) => `<option value="${k}" ${k === S.month.option ? 'selected' : ''}>${l}</option>`).join('');
   driveChip();
-  const tabs = sp && pack && isStory() ? [['choose', 'Choose'], ['design', 'Design'], ['look', 'Look']] : TABS[S.mode];
+  const tabs = sp && pack && isStory() ? [['design', 'Design'], ['look', 'Look']] : TABS[S.mode];   // one place for the day's material: the library (Darpan, 17 Nov 2026: "they both seem to be the same column")
   if (isDesign()) FE = false;
   if (!tabs.some(t => t[0] === S.tab)) S.tab = sp && pack && isStory() ? 'design' : 'card';
   $('#tabs').innerHTML = tabs.map(([k, l]) => `<button role="tab" data-t="${k}" aria-selected="${k === S.tab}">${l}</button>`).join('');
@@ -2525,7 +2589,7 @@ function showProg() {
   const pct = p.fail ? Math.round(at / (shown.length - 1) * 100) : Math.round((p.step === 'ready' ? 1 : (at + .5) / (shown.length - 1)) * 100);
   const wait = p.step === 'send' && p.sendAt ? Math.max(0, Math.round((p.sendAt - Date.now()) / 1000)) : 0;
   const calm = !!p.note && !p.fail;
-  el.innerHTML = `<h3>${calm ? 'Your changes for ' + esc(longDate(date)) + ' are saved' + (canAsk() ? ': press Go when you are ready' : '') : p.fail ? 'The special picture for ' + esc(longDate(date)) + ' did not finish' : p.step === 'ready' ? 'The special picture for ' + esc(longDate(date)) + ' is ready' : 'Making the special picture for ' + esc(longDate(date)) + '…'}</h3>
+  el.innerHTML = `<h3>${calm ? 'Your changes for ' + esc(longDate(date)) + ' are saved' + (canAsk() ? ': press Final when you are ready' : '') : p.fail ? 'The special picture for ' + esc(longDate(date)) + ' did not finish' : p.step === 'ready' ? 'The special picture for ' + esc(longDate(date)) + ' is ready' : 'Making the special picture for ' + esc(longDate(date)) + '…'}</h3>
     <div class="bar"${calm ? ' hidden' : ''} role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>
     <ol${calm ? ' hidden' : ''}>${shown.map(([k, w], i) => { const done = i < at || p.step === 'ready' || (calm && i === at), now = i === at && p.step !== 'ready' && !calm; return `<li class="${p.fail && now ? 'bad' : done ? 'done' : now ? 'now' : ''}"><span>${p.fail && now ? '✕' : done ? '✓' : now ? '<span class="spin">◌</span>' : '○'}</span><b>${esc(w)}${now && k === 'send' && wait ? ` (in ${wait} s, so changes close together go as one)` : ''}</b><span>${p.t[k] ? clock(p.t[k]) : ''}</span></li>` }).join('')}</ol>
     <p class="hint">${calm ? esc(p.note) : p.fail ? esc(p.fail) : p.step === 'ready' ? `Took ${mins(p.t.ready - start)}. It is on the Special picture tab now${date === today && !p.late ? ', and in Drive for the 2pm send' : ''}.` : `${mins(Date.now() - start)} so far. Usually 5 to 10 minutes from sending; longer if another GitHub run is going.`}</p>
