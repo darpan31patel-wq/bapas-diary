@@ -2307,7 +2307,8 @@ def chosen_specials(day, items=()):
         if c.get('story'):   # his own words win, as he typed them (blank lines are paragraphs)
             ev['paras'] = [p.strip() for p in re.split(r'\n\s*\n', str(c['story'])) if p.strip()]
         if c.get('photos'):
-            ev['urls'], ev['paths'], ev['posts'] = list(c['photos']), None, []
+            ev['urls'], ev['paths'], ev['posts'] = list(c['photos'])[:MOST_PHOTOS], None, []
+            ev['many'] = True   # Darpan, 17 Nov 2026: as many photos as he turned on in the Studio, up to 20
         ev['chosen'] = True
         out.append(ev)
     return out
@@ -3421,6 +3422,9 @@ def special_words(ev, from_card=False):
     return [words] if words != (ev.get('headline') or ev['line']) else []
 
 
+MOST_PHOTOS = 20   # Darpan, 17 Nov 2026: 'more photos and then make it 20 photos' on a story or News special picture
+
+
 def compose_special(ev, day, lead=None):
     """Idea 3: on a big day in BAPS history, a second picture of that day's story: the channel's lead photo large,
     four more beside it under the story, in the daily picture's colours. lead: the year card's own photo of the
@@ -3429,7 +3433,8 @@ def compose_special(ev, day, lead=None):
     if not ev.get('urls'):   # real photos before video stills (7 December's big card was a blurry still of a mandir model)
         real = {u for _, u in tg_photos(ev.get('posts') or [], pairs=True)}
         urls = [v for v in urls if v[1] in real] + [v for v in urls if v[1] not in real]
-    urls = urls[:8]
+    most = MOST_PHOTOS if ev.get('many') else 5
+    urls = urls[:max(8, most)]
     cache = os.path.join(HERE, '.cache')
     ims = [lead.convert('RGB')] if lead is not None else []
     # Darpan, 13 Nov 2026 (7 December: four cards said '1921 CHANSAD' over photos of much later years): a photo the
@@ -3467,16 +3472,19 @@ def compose_special(ev, day, lead=None):
     k = SPECIAL_FIRST.get(ev.get('url'))
     if k and lead is None and k < len(ims):   # Darpan's own choice of the big photo: it swaps places with the first
         ims[0], ims[k] = ims[k], ims[0]; plain[0], plain[k] = plain[k], plain[0]
-    ims, plain = ims[:5], plain[:5]
+    ims, plain = ims[:most], plain[:most]
     if not ims:
         return None
     img = background(); dr = ImageDraw.Draw(img)
     header(img, f'{day.day} {day:%B}', 'A special day in BAPS history', compact=True, sub_y=136)   # Darpan, 13 Nov 2026: only the date (the story isn't always about Bapa), more space under it
     yr, pl = ev['date'][:4], (town_of(ev.get('place')) or ev.get('place') or '').upper()   # the town, as on the daily cards ('NEW DELHI', not 'NEW DELHI, INDIA', which was cut off on the small cards)
 
+    def strip(w):   # the ivory strip under a card for its year and town (a smaller card, a narrower strip)
+        return round(max(w * .1, px(56) * min(1, w / px(230))))
+
     def card(im, w, h, label=True):
         e = round(px(12))
-        c = Image.new('RGBA', (w + 2 * e, h + 2 * e + (round(max(w * .1, px(56))) if label else 0))); d = ImageDraw.Draw(c)   # no empty strip under a card with no year and place
+        c = Image.new('RGBA', (w + 2 * e, h + 2 * e + (strip(w) if label else 0))); d = ImageDraw.Draw(c)   # no empty strip under a card with no year and place
         for j in range(c.height):
             t = j / c.height
             d.line((0, j, c.width, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(IVORY_TOP, IVORY_BOTTOM)) + (255,))
@@ -3500,22 +3508,53 @@ def compose_special(ev, day, lead=None):
         ImageDraw.Draw(sh).rectangle((m, dy, c.width + m, c.height + dy), fill=(0, 0, 0, 150))
         sh = sh.filter(ImageFilter.GaussianBlur(px(12))); sh.alpha_composite(c, (m, m))
         return sh
-    small = ims[1:5]
+    small = ims[1:]
     paras = special_words(ev, lead is not None)
     head = ev.get('headline') or ev['line']
+
+    def grid(rows, sw):   # the small cards' rows: (cards a row, height of all the rows)
+        per = -(-len(small) // rows)
+        return per, rows * (sw * .74 + px(24) + strip(sw)) + (rows - 1) * px(44) + px(70)
     # Darpan, 13 Nov 2026 ('stop cutting everything out'): the whole story always. A long one gets a smaller big card,
-    # smaller small cards and smaller words, in that order, until every word is in; only then is anything left off
+    # smaller small cards and smaller words, in that order, until every word is in; only then is anything left off.
+    # Darpan, 17 Nov 2026: up to 20 photos. Many small cards go in rows under the story, as many rows as keeps them
+    # biggest while the whole story still fits
     for hw, smax, sizes in ((1180, 330, (36, 34, 32, 30)), (1000, 270, (32, 30, 28)), (860, 230, (28, 27, 26, 25, 24)), (760, 200, (24, 23, 22)), (660, 170, (22, 21, 20, 19))):   # the last step for a long News story (16 Nov 2026: the Canada visit lost its end)
         x0 = px(hw + 180); tw = W - x0 - px(90)
         hf = garamond(px(60 if hw > 900 else 52), 700)
         heads = balanced(dr, head, hf, tw, 3)
         y0 = px(300 if hw == 1180 else 270) + hf.size * 1.2 * len(heads) + px(34)   # where the story's first line starts (its top)
-        sw = min(px(smax), (tw - px(54) * (len(small) - 1) - px(24)) / len(small)) if small else 0
-        cards_h = (sw * .74 + px(24) + max(sw * .1, px(56)) + px(70)) if small else 0
-        floor = H - px(90) - cards_h
-        lines, bf, lh, gap, whole = story_block(dr, paras, tw * (.86 if hw > 660 else .98), floor - y0, sizes) if paras else ([], None, 0, 0, True)
+        # every number of rows, each with the biggest cards that still leave room for the whole story; the biggest
+        # cards win (fewer rows when equal). Cards smaller than a third of the first size: the next step instead
+        best = None
+        for rows in range(1, 5) if small else [1]:
+            per = -(-len(small) // rows) if small else 1
+            if small and rows > 1 and -(-len(small) // (rows - 1)) == per:
+                continue
+            gap = px(54) if per <= 5 else px(36)
+            top_sw = min(px(smax), (tw - gap * (per - 1) - px(24)) / per) if small else 0
+            for f in ((1, .9, .8, .7, .6, .5, .42, .36) if small else (1,)):
+                sw = top_sw * f
+                if small and sw < px(smax) * .36 and hw > 660:
+                    break
+                cards_h = grid(rows, sw)[1] if small else 0
+                floor = H - px(90) - cards_h
+                got = story_block(dr, paras, tw * (.86 if hw > 660 else .98), floor - y0, sizes) if paras else ([], None, 0, 0, True)
+                if got[4]:
+                    size = got[1].size if got[1] else 0   # the story's words as big as before first, then the biggest cards
+                    if best is None or (size, sw) > (best[5][1].size if best[5][1] else 0, best[0] + 1):
+                        best = (sw, rows, per, gap, floor, got)
+                    break
+        whole = best is not None
+        if whole:
+            sw, rows, per, gap, floor, (lines, bf, lh, gap_p, whole) = best
+        elif hw == 660:   # nothing fits whole even at the smallest: the last try, as before
+            sw, rows, per, gap = top_sw, 1, len(small), px(36)
+            floor = H - px(90) - (grid(1, sw)[1] if small else 0)
+            lines, bf, lh, gap_p, whole = story_block(dr, paras, tw * .98, floor - y0, sizes) if paras else ([], None, 0, 0, True)
         if whole:
             break
+    gap_c = gap
     hh = round(px(hw) * 800 / 1180)
     hero = card(ims[0], round(px(hw)), hh)
     hy = round(px(200) + (px(800) - hh) / 2)
@@ -3528,15 +3567,19 @@ def compose_special(ev, day, lead=None):
     y = y0 + (bf.size if bf else 0)
     for line in lines:
         if line is None:
-            y += gap; continue
+            y += gap_p; continue
         dr.text((x0 + tw / 2, y), line, font=bf, fill=CAPTION_IVORY, anchor='ms'); y += lh
     if small:
-        top = round(max(px(620), min(y - (bf.size if bf else 0) + px(24), floor)))
-        across = len(small) * sw + (len(small) - 1) * px(54) + px(24)
-        for k, im in enumerate(small):
-            c = card(im, round(sw), round(sw * .74), label=not plain[k + 1])
-            cx = x0 + (tw - across) / 2 - px(30) + k * (sw + px(54))
-            img.paste(c, (round(cx), top), c); peg(img, cx + c.width / 2, top + px(28), px(1))
+        top = round(max(px(620) if rows == 1 else 0, min(y - (bf.size if bf else 0) + px(24), floor)))
+        row_h = sw * .74 + px(24) + strip(sw) + px(44)
+        for r in range(rows):
+            row = small[r * per:(r + 1) * per]
+            across = len(row) * sw + (len(row) - 1) * gap_c + px(24)
+            for k, im in enumerate(row):
+                n = r * per + k
+                c = card(im, round(sw), round(sw * .74), label=not plain[n + 1])
+                cx = x0 + (tw - across) / 2 - px(30) + k * (sw + gap_c)
+                img.paste(c, (round(cx), round(top + r * row_h)), c); peg(img, cx + c.width / 2, top + r * row_h + px(28), px(1))
     footer(img, small=True)
     return img
 

@@ -150,7 +150,7 @@ class Pool:
                  face=[round(v * s, 1) for v in face] if face else None,
                  crop=x.get('crop') or ('frame' if face else 'whole'), caption=make.caption(x), original=x.get('c') or '',
                  place=make.place(x) or x.get('p') or '', date=str(x.get('d') or '')[:10], festival=dp.festival_tag(x),
-                 album_from=lo, album_to=hi, **({'nobapa': True} if not face else {}))
+                 album_from=lo, album_to=hi, src=x['i'], **({'nobapa': True} if not face else {}))   # src: the photo's address, for his choice's photos list
         self.done[key] = (c, im)
         return self.done[key]
 
@@ -287,7 +287,7 @@ def main():
         y = int(ev['date'][:4])
         shown = [dict(lead, crop='frame')] if lead else []
         extra = []
-        for u in (ev.get('urls') or make.tg_photos(ev.get('posts') or []))[:8]:   # as compose_special: the story's photos, blank frames left out
+        for u in (ev.get('urls') or make.tg_photos(ev.get('posts') or []))[:make.MOST_PHOTOS]:   # as compose_special: the story's photos, blank frames left out
             x = {'i': u, 'y': y, 'd': ev['date'], 'p': ev.get('place') or '', 'c': ev.get('card') or ev.get('line') or '', 'tg': True}
             make.download_all([x], CACHE)
             if 'path' not in x:
@@ -295,14 +295,21 @@ def main():
             im = Image.open(x['path']).convert('RGB')
             if np.asarray(im.convert('L').resize((64, 64)), dtype=float).std() >= 25:
                 x['im'] = im
-                (shown if len(shown) < 5 else extra).append(x)
+                (shown if len(shown) < (make.MOST_PHOTOS if ev.get('many') else 5) else extra).append(x)
         year_too = [x for x in items if x['y'] == y and 'path' in x and not make.JUNK.search(x.get('c') or '')]   # that year's photos of the day
         pool_rest = extra + year_too
         for k, x in enumerate(shown):   # card 1 is the big one, cards 2 to 5 the small ones beside it under the story
             others = [o for o in shown if o is not x] + pool_rest
             c = card(pool, out, f'card{k + 1}', y, 'story', x, others)
-            c.update(role='big' if k == 0 else 'small', place=ev.get('place') or '')
+            c.update(key=f'card{k + 1}', role='big' if k == 0 else 'small', place=ev.get('place') or '', on=True)
             cards.append(c)
+        # Darpan, 17 Nov 2026 ('more photos and then make it 20 photos'): empty places up to 20 photos in all, each with
+        # its own key and the same photos to choose from; the Studio's 'Add a photo' turns one on
+        spares = []
+        if len(cards) < make.MOST_PHOTOS:
+            sp_card = card(pool, out, 'spares', y, 'story', None, shown + pool_rest)
+            for n in range(len(cards) + 1, make.MOST_PHOTOS + 1):
+                spares.append(dict(sp_card, key=f'card{n}', role='small', place=ev.get('place') or '', on=False))
         pack = dict(date=str(day), kind='story', source=drawn['source'], title=f'{day.day} {day:%B}',
                     subtitle='A special day in BAPS history', footer=make.FOOTER, cal_line='',
                     headline=ev.get('headline') or ev['line'],
@@ -310,7 +317,8 @@ def main():
                     story_short=ev.get('whatsapp') or ev.get('story') or ev['line'],
                     whatsapp=make.tg_caption(ev).strip(),   # the story as the 2pm caption words tell it ('On this day in ...'), Darpan, 14 Nov 2026
                     story_date=ev['date'][:10], story_place=ev.get('place') or '',
-                    layout=dict(name='story', big=[70, 200, 1180, 800], small_from=1360, size=[make.W, make.H], unit=make.SCALE))
+                    layout=dict(name='story', big=[70, 200, 1180, 800], small_from=1360, size=[make.W, make.H], unit=make.SCALE),
+                    spares=spares, most_photos=make.MOST_PHOTOS)
         # Darpan, 13 Nov 2026 ('if youre not sure make multiple and i will decide'): the other pictures the day could
         # have, each drawn and with the entry that makes it the day's special once it is put in archive/special-days.json
         def choice(e):
