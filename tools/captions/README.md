@@ -1,0 +1,46 @@
+# New photos with their captions (website only)
+
+Darpan, 25 Oct 2026: "I want captions and photos" together, daily at 8pm UK, like Chrome did on 18 Oct.
+
+Why Chrome: captions are only written on baps.org's day pages, and those sit behind a Cloudflare check that GitHub
+can't pass (and must never try to get past). The photo files carry no caption (tested on GitHub, caption-probe.txt on
+branch claude/project-thread-urww6n). In Darpan's own Chrome the pages open like they do for any reader.
+
+Nothing here touches the daily 2pm picture's code. It only adds rows to `crawl/button/YYYY-MM.json` on the `database`
+branch (the same file the screensaver button filled), then starts `archive.yml`, which rebuilds `bapas.db` the way the
+nightly album scan already does. From there the noon Drive download, the high res R2 copy and the website follow.
+
+## The daily run (a scheduled Claude task, 8pm UK)
+
+1. Not between 04:30 and 07:30 UTC. Check out branch `database` (`git fetch origin +refs/heads/database:refs/remotes/origin/database`).
+2. `python3 tools/captions/captions_merge.py --known --crawl crawl` prints the pages already saved.
+3. Never read baps.org at the same time as the News archive thread (13 Nov 2026). Its Daily Satsang reading may be
+   running in a tab of Darpan's Chrome (a page whose window has `DS`). If one is, run `DS.stop = true` in that tab
+   first (don't navigate or close it), and when this run is done, message the News archive thread
+   (cmsg_012tM2wBGin4Tjo82uVf3LGeGMAUJXGKuZRVxtYgDmSw2L) that baps.org is free again so it can restart.
+   In Darpan's Chrome (Claude in Chrome), open a new tab on `https://www.baps.org/vicharan.aspx`. If baps.org shows a
+   check page instead, stop and try tomorrow: never click or solve it.
+4. Paste `captions_chrome.js` into the tab with the javascript tool, then `await CAP.run(<known pages>, 3)`.
+   It lists the pages it read (new days, the last 3 days again, and each day's linked photo albums).
+5. For each part: `CAP.short(i)` (and `CAP.short(i, 90)`, ... while capsTotal is bigger), write it to a file exactly
+   (caption pieces joined in order), `python3 tools/captions/captions_merge.py --part that.json --crawl crawl`.
+   A "hash does not match" means it was copied wrongly: read that part again.
+6. Bapa's schedule (for the Darshan Screensaver, Darpan 25 Oct): `await CAP.schedule()` in the same tab. If it gives
+   an error, skip it. Otherwise write it exactly to a file (text joined from
+   `CAP.scheduleText(800)`, `(1600)`, ... up to textTotal; drop textTotal) and `captions_merge.py --schedule that.json --crawl crawl`
+   (saves `crawl/schedule/latest.json`; the screensaver reads it from raw.githubusercontent.com).
+7. Commit `crawl/button` and `crawl/schedule` on `database`, push to `refs/heads/database` (pull first), then
+   `gh api -X POST repos/darpan31patel-wq/bapas-diary/actions/workflows/archive.yml/dispatches -f ref=main`.
+8. News (Darpan, 9 Nov 2026: "WANT CAPTIONS AND ARTICLES", "MAKE IT HAPPEN RIGHT NOW"), in the same tab after the day
+   pages: `python3 tools/captions/news_merge_daily.py --known --crawl crawl` prints what is saved. Paste
+   `news_chrome.js`, then `await NEWS.run(<known>, 15)` (over 45 s: start it as a promise and poll). For each 5 articles:
+   `NEWS.show(0, 5)`, get_page_text, write the text after the `---` line exactly to a file,
+   `python3 tools/captions/news_merge_daily.py --text that.txt --crawl crawl`; then `NEWS.show(5, 10)` and so on.
+   It saves each article's words, date, place and gallery photo names to `crawl/news/articles.json` and
+   `crawl/news/webnext.json`; gallery photos that are also on Bapa's day pages get that day's caption. Commit
+   `crawl/news` with the rest in step 7. An article with no words yet is left for the next night.
+   Then: `news_merge_daily.py --refresh --crawl crawl` lists articles saved without exact photo addresses (a gallery too
+   big to pass on with its words, or one saved before 12 Nov). `await NEWS.refresh(<that list>)` reads only their
+   gallery pages, one tab, 3 s apart (60 pages took 4 minutes on 13 Nov), then `NEWS.show(i, j)` a few at a time
+   and `--text` as above. It adds the "files" list in `crawl/news/webnext.json` for the News archive thread's copier.
+9. Close the tab. If Chrome isn't connected (Mac off), do nothing: the next run catches up.
