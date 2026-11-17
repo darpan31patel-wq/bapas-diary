@@ -177,10 +177,6 @@ jobs:
           } > flag-body.md
           gh issue create --title "Check today's older card ($(cat out/date.txt))" --body-file flag-body.md
 
-      - name: TEST ONLY Studio special pack on the branch
-        if: github.ref != 'refs/heads/main'
-        continue-on-error: true
-        run: python tools/special_pack.py "$(cat out/date.txt)" preview/packs
       - name: Test branches keep their picture in preview/ (nothing reaches Google Drive)
         if: github.ref != 'refs/heads/main'
         run: |
