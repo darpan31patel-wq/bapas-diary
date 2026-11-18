@@ -77,13 +77,13 @@ FESTS = {
         words=re.compile(r'rath|chariot|yatra|pull', re.I), tags={'procession', 'flags'}, strong={'chariot'}),
     'raksha': dict(title='Raksha Bandhan', old='Raksha Bandhan', ti='Shravan Sud Punam', cal=re.compile(r'raksha ?bandhan', re.I),
         words=re.compile(r'raksha|rakhi|nadachhadi|thread', re.I), tags=set(), strong=set()),
-    'sharad': dict(title='Sharad Punam', old="Gunatitanand Swami's Birthday (Sharad Punam)", ti='Aso Sud Punam',
+    'sharad': dict(by_ti=True, title='Sharad Punam', old="Gunatitanand Swami's Birthday (Sharad Punam)", ti='Aso Sud Punam',
         cal=re.compile(r"sharad pun|gunatitanand swami'?s birthday", re.I),
         words=re.compile(r'sharad|punam|gunatitanand|dudh|pauva|moon', re.I), tags={'night', 'sweets'}, strong=set()),
-    'psm': dict(title="Pramukh Swami Maharaj's Jayanti", old="Pramukh Swami Maharaj's Jayanti", ti='Magshar Sud Atham',
+    'psm': dict(by_ti=True, title="Pramukh Swami Maharaj's Jayanti", old="Pramukh Swami Maharaj's Jayanti", ti='Magshar Sud Atham',
         cal=re.compile(r"pramukh swami maharaj('?s)? (janma )?jayanti(?! celebration)", re.I),
         words=re.compile(r'jayanti|birthday|janma|cake', re.I), tags={'garland', 'flowers', 'cake'}, strong={'cake'}),
-    'msm': dict(title="Mahant Swami Maharaj's Jayanti", old="Mahant Swami Maharaj's Jayanti", ti='Bhadarvo Vad Nom',
+    'msm': dict(by_ti=True, title="Mahant Swami Maharaj's Jayanti", old="Mahant Swami Maharaj's Jayanti", ti='Bhadarvo Vad Nom',
         cal=re.compile(r"mahant swami maharaj('?s)? (janma )?jayanti(?! celebration)", re.I), since=2016,   # his own birthdays as Bapa
         words=re.compile(r'jayanti|birthday|janma|cake', re.I), tags={'garland', 'flowers', 'cake'}, strong={'cake'}),
 }
@@ -112,10 +112,39 @@ def festival_days(db, ask):
         for part in re.split(r'[;,/]| and ', fests or ''):
             for k, F in FESTS.items():
                 y = int(date[:4])
-                if F['cal'].search(part.strip()) and (k, y) not in seen:
+                if not F.get('by_ti') and F['cal'].search(part.strip()) and (k, y) not in seen:
                     seen.add((k, y))
                     days[k][y] = date
+    # Sharad Punam and the two gurus' birthdays by their Indian date (Darpan, 18 Nov 2026: "check every date"): the
+    # calendar's names are the 2pm picture's kept days by now (tools/web_rules.py calendar), which keep these two
+    # birthdays on their English dates (7 December, 13 September) and leave Sharad Punam out, so their boards showed
+    # 7 December and 13 September every year and no Sharad Punam after 2009. The year's first day of that Indian date.
+    for date, m, pk, t in db.execute("SELECT date, month, paksha, tithi FROM calendar WHERE tithi != '' ORDER BY date"):
+        for k, F in FESTS.items():
+            fm, fp, ft = F['ti'].split()
+            y = int(date[:4])
+            if F.get('by_ti') and (m, pk) == (fm, fp) and ft in (t or '').split('/') and (k, y) not in seen:
+                seen.add((k, y))
+                days[k][y] = date
     return days
+
+
+def mark(day, days):
+    """Each Indian date festival's own day says its name in the day file's calendar line, so Today opens its board then."""
+    for k, F in FESTS.items():
+        if not F.get('by_ti'):
+            continue
+        for y, date in days[k].items():
+            path = os.path.join(day, date[5:] + '.json')
+            if not os.path.exists(path):
+                continue
+            D = json.load(open(path, encoding='utf-8'))
+            c = (D.get('cal') or {}).get(str(y))
+            if not c or F['title'] in c[1]:
+                continue
+            c[1] = '; '.join(x for x in (c[1], F['title']) if x)
+            with open(path, 'w', encoding='utf-8') as fh:
+                json.dump(D, fh, ensure_ascii=False, separators=(',', ':'))
 
 
 def festive(p, F, tags):
@@ -131,7 +160,9 @@ def build(a):
     tags = json.load(open(a.deep_tags, encoding='utf-8')) if a.deep_tags and os.path.exists(a.deep_tags) else {}
     os.makedirs(a.out, exist_ok=True)
     keys = set()
-    for k, days in festival_days(db, a.ask).items():
+    every = festival_days(db, a.ask)
+    mark(a.day, every)
+    for k, days in every.items():
         F = FESTS[k]
         out = {'date': 'fest', 'fest': k, 'title': F['title'], 'years': [], 'cal': {}, 'stories': []}
         files = {}

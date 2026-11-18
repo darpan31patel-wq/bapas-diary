@@ -44,6 +44,30 @@ SINCE = {'Pramukh Swami': 2017, 'Pramukh Varni': 1950, 'Yogiji Maharaj': 1971, '
          'Saradar Patel': 1950}
 
 
+# Swaminarayan Jayanti and Ramnavmi (Darpan, 18 Nov 2026: "check every date"): in these years Nom held at two sunrises
+# and the sums put the festival on the day before, which is really Chaitra Sud Atham. BAPS keeps it on the first sunrise
+# of Nom (15 of its 16 years from 2010), and the photos agree: "224 Shri Hari Jayanti Celebration with Bapa" on 18 April
+# 2005, "Birthday celebration arti of Thakorji" on 27 March 2007. Checked again with sunrise sums of our own.
+HARI_NAVMI = {'1970-04-14': '1970-04-15', '1971-04-03': '1971-04-04', '1976-04-08': '1976-04-09', '1978-04-16': '1978-04-17',
+              '1985-03-30': '1985-03-31', '1997-04-15': '1997-04-16', '2005-04-17': '2005-04-18', '2007-03-26': '2007-03-27',
+              '2008-04-13': '2008-04-14'}
+
+
+def hari_navmi(rows):
+    """rows: [date, vs, month, paksha, tithi, festivals, notes, ekadashi]; moves Ramnavmi and Swaminarayan Jayanti to their day."""
+    at = {r[0]: r for r in rows}
+    for was, to in HARI_NAVMI.items():
+        a, b = at.get(was), at.get(to)
+        if not a or not b:
+            continue
+        move = [f for f in a[5] if f in ('Ramnavmi', 'Swaminarayan Jayanti (Hari Navmi)')]
+        if move:
+            a[5] = [f for f in a[5] if f not in move]
+            b[5] = move + [f for f in b[5] if f not in move]
+            a[4] = 'Atham'
+    return rows
+
+
 def since_ok(name, year):
     return all(year >= y for k, y in SINCE.items() if k.lower() in name.lower())
 
@@ -316,8 +340,9 @@ def make(a):
             'check': {'days': n, 'same_indian_date': same, 'festival_days': fn, 'same_festival_day': fr},
             'about': {x['name']: x['about'] for d in days for x in d['festivals'] if x['about']},
             'columns': ['date', 'vikram_samvat', 'month', 'paksha', 'tithi', 'festivals', 'notes', 'ekadashi']}
-    rows = [json.dumps([d['date'], d['vikram_samvat'], d['month'], d['paksha'], d['tithi'], [x['name'] for x in d['festivals']],
-                        d['notes'], int(d['ekadashi'])], ensure_ascii=False, separators=(',', ':')) for d in days]
+    rows = hari_navmi([[d['date'], d['vikram_samvat'], d['month'], d['paksha'], d['tithi'], [x['name'] for x in d['festivals']],
+                        d['notes'], int(d['ekadashi'])] for d in days])
+    rows = [json.dumps(r, ensure_ascii=False, separators=(',', ':')) for r in rows]
     with open(OUT, 'w', encoding='utf-8') as f:   # one day a line
         f.write(json.dumps(head, ensure_ascii=False, indent=1)[:-2] + ',\n "days": [\n' + ',\n'.join(rows) + '\n]}\n')
     print(f'{OUT}: {len(days)} days, {sum(bool(d["festivals"]) for d in days)} with a festival', file=sys.stderr)

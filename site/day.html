@@ -743,11 +743,14 @@ const FESTIVE = {
     fe: '#d01f3c', fy: '#9b1c2e', sky: ['fall', ['#ffd56a', '#ff8fab']], rope: ['thread'], foot: 'rakhi'},
   sharad: {re: /sharad pun|gunatitanand swami'?s birthday/i, line: "Every Sharad Punam with Bapa, Gunatitanand Swami's birthday, each year on its own Indian date. 🙏🏽",
     bg: MOONLIT, fe: '#9aa8bd', fy: '#4a5568', sky: ['moon'], rope: ['beads', JASMINE, 1], foot: 'bowl'},
-  psm: {re: /pramukh swami maharaj('?s)? (janma )?jayanti(?! celebration)/i, line: 'Every birthday of Pramukh Swami Maharaj with Bapa, each year on its own Indian date. 🙏🏽',
+  psm: {re: /pramukh swami maharaj'?s (janma )?jayanti(?! celebration)/i, line: 'Every birthday of Pramukh Swami Maharaj with Bapa, each year on its own Indian date. 🙏🏽',
     bg: SAFFRON, fe: '#c9a227', fy: '#7a3a10', sky: ['fall', ['#e0245e', '#ff8fab', '#ffd56a']], rope: ['beads', ROSES, 1], foot: 'garland'},
-  msm: {re: /mahant swami maharaj('?s)? (janma )?jayanti(?! celebration)/i, line: 'Every birthday of Mahant Swami Maharaj with Bapa, each year on its own Indian date. 🙏🏽',
+  msm: {re: /mahant swami maharaj'?s (janma )?jayanti(?! celebration)/i, line: 'Every birthday of Mahant Swami Maharaj with Bapa, each year on its own Indian date. 🙏🏽',
     bg: SAFFRON, fe: '#c9a227', fy: '#7a3a10', sky: ['fall', ['#e0245e', '#ff8fab', '#ffd56a']], rope: ['beads', ROSES, 1], foot: 'garland'},
 };
+// Sharad Punam and the two gurus' birthdays open on their Indian date, which tools/web_festival.py writes into the day's
+// calendar line as "Sharad Punam", "Pramukh Swami Maharaj's Jayanti", "Mahant Swami Maharaj's Jayanti"; the picture's
+// English date birthday tags ("Pramukh Swami Maharaj Jayanti" on 7 December) never open them (Darpan, 18 Nov 2026).
 const DATE_ONLY = ['dhanteras', 'kalichaudas', 'diwali', 'annakut', 'bhaibij'];
 const festKey = c => {
   const parts = c ? [c[1], c[2]].filter(Boolean).join(';').split(/[;,\/]| and /).map(x => x.trim()).filter(Boolean) : [];
