@@ -147,6 +147,28 @@ def newer(rows, crawl, scan):
     return out
 
 
+MONTHS = {m: i for i, m in enumerate(('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'), 1)}
+
+
+def gallery_day(text, near):
+    """The one day a News gallery's name gives ('Diksha Ceremony, 30 Nov 2000', 'Diksha-Ceremony-30-Nov-2000-3829') as
+    YYYY-MM-DD, or None: no date, a range of days ('1 to 17 December 2007', '24-27 Oct'), two different dates, or a date
+    more than 45 days from the story's own (near), which is an old photo in a new story rather than the day it was taken."""
+    if not text or not near or re.search(r'\d\s*(?:to|-|\u2013|&|and)\s*\d{1,2}[\s_-]+[A-Za-z]{3}', text, re.I):
+        return None
+    text = re.sub(r'[-_]', ' ', text)
+    found = set()
+    for m in re.finditer(r'(?<!\d)(\d{1,2})(?:st|nd|rd|th)?[\s,]+([A-Za-z]{3})[a-z]*[\s,]+(\d{4})(?!\d)', text):
+        try:
+            found.add(datetime.date(int(m[3]), MONTHS[m[2].lower()], int(m[1])))
+        except (KeyError, ValueError):
+            pass
+    if len(found) != 1:
+        return None
+    d = found.pop()
+    return d.isoformat() if abs((d - datetime.date.fromisoformat(near)).days) <= 45 else None
+
+
 def news(rows, crawl):
     """The News articles (Darpan, 4 Nov 2026: every photo and every article on baps.org into the database): the article
     rows, which photos each one has, and the gallery photos the vicharan pages never listed (source 'news')."""
@@ -157,6 +179,18 @@ def news(rows, crawl):
         m = re.search(r'/News/(\d{4})/', path)
         y = int(when[:4]) if when else int(m[1]) if m else None
         gals = [('', {'t': a.get('t'), 'rows': a.get('own') or []})] + list((a.get('g') or {}).items())
+        # each gallery's own day: a story that ran over several days ('80th Birthday Celebration ... Anand', listed 4 Dec
+        # 2000) has a gallery for each day ('Diksha Ceremony, 30 Nov 2000'), and every photo used to get the story's one
+        # date, so 30 Nov 2000 showed none of its 12 photos (Darpan, 18 Nov 2026)
+        own_day = {}
+        for album, _f, *label in a.get('own') or []:
+            if label and gallery_day(label[0], when):
+                own_day[album] = gallery_day(label[0], when)
+        for gp, g in gals[1:]:
+            rows = g.get('rows') or []
+            d = gallery_day(gp.rsplit('/', 1)[-1], when)
+            if rows and d:
+                own_day[rows[0][0]] = d
         seen = set()
         for gp, g in gals:
             for album, file, *alt in g.get('rows') or []:
@@ -168,9 +202,10 @@ def news(rows, crawl):
                     continue
                 have.add((album, file.lower()))
                 cap = re.sub(r'\s*-\s*$', '', (alt[0] if alt else '') or '').strip() or g.get('t') or a.get('t')
-                day = datetime.date.fromisoformat(when) if when else datetime.date(y or 2000, 7, 1)
-                out.append((y, when, None, None, a.get('place'), album, file, cap, int(build_db.about_bapa(cap, day)), 'news',
-                            photo_path(y, when, None, None, a.get('place'), file, cap)))
+                on = own_day.get(album, when)   # the file's path keeps the story's date, so nothing already copied moves
+                day = datetime.date.fromisoformat(on) if on else datetime.date(y or 2000, 7, 1)
+                out.append((int(on[:4]) if on else y, on, None, None, a.get('place'), album, file, cap,
+                            int(build_db.about_bapa(cap, day)), 'news', photo_path(y, when, None, None, a.get('place'), file, cap)))
         arts.append((path, 'https://www.baps.org' + path, y, when, a.get('place'), a.get('t'), a.get('text'),
                      json.dumps([{'path': gp, 'title': g.get('t'), 'photos': len(g.get('rows') or [])} for gp, g in gals[1:]],
                                 ensure_ascii=False), len(seen)))
