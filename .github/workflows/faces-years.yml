@@ -61,6 +61,7 @@ jobs:
           fi
           mkdir hints && gh release download website-faces -p 'face2-*.json.gz' -D hints
           gh release download swaminarayan-org-web -p 'face2-*-sorg.json.gz' -D hints 2>/dev/null || true
+          gh release download baps-darshan -p 'face2-*-bapsds.json.gz' -D hints 2>/dev/null || true   # baps.org daily darshan face scan (find 2)
           gh release download faces-mockup -p faces.tgz   # a test copy starts from the live one too
           tar xzf faces.tgz
       - name: Close ups
