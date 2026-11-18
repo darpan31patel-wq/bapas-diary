@@ -1,0 +1,21 @@
+# Website only. One look at why Through the years leaves out baps.org's daily darshan photos (18 Nov 2026). Changes nothing.
+name: baps-darshan-diag
+on:
+  push:
+    branches: [claude/project-thread-0f0un6]
+    paths: [tools/mockups/baps-finds/ds_faces_diag.py, .github/workflows/baps-darshan-diag.yml]
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/project-thread-lfiln1
+          path: ty
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -q opencv-python-headless numpy pillow open_clip_torch torch --extra-index-url https://download.pytorch.org/whl/cpu
+      - run: cd ty && python3 ../tools/mockups/baps-finds/ds_faces_diag.py tools ../data/baps-darshan/rows.json
