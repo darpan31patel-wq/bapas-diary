@@ -251,7 +251,7 @@ def hero(ev, day, photos, paras):
     """One big photo at the left, all the way down; the date, headline and whole story beside it in quiet space."""
     ph = photos[0]
     a = min(1.25, max(.72, ph['im'].width / ph['im'].height))
-    for ch in (1150, 1060, 980, 900, 820):   # a long story makes the photo smaller, never the story shorter
+    for ch in (1150, 1060, 980, 900, 820, 740, 660):   # a long story makes the photo smaller, never the story shorter
         img = make.background(); dr = ImageDraw.Draw(img); items = []
         h = px(ch - 12 * 2 - 0) - card_strip(px(ch) * a)
         w = min(px(1500), h * a, ph['im'].width * 3)   # a small photo stays a smaller card, the rest is quiet space
@@ -260,13 +260,13 @@ def hero(ev, day, photos, paras):
         y = (H - c.height + px(30) * 2) / 2 - px(30) - px(6)
         put(img, rec, c, px(70) - px(30), y, items)
         make.peg(img, px(70) + c.width / 2 - px(30), y + px(30) + px(28), px(1.5))
-        x0 = px(70) + c.width - px(60) + px(120); tw = min(W - x0 - px(120), px(1350))   # short lines read easily
+        x0 = px(70) + c.width - px(60) + px(120); tw = min(W - x0 - px(120), px(1350 if ch > 900 else 1700))   # short lines read easily; a long story gets longer lines
         x0 += (W - px(120) - x0 - tw) / 2   # the words in the middle of the space beside the photo
         # the date, headline and story as one block, in the middle of the height beside the photo (quiet space above and below)
         probe = img.copy()
         hr, hh = headline(probe, ev.get('headline') or ev['line'], x0, 0, tw)
         top0 = px(110) + px(60) + hh + px(80)
-        got = words(probe, paras, x0, top0, tw * .94, H - px(140) - top0, his_sizes((36, 34, 32, 30, 28, 26)))
+        got = words(probe, paras, x0, top0, tw * .94, H - px(140) - top0, his_sizes((36, 34, 32, 30, 28, 26) if ch > 900 else (26, 25, 24, 23, 22, 21, 20)))
         if got:
             block = top0 - px(110) + got[1]
             size = round(got[2] / make.SCALE)
@@ -276,7 +276,7 @@ def hero(ev, day, photos, paras):
             items += hr
             rule(img, x0, y0 + px(60) + hh + px(26))
             top = y0 + px(60) + hh + px(80)
-            got = words(img, paras, x0, top, tw * .94, H - px(140) - top, tuple(v for v in (36, 34, 32, 30, 28, 26) if v <= size + 1))
+            got = words(img, paras, x0, top, tw * .94, H - px(140) - top, tuple(v for v in (36, 34, 32, 30, 28, 26, 25, 24, 23, 22, 21, 20) if v <= size + 1))
             items += got[0]
             small_footer(img, items)
             return img, items
@@ -299,7 +299,7 @@ def strip(ev, day, photos, paras):
         strip_h = chh + px(24) + card_strip(cw)
         y_strip = H - px(80) - strip_h
         top = px(168) + hh + px(28)
-        got = words(img, paras, px(420), top, W - px(840), y_strip - px(40) - top, his_sizes((34, 32, 30, 28, 26, 24)), align='center')
+        got = words(img, paras, px(420 if n < 8 else 200), top, W - px(840 if n < 8 else 400), y_strip - px(40) - top, his_sizes((34, 32, 30, 28, 26, 24) if n < 8 else (24, 23, 22, 21, 20)), align='center')
         if not got:
             continue
         items += got[0]
@@ -337,7 +337,7 @@ def then_and_now(ev, day, photos, paras, now):
         items += hr
         rule(img, x0, px(210) + hh + px(26))
         top = px(210) + hh + px(80)
-        got = words(img, paras, x0, top, tw, H - px(140) - top, his_sizes((34, 32, 30, 28, 26, 24)))
+        got = words(img, paras, x0, top, tw, H - px(140) - top, his_sizes((34, 32, 30, 28, 26, 24) if ch > 740 else (24, 23, 22, 21, 20)))
         if got:
             items += got[0]
             small_footer(img, items)
@@ -372,21 +372,25 @@ def phone(ev, day, photos, paras):
     for l in heads:
         lw = d.textlength(l, font=hf)
         gold_text(img, ((PW - lw) / 2, y), l, hf)
-        items.append(dict(kind='text', at=((PW - lw) / 2, y, (PW + lw) / 2, y + hf.size), size=hf.size, text=l))
+        items.append(dict(kind='text', at=((PW - lw) / 2, y, (PW + lw) / 2, y + hf.size), size=hf.size, text=l,
+                          role='headline', weight=700, color='gold', align='center', lh=hf.size * 1.12))
         y += hf.size * 1.12
     y += px(40)
     rule(img, PW / 2, y, align='center'); y += px(50)
     yy = y + bf.size
+    new = False
     for l in lines:
         if l is None:
-            yy += gap; continue
+            yy += gap; new = True; continue
         lw = d.textlength(l, font=bf)
         d.text(((PW - lw) / 2, yy), l, font=bf, fill=style.IVORY_TEXT, anchor='ls')
-        items.append(dict(kind='text', at=((PW - lw) / 2, yy - bf.size * .8, (PW + lw) / 2, yy + bf.size * .25), size=bf.size, text=l))
-        yy += lh
+        items.append(dict(kind='text', at=((PW - lw) / 2, yy - bf.size * .8, (PW + lw) / 2, yy + bf.size * .25), size=bf.size, text=l,
+                          role='story', weight=500, color=style.IVORY_TEXT, align='center', lh=lh, para=new))
+        yy += lh; new = False
     fo = garamond(px(30), 500); fw = d.textlength(style.FOOTER, font=fo)
     d.text(((PW - fw) / 2, PH - px(70)), style.FOOTER, font=fo, fill=style.FOOTER_GOLD)
-    items.append(dict(kind='text', at=((PW - fw) / 2, PH - px(70), (PW + fw) / 2, PH - px(70) + fo.size), size=fo.size, text=style.FOOTER))
+    items.append(dict(kind='text', at=((PW - fw) / 2, PH - px(70), (PW + fw) / 2, PH - px(70) + fo.size), size=fo.size, text=style.FOOTER,
+                      role='footer', weight=500, color=style.FOOTER_GOLD, align='left'))
     return img, items
 
 
@@ -569,7 +573,7 @@ def design_of(items, canvas=(W, H)):
     for it in items:   # the lines of one headline, story or date line become one text item
         if it['kind'] != 'text':
             continue
-        g = groups[-1] if groups and groups[-1][0]['role'] == it.get('role') and it.get('role') in ('headline', 'story') else None
+        g = groups[-1] if groups and groups[-1][0].get('role') == it.get('role') and it.get('role') in ('headline', 'story') else None
         if g is None:
             groups.append([it])
         else:
