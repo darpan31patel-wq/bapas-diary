@@ -94,6 +94,18 @@ button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 3px; }
 .seam { width: clamp(48px, 7vw, 92px); }
 .seam .years { width: clamp(46px, 6.4vw, 78px); }
 .seam .years small { font-size: 9.5px; letter-spacing: .05em; }
+/* Phones: the two photos one above the other at the full width, joined by a gold line naming the years between, so
+   the photos are big and the screen has no empty band under Next (Darpan, 18 Nov 2026) */
+@media (max-width: 560px) {
+  main { gap: 16px; padding-block: 52px 24px; }
+  .pair { grid-template-columns: minmax(0, 1fr); width: 100%; min-width: 0; }
+  .seam { width: auto; height: 64px; }
+  .seam::before { top: 50%; bottom: auto; left: 6%; right: 6%; width: auto; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+  .seam .years { width: 52px; margin: 0; }
+  .seam .years b { font-size: 18px; }
+  figcaption { gap: 1px; }
+  .cap { font-size: 14px; }
+}
 </style>
 </head>
 <body>

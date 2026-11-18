@@ -383,8 +383,8 @@
   addEventListener('scroll', shut, { passive: true });
 
   window.BapaDiary = { fav, shareDay, slideshow, photoOf, toast, niceDate, PHOTOS };
-  // Calendar, Travels and Places load this file only for the video moments list (data-only="moments"): no text size
-  // button there (Calendar fits the screen and has its own zoom buttons) and no hearts
+  // A page that loads this file with data-only="moments" gets only the video moments list. Since 18 Nov 2026 every tab
+  // loads it whole, so every tab has the Aa text size button (Darpan); hearts stay on Today and Search only
   const only = (document.currentScript && document.currentScript.dataset.only) || '';
   const ready = () => {
     const path = location.pathname;

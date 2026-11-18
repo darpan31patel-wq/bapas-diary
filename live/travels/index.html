@@ -99,6 +99,11 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .yr .short { display: none; }
 @media (max-width: 1280px) { .yr { font-size: 16px; border-radius: 8px; } }
 @media (max-width: 1100px) { .yr .full { display: none; } .yr .short { display: inline; } .yr .short::before { content: "\2019"; } }
+/* when the full years would touch their neighbours ("20002001"), the strip shows '00 '01 instead, at any width
+   (Darpan, 18 Nov 2026: the year buttons were squashed together on computers); the script near the end decides */
+.yrs.tight .yr .full { display: none; } .yrs.tight .yr .short { display: inline; } .yrs.tight .yr .short::before { content: "\2019"; }
+/* phones at a bigger text size (the Aa button zooms the page): the guru names wrap instead of being cut off */
+html[style*="zoom"] body .era .who, html[style*="zoom"] body .era .yrs { white-space: normal; text-wrap: balance; line-height: 1.1; }
 .row { display: flex; align-items: center; gap: 16px; }
 .play { flex: none; width: 60px; height: 60px; border-radius: 50%; border: 0; background: var(--gold); color: var(--night); cursor: pointer; display: grid; place-items: center; }
 .step { flex: none; width: 48px; height: 48px; border-radius: 50%; border: 1.5px solid var(--gold); background: transparent; color: var(--gold); cursor: pointer; display: grid; place-items: center; }
@@ -758,5 +763,26 @@ body.dragging { -webkit-user-select: none; user-select: none; }
 })();
 </script>
 
+<script>
+/* Travels year strip: full years only while every one fits inside its button with room to breathe (Darpan, 18 Nov 2026) */
+(function () {
+  var row = document.getElementById('years'); if (!row) return;
+  var phone = matchMedia('(max-width: 760px)'), busy = false;
+  function fit() {
+    if (busy) return; busy = true;
+    if (phone.matches) { row.classList.remove('tight'); busy = false; return; }
+    row.classList.remove('tight');
+    var tight = Array.prototype.some.call(row.querySelectorAll('.yr'), function (b) {
+      var f = b.querySelector('.full'); if (!f) return false;
+      return f.getBoundingClientRect().width > b.clientWidth - 10;
+    });
+    row.classList.toggle('tight', tight);
+    busy = false;
+  }
+  new MutationObserver(function () { if (!busy) requestAnimationFrame(fit); }).observe(row, { childList: true });
+  if (window.ResizeObserver) new ResizeObserver(function () { requestAnimationFrame(fit); }).observe(row);
+  addEventListener('load', fit); if (document.fonts) document.fonts.ready.then(fit); fit();
+})();
+</script>
 </body>
 </html>

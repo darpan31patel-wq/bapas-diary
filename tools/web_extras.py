@@ -7,16 +7,21 @@ Website only: nothing here touches the daily 2pm picture. Runs in the deploy on 
   out/extras.js, out/extras.css   from site/extras/: hearts, the share choices and the slideshow (see extras.js)
   out/favourites/index.html       My favourite darshans (site/extras/favourites.html)
 and adds the two files to Today, Search, About and My favourites: hearts and share buttons on Today and
-Search, and on every one of them the Aa text size button (Darpan typed yes to large text, 24 Oct 2026).
+Search, and on every one of them the Aa text size button (Darpan typed yes to large text, 24 Oct 2026; every tab since
+18 Nov 2026).
 The day pictures and day links come from tools/web_dayshare.py.
 """
 import argparse, hashlib, os, shutil
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(HERE, 'site', 'extras')
-# not Calendar: it fits the screen and already has its own zoom buttons
 PAGES = ['index.html', os.path.join('search', 'index.html'),
          os.path.join('about', 'index.html'), os.path.join('favourites', 'index.html')]
+# the Aa text size button on every tab (Darpan, 18 Nov 2026: it showed on Today and Search only); these get the whole of
+# extras.js too, which leaves hearts and share buttons to Today and Search, so on them it is the Aa button and the
+# video moments list
+PAGES += [os.path.join(d, 'index.html') for d in ('calendar', 'travels', os.path.join('travels', 'places'),
+                                                    'through-the-years', 'then-and-now', 'darshan')]
 # Video Darshan plays inside the page (Darpan, 31 Oct 2026): a small script on every page with a gold video link, the
 # Calendar, Travels and Places pages too (they have no hearts or text size button, only the player)
 VIDEO_PAGES = PAGES + [os.path.join('photos', 'index.html'), os.path.join('travels', 'index.html'),
