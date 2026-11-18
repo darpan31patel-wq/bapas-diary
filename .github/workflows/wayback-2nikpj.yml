@@ -9,6 +9,8 @@
 # Archive slowed the two readers down, so now one reader at the Archive's own pace, copying for 4h.
 # Round 3: 17 Nov 20:20 UTC: round 2 got only 617 files (the Archive keeps asking GitHub's machines to wait); this
 # round counts the Archive's answers to see why, and gives up on files that failed twice (bapscare.org's last 5).
+# Round 4: 18 Nov 08:05 UTC: round 3 went well (mandir.org 3,055 files in 4h, 6,637 left); kids.swaminarayan.org
+# (14) and bapscare.org (5) only have files that failed twice, so both finish and get their lists.
 name: wayback
 on:
   push:
