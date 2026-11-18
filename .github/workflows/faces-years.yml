@@ -64,6 +64,19 @@ jobs:
           gh release download baps-darshan -p 'face2-*-bapsds.json.gz' -D hints 2>/dev/null || true   # baps.org daily darshan face scan (find 2)
           gh release download faces-mockup -p faces.tgz   # a test copy starts from the live one too
           tar xzf faces.tgz
+          # the daily darshan months were marked looked at before their face scan existed: look at them again, once (baps.org find 2, 18 Nov 2026)
+          python3 - <<'EOF'
+          import json, os, sqlite3
+          p = 'faces/seen.json'
+          if os.path.exists(p):
+              s = json.load(open(p))
+              if s.get('_bapsds') != 1:
+                  days = {d for (d,) in sqlite3.connect('bapas.db').execute("SELECT DISTINCT date_from FROM photos WHERE album LIKE 'bapsds-%'")}
+                  n = sum(1 for d in days if s.pop(d, None) is not None)
+                  s['_bapsds'] = 1
+                  json.dump(s, open(p, 'w'), sort_keys=True)
+                  print(f'daily darshan days to look at again: {n}')
+          EOF
       - name: Close ups
         run: python3 tools/faces_years.py --db bapas.db --years years.txt --hints hints --out faces --sheet sheet ${{ inputs.redo && '--redo' || '' }} 2>&1 | grep -v WARN | tee faces-log.txt
       - name: The page
