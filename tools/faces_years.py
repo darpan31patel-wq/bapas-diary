@@ -207,7 +207,7 @@ def day_groups(db, start, end):
     days = collections.defaultdict(list)
     dated = sorted({r[0] for r in rows if not r[1] or r[1] == r[0]})
     for r in rows:
-        if r[1] and r[1] != r[0] and any(r[0] <= d <= r[1] for d in dated):
+        if r[1] and r[1] != r[0] and not r[3].startswith('bapsds-') and any(r[0] <= d <= r[1] for d in dated):
             continue   # a range album, and the range has days with their own dated photos: those come first
         days[r[0]].append(r)
     return days
