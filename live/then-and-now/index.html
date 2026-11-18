@@ -94,17 +94,60 @@ button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 3px; }
 .seam { width: clamp(48px, 7vw, 92px); }
 .seam .years { width: clamp(46px, 6.4vw, 78px); }
 .seam .years small { font-size: 9.5px; letter-spacing: .05em; }
-/* Phones: the two photos one above the other at the full width, joined by a gold line naming the years between, so
-   the photos are big and the screen has no empty band under Next (Darpan, 18 Nov 2026) */
+/* Phones: the two photos one above the other, joined by a gold line naming the years between (Darpan, 18 Nov 2026).
+   Everything fits on one screen above the tab bar at every text size (Darpan, 18 Nov 2026: "i want everything on one
+   screen ... picture can be smaller, but same page"): the page is exactly one screen tall (the Aa button zooms the page,
+   so the height is divided by the zoom), the words and buttons keep their size and the two photos share what is left. */
 @media (max-width: 560px) {
-  main { gap: 16px; padding-block: 52px 24px; }
-  .pair { grid-template-columns: minmax(0, 1fr); width: 100%; min-width: 0; }
-  .seam { width: auto; height: 64px; }
+  /* the tab bar and the top strip keep their size at every text size (site/extras/extras.css), so they are divided by the zoom too */
+  html body { padding-bottom: calc(var(--ph-bar, 0px) / var(--bd-zoom, 1)); }
+  main { box-sizing: border-box; height: calc((100dvh - var(--ph-bar, 0px)) / var(--bd-zoom, 1) - env(safe-area-inset-top, 0px));
+    padding-block: calc(52px / var(--bd-zoom, 1)) 10px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+  header { gap: 2px; flex: none; }
+  h1 { font-size: 18px; }
+  .where { margin-top: 4px; padding-top: 5px; gap: 0 10px; }
+  #place, .moment { font-size: 18px; }
+  .pair { flex: 1 1 0; min-height: 0; width: 100%; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr); }
+  figure { grid-template-rows: minmax(0, 1fr) auto; gap: 5px; min-height: 0; }
+  .frame { height: 100%; min-height: 0; aspect-ratio: auto; box-shadow: 0 8px 20px rgba(0,0,0,.4); }
+  /* each caption is a small card line: the guru, the date and the words on the left, See more on the right */
+  figcaption { grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; row-gap: 0; align-items: center; text-align: left; line-height: 1.3; }
+  figcaption > span { grid-column: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  figcaption > span:last-child { grid-column: 2; grid-row: 1 / 5; overflow: visible; }
+  figcaption .guru { font-size: 15px; }
+  figcaption .pl { font-size: 13px; }
+  figcaption .date { font-size: 10.5px; letter-spacing: .1em; }
+  figcaption .cap { font-size: 13px; }
+  figcaption .go { margin: 0; padding: 6px 11px; font-size: 10.5px; }
+  .seam { width: auto; height: 34px; }
   .seam::before { top: 50%; bottom: auto; left: 6%; right: 6%; width: auto; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
-  .seam .years { width: 52px; margin: 0; }
-  .seam .years b { font-size: 18px; }
-  figcaption { gap: 1px; }
-  .cap { font-size: 14px; }
+  .seam .years { width: auto; aspect-ratio: auto; height: 30px; padding: 0 14px; border-radius: 999px; margin: 0; }
+  .seam .years .soft { display: flex; align-items: baseline; gap: 5px; }
+  .seam .years b { font-size: 16px; }
+  .nav { flex: none; gap: 12px; }
+  .back { width: 44px; height: 44px; }
+  .next { min-height: 44px; padding: 0 30px; }
+  .links { display: none; }
+}
+/* phones at a bigger text size: the words grow, so the title (the Legacy tab already says it) and the photo words make
+   room for the photos */
+@media (max-width: 560px) {
+  html[style*="zoom"] h1, html[style*="zoom"] figcaption .cap { display: none; }
+  html[style*="zoom"] .where { border-top: 0; margin-top: 0; padding-top: 0; }
+  html[style*="zoom"] main { gap: 6px; }
+  html[style*="zoom"] .seam { height: 28px; }
+  html[style*="zoom"] .seam .years { height: 26px; }
+  html[style*="zoom"] .back { width: 40px; height: 40px; }
+  html[style*="zoom"] .next { min-height: 40px; }
+  /* the guru's name has the whole first line, so it is never cut off; See more moves down next to the date */
+  html[style*="zoom"] figcaption .guru { grid-column: 1 / -1; font-size: 14px; }
+  html[style*="zoom"] figcaption > span:last-child { grid-row: 2 / 5; }
+  html[style*="zoom"] figcaption .go { padding: 5px 8px; font-size: 10px; letter-spacing: .04em; }
+}
+/* small phones (iPhone SE) at a bigger text size: the town under each guru goes too (the town is still at the top) */
+@media (max-width: 560px) and (max-height: 700px) {
+  html[style*="zoom"] figcaption .pl { display: none; }
 }
 </style>
 </head>
