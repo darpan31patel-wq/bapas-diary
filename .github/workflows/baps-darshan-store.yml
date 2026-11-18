@@ -48,3 +48,19 @@ jobs:
           gh release view baps-darshan >/dev/null 2>&1 || gh release create baps-darshan --prerelease --title "baps.org daily darshan" \
             --notes "Website only: baps.org's daily darshan photos for Through the years. Not used by the daily picture."
           gh release upload baps-darshan ds-rows.json ds-have.txt --clobber
+      - name: Face check of each photo in the store, so Through the years can line up his eyes (as face2-*-sorg for swaminarayan.org)
+        if: always()
+        run: |
+          pip install -q -r requirements.txt
+          python3 - <<'EOF'
+          import sqlite3
+          db = sqlite3.connect('ds.db')
+          db.execute('CREATE TABLE photos (year INTEGER, date TEXT, date_from TEXT, date_to TEXT, place TEXT, album TEXT, file TEXT, '
+                     'caption TEXT, is_bapa INTEGER, source TEXT, PRIMARY KEY (album, file))')
+          db.commit()
+          EOF
+          python3 tools/ds_darshan.py add --rows ds-rows.json --db ds.db --have ds-have.txt
+          for y in $(sqlite3 ds.db 'SELECT DISTINCT year FROM photos ORDER BY year'); do
+            python3 tools/web_faces.py scan --db ds.db --shard "$y-0-1" --out "face2-$y-bapsds.json.gz"
+          done
+          gh release upload baps-darshan face2-*-bapsds.json.gz --clobber
