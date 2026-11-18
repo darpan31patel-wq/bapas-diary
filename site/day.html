@@ -732,7 +732,7 @@ const FESTIVE = {
     rope: ['beads', ['#ff3d7f', '#ffd400', '#35c759', '#3db7ff', '#ff8a1a']], foot: 'colours'},
   gurupurnima: {re: /guru purnima/i, line: 'Every Guru Purnima with Bapa, each year on its own Indian date. 🙏🏽',
     bg: MOONLIT, fe: '#c9a227', fy: '#7a5a0c', sky: ['moon'], rope: ['beads', JASMINE, 1], foot: 'lotus'},
-  harinom: {re: /hari-?nom|hari navmi|swaminarayan jayanti/i, line: "Every Swaminarayan Jayanti with Bapa, Shriji Maharaj's birthday, each year on its own Indian date. 🙏🏽",
+  harinom: {re: /hari-?nom|(?<!shri )hari navmi|swaminarayan jayanti/i, line: "Every Swaminarayan Jayanti with Bapa, Shriji Maharaj's birthday, each year on its own Indian date. 🙏🏽",
     bg: SAFFRON, fe: '#e8891c', fy: '#a23a10', sky: ['fall', ROSES], rope: ['beads', MARIGOLD, 1], foot: 'kalash'},
   vasant: {re: /vasant panch/i, line: 'Every Vasant Panchami with Bapa, each year on its own Indian date. 🙏🏽',
     bg: 'radial-gradient(ellipse 70% 36% at 50% 0%,rgba(255,215,0,.22),transparent 70%),radial-gradient(ellipse 90% 70% at 50% 30%,var(--maroon-in),var(--maroon-out)) no-repeat',

@@ -67,7 +67,7 @@ FESTS = {
         words=re.compile(r'guru ?purnima|guru ?pujan|pujan|garland|vandan|guru parampara', re.I),
         tags={'garland', 'puja', 'flowers'}, strong={'garland'}),
     'harinom': dict(title='Swaminarayan Jayanti', old='Swaminarayan Jayanti (Hari Navmi)', ti='Chaitra Sud Nom',
-        cal=re.compile(r'hari-?nom|hari navmi|swaminarayan jayanti', re.I),
+        cal=re.compile(r'hari-?nom|(?<!shri )hari navmi|swaminarayan jayanti', re.I),
         words=re.compile(r'jayanti|hari ?n(o|av)m|ram ?navmi|cradle|paranu|birthday|janma', re.I),
         tags={'arti', 'flowers', 'garland'}, strong={'cake'}),
     'vasant': dict(title='Vasant Panchami', old='Vasant Panchmi', ti='Maha Sud Pancham', cal=re.compile(r'vasant panch', re.I),
