@@ -18,4 +18,19 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -q opencv-python-headless numpy pillow open_clip_torch torch --extra-index-url https://download.pytorch.org/whl/cpu
-      - run: cd ty && python3 ../tools/mockups/baps-finds/ds_faces_diag.py tools ../data/baps-darshan/rows.json
+      - name: faces_years itself on only the daily darshan photos, from nothing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir hints && gh release download baps-darshan -p 'face2-*-bapsds.json.gz' -p ds-have.txt -D hints
+          mv hints/ds-have.txt .
+          python3 - <<'EOF'
+          import sqlite3
+          db = sqlite3.connect('ds.db')
+          db.execute('CREATE TABLE photos (year INTEGER, date TEXT, date_from TEXT, date_to TEXT, place TEXT, album TEXT, file TEXT, caption TEXT, is_bapa INTEGER, source TEXT, PRIMARY KEY (album, file))')
+          db.commit()
+          EOF
+          python3 tools/ds_darshan.py add --rows data/baps-darshan/rows.json --db ds.db --have ds-have.txt
+          printf '1990\n1992\n1995\n1996\n1997\n1998\n' > y.txt
+          cd ty && python3 tools/faces_years.py --db ../ds.db --years ../y.txt --hints ../hints --out ../fo 2>&1 | grep -v WARN
+          python3 -c "import json; [print(x['day'], x.get('to'), x['album'], x['file'], len(x.get('more', []))) for x in json.load(open('../fo/faces.json'))]"

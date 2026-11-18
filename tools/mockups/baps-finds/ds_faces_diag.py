@@ -4,7 +4,7 @@ import json, sys, urllib.parse, urllib.request
 import cv2, numpy as np
 sys.path.insert(0, sys.argv[1])
 import faces_years as F
-rows = [r for r in json.load(open(sys.argv[2])) if r['year'] < 1999]
+rows = [r for r in json.load(open(sys.argv[2])) if r["year"] < 1998]
 like = F.Likeness()
 for r in rows:
     key = f"{r['album']}/{r['file']}"
