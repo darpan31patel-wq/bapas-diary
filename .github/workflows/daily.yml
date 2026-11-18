@@ -106,22 +106,11 @@ jobs:
                 [ -e "$o/caption.txt" ] && cp "$o/caption.txt" "compare/$d-$w-caption.txt"
                 for f in "$o"/bapas-diary-special*.jpg "$o"/search.txt; do [ -e "$f" ] && cp "$f" "compare/$d-$w-$(basename "$f")"; done
               done
-              python - "$d" <<'PY' || true
-          import sys
-          from PIL import Image, ImageDraw, ImageFont
-          d = sys.argv[1]
-          a, b = (Image.open(f'compare/{d}-{w}.jpg').convert('RGB') for w in ('before', 'after'))
-          k = 2400 / a.width
-          a, b = (im.resize((2400, round(im.height * k))) for im in (a, b))
-          font = ImageFont.truetype('fonts/arimo-latin-700-normal.woff2', 44)
-          out = Image.new('RGB', (2400, a.height + b.height + 160), (24, 16, 16))
-          draw = ImageDraw.Draw(out)
-          draw.text((30, 16), f'{d}  BEFORE: the picture as main makes it today', font=font, fill=(240, 220, 170))
-          out.paste(a, (0, 80))
-          draw.text((30, a.height + 96), f'{d}  AFTER: as this test branch makes it', font=font, fill=(240, 220, 170))
-          out.paste(b, (0, a.height + 160))
-          out.save(f'compare/{d}-side-by-side.jpg', quality=90)
-          PY
+              python tools/before_after.py "$d" "compare/$d-before.jpg" "compare/$d-after.jpg" compare || true
+              for f in compare/$d-after-bapas-diary-special*.jpg; do   # the special pictures too, when main made the same one
+                g="${f/-after-/-before-}"; s="$(basename "$f" .jpg)"; s="${s#$d-after-bapas-diary-}"
+                [ -e "$f" ] && [ -e "$g" ] && python tools/before_after.py "$d-$s" "$g" "$f" compare || true
+              done
             done
             rm -rf out && mkdir out && mv compare out/compare; echo "compare" > out/date.txt; exit 0
           fi
