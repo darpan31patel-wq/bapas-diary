@@ -53,6 +53,12 @@ jobs:
           # again over photos that are not there yet (Darpan, 9 Nov 2026: 'yes push search news')
           python3 tools/news_ready.py --db bapas.db --out news-ready.txt --prune
           { curl -sf https://photos.bapas-diary.com/years.txt || true; sqlite3 bapas.db "SELECT DISTINCT year FROM photos WHERE source = 'swaminarayan.org'"; } | grep -E '^[0-9]{4}$' | sort -un > years.txt; echo "years in R2: $(tr '\n' ' ' < years.txt)"
+          # baps.org's daily darshan photos, with their month and place, only those in the photo store (baps.org find 2, Darpan 17 Nov 2026: "everything else, go live")
+          if gh release download baps-darshan -p ds-rows.json -p ds-have.txt 2>/dev/null; then
+            git fetch -q --depth 1 origin claude/project-thread-0f0un6 && git show FETCH_HEAD:tools/ds_darshan.py > "$RUNNER_TEMP/ds_darshan.py"
+            python3 "$RUNNER_TEMP/ds_darshan.py" add --rows ds-rows.json --db bapas.db --have ds-have.txt --years years.txt
+            sort -un years.txt -o years.txt; echo "years with daily darshan: $(tr '\n' ' ' < years.txt)"
+          fi
           mkdir hints && gh release download website-faces -p 'face2-*.json.gz' -D hints
           gh release download swaminarayan-org-web -p 'face2-*-sorg.json.gz' -D hints 2>/dev/null || true
           gh release download faces-mockup -p faces.tgz   # a test copy starts from the live one too
