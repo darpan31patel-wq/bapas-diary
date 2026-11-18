@@ -13,7 +13,7 @@ layout, and one entry per card in the order the picture shows them: its year (an
 picture uses first and every other photo it could use, each in the same shape as a day pack's photos.
 It decides exactly as make.main() does which special picture the day gets. Read only: nothing here changes the daily
 picture, the special picture, shown.json or the release."""
-import datetime, json, os, re, shutil, sys
+import collections, datetime, json, os, re, shutil, sys
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, HERE)
@@ -274,6 +274,147 @@ def fast_final(day, root, prev, lay):
     print(f'{day}: his finished design drawn the quick way -> {out}')
 
 
+def choice(day, e):
+    """The entry that makes this story the day's special once it is put in archive/special-days.json."""
+    k = e.get('kind', 'story')
+    c = dict(day=str(day), kind=k)
+    c.update(ref=e.get('article') or e['date'][:10]) if k in ('story', 'news') else c.update(year=int(e['date'][:4]))
+    return c
+
+
+def ev_key(e):
+    k = e.get('kind', 'story')
+    return (k, str(e.get('article') or e['date'][:10])) if k in ('story', 'news') else (k, e['date'][:4])
+
+
+def day_options(day, items, photos, tg_evs, have):
+    """Darpan, 17 Nov 2026 (through his website project: 'please make 2 or 3 ready made specials in options every day,
+    also on days he has chosen himself'): the day's other best finds, as the deep search ranks them, then the years with
+    the most photos of the very day; never one already in the picture or its options."""
+    seen, out = {ev_key(e) for e in have}, []
+    try:
+        found = make.day_search(day, list(items), photos, tg_evs)
+    except Exception as e:
+        print('  options search failed:', e)
+        found = []
+    mmdd = f'{day:%m-%d}'
+    years = collections.Counter(x['y'] for x in items if str(x.get('d', ''))[:10] == f"{x['y']}-{mmdd}" and not x.get('tg'))
+    for e in found + [lambda y=y: make.year_story(y, day, list(items)) for y, _ in years.most_common(6)]:
+        if len(out) >= 3:
+            break
+        if callable(e):
+            try:
+                e = e()
+            except Exception:
+                e = None
+            if not e:
+                continue
+            e = dict(e, kind=e.get('kind') or 'year')
+        if ev_key(e) in seen:
+            continue
+        seen.add(ev_key(e))
+        out.append(e)
+    return out
+
+
+def story_pack(day, ev, lead, sp, source, out, items):
+    """The Studio pack of one story special picture: its cards and photos, words, looks, templates and options."""
+    pool, cards = Pool(out), []
+    y = int(ev['date'][:4])
+    shown = [dict(lead, crop='frame')] if lead else []
+    extra = []
+    for u in (ev.get('urls') or make.tg_photos(ev.get('posts') or []))[:make.MOST_PHOTOS]:   # as compose_special: the story's photos, blank frames left out
+        x = {'i': u, 'y': y, 'd': ev['date'], 'p': ev.get('place') or '', 'c': ev.get('card') or ev.get('line') or '', 'tg': True}
+        make.download_all([x], CACHE)
+        if 'path' not in x:
+            continue
+        im = Image.open(x['path']).convert('RGB')
+        if np.asarray(im.convert('L').resize((64, 64)), dtype=float).std() >= 25:
+            x['im'] = im
+            (shown if len(shown) < (make.MOST_PHOTOS if ev.get('many') else 5) else extra).append(x)
+    # that year's photos of that exact day, and on a story only from the story's own place (Darpan, 17 Nov 2026: the
+    # 17 November 2006 London pack offered Ahmedabad photos of that date, and one reached a card)
+    town = (make.town_of(ev.get('place')) or '').lower()
+    year_too = [x for x in items if x['y'] == y and 'path' in x and not make.JUNK.search(x.get('c') or '')
+                and str(x.get('d') or '')[:10] == ev['date'][:10]
+                and (not town or (make.town_of(make.place(x) or x.get('p')) or '').lower() in ('', town))
+                and not ev.get('channel')]   # a UK diary story (17 Nov 2006 'Departure from London for Ahmedabad'): its own photos only
+    pool_rest = extra + year_too
+    for k, x in enumerate(shown):   # card 1 is the big one, cards 2 to 5 the small ones beside it under the story
+        others = [o for o in shown if o is not x] + pool_rest
+        c = card(pool, out, f'card{k + 1}', y, 'story', x, others)
+        c.update(key=f'card{k + 1}', role='big' if k == 0 else 'small', place=ev.get('place') or '', on=True)
+        cards.append(c)
+    # Darpan, 17 Nov 2026 ('more photos and then make it 20 photos'): empty places up to 20 photos in all, each with
+    # its own key and the same photos to choose from; the Studio's 'Add a photo' turns one on
+    spares = []
+    if len(cards) < make.MOST_PHOTOS:
+        sp_card = card(pool, out, 'spares', y, 'story', None, shown + pool_rest)
+        for n in range(len(cards) + 1, make.MOST_PHOTOS + 1):
+            spares.append(dict(sp_card, key=f'card{n}', role='small', place=ev.get('place') or '', on=False))
+    pack = dict(date=str(day), kind='story', source=source, title=f'{day.day} {day:%B}',
+                subtitle='A special day in BAPS history', footer=make.FOOTER, cal_line='',
+                headline=ev.get('headline') or ev['line'],
+                story='\n\n'.join(make.special_words(ev, bool(lead))),   # the channel's whole post (Darpan, 13 Nov 2026: 'stop cutting everything out')
+                story_short=ev.get('whatsapp') or ev.get('story') or ev['line'],
+                whatsapp=make.tg_caption(ev).strip(),   # the story as the 2pm caption words tell it ('On this day in ...'), Darpan, 14 Nov 2026
+                story_date=ev['date'][:10], story_place=ev.get('place') or '',
+                layout=dict(name='story', big=[70, 200, 1180, 800], small_from=1360, size=[make.W, make.H], unit=make.SCALE),
+                spares=spares, most_photos=make.MOST_PHOTOS,
+                design=sp.info.get('design'), faults=sp.info.get('faults') or [])   # the picture as a Studio design (layout version 2): the Studio opens the same drawing
+    # Darpan, 13 Nov 2026 ('if youre not sure make multiple and i will decide'): the other pictures the day could
+    # have, each drawn and with the entry that makes it the day's special once it is put in archive/special-days.json
+    ev['article'] = ev.get('article')
+    pack.update(story_kind=ev.get('kind', 'story'), choose=choice(day, ev), options=[])
+    # Darpan, 17 Nov 2026 (idea 6): the same special in two or three looks, each checked (idea 7), and a phone
+    # version (idea 8); picking one puts its 'look' in the choice
+    pack['looks'] = []
+    try:
+        for name, v in make.all_looks(ev, day, lead['im'] if lead else None, lead['i'] if lead else None).items():
+            f = f'look-{name}.jpg'
+            im = v['img'].convert('RGB')
+            im.resize((2400 if name != 'phone' else 1200, round((2400 if name != 'phone' else 1200) * im.height / im.width)), Image.LANCZOS).save(os.path.join(out, f), quality=85)
+            pack['looks'].append(dict(look=name, name=looks.LOOK_NAMES[name], picture=f, faults=v['faults'], phone_points=v['phone_dp'],
+                                      choose=dict(choice(day, ev), look=name) if name != 'phone' else None, design=v.get('design')))
+            if name in ('hero', 'phone'):
+                looks.whatsapp_view(im).save(os.path.join(out, f'whatsapp-{name}.jpg'), quality=82)
+    except Exception as e:   # the pack never waits on the looks
+        print('  no looks:', e)
+    # Darpan, 17 Nov 2026 (idea 3): his own Final layouts are templates; the newest one from the same kind of day
+    # (festival, departure, mandir opening, birthday) is offered filled with today's photos and words
+    pack['day_kind'], pack['templates'] = looks.kind_of(f"{pack['headline']} {pack['story']}"), []
+    try:
+        same = [t for t in looks.templates() if t['kind'] == pack['day_kind'] and not str(day).endswith(t['day'][-5:])]
+        for n, t in enumerate(same[:2], 1):
+            lay = looks.from_template(t, ev, day, [u for _, u in make.special_urls(ev)])
+            im = make.compose_design(lay, day).convert('RGB')
+            f = f'template-{n}.jpg'
+            im.resize((2400, round(2400 * im.height / im.width)), Image.LANCZOS).save(os.path.join(out, f), quality=85)
+            pack['templates'].append(dict(picture=f, kind=t['kind'], from_day=t['day'], layout=lay))
+    except Exception as e:
+        print('  no templates:', e)
+    pool.close()
+    return pack, cards
+
+
+def add_options(day, pack, options, out):
+    """The other pictures the day could have, each drawn, with the entry that makes it the day's special
+    (Darpan, 13 Nov 2026: 'if youre not sure make multiple and i will decide')."""
+    pack['options'] = []
+    for n, e in enumerate(options, 2):
+        try:
+            op = make.compose_special(e, day)
+        except Exception as x:
+            print('  option not drawn:', x)
+            op = None
+        if op is None:
+            continue
+        op.convert('RGB').resize((2400, round(2400 * op.height / op.width)), Image.LANCZOS).save(os.path.join(out, f'option-{n}.jpg'), quality=85)
+        pack['options'].append(dict(picture=f'option-{n}.jpg', kind=e.get('kind', 'story'), headline=e.get('headline') or e['line'],
+                                    story='\n\n'.join(make.special_words(e)), story_date=e['date'][:10], story_place=e.get('place') or '',
+                                    whatsapp=make.tg_caption(e).strip(), choose=choice(day, e)))
+
+
 def main():
     if sys.argv[1] == '--big':   # --big 2026-11-15 90: the big special days from that day on, one 'BIG <date>' a line
         start = datetime.date.fromisoformat(sys.argv[2])
@@ -307,13 +448,14 @@ def main():
             final_log(full, day, drawn['ev']['layout'], False)
         sp.save(os.path.join(full, 'bapas-diary-special.png'), optimize=True)
         sp.convert('RGB').save(os.path.join(full, 'bapas-diary-special.jpg'), quality=95, optimize=True)
-        if (drawn or {}).get('source') == 'chosen':   # his next choices of the day are special 2, 3... as the morning run makes them
-            n = 1
-            for ev in make.chosen_specials(day, list(items) or photos)[1:]:
-                more = make.compose_special(ev, day)
-                if more is not None:
-                    n += 1
-                    more.save(os.path.join(full, f'bapas-diary-special-{n}.png'), optimize=True)
+    nexts = []   # his next choices of the day: special 2, 3... as the morning run makes them
+    if (drawn or {}).get('source') == 'chosen':
+        for ev in make.chosen_specials(day, list(items) or photos)[1:]:
+            more = make.compose_special(ev, day)
+            if more is not None:
+                nexts.append((ev, more))
+                if full:
+                    more.save(os.path.join(full, f'bapas-diary-special-{len(nexts) + 1}.png'), optimize=True)
     pool, cards = Pool(out), []
     made = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
     if kind == 'festival':
@@ -333,95 +475,28 @@ def main():
                                 pinned=bool(pins), size=[make.W, make.H]),
                     first=drawn['first'], last=drawn['last'])
     else:
-        ev, lead = drawn['ev'], drawn['lead']
-        y = int(ev['date'][:4])
-        shown = [dict(lead, crop='frame')] if lead else []
-        extra = []
-        for u in (ev.get('urls') or make.tg_photos(ev.get('posts') or []))[:make.MOST_PHOTOS]:   # as compose_special: the story's photos, blank frames left out
-            x = {'i': u, 'y': y, 'd': ev['date'], 'p': ev.get('place') or '', 'c': ev.get('card') or ev.get('line') or '', 'tg': True}
-            make.download_all([x], CACHE)
-            if 'path' not in x:
-                continue
-            im = Image.open(x['path']).convert('RGB')
-            if np.asarray(im.convert('L').resize((64, 64)), dtype=float).std() >= 25:
-                x['im'] = im
-                (shown if len(shown) < (make.MOST_PHOTOS if ev.get('many') else 5) else extra).append(x)
-        # that year's photos of that exact day, and on a story only from the story's own place (Darpan, 17 Nov 2026: the
-        # 17 November 2006 London pack offered Ahmedabad photos of that date, and one reached a card)
-        town = (make.town_of(ev.get('place')) or '').lower()
-        year_too = [x for x in items if x['y'] == y and 'path' in x and not make.JUNK.search(x.get('c') or '')
-                    and str(x.get('d') or '')[:10] == ev['date'][:10]
-                    and (not town or (make.town_of(make.place(x) or x.get('p')) or '').lower() in ('', town))
-                    and not ev.get('channel')]   # a UK diary story (17 Nov 2006 'Departure from London for Ahmedabad'): its own photos only
-        pool_rest = extra + year_too
-        for k, x in enumerate(shown):   # card 1 is the big one, cards 2 to 5 the small ones beside it under the story
-            others = [o for o in shown if o is not x] + pool_rest
-            c = card(pool, out, f'card{k + 1}', y, 'story', x, others)
-            c.update(key=f'card{k + 1}', role='big' if k == 0 else 'small', place=ev.get('place') or '', on=True)
-            cards.append(c)
-        # Darpan, 17 Nov 2026 ('more photos and then make it 20 photos'): empty places up to 20 photos in all, each with
-        # its own key and the same photos to choose from; the Studio's 'Add a photo' turns one on
-        spares = []
-        if len(cards) < make.MOST_PHOTOS:
-            sp_card = card(pool, out, 'spares', y, 'story', None, shown + pool_rest)
-            for n in range(len(cards) + 1, make.MOST_PHOTOS + 1):
-                spares.append(dict(sp_card, key=f'card{n}', role='small', place=ev.get('place') or '', on=False))
-        pack = dict(date=str(day), kind='story', source=drawn['source'], title=f'{day.day} {day:%B}',
-                    subtitle='A special day in BAPS history', footer=make.FOOTER, cal_line='',
-                    headline=ev.get('headline') or ev['line'],
-                    story='\n\n'.join(make.special_words(ev, bool(lead))),   # the channel's whole post (Darpan, 13 Nov 2026: 'stop cutting everything out')
-                    story_short=ev.get('whatsapp') or ev.get('story') or ev['line'],
-                    whatsapp=make.tg_caption(ev).strip(),   # the story as the 2pm caption words tell it ('On this day in ...'), Darpan, 14 Nov 2026
-                    story_date=ev['date'][:10], story_place=ev.get('place') or '',
-                    layout=dict(name='story', big=[70, 200, 1180, 800], small_from=1360, size=[make.W, make.H], unit=make.SCALE),
-                    spares=spares, most_photos=make.MOST_PHOTOS,
-                    design=sp.info.get('design'), faults=sp.info.get('faults') or [])   # the picture as a Studio design (layout version 2): the Studio opens the same drawing
-        # Darpan, 13 Nov 2026 ('if youre not sure make multiple and i will decide'): the other pictures the day could
-        # have, each drawn and with the entry that makes it the day's special once it is put in archive/special-days.json
-        def choice(e):
-            k = e.get('kind', 'story')
-            c = dict(day=str(day), kind=k)
-            c.update(ref=e.get('article') or e['date'][:10]) if k in ('story', 'news') else c.update(year=int(e['date'][:4]))
-            return c
-        ev['article'] = ev.get('article')
-        pack.update(story_kind=ev.get('kind', 'story'), choose=choice(ev), options=[])
-        # Darpan, 17 Nov 2026 (idea 6): the same special in two or three looks, each checked (idea 7), and a phone
-        # version (idea 8); picking one puts its 'look' in the choice
-        pack['looks'] = []
-        try:
-            for name, v in make.all_looks(ev, day, lead['im'] if lead else None, lead['i'] if lead else None).items():
-                f = f'look-{name}.jpg'
-                im = v['img'].convert('RGB')
-                im.resize((2400 if name != 'phone' else 1200, round((2400 if name != 'phone' else 1200) * im.height / im.width)), Image.LANCZOS).save(os.path.join(out, f), quality=85)
-                pack['looks'].append(dict(look=name, name=looks.LOOK_NAMES[name], picture=f, faults=v['faults'], phone_points=v['phone_dp'],
-                                          choose=dict(choice(ev), look=name) if name != 'phone' else None, design=v.get('design')))
-                if name in ('hero', 'phone'):
-                    looks.whatsapp_view(im).save(os.path.join(out, f'whatsapp-{name}.jpg'), quality=82)
-        except Exception as e:   # the pack never waits on the looks
-            print('  no looks:', e)
-        # Darpan, 17 Nov 2026 (idea 3): his own Final layouts are templates; the newest one from the same kind of day
-        # (festival, departure, mandir opening, birthday) is offered filled with today's photos and words
-        pack['day_kind'], pack['templates'] = looks.kind_of(f"{pack['headline']} {pack['story']}"), []
-        try:
-            same = [t for t in looks.templates() if t['kind'] == pack['day_kind'] and not str(day).endswith(t['day'][-5:])]
-            for n, t in enumerate(same[:2], 1):
-                lay = looks.from_template(t, ev, day, [u for _, u in make.special_urls(ev)])
-                im = make.compose_design(lay, day).convert('RGB')
-                f = f'template-{n}.jpg'
-                im.resize((2400, round(2400 * im.height / im.width)), Image.LANCZOS).save(os.path.join(out, f), quality=85)
-                pack['templates'].append(dict(picture=f, kind=t['kind'], from_day=t['day'], layout=lay))
-        except Exception as e:
-            print('  no templates:', e)
-        for n, e in enumerate(drawn.get('options') or [], 2):
-            op = make.compose_special(e, day)
-            if op is None:
-                continue
-            op.convert('RGB').resize((2400, round(2400 * op.height / op.width)), Image.LANCZOS).save(os.path.join(out, f'option-{n}.jpg'), quality=85)
-            pack['options'].append(dict(picture=f'option-{n}.jpg', kind=e.get('kind', 'story'), headline=e.get('headline') or e['line'],
-                                        story='\n\n'.join(make.special_words(e)), story_date=e['date'][:10], story_place=e.get('place') or '',
-                                        whatsapp=make.tg_caption(e).strip(), choose=choice(e)))
+        pack, cards = story_pack(day, drawn['ev'], drawn['lead'], sp, drawn['source'], out, items)
     pool.close()
+    have = [drawn['ev']] if drawn.get('ev') else []
+    options = list(drawn.get('options') or [])
+    if len(options) < 2:   # 2 or 3 ready made every day, also on a day he chose himself or a festival day
+        options += day_options(day, items, photos, tg_evs, have + options + [e for e, _ in nexts])[:3 - len(options)]
+    add_options(day, pack, options[:3], out)
     pack.update(real='real.jpg', cards=cards, cell=dp.CELL, cols=dp.COLS, made=made)
+    # Darpan, 17 Nov 2026 (through his website project): a pack for each of his next choices too (special 2 in
+    # packs/special/<day>/2/), so he can design those in the Studio as well
+    pack['more'] = []
+    for n, (ev, more) in enumerate(nexts, 2):
+        sub = os.path.join(out, str(n))
+        os.makedirs(sub, exist_ok=True)
+        try:
+            more.convert('RGB').resize((2400, round(2400 * more.height / more.width)), Image.LANCZOS).save(os.path.join(sub, 'real.jpg'), quality=85)
+            p2, c2 = story_pack(day, ev, None, more, 'chosen', sub, items)
+            p2.update(real='real.jpg', cards=c2, cell=dp.CELL, cols=dp.COLS, made=made, special=n)
+            json.dump(p2, open(os.path.join(sub, 'pack.json'), 'w'), indent=1, ensure_ascii=False)
+            pack['more'].append(dict(special=n, pack=f'{n}/pack.json', headline=p2.get('headline')))
+        except Exception as e:
+            print(f'  no pack for special {n}:', e)
     json.dump(pack, open(os.path.join(out, 'pack.json'), 'w'), indent=1, ensure_ascii=False)
     print(f'{day}: {kind} special, {len(cards)} cards, {sum(len(c["cands"]) for c in cards)} photos -> {out}')
 

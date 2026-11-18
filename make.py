@@ -2287,6 +2287,52 @@ def special_off(day):
     return any(on_day(d, day) for d in special_choices()['off'])
 
 
+def switched_to(ev, f, keep=None):
+    """Darpan, 17 Nov 2026 (through his website project): a Studio layout may carry 'from' {year, title, place, link}:
+    he switched the picture to that post, so the picture's caption and the 2pm words tell that post. A history story
+    the channel has is told in its own saved words; anything else in the title he sees."""
+    if not isinstance(f, dict) or not (f.get('title') or f.get('link') or f.get('year')):
+        return
+    keep, link = keep or {}, str(f.get('link') or '').strip()
+    y = str(f.get('year') or '')[:4]
+    e = None
+    if link:
+        try:
+            told = [e for e in tg_all() if e.get('url') == link or link in (e.get('posts') or [])]
+            e = max(told, key=tg_rank) if told else None
+        except Exception:
+            e = None
+        if not e and re.search(r'/News/', link, re.I):   # a baps.org News article: its saved words
+            try:
+                e = news_story(link[link.lower().index('/news/'):])
+            except Exception:
+                e = None
+    if e and e.get('date') and e.get('line'):
+        for k in ('line', 'whatsapp', 'card', 'video'):
+            ev[k] = e.get(k)
+        ev['date'], ev['article'] = e['date'], e.get('url') or link
+        if not keep.get('headline'):
+            ev['headline'] = e.get('headline') or e['line']
+        if not keep.get('place'):
+            ev['place'] = e.get('place') or ''
+        if not keep.get('story'):
+            ev['story'] = e.get('story')
+    else:
+        if re.fullmatch(r'\d{4}', y):
+            ev['date'] = y + ev['date'][4:]
+        if f.get('title'):
+            ev['line'] = str(f['title']).strip().rstrip('.')
+            ev['whatsapp'] = None   # the 2pm words are made from the title ('On this day in <year>, <title>.')
+            if not keep.get('headline'):
+                ev['headline'] = ev['line']
+        if link:
+            ev['article'] = link
+    if f.get('place') and not keep.get('place'):
+        ev['place'] = str(f['place'])
+    if re.fullmatch(r'\d{4}', y) and ev['date'][:4] != y:
+        ev['date'] = y + ev['date'][4:]
+
+
 def chosen_specials(day, items=()):
     """The special pictures Darpan chose for this day, in his order, each as a story the special picture is drawn
     from: {date, place, headline, line, story, urls or posts}. A choice whose story or photos can't be found is left out."""
@@ -2339,6 +2385,7 @@ def chosen_specials(day, items=()):
             ev['many'] = True   # Darpan, 17 Nov 2026: as many photos as he turned on in the Studio, up to 20
         if isinstance(c.get('layout'), dict):   # his own arrangement from the Studio, drawn exactly (compose_layout)
             ev['layout'] = c['layout']
+            switched_to(ev, c['layout'].get('from'), keep=c)
         ev['chosen'] = True
         out.append(ev)
     return out
