@@ -748,6 +748,10 @@ const FESTIVE = {
   msm: {re: /mahant swami maharaj('?s)? (janma )?jayanti(?! celebration)/i, line: 'Every birthday of Mahant Swami Maharaj with Bapa, each year on its own Indian date. 🙏🏽',
     bg: SAFFRON, fe: '#c9a227', fy: '#7a3a10', sky: ['fall', ['#e0245e', '#ff8fab', '#ffd56a']], rope: ['beads', ROSES, 1], foot: 'garland'},
 };
+// Festival specials paused (Darpan, 18 Nov 2026: "just pause on all festivals for now, till i confirm. only one to keep is
+// pramukh swami on 7 dec"): no festival board, no Diwali days dress or sections, until he confirms each one again.
+// The one kept is Pramukh Swami Maharaj's birthday board on 7 December. To bring one back, add its key here.
+const FEST_ON = ['psm'];
 const DATE_ONLY = ['dhanteras', 'kalichaudas', 'diwali', 'annakut', 'bhaibij'];
 const festKey = c => {
   const parts = c ? [c[1], c[2]].filter(Boolean).join(';').split(/[;,\/]| and /).map(x => x.trim()).filter(Boolean) : [];
@@ -855,7 +859,7 @@ async function open(mmdd, push) {
   // the Diwali days keep the English date, every year's same day as on any other day; their festival parts only open
   // under the board (Darpan, 6 Nov 2026: "I want to carry on showing the English date as we normally have been")
   const key = festKey(data.cal && data.cal[now.getFullYear()]);
-  if (key && !DATE_ONLY.includes(key)) try {   // a festival day: every year's festival, each on its own Indian date, never this year's own
+  if (key && FEST_ON.includes(key) && !DATE_ONLY.includes(key)) try {   // a festival day: every year's festival, each on its own Indian date, never this year's own
     const F = await SRC.fest(key), y = now.getFullYear();
     if (showing !== mmdd) return;
     F.years = F.years.filter(Y => Y.y < y);
@@ -1507,7 +1511,7 @@ function diwaliDays() {
   return {newYear: TODAY === d[1], after: TODAY >= d[1], diwali: TODAY === d[3]};
 }
 function sparkle() {
-  const S = diwaliDays(), page = document.querySelector('.page');
+  const S = FEST_ON.includes('diwali') ? diwaliDays() : null, page = document.querySelector('.page');   // paused (FEST_ON)
   DIPA = !!S;
   $('board').classList.toggle('dipa', DIPA);
   page.classList.toggle('newyear', !!(S && S.newYear));
