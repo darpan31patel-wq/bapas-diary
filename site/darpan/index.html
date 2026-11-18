@@ -234,7 +234,7 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
 .dspec { display: flex; gap: 8px; overflow-x: auto; margin: 0 0 8px; padding-bottom: 4px }
 .spcard { flex: 0 0 auto; width: 250px; display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 8px; align-items: start; border: 1px solid var(--line); border-radius: 8px; padding: 6px; background: var(--panel-2); font-size: 12.5px }
 .spcard img { width: 90px; border-radius: 4px; display: block } .spcard > div { display: grid; gap: 3px; min-width: 0 } .spcard b { color: var(--gold) } .spcard span:not(.seg) { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical }
-.spcard.on { border-color: var(--gold) } .spcard:not(:has(img)) { grid-template-columns: minmax(0, 1fr) } .spcard.more { display: flex; flex-direction: column; justify-content: center; gap: 6px; width: 210px }
+.spcard img[data-sp-big] { cursor: zoom-in } .spcard.on { border-color: var(--gold) } .spcard:not(:has(img)) { grid-template-columns: minmax(0, 1fr) } .spcard.more { display: flex; flex-direction: column; justify-content: center; gap: 6px; width: 210px }
 .finals { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 6px; font-size: 13px }
 .looks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px }
 .look { margin: 0; display: grid; gap: 4px; align-content: start; border: 1px solid var(--line); border-radius: 8px; padding: 6px; background: var(--panel-2) }
@@ -256,6 +256,7 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
   <label class="any" id="anym-l" hidden>or any month <input type="month" id="anym" min="1999-01" max="2100-12" aria-label="Any month"></label>
   <span class="spacer"></span>
   <button class="chip" id="drive-chip">Connect Google Drive</button>
+  <button class="btn" id="wa-open" type="button" hidden>Send to WhatsApp…</button>
   <button class="btn primary" id="exp-open">Export…</button>
 </header>
 <div class="work">
@@ -304,6 +305,34 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
     <p class="status" id="exp-status" role="status"></p>
     <div class="last" id="last"></div>
     <div class="acts"><button class="btn" value="cancel" formnovalidate>Close</button><button class="btn primary" id="exp-go" type="button">Export</button></div>
+  </form>
+</dialog>
+
+<dialog id="spv" aria-labelledby="spv-h" style="max-width:min(1400px,96vw);width:96vw">
+  <form method="dialog" class="in">
+    <h2 id="spv-h">Special</h2>
+    <div id="spv-body"></div>
+    <div class="acts" id="spv-acts"></div>
+  </form>
+</dialog>
+
+<dialog id="wad" aria-labelledby="wad-h">
+  <form method="dialog" class="in">
+    <h2 id="wad-h">Send to WhatsApp yourself</h2>
+    <p class="hint" style="font-size:13.5px">For a picture you changed after the 2pm send, or any time. The 2pm send and the folder are not touched: this only puts the picture and its words in your hands to send.</p>
+    <img id="wa-img" alt="The daily picture as it will be sent" style="width:100%;border-radius:6px;border:1px solid var(--line)">
+    <label for="wa-words" style="font-size:13px;color:var(--muted)">The words that go with it (change them here if you like)</label>
+    <textarea id="wa-words" rows="5"></textarea>
+    <div class="acts" style="justify-content:flex-start;flex-wrap:wrap">
+      <button class="btn primary" id="wa-share" type="button" hidden>Share to WhatsApp…</button>
+      <button class="btn" id="wa-copy-pic" type="button">1. Copy the picture</button>
+      <button class="btn" id="wa-copy-words" type="button">2. Copy the words</button>
+      <a class="btn" id="wa-app" href="whatsapp://send" rel="noopener">3. Open WhatsApp</a>
+      <a class="btn small" href="https://web.whatsapp.com/" target="_blank" rel="noopener">WhatsApp on the web</a>
+    </div>
+    <p class="hint" id="wa-how">Copy the picture, open the group in WhatsApp and paste (Cmd V). WhatsApp then lets you add the words: paste them in the caption box.</p>
+    <p class="status" id="wa-status" role="status"></p>
+    <div class="acts"><button class="btn" value="cancel">Close</button></div>
   </form>
 </dialog>
 
@@ -1330,6 +1359,17 @@ function dAddStory(head, words, src) {   // a story of that day: its heading and
   const b = { id: dNewId(), t: 'text', role: 'story', name: 'Words: ' + String(head).slice(0, 30), text: words || '', x, y: y + 64, w: 1300, h: 0, size: 26, font: 'serif', weight: 500, color: 'ivory', lh: 1.38, pg: .55, ind: 0, align: 'left', from: src || '' };
   dItems().push(a); if (words) dItems().push(b); SEL = words ? [a.id, b.id] : [a.id]; build();
 }
+// several stories in one story box (Darpan, 18 Nov 2026: "add different stories together and put them into one card"): the post's
+// heading and words become a new paragraph at the end of the chosen story box, else the main story. The box grows; nothing is cut.
+function dJoinStory(it) {
+  const sel = dSel().find(x => x.t === 'text' && x.role === 'story'), main = sel || dItems().find(x => x.t === 'text' && x.role === 'story');
+  if (!main) { dAddStory(it.t, it.s, it.src); return }
+  const head = String(it.t || '').trim(), words = String(it.s || '').trim();
+  const para = [it.y ? it.y + ': ' : '', head, head && words ? (/[.!?]$/.test(head) ? ' ' : '. ') : '', words].join('');
+  main.text = (String(main.text || '').trim() + '\n\n' + para).trim(); main.joined = [...(main.joined || []), it.src || head];
+  SEL = [main.id]; build();
+  const st = $('#status'); if (st) { st.className = 'status ok'; st.textContent = `Joined to the story: ${head.slice(0, 60)}. Ctrl Z takes it out again.` }
+}
 function dAddPhoto(ph, at) {   // ph: {g, pick} of the pack, or {src, year, place, caption, date} of the archive
   const w = 420, h = Math.round((w - 24) * .74 + 24 + (w - 24) * .1), x = at ? at[0] - w / 2 : 1400 + (dItems().length % 5) * 40, y = at ? at[1] - h / 2 : 600 + (dItems().length % 5) * 30;
   const g = ph.g ? groupsOf(P.special).find(x2 => x2.key === ph.g) : null, c = g ? g.cands[ph.pick] : null;
@@ -1432,16 +1472,40 @@ function dSpecials() {
   const date = S.special.date, pack = P.special, mine = CH ? chFor(date) : [], off = CH ? chOff(date) : false;
   if (!CH) loadChoices().then(() => isDesign() && dSpecials());
   const rest = mine.filter(e => !(pack.choose && sameEntry(e, pack.choose))), ops = (pack.options || []).filter(op => op.choose && !mine.some(m => sameEntry(m, op.choose)));
-  el.innerHTML = `<div class="spcard on"><img src="${esc(pack.base + (pack.real || 'real.jpg'))}" alt=""><div><b>Special 1</b><span>${esc(pack.headline || pack.title)}</span><span class="hint">being designed here</span></div></div>
-    ${rest.map((e, i) => `<div class="spcard"><div><b>Special ${i + 2}</b><span>${esc(chWords(e))}</span><span class="hint">built by the Collage builder, goes after special 1</span><button class="btn small" data-sp-off="${i}">Take it off</button></div></div>`).join('')}
-    ${ops.map((op, i) => `<div class="spcard ready"><img src="${esc(pack.base + (op.picture || `option-${i + 2}.jpg`))}" alt="" loading="lazy"><div><b>Ready made</b><span>${esc(op.headline || '')}</span><span class="seg"><button class="btn small primary" data-sp-add="${i}">Add as special ${rest.length + 2}</button><button class="btn small" data-sp-use="${i}">Use instead of special 1</button></span></div></div>`).join('')}
+  const opOf = e => (pack.options || []).findIndex(op => op.choose && sameEntry(e, op.choose));   // a chosen special that is one of the ready made ones has its picture
+  el.innerHTML = `<div class="spcard on"><img src="${esc(pack.base + (pack.real || 'real.jpg'))}" alt="See special 1 big" data-sp-big="1" title="See it big"><div><b>Special 1</b><span>${esc(pack.headline || pack.title)}</span><span class="hint">being designed here</span><button class="btn small" data-sp-big="1" type="button">See it big</button></div></div>
+    ${rest.map((e, i) => { const k = opOf(e); return `<div class="spcard">${k >= 0 ? `<img src="${esc(pack.base + (pack.options[k].picture || `option-${k + 2}.jpg`))}" alt="See special ${i + 2} big" data-sp-big="r${i}" title="See it big" loading="lazy">` : ''}<div><b>Special ${i + 2}</b><span>${esc(chWords(e))}</span><span class="hint">built by the Collage builder, goes after special 1</span><span class="seg"><button class="btn small" data-sp-big="r${i}" type="button">See it big</button><button class="btn small" data-sp-off="${i}">Take it off</button></span></div></div>` }).join('')}
+    ${ops.map((op, i) => `<div class="spcard ready"><img src="${esc(pack.base + (op.picture || `option-${i + 2}.jpg`))}" alt="See this ready made special big" data-sp-big="o${i}" title="See it big" loading="lazy"><div><b>Ready made</b><span>${esc(op.headline || '')}</span><span class="seg"><button class="btn small primary" data-sp-add="${i}">Add as special ${rest.length + 2}</button><button class="btn small" data-sp-use="${i}">Use instead of special 1</button></span></div></div>`).join('')}
     <div class="spcard more"><button class="btn primary" id="sp-more" type="button">+ Make another special</button>${!ops.length ? '<span class="hint">No ready made ones for this day yet.</span>' : ''}<label class="hint"><input type="checkbox" id="sp-none" ${off ? 'checked' : ''}> No special picture this day</label></div>`;
   const on = (sel, fn) => el.querySelectorAll(sel).forEach(b => b.addEventListener('click', () => fn(b)));
   on('[data-sp-off]', b => { const e = rest[+b.dataset.spOff]; if (e) chToggle(date, e, false) });
+  on('[data-sp-big]', b => spBig(b.dataset.spBig, rest, ops));
   on('[data-sp-add]', b => { const op = ops[+b.dataset.spAdd]; if (op) addSpecial(date, op.choose) });
   on('[data-sp-use]', b => { const op = ops[+b.dataset.spUse]; if (op) chInstead(date, Object.assign({}, op.choose)) });
   on('#sp-more', () => { MAKEMORE = true; LIBTAB = 'stories'; dLibrary(); const lib = $('#dlib'); if (lib) lib.scrollIntoView({ behavior: 'smooth', block: 'start' }) });
   const no = $('#sp-none'); if (no) no.addEventListener('change', () => chOffToggle(date));
+}
+// see any of the day's specials big (Darpan, 18 Nov 2026: "I can't actually click it and enlarge it and see what it looks like")
+function spBig(which, rest, ops) {
+  const pack = P.special, date = S.special.date, body = $('#spv-body'), acts = $('#spv-acts'); if (!pack) return;
+  const img = src => `<img src="${esc(src)}" alt="" style="width:100%;height:auto;display:block;border-radius:6px;border:1px solid var(--line)">`;
+  let h = '', a = '';
+  if (which === '1') { h = img(drawAt(2400).toDataURL('image/jpeg', .9)); $('#spv-h').textContent = 'Special 1: ' + (pack.headline || pack.title || ''); a = '<button class="btn primary" value="cancel">Keep designing it</button>' }
+  else if (which[0] === 'r') {
+    const i = +which.slice(1), e = rest[i]; if (!e) return; const k = (pack.options || []).findIndex(op => op.choose && sameEntry(e, op.choose));
+    $('#spv-h').textContent = `Special ${i + 2}: ${chWords(e)}`;
+    h = k >= 0 ? img(pack.base + (pack.options[k].picture || `option-${k + 2}.jpg`)) : '<p class="hint" style="font-size:15px">The Collage builder draws this one when you press Final, so there is no picture of it yet. It goes after special 1.</p>';
+    a = `<button class="btn" type="button" id="spv-off">Take it off</button><button class="btn primary" value="cancel">Close</button>`;
+  } else {
+    const i = +which.slice(1), op = ops[i]; if (!op) return;
+    $('#spv-h').textContent = 'Ready made: ' + (op.headline || ''); h = img(pack.base + (op.picture || `option-${i + 2}.jpg`));
+    a = `<button class="btn" type="button" id="spv-use">Use instead of special 1</button><button class="btn primary" type="button" id="spv-add">Add as special ${rest.length + 2}</button><button class="btn" value="cancel">Close</button>`;
+  }
+  body.innerHTML = h; acts.innerHTML = a; $('#spv').showModal();
+  const go = (id, fn) => { const b = document.getElementById(id); if (b) b.addEventListener('click', () => { $('#spv').close(); fn() }) };
+  go('spv-off', () => chToggle(date, rest[+which.slice(1)], false));
+  go('spv-add', () => addSpecial(date, ops[+which.slice(1)].choose));
+  go('spv-use', () => chInstead(date, Object.assign({}, ops[+which.slice(1)].choose)));
 }
 function addSpecial(date, e) {   // special 1 (this picture) is kept first, so another special always goes after it
   const pack = P.special;
@@ -1653,7 +1717,7 @@ function dLibrary() {
     if (pack.headline) items.push({ y: +String(pack.story_date || date).slice(0, 4), t: pack.headline, s: pack.story || '', p: pack.story_place || '', src: 'pack', own: true });
     items.sort((a, b) => b.y - a.y || (b.own ? 1 : 0) - (a.own ? 1 : 0));
     body = items.length ? items.map((it, i) => `<div class="libst"><p><b>${esc(it.t)}</b><br><span class="hint">${esc([it.y, it.p].filter(Boolean).join(' · '))}${it.own ? ' · this picture’s story' : ''}</span></p>${it.s ? `<p class="hint">${esc(it.s.slice(0, 220))}${it.s.length > 220 ? '…' : ''}</p>` : ''}
-      <div class="seg"><button type="button" class="btn small" data-libmain="${i}" title="The headline, words and this post's own photos">Use for special 1</button><button type="button" class="btn small" data-libst="${i}" title="Its heading and words as one more box on this picture">Add as a story box</button>${it.e && !it.own ? (CH && chHave(date, it.e) ? '<span class="gold">✓ a special</span>' : `<button type="button" class="btn small ${MAKEMORE ? 'primary' : ''}" data-libsp="${i}" title="A separate special picture of its own, after special 1">Make it another special</button>`) : ''}</div></div>`).join('')
+      <div class="seg"><button type="button" class="btn small" data-libmain="${i}" title="The headline, words and this post's own photos">Use for special 1</button><button type="button" class="btn small" data-libst="${i}" title="Its heading and words as one more box on this picture">Add as a story box</button>${it.own ? '' : `<button type="button" class="btn small" data-libjoin="${i}" title="Its words added to the end of the chosen story box (or the main story), so several stories read as one">Join to the story</button>`}${it.e && !it.own ? (CH && chHave(date, it.e) ? '<span class="gold">✓ a special</span>' : `<button type="button" class="btn small ${MAKEMORE ? 'primary' : ''}" data-libsp="${i}" title="A separate special picture of its own, after special 1">Make it another special</button>`) : ''}</div></div>`).join('')
       : `<p class="hint">${HISTORY ? 'No stories of ' + esc(day) + ' yet.' : 'Loading the stories…'}</p>`;
     lib._items = items;
   }
@@ -1664,6 +1728,7 @@ function dLibrary() {
   lib.querySelectorAll('[data-lib]').forEach(b => { b.addEventListener('click', () => dAddPhoto(JSON.parse(b.dataset.lib))); b.addEventListener('dragstart', e => { e.dataTransfer.setData('text/x-photo', b.dataset.lib); e.dataTransfer.effectAllowed = 'copy' }) });
   lib.querySelectorAll('[data-libst]').forEach(b => { const it = lib._items[+b.dataset.libst]; b.addEventListener('click', () => dAddStory(it.t, it.s, it.src)) });
   lib.querySelectorAll('[data-libsp]').forEach(b => { const it = lib._items[+b.dataset.libsp]; b.addEventListener('click', async () => { await loadChoices(); MAKEMORE = false; addSpecial(date, it.e) }) });
+  lib.querySelectorAll('[data-libjoin]').forEach(b => { const it = lib._items[+b.dataset.libjoin]; b.addEventListener('click', () => dJoinStory(it)) });
   lib.querySelectorAll('[data-libmain]').forEach(b => { const it = lib._items[+b.dataset.libmain]; b.addEventListener('click', () => useMain(it)) });
 }
 
@@ -1865,7 +1930,7 @@ const label = k => S.mode === 'day' ? String(k) : S.mode === 'month' ? `${k} ${P
 
 // ------------------------------------------------------------ the small editor that opens on a clicked card
 const fe = $('#fe');
-function openEditor(k) { cur().sel = k; FE = true; S.tab = 'card'; build() }
+function openEditor(k) { cur().sel = k; FE = S.mode !== 'day'; S.tab = 'card'; build() }   // Daily picture: no pop up over the cards, the right hand panel has it all (Darpan, 18 Nov 2026)
 function closeEditor() { FE = false; fe.hidden = true; render() }
 function buildEditor() {
   if (!FE || !P[S.mode] || cur().sel == null) { fe.hidden = true; return }
@@ -2223,6 +2288,7 @@ function build() {
   $('#anym-l').hidden = S.mode !== 'month'; if (S.mode === 'month') $('#anym').value = o.month || '';
   if (!((day && WANT) || (S.mode === 'month' && WANTM))) $('#want').hidden = true;
   const waiting = (day && !!WANT && !P.day) || (S.mode === 'month' && !!WANTM && !P.month) || (sp && !pack && !!o.date);   // no old picture behind the 'being made' note, nor behind a day with no special pack
+  $('#wa-open').hidden = S.mode !== 'day'; $('#wa-open').disabled = waiting || !P.day; showProg();
   $('#easel').style.display = waiting ? 'none' : ''; $('#tip').style.display = waiting ? 'none' : ''; $('#exp-open').disabled = waiting;
   $('#pick').innerHTML = list.map(([k, l]) => `<option value="${k}" ${k === now ? 'selected' : ''}>${l}</option>`).join('');
   $('#pick').setAttribute('aria-label', S.mode === 'month' ? 'Which month' : 'Which day');
@@ -2234,7 +2300,7 @@ function build() {
   if (!tabs.some(t => t[0] === S.tab)) S.tab = sp && pack && isStory() ? 'design' : 'card';
   $('#tabs').innerHTML = tabs.map(([k, l]) => `<button role="tab" data-t="${k}" aria-selected="${k === S.tab}">${l}</button>`).join('');
   $('#compare').hidden = S.mode === 'month' || waiting;
-  $('#tip').textContent = sp && pack && isStory() ? 'Click anything on the picture to change it. Shift-click to choose several. Drag to move, pull a corner to size, double click words to type. Ctrl Z undoes.' : S.mode === 'month' ? 'Click any day to change its photo, place or caption right there.' : 'Click any card to change its photo, place or caption right there.';
+  $('#tip').textContent = sp && pack && isStory() ? 'Click anything on the picture to change it. Shift-click to choose several. Drag to move, pull a corner to size, double click words to type. Ctrl Z undoes.' : S.mode === 'month' ? 'Click any day to change its photo, place or caption right there.' : 'Click any card to choose it, then change its photo, place or caption on the right.';
   $('#options').hidden = !(sp && pack && (pack.options || []).length); if (sp && pack && (pack.options || []).length) optionsRow(pack);
   if (sp && !pack && o.date && !SPLOADING) { S.tab = 'choose'; $('#tabs').innerHTML = `<button role="tab" data-t="choose" aria-selected="true">Choose</button>`; $('#pane').innerHTML = paneChoose(); $('#meta').innerHTML = `<b>${esc(longDate(o.date))}</b><span>no special picture pack for this day yet</span>`; fe.hidden = true; wire(); restorePane(); return }
   if (!pack) { $('#pane').innerHTML = '<p class="hint">' + (day && WANT ? 'The photos for this day are not ready yet.' : S.mode === 'month' && WANTM ? 'The photos for this month are not ready yet.' : sp && !INDEX.specials.length ? 'No special picture pack yet.' : 'Loading photos…') + '</p>' + (sp ? queuePanel() : ''); $('#meta').textContent = day && WANT ? longDate(WANT) : S.mode === 'month' && WANTM ? longMonth(WANTM) : 'Loading photos…'; fe.hidden = true; wire(); return }
@@ -2596,6 +2662,7 @@ const mins = ms => { const s2 = Math.max(0, Math.round(ms / 1000)); return s2 < 
 let PROGTICK = 0;
 function showProg() {
   const el = $('#sprog'); if (!el) return;
+  if (S.mode !== 'special') { el.hidden = true; return }   // GitHub's building is the special picture's business only (Darpan, 18 Nov 2026)
   const all = progAll(), today = todayLondon();
   const date = Object.keys(all).filter(d => d >= today && all[d].step && (all[d].step !== 'ready' || Date.now() - all[d].t.ready < 10 * 60e3) && !all[d].gone).sort((a, b) => (all[b].t.saved || 0) - (all[a].t.saved || 0))[0];
   if (!date) { el.hidden = true; clearInterval(PROGTICK); PROGTICK = 0; return }
@@ -3093,6 +3160,34 @@ function fillExport() {
   const last = store.get('studio-last');
   $('#last').innerHTML = last ? `Last export: <b>${esc(last.how)}</b>, ${esc(last.what)}, ${esc(last.when)}` : '';
 }
+// send the daily picture to WhatsApp by hand (Darpan, 18 Nov 2026: "if I ... export them into the folder after 2 p.m., I need a
+// route of how to get that picture into my WhatsApp ... I don't really want to use the scripts"). Nothing here touches the 2pm send.
+let WAJPG = null, WAPNG = null;
+const waMessage = () => { const o = S.day, w = o.wa[o.date], d = `_Day ${dayN(o.date)} of the Smruti Project_`; if (w && w.whole) return `${waText()}\n${d}`.trim(); return `${introChanged() ? fillIntro(introText(), o.date) : introExample(o.date)}\n${d}\n\n${waText()}`.trim() };
+const waSay = (cls, m) => { const el = $('#wa-status'); el.className = 'status ' + cls; el.textContent = m };
+$('#wa-open').addEventListener('click', async () => {
+  if (!P.day) return; waSay('', 'Drawing the picture…'); $('#wa-words').value = waMessage(); $('#wa-share').hidden = true; $('#wad').showModal();
+  try {
+    await allReady(true); const c = drawAt(4096); WAJPG = await blobOf(c, 'image/jpeg', .92); WAPNG = await blobOf(drawAt(2796), 'image/png');
+    $('#wa-img').src = URL.createObjectURL(WAJPG);
+    const f = new File([WAJPG], `${longDate(S.day.date)} Bapa's Diary.jpg`, { type: 'image/jpeg' });
+    $('#wa-share').hidden = !(navigator.canShare && navigator.canShare({ files: [f] })); $('#wa-share')._file = f;
+    waSay('ok', 'Ready.');
+  } catch (e) { waSay('warn', `The picture could not be drawn: ${(e && e.message) || e}`) }
+});
+$('#wa-share').addEventListener('click', async () => {
+  const words = $('#wa-words').value; try { await navigator.clipboard.writeText(words) } catch (e) {}
+  try { await navigator.share({ files: [$('#wa-share')._file], text: words }); waSay('ok', 'Shared. If the words did not come with it, they are copied: paste them in WhatsApp.'); logChange('Sent to WhatsApp by hand', longDate(S.day.date)) }
+  catch (e) { if (!e || e.name !== 'AbortError') waSay('warn', 'Sharing did not work here. Use 1, 2 and 3 instead.') }
+});
+$('#wa-copy-pic').addEventListener('click', async () => {
+  try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': WAPNG })]); waSay('ok', 'Picture copied. Now open the group in WhatsApp and paste (Cmd V).'); logChange('Sent to WhatsApp by hand', longDate(S.day.date)) }
+  catch (e) { waSay('warn', 'This browser would not copy the picture. Use Export, Save as a new export, then drag the file into WhatsApp.') }
+});
+$('#wa-copy-words').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('#wa-words').value); waSay('ok', 'Words copied. Paste them in the caption box under the picture in WhatsApp.') }
+  catch (e) { $('#wa-words').select(); waSay('warn', 'Press Cmd C to copy the chosen words.') }
+});
 $('#exp-open').addEventListener('click', () => { if (!P[S.mode]) return; fillExport(); $('#exp-status').textContent = ''; $('#exp').showModal() });
 document.querySelectorAll('#exp-form input[name=how]').forEach(r => r.addEventListener('change', fillExport));
 function drawAt(width) {
@@ -3288,6 +3383,7 @@ function lastEntries() {
   return [same[0], yearAgo[0]].filter(Boolean);
 }
 function lastTime(k) {
+  return '';   // taken off (Darpan, 18 Nov 2026: "get rid of this")
   const es = lastEntries(); if (!es.length) return '';
   const when = t => new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   return `<div class="last">${es.map((e, i) => { const sw = e.cards.filter(c => c.auto || !c.shown); return `<p><b>Last time</b> (${e.for === keyOf(S.mode) ? 'this date' : 'this day in ' + e.for.slice(0, 4)}, ${esc(when(e.at))}): ${sw.length ? sw.slice(0, 6).map(c => esc(c.card) + (c.shown ? ' ' + esc(c.caption.slice(0, 40)) : ' hidden')).join('; ') + (sw.length > 6 ? ` and ${sw.length - 6} more` : '') : 'no cards swapped'}.</p>
