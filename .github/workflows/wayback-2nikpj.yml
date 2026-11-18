@@ -11,6 +11,7 @@
 # round counts the Archive's answers to see why, and gives up on files that failed twice (bapscare.org's last 5).
 # Round 4: 18 Nov 08:05 UTC: round 3 went well (mandir.org 3,055 files in 4h, 6,637 left); kids.swaminarayan.org
 # (14) and bapscare.org (5) only have files that failed twice, so both finish and get their lists.
+# Round 5: 18 Nov 12:35 UTC: kids.swaminarayan.org and bapscare.org finished; mandir.org 4,417 left.
 name: wayback
 on:
   push:
@@ -28,8 +29,7 @@ jobs:
       matrix:
         include:
           - { host: mandir.org, key: wayback-mandir-org }
-          - { host: kids.swaminarayan.org, key: wayback-kids-swaminarayan-org }
-          - { host: bapscare.org, key: wayback-bapscare-org }
+          # kids.swaminarayan.org and bapscare.org finished 18 Nov
     runs-on: ubuntu-latest
     timeout-minutes: 360
     env:
