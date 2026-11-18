@@ -1694,7 +1694,7 @@ LAYOUT = {'H2': dict(M=70, min_gap=14, row_gap=40, lines=2, cap=360, top=212, bo
 FRAME_ASPECT = {'W': 1 / .75, 'W1': 1 / .74, 'W2': 1 / .9, 'W3': 1.5}   # photo width / height per style; the tall live cards work out at about .69 on a full day
 
 
-def under_card(x, card, gap, f, lh, style, rnd, even=0):
+def under_card(x, card, gap, f, lh, style, rnd):
     cf_size = f.size
     """Style F: a small ivory paper tag on a short thread under the polaroid.
     Style H: ivory caption on a soft dark plate under the polaroid."""
@@ -1717,19 +1717,8 @@ def under_card(x, card, gap, f, lh, style, rnd, even=0):
     n = WIDE.get(style, LAYOUT.get(style, {})).get('lines', 3)
     text, maxw = shown_caption(x), card.CW + min(gap, px(30)) - px(40)
     half = max(3, len(text.split()) * 2 // 3)
-    tries = ((1, 0, False, 0), (.9, 0, False, 0), (.82, 0, False, 0), (.82, 0, True, half), (.82, 0, True, 0))
-    if even:   # the daily picture: every caption the same size, a long one takes another line before any gets smaller (Darpan, 17 Nov 2026)
-        top = even - n   # the most extra lines the layout made room for
-        tries = tuple((1, k, False, 0) for k in range(top + 1)) + ((.9, top, False, 0), (.82, top, False, 0)) + tries   # then today's cut at a natural break, never a half sentence
     # the whole caption first, then a touch smaller; only then a natural cut, keeping at least two thirds of it; a shorter cut last
-    if even:   # too long for every line the layout allows, even a touch smaller: the longest clean cut at the normal size
-        whole = [t for t in [text] if not wrap(probe, t, garamond(f.size * .82, 500), maxw, even, shorten=False)[-1].endswith('…')]
-        if not whole:
-            for t in shorter_versions(text):
-                if len(t.split()) >= 3 and not wrap(probe, t, f, maxw, even, shorten=False)[-1].endswith('…'):
-                    text, tries = t, tuple((1, k, False, 0) for k in range(even - n + 1))
-                    break
-    for shrink, extra, cut, keep in tries:
+    for shrink, extra, cut, keep in ((1, 0, False, 0), (.9, 0, False, 0), (.82, 0, False, 0), (.82, 0, True, half), (.82, 0, True, 0)):
         f2 = garamond(f.size * shrink, 500) if shrink < 1 else f
         lines = wrap(probe, text, f2, maxw, n + extra, shorten=cut, min_words=keep)
         if not lines[-1].endswith('…'):
@@ -1843,7 +1832,7 @@ class WideCard(Card):
 ROWS = []   # where each cord's cards sit on the last picture drawn (x0, y, CH, CW, n), for a festival's decorations in the free space
 
 
-def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, hero=None, short_bottom=0, subtitle=None, daily=False):
+def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, hero=None, short_bottom=0, subtitle=None):
     """Three (W1, W2) or four (W3) cords of wide cards, every year on the day, sized to fill the picture.
     `hero`: cards to hang bigger (each as wide as two cards, from the top cord down to the second row's foot),
     the others either side of them (Darpan, 30 Oct 2026: 'do a special card' on the Every festival pictures).
@@ -1890,26 +1879,14 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
     if lay.get('lift'):   # the cord's lowest point (the middle) sits at the top line and its ends rise into the free corners beside the title
         top_space, bottom_space = px(lay['lift']), H - px(46)
     cf_a, lh_a = garamond(px(CAPTION_SIZE), 500), round(px(CAPTION_SIZE * 1.2))
-    # the daily picture: captions all one size and whole, a long one on a third or fourth line rather than in smaller letters (Darpan, 17 Nov 2026)
-    even = (lay.get('pill', 0) + 2) if lay.get('pill') and EVEN_CAPTIONS and daily else 0   # never the festival or UK and Europe pictures
-    gap0, pill = gap, lay.get('pill', 0)
-    while True:
-        below = (pill * lh_a + px(22)) if pill and CAPTIONS != 'none' else 0   # no captions: the cards take that room
-        probe = WideCard(100, lay['ratio'], lay['band'])
-        pw_w = min(px(440), ((W - 2 * M - gap0 * (cols - 1)) / cols) / (probe.CW / 100))   # as wide as the row allows
-        row_h = (bottom_space - top_space - (nrows - 1) * row_gap - nrows * below) / nrows
-        ph = min(pw_w * lay['ratio'], row_h - (probe.CH - probe.PH) / 100 * pw_w)     # as tall as the rows allow
-        pw = min(pw_w, ph / lay.get('min_ratio', .6))            # a photo is never wider than 16:9 ish, so shrink the card if it would be
-        card = WideCard(pw, ph / pw, lay['band'])
-        gap = min(px(60), (W - 2 * M - cols * card.CW) / max(1, cols - 1))
-        if not even or pill >= even:
-            break
-        maxw = card.CW + min(gap, px(30)) - px(40)
-        dp = ImageDraw.Draw(Image.new('L', (1, 1)))
-        need = max([len(wrap(dp, shown_caption(x), cf_a, maxw, even, shorten=False)) for x in photos if shown_caption(x)] or [0])
-        if need <= pill:
-            break
-        pill = need   # room for the longest caption's lines under every row, then size the cards again
+    below = (lay.get('pill', 0) * lh_a + px(22)) if lay.get('pill') and CAPTIONS != 'none' else 0   # no captions: the cards take that room
+    probe = WideCard(100, lay['ratio'], lay['band'])
+    pw_w = min(px(440), ((W - 2 * M - gap * (cols - 1)) / cols) / (probe.CW / 100))   # as wide as the row allows
+    row_h = (bottom_space - top_space - (nrows - 1) * row_gap - nrows * below) / nrows
+    ph = min(pw_w * lay['ratio'], row_h - (probe.CH - probe.PH) / 100 * pw_w)     # as tall as the rows allow
+    pw = min(pw_w, ph / lay.get('min_ratio', .6))            # a photo is never wider than 16:9 ish, so shrink the card if it would be
+    card = WideCard(pw, ph / pw, lay['band'])
+    gap = min(px(60), (W - 2 * M - cols * card.CW) / max(1, cols - 1))
     pitch = card.CH + below + row_gap
     block = (nrows - 1) * pitch + card.CH + below
     if lay.get('fill') and nrows > 1:   # spare height goes between the rows rather than above and below them
@@ -1946,7 +1923,7 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
                     if cx != hx:
                         later.append(lambda cx=cx, cy=cy: peg(img, cx, cy, s, short=.72))
                 if lay.get('pill') and shown_caption(hx_card):
-                    tag, pos = under_card(hx_card, hcard, gap, cf_a, lh_a, style, rnd, even)
+                    tag, pos = under_card(hx_card, hcard, gap, cf_a, lh_a, style, rnd)
                     later.append(lambda tag=tag, hx=hx, by=qy + hcard.CH: img.paste(tag, (int(hx - tag.width / 2), int(by + px(6))), tag))
         x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
         slots = list(range(len(row)))
@@ -1970,7 +1947,7 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
             img.paste(hung, (int(mx - hung.width / 2), int(my - hung.height / 2)), hung)
             later.append(lambda cx=cx: peg(img, cx, sag(cx) + px(4), s, short=.72))
             if lay.get('pill') and shown_caption(x):
-                tag, pos = under_card(x, card, gap, cf_a, lh_a, style, rnd, even)
+                tag, pos = under_card(x, card, gap, cf_a, lh_a, style, rnd)
                 bx, by = qx + card.CH * np.sin(t), qy + card.CH * np.cos(t)
                 later.append(lambda tag=tag, bx=bx, by=by: img.paste(tag, (int(bx - tag.width / 2), int(by + px(6))), tag))
         for f in later:
@@ -2071,7 +2048,6 @@ def rope(img, pts, w=None):
         k -= seg
 
 
-EVEN_CAPTIONS = os.environ.get('EVEN_CAPTIONS', '1') != '0'   # daily picture captions all one size, up to three lines (17 Nov 2026 mockup)
 CAPTION_SIZE = 21   # caption text under each frame (was 24; smaller since 18 Oct 2026 so whole captions fit, people zoom in)
 SAG = 60            # how far the cords dip in the middle, in pixels (Darpan 18 Oct 2026: 20 then 34 looked too straight, he wanted more)
 LIVE_STYLE = 'W2'   # the daily picture: design B, wide cards hanging straight on three curved cords, PNG (Darpan locked it in, 18 Oct 2026)
@@ -2116,10 +2092,9 @@ def dump_photos(photos, folder):
 
 def compose(photos, day, seed, style=None, look=None, history=None, title=None, cal=None):
     if style in WIDE:
-        daily = cal is None and title is None
-        if daily:   # the daily picture: the BAPS calendar's title and bottom line for this day
+        if cal is None and title is None:   # the daily picture: the BAPS calendar's title and bottom line for this day
             title, cal = cal_title(day), cal_footer(day)
-        return compose_wide(photos, day, seed, style, history, title, cal, daily=daily)
+        return compose_wide(photos, day, seed, style, history, title, cal)
     rnd = random.Random(seed)
     img = background(); dr = ImageDraw.Draw(img)
     header(img, f'{day.day} {day:%B}', 'in Bapa’s Diary')
@@ -2312,6 +2287,52 @@ def special_off(day):
     return any(on_day(d, day) for d in special_choices()['off'])
 
 
+def switched_to(ev, f, keep=None):
+    """Darpan, 17 Nov 2026 (through his website project): a Studio layout may carry 'from' {year, title, place, link}:
+    he switched the picture to that post, so the picture's caption and the 2pm words tell that post. A history story
+    the channel has is told in its own saved words; anything else in the title he sees."""
+    if not isinstance(f, dict) or not (f.get('title') or f.get('link') or f.get('year')):
+        return
+    keep, link = keep or {}, str(f.get('link') or '').strip()
+    y = str(f.get('year') or '')[:4]
+    e = None
+    if link:
+        try:
+            told = [e for e in tg_all() if e.get('url') == link or link in (e.get('posts') or [])]
+            e = max(told, key=tg_rank) if told else None
+        except Exception:
+            e = None
+        if not e and re.search(r'/News/', link, re.I):   # a baps.org News article: its saved words
+            try:
+                e = news_story(link[link.lower().index('/news/'):])
+            except Exception:
+                e = None
+    if e and e.get('date') and e.get('line'):
+        for k in ('line', 'whatsapp', 'card', 'video'):
+            ev[k] = e.get(k)
+        ev['date'], ev['article'] = e['date'], e.get('url') or link
+        if not keep.get('headline'):
+            ev['headline'] = e.get('headline') or e['line']
+        if not keep.get('place'):
+            ev['place'] = e.get('place') or ''
+        if not keep.get('story'):
+            ev['story'] = e.get('story')
+    else:
+        if re.fullmatch(r'\d{4}', y):
+            ev['date'] = y + ev['date'][4:]
+        if f.get('title'):
+            ev['line'] = str(f['title']).strip().rstrip('.')
+            ev['whatsapp'] = None   # the 2pm words are made from the title ('On this day in <year>, <title>.')
+            if not keep.get('headline'):
+                ev['headline'] = ev['line']
+        if link:
+            ev['article'] = link
+    if f.get('place') and not keep.get('place'):
+        ev['place'] = str(f['place'])
+    if re.fullmatch(r'\d{4}', y) and ev['date'][:4] != y:
+        ev['date'] = y + ev['date'][4:]
+
+
 def chosen_specials(day, items=()):
     """The special pictures Darpan chose for this day, in his order, each as a story the special picture is drawn
     from: {date, place, headline, line, story, urls or posts}. A choice whose story or photos can't be found is left out."""
@@ -2364,6 +2385,7 @@ def chosen_specials(day, items=()):
             ev['many'] = True   # Darpan, 17 Nov 2026: as many photos as he turned on in the Studio, up to 20
         if isinstance(c.get('layout'), dict):   # his own arrangement from the Studio, drawn exactly (compose_layout)
             ev['layout'] = c['layout']
+            switched_to(ev, c['layout'].get('from'), keep=c)
         ev['chosen'] = True
         out.append(ev)
     return out
@@ -3530,6 +3552,67 @@ def special_card(im, w, h, yr, pl, label=True, focus=None):
 DESIGN_COLOURS = {'gold': 'gold', 'ivory': CAPTION_IVORY, 'light': CAPTION_GOLD, 'white': (255, 255, 255), 'maroon': YEAR_C2}
 
 
+def design_lines(i, d, f, width, upper):
+    """A design's text item as lines (None between paragraphs): the Studio's own lines, else wrapped to its width."""
+    if isinstance(i.get('lines'), list):
+        return [None if v is None or str(v) == '' else str(v) for v in i['lines']]
+    lines = []
+    for k, para in enumerate(re.split(r'\n\s*\n', str(i.get('text') or '').strip())):
+        if k:
+            lines.append(None)
+        for row in para.split('\n'):
+            lines += wrap(d, (row.upper() if upper else row).strip(), f, width, 999, shorten=False) or ['']
+    return lines
+
+
+def apart(items, num):
+    """Words never printed on top of other words (17 Nov 2026: the headline's second line ran over the story): a text item
+    that starts inside the words above it, in the same column, moves down just enough. Nothing else moves."""
+    d = ImageDraw.Draw(Image.new('RGB', (10, 10)))
+    ext = []
+    for k, i in enumerate(items):
+        if i.get('type') != 'text' or num(i.get('rotate')):
+            continue
+        size = num(i.get('size'), 34)
+        f = any_font('sans' if i.get('font') == 'sans' else 'serif', num(i.get('weight'), 500), px(size))
+        lhm = num(i.get('line_height'), 1.3); lh = lhm * size if lhm <= 5 else lhm
+        gap = num(i.get('para_gap'), size * .5)
+        lines = design_lines(i, d, f, px(num(i.get('w'), 300)) - px(num(i.get('indent'))), bool(i.get('upper')))
+        tall = sum(gap if v is None else lh for v in lines)   # the Studio's line boxes
+        ext.append([k, num(i.get('x')), num(i.get('y')), num(i.get('w'), 300), max(tall, 1)])
+    out = [dict(i) for i in items]
+    ext.sort(key=lambda e: e[2])
+    for n, (k, x, y, w, tall) in enumerate(ext):
+        for k2, x2, y2, w2, t2 in ext[:n]:
+            if min(x + w, x2 + w2) - max(x, x2) > 20 and y < y2 + t2 - max(8, .4 * num(items[k].get('size'), 34)) and y >= y2:
+                y = y2 + t2 + 6
+        if y != ext[n][2]:
+            print(f"  picture check: words moved down {round(y - ext[n][2])} so they don't sit on the words above: {' '.join(str(out[k].get('text') or '').split()[:5])}")
+            out[k]['y'] = y; ext[n][2] = y
+    return out
+
+
+def design_faults(seen):
+    """What is wrong with a drawn design, in plain words: words on words, words over a photo, the same photo twice,
+    anything off the picture."""
+    faults = []
+    over = lambda a, b: min(a[2], b[2]) - max(a[0], b[0]) > px(10) and min(a[3], b[3]) - max(a[1], b[1]) > px(6)
+    for n, a in enumerate(seen):
+        if a['box'][0] < -2 or a['box'][1] < -2 or a['box'][2] > W + 2 or a['box'][3] > H + 2:
+            faults.append(f"off the edge of the picture: {a['name']}")
+        for b in seen[:n]:
+            if a['kind'] == b['kind'] == 'text' and over(a['box'], b['box']):
+                faults.append(f"words on top of words: '{b['name']}' and '{a['name']}'")
+            elif a['kind'] == b['kind'] == 'photo' and np.abs(a['tiny'] - b['tiny']).mean() < 8:
+                faults.append(f"the same photo twice: {a['name']}")
+            elif a['kind'] != b['kind']:
+                t, p = (a, b) if a['kind'] == 'text' else (b, a)
+                ix = max(0, min(t['box'][2], p['box'][2]) - max(t['box'][0], p['box'][0])) * max(0, min(t['box'][3], p['box'][3]) - max(t['box'][1], p['box'][1]))
+                if ix > .3 * max(1, (t['box'][2] - t['box'][0]) * (t['box'][3] - t['box'][1])):
+                    faults.append(f"words over a photo: '{t['name']}'")
+    return faults
+
+
 def compose_design(lay, day, ready=None):
     """Darpan, 17 Nov 2026: the special picture page in the Studio is a designer. Layout version 2: 'items' drawn in
     order (the last on top) on the picture's 2796 x 1290 layout, each {type: text | photo, role, x, y, w, h, rotate}.
@@ -3564,6 +3647,8 @@ def compose_design(lay, day, ready=None):
             layer = layer.rotate(-r, resample=Image.BICUBIC, expand=True)
         img.paste(layer, (round(cx - layer.width / 2), round(cy - layer.height / 2)), layer)
 
+    seen = []   # what was drawn where (the picture check, idea 7)
+    items = apart(items, num)
     for i in items:
         w, h = max(1, round(px(num(i.get('w'), 300)))), max(1, round(px(num(i.get('h'), 200))))
         if i.get('type') == 'photo':
@@ -3632,6 +3717,9 @@ def compose_design(lay, day, ready=None):
                 card.paste(photo, (0, 0)); layer = card
             if framed and i.get('peg', True) is not False:   # the peg on the card's top edge, turned with it
                 peg(layer, layer.width / 2, round(px(30)) + px(16), px(1.5) if w > px(700) else px(1))
+            if not num(i.get('rotate')):
+                seen.append(dict(kind='photo', box=(px(num(i.get('x'))), px(num(i.get('y'))), px(num(i.get('x'))) + w, px(num(i.get('y'))) + h),
+                                 tiny=np.asarray(im.convert('L').resize((16, 16)), dtype=float), name=str(i.get('photo') or '')[-40:]))
             place(layer, i)
         elif i.get('type') == 'text':
             size = num(i.get('size'), 34)
@@ -3645,15 +3733,7 @@ def compose_design(lay, day, ready=None):
             layer = Image.new('RGBA', (w, h), (0, 0, 0, 0)); d = ImageDraw.Draw(layer)
             width = lambda t: spaced(d, t, f, track) if track else d.textlength(t, font=f)
             sz = px(size)
-            if isinstance(i.get('lines'), list):
-                lines = [None if v is None or str(v) == '' else str(v) for v in i['lines']]
-            else:
-                lines = []
-                for k, para in enumerate(re.split(r'\n\s*\n', str(i.get('text') or '').strip())):
-                    if k:
-                        lines.append(None)
-                    for row in para.split('\n'):
-                        lines += wrap(d, (row.upper() if upper else row).strip(), f, w - indent, 999, shorten=False) or ['']
+            lines = design_lines(i, d, f, w - indent, upper)
             asc, desc = f.getmetrics()
             # the Studio's own line box (website project, 17 Nov 2026): the first baseline at y + (line height - size) / 2
             # + 0.8 size, each next line one line height lower. Words running past h are still drawn, all of them: the
@@ -3698,10 +3778,17 @@ def compose_design(lay, day, ready=None):
                     mid = y - asc * .35
                     diamond(d, lx - px(26), mid, px(5), GOLD); diamond(d, lx + tw + px(26), mid, px(5), GOLD)
                 y += lh; first = False
+            if not num(i.get('rotate')):   # where the words really are, for the picture check
+                top = px(num(i.get('y'))) + (lh - sz) / 2 + .8 * sz - asc
+                seen.append(dict(kind='text', box=(px(num(i.get('x'))), top, px(num(i.get('x'))) + w, px(num(i.get('y'))) - extra + y - lh + desc),
+                                 name=' '.join(str(i.get('text') or '').split()[:5])))
             place(layer, i)
     if 'footer' not in roles:
         footer(img, small=True)
     img.info['design'] = lay   # the design it was drawn from, for the Studio's pack
+    img.info['faults'] = design_faults(seen)
+    for f in img.info['faults']:
+        print('  picture check:', f)
     return img
 
 
