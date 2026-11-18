@@ -382,7 +382,7 @@ def story_pack(day, ev, lead, sp, source, out, items):
         print('  no looks:', e)
     # Darpan, 17 Nov 2026 (idea 3): his own Final layouts are templates; the newest one from the same kind of day
     # (festival, departure, mandir opening, birthday) is offered filled with today's photos and words
-    pack['day_kind'], pack['templates'] = looks.kind_of(f"{pack['headline']} {pack['story']}"), []
+    pack['day_kind'], pack['templates'] = looks.kind_of(pack['story'], pack['headline']), []
     try:
         same = [t for t in looks.templates() if t['kind'] == pack['day_kind'] and not str(day).endswith(t['day'][-5:])]
         for n, t in enumerate(same[:2], 1):

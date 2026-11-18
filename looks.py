@@ -484,18 +484,19 @@ def make_looks(ev, day, photos, now=None, paras=None, only=None):
 # ---------------------------------------------------------------- his Final layouts as templates (idea 3)
 
 KINDS = [   # what sort of day a special is, from its headline and story
-    ('festival', r'diwali|annakut|new year|janmashtami|jayanti|navmi|purnima|holi|fuldol|pushpadol|utsav|festival|mahotsav|samaiyo|ekadashi|parva'),
+    ('festival', r'diwali|annakut|new year|janmashtami|jayanti|navmi|purnima|\bholi\b|fuldol|pushpadol|utsav|festival|mahotsav|samaiyo|ekadashi|parva'),   # Holi, not 'His Holiness'
     ('departure', r'depart|leaves|left for|farewell|flies|flew|sets off|set off|send.?off|bids? farewell|returns? to india|journey'),
     ('mandir opening', r'pratishtha|inaugurat|opening|opens|consecrat|murti|shilanyas|foundation stone|mandir'),
     ('birthday', r'birth|janm|birthday|born|anniversary|diksha'),
 ]
 
 
-def kind_of(text):
-    """'festival', 'departure', 'mandir opening', 'birthday' or 'other'."""
-    for k, rx in KINDS:
-        if re.search(rx, text or '', re.I):
-            return k
+def kind_of(text, headline=''):
+    """'festival', 'departure', 'mandir opening', 'birthday' or 'other': from the headline when it says, else the story's opening."""
+    for t in (headline, (text or '')[:300]):   # the story's opening says what the day was; a line near its end ('before departing') does not
+        for k, rx in KINDS:
+            if t and re.search(rx, t, re.I):
+                return k
     return 'other'
 
 
