@@ -3552,6 +3552,67 @@ def special_card(im, w, h, yr, pl, label=True, focus=None):
 DESIGN_COLOURS = {'gold': 'gold', 'ivory': CAPTION_IVORY, 'light': CAPTION_GOLD, 'white': (255, 255, 255), 'maroon': YEAR_C2}
 
 
+def design_lines(i, d, f, width, upper):
+    """A design's text item as lines (None between paragraphs): the Studio's own lines, else wrapped to its width."""
+    if isinstance(i.get('lines'), list):
+        return [None if v is None or str(v) == '' else str(v) for v in i['lines']]
+    lines = []
+    for k, para in enumerate(re.split(r'\n\s*\n', str(i.get('text') or '').strip())):
+        if k:
+            lines.append(None)
+        for row in para.split('\n'):
+            lines += wrap(d, (row.upper() if upper else row).strip(), f, width, 999, shorten=False) or ['']
+    return lines
+
+
+def apart(items, num):
+    """Words never printed on top of other words (17 Nov 2026: the headline's second line ran over the story): a text item
+    that starts inside the words above it, in the same column, moves down just enough. Nothing else moves."""
+    d = ImageDraw.Draw(Image.new('RGB', (10, 10)))
+    ext = []
+    for k, i in enumerate(items):
+        if i.get('type') != 'text' or num(i.get('rotate')):
+            continue
+        size = num(i.get('size'), 34)
+        f = any_font('sans' if i.get('font') == 'sans' else 'serif', num(i.get('weight'), 500), px(size))
+        lhm = num(i.get('line_height'), 1.3); lh = lhm * size if lhm <= 5 else lhm
+        gap = num(i.get('para_gap'), size * .5)
+        lines = design_lines(i, d, f, px(num(i.get('w'), 300)) - px(num(i.get('indent'))), bool(i.get('upper')))
+        tall = sum(gap if v is None else lh for v in lines)   # the Studio's line boxes
+        ext.append([k, num(i.get('x')), num(i.get('y')), num(i.get('w'), 300), max(tall, 1)])
+    out = [dict(i) for i in items]
+    ext.sort(key=lambda e: e[2])
+    for n, (k, x, y, w, tall) in enumerate(ext):
+        for k2, x2, y2, w2, t2 in ext[:n]:
+            if min(x + w, x2 + w2) - max(x, x2) > 20 and y < y2 + t2 - max(8, .4 * num(items[k].get('size'), 34)) and y >= y2:
+                y = y2 + t2 + 6
+        if y != ext[n][2]:
+            print(f"  picture check: words moved down {round(y - ext[n][2])} so they don't sit on the words above: {' '.join(str(out[k].get('text') or '').split()[:5])}")
+            out[k]['y'] = y; ext[n][2] = y
+    return out
+
+
+def design_faults(seen):
+    """What is wrong with a drawn design, in plain words: words on words, words over a photo, the same photo twice,
+    anything off the picture."""
+    faults = []
+    over = lambda a, b: min(a[2], b[2]) - max(a[0], b[0]) > px(10) and min(a[3], b[3]) - max(a[1], b[1]) > px(6)
+    for n, a in enumerate(seen):
+        if a['box'][0] < -2 or a['box'][1] < -2 or a['box'][2] > W + 2 or a['box'][3] > H + 2:
+            faults.append(f"off the edge of the picture: {a['name']}")
+        for b in seen[:n]:
+            if a['kind'] == b['kind'] == 'text' and over(a['box'], b['box']):
+                faults.append(f"words on top of words: '{b['name']}' and '{a['name']}'")
+            elif a['kind'] == b['kind'] == 'photo' and np.abs(a['tiny'] - b['tiny']).mean() < 8:
+                faults.append(f"the same photo twice: {a['name']}")
+            elif a['kind'] != b['kind']:
+                t, p = (a, b) if a['kind'] == 'text' else (b, a)
+                ix = max(0, min(t['box'][2], p['box'][2]) - max(t['box'][0], p['box'][0])) * max(0, min(t['box'][3], p['box'][3]) - max(t['box'][1], p['box'][1]))
+                if ix > .3 * max(1, (t['box'][2] - t['box'][0]) * (t['box'][3] - t['box'][1])):
+                    faults.append(f"words over a photo: '{t['name']}'")
+    return faults
+
+
 def compose_design(lay, day, ready=None):
     """Darpan, 17 Nov 2026: the special picture page in the Studio is a designer. Layout version 2: 'items' drawn in
     order (the last on top) on the picture's 2796 x 1290 layout, each {type: text | photo, role, x, y, w, h, rotate}.
@@ -3586,6 +3647,8 @@ def compose_design(lay, day, ready=None):
             layer = layer.rotate(-r, resample=Image.BICUBIC, expand=True)
         img.paste(layer, (round(cx - layer.width / 2), round(cy - layer.height / 2)), layer)
 
+    seen = []   # what was drawn where (the picture check, idea 7)
+    items = apart(items, num)
     for i in items:
         w, h = max(1, round(px(num(i.get('w'), 300)))), max(1, round(px(num(i.get('h'), 200))))
         if i.get('type') == 'photo':
@@ -3654,6 +3717,9 @@ def compose_design(lay, day, ready=None):
                 card.paste(photo, (0, 0)); layer = card
             if framed and i.get('peg', True) is not False:   # the peg on the card's top edge, turned with it
                 peg(layer, layer.width / 2, round(px(30)) + px(16), px(1.5) if w > px(700) else px(1))
+            if not num(i.get('rotate')):
+                seen.append(dict(kind='photo', box=(px(num(i.get('x'))), px(num(i.get('y'))), px(num(i.get('x'))) + w, px(num(i.get('y'))) + h),
+                                 tiny=np.asarray(im.convert('L').resize((16, 16)), dtype=float), name=str(i.get('photo') or '')[-40:]))
             place(layer, i)
         elif i.get('type') == 'text':
             size = num(i.get('size'), 34)
@@ -3667,15 +3733,7 @@ def compose_design(lay, day, ready=None):
             layer = Image.new('RGBA', (w, h), (0, 0, 0, 0)); d = ImageDraw.Draw(layer)
             width = lambda t: spaced(d, t, f, track) if track else d.textlength(t, font=f)
             sz = px(size)
-            if isinstance(i.get('lines'), list):
-                lines = [None if v is None or str(v) == '' else str(v) for v in i['lines']]
-            else:
-                lines = []
-                for k, para in enumerate(re.split(r'\n\s*\n', str(i.get('text') or '').strip())):
-                    if k:
-                        lines.append(None)
-                    for row in para.split('\n'):
-                        lines += wrap(d, (row.upper() if upper else row).strip(), f, w - indent, 999, shorten=False) or ['']
+            lines = design_lines(i, d, f, w - indent, upper)
             asc, desc = f.getmetrics()
             # the Studio's own line box (website project, 17 Nov 2026): the first baseline at y + (line height - size) / 2
             # + 0.8 size, each next line one line height lower. Words running past h are still drawn, all of them: the
@@ -3720,10 +3778,17 @@ def compose_design(lay, day, ready=None):
                     mid = y - asc * .35
                     diamond(d, lx - px(26), mid, px(5), GOLD); diamond(d, lx + tw + px(26), mid, px(5), GOLD)
                 y += lh; first = False
+            if not num(i.get('rotate')):   # where the words really are, for the picture check
+                top = px(num(i.get('y'))) + (lh - sz) / 2 + .8 * sz - asc
+                seen.append(dict(kind='text', box=(px(num(i.get('x'))), top, px(num(i.get('x'))) + w, px(num(i.get('y'))) - extra + y - lh + desc),
+                                 name=' '.join(str(i.get('text') or '').split()[:5])))
             place(layer, i)
     if 'footer' not in roles:
         footer(img, small=True)
     img.info['design'] = lay   # the design it was drawn from, for the Studio's pack
+    img.info['faults'] = design_faults(seen)
+    for f in img.info['faults']:
+        print('  picture check:', f)
     return img
 
 
