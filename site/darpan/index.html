@@ -2608,7 +2608,7 @@ function showProg() {
   el.innerHTML = `<h3>${calm ? 'Your changes for ' + esc(longDate(date)) + ' are saved' + (canAsk() ? ': press Final when you are ready' : '') : p.fail ? 'The special picture for ' + esc(longDate(date)) + ' did not finish' : p.step === 'ready' ? 'The special picture for ' + esc(longDate(date)) + ' is ready' : 'Making the special picture for ' + esc(longDate(date)) + '…'}</h3>
     <div class="bar"${calm ? ' hidden' : ''} role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>
     <ol${calm ? ' hidden' : ''}>${shown.map(([k, w], i) => { const done = i < at || p.step === 'ready' || (calm && i === at), now = i === at && p.step !== 'ready' && !calm; return `<li class="${p.fail && now ? 'bad' : done ? 'done' : now ? 'now' : ''}"><span>${p.fail && now ? '✕' : done ? '✓' : now ? '<span class="spin">◌</span>' : '○'}</span><b>${esc(p.final && k === 'build' ? 'Drawing your exact design' : p.final && k === 'archive' ? 'Getting your photos' : w)}${now && k === 'send' && wait ? ` (in ${wait} s, so changes close together go as one)` : ''}</b><span>${p.t[k] ? clock(p.t[k]) : ''}</span></li>` }).join('')}</ol>
-    <p class="hint">${calm ? esc(p.note) : p.fail ? esc(p.fail) : p.step === 'ready' ? `Took ${mins(p.t.ready - start)}. It is on the Special picture tab now${date === today && !p.late ? ', and in Drive for the 2pm send' : ''}.` : `${mins(Date.now() - start)} so far. ${p.final ? 'A Final usually takes 2 to 3 minutes' : 'Usually 5 to 10 minutes from sending'}; longer if another GitHub run is going.`}</p>
+    <p class="hint">${calm ? esc(p.note) : p.fail ? esc(p.fail) : p.step === 'ready' ? `Took ${mins(p.t.ready - start)}. It is on the Special picture tab now${date === today && !p.late ? ', and in Drive for the 2pm send' : ''}.${p.late ? ' It was made after 1:50pm, so today’s 2pm send was not changed.' : ''}` : `${mins(Date.now() - start)} so far. ${p.final ? 'A Final usually takes 2 to 3 minutes' : 'Usually 5 to 10 minutes from sending'}; longer if another GitHub run is going.`}</p>
     <div class="acts">${calm ? (canAsk() ? '<button class="btn primary" id="sprog-go" type="button">Final: build this exact picture</button>' : '<button class="btn small primary" id="sprog-gh" type="button">Connect GitHub</button>') : ''}${p.step === 'ready' && p.dirty && canAsk() ? '<button class="btn primary" id="sprog-go" type="button">Final again: build it with your newest changes</button>' : ''}${p.step === 'send' && !calm ? '<button class="btn small primary" id="sprog-now" type="button">Send it now</button>' : ''}${p.fail ? '<button class="btn small primary" id="sprog-again" type="button">Try again</button>' : ''}${p.run ? `<a class="btn small" href="https://github.com/darpan31patel-wq/bapas-diary/actions/runs/${p.run}" target="_blank" rel="noopener">See it on GitHub</a>` : ''}${p.step === 'ready' || p.fail || (calm && !canAsk()) ? '<button class="btn small" id="sprog-x" type="button">Hide</button>' : ''}${p.step === 'ready' && !(S.mode === 'special' && S.special.date === date) ? `<button class="btn small" id="sprog-open" type="button">Open it</button>` : ''}</div>`;
   el.hidden = false;
   const on = (id, fn) => { const b = document.getElementById(id); if (b) b.onclick = fn };
@@ -2719,7 +2719,7 @@ function waitForS(date) {
         const a = asked(); delete a['s:' + date]; store.set('studio-asked', a);
         const rm = store.get('studio-remade') || {}; rm[date] = Date.now(); store.set('studio-remade', rm);
         let late = false; try { const rj = await ghr('/contents/packs/special/remake.json?ref=studio', { headers: { Accept: 'application/vnd.github.raw+json' } }); if (rj.ok) { const x = await rj.json(); late = x.date === date && /late/.test(x.drive || '') } } catch (e) {}
-        progSet(date, 'ready', { late, fail: late ? 'Made, but after 1:50pm, so it is on the Special picture tab only; the 2pm send was not changed.' : '' });
+        progSet(date, 'ready', { late, fail: '' });   // made after 1:50pm is still made: ready, and the hint says the 2pm send had gone (Darpan, 18 Nov 2026: it showed as 'did not finish')
         await freshIndex();
         if (S.mode === 'special' && S.special.date === date) { P.special = null; load('special') }
         return;
@@ -3013,7 +3013,11 @@ async function sendToDrive(mode, png, jpg) {
   const ans = await askDrive(Object.assign({ mode, date: mode === 'extra' ? S.special.date : S.day.date, png: await toBase64(png), jpg: jpg ? await toBase64(jpg) : null }, w || {}));
   if (!ans.ok) throw new Error(ans.error);
   if (mode === 'extra' && ans.mode !== 'extra') throw new Error(`Your script does not know extra pictures yet, so it put this one in “${ans.folder}” as ${ans.name} instead. Paste the new script, then: ${REDEPLOY}`);
-  if (w && !ans.caption) ans.captionNote = 'The picture is in, but your script is an older one, so the caption was not saved. Paste the newest script, then: ' + REDEPLOY;
+  // the newest script always answers caption true or false; only a script with no caption part leaves it out (18 Nov 2026: the
+  // old note blamed his script whenever the words did not save)
+  if (w && !ans.caption && String(w.caption || '').trim()) ans.captionNote = 'caption' in ans
+    ? 'The picture is in, but the caption words did not save this time. Press Put it in the folder again.'
+    : 'The picture is in, but your script is an older one, so the caption was not saved. Paste the newest script, then: ' + REDEPLOY;
   return ans;
 }
 function fillDrive() {
