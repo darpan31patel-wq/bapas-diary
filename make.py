@@ -668,7 +668,8 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
         if PICK == 'activity' and not nice:   # Darpan, 19 Nov 2026 ('too many close ups'): a clear photo of Bapa doing something
             # counts too, even if it scores a little lower or has to be shown whole so nothing is cut; only a tiny Bapa or a side profile stays out
             nice = bool(face) and front >= SIDE_FRONT and doing and subject and r >= ACT_MIN_SIZE and s_doing - jitter >= ACT_MIN
-        x.update(keep=round(keep, 2), special=special, nice=nice, close_ok=close_ok)
+        x.update(keep=round(keep, 2), special=special, nice=nice, close_ok=close_ok,
+                 why=f'doing={int(doing)} subject={int(subject)} size={r:.2f} front={front:.2f} keep={keep:.2f} act={s_doing - jitter:.2f}')
         ALL.append((x['y'], round(sim, 2), bool(face), caption(x), x['i']))
         lst = cands.setdefault(x['y'], [])
         lst.append((s_close, s_doing, x))
@@ -786,6 +787,10 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
             i = years.index(y)
             return sum(1 for j in (i - 1, i + 1) if 0 <= j < len(years) and modes[years[j]] == 0)
         modes[min(spare, key=lambda y: (lonely(y), -best_close[y]))] = 0
+    for y in years:   # why a close darshan year has no action shot (the run's log)
+        if modes[y] == 0:
+            for v in sorted(cands[y], key=lambda v: -v[1])[:6]:
+                print(f'    {y} {"face" if v[2]["face"] else "no face"} {v[2].get("why", "")} {"" if on_the_day(v[2], day) else "OTHER DAY "}{caption(v[2])[:70]}' if day else '')
     print(f'  {sum(1 for y in years if modes[y] == 1)} years doing something, {sum(1 for y in years if modes[y] == 0)} close darshans')
     picked, used = [], []
     pinned_keys = {y: pick_key(v[2]) for y in years for v in cands[y] if max(v[0], v[1]) > 50}   # a pinned moment isn't taken by another year first
