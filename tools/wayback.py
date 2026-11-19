@@ -48,7 +48,8 @@ def get(url, tries=4):
         except Exception as e:
             k = type(e).__name__ + ':' + str(getattr(e, 'reason', e))[:60]
             SEEN[k] = SEEN.get(k, 0) + 1
-            time.sleep(10 * (i + 1))
+            # 'Connection refused' is the Archive saying too many: stand back for a few minutes before trying again
+            time.sleep(180 * (i + 1) if 'refused' in k or 'timed out' in k else 10 * (i + 1))
     return None, '', b''
 
 
@@ -107,7 +108,7 @@ def main():
     ap.add_argument('--state', default='state')
     ap.add_argument('--stop-at', default='', help='UTC HH:MM to stop by')
     ap.add_argument('--workers', type=int, default=1)
-    ap.add_argument('--gap', type=float, default=4.0)
+    ap.add_argument('--gap', type=float, default=5.0)
     ap.add_argument('--have', default='', help='paths already in Drive (rclone lsf -R)')
     a = ap.parse_args()
     os.makedirs(a.state, exist_ok=True)

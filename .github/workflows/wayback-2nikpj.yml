@@ -16,6 +16,8 @@
 # Round 7: 18 Nov 21:55 UTC: mandir.org 3,449 left (round 6: 429 files, the Archive often refused to connect).
 # Round 8: 19 Nov 08:05 UTC: mandir.org 3,157 left (round 7: 289 files); shorter wait per file, and the reason for each
 # failed connection is counted.
+# Round 9: 19 Nov 12:35 UTC: mandir.org 2,557 left (round 8: 597 files). Most failures were 'Connection refused', the
+# Archive's way of saying too many: now five seconds between files, and three minutes' rest after a refusal.
 name: wayback
 on:
   push:
