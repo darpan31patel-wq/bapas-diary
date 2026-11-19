@@ -732,7 +732,7 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
                 loss += .5 if al in recent_albums and not same_moment else 0
                 if loss:   # (the same caption again, 'plays dandiya' two days running, Darpan 20 Oct 2026: another moment wins)
                     cands[y][j] = (v[0] - loss, v[1] - loss, v[2])
-                    if same_moment or v[1] - loss < NICE_MIN:   # and it no longer jumps the queue as a nice action shot
+                    if same_moment or (PICK != 'activity' and v[1] - loss < NICE_MIN):   # and it no longer jumps the queue as a nice action shot ('activity': a caption seen this week only ranks it lower)
                         v[2]['nice'] = False
     if day:   # Darpan, 31 Oct 2026: when Today in BAPS History tells of that year's day (2020: the Nenpur murti pratishtha),
         # a photo of that very moment is the year's card, shown as the moment (not a close crop), ahead of everyday photos
