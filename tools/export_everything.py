@@ -159,7 +159,7 @@ def articles_from_db(db):
 
 
 GU = str.maketrans('૦૧૨૩૪૫૬૭૮૯', '0123456789')
-PRASANG = re.compile(r'તા\.?\s*([0-9]{1,2})\s*[-/.]\s*([0-9]{1,2})\s*[-/.]\s*([0-9]{4})\s*,?\s*([^\n,.;:()]{0,40})')
+PRASANG = re.compile(r"તા\.?\s*([0-9]{1,2})\s*[-/.]\s*([0-9]{1,2})\s*[-/.]\s*'?([0-9]{4}|[0-9]{2})(?![0-9])[ \t]*,?[ \t]*([^\n,.;:()]{0,40})")
 MONTH_YEAR = re.compile(r'\b(January|February|March|April|May|June|July|August|September|October|November|December)\s*,?\s*(\d{4})\b', re.I)
 
 
@@ -176,7 +176,8 @@ def load_writings(paths):
                 'wallpapers': 'Wallpaper', 'pramukhswami': 'pramukhswami.org'}.get(
                     os.path.splitext(os.path.basename(fn))[0].lower(), os.path.splitext(os.path.basename(fn))[0])
         raw = json.load(open(fn, encoding='utf-8'))
-        items = raw.items() if isinstance(raw, dict) else ((x.get('path') or x.get('url') or '', x) for x in raw)
+        items = raw.items() if isinstance(raw, dict) else ((x.get('date') if kind == 'Daily Satsang' and x.get('date')
+                                                            else (x.get('path') or x.get('url') or ''), x) for x in raw)
         for key, v in items:
             if not isinstance(v, dict) or v.get('status') in ('missing', 'empty', 404):
                 continue
@@ -185,15 +186,22 @@ def load_writings(paths):
             url = v.get('url') or (ds_url(key) if kind == 'Daily Satsang' and page_day == key else
                                    ('https://www.baps.org' + ('' if key.startswith('/') else '/') + key if key and not key.startswith('http') else key))
             own, written, place = None, None, None
-            m = PRASANG.search(text.translate(GU))
+            t2 = text.translate(GU)
+            m = PRASANG.search(t2)
             if m:
                 try:
-                    own = datetime.date(int(m[3]), int(m[2]), int(m[1])).isoformat()
-                    written = m.group(0).strip(' ,')
-                    place = m[4].strip() or None
+                    yr = int(m[3]) if len(m[3]) == 4 else (1900 + int(m[3]) if int(m[3]) > 30 else 2000 + int(m[3]))
+                    own = datetime.date(yr, int(m[2]), int(m[1])).isoformat()
+                    line_start = t2.rfind('\n', 0, m.start()) + 1
+                    before = t2[line_start:m.start()].strip(' ,')   # "મોમ્બાસા, તા. 30-4-1970": the place comes first
+                    written = (t2[line_start:m.start()] + m.group(0)).strip(' ,')
+                    before = before.strip('() ')
+                    place = (before if before and len(before) <= 30 and not re.search(r'[()\'"]', before)
+                             else m[4].strip(' ()')) or None
                 except ValueError:
                     pass
-            imgs = v.get('imgs') or []
+            imgs = v.get('imgs') or v.get('photos') or []
+            imgs = [[i.get('src'), i.get('alt'), i.get('title')] if isinstance(i, dict) else i for i in imgs]
             rows.append([own or page_day, page_day if own and own != page_day else None, written or v.get('date'),
                          'the prasang\'s own date' if own else ('the page date' if page_day else None), place, kind,
                          v.get('head') or v.get('title'), text or None, v.get('en') or v.get('english'), len(imgs) or None,
