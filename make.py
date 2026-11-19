@@ -367,9 +367,11 @@ def is_special(c):
     return bool(c) and (western(c) or not EVERYDAY.search(c) and not JUST_A_FACE.search(c) and bool(SPECIAL.search(c) or rare_caption(c)))
 
 
-PICK = 'special'      # 'special': every year a close darshan unless it has a special action shot (Darpan, 20 Oct 2026: 'this is perfect'); 'share': CLOSE_SHARE of the years are close ups
+PICK = 'activity'      # 'special': every year a close darshan unless it has a special action shot (Darpan, 20 Oct 2026: 'this is perfect'); 'share': CLOSE_SHARE of the years are close ups
+                      # 'activity' (Darpan, 19 Nov 2026: 'too many close ups'): every year with a really nice action shot shows it, special moments first; a close darshan only when the year has none
 ACTION_KEEP = .72     # an action shot must keep at least this much of the photo inside the frame, or what Bapa does gets cut off
 NICE_MIN = 2.0        # the action score a photo needs before it beats a close darshan
+ACT_MIN, ACT_MIN_SIZE = 1.3, .09   # 'activity': the lower action score and face size (share of the photo's height) a plain activity photo needs
 CLOSE_SHARE = .6      # about this share of the years are close darshans of Bapa's face (Darpan, 18 Oct 2026: 16 of 27)
 RECENT_DAYS = 7       # a photo shown in the last week is not shown again: the old albums cover several days, so
                       # neighbouring dates list the same photos (18 and 19 October share 2003, 2005, 2006 and 2007)
@@ -663,7 +665,11 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
         # a really nice action shot: he is doing something, he is the subject, not small, nothing cut off (or a special
         # moment), and it scores well; anything less and the year is better served by a close darshan
         nice = bool(face) and front >= SIDE_FRONT and doing and subject and r >= .13 and (keep >= ACTION_KEEP or special) and s_doing - jitter >= NICE_MIN
-        x.update(keep=round(keep, 2), special=special, nice=nice, close_ok=close_ok)
+        if PICK == 'activity' and not nice:   # Darpan, 19 Nov 2026 ('too many close ups'): a clear photo of Bapa doing something
+            # counts too, even if it scores a little lower or has to be shown whole so nothing is cut; only a tiny Bapa or a side profile stays out
+            nice = bool(face) and front >= SIDE_FRONT and doing and subject and r >= ACT_MIN_SIZE and s_doing - jitter >= ACT_MIN
+        x.update(keep=round(keep, 2), special=special, nice=nice, close_ok=close_ok,
+                 why=f'doing={int(doing)} subject={int(subject)} size={r:.2f} front={front:.2f} keep={keep:.2f} act={s_doing - jitter:.2f}')
         ALL.append((x['y'], round(sim, 2), bool(face), caption(x), x['i']))
         lst = cands.setdefault(x['y'], [])
         lst.append((s_close, s_doing, x))
@@ -726,7 +732,7 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
                 loss += .5 if al in recent_albums and not same_moment else 0
                 if loss:   # (the same caption again, 'plays dandiya' two days running, Darpan 20 Oct 2026: another moment wins)
                     cands[y][j] = (v[0] - loss, v[1] - loss, v[2])
-                    if same_moment or v[1] - loss < NICE_MIN:   # and it no longer jumps the queue as a nice action shot
+                    if same_moment or (PICK != 'activity' and v[1] - loss < NICE_MIN):   # and it no longer jumps the queue as a nice action shot ('activity': a caption seen this week only ranks it lower)
                         v[2]['nice'] = False
     if day:   # Darpan, 31 Oct 2026: when Today in BAPS History tells of that year's day (2020: the Nenpur murti pratishtha),
         # a photo of that very moment is the year's card, shown as the moment (not a close crop), ahead of everyday photos
@@ -769,7 +775,9 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
     if PICK == 'special':   # a close darshan every year, except a year with a really nice action shot of a special moment
         has_special = {y: any(v[2]['nice'] and v[2]['special'] for v in cands[y]) for y in years}
         modes = {y: 1 if has_special[y] else (0 if has_close[y] else 1) for y in years}
-    target = len(years) - sum(1 for y in years if modes[y] == 1) if PICK == 'special' else round(len(years) * CLOSE_SHARE)
+    if PICK == 'activity':   # an action shot every year that has a really nice one; a close darshan only when it has none
+        modes = {y: 1 if has_nice[y] else (0 if has_close[y] else 1) for y in years}
+    target = len(years) - sum(1 for y in years if modes[y] == 1) if PICK in ('special', 'activity') else round(len(years) * CLOSE_SHARE)
     best_close = {y: max(v[0] for v in cands[y]) for y in years}
     while sum(1 for y in years if modes[y] == 0) < target:
         spare = [y for y in years if modes[y] == 1 and has_close[y]]
@@ -779,6 +787,11 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
             i = years.index(y)
             return sum(1 for j in (i - 1, i + 1) if 0 <= j < len(years) and modes[years[j]] == 0)
         modes[min(spare, key=lambda y: (lonely(y), -best_close[y]))] = 0
+    for y in years:   # why a close darshan year has no action shot (the run's log)
+        if modes[y] == 0:
+            for v in sorted(cands[y], key=lambda v: -v[1])[:6]:
+                print(f'    {y} {"face" if v[2]["face"] else "no face"} {v[2].get("why", "")} {"" if on_the_day(v[2], day) else "OTHER DAY "}{caption(v[2])[:70]}' if day else '')
+    print(f'  {sum(1 for y in years if modes[y] == 1)} years doing something, {sum(1 for y in years if modes[y] == 0)} close darshans')
     picked, used = [], []
     pinned_keys = {y: pick_key(v[2]) for y in years for v in cands[y] if max(v[0], v[1]) > 50}   # a pinned moment isn't taken by another year first
     WORKINGS.clear()
@@ -789,6 +802,9 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
             ranked = [v for v in ranked if v[2]['face']]
             if k == 1:   # only really nice action shots count as action; the rest of the year's photos follow as close ups
                 ranked = [v for v in ranked if v[2]['nice']] + [v for v in sorted(ranked, key=lambda v: -v[0]) if not v[2]['nice']]
+                if PICK == 'activity':   # a special moment first, then the other nice action shots, then everything else as close ups
+                    ranked = ([v for v in ranked if v[2]['nice'] and v[2]['special']] + [v for v in ranked if v[2]['nice'] and not v[2]['special']]
+                              + [v for v in sorted(ranked, key=lambda v: -v[0]) if not v[2]['nice']])
                 if PICK == 'special':   # the special moment first, then everything else as close ups
                     ranked = [v for v in ranked if v[2]['nice'] and v[2]['special']] + [v for v in sorted(ranked, key=lambda v: -v[0]) if not (v[2]['nice'] and v[2]['special'])]
         ranked = [v for v in cands[y] if v[k] > 50] + [v for v in ranked if v[k] <= 50]   # Darpan's pin first, even where his face isn't recognised
