@@ -31,7 +31,7 @@ def get(url, tries=4):
     req = urllib.request.Request(url, headers={'User-Agent': UA})
     for i in range(tries):
         try:
-            with urllib.request.urlopen(req, timeout=120) as r:
+            with urllib.request.urlopen(req, timeout=45) as r:
                 SEEN[r.status] = SEEN.get(r.status, 0) + 1
                 return r.status, r.headers.get('Content-Type', ''), r.read()
         except urllib.error.HTTPError as e:
@@ -46,7 +46,7 @@ def get(url, tries=4):
                     wait = 60
             time.sleep(wait)
         except Exception as e:
-            k = type(e).__name__
+            k = type(e).__name__ + ':' + str(getattr(e, 'reason', e))[:60]
             SEEN[k] = SEEN.get(k, 0) + 1
             time.sleep(10 * (i + 1))
     return None, '', b''
