@@ -21,7 +21,7 @@ by = defaultdict(lambda: defaultdict(list))
 seen = set()
 for page, s in sorted(P.items()):
     d = s.get('d') or ''
-    if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', d) or not s.get('gu'):
+    if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', d) or not s.get('gu') or s.get('who') == 'yogiji':   # Yogiji Maharaj stories hidden until Darpan decides (19 Nov 2026)
         continue
     key = (d, ' '.join(s['gu'])[:200])
     if key in seen:   # baps.org sometimes repeats a prasang on another day: show it once

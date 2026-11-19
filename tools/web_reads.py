@@ -145,6 +145,8 @@ def main():
     for page in sorted(set(done) | set(raw)):
         if not re.match(r'\d{4}-\d{2}-\d{2}$', page):
             continue
+        if (done.get(page) or {}).get('who') == 'yogiji':   # Yogiji Maharaj stories hidden until Darpan decides (19 Nov 2026)
+            continue
         p = done.get(page) or from_raw(page, raw.get(page) or {})
         if not p or not p.get('en'):   # English first, always (Darpan, 14 Nov 2026: "Wait for English")
             continue
