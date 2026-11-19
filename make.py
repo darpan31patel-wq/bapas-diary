@@ -371,6 +371,7 @@ PICK = 'activity'      # 'special': every year a close darshan unless it has a s
                       # 'activity' (Darpan, 19 Nov 2026: 'too many close ups'): every year with a really nice action shot shows it, special moments first; a close darshan only when the year has none
 ACTION_KEEP = .72     # an action shot must keep at least this much of the photo inside the frame, or what Bapa does gets cut off
 NICE_MIN = 2.0        # the action score a photo needs before it beats a close darshan
+ACT_MIN, ACT_MIN_SIZE = 1.3, .09   # 'activity': the lower action score and face size (share of the photo's height) a plain activity photo needs
 CLOSE_SHARE = .6      # about this share of the years are close darshans of Bapa's face (Darpan, 18 Oct 2026: 16 of 27)
 RECENT_DAYS = 7       # a photo shown in the last week is not shown again: the old albums cover several days, so
                       # neighbouring dates list the same photos (18 and 19 October share 2003, 2005, 2006 and 2007)
@@ -664,6 +665,9 @@ def pick_one_per_year(items, seed, unique=False, aspect=.69, day=None):
         # a really nice action shot: he is doing something, he is the subject, not small, nothing cut off (or a special
         # moment), and it scores well; anything less and the year is better served by a close darshan
         nice = bool(face) and front >= SIDE_FRONT and doing and subject and r >= .13 and (keep >= ACTION_KEEP or special) and s_doing - jitter >= NICE_MIN
+        if PICK == 'activity' and not nice:   # Darpan, 19 Nov 2026 ('too many close ups'): a clear photo of Bapa doing something
+            # counts too, even if it scores a little lower or has to be shown whole so nothing is cut; only a tiny Bapa or a side profile stays out
+            nice = bool(face) and front >= SIDE_FRONT and doing and subject and r >= ACT_MIN_SIZE and s_doing - jitter >= ACT_MIN
         x.update(keep=round(keep, 2), special=special, nice=nice, close_ok=close_ok)
         ALL.append((x['y'], round(sim, 2), bool(face), caption(x), x['i']))
         lst = cands.setdefault(x['y'], [])
