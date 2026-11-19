@@ -18,13 +18,17 @@
 # failed connection is counted.
 # Round 9: 19 Nov 12:35 UTC: mandir.org 2,557 left (round 8: 597 files). Most failures were 'Connection refused', the
 # Archive's way of saying too many: now five seconds between files, and three minutes' rest after a refusal.
+# Round 10: 19 Nov 17:05 UTC: mandir.org 2,265 left (round 9: 290 files, 64 refusals). Each round now starts the next
+# by itself until the site is finished (a round that would start in the morning stops the chain).
 name: wayback
 on:
   push:
     branches: ['claude/project-thread-2nikpj']
     paths: ['.github/workflows/wayback-2nikpj.yml']
+  workflow_dispatch:   # the next round starts itself while a site is unfinished
 permissions:
   contents: write   # the lists into the release `database`
+  actions: write    # to start the next round
 concurrency:
   group: wayback
 jobs:
@@ -93,3 +97,8 @@ jobs:
           gh release upload database ${{ matrix.key }}-pages.jsonl ${{ matrix.key }}-photos.jsonl --clobber
           cp state/last-run.json ${{ matrix.key }}-last-run.json && gh release upload database ${{ matrix.key }}-last-run.json --clobber
           cat state/last-run.json
+      - name: Next round, while unfinished (the morning guard stops the chain; it is restarted after 07:30)
+        if: always()
+        run: |
+          if [ -f state/last-run.json ] && ! grep -q '"finished": true' state/last-run.json; then
+            gh workflow run wayback-2nikpj.yml --ref claude/project-thread-2nikpj && echo "next round asked for"; fi
