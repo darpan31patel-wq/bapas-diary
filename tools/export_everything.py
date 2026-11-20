@@ -187,7 +187,7 @@ def load_writings(paths):
                                    ('https://www.baps.org' + ('' if key.startswith('/') else '/') + key if key and not key.startswith('http') else key))
             own, written, place = None, None, None
             t2 = text.translate(GU)
-            m = PRASANG.search(t2)
+            m = PRASANG.search(t2) if kind == 'Daily Satsang' else None   # essays keep the day they were published
             if m:
                 try:
                     yr = int(m[3]) if len(m[3]) == 4 else (1900 + int(m[3]) if int(m[3]) > 30 else 2000 + int(m[3]))
@@ -204,7 +204,7 @@ def load_writings(paths):
             imgs = [[i.get('src'), i.get('alt'), i.get('title')] if isinstance(i, dict) else i for i in imgs]
             rows.append([own or page_day, page_day if own and own != page_day else None, written or v.get('date'),
                          'the prasang\'s own date' if own else ('the page date' if page_day else None), place, kind,
-                         v.get('head') or v.get('title'), text or None, v.get('en') or v.get('english'), len(imgs) or None,
+                         ' by '.join(x for x in [v.get('head') or v.get('title'), v.get('author')] if x) or None, text or None, v.get('en') or v.get('english'), len(imgs) or None,
                          '\n'.join(('https://www.baps.org' if str(x).startswith('/') else '') + str(x)
                                    for x in ((i[0] if isinstance(i, list) else i) for i in imgs) if x) or None, url or None])
             for i in imgs:
