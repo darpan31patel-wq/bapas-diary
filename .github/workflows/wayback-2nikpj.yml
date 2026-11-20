@@ -20,6 +20,8 @@
 # Archive's way of saying too many: now five seconds between files, and three minutes' rest after a refusal.
 # Round 10: 19 Nov 17:05 UTC: mandir.org 2,265 left (round 9: 290 files, 64 refusals). Each round now starts the next
 # by itself until the site is finished (a round that would start in the morning stops the chain).
+# 20 Nov 07:45 UTC: fixed a round that started at 03:32 running on to 07:34; the free morning is now 03:00 to 07:30
+# and copying never goes past 03:30. mandir.org 1,141 left.
 name: wayback
 on:
   push:
@@ -49,7 +51,7 @@ jobs:
       - name: Never in the 2pm picture's morning
         run: |
           m=$(( 10#$(date -u +%H) * 60 + 10#$(date -u +%M) ))
-          if [ $m -ge 225 ] && [ $m -lt 450 ]; then echo "::error::03:45 to 07:30 UTC is kept free"; exit 1; fi
+          if [ $m -ge 180 ] && [ $m -lt 450 ]; then echo "::error::03:00 to 07:30 UTC is kept free"; exit 1; fi
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
@@ -74,8 +76,8 @@ jobs:
           ( while sleep 600; do [ -d work/files ] && rclone move work/files "$REMOTE" --transfers 16 --checkers 16 \
               --min-age 30s --stats 0 2>&1 | tail -2; rclone copy state "$REMOTE/_state" --stats 0 2>&1 | tail -1; done ) &
           mover=$!
-          stop=$(date -u -d '+240 minutes' +%H:%M); now=$(date -u +%H%M); s=${stop/:/}
-          if [ $((10#$s)) -gt 330 ] && { [ $((10#$now)) -lt 330 ] || [ $((10#$s)) -lt $((10#$now)) ]; }; then stop=03:30; fi
+          # 4h from now, but never past 03:30 UTC (a round that starts in the evening stops at 03:30)
+          stop=$(python3 -c "import datetime as d; n=d.datetime.now(d.timezone.utc); e=n+d.timedelta(minutes=240); c=n.replace(hour=3,minute=30,second=0,microsecond=0); c=c if c>n else c+d.timedelta(days=1); print(min(e,c).strftime('%H:%M'))")
           echo "stopping at $stop UTC"
           python3 -I tools/wayback.py --host ${{ matrix.host }} --work work --state state --stop-at $stop --have have.txt | tee run.log || true
           kill $mover || true; pkill -f 'rclone move work/files' || true; sleep 5
