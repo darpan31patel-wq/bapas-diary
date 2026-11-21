@@ -284,6 +284,23 @@ def main():
     moments.sort(key=lambda r: (r[0] or '', r[3] or 0))
     articles = load_articles(a.articles) if a.articles else articles_from_db(db)
     site_pages, site_photos = load_sites(a.sites)
+    E_COLS = ['Date', 'Published', 'Show', 'Title', 'Minutes', 'Description', 'Gurus named', 'Sound file',
+              "Google Drive copy (Bapa's Archive)", 'File size (bytes)', 'Picture', 'Source']
+    episodes = []
+    for fn in sorted(glob.glob(os.path.join(a.sites or '', '*-episodes.jsonl'))) if a.sites else []:
+        show = re.sub(r'^podcast-|-episodes\.jsonl$', '', os.path.basename(fn)).replace('-', ' ').title()
+        for l in open(fn, encoding='utf-8'):
+            if not l.strip(): continue
+            q = json.loads(l)
+            dur = q.get('duration')
+            if str(dur or '').isdigit(): dur = round(int(dur) / 60, 1)
+            fpath = q.get('file')
+            g = q.get('gurus_named')
+            episodes.append([day_of(q.get('date')) or q.get('date'), q.get('published'), q.get('podcast') or q.get('show') or show, q.get('title'), dur,
+                             q.get('description'), ', '.join(g) if isinstance(g, list) else g, q.get('sound_url'),
+                             (fpath if not fpath or fpath.startswith("Bapa's Archive") else f"Bapa's Archive/{fpath}"),
+                             q.get('bytes'), q.get('image'), q.get('source')])
+    episodes.sort(key=lambda r: r[0] or '9999')
     writings, writing_pics = load_writings(a.writings)
     workbooks = {}
     for w in a.workbook:
@@ -438,7 +455,7 @@ def main():
 
     # ---- days: every date that has anything at all
     every = (set(byday) | set(cal) | set(otd) | set(pick) | set(yt) | set(art_by) | set(workbooks) | set(mom_by)
-             | set(page_by) | set(writ_by))
+             | set(page_by) | set(writ_by) | {r[0] for r in episodes})
     first = min(d for d in every if d and d >= '1999-01-01')
     d0, last = datetime.date.fromisoformat(first), max(d for d in every if d)
     span = set()
@@ -491,6 +508,7 @@ def main():
     write_csv('All articles.csv', A_COLS, arows)
     write_csv('All other website pages.csv', G_COLS, grows)
     write_csv('All writings.csv', W_COLS, writings)
+    write_csv('All podcast episodes.csv', E_COLS, episodes)
 
     full = os.path.join(a.out, 'Bapas Diary everything.db')
     if os.path.exists(full): os.remove(full)
@@ -509,6 +527,7 @@ def main():
     table('video_moments', M_COLS, moments)
     table('other_website_pages', G_COLS, grows)
     table('writings', W_COLS, writings)
+    table('podcast_episodes', E_COLS, episodes)
     if bapa:
         fx.execute('drop table if exists bapa_pick')
         fx.execute('create table bapa_pick (album, file, rank, close, why, fx, fy, sim)')
@@ -570,6 +589,8 @@ def main():
         sheet(X, 'Other website pages', G_COLS, gg, [11, 11, 18, 14, 40, 18, 12, 40, 40, 7, 30, 100, 40, 40, 20, 18],
               links=(13,), wrap=(8, 9, 11, 12))
         ww = [r for r in writings if inside(r[0])]
+        sheet(X, 'Podcast', E_COLS, [r for r in episodes if inside(r[0])], [11, 20, 20, 50, 8, 80, 24, 40, 50, 12, 30, 30],
+              links=(8, 11, 12), wrap=(6,))
         sheet(X, 'Writings', W_COLS, ww, [11, 11, 22, 16, 18, 18, 40, 100, 100, 7, 40, 40], links=(12,), wrap=(7, 8, 9, 11))
         sheet(X, 'About', ['Item', 'Value'], [
             ['Year', label], ['Made', datetime.date.today().isoformat()],
