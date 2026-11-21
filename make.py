@@ -2469,7 +2469,7 @@ def day_search(day, items, photos, tg_evs):
             db.close()
     for path in paths:
         ev = news_story(path)
-        if ev and ev.get('urls'):
+        if ev and ev.get('urls') and ev.get('bapa', 0) > 0:   # never a special without Bapa in it (21 Nov 2026: the 20 Nov special was a president at Akshardham, no photo of Bapa)
             words = f"{ev.get('line', '')} {' '.join(ev.get('paras') or [])[:600]}"
             put(ev['date'][:10], 50 + min(ev.get('bapa', 0), 20) + (20 if SPECIAL.search(words) else 0) + (10 if ev.get('paras') else 0) + (25 if LEADER.search(ev.get('line') or '') else 0),
                 ev, 'News article')
@@ -2601,6 +2601,9 @@ PAST = {'performed': 'performs', 'inaugurated': 'inaugurates', 'sanctified': 'sa
         'lit': 'lights', 'addressed': 'addresses', 'unveiled': 'unveils', 'observed': 'observes', 'arrived': 'arrives', 'departed': 'departs',
         'honoured': 'honours', 'honored': 'honours', 'showered': 'showers', 'discoursed': 'discourses', 'met': 'meets', 'made': 'makes',
         'placed': 'places', 'conducted': 'conducts', 'welcomed': 'welcomes', 'carried': 'carries', 'wrote': 'writes', 'sang': 'sings', 'said': 'says'}
+PRESENT = re.compile(r"in the (?:divine )?presence of (?:His Holiness |HH |Param Pujya )?(?:Pramukh|Mahant) Swami|"
+                     r"(?:Swamishri|(?:Pramukh|Mahant) Swami Maharaj|Bapa) (?:also |then |personally |himself )?(?:arrived|visited|blessed|performed|inaugurated|"
+                     r"presided|graced|consecrated|sanctified|addressed|met|welcomed|greeted|was welcomed|gave darshan|laid|unveiled|attended|led)\b", re.I)
 LEADER = re.compile(r'\b(president|prime minister|king|queen|prince|chancellor|governor|minister|mayor|ambassador)\b', re.I)   # a leader's visit (Darpan, 16 Nov 2026)
 LEAD_IN = (r"^(?:(?:At|By|Around|At about|At around) (?:about |around )?\d{1,2}[.:]\d\d ?(?:[ap]\.?m\.?|noon)?(?: \(IST\))?,?\s+|"
            r"(?:In|During|On) the (?:morning|evening|afternoon)(?: assembly| satsang assembly)?,?\s+|This (?:morning|evening|afternoon),?\s+|"
@@ -2638,19 +2641,21 @@ def day_info(day):
     return info
 
 
-def day_line(v):
-    line = _day_line(v)   # no dashes on a card (Darpan's rule), and no stray comma before a bracket
+def day_line(v, doing=False):
+    line = _day_line(v, doing)   # no dashes on a card (Darpan's rule), and no stray comma before a bracket
     return re.sub(r',\s*\(', ' (', re.sub(r'\s+[-\u2013\u2014]+\s+', ': ', line))
 
 
-def _day_line(v):
+def _day_line(v, doing=False):
     """The one moment of a day report that a card can say in a line, in the old website's own sentence, turned to read
     like the other cards ('Swamishri performed the murti-pratishtha rituals of...' -> 'Performs the murti-pratishtha
-    rituals of...'). '' when the report tells of no one-off moment, or its sentence doesn't turn cleanly."""
+    rituals of...'). '' when the report tells of no one-off moment, or its sentence doesn't turn cleanly.
+    doing=True (Darpan, 21 Nov 2026, 'add all this information in, as best as possible, when appropriate'): any sentence
+    of what Swamishri did that day ('Visits the famous Govind Dev Mandir...'), for a card whose own caption says nothing."""
     said = sentences(' '.join(v.get('w') or []))
     travel = lambda s: bool(re.match(r"(?:\S+\s+){0,8}?Swamishri (?:then |also )?(?:arrived|departed|left|reached|returned|travelled)\b", s))
     for s in [s for s in said if not travel(s)]:   # what he did, never how he got there ('Departs for Khambhda village to perform...' is not the moment, 17 Nov 2026)
-        if not MOMENT.search(s) or len(s) > 260 or re.search(r'[“”"]', s):
+        if not (MOMENT.search(s) or doing) or len(s) > (260 if not doing else 200) or re.search(r'[“”"]', s):
             continue
         if GUEST.search(s) and not western(s):   # meeting and honouring guests is every day (Darpan, 20 Oct 2026)
             continue
@@ -2658,10 +2663,14 @@ def _day_line(v):
         if s.count('(') != s.count(')'):   # a sentence the split broke at an abbreviation ('Dharampur (S. Gujarat)')
             continue
         m = re.match(r"^Swamishri (?:also |then )?(\w+) (.+)$", s)
-        if m and m.group(1).lower() in PAST and MOMENT.search(s):
+        if m and m.group(1).lower() in PAST and (MOMENT.search(s) or doing):
             rest = re.sub(r"\b(and|then) (?:also |then )?(" + '|'.join(PAST) + r")\b", lambda k: f'{k.group(1)} {PAST[k.group(2)]}', m.group(2))
             line = tidy(f"{PAST[m.group(1).lower()].capitalize()} {rest}")
             if re.search(r'\b(?:and|then) (?:also )?\w+ed\b', line) or caption_fault(line):   # a second thing he did that would still read as the past
+                continue
+            if doing and (EVERYDAY.search(line) or JUST_A_FACE.search(line) or GUEST.search(line) or re.match(r'(?i)\w+ (?:\w+ )?(?:him|her|them|it|these|those|this|both)\b', line)
+                          or re.search(r'\b(?:' + '|'.join(PAST) + r')\b', line.split(' ', 1)[-1]) or re.search(r'\b(?:Dr|Mr|Mrs|Shri|St|[ap]\.m)$|\(For |\(\s*Detailed|\bcheck:|\b(?:our|we|us|saw|went|met|took|sat|spoke|came|was|were|had)\b', line)
+                          or len(line.split()) < 4):   # nothing that only the sentence before explains, no everyday line, no meeting
                 continue
             return line
         m = re.match(r"^The (.+?) (?:was|were) (?:carried out|performed|held|celebrated)\b", s)
@@ -2724,8 +2733,8 @@ def tell_days(day, photos):
         c = caption(x)
         if c and c != DARSHAN and (MOMENT.search(c) or SPECIAL.search(c) or not EVERYDAY.search(c) and not JUST_A_FACE.search(c)):
             continue   # (16 Nov 2026: 'Blesses the murti-pratishtha assembly' is a moment of its own and keeps its words)
-        line = day_line(v)
-        if not line or not same_town(place(x), v.get('pl') or []) or caption_fault(line):
+        line = next((l for l in (day_line(v), day_line(v, doing=True), *(v.get('yt') or [])) if l and not caption_fault(l)), '')
+        if not line or not same_town(place(x), v.get('pl') or []):
             continue
         print(f"  {x['y']} card says the day's story: '{line}' (its own caption: '{c}')")
         x['cap'], x['told'] = line, True
@@ -2781,7 +2790,17 @@ def info_finds(day, items, photos, found, put, exact):
         for st in v.get('st') or []:
             urls = ['archive:' + rel for rel in st.get('ph') or []]   # the files are only in his archive; no website is asked
             twin = any(e.get('kind') == 'news' and e['date'][:10] == f'{y}-{mmdd}' and difflib.SequenceMatcher(None, (e.get('line') or '').lower()[:60], st['t'].lower()[:60]).ratio() > .6 for e in found.values())
-            if urls and st.get('w') and not twin:   # baps.org News told the same visit: that find already stands
+            there = PRESENT.search(' '.join([st['t']] + list(st['w'])))   # Bapa himself was there (21 Nov 2026: never a special without Bapa)
+            key = f'{y}-{mmdd}'
+            if not urls and there and key in found and st.get('w'):   # a story with no photo of its own: its words join that year's find, nothing is lost
+                e = found[key]
+                told = ' '.join(e.get('paras') or []).lower()
+                add = [w for w in st['w'] if w.lower()[:60] not in told]
+                if add:
+                    e['paras'] = list(e.get('paras') or []) + add
+                    e['score'] += 10; e['why'] += ' + ' + st['t'][:40]
+                continue
+            if urls and st.get('w') and not twin and there:   # baps.org News told the same visit: that find already stands
                 leader = LEADER.search(st['t'])
                 put(f'{y}-{mmdd}-site', 60 + (25 if leader else 0) + min(len(urls), 5),
                     {'kind': 'site', 'date': f'{y}-{mmdd}', 'place': st.get('p') or '', 'headline': st['t'], 'line': st['t'], 'paras': list(st['w']),
