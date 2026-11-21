@@ -1,0 +1,63 @@
+# The BAPS Better Living podcast copied into Darpan's Drive archive ("Bapa's Archive/sites/podcast/BAPS Better
+# Living/": every episode's sound file and the cover), with one line of full detail per episode (title, date, words,
+# length, where the file came from, which guru is named) as podcast-baps-better-living-episodes.jsonl in the release
+# `database` (Darpan, 13 Nov 2026: "Yes to all"; "Everything from the other websites need to have full detail").
+# Archive only: touches nothing in the 2pm picture's chain, the website, R2 or bapas.db; never runs 03:00 to 07:30 UTC;
+# one file at a time. Pushing this file again carries on from where it stopped.
+# Round 1: 21 Nov 2026 08:10 UTC.
+name: podcast
+on:
+  push:
+    branches: ['claude/project-thread-2nikpj']
+    paths: ['.github/workflows/podcast-2nikpj.yml']
+permissions:
+  contents: write   # the episode list into the release `database`
+concurrency:
+  group: podcast
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      REMOTE: "gdrive:Bapa's Archive/sites/podcast/BAPS Better Living"
+      KEY: podcast-baps-better-living
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Never in the 2pm picture's morning
+        run: |
+          m=$(( 10#$(date -u +%H) * 60 + 10#$(date -u +%M) ))
+          if [ $m -ge 180 ] && [ $m -lt 450 ]; then echo "::error::03:00 to 07:30 UTC is kept free"; exit 1; fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Drive access
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          CLIENT_ID: ${{ secrets.RCLONE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.RCLONE_CLIENT_SECRET }}
+        run: |
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          git fetch -q --depth 1 origin main && git show FETCH_HEAD:tools/rclone_conf.py > "$RUNNER_TEMP/rclone_conf.py"
+          mkdir -p ~/.config/rclone && python3 "$RUNNER_TEMP/rclone_conf.py" > ~/.config/rclone/rclone.conf
+      - name: Where the last round stopped
+        run: |
+          mkdir -p state
+          rclone copy "$REMOTE/_state" state 2>/dev/null || true
+          rclone lsf -R --files-only "$REMOTE" --filter "- _state/**" > have.txt || : > have.txt
+          wc -l have.txt
+      - name: Copy every episode (3h at most, by 03:00 UTC at the latest)
+        run: |
+          ( while sleep 600; do [ -d work/files ] && rclone move work/files "$REMOTE" --min-age 30s --stats 0 2>&1 | tail -2; done ) &
+          mover=$!
+          stop=$(python3 -c "import datetime as d; n=d.datetime.now(d.timezone.utc); e=n+d.timedelta(minutes=180); c=n.replace(hour=3,minute=0,second=0,microsecond=0); c=c if c>n else c+d.timedelta(days=1); print(min(e,c).strftime('%H:%M'))")
+          python3 -I tools/podcast.py --apple-id 1507712213 --work work --state state --have have.txt --stop-at $stop | tee run.log
+          kill $mover || true; pkill -f 'rclone move work/files' || true; sleep 5
+      - name: Into Drive and the list into the release
+        if: always()
+        run: |
+          [ -d work/files ] && timeout 60m rclone move work/files "$REMOTE" --transfers 4 --stats-one-line --stats 0 || true
+          rclone copy state "$REMOTE/_state" --stats 0
+          cp state/episodes.jsonl $KEY-episodes.jsonl && cp state/podcast.json $KEY-podcast.json
+          gh release upload database $KEY-episodes.jsonl $KEY-podcast.json --clobber
+          cat state/last-run.json
