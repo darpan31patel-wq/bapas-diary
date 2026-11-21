@@ -1,0 +1,98 @@
+# na.baps.org, the BAPS North America website, copied into Darpan's Drive archive ("Bapa's Archive/sites/na.baps.org")
+# with the same full detail lists as the other sites (Darpan, 13 Nov 2026: "Yes to all"; "Everything from the other
+# websites need to have full detail"). The site builds itself in the browser, so a plain reader only got its first
+# page: here one real browser tab (tools/browser_copy.py) opens each page, a few seconds apart, and keeps the page as
+# drawn and every photo it shows. Archive only: touches nothing in the 2pm picture's chain, the website, R2 or
+# bapas.db, never runs 03:00 to 07:30 UTC, and stops at once on any protection check page (never tries to get past
+# one; a round that met one does not start another). Lists: na-baps-org-pages.jsonl and na-baps-org-photos.jsonl in
+# the release `database` once the site is finished.
+# Round 1: 21 Nov 2026 08:10 UTC.
+name: na-baps
+on:
+  push:
+    branches: ['claude/project-thread-2nikpj']
+    paths: ['.github/workflows/na-baps-2nikpj.yml']
+  workflow_dispatch:   # the next round starts itself while the site is unfinished
+permissions:
+  contents: write   # the lists into the release `database`
+  actions: write    # to start the next round
+concurrency:
+  group: na-baps
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      SITE: na.baps.org
+      BASE: https://na.baps.org/
+      KEY: na-baps-org
+      REMOTE: "gdrive:Bapa's Archive/sites/na.baps.org"
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Never in the 2pm picture's morning
+        run: |
+          m=$(( 10#$(date -u +%H) * 60 + 10#$(date -u +%M) ))
+          if [ $m -ge 180 ] && [ $m -lt 450 ]; then echo "::error::03:00 to 07:30 UTC is kept free"; exit 1; fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Browser
+        run: |
+          pip install -q playwright
+          python3 -m playwright install --with-deps chromium >/dev/null
+      - name: Drive access
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          CLIENT_ID: ${{ secrets.RCLONE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.RCLONE_CLIENT_SECRET }}
+        run: |
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          git fetch -q --depth 1 origin main && git show FETCH_HEAD:tools/rclone_conf.py > "$RUNNER_TEMP/rclone_conf.py"
+          mkdir -p ~/.config/rclone && python3 "$RUNNER_TEMP/rclone_conf.py" > ~/.config/rclone/rclone.conf
+      - name: Where the last round stopped
+        run: |
+          mkdir -p state
+          rclone copy "$REMOTE/_state" state 2>/dev/null || true
+          rclone lsf -R --files-only "$REMOTE" --filter "- _state/**" --filter "- _index/**" > have.txt || : > have.txt
+          wc -l have.txt
+      - name: Copy with one browser tab (4h at most, by 03:30 UTC at the latest)
+        run: |
+          ( while sleep 600; do [ -d work/files ] && rclone move work/files "$REMOTE" --transfers 8 --checkers 8 \
+              --min-age 30s --stats 0 2>&1 | tail -2; rclone copy state "$REMOTE/_state" --stats 0 2>&1 | tail -1; done ) &
+          mover=$!
+          stop=$(python3 -c "import datetime as d; n=d.datetime.now(d.timezone.utc); e=n+d.timedelta(minutes=240); c=n.replace(hour=3,minute=30,second=0,microsecond=0); c=c if c>n else c+d.timedelta(days=1); print(min(e,c).strftime('%H:%M'))")
+          echo "stopping at $stop UTC"
+          # the site's own sitemaps are the starting list (one level of sitemap index followed)
+          for sm in sitemap.xml sitemap_index.xml; do curl -s -A 'Mozilla/5.0' "${BASE}$sm"; sleep 2; done \
+            | grep -o '<loc>[^<]*' | sed 's/<loc>//' | sort -u > top.txt || true
+          { grep -v '\.xml$' top.txt; for sm in $(grep '\.xml$' top.txt | head -100); do curl -s -A 'Mozilla/5.0' "$sm" \
+            | grep -o '<loc>[^<]*' | sed 's/<loc>//'; sleep 2; done; } | grep -v '\.xml$' | sort -u > seeds.txt || true
+          wc -l seeds.txt
+          python3 tools/browser_copy.py --site $SITE --base $BASE --seeds seeds.txt --work work --state state \
+            --stop-at $stop --gap 3 --have have.txt | tee run.log || true
+          kill $mover || true; pkill -f 'rclone move work/files' || true; sleep 5
+      - name: Into Drive
+        if: always()
+        run: |
+          rclone copy state "$REMOTE/_state" --stats 0
+          [ -d work/files ] && timeout 90m rclone move work/files "$REMOTE" --transfers 8 --checkers 8 --stats-one-line --stats 0 || true
+          rclone copy state "$REMOTE/_state" --stats 0
+      - name: Full detail for every page and photo (once the site is finished)
+        if: always()
+        run: |
+          if ! grep -q '"finished": true' state/last-run.json; then echo "not finished yet"; cat state/last-run.json || true; exit 0; fi
+          rclone copy "$REMOTE" pages --filter "- _state/**" --filter "- _index/**" --filter "+ *.{htm,html,HTM,HTML}" \
+            --filter "- *" --transfers 16 --checkers 16 --stats 0
+          python3 -I tools/sites_index.py --site $SITE --base $BASE --folders --files pages --headers state/files.jsonl --out idx
+          rclone copy idx "$REMOTE/_index" --stats 0
+          cp idx/pages.jsonl $KEY-pages.jsonl && cp idx/photos.jsonl $KEY-photos.jsonl
+          gh release upload database $KEY-pages.jsonl $KEY-photos.jsonl --clobber
+          cp state/last-run.json $KEY-last-run.json && gh release upload database $KEY-last-run.json --clobber
+          cat state/last-run.json
+      - name: Next round, while unfinished and the site answered normally
+        if: always()
+        run: |
+          if [ -f state/last-run.json ] && ! grep -q '"finished": true' state/last-run.json \
+             && grep -q '"checked": false' state/last-run.json && ! grep -q '"pages": 0,' state/last-run.json; then
+            gh workflow run na-baps-2nikpj.yml --ref claude/project-thread-2nikpj && echo "next round asked for"; fi
