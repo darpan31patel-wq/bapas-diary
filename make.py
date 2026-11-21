@@ -2758,6 +2758,7 @@ def info_finds(day, items, photos, found, put, exact):
         for p in v.get('pr') or []:
             paras += ([p['t']] if p.get('t') else []) + [w for w in p['w'] if w not in paras]
         sat = [w for d in v.get('ds') or [] for w in ([d['t']] if d.get('t') else []) + d['w']]
+        sat = [w for k, w in enumerate(sat) if w not in sat[:k] or len(w) < 40]   # several prasangs of one assembly share their opening paragraph: once
         sat += life   # the Jivan Charitra's story of that day, after the reports
         words = ' '.join(paras + sat)
         if words and mine:
