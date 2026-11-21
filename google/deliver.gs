@@ -61,6 +61,7 @@ function setup() {
   ScriptApp.newTrigger('deliverLate').timeBased().atHour(10).nearMinute(30).everyDays(1).inTimezone(TZ).create();
   ScriptApp.newTrigger('keepChecking').timeBased().everyMinutes(30).create();
   ScriptApp.newTrigger('syncBank').timeBased().everyHours(2).create();
+  ScriptApp.newTrigger('tidyPastDays').timeBased().atHour(23).nearMinute(0).everyDays(1).inTimezone(TZ).create();
   folder_();
   backupFolder_();
   deliver();   // if today's picture is already made, it arrives straight away
@@ -455,6 +456,66 @@ function folder_() {
 function backupFolder_() {
   const found = DriveApp.getFoldersByName(BACKUP_NAME);
   return found.hasNext() ? found.next() : DriveApp.createFolder(BACKUP_NAME);
+}
+
+/**
+ * Keeps the Bapa's Diary folder tidy (Darpan, 18 Nov 2026: "my google drive folder is so messy").
+ * Every night at 11pm UK time, files for today and days gone by move into the "Past days" folder inside Bapa's Diary:
+ * leftover captions, special photo copies, top lines for one day, late Studio copies, and any file whose name starts
+ * with "OLD". Only moved, never binned. Left alone: folders (SENT, UK and Europe backups, Past days), "top line.txt",
+ * every file for a day still to come, and any name whose date can't be read for certain.
+ * The 2pm send has moved what it sent into SENT long before 11pm, and nothing reads a day's files after that day.
+ * To see what it would move without moving anything, choose "tidyPastDaysCheck" and press Run.
+ */
+function tidyPastDays() {
+  if (+Utilities.formatDate(new Date(), TZ, 'HHmm') < 1500) return;   // never before today's 2pm send is long done
+  tidy_(false);
+}
+
+/** Run by hand: lists what tonight's tidy would move into Past days, and moves nothing. */
+function tidyPastDaysCheck() {
+  const list = tidy_(true);
+  console.log(list.length ? 'At 11pm these would move into Past days:\n' + list.join('\n') : 'Nothing to move right now.');
+}
+
+const MONTHS_ = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+
+/** The day a file name starts with ("19 November 2026 special 2.png" is 2026-11-19), '' when it doesn't start with a real date. */
+function nameDay_(name) {
+  const m = String(name).match(/^(\d{1,2}) ([A-Za-z]+) (\d{4})(?=[ .]|$)/);
+  if (!m) return '';
+  const word = m[2].toLowerCase();
+  const month = MONTHS_.findIndex(x => x === word || x.slice(0, 3) === word);
+  if (month < 0) return '';
+  const d = new Date(+m[3], month, +m[1], 12);
+  if (d.getMonth() !== month || d.getDate() !== +m[1]) return '';   // no 31 November
+  return m[3] + '-' + ('0' + (month + 1)).slice(-2) + '-' + ('0' + m[1]).slice(-2);
+}
+
+/** Moves (or with dryRun only lists) the files of today and days gone by into Past days. Gives back the names. */
+function tidy_(dryRun) {
+  const started = Date.now();
+  const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+  const folder = folder_();
+  let past = null;
+  const it = folder.getFiles();
+  const names = [];
+  let failed = 0;
+  while (it.hasNext()) {
+    if (Date.now() - started > 4 * 60 * 1000) { console.log('Tidy: out of time, the next night carries on'); break; }
+    const f = it.next(), name = f.getName();
+    if (f.isTrashed() || name === 'top line.txt') continue;
+    const day = nameDay_(name);
+    if (!/^OLD /i.test(name) && !(day && day <= today)) continue;
+    names.push(name);
+    if (dryRun) continue;
+    try {
+      if (!past) { const found = folder.getFoldersByName('Past days'); past = found.hasNext() ? found.next() : folder.createFolder('Past days'); }
+      f.moveTo(past);
+    } catch (e) { failed++; console.log('Tidy: could not move ' + name + ': ' + e); }
+  }
+  if (!dryRun) console.log('Tidy: moved ' + (names.length - failed) + ' file(s) into Past days' + (failed ? ', ' + failed + ' could not move' : ''));
+  return names;
 }
 
 /** Shows the line to paste into the Studio's "Connect to Google Drive" box (makes a new secret code the first time). */
