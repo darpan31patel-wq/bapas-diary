@@ -2960,9 +2960,15 @@ function paneChoose() {
 function optionsRow(pack) {
   const date = S.special.date;
   $('#options-p').textContent = `The builder was not sure, so it made ${pack.options.length + 1} pictures for this day. The one above goes out at 2pm. Press “Use this one instead” to send another.`;
-  $('#options-row').innerHTML = pack.options.map((op, i) => `<figure><img src="${esc(pack.base + (op.picture || `option-${i + 2}.jpg`))}" alt=""><figcaption><b>${esc(op.headline || '')}</b>${esc([CHKINDS[op.kind] || op.kind, op.story_place, op.story_date ? longDate(op.story_date) : ''].filter(Boolean).join(' · '))}${op.story ? `<br><span class="hint">${esc(String(op.story).slice(0, 160))}${op.story.length > 160 ? '…' : ''}</span>` : ''}</figcaption>
+  $('#options-row').innerHTML = pack.options.map((op, i) => `<figure><img src="${esc(pack.base + (op.picture || `option-${i + 2}.jpg`))}" alt="See it big" title="See it big" data-optbig="${i}" style="cursor:zoom-in"><figcaption><b>${esc(op.headline || '')}</b>${esc([CHKINDS[op.kind] || op.kind, op.story_place, op.story_date ? longDate(op.story_date) : ''].filter(Boolean).join(' · '))}${op.story ? `<br><span class="hint">${esc(String(op.story).slice(0, 160))}${op.story.length > 160 ? '…' : ''}</span>` : ''}</figcaption>
     <div><button class="btn small primary" data-instead="${i}" ${op.choose ? '' : 'disabled'}>Use this one instead</button></div></figure>`).join('');
   document.querySelectorAll('[data-instead]').forEach(b => b.addEventListener('click', () => { const op = pack.options[+b.dataset.instead]; if (op && op.choose && CH) chInstead(date, Object.assign({}, op.choose)) }));
+  // click to see it big, without choosing it (Darpan, 21 Nov 2026: "when i click each one, it should bring it up large so i can see")
+  document.querySelectorAll('[data-optbig]').forEach(im => im.addEventListener('click', () => { const i = +im.dataset.optbig, op = pack.options[i]; if (!op) return;
+    $('#spv-h').textContent = op.headline || 'Another special picture for this day';
+    $('#spv-body').innerHTML = `<img src="${esc(im.src)}" alt="" style="width:100%;height:auto;display:block;border-radius:6px;border:1px solid var(--line)">`;
+    $('#spv-acts').innerHTML = `${op.choose ? '<button class="btn" type="button" id="spv-inst">Use this one instead</button>' : ''}<button class="btn primary" value="cancel">Close</button>`;
+    $('#spv').showModal(); const u = document.getElementById('spv-inst'); if (u) u.addEventListener('click', () => { $('#spv').close(); if (CH) chInstead(date, Object.assign({}, op.choose)) }) }));
 }
 // the UK and Europe backup (Darpan, 14 Nov 2026: "When there's 2 or more days that Bapa has been in the UK, Europe, I would
 // like a special card made. Keep it ready as a backup"). The Collage builder keeps one ready for every such day and says so
