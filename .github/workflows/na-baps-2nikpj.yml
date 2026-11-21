@@ -7,6 +7,8 @@
 # one; a round that met one does not start another). Lists: na-baps-org-pages.jsonl and na-baps-org-photos.jsonl in
 # the release `database` once the site is finished.
 # Round 1: 21 Nov 2026 08:10 UTC. Its own state in _state/browser (the plain reader's from 15 Nov is left as it was).
+# Round 2: 21 Nov 09:05 UTC: round 1 found only 13 pages (the menus Visit and Give are buttons, not links), so the
+# site's own Next.js list of every page it has is read too, and the 13 pages are opened once more.
 name: na-baps
 on:
   push:
@@ -26,6 +28,7 @@ jobs:
       SITE: na.baps.org
       BASE: https://na.baps.org/
       KEY: na-baps-org
+      AGAIN: ${{ github.event_name == 'push' && '--again' || '' }}   # a pushed round opens the pages seen before once more
       REMOTE: "gdrive:Bapa's Archive/sites/na.baps.org"
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -64,13 +67,13 @@ jobs:
           stop=$(python3 -c "import datetime as d; n=d.datetime.now(d.timezone.utc); e=n+d.timedelta(minutes=240); c=n.replace(hour=3,minute=30,second=0,microsecond=0); c=c if c>n else c+d.timedelta(days=1); print(min(e,c).strftime('%H:%M'))")
           echo "stopping at $stop UTC"
           # the site's own sitemaps are the starting list (one level of sitemap index followed)
-          for sm in sitemap.xml sitemap_index.xml; do curl -s -A 'Mozilla/5.0' "${BASE}$sm"; sleep 2; done \
+          for sm in sitemap.xml sitemap_index.xml $(curl -s -A 'Mozilla/5.0' "${BASE}robots.txt" | grep -i '^sitemap:' | sed 's|^[Ss]itemap: *https\?://[^/]*/||' | tr -d '\r'); do curl -s -A 'Mozilla/5.0' "${BASE}$sm"; sleep 2; done \
             | grep -o '<loc>[^<]*' | sed 's/<loc>//' | sort -u > top.txt || true
           { grep -v '\.xml$' top.txt; for sm in $(grep '\.xml$' top.txt | head -100); do curl -s -A 'Mozilla/5.0' "$sm" \
             | grep -o '<loc>[^<]*' | sed 's/<loc>//'; sleep 2; done; } | grep -v '\.xml$' | sort -u > seeds.txt || true
           wc -l seeds.txt
           python3 tools/browser_copy.py --site $SITE --base $BASE --seeds seeds.txt --work work --state state \
-            --stop-at $stop --gap 3 --have have.txt | tee run.log || true
+            --stop-at $stop --gap 3 --have have.txt $AGAIN | tee run.log || true
           kill $mover || true; pkill -f 'rclone move work/files' || true; sleep 5
       - name: Into Drive
         if: always()

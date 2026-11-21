@@ -37,6 +37,8 @@ def main():
     ap.add_argument('--stop-at', default='', help='UTC HH:MM to stop by')
     ap.add_argument('--gap', type=float, default=3.0)
     ap.add_argument('--have', default='', help='paths already in Drive (rclone lsf -R)')
+    ap.add_argument('--again', action='store_true', help='open the pages seen before once more (to find links missed)')
+    ap.add_argument('--no-routes', action='store_true')
     a = ap.parse_args()
     base = a.base.rstrip('/') + '/'
     hosts = {a.site, 'www.' + a.site}
@@ -59,8 +61,11 @@ def main():
         have = set(x for x in open(a.have, encoding='utf-8').read().split('\n') if x)
     seen = set(rd('seen.txt'))
     todo = rd('todo.txt')
+    if a.again and seen:
+        todo = [base] + sorted(seen - {base}) + todo
+        seen = set()
     if not seen:
-        todo = [base] + (rd(os.path.abspath(a.seeds)) if a.seeds and os.path.exists(a.seeds) else [])
+        todo = todo or [base] + (rd(os.path.abspath(a.seeds)) if a.seeds and os.path.exists(a.seeds) else [])
     got = set()      # photo addresses kept this round or before
     for line in rd('files.jsonl'):
         try:
@@ -141,6 +146,7 @@ def main():
                 pass
         tab.on('response', on_response)
         print(json.dumps(dict(site=a.site, to_do=len(todo), seen=len(seen))), flush=True)
+        routes_read = bool(a.no_routes)
         while todo:
             if stop and now() >= stop:
                 break
@@ -204,6 +210,21 @@ def main():
             counts['pages'] += 1
             for href in tab.eval_on_selector_all('a[href]', 'els => els.map(e => e.href)'):
                 add(href)
+            if not routes_read:   # a Next.js site lists every page it has in its build manifest
+                routes_read = True
+                try:
+                    bid = tab.evaluate('() => (window.__NEXT_DATA__ || {}).buildId || ""')
+                    if bid:
+                        r = ctx.request.get(urllib.parse.urljoin(base, f'/_next/static/{bid}/_buildManifest.js'), timeout=60000)
+                        txt = r.text() if r.status == 200 else ''
+                        open(os.path.join(a.state, 'routes.js'), 'w', encoding='utf-8').write(txt)
+                        found = sorted(set(re.findall(r'"(/[A-Za-z0-9_\-/\[\]]*)"\s*:', txt)))
+                        fixed = [x for x in found if '[' not in x and not x.startswith(('/_', '/api', '/404', '/500'))]
+                        print(json.dumps(dict(routes=len(found), pages=fixed, by_name=[x for x in found if '[' in x])), flush=True)
+                        for x in fixed:
+                            add(urllib.parse.urljoin(base, x.lstrip('/')))
+                except Exception as e:
+                    print('build manifest not read:', str(e)[:100], flush=True)
             for r in list(pics):
                 pu = urllib.parse.urldefrag(r.url)[0]
                 if pu.startswith('data:') or pu in got or name(pu) in have:
