@@ -8,6 +8,9 @@ FOLDER holds the files the website project keeps (nothing here is read from baps
                                  face2-YEAR-sorg.json.gz
   release database:              akshardham-com-pages.jsonl  akshardham-com-photos.jsonl
   the website branch:            prasang.json  (data/baps/prasang.json)  bio.json  (data/bio/bio.json)
+                                 youtube-days.json  (data/youtube/days.json)
+  release database (21 Nov 2026): SITE-pages.jsonl  SITE-photos.jsonl  for each site in MORE_SITES (the whole files, or
+                                 only the pages that give one exact date and name Bapa, with those pages' photos)
 
 archive/days/MM-DD.json, one entry per year that has anything:
   {"YYYY": {"pl": [towns Bapa was in, in order],
@@ -15,8 +18,10 @@ archive/days/MM-DD.json, one entry per year that has anything:
             "w":  [the day report's paragraphs, as written at the time],
             "pr": [{"t": title, "pl": [towns], "w": [paragraphs]}],             prasangs of that day
             "ds": [{"t": title, "p": place, "who": "psm" or "msm", "w": [...]}],  Daily Satsang prasangs, in English
-            "st": [{"t": title, "p": place, "w": [...], "ph": [Drive paths]}],   akshardham.com stories of that day
+            "st": [{"t": title, "p": place, "w": [...], "ph": [Drive paths]}],   other sites' stories of that day (akshardham.com,
+                                                                                 the old swaminarayan.org News, mandir.org, the kids sites...)
             "jc": [{"t": heading, "p": place, "w": [...]}],                      the Jivan Charitra life story (1921 to 1975)
+            "yt": [occasion],                                                    what BAPS's own videos of that exact day call it
             "ph": [[album, file, caption, Drive path]]}}                         old website photos that show Bapa clearly
 
 Where each thing came from stays in these files and is never drawn on a picture. make.py reads them (day_info) and never
@@ -183,6 +188,99 @@ def site_stories(folder, days):
     return n
 
 
+MORE_SITES = ('swaminarayan-org', 'wayback-mandir-org', 'wayback-kids-swaminarayan-org', 'kids-baps-org', 'londonmandir-baps-org', 'research-baps-org')
+GURU_CHANGE = '2016-08-13'
+# Bapa himself there that day: 'in the presence of Pramukh Swami Maharaj', 'Swamishri blessed the assembly'
+PRESENT = re.compile(r"in the (?:divine )?presence of (?:His Holiness |HH |Param Pujya )?(Pramukh|Mahant) Swami|"
+                     r"(Swamishri|Pramukh Swami Maharaj|Mahant Swami Maharaj) (?:also |then |personally |himself )?(?:arrived|visited|blessed|performed|"
+                     r"inaugurated|presided|graced|consecrated|sanctified|addressed|met|welcomed|greeted|was welcomed|gave darshan|laid|unveiled|attended|led)\b", re.I)
+ELSEWHERE = re.compile(r"\b(?:years? ago|previous|earlier (?:that|this) (?:day|year)|webcast|video|montage|live telecast|in (?:19|20)\d\d\b|will |to be held|announce)", re.I)
+
+
+def more_sites(folder, days):
+    """Darpan, 21 Nov 2026 ('would be nice to add all this information in, as best as possible, when appropriate'): the
+    other sites the website project saved (the old swaminarayan.org News, the old London mandir.org, the kids sites,
+    londonmandir.baps.org, research.baps.org). A page joins a day only when it gives one exact date and says Bapa himself
+    was there (Pramukh Swami Maharaj before 13 Aug 2016, Mahant Swami Maharaj after), in a sentence about that day, not a
+    memory of another year, a webcast or an announcement. Its photos: only ones whose own words name Bapa."""
+    n = 0
+    for site in MORE_SITES:
+        path = os.path.join(folder, site + '-pages.jsonl')
+        if not os.path.exists(path):
+            continue
+        shots = collections.defaultdict(list)
+        ph = os.path.join(folder, site + '-photos.jsonl')
+        for line in open(ph, encoding='utf-8') if os.path.exists(ph) else []:
+            p = json.loads(line)
+            words = ' '.join(p.get(k) or '' for k in ('caption', 'alt', 'words_beside'))
+            if p.get('size') != 'small' and re.search(r'Swamishri|Pramukh Swami|Mahant Swami|Bapa\b', words) and re.search(r'\.jpe?g$', p.get('drive_path') or '', re.I):
+                if p['drive_path'] not in shots[p['page_url']]:
+                    shots[p['page_url']].append(p['drive_path'])
+        seen = set()
+        for line in open(path, encoding='utf-8'):
+            r = json.loads(line)
+            d = r.get('date_first') or ''
+            if not re.fullmatch(r'\d{4}-\d\d-\d\d', d) or d != r.get('date_last') or d < '1950':
+                continue
+            paras = []
+            for p in (' '.join(p.split()) for p in (r.get('words') or '').split('\n\n')):
+                if re.match(r'(?i)(recent (news|posts)|previous post|share:|related)', p):
+                    break
+                if len(p.split()) >= 20 and re.search(r'[.!?](\s|$)', p):
+                    paras.append(p)
+            text = ' '.join(paras)
+            guru = 'Pramukh' if d < GURU_CHANGE else 'Mahant'
+            ok = False
+            for sent in re.split(r'(?<=[.!?])\s+', text):
+                m = PRESENT.search(sent)
+                who = m and (m.group(1) or m.group(2) or '')
+                if m and (who.lower() == 'swamishri' or who.lower().startswith(guru.lower())) and not ELSEWHERE.search(sent) \
+                        and not any(y != d[:4] for y in re.findall(r'\b(?:19|20)\d\d\b', sent)):
+                    ok = True
+                    break
+            title = re.sub(r'^\s*(?:News of BAPS|BAPS Kidz News|News & Events-News|News|Announcements)\s*-\s*', '', r.get('title') or '')
+            title = re.sub(r'\s*[-|–]\s*(?:BAPS[^-|–]*|Shri Swaminarayan Mandir[^-|–]*)$', '', title).strip(' -–|')
+            if not ok or not title or title.startswith('–') or (d, title[:40]) in seen:
+                continue
+            seen.add((d, title[:40]))
+            y = days[d[5:]].setdefault(d[:4], {})
+            told = ' '.join(y.get('w') or []).lower()
+            if paras and paras[0].lower()[:80] in told:   # the old website's day report already says it
+                continue
+            y.setdefault('st', []).append({'t': title, 'p': r.get('place') or '', 'w': paras[:12], 'ph': shots.get(r['page_url'], [])[:8]})
+            n += 1
+    return n
+
+
+def videos(folder, days):
+    """What BAPS's own videos of one exact day call it, when that is more than 'Guruhari Darshan' ('Parshad Diksha',
+    'Diwali Celebration'): a line for a card that says nothing of its day."""
+    path = os.path.join(folder, 'youtube-days.json')
+    if not os.path.exists(path):
+        return 0
+    mon = r'(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?'
+    n = 0
+    for d, vs in json.load(open(path, encoding='utf-8')).items():
+        if not re.fullmatch(r'\d{4}-\d\d-\d\d', d):
+            continue
+        for v in vs:
+            t = ' '.join((v.get('title') or '').split())
+            if re.search(rf'\d{{1,2}}\s*(?:-|to)\s*\d{{1,2}}\s+{mon}|{mon}\s+\d{{1,2}}\s*(?:-|to)\s*\d', t):   # a video of several days
+                continue
+            parts = [p.strip() for p in re.split(r'[,:|]', t) if p.strip()]
+            occ = next((p for p in parts if not re.search(rf'(?i)guruhari|darshan$|ashirwad|\b(?:19|20)\d\d\b|{mon}|india|usa|uk\b|^\d', p)
+                        and len(p.split()) >= 2), '')
+            occ = occ.split(' - ')[-1]
+            occ = re.sub(r'(?i)\s*(?:with|of)\s+(?:HH|His Holiness|Param Pujya)?\s*(?:Pramukh|Mahant) Swami Maharaj\b', '', occ).strip()
+            occasion = re.compile(r"(?i)celebrat|utsav|mahotsav|diksha|\bdin\b|day\b|jayanti|purnima|ekadashi|diwali|annakut|new year|patotsav|"
+                                  r"pratishtha|shilanyas|bhumi|inaugur|festival|samaiya|yagna|convention|shibir|holi|fuldol|janmashtami|navratri|dussehra|\brath")
+            if occ and len(occ) < 60 and occasion.search(occ) and not re.search(r"(?i)pramukh swami maharaj's|mahant swami maharaj's|vicharan|highlights|live|katha|kirtan|^shri", occ):
+                y = days[d[5:]].setdefault(d[:4], {})
+                if occ not in y.setdefault('yt', []):
+                    y['yt'].append(occ); n += 1
+    return n
+
+
 def old_captions(folder):
     """The old website's own caption for a baps.org photo whose baps.org caption is only its album's title."""
     path = os.path.join(folder, 'sorg-captions.json')
@@ -205,17 +303,19 @@ def main():
     n_jc = life_story(folder, days)
     n_ph = photos(folder, days)
     n_st = site_stories(folder, days)
+    n_more = more_sites(folder, days)
+    n_yt = videos(folder, days)
     os.makedirs(OUT, exist_ok=True)
     for f in glob.glob(os.path.join(OUT, '??-??.json')):
         os.remove(f)
     for mmdd, years in sorted(days.items()):
-        years = {y: v for y, v in sorted(years.items()) if any(v.get(k) for k in ('w', 'pr', 'ds', 'st', 'ph', 'o', 'pl', 'jc'))}
+        years = {y: v for y, v in sorted(years.items()) if any(v.get(k) for k in ('w', 'pr', 'ds', 'st', 'ph', 'o', 'pl', 'jc', 'yt'))}
         json.dump(years, open(os.path.join(OUT, mmdd + '.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     caps = old_captions(folder)
     json.dump(caps, open(os.path.join(OUT, 'captions.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'), sort_keys=True)
     count = lambda k: sum(len(v.get(k) or []) if k != 'w' else bool(v.get('w')) for ys in days.values() for v in ys.values())
     print(f"{len(days)} days: {count('w')} day reports, {count('pr')} prasangs, {count('ds')} Daily Satsang prasangs, "
-          f"{n_st} akshardham.com stories, {n_jc} Jivan Charitra days, {n_ph} old website photos of Bapa, {len(caps)} old captions")
+          f"{n_st} akshardham.com stories, {n_more} stories from other sites, {n_yt} video occasions, {n_jc} Jivan Charitra days, {n_ph} old website photos of Bapa, {len(caps)} old captions")
 
 
 if __name__ == '__main__':
