@@ -256,7 +256,7 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
   <label class="any" id="anym-l" hidden>or any month <input type="month" id="anym" min="1999-01" max="2100-12" aria-label="Any month"></label>
   <span class="spacer"></span>
   <button class="chip" id="drive-chip">Connect Google Drive</button>
-  <button class="btn primary" id="wa-assist" type="button" hidden title="After 2pm: the full size PNG and the 2pm words go to your Bapa’s Diary folder, and your WhatsApp script sends them to the Opens Assistant group only">Send to Opens Assistant</button>
+  <button class="btn primary" id="wa-assist" type="button" hidden title="After 2pm: the full size PNG and the 2pm words go to your Bapa’s Diary folder and straight to the Opens Assistant group only">Send to Opens Assistant</button>
   <button class="btn" id="wa-open" type="button" hidden>Send to WhatsApp…</button>
   <button class="btn primary" id="exp-open">Export…</button>
 </header>
@@ -350,6 +350,10 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
       <h3 style="margin:0;font-size:15px">GitHub (builds the special pictures)</h3>
       <p class="status" id="drv-gh"></p>
       <div class="acts" style="justify-content:flex-start"><button class="btn" id="drv-gh-btn" type="button">Connect GitHub</button></div></div>
+    <div id="was-row" style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px;display:flex;flex-direction:column;gap:8px">
+      <h3 style="margin:0;font-size:15px">WhatsApp send (Send to Opens Assistant)</h3>
+      <p class="hint" style="font-size:13.5px" id="was-state"></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><input type="text" id="was-code" placeholder="https://script.google.com/macros/s/…/exec#…" aria-label="Send link from your 2pm send script" style="flex:1 1 260px;min-width:0"><button class="btn" id="was-save" type="button">Connect</button><button class="btn" id="was-off" type="button">Disconnect</button></div></div>
     <p class="status" id="drv-status" role="status"></p>
     <div class="acts"><button class="btn" value="cancel">Close</button></div>
   </form>
@@ -3238,7 +3242,24 @@ async function sendToDrive(mode, png, jpg) {
 }
 function fillDrive() {
   const dc = driveCode();
-  $('#drv-on').hidden = !dc; $('#drv-off').hidden = !!dc; ghLine();
+  $('#drv-on').hidden = !dc; $('#drv-off').hidden = !!dc; ghLine(); wasLine();
+}
+// the 2pm send script's own web app, so Send to Opens Assistant sends the moment he presses it (Darpan, 23 Nov 2026: "I want
+// to be able to trigger it myself"). Kept on this device like the Drive code; the script itself is the Daily WhatsApp project's
+const waSendCode = () => store.get('studio-wa-send') || '';
+function wasLine() {
+  const on = !!waSendCode();
+  $('#was-state').textContent = on ? '● Connected on this device. Send to Opens Assistant sends the moment you press it.' : 'Once on each device: in your 2pm send script, run the send link part the Daily WhatsApp project gives you, and paste the line it shows here.';
+  $('#was-off').hidden = !on; $('#was-code').hidden = on; $('#was-save').hidden = on;
+}
+$('#was-save').addEventListener('click', () => { const v = $('#was-code').value.trim(); if (!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec#.+/.test(v)) { $('#drv-status').className = 'status warn'; $('#drv-status').textContent = 'That does not look like the line from your send script (it starts https://script.google.com and has a # in it).'; return } store.set('studio-wa-send', v); $('#was-code').value = ''; wasLine(); $('#drv-status').className = 'status ok'; $('#drv-status').textContent = 'WhatsApp send connected on this device.' });
+$('#was-off').addEventListener('click', () => { store.set('studio-wa-send', ''); wasLine() });
+async function askWaSend(payload) {
+  const [url, key] = waSendCode().split('#');
+  let body = ''; try { body = await (await fetch(url, { method: 'POST', body: JSON.stringify(Object.assign({ key }, payload)) })).text() } catch (e) { throw new Error('The Studio could not reach your 2pm send script. Check it is deployed as a web app open to Anyone.') }
+  let ans = null; try { ans = JSON.parse(body) } catch (e) {}
+  if (!ans) throw new Error('Your 2pm send script has no Send now part yet. Give it the note for the Daily WhatsApp project.');
+  return ans;
 }
 $('#drive-chip').addEventListener('click', () => { fillDrive(); $('#drv-status').textContent = ''; $('#drv').showModal() });
 $('#drive-off').addEventListener('click', () => { setDrive(''); fillDrive(); build(); const st = $('#drv-status'); st.className = 'status'; st.textContent = 'Disconnected from Google Drive on this device.' });
@@ -3315,23 +3336,28 @@ let WAJPG = null, WAPNG = null;
 const waMessage = () => { const o = S.day, w = o.wa[o.date], d = `_Day ${dayN(o.date)} of the Smruti Project_`; if (w && w.whole) return `${waText()}\n${d}`.trim(); return `${introChanged() ? fillIntro(introText(), o.date) : introExample(o.date)}\n${d}\n\n${waText()}`.trim() };
 const waSay = (cls, m) => { const el = $('#wad-status'); el.className = 'status ' + cls; el.textContent = m };
 // after 2pm, one press (Darpan, 23 Nov 2026): the full size PNG and the 2pm words into the Bapa's Diary folder (the same
-// 'replace' the Export uses), and his WhatsApp script sends a picture that arrives after its 2pm send to the Opens Assistant
-// group only (that part is the Daily WhatsApp project's)
+// 'replace' the Export uses), then his 2pm send script is asked to send that day's picture and words to the Opens Assistant
+// group only, right then (nothing checks or sends by itself)
 const assistTime = () => S.mode === 'day' && S.day.date === todayLondon() && hourLondon() >= 14;
 setInterval(() => { const b = $('#wa-assist'); if (b && P.day && b.hidden === assistTime()) build() }, 60000);
 $('#wa-assist').addEventListener('click', async () => {
-  const btn = $('#wa-assist'); btn.disabled = true;
+  const btn = $('#wa-assist');
+  if (!waSendCode()) { fillDrive(); const st = $('#drv-status'); st.className = 'status warn'; st.textContent = 'Connect your WhatsApp send once on this device first, then press Send to Opens Assistant again.'; $('#drv').showModal(); $('#was-row').scrollIntoView(); return }
+  btn.disabled = true;
   try {
     if (!driveCode()) throw new Error('Connect Google Drive first: press Connect Google Drive at the top.');
     say('', 'Fetching the full size photos and drawing the picture…'); await allReady(true);
     say('', 'Checking your script…'); await checkDrive();
     const png = await blobOf(drawAt(5635), 'image/png'), jpg = await blobOf(drawAt(4096), 'image/jpeg', .93);
-    say('', `Sending the picture and its words to your Bapa’s Diary folder (${((png.size + jpg.size) / 1e6).toFixed(0)} MB)…`);
+    say('', `Putting the picture and its words in your Bapa’s Diary folder (${((png.size + jpg.size) / 1e6).toFixed(0)} MB)…`);
     const ans = await askDrive(Object.assign({ mode: 'replace', date: S.day.date, png: await toBase64(png), jpg: await toBase64(jpg) }, waNow()));
     if (!ans.ok) throw new Error(ans.error);
     const words = String(waText() || '').trim();
-    if (words && 'caption' in ans && !ans.caption) say('warn', `${ans.name} is in ${ans.folder}, but the words did not save. Press Send to Opens Assistant again.`);
-    else say('ok', `Done (${ans.time}): the full size picture${words ? ' and its words are' : ' is'} in ${ans.folder}. Your WhatsApp script sends ${words ? 'them' : 'it'} to the Opens Assistant group in the next few minutes.`);
+    if (words && 'caption' in ans && !ans.caption) throw new Error(`${ans.name} is in ${ans.folder}, but the words did not save, so nothing was sent. Press Send to Opens Assistant again.`);
+    say('', 'Sending it to the Opens Assistant group…');
+    const sent = await askWaSend({ mode: 'assistant', date: S.day.date });
+    if (!sent.ok) throw new Error(`The picture is in ${ans.folder}, but WhatsApp did not send: ${sent.error || 'no reason given'}`);
+    say('ok', `Sent (${sent.time || ans.time}): the full size picture${words ? ' and its words' : ''} went to the Opens Assistant group only.`);
     remember('Sent to the Opens Assistant group', ans.name); logChange('Sent to the Opens Assistant group', ans.name);
   } catch (e) { say('warn', `Not sent. ${(e && e.message) || e}`) } finally { btn.disabled = false }
 });
