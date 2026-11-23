@@ -83,6 +83,7 @@ button { font: inherit; color: inherit }
 .chip.on::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--ok) }
 .btn { color: var(--fg); background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; cursor: pointer }
 .btn:hover { border-color: var(--gold-deep) }
+a.btn { text-decoration: none; display: inline-block }
 .btn.primary { background: var(--gold); border-color: var(--gold); color: #2a0d14; font-weight: 700; padding: 9px 20px; font-size: 15px }
 .btn.primary:disabled { opacity: .5; cursor: wait }
 .btn.small { padding: 3px 9px; font-size: 12.5px }
@@ -215,6 +216,10 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
 .libst { border-top: 1px solid var(--line); padding: 8px 0; display: grid; gap: 4px } .libst p { margin: 0 }
 .dbar { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 0 0 8px; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2) }
 .dbar .grp { display: flex; gap: 2px; padding-right: 8px; border-right: 1px solid var(--line) }
+.dbar .storybar { flex: 1 1 100%; flex-wrap: wrap; gap: 6px; align-items: center; border-right: 0; padding: 0 0 6px; border-bottom: 1px solid var(--line) }
+.dbar .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; padding: 3px 4px 3px 10px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line) }
+.dbar .chip button { border: 0; background: none; color: var(--muted, #b99e8a); font-size: 15px; cursor: pointer; padding: 0 4px }
+.dbar .storybar [aria-pressed="true"] { border-color: var(--gold); color: var(--gold) }
 .dbar select { font: inherit; font-size: 13px; background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px }
 .ib { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--fg); cursor: pointer; padding: 0 }
 .ib:hover:not(:disabled) { border-color: var(--gold-deep); color: var(--gold) } .ib:disabled { opacity: .35; cursor: default }
@@ -255,6 +260,7 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
   <label class="any" id="any-l">or any date <input type="date" id="any" min="2000-01-01" max="2100-12-31" aria-label="Any date"></label>
   <label class="any" id="anym-l" hidden>or any month <input type="month" id="anym" min="1999-01" max="2100-12" aria-label="Any month"></label>
   <span class="spacer"></span>
+  <a class="btn" href="ok/" title="The phone page to approve today’s 2pm for the family group (a special picture only goes with your yes)">Approve today’s 2pm 🙏🏽</a>
   <button class="chip" id="drive-chip">Connect Google Drive</button>
   <button class="btn" id="wa-open" type="button" hidden>Send to WhatsApp…</button>
   <button class="btn primary" id="exp-open">Export…</button>
@@ -1020,7 +1026,7 @@ function dImg(it) {
   const c = dCand(it); if (c) return photoOf(P.special, c);
   if (!it.src) return null;
   let rec = SRCIMG[it.src];
-  if (!rec) { rec = SRCIMG[it.src] = { im: null }; const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => { rec.im = im; render() }; im.onerror = () => { rec.failed = true }; im.src = it.src }
+  if (!rec) { rec = SRCIMG[it.src] = { im: null }; const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => { rec.im = im; render() }; im.onerror = () => { rec.failed = true; if (S.special.design && it.auto && !it.hand && S.special.design.items.includes(it)) dRedesign(DPLAN) }; im.src = it.src }   // a designed photo that will not load: designed again without it
   return rec.im;
 }
 const dPhotoInfo = it => { const c = dCand(it) || {}; return { src: c.src || it.src || '', date: c.date || it.date || '', place: c.place || it.place || '', caption: c.caption || it.caption || '' } };
@@ -1306,6 +1312,7 @@ function dUp(ev) {
   if (!DDRAG) return; const was = DDRAG; DDRAG = null; DGUIDES = [];
   try { view.releasePointerCapture(ev.pointerId) } catch (e) {}
   DRAGGED = true; setTimeout(() => { DRAGGED = false }, 0);
+  if (was.mode === 'move' && was.moved) was.start.forEach(([s]) => { s.hand = true }); else if (was.mode !== 'move' && was.it) was.it.hand = true;   // his own placing stays on a redesign
   if (was.mode !== 'move' || was.moved) build(); else render();
 }
 // typing straight on the picture: a box over the words, the same size as on the picture
@@ -1362,6 +1369,7 @@ function dAddStory(head, words, src) {   // a story of that day: its heading and
 // several stories in one story box (Darpan, 18 Nov 2026: "add different stories together and put them into one card"): the post's
 // heading and words become a new paragraph at the end of the chosen story box, else the main story. The box grows; nothing is cut.
 function dJoinStory(it) {
+  if (S.special.design) { dAddChapter(it); return }   // the whole picture redesigned for one more story (22 Nov 2026)
   const sel = dSel().find(x => x.t === 'text' && x.role === 'story'), main = sel || dItems().find(x => x.t === 'text' && x.role === 'story');
   if (!main) { dAddStory(it.t, it.s, it.src); return }
   const head = String(it.t || '').trim(), words = String(it.s || '').trim();
@@ -1373,11 +1381,191 @@ function dJoinStory(it) {
 function dAddPhoto(ph, at) {   // ph: {g, pick} of the pack, or {src, year, place, caption, date} of the archive
   const w = 420, h = Math.round((w - 24) * .74 + 24 + (w - 24) * .1), x = at ? at[0] - w / 2 : 1400 + (dItems().length % 5) * 40, y = at ? at[1] - h / 2 : 600 + (dItems().length % 5) * 30;
   const g = ph.g ? groupsOf(P.special).find(x2 => x2.key === ph.g) : null, c = g ? g.cands[ph.pick] : null;
-  const it = Object.assign({ id: dNewId(), t: 'photo', name: `${ph.year || (g && g.year) || ''} ${ph.place || (c && c.place) || ''}`.trim() || 'Photo', x: Math.round(x), y: Math.round(y), w, h, rot: 0, frame: true, label: true,
+  const it = Object.assign({ id: dNewId(), t: 'photo', name: `${ph.year || (g && g.year) || ''} ${ph.place || (c && c.place) || ''}`.trim() || 'Photo', x: Math.round(x), y: Math.round(y), w, h, rot: 0, frame: true, label: true, added: true,
     year: String(ph.year || (g && g.year) || ''), place: ph.place || (c && c.place) || '', zoom: 1, fx: .5, fy: .3, br: 100, ct: 100, sat: 100 }, ph.g ? { g: ph.g, pick: ph.pick } : { src: ph.src, date: ph.date, caption: ph.caption || '' });
   if (c) photoOf(P.special, c, true).then(render);
   dItems().push(it); SEL = [it.id]; build();
 }
+// ------------------------------------------------------------ the picture designs itself (Darpan, 22 Nov 2026: "when you merge
+// two things together, it's about adjusting all the pictures and the text, not just dumping all the text onto the frame").
+// The picture is a list of stories ("chapters"). Adding, joining, swapping or taking off a story redesigns the whole picture:
+// a plan for that many stories, the words shortened to fit (by Claude when the website has its key, else the first
+// sentences), each photo cropped round Bapa's face, several plans tried and the best kept, the others offered as Other ways.
+// Anything Darpan moved, sized or typed himself (it.hand) stays exactly where he put it.
+let DALT = [], DPLAN = '', DWORDS = {};   // the plans tried last time (best first), the plan on the picture, Claude's words by story
+const chKey = c => `${c.y}|${String(c.head || '').slice(0, 80)}`;
+function dChapters() {   // the stories on the picture; the first time, the picture's own headline and story
+  const d = S.special.design; if (!d) return [];
+  if (!Array.isArray(d.chapters)) {
+    const pack = P.special, items = dItems(), h = items.find(x => x.role === 'headline' && !x.hidden), st = items.find(x => x.role === 'story' && !x.hidden), from = d.from || {};
+    const y = from.year || +String(pack.story_date || S.special.date).slice(0, 4);
+    d.chapters = h || st ? [{ y, place: from.place || String(pack.story_place || '').split(',')[0], head: (h && h.text) || pack.headline || '', full: from.year ? ((st && st.text) || '') : (pack.story || (st && st.text) || ''), short: from.year ? '' : (pack.story_short || ''), src: from.link || 'pack' }] : [];
+    items.filter(x => x.role === 'heading').forEach(x => { const w = items.find(z => z.role === 'story' && z.from && z.from === x.from && z !== st); d.chapters.push({ y: +String(x.from || '').match(/\d{4}/) || y, place: '', head: x.text, full: w ? w.text : '', src: x.from || '' }) });
+  }
+  return d.chapters;
+}
+function dAddChapter(it, replaceFirst) {   // it = a story or post of the library {y, t, s, p, src}
+  const chs = dChapters(), c = { y: +it.y || 0, place: String(it.p || '').split(',')[0].trim(), head: it.t || '', full: it.s || '', src: it.src || '' };
+  if (chs.some(x => x.src && x.src === c.src && c.src !== 'pack')) { dSay('That story is on the picture already.', 'warn'); return }
+  if (replaceFirst && chs.length) { chs[0] = c; dItems().filter(x => x.auto && x.auto.startsWith('c0')).forEach(x => delete x.hand) } else chs.push(c);
+  if (chs.length > 4) { chs.splice(4); dSay('Four stories is the most one picture can hold well. Make another special for the rest.', 'warn') }
+  dRedesign();
+}
+function dTakeChapter(i) { const chs = dChapters(); chs.splice(i, 1); dItems().filter(x => x.auto && x.auto.startsWith('c' + i)).forEach(x => delete x.hand); dRedesign() }
+const dSay = (t, k = 'ok') => { const st = $('#status'); if (st) { st.className = 'status ' + k; st.textContent = t } };
+
+// the words: Claude's short version when there is one, else whole sentences up to about 55 words (never cut mid sentence)
+function firstWords(text, n = 55) {
+  let t = String(text || '').replace(/\s+/g, ' ').trim();
+  // a list of photo captions run together ("...blesses the assembly Blesses the satsang assembly Performs arti...") has no full stops:
+  // each caption starts with a capital verb after a small word, so it is cut there and the first few kept as sentences
+  if (t.split(' ').length > 30 && !/[.!?]\s/.test(t.slice(0, 300))) t = t.split(/\s(?=(?:[A-Z][a-z]+s|In|At|On|During|With)\b)(?<=[a-z)] )/).map(x => x.trim().replace(/[,;:]$/, '')).filter(Boolean).map(x => /[.!?]$/.test(x) ? x : x + '.').join(' '); if (!/[.!?]["”’)]*$/.test(t) && /[.!?]["”’)]*\s/.test(t)) t = t.replace(/[^.!?]*$/, '').trim();   // a cut off last sentence is left out
+  const ss = t.match(/[^.!?]+[.!?]+["”’)]*\s*|[^.!?]+$/g) || [];
+  let out = ''; for (const s of ss) { const next = (out + s).trim(); if (out && next.split(' ').length > n) break; out = next + ' ' }
+  return out.trim() || String(text || '').split(/\s+/).slice(0, n).join(' ');
+}
+const chText = (c, n = 1) => { const w = DWORDS[chKey(c)]; return { head: (w && w.heading) || (c.head.split(' ').length > 10 && /^[^:]{12,}:/.test(c.head) ? c.head.split(':')[0] : c.head), short: (w && w.short) || c.short || firstWords(c.full || c.head, n === 1 ? 55 : n === 2 ? 45 : 30), quote: (w && w.quote) || '' } };
+let DASKED = new Set();
+async function dAskWords(chs) {   // Claude shortens the stories it has not shortened yet (functions/darpan/api/shorten.js)
+  const want = chs.filter(c => !DWORDS[chKey(c)] && !DASKED.has(chKey(c)) && (c.full || '').split(/\s+/).length > 12);
+  if (!want.length) return false;
+  want.forEach(c => DASKED.add(chKey(c)));
+  dSay(`Claude is writing short words for ${want.length === 1 ? 'the story' : want.length + ' stories'}…`, 'busy');
+  try {
+    const r = await fetch('api/shorten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stories: want.map(c => ({ year: c.y, place: c.place, heading: c.head, words: String(c.full).slice(0, 12000) })), count: chs.length }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !Array.isArray(j.stories)) { dSay(j.why || 'The short words are the first sentences of each story (Claude is not set up on the website yet).', 'warn'); return false }
+    j.stories.forEach((w, i) => { if (want[i] && w) DWORDS[chKey(want[i])] = w });
+    return true;
+  } catch (e) { dSay('Could not reach Claude, so the short words are the first sentences of each story.', 'warn'); return false }
+}
+
+// the photos of each story: its own year's photos of this day (and place when known), the photos already on the picture
+// for that year first; a photo he added by hand goes to a story that has none
+function dChapterPhotos(chs) {
+  const pack = P.special, items = dItems(), used = new Set(), out = chs.map(() => []);
+  const keyOf = p => p.src || `${p.g}:${p.pick}`;
+  const same = (a, b) => !a || !b || String(a).toLowerCase().includes(String(b).toLowerCase()) || String(b).toLowerCase().includes(String(a).toLowerCase());
+  chs.forEach((c, i) => {
+    items.filter(x => x.t === 'photo' && !x.hidden && +x.year === +c.y && same(x.place, c.place)).forEach(x => { const p = x.g ? { g: x.g, pick: x.pick } : { src: x.src, date: x.date, caption: x.caption }; if (!used.has(keyOf(p))) { used.add(keyOf(p)); out[i].push(Object.assign(p, { year: x.year, place: x.place })) } });
+    groupsOf(pack).forEach(g => g.cands.forEach((cd, k) => { const y = +(g.year || String(pack.story_date || '').slice(0, 4)); if (y !== +c.y || !dayOk(pack, g, cd) || !same(cd.place, c.place)) return; const p = { g: g.key, pick: k, year: String(y), place: cd.place || c.place }; if (!used.has(keyOf(p)) && !(cd.src && used.has(cd.src))) { used.add(keyOf(p)); if (cd.src) used.add(cd.src); out[i].push(p) } }));
+    const dd = DAYD[S.special.date.slice(5)];
+    (dd ? dd.years : []).filter(Y => +Y.y === +c.y && same(Y.place, c.place)).forEach(Y => Y.p.forEach(p => { const src = photoAddr(p); if (!used.has(src)) { used.add(src); out[i].push({ src, year: String(Y.y), place: Y.place || c.place, caption: p[2] || '', date: `${Y.y}-${S.special.date.slice(5)}` }) } }));
+  });
+  out.forEach((l, i) => { out[i] = l.filter(p => !(p.src && SRCIMG[p.src] && SRCIMG[p.src].failed)) });   // a photo that would not load is not used
+  const spare = items.filter(x => x.t === 'photo' && !x.hidden && x.added && !x.auto && !used.has(x.src || `${x.g}:${x.pick}`));   // added by hand: to a story with no photo
+  spare.forEach(x => { const i = out.findIndex(l => !l.length); if (i >= 0) { out[i].push(x.g ? { g: x.g, pick: x.pick, year: x.year, place: x.place } : { src: x.src, date: x.date, caption: x.caption, year: x.year, place: x.place }); x.hidden = true } });
+  return out;
+}
+// a crop that keeps Bapa's face in view: the face's middle at the middle across and about a third down
+function faceFocus(p, w, h) {
+  const c = p.g ? (groupsOf(P.special).find(g => g.key === p.g) || { cands: [] }).cands[p.pick] : null;
+  if (!c || !c.face || !c.w || !c.h) return { fx: .5, fy: .3 };
+  const [x, y, fw, fh] = c.face, r = Math.max(w / c.w, h / c.h), sw = w / r, sh = h / r, cx = (x + fw / 2), cy = (y + fh / 2);
+  return { fx: c.w > sw ? clamp((cx - sw / 2) / (c.w - sw), 0, 1) : .5, fy: c.h > sh ? clamp((cy - sh * .38) / (c.h - sh), 0, 1) : .3 };
+}
+const natW = p => { const c = p.g ? (groupsOf(P.special).find(g => g.key === p.g) || { cands: [] }).cands[p.pick] : null; return (c && c.w) || 800 };
+
+// ------------------------------------------------------------ the plans: each lays the stories out in boxes, then is scored
+function dPlans(n, photos) {
+  const many = (photos[0] || []).length >= 4;
+  if (n <= 1) return (photos[0] || []).length ? ['hero', 'hero-right', ...(many ? ['hero-strip'] : [])] : ['hero'];
+  if (n === 2) return ['pair', 'rows'];
+  return ['columns', 'rows'];
+}
+function dPlanItems(plan, chs, photos, words, keepTitle) {
+  const cx = document.createElement('canvas').getContext('2d'), items = [], notes = { soft: 0, small: 0, over: 0, empty: 0 };
+  const T = (p) => Object.assign({ id: dNewId(), t: 'text', h: 0, font: 'serif', weight: 500, color: 'ivory', lh: 1.3, pg: .55, ind: 0, align: 'left', rot: 0 }, p);
+  const fit = (it, maxH, from, to) => { for (it.size = from; it.size > to && dLayout(cx, it).height > maxH; it.size -= 1); const h = dLayout(cx, it).height; if (h > maxH + 2) notes.over += 1; return h };
+  const card = (p, key, x, y, w, ph) => { const h = Math.round(ph + 24 + (w - 24) * .1), f = faceFocus(p, w - 24, ph); if (w - 24 > natW(p) * 1.6) notes.soft += 1;
+    return Object.assign({ id: dNewId(), t: 'photo', auto: key, name: `${p.year || ''} ${p.place || ''}`.trim() || 'Photo', x: Math.round(x), y: Math.round(y), w: Math.round(w), h, rot: 0, frame: true, label: true, year: String(p.year || ''), place: p.place || '', zoom: 1, fx: f.fx, fy: f.fy, br: 100, ct: 100, sat: 100 }, p.g ? { g: p.g, pick: p.pick } : { src: p.src, date: p.date, caption: p.caption || '' }) };
+  const yearMark = (c, key, x, y, w, h) => T({ auto: key, role: 'text', name: 'Year ' + c.y, text: String(c.y), x, y: y + h / 2 - 110, w, size: 190, weight: 700, color: 'gold', align: 'center', lh: 1 });
+  const block = (c, i, x, w, maxH, big) => {   // eyebrow, heading, short words and the quote, top to bottom; heights for lining up
+    const wd = words[i], eb = T({ auto: `c${i}-eb`, role: 'text', name: 'Year and place', text: [c.y, c.place].filter(Boolean).join('  ·  '), x, w, size: big ? 26 : 22, font: 'sans', weight: 700, color: 'light', upper: true, track: big ? 7 : 5 });
+    const hl = T({ auto: `c${i}-hl`, role: i ? 'heading' : 'headline', name: i ? 'Heading' : 'Headline', text: wd.head, x, w, weight: 700, color: 'gold', lh: 1.12, balance: true });
+    const st = T({ auto: `c${i}-st`, role: 'story', name: 'Story', text: wd.short, x, w, lh: 1.4 });
+    const q = wd.quote && big ? T({ auto: `c${i}-q`, role: 'text', name: 'Quote', text: `“${wd.quote.replace(/^["“]|["”]$/g, '')}”`, x: x + 30, w: w - 60, weight: 700, color: 'gold', lh: 1.25 }) : null;
+    const eH = dLayout(cx, eb).height, hH = fit(hl, big ? 210 : 170, big ? 84 : 60, big ? 54 : 40), qH = q ? fit(q, 150, 46, 36) : 0;
+    const sH = fit(st, maxH - eH - hH - (q ? qH + 50 : 0) - 70, big ? 42 : 38, big ? 30 : 27);
+    if (st.size < 30) notes.small += 1;
+    return { list: [eb, hl, st, q].filter(Boolean), parts: [[eb, eH, 24], [hl, hH, 32], [st, sH, q ? 50 : 0], ...(q ? [[q, qH, 0]] : [])], hH, tall: eH + 24 + hH + 32 + sH + (q ? 50 + qH : 0) };
+  };
+  const sameSize = bs => {   // every story's heading and words at the same size, the smallest that fitted
+    [1, 2].forEach(k => { const sz = Math.min(...bs.map(b => b.parts[k][0].size)); bs.forEach(b => { b.parts[k][0].size = sz; b.parts[k][1] = dLayout(cx, b.parts[k][0]).height }) });
+    bs.forEach(b => { b.hH = b.parts[1][1]; b.tall = b.parts.reduce((a, [, h, g]) => a + h + g, 0) });
+  };
+  const place = (b, y0, hMax) => { let y = y0; b.parts.forEach(([it, h, gap], k) => { it.y = Math.round(y); y += (k === 1 && hMax ? hMax : h) + gap }) };
+  const title = keepTitle.title || P.special.title || longDate(S.special.date).replace(/ \d{4}$/, '');
+  const sub = chs.length === 1 ? (keepTitle.subtitle || P.special.subtitle || 'A special day in BAPS history') : `${['', '', 'Two', 'Three', 'Four'][chs.length]} moments on this day in Satsang history`;
+  items.push(T({ auto: 'title', role: 'title', name: 'Title', text: title, x: DW / 2 - 900, y: 40, w: 1800, size: 66, weight: 700, color: 'gold', lh: 1.18, align: 'center', deco: true }));
+  items.push(T({ auto: 'subtitle', role: 'subtitle', name: 'Subtitle', text: sub, x: DW / 2 - 900, y: 130, w: 1800, size: 23, font: 'sans', weight: 700, color: 'light', align: 'center', upper: true, track: 7 }));
+  const TOP = 236, BOT = DH - 110;
+  if (plan.startsWith('hero')) {
+    const c = chs[0], ps = photos[0], strip = plan === 'hero-strip', right = plan === 'hero-right';
+    const PW = strip ? 960 : 1060, PHh = strip ? 700 : 800, cardH = PHh + 24 + (PW - 24) * .1, x0 = right ? DW - 110 - PW : 110, tx = right ? 130 : x0 + PW + 110, tw = DW - PW - 110 - 110 - 130;
+    if (!ps[0]) {   // no photo of that day and year: the words alone, in the middle, the year above them
+      const b = block(c, 0, DW / 2 - 900, 1800, BOT - TOP - 260, true); b.list.forEach(x => { x.align = 'center' }); items.push(yearMark(c, 'c0-y', DW / 2 - 400, TOP, 800, 260)); items.push(...b.list); place(b, TOP + 260 + Math.max(0, (BOT - TOP - 260 - b.tall) / 2));
+      notes.empty += right ? 5 : 0;   // one plan is enough without a photo
+    } else {
+    items.push(card(ps[0], 'c0-p0', x0, TOP, PW, PHh));
+    const roomH = strip ? cardH - 330 : cardH, b = block(c, 0, tx, tw, roomH, true); items.push(...b.list); place(b, TOP + Math.max(0, (roomH - b.tall) / 2));
+    if (strip) { const sm = ps.slice(1, 5), sw = Math.min(300, (tw - 30 * (sm.length - 1)) / sm.length); sm.forEach((p, k) => items.push(card(p, `c0-p${k + 1}`, tx + k * (sw + 30), TOP + cardH - (sw - 24) * .74 - 24 - (sw - 24) * .1, sw, (sw - 24) * .74))) }
+    if (!strip && ps.length > 1) notes.empty += 0;   // the other photos stay in the library
+    if (TOP + cardH < BOT - 120) notes.empty += 1;
+    }
+  } else if (plan === 'pair') {
+    const M = 80, G = 120, CW = (DW - 2 * M - G) / 2, PW = 600, PHh = 780, cardH = PHh + 24 + (PW - 24) * .1, blocks = [];
+    chs.forEach((c, i) => { const x0 = M + i * (CW + G), p = photos[i][0];
+      items.push(p ? card(p, `c${i}-p0`, x0, TOP, PW, PHh) : yearMark(c, `c${i}-y`, x0, TOP, PW, cardH));
+      const b = block(c, i, x0 + PW + 60, CW - PW - 60, cardH - 60, false); blocks.push(b); items.push(...b.list) });
+    sameSize(blocks); const tall = Math.max(...blocks.map(b => b.tall)), hMax = Math.max(...blocks.map(b => b.hH)); blocks.forEach(b => place(b, TOP + Math.max(0, (cardH - 60 - tall) / 2), hMax));
+    items.push(T({ auto: 'divider', role: 'text', name: 'Divider', text: '◆', x: DW / 2 - 40, y: TOP + cardH / 2 - 20, w: 80, size: 30, color: 'gold', align: 'center' }));
+  } else if (plan === 'rows') {
+    const n = chs.length, blocks = [], RH = (BOT - TOP - 40 * (n - 1)) / n, PW = Math.min(760, (RH - 24) / .84 * 1.25), PHh = RH - 24 - (PW - 24) * .1;
+    chs.forEach((c, i) => { const y0 = TOP + i * (RH + 40), left = i % 2 === 0, x0 = left ? 160 : DW - 160 - PW, p = photos[i][0];
+      items.push(p ? card(p, `c${i}-p0`, x0, y0, PW, PHh) : yearMark(c, `c${i}-y`, x0, y0, PW, RH));
+      const tx = left ? x0 + PW + 90 : 160, b = block(c, i, tx, DW - PW - 160 - 160 - 90, RH, false); b.y0 = y0; blocks.push(b); items.push(...b.list) });
+    sameSize(blocks); blocks.forEach(b => place(b, b.y0 + Math.max(0, (RH - b.tall) / 2)));
+  } else {   // columns: a photo on top, the words under it, across the years
+    const n = chs.length, M = 90, G = 70, CW = (DW - 2 * M - G * (n - 1)) / n, PHh = Math.min(CW * .58, n > 3 ? 380 : 430), cardH = PHh + 24 + (CW - 24) * .1, blocks = [];
+    chs.forEach((c, i) => { const x0 = M + i * (CW + G), p = photos[i][0];
+      items.push(p ? card(p, `c${i}-p0`, x0, TOP, CW, PHh) : yearMark(c, `c${i}-y`, x0, TOP, CW, cardH));
+      const b = block(c, i, x0, CW, BOT - TOP - cardH - 40, false); blocks.push(b); items.push(...b.list) });
+    sameSize(blocks); const hMax = Math.max(...blocks.map(b => b.hH)); blocks.forEach(b => place(b, TOP + cardH + 40, hMax));
+  }
+  const ft = dItems().find(x => x.role === 'footer'); items.push(ft ? Object.assign({}, ft, { auto: 'footer' }) : T({ auto: 'footer', role: 'footer', name: 'Footer', text: P.special.footer || 'Darpan’s Smruti Project', x: DW / 2 - 600, y: DH - 64, w: 1200, size: 24, color: 'light', align: 'center', deco: true }));
+  const score = 100 - notes.over * 40 - notes.small * 12 - notes.soft * 10 - notes.empty * 8 + (plan === 'hero' || plan === 'pair' || plan === 'columns' ? 3 : 0);
+  return { plan, items, score, notes };
+}
+const PLAN_WORDS = { hero: 'Big photo on the left', 'hero-right': 'Big photo on the right', 'hero-strip': 'Big photo and a strip', pair: 'Side by side', rows: 'One under the other', columns: 'In a row across the years' };
+function dRedesign(only) {
+  const d = S.special.design; if (!d) return;
+  const mmdd = S.special.date.slice(5); if (DAYD[mmdd] === undefined || DAYD[mmdd] === null && !dRedesign.waited) { dRedesign.waited = true; dayData(mmdd).then(() => dRedesign(only)); return } dRedesign.waited = false;   // the day's photos first
+  const chs = dChapters().filter(c => c.head || c.full); if (!chs.length) { dSay('Add a story from Stories and posts first.', 'warn'); return }
+  chs.sort((a, b) => (+a.y || 9999) - (+b.y || 9999)); d.chapters = chs;   // oldest first, as the day unfolded through history
+  const photos = dChapterPhotos(chs), words = chs.map(c => chText(c, chs.length)), old = dItems();
+  const keepTitle = { title: (old.find(x => x.role === 'title' && x.hand) || {}).text, subtitle: (old.find(x => x.role === 'subtitle' && x.hand) || {}).text };
+  const tries = dPlans(chs.length, photos).map(p => dPlanItems(p, chs, photos, words, keepTitle)).sort((a, b) => b.score - a.score);
+  const pick = (only && tries.find(t => t.plan === only)) || tries[0];
+  DALT = tries.map(t => t.plan); DPLAN = pick.plan;
+  // his own work stays: an item he moved, sized or typed keeps its place, and replaces the one the plan made for it
+  const hand = old.filter(x => x.hand && !x.hidden), handKeys = new Set(hand.map(x => x.auto).filter(Boolean));
+  d.items = [...pick.items.filter(x => !handKeys.has(x.auto)), ...hand.filter(x => !x.auto || pick.items.some(p => p.auto === x.auto))];
+  d.items.filter(x => x.t === 'photo' && x.g).forEach(x => { const g = groupsOf(P.special).find(gg => gg.key === x.g); if (g) photoOf(P.special, g.cands[x.pick || 0], true).then(render) });
+  d.edited = true; SEL = []; build();
+  const n = pick.notes, warn = [n.over && 'some words still need more room', n.soft && 'a photo is small, so it may look soft'].filter(Boolean);
+  dSay(`Redesigned for ${chs.length === 1 ? 'one story' : chs.length + ' stories'}: ${PLAN_WORDS[pick.plan].toLowerCase()}${warn.length ? '. ' + warn.join('; ') : ''}. Other ways are above the picture. Ctrl Z undoes.`, warn.length ? 'warn' : 'ok');
+  if (!only) dAskWords(chs).then(got => { if (got && S.special.design === d) dRedesign(DPLAN) });
+}
+// the toolbar row: the stories on the picture (× takes one off), Redesign, and the other plans
+function dStoryBar() {
+  if (!isDesign() || !S.special.design) return '';
+  const chs = S.special.design.chapters || [];
+  return `<div class="grp storybar"><button type="button" class="btn small primary" id="db-auto" title="Lay the whole picture out again for its stories: words shortened, photos recropped. What you moved yourself stays.">✨ Redesign</button>
+    ${chs.map((c, i) => `<span class="chip" title="${esc(c.head)}">${esc(c.y || '')} ${esc(String(c.head).slice(0, 26))}${String(c.head).length > 26 ? '…' : ''}${chs.length > 1 ? `<button type="button" data-chx="${i}" aria-label="Take this story off">×</button>` : ''}</span>`).join('')}
+    ${DALT.length > 1 ? `<span class="hint">Other ways:</span>${DALT.map(p => `<button type="button" class="btn small" data-plan="${p}" aria-pressed="${p === DPLAN}">${PLAN_WORDS[p]}</button>`).join('')}` : ''}</div>`;
+}
+document.addEventListener('input', e => { const id = e.target && e.target.id; if (id === 'dtype') { const it = dItem(e.target.dataset.id); if (it) it.hand = true } if (id === 'dp-text' && SEL.length === 1) { const it = dItem(SEL[0]); if (it) it.hand = true } });
 // ready made layouts: the photos and the main words placed afresh; anything can be moved after
 const LAYOUTS = [['classic', 'One big and small ones'], ['two', 'Two big side by side'], ['grid', 'A grid of 12'], ['line', 'A timeline across the years']];
 function dLayoutApply(kind) {
@@ -1517,7 +1705,7 @@ function dTools() {
   const bar = $('#dbar'); if (!bar) return;
   bar.hidden = !isDesign(); if (bar.hidden) return;
   const n = SEL.length, b = (id, ic, tip, dis) => `<button type="button" class="ib" id="${id}" title="${tip}" aria-label="${tip}" ${dis ? 'disabled' : ''}>${icon(ic)}</button>`;
-  bar.innerHTML = `<div class="grp">${b('db-undo', 'undo', 'Undo (Ctrl Z)', !DH_.past.length)}${b('db-redo', 'redo', 'Redo (Ctrl Shift Z)', !DH_.future.length)}</div>
+  bar.innerHTML = `${dStoryBar()}<div class="grp">${b('db-undo', 'undo', 'Undo (Ctrl Z)', !DH_.past.length)}${b('db-redo', 'redo', 'Redo (Ctrl Shift Z)', !DH_.future.length)}</div>
     <div class="grp">${b('db-text', 'text', 'Add a text box')}${b('db-story', 'story', 'Add a story box')}</div>
     <div class="grp">${b('db-al', 'al', 'Line up on the left', !n)}${b('db-ac', 'ac', 'Line up on the middle', !n)}${b('db-ar', 'ar', 'Line up on the right', !n)}${b('db-at', 'at', 'Line up at the top', !n)}${b('db-am', 'am', 'Line up across the middle', !n)}${b('db-ab', 'ab', 'Line up at the bottom', !n)}</div>
     <div class="grp">${b('db-dx', 'dx', 'Spread evenly across (3 or more)', n < 3)}${b('db-dy', 'dy', 'Spread evenly down (3 or more)', n < 3)}${b('db-same', 'same', 'Same size as the first chosen photo', n < 2)}</div>
@@ -1530,6 +1718,7 @@ function dTools() {
   ['l', 'c', 'r', 't', 'm', 'b'].forEach(h => on('db-a' + h, () => dAlign(h))); on('db-dx', () => dSpread('x')); on('db-dy', () => dSpread('y')); on('db-same', dSameSize);
   on('db-fwd', e => dOrder(e.shiftKey ? 99 : 1)); on('db-back', e => dOrder(e.shiftKey ? -99 : -1)); on('db-tl', e => dTurn(e.shiftKey ? -90 : -5)); on('db-tr', e => dTurn(e.shiftKey ? 90 : 5));
   on('db-copy', dCopy); on('db-lock', dLock); on('db-bin', dBin);
+  on('db-auto', () => dRedesign()); bar.querySelectorAll('[data-plan]').forEach(x => x.addEventListener('click', () => dRedesign(x.dataset.plan))); bar.querySelectorAll('[data-chx]').forEach(x => x.addEventListener('click', () => dTakeChapter(+x.dataset.chx)));
   const lay = $('#db-lay'); if (lay) lay.addEventListener('change', () => { if (lay.value) dLayoutApply(lay.value) });
 }
 
@@ -1726,10 +1915,10 @@ function dLibrary() {
     <div class="libbody">${body}</div>`;
   lib.querySelectorAll('#libtabs button').forEach(b => b.addEventListener('click', () => { LIBTAB = b.dataset.v; dLibrary() }));
   lib.querySelectorAll('[data-lib]').forEach(b => { b.addEventListener('click', () => dAddPhoto(JSON.parse(b.dataset.lib))); b.addEventListener('dragstart', e => { e.dataTransfer.setData('text/x-photo', b.dataset.lib); e.dataTransfer.effectAllowed = 'copy' }) });
-  lib.querySelectorAll('[data-libst]').forEach(b => { const it = lib._items[+b.dataset.libst]; b.addEventListener('click', () => dAddStory(it.t, it.s, it.src)) });
+  lib.querySelectorAll('[data-libst]').forEach(b => { const it = lib._items[+b.dataset.libst]; b.addEventListener('click', () => S.special.design ? dAddChapter(it) : dAddStory(it.t, it.s, it.src)) });
   lib.querySelectorAll('[data-libsp]').forEach(b => { const it = lib._items[+b.dataset.libsp]; b.addEventListener('click', async () => { await loadChoices(); MAKEMORE = false; addSpecial(date, it.e) }) });
   lib.querySelectorAll('[data-libjoin]').forEach(b => { const it = lib._items[+b.dataset.libjoin]; b.addEventListener('click', () => dJoinStory(it)) });
-  lib.querySelectorAll('[data-libmain]').forEach(b => { const it = lib._items[+b.dataset.libmain]; b.addEventListener('click', () => useMain(it)) });
+  lib.querySelectorAll('[data-libmain]').forEach(b => { const it = lib._items[+b.dataset.libmain]; b.addEventListener('click', () => S.special.design ? dAddChapter(it, true) : useMain(it)) });
 }
 
 // ------------------------------------------------------------ a pack that carries its own design (Darpan, 10 Nov 2026: the Annakut
