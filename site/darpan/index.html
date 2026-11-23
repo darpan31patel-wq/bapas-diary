@@ -2982,6 +2982,13 @@ async function saveChoices(how, where, quiet) {
     chSay('ok', 'Saved. The 2pm picture project reads your choices at bapas-diary.com/special-days.json.');
     if (how) logChange(how, where);
     remakeSoon(chDate());
+    // a newly added special builds by itself about 90 seconds later, with special 1 (Darpan, 23 Nov 2026: "in the background, the
+    // studio should automatically be making those two posts as special posters for me"); Take it off within the 90 seconds stops it
+    const d = chDate(), p = progOf(d);
+    if (how === 'Special picture chosen' && d && d >= todayLondon() && canAsk() && p && p.step === 'saved') {
+      progSet(d, 'saved', { note: 'Your new special starts building by itself in about 90 seconds, together with special 1. Press Final to start it now.' });
+      REMAKE_T = setTimeout(() => askRemake(d), 90e3);
+    }
   } catch (e) { chSay('warn', 'Kept on this device, but not saved on the website: ' + ((e && e.message) || e) + '. It is sent again the next time you choose.') }
 }
 const dayData = async mmdd => { if (DAYD[mmdd] !== undefined) return DAYD[mmdd]; DAYD[mmdd] = null; try { const r = await fetch(`/data/day/${mmdd}.json`, { cache: 'force-cache' }); if (r.ok) DAYD[mmdd] = await r.json() } catch (e) {} if (S.tab === 'choose') build(); return DAYD[mmdd] };
