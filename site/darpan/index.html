@@ -2339,6 +2339,7 @@ function paneWords() {
       <p class="hint">${Object.keys(o.txt || {}).length ? 'You changed some of these words for this day.' : 'These are the automatic words for this day. Type over any of them.'}</p></div>
     <div class="group"><h3>2pm WhatsApp message</h3>
       <div class="row"><label for="d-intro">Top line, under the picture</label><textarea id="d-intro" rows="3" style="width:100%" placeholder="Usual: a different line each day, for example “${esc(introExample(o.date))}”">${esc(introText())}</textarea></div>
+      ${(m => m ? `<p class="hint warn">Your top line has its own “Day ${esc(m[1])}” line, but the send already puts the right one under it by itself (today ${esc(longDate(o.date))} is Day ${dayN(o.date)}). Yours stays at ${esc(m[1])}, so it goes out of date and shows twice. <button class="btn small" id="d-intro-noday" type="button">Take my Day line out</button> then press Save the words for the 2pm send.</p>` : '')(/\bDay\s+(\d+)\s+of the Smruti Project/i.exec(introText()))}
       ${check('d-introday', 'Just for this day (otherwise every day from now on)', introDay())}
       <p class="hint">${introChanged() ? (introDay() ? `Your own top line for ${esc(longDate(o.date))}.` : 'Your own top line, for every day.') : 'Empty = the usual words: one of 28 lines, picked by the send, so nothing of yours is sent unless you type here.'} You can write {DAY} and {MONTH}, filled in as “${esc(ordinal(new Date(o.date + 'T12:00').getDate()))}” and “${esc(new Date(o.date + 'T12:00').toLocaleString('en-GB', { month: 'long' }))}”.</p>
       <div class="row"><label for="d-wa">Words under the top line and Day N</label>
@@ -2493,6 +2494,7 @@ function wire() {
     on('d-wawhole', 'input', e => { const w = o.wa[o.date] || (o.wa[o.date] = { text: waText(), whole: false }); w.whole = e.target.checked; build() });
     on('d-wareset', 'click', () => { delete o.wa[o.date]; o.intro = ''; keep(); build() });
     const keep = () => saveState();
+    on('d-intro-noday', 'click', () => { const v = introText().split('\n').filter(l => !/\bDay\s+\d+\s+of the Smruti Project/i.test(l)).join('\n').trim(); if (introDay()) o.wa[o.date].intro = v; else o.intro = v; keep(); build() });   // Darpan, 23 Nov 2026: "wrong day number"
     on('d-intro', 'input', e => { const v = e.target.value; if (introDay()) o.wa[o.date].intro = v; else o.intro = v; keep(); $('#wa-preview').textContent = waPreview() });
     on('d-introday', 'input', e => { if (e.target.checked) { const w = o.wa[o.date] || (o.wa[o.date] = { text: waText(), whole: false }); w.intro = introText() } else if (o.wa[o.date]) { delete o.wa[o.date].intro } keep(); build() });
     on('d-wa', 'input', () => { $('#wa-preview').textContent = waPreview() });
