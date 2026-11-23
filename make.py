@@ -1794,8 +1794,11 @@ class WideCard(Card):
             t = j / CH
             d.line((0, j, CW, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(IVORY_TOP, IVORY_BOTTOM)) + (255,))
         d.rectangle((0, 0, CW - 1, CH - 1), outline=IVORY_EDGE, width=max(1, round(SCALE)))
-        photo = crop_to(x['im'], x['face'], PW, PH, x.get('crop', 'frame'), at=.3)   # Bapa high in the frame, no dead space over his head
-        card.paste(polish(photo), (B, B))
+        if x.get('words'):   # a story card: the day's words where the photo would be
+            card.paste(story_panel(x, PW, PH), (B, B))
+        else:
+            photo = crop_to(x['im'], x['face'], PW, PH, x.get('crop', 'frame'), at=.3)   # Bapa high in the frame, no dead space over his head
+            card.paste(polish(photo), (B, B))
         d.rectangle((B - 1, B - 1, B + PW, B + PH), outline=(150, 130, 100), width=max(1, round(SCALE)))
         if x.get('fest'):   # the festival this photo was taken on, a small gold tab at its top left (Darpan, 24 Oct 2026, mockup 7)
             fest_tag(d, x['fest'], B, PW)
@@ -2746,6 +2749,79 @@ def fuller(c, line):
     key = lambda t: {re.sub(r'(?:es|s|ed|ing)$', '', w) for w in re.findall(r'[a-z]{4,}', t.lower().replace('-', ' '))} - {'with', 'from', 'that', 'this', 'bapa', 'during', 'their'}
     mine, its = key(c), key(line)
     return len(line) > len(c) + 15 and bool(mine) and len(mine & its) >= .75 * len(mine)
+
+
+def story_words(v):
+    """A year's written story of the day for its story card: (title, words). The day report's own sentences first,
+    then a Daily Satsang prasang, a prasang of the old website, or the Jivan Charitra's day."""
+    bapa = lambda t: re.sub(r'\bSwamishri\b', 'Bapa', ' '.join((t or '').split()))
+    for k in ('w', 'ds', 'pr', 'jc'):
+        for e in (v.get(k) or []):
+            if k == 'w':
+                said = [x for x in sentences(' '.join(v['w'])) if not re.search(r'\(\s*Detailed|For more', x)]
+                return '', bapa(' '.join(said))
+            title, words = bapa(e.get('t') or ''), bapa(' '.join(e.get('w') or []))
+            if title.isupper():
+                title = title.title()
+            if words or title:
+                return title, words
+    return '', ''
+
+
+def story_cards(day, photos):
+    """Darpan, 23 Nov 2026 ('yes story cards'): a year with a written story of the very day (a day report, a Daily
+    Satsang prasang, an old website prasang or the Jivan Charitra) but no photo gets a card of words on the cord, with
+    its year and town, like the website's story boxes. The photos stay as they are; only the drawn picture has them."""
+    have = {x['y'] for x in photos}
+    out = []
+    for y, v in sorted(day_info(day).items()):
+        if y in have or y >= day.year:
+            continue
+        title, words = story_words(v)
+        if not words and not title:
+            continue
+        where = next((t for t in (v.get('pl') or []) if is_town(t)), '') or next((e.get('p') for k in ('ds', 'jc') for e in (v.get(k) or []) if is_town(e.get('p'))), '')
+        print(f"  {y} story card ({where or 'no town'}): {title + ': ' if title else ''}{words[:90]}")
+        out.append({'y': y, 'd': f'{y}-{day:%m-%d}', 'p': where, 'c': '', 'cap': '', 'i': '', 'words': (title, words),
+                    'im': None, 'face': None, 'sim': 0, 'crop': 'whole'})
+    return sorted(photos + out, key=lambda x: x['y'])
+
+
+def story_panel(x, w, h):
+    """The words of a story card in the photo's place: a deep maroon panel, a gold title, the story in ivory, as large
+    as the whole story fits; only at the smallest size does it end at the last whole sentence."""
+    w, h = round(w), round(h)
+    im = Image.new('RGB', (w, h)); d = ImageDraw.Draw(im)
+    for j in range(h):
+        t = j / h
+        d.line((0, j, w, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(style.MAROON_GLOW, style.MAROON_OUT)))
+    title, words = x['words']
+    pad = w * .07
+    tw = w - 2 * pad
+    for size in (.075, .068, .062, .056, .05, .045, .041, .037, .034):
+        bf, tf = garamond(w * size, 500), garamond(w * size * 1.1, 700)
+        lh = bf.size * 1.22
+        tl = wrap(d, title, tf, tw, 3, shorten=False) if title else []
+        bl = wrap(d, words, bf, tw, 99, shorten=False) if words else []
+        th = len(tl) * tf.size * 1.2 + (bf.size * .5 if tl and bl else 0)
+        if th + len(bl) * lh <= h - 2 * pad - w * .04:
+            break
+    else:   # still too long at the smallest size: whole sentences only
+        room = int((h - 2 * pad - w * .04 - th) // lh)
+        bl = bl[:max(1, room)]
+        text = ' '.join(bl)
+        ends = [m.end() for m in re.finditer(r'[.!?][”"’]?(?=\s|$)', text)]
+        if ends and len(bl) > 1:
+            bl = wrap(d, text[:ends[-1]], bf, tw, 99, shorten=False)
+    block = len(tl) * tf.size * 1.2 + (bf.size * .5 if tl and bl else 0) + len(bl) * lh
+    y = (h - block) / 2 + w * .02
+    diamond(d, w / 2, y - w * .045, w * .014, GOLD)
+    for l in tl:
+        d.text((w / 2, y + tf.size * .9), l, font=tf, fill=GOLD, anchor='ms'); y += tf.size * 1.2
+    y += bf.size * .5 if tl and bl else 0
+    for l in bl:
+        d.text((w / 2, y + bf.size * .9), l, font=bf, fill=CAPTION_IVORY, anchor='ms'); y += lh
+    return im
 
 
 def tell_days(day, photos):
@@ -4261,7 +4337,7 @@ def main():
         print(f'  {x["y"]}  {x.get("p", "")[:28]:28}  Bapa {"%.2f" % x["sim"] if x["face"] else "not found, shown whole"}  {x["crop"]:5}  {caption(x)}')
 
     os.makedirs(a.out, exist_ok=True)
-    live = compose(photos, day, seed=mmdd, style=LIVE_STYLE, history=story)
+    live = compose(story_cards(day, photos), day, seed=mmdd, style=LIVE_STYLE, history=story)
     whatsapp = live.resize((4096, round(4096 * live.height / live.width)), Image.LANCZOS) if live.width > 4096 else live
     whatsapp.save(os.path.join(a.out, 'bapas-diary.jpg'), quality=93, optimize=True)   # WhatsApp photos go no wider than 4096; the 2pm photos use this copy
     live.save(os.path.join(a.out, 'bapas-diary.png'), optimize=True)   # the PNG is the final file (Darpan, 18 Oct 2026): crisp text
