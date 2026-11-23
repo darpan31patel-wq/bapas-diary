@@ -1710,7 +1710,7 @@ LAYOUT = {'H2': dict(M=70, min_gap=14, row_gap=40, lines=2, cap=360, top=212, bo
 FRAME_ASPECT = {'W': 1 / .75, 'W1': 1 / .74, 'W2': 1 / .9, 'W3': 1.5}   # photo width / height per style; the tall live cards work out at about .69 on a full day
 
 
-def under_card(x, card, gap, f, lh, style, rnd, n=None):
+def under_card(x, card, gap, f, lh, style, rnd, n=None, room=None):
     cf_size = f.size
     """Style F: a small ivory paper tag on a short thread under the polaroid.
     Style H: ivory caption on a soft dark plate under the polaroid."""
@@ -1740,12 +1740,15 @@ def under_card(x, card, gap, f, lh, style, rnd, n=None):
         if not lines[-1].endswith('…'):
             f = f2
             break
-    else:   # no whole sentence fits in n lines: the whole caption on one more line rather than trailing off (Darpan, 28 Oct 2026)
-        f = garamond(f.size * .82, 500)
-        for more in (1, 2, 3, 4, 5, 6):   # as many lines as the caption needs (was one more line, then a cut)
-            lines = wrap(probe, text, f, maxw, n + more, shorten=False)
+    else:   # no whole caption fits in n lines: every word on the lines of room under the cards, smaller if need be, never cut
+        room = max(n + 1, room or n + 1)
+        for shrink in (.82, .76, .7, .64, .58, .52):
+            f = garamond(f.size * shrink / (f.size / cf_size), 500)
+            lines = wrap(probe, text, f, maxw, room, shorten=False)
             if not lines[-1].endswith('…'):
                 break
+        else:
+            lines = wrap(probe, text, f, maxw, 99, shorten=False)
     lh = lh * f.size / cf_size
     # drawn four times bigger and shrunk: small text then keeps the font's true letter spacing (no 'Perform s') and smooth edges
     K = 4; fk = garamond(f.size * K, 500)
@@ -1757,6 +1760,9 @@ def under_card(x, card, gap, f, lh, style, rnd, n=None):
     for i, line in enumerate(lines):
         d.text((W4 / 2, (px(8) + (i + .5) * lh) * K), line, font=fk, fill=CAPTION_IVORY, anchor='mm')
     return im.resize((round(tw), round(th)), Image.LANCZOS), 14
+
+
+PILL_MAX = 4   # the most lines of room under the cards; a longer caption is set smaller to fit it (Darpan, 23 Nov 2026)
 
 
 def pill_width(card, gap):
@@ -1911,7 +1917,7 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
         top_space, bottom_space = px(lay['lift']), H - px(46)
     cf_a, lh_a = garamond(px(CAPTION_SIZE), 500), round(px(CAPTION_SIZE * 1.2))
     n_pill, gap0 = lay.get('pill', 0), gap
-    for _ in range(4):   # Darpan, 23 Nov 2026: the room under the cards is as tall as the longest caption needs, every word in
+    for _ in range(2):   # Darpan, 23 Nov 2026: the room under the cards is as tall as the longest caption needs, every word in
         gap = gap0
         below = (lay.get('pill', 0) * lh_a + (n_pill - lay.get('pill', 0)) * lh_a * .82 + px(22)) if lay.get('pill') and CAPTIONS != 'none' else 0   # no captions: the cards take that room
         probe = WideCard(100, lay['ratio'], lay['band'])
@@ -1923,10 +1929,11 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
         gap = min(px(60), (W - 2 * M - cols * card.CW) / max(1, cols - 1))
         if not lay.get('pill') or CAPTIONS == 'none':
             break
-        need = pill_lines(photos, card, gap, cf_a)
+        need = min(PILL_MAX, pill_lines(photos, card, gap, cf_a))   # measured once on the usual cards, so the cards never shrink much
         if need <= n_pill:
             break
         n_pill = need
+    lay = dict(lay, room=n_pill)
     pitch = card.CH + below + row_gap
     block = (nrows - 1) * pitch + card.CH + below
     if lay.get('fill') and nrows > 1:   # spare height goes between the rows rather than above and below them
@@ -1963,7 +1970,7 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
                     if cx != hx:
                         later.append(lambda cx=cx, cy=cy: peg(img, cx, cy, s, short=.72))
                 if lay.get('pill') and shown_caption(hx_card):
-                    tag, pos = under_card(hx_card, hcard, gap, cf_a, lh_a, style, rnd, n=lay.get('pill'))
+                    tag, pos = under_card(hx_card, hcard, gap, cf_a, lh_a, style, rnd, n=lay.get('pill'), room=lay.get('room'))
                     later.append(lambda tag=tag, hx=hx, by=qy + hcard.CH: img.paste(tag, (int(hx - tag.width / 2), int(by + px(6))), tag))
         x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
         slots = list(range(len(row)))
@@ -1987,7 +1994,7 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
             img.paste(hung, (int(mx - hung.width / 2), int(my - hung.height / 2)), hung)
             later.append(lambda cx=cx: peg(img, cx, sag(cx) + px(4), s, short=.72))
             if lay.get('pill') and shown_caption(x):
-                tag, pos = under_card(x, card, gap, cf_a, lh_a, style, rnd, n=lay.get('pill'))
+                tag, pos = under_card(x, card, gap, cf_a, lh_a, style, rnd, n=lay.get('pill'), room=lay.get('room'))
                 bx, by = qx + card.CH * np.sin(t), qy + card.CH * np.cos(t)
                 later.append(lambda tag=tag, bx=bx, by=by: img.paste(tag, (int(bx - tag.width / 2), int(by + px(6))), tag))
         for f in later:
@@ -2782,7 +2789,8 @@ def story_cards(day, photos):
             continue
         where = next((t for t in (v.get('pl') or []) if is_town(t)), '') or next((e.get('p') for k in ('ds', 'jc') for e in (v.get(k) or []) if is_town(e.get('p'))), '')
         print(f"  {y} story card ({where or 'no town'}): {title + ': ' if title else ''}{words[:90]}")
-        out.append({'y': y, 'd': f'{y}-{day:%m-%d}', 'p': where, 'c': '', 'cap': '', 'i': '', 'words': (title, words),
+        line = day_line(v) or day_line(v, doing=True) or title   # the gist under the card at the usual size, the whole story on it
+        out.append({'y': y, 'd': f'{y}-{day:%m-%d}', 'p': where, 'c': '', 'cap': line, 'i': '', 'words': (title, words),
                     'im': None, 'face': None, 'sim': 0, 'crop': 'whole'})
     return sorted(photos + out, key=lambda x: x['y'])
 
