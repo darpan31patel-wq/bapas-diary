@@ -773,6 +773,27 @@ const dayWords = (pack, o) => ({
   cal: T(o, 'cal', calAuto(pack, o)), lead: T(o, 'lead', pack.story ? `On this day in ${pack.story.year}` : ''),
   story: T(o, 'story', pack.story ? pack.story.line : ''), tomorrow: T(o, 'tomorrow', pack.tomorrow ? `Tomorrow: ${pack.tomorrow}` : ''),
 });
+// several lines of words under the Daily picture's collage (Darpan, 23 Nov 2026: "need to give me option to add multiple lines
+// of text underneath the collage"). Paragraphs are split by an empty line. A short first paragraph is a heading in spaced
+// capitals, a short second one a gold title, the rest ivory words wrapped across the picture; every word shows, the cards get
+// smaller to make room, and the words get a little smaller only when they would take more than a third of the picture.
+function underBlock(ctx, text, W, H) {
+  const paras = String(text || '').replace(/\r/g, '').split(/\n\s*\n/).map(p => p.trim()).filter(Boolean); if (!paras.length) return null;
+  const style = (p, i) => i === 0 && p.length <= 40 && paras.length > 1 ? 'head' : i <= 1 && p.length <= 90 && paras.length > 1 && !(i === 1 && paras[0].length > 40) ? 'title' : 'body';
+  const maxW = Math.min(W - 240, 2300);
+  const lay = k => { const out = []; let h = 0;
+    paras.forEach((p, i) => { const st = style(p, i), sz = Math.round((st === 'head' ? 24 : st === 'title' ? 34 : 27) * k), font = st === 'head' ? `600 ${sz}px ${SANS}` : st === 'title' ? `700 ${sz}px ${SERIF}` : `500 ${sz}px ${SERIF}`;
+      ctx.font = font; const lines = [];
+      p.split('\n').forEach(seg => { let line = ''; (st === 'head' ? seg.toUpperCase() : seg).split(/\s+/).forEach(w => { const t = line ? line + ' ' + w : w; if (line && (st === 'head' ? spacedW(ctx, t, 5) : ctx.measureText(t).width) > maxW) { lines.push(line); line = w } else line = t }); if (line) lines.push(line) });
+      const lh = sz * (st === 'body' ? 1.32 : 1.2); if (out.length) h += Math.round(10 * k); out.push({ st, sz, font, lines, lh, y: h }); h += lines.length * lh });
+    return { out, h } };
+  let k = 1, L = lay(k); while (L.h > H * .34 && k > .62) { k -= .02; L = lay(k) }
+  return { h: Math.ceil(L.h), draw: y0 => { ctx.save(); ctx.textBaseline = 'alphabetic';
+    L.out.forEach(b => { ctx.font = b.font; b.lines.forEach((l, i) => { const y = y0 + b.y + i * b.lh + b.sz * .9;
+      if (b.st === 'head') { ctx.fillStyle = CAP_GOLD; ctx.textAlign = 'left'; spacedText(ctx, l, W / 2 - spacedW(ctx, l, 5) / 2, y, 5) }
+      else { ctx.fillStyle = b.st === 'title' ? GOLD : CAP_IVORY; ctx.textAlign = 'center'; ctx.fillText(l, W / 2, y) } }) });
+    ctx.restore() } };
+}
 function drawDay(ctx, pack, o, hits) {
   const W = 2796, H = 1290, L = pack.layout || {}, dress = S.mode === 'special' ? L.dress : null;
   background(ctx, W, H, o);
@@ -799,7 +820,8 @@ function drawDay(ctx, pack, o, hits) {
   }
   const cols = per[0], M = lay.M; let gap = o.gap;
   const footerOn = o.showFooter || (o.showStory && (pack.story || T(o, 'story', ''))) || o.showCal;
-  const top = o.oneTitle ? 162 : 190, bottom = H - (footerOn ? 46 : 18);
+  const UB = S.mode === 'day' ? underBlock(ctx, T(o, 'under', ''), W, H) : null;   // his own lines under the collage: the cards make room
+  const top = o.oneTitle ? 162 : 190, bottom = H - (footerOn ? 46 : 18) - (UB ? UB.h + 16 : 0);
   const lh = o.capSize * 1.2, below = o.captions !== 'none' ? 2 * lh + 22 : 0;
   const B_ = .035, BB_ = (o.showYear || o.showPlace) ? .17 : .035;
   const pw_w = Math.min(440, ((W - 2 * M - gap * (cols - 1)) / cols) / (1 + 2 * B_));
@@ -850,6 +872,7 @@ function drawDay(ctx, pack, o, hits) {
     });
     later.forEach(f => f());
   });
+  if (UB) UB.draw(H - (footerOn ? 46 : 18) - UB.h - 4);
   // footer
   ctx.textAlign = 'left';
   const wd = dayWords(pack, o), hasStory = !!(wd.lead || wd.story);
@@ -2209,6 +2232,8 @@ function paneWords() {
       ${check('d-tom', 'Tomorrow’s festival in the corner', o.showTomorrow)} ${check('d-foot', 'Project name', o.showFooter)}
       ${o.showFooter ? text('d-footer', 'Name', o.footer) : ''}
       ${(() => { const wd = dayWords(pack, o); return text('d-t-cal', 'BAPS calendar line', wd.cal) + text('d-t-lead', 'Story start', wd.lead, 'On this day in 1999') + text('d-t-story', 'Story', wd.story) + text('d-t-tomorrow', 'Corner (tomorrow)', wd.tomorrow) })()}
+      <div class="row"><label for="d-t-under">Words under the picture, as many lines as you like</label><textarea id="d-t-under" rows="6" style="width:100%" placeholder="GADHADA I-3&#10;&#10;Remembering the Divine Actions and Incidents of God&#10;&#10;On the night of Māgshar sudi 6…">${esc(T(o, 'under', ''))}</textarea>
+        <p class="hint">An empty line starts a new part. A short first line becomes a heading, a short second line a gold title, the rest wraps across the picture. Every word shows: the cards get smaller to make room.</p></div>
       <div class="seg"><button class="btn small" id="d-t-reset">Back to the automatic words</button></div>
       <p class="hint">${Object.keys(o.txt || {}).length ? 'You changed some of these words for this day.' : 'These are the automatic words for this day. Type over any of them.'}</p></div>
     <div class="group"><h3>2pm WhatsApp message</h3>
@@ -2385,8 +2410,8 @@ function wire() {
     segOn('d-rows', 'rows', 1); segOn('d-hang', 'hang'); segOn('d-peg', 'peg'); segOn('d-caps', 'captions');
     bind('d-shape', 'shape', 1); bind('d-sag', 'sag', 1); bind('d-cord', 'cord', 1); bind('d-gap', 'gap', 1); bind('d-tilt', 'tilt', 1); bind('d-capsize', 'capSize', 1);
     bind('d-tauto', 'titleAuto', 0, 1); bind('d-title', 'title'); bind('d-festt', 'festTitle'); bind('d-one', 'oneTitle'); bind('d-sub', 'subtitle');
-    ['cal', 'lead', 'story', 'tomorrow'].forEach(f => on('d-t-' + f, 'input', e => { (o.txt = o.txt || {})[f] = e.target.value; render() }));
-    on('d-t-reset', 'click', () => { o.txt = {}; build() });
+    ['cal', 'lead', 'story', 'tomorrow', 'under'].forEach(f => on('d-t-' + f, 'input', e => { (o.txt = o.txt || {})[f] = e.target.value; render() }));
+    on('d-t-reset', 'click', () => { o.txt = o.txt && o.txt.under ? { under: o.txt.under } : {}; build() });   // his own lines under the picture stay
     bind('d-year', 'showYear'); bind('d-place', 'showPlace'); bind('d-fest', 'festTags'); bind('d-story', 'showStory'); bind('d-cal', 'showCal'); bind('d-tom', 'showTomorrow'); bind('d-foot', 'showFooter', 0, 1); bind('d-footer', 'footer');
     document.querySelectorAll('.w-on').forEach(b => b.addEventListener('change', () => { bag(b.dataset.k).on = b.checked; b.closest('.w').classList.toggle('off', !b.checked); render(); $('#meta').querySelectorAll('span')[S.mode === 'special' ? 1 : 0].textContent = S.mode === 'special' ? `${dayCards(P.special, o).length} of ${P.special.cards.length} cards on the picture` : `${dayCards(P.day, o).length} of ${P.day.years.length} years on the picture` }));
     const setAll = f => { groupsOf(P[S.mode]).forEach(y => { bag(y.key).on = f(y.year) }); build() };
