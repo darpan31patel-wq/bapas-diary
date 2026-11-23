@@ -657,8 +657,57 @@
     const A = person || answer(Q);
     box().innerHTML = A.html;
     box().hidden = !A.html;
+    if (A.html) claude(raw);
     return A;
   };
+
+  // ---------- Claude's answer in plain words (Darpan, 23 Nov 2026) ----------
+  // The card above is worked out here, free. Claude then reads the diary (functions/api/ask.js, its key kept hidden on
+  // Cloudflare, at most 50p a day) and writes the answer in a few warm sentences, at the top of the card. When Claude is
+  // off for the day, or anything goes wrong, nothing shows and Search works exactly as before.
+  const CL = {};
+  let clOn = true, clTimer = 0, clNow = false;
+  const clHtml = raw => {
+    const c = CL[raw];
+    if (c === 'wait') return `<div class="ask-claude wait"><div class="ask-claude-k">${t('In plain words', 'સરળ શબ્દોમાં')}</div>`
+      + `<p class="ask-claude-a"><span class="dots"><i></i><i></i><i></i></span> ${t('Reading the diary', 'ડાયરી વાંચી રહ્યા છીએ')}</p></div>`;
+    if (!c || !c.answer) return '';
+    return `<div class="ask-claude"><div class="ask-claude-k">${t('In plain words', 'સરળ શબ્દોમાં')}</div>`
+      + `<p class="ask-claude-a">${esc(c.answer).replace(/\n+/g, '<br>')}</p>`
+      + `<div class="ask-claude-by">${t('Written by Claude, from Bapa’s Diary only', 'Claude એ ફક્ત બાપાની ડાયરીમાંથી લખ્યું')}</div></div>`;
+  };
+  const clShow = raw => {
+    if (last !== raw || box().hidden) return;
+    const old = box().querySelector('.ask-claude'); if (old) old.remove();
+    const h = clHtml(raw); if (!h) return;
+    const q = box().querySelector('.ask-q');
+    if (q) q.insertAdjacentHTML('afterend', h); else box().insertAdjacentHTML('afterbegin', h);
+  };
+  function claude(raw) {
+    clearTimeout(clTimer);
+    if (!clOn || raw.length < 8) return;
+    if (CL[raw]) { clShow(raw); return; }
+    // only once the question is finished: Enter, a question under the bar, a link, or a pause in typing
+    const wait = clNow ? 0 : /[?？]\s*$/.test(raw) ? 900 : 2200;
+    clNow = false;
+    clTimer = setTimeout(() => {
+      if (last !== raw || CL[raw]) return;
+      const hints = box().innerText.replace(/\s+/g, ' ').slice(0, 1500);
+      CL[raw] = 'wait'; clShow(raw);
+      fetch('/api/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ q: raw, hints, lang: isGu() ? 'gu' : 'en' }) })
+        .then(r => r.json()).catch(() => ({ off: 'offline' }))
+        .then(j => {
+          CL[raw] = j && j.answer ? j : {};
+          if (j && /no key|full|enough/.test(j.off || '')) clOn = false;   // off for the rest of this visit
+          if (!j || !j.answer) delete CL[raw];
+          const old = box().querySelector('.ask-claude'); if (old && last === raw) old.remove();
+          if (j && j.answer) { CL[raw] = j; clShow(raw); }
+        });
+    }, wait);
+  }
+  window.askClaudeNow = () => { clNow = true; };
+  $('q') && $('q').addEventListener('keydown', e => { if (e.key === 'Enter') { clNow = true; if (last) claude(last); } });
   // for Who was with Bapa (site/search-people.js)
   window.askKit = { esc, t, gd, num, plural, range, fmt, guruOf, GURU, gurus, card };
 
@@ -673,7 +722,7 @@
       e.stopPropagation();
       ['fest', 'place', 'act', 'mandir', 'year', 'month', 'day', 'from', 'to'].forEach(id => $(id).value = '');
       linkPlace = '';
-      $('q').value = b.dataset.ask; search();
+      $('q').value = b.dataset.ask; clNow = true; search();
       $('answer').scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }
@@ -695,6 +744,17 @@
 .status .spelt { flex-basis: 100%; font-size: 15px; color: var(--gold-deep); }
 .answer-card { margin-top: 18px; background: linear-gradient(var(--ivory-top), var(--paper-hi)); border: 1px solid var(--ivory-edge); border-radius: 10px;
   padding: 22px clamp(16px, 4vw, 34px) 18px; box-shadow: 0 10px 26px -16px rgba(59, 18, 25, .45); scroll-margin-top: 90px; }
+.ask-claude { margin: 12px 0 4px; padding: 14px 18px 12px; border-left: 3px solid var(--gold-deep, #8a5a22); border-radius: 0 8px 8px 0;
+  background: linear-gradient(90deg, rgba(206, 152, 64, .13), rgba(206, 152, 64, .03)); }
+.ask-claude-k { font: 700 10.5px/1.4 var(--sans); letter-spacing: .2em; text-transform: uppercase; color: var(--gold-deep, #8a5a22); }
+.ask-claude-a { margin: 6px 0 0; font: 500 clamp(17px, 2.2vw, 19.5px)/1.55 var(--serif); color: var(--maroon, #42101c); text-wrap: pretty; }
+.ask-claude-by { margin-top: 8px; font: italic 13px/1.4 var(--serif); color: #8a6a4a; }
+.ask-claude.wait .ask-claude-a { color: #8a6a4a; font-style: italic; }
+.ask-claude .dots { display: inline-flex; gap: 4px; vertical-align: middle; margin-right: 4px; }
+.ask-claude .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--gold-deep, #8a5a22); animation: askdot 1.1s infinite ease-in-out; }
+.ask-claude .dots i:nth-child(2) { animation-delay: .15s; } .ask-claude .dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes askdot { 0%, 80%, 100% { opacity: .25; transform: scale(.8); } 40% { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .ask-claude .dots i { animation: none; opacity: .6; } }
 .ask-q { font: 700 11px/1.5 var(--sans); letter-spacing: .18em; text-transform: uppercase; color: var(--gold-deep); }
 .ask-q b { color: var(--maroon); }
 .ask-a { margin: 8px 0 0; font: 600 clamp(23px, 3.6vw, 30px)/1.25 var(--serif); color: var(--maroon); text-wrap: balance; }
