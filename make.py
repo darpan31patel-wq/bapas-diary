@@ -1782,8 +1782,11 @@ class WideCard(Card):
             t = j / CH
             d.line((0, j, CW, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(IVORY_TOP, IVORY_BOTTOM)) + (255,))
         d.rectangle((0, 0, CW - 1, CH - 1), outline=IVORY_EDGE, width=max(1, round(SCALE)))
-        photo = crop_to(x['im'], x['face'], PW, PH, x.get('crop', 'frame'), at=.3)   # Bapa high in the frame, no dead space over his head
-        card.paste(polish(photo), (B, B))
+        if x.get('words'):   # a story card: the day's words where the photo would be
+            card.paste(story_panel(x, PW, PH), (B, B))
+        else:
+            photo = crop_to(x['im'], x['face'], PW, PH, x.get('crop', 'frame'), at=.3)   # Bapa high in the frame, no dead space over his head
+            card.paste(polish(photo), (B, B))
         d.rectangle((B - 1, B - 1, B + PW, B + PH), outline=(150, 130, 100), width=max(1, round(SCALE)))
         if x.get('fest'):   # the festival this photo was taken on, a small gold tab at its top left (Darpan, 24 Oct 2026, mockup 7)
             fest_tag(d, x['fest'], B, PW)
@@ -2246,7 +2249,7 @@ def tg_day(day, items):
         away = abs((datetime.date(2000, *map(int, e['date'][5:].split('-'))) - datetime.date(2000, day.month, day.day)).days)
         away = min(away, 366 - away)
         own = lambda n: (e.get('cards') or {}).get(str(n)) or {}   # the UK diary's photos carry their own caption ('Evening sabha – London')
-        extra += [{'y': y, 'd': e['date'], 'p': own(n).get('place') or e.get('place') or '', 'c': own(n).get('card') or e['card'], 'i': u,
+        extra += [{'y': y, 'd': e['date'], 'p': own(n).get('place') or e.get('place') or '', 'c': own(n).get('card') or e.get('line') or e['card'], 'i': u,
                    'tg': True, 'post': e.get('url'), 'guru': e.get('guru', False), 'unframe': sat,
                    'boost': (TG_GAP_BOOST if gap else 0) - .2 * away - (1 if e.get('guru') else .01) * k}
                   for k, (n, u) in enumerate(urls)]   # the channel's lead photo first (for an earlier guru, well first), the very day before a nearby one
@@ -2655,7 +2658,7 @@ def _day_line(v, doing=False):
     said = sentences(' '.join(v.get('w') or []))
     travel = lambda s: bool(re.match(r"(?:\S+\s+){0,8}?Swamishri (?:then |also )?(?:arrived|departed|left|reached|returned|travelled)\b", s))
     for s in [s for s in said if not travel(s)]:   # what he did, never how he got there ('Departs for Khambhda village to perform...' is not the moment, 17 Nov 2026)
-        if not (MOMENT.search(s) or doing) or len(s) > (260 if not doing else 200) or re.search(r'[“”"]', s):
+        if not (MOMENT.search(s) or doing) or len(s) > 260 or re.search(r'[“”"]', s):
             continue
         if GUEST.search(s) and not western(s):   # meeting and honouring guests is every day (Darpan, 20 Oct 2026)
             continue
@@ -2720,6 +2723,87 @@ def day_extras(day, items):
         print(f'  + {len(extra)} photos of Bapa from the old BAPS website, {n} photos given the old website\'s own caption')
 
 
+def fuller(c, line):
+    """True when line tells the caption c's moment in more words: nearly every word of c that matters is in it."""
+    key = lambda t: {re.sub(r'(?:es|s|ed|ing)$', '', w) for w in re.findall(r'[a-z]{4,}', t.lower().replace('-', ' '))} - {'with', 'from', 'that', 'this', 'bapa', 'during', 'their'}
+    mine, its = key(c), key(line)
+    return len(line) > len(c) + 15 and bool(mine) and len(mine & its) >= .75 * len(mine)
+
+
+def story_words(v):
+    """A year's written story of the day for its story card: (title, words). The day report's own sentences first,
+    then a Daily Satsang prasang, a prasang of the old website, or the Jivan Charitra's day."""
+    bapa = lambda t: re.sub(r'\bSwamishri\b', 'Bapa', ' '.join((t or '').split()))
+    for k in ('w', 'ds', 'pr', 'jc'):
+        for e in (v.get(k) or []):
+            if k == 'w':
+                said = [x for x in sentences(' '.join(v['w'])) if not re.search(r'\(\s*Detailed|For more', x)]
+                return '', bapa(' '.join(said))
+            title, words = bapa(e.get('t') or ''), bapa(' '.join(e.get('w') or []))
+            if title.isupper():
+                title = title.title()
+            if words or title:
+                return title, words
+    return '', ''
+
+
+def story_cards(day, photos):
+    """Darpan, 23 Nov 2026 ('yes story cards'): a year with a written story of the very day (a day report, a Daily
+    Satsang prasang, an old website prasang or the Jivan Charitra) but no photo gets a card of words on the cord, with
+    its year and town, like the website's story boxes. The photos stay as they are; only the drawn picture has them."""
+    have = {x['y'] for x in photos}
+    out = []
+    for y, v in sorted(day_info(day).items()):
+        if y in have or y >= day.year:
+            continue
+        title, words = story_words(v)
+        if not words and not title:
+            continue
+        where = next((t for t in (v.get('pl') or []) if is_town(t)), '') or next((e.get('p') for k in ('ds', 'jc') for e in (v.get(k) or []) if is_town(e.get('p'))), '')
+        print(f"  {y} story card ({where or 'no town'}): {title + ': ' if title else ''}{words[:90]}")
+        line = day_line(v) or day_line(v, doing=True) or title   # the gist under the card at the usual size, the whole story on it
+        out.append({'y': y, 'd': f'{y}-{day:%m-%d}', 'p': where, 'c': '', 'cap': line, 'i': '', 'words': (title, words),
+                    'im': None, 'face': None, 'sim': 0, 'crop': 'whole'})
+    return sorted(photos + out, key=lambda x: x['y'])
+
+
+def story_panel(x, w, h):
+    """The words of a story card in the photo's place: a deep maroon panel, a gold title, the story in ivory, as large
+    as the whole story fits; only at the smallest size does it end at the last whole sentence."""
+    w, h = round(w), round(h)
+    im = Image.new('RGB', (w, h)); d = ImageDraw.Draw(im)
+    for j in range(h):
+        t = j / h
+        d.line((0, j, w, j), fill=tuple(round(a + (b - a) * t) for a, b in zip(style.MAROON_GLOW, style.MAROON_OUT)))
+    title, words = x['words']
+    pad = w * .07
+    tw = w - 2 * pad
+    for size in (.075, .068, .062, .056, .05, .045, .041, .037, .034):
+        bf, tf = garamond(w * size, 500), garamond(w * size * 1.1, 700)
+        lh = bf.size * 1.22
+        tl = wrap(d, title, tf, tw, 3, shorten=False) if title else []
+        bl = wrap(d, words, bf, tw, 99, shorten=False) if words else []
+        th = len(tl) * tf.size * 1.2 + (bf.size * .5 if tl and bl else 0)
+        if th + len(bl) * lh <= h - 2 * pad - w * .04:
+            break
+    else:   # still too long at the smallest size: whole sentences only
+        room = int((h - 2 * pad - w * .04 - th) // lh)
+        bl = bl[:max(1, room)]
+        text = ' '.join(bl)
+        ends = [m.end() for m in re.finditer(r'[.!?][”"’]?(?=\s|$)', text)]
+        if ends and len(bl) > 1:
+            bl = wrap(d, text[:ends[-1]], bf, tw, 99, shorten=False)
+    block = len(tl) * tf.size * 1.2 + (bf.size * .5 if tl and bl else 0) + len(bl) * lh
+    y = (h - block) / 2 + w * .02
+    diamond(d, w / 2, y - w * .045, w * .014, GOLD)
+    for l in tl:
+        d.text((w / 2, y + tf.size * .9), l, font=tf, fill=GOLD, anchor='ms'); y += tf.size * 1.2
+    y += bf.size * .5 if tl and bl else 0
+    for l in bl:
+        d.text((w / 2, y + bf.size * .9), l, font=bf, fill=CAPTION_IVORY, anchor='ms'); y += lh
+    return im
+
+
 def tell_days(day, photos):
     """Darpan, 16 Nov 2026 ('for each year you show, look at that date in all of the above and try to bring the day's
     story into the picture and its words'): a card of the very day whose own caption says nothing of that day ('Darshan',
@@ -2732,7 +2816,15 @@ def tell_days(day, photos):
             continue
         c = caption(x)
         if c and c != DARSHAN and (MOMENT.search(c) or SPECIAL.search(c) or not EVERYDAY.search(c) and not JUST_A_FACE.search(c)):
-            continue   # (16 Nov 2026: 'Blesses the murti-pratishtha assembly' is a moment of its own and keeps its words)
+            # (16 Nov 2026: 'Blesses the murti-pratishtha assembly' is a moment of its own and keeps its words.) Darpan,
+            # 23 Nov 2026 ('you are shortening the extra information too much'): when the day report tells the same
+            # moment in more words ('Performs murti-pratishtha rituals' -> '...of the murtis for new BAPS hari mandirs in
+            # Charvi, Jamalpor and Nimeta'), the card says the report's whole sentence
+            full = next((l for l in (day_line(v), day_line(v, doing=True)) if l and not caption_fault(l) and fuller(c, l)), '')
+            if full and same_town(place(x), v.get('pl') or []):
+                print(f"  {x['y']} card says the day's story in full: '{full}' (its own caption: '{c}')")
+                x['cap'], x['told'] = full, True
+            continue
         line = next((l for l in (day_line(v), day_line(v, doing=True), *(v.get('yt') or [])) if l and not caption_fault(l)), '')
         if not line or not same_town(place(x), v.get('pl') or []):
             continue
@@ -3401,6 +3493,15 @@ def every_festival(day, cache):
     print(f'  every {name}:', ', '.join(f'{x["y"]} ({x["fday"]})' for x in photos))
     return img, (name, photos[0]['y'], photos[-1]['y'])
 
+def whole_line(e):
+    """A story's line for 'Also on this day' in its fullest saved sentence (Darpan, 23 Nov 2026: 'you are shortening
+    the extra information too much'): 'Shastriji Maharaj writes a historic letter to the devotees of East Africa' becomes
+    'Shastriji Maharaj wrote a historic letter to the devotees of East Africa explaining Gunatitanand Swami as Aksharbrahma'."""
+    line = (e.get('line') or '').strip().rstrip('.')
+    w = re.sub(r'^On this day in \d{4},?\s*', '', (e.get('whatsapp') or '').strip()).rstrip('.')
+    return w if len(w) > len(line) + 10 and '\n' not in w else line
+
+
 def tg_caption(ev, evs=None):
     """Idea 4: the story for the 2pm WhatsApp message, added under Darpan's own caption by his script."""
     text = ev.get('whatsapp') or f'On this day in {ev["date"][:4]}, {ev["line"]}.'
@@ -3412,7 +3513,7 @@ def tg_caption(ev, evs=None):
     for e in sorted(evs or [], key=lambda e: (e['date'], not e.get('video'))):   # Darpan, 19 Oct 2026: as much history as possible,
         if town(e) not in seen:                                                  # so every other story of the day, once each
             seen.add(town(e))
-            more.append(f'{e["date"][:4]} {e["line"]}' + (f' \U0001F3A5 {e["video"]}' if e.get('video') else ''))
+            more.append(f'{e["date"][:4]} {whole_line(e)}' + (f' \U0001F3A5 {e["video"]}' if e.get('video') else ''))
     if more:
         text += '\n\n\U0001F4DC Also on this day\n' + '\n'.join(more)
     return text + '\n'
@@ -3512,7 +3613,7 @@ def story_block(dr, paras, tw, room, sizes=(36, 34, 32, 30, 28, 26)):
 
 def balanced(d, text, f, maxw, lines):
     """The words in as few lines as wrap() needs, each line as near the same length as the words allow."""
-    out = wrap(d, text, f, maxw, lines)
+    out = wrap(d, text, f, maxw, lines, shorten=False)
     words = text.split()
     if len(out) < 2 or len(out) > lines or ' '.join(out) != text.strip():
         return out
@@ -4067,8 +4168,11 @@ def compose_drawn(ev, day, ims, plain, lab, most, lead=None, src=None):
     # biggest while the whole story still fits
     for hw, smax, sizes in ((1180, 330, (36, 34, 32, 30)), (1000, 270, (32, 30, 28)), (860, 230, (28, 27, 26, 25, 24)), (760, 200, (24, 23, 22)), (660, 170, (22, 21, 20, 19))):   # the last step for a long News story (16 Nov 2026: the Canada visit lost its end)
         x0 = px(hw + 180); tw = W - x0 - px(90)
-        hf = garamond(px(60 if hw > 900 else 52), 700)
-        heads = balanced(dr, head, hf, tw, 3)
+        for hs in ((60, 3), (54, 3), (48, 3), (44, 4), (40, 5)) if hw > 900 else ((52, 3), (48, 3), (44, 4), (40, 5)):   # Darpan, 23 Nov 2026: the whole title, smaller rather than cut
+            hf = garamond(px(hs[0]), 700)
+            heads = balanced(dr, head, hf, tw, hs[1])
+            if not heads[-1].endswith('…'):
+                break
         y0 = px(300 if hw == 1180 else 270) + hf.size * 1.2 * len(heads) + px(34)   # where the story's first line starts (its top)
         # every number of rows, each with the biggest cards that still leave room for the whole story; the biggest
         # cards win (fewer rows when equal). Cards smaller than a third of the first size: the next step instead
@@ -4213,7 +4317,7 @@ def main():
         print(f'  {x["y"]}  {x.get("p", "")[:28]:28}  Bapa {"%.2f" % x["sim"] if x["face"] else "not found, shown whole"}  {x["crop"]:5}  {caption(x)}')
 
     os.makedirs(a.out, exist_ok=True)
-    live = compose(photos, day, seed=mmdd, style=LIVE_STYLE, history=story)
+    live = compose(story_cards(day, photos), day, seed=mmdd, style=LIVE_STYLE, history=story)
     whatsapp = live.resize((4096, round(4096 * live.height / live.width)), Image.LANCZOS) if live.width > 4096 else live
     whatsapp.save(os.path.join(a.out, 'bapas-diary.jpg'), quality=93, optimize=True)   # WhatsApp photos go no wider than 4096; the 2pm photos use this copy
     live.save(os.path.join(a.out, 'bapas-diary.png'), optimize=True)   # the PNG is the final file (Darpan, 18 Oct 2026): crisp text
