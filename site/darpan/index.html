@@ -262,6 +262,7 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
   <span class="spacer"></span>
   <a class="btn" href="ok/" title="The phone page to approve today’s 2pm for the family group (a special picture only goes with your yes)">Approve today’s 2pm 🙏🏽</a>
   <button class="chip" id="drive-chip">Connect Google Drive</button>
+  <button class="btn primary" id="wa-assist" type="button" hidden title="After 2pm: the full size PNG and the 2pm words go to your Bapa’s Diary folder and straight to the Darpan’s Assistant group only">Send to Darpan’s Assistant</button>
   <button class="btn" id="wa-open" type="button" hidden>Send to WhatsApp…</button>
   <button class="btn primary" id="exp-open">Export…</button>
 </header>
@@ -337,7 +338,7 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
       <a class="btn small" href="https://web.whatsapp.com/" target="_blank" rel="noopener">WhatsApp on the web</a>
     </div>
     <p class="hint" id="wa-how">Copy the picture, open the group in WhatsApp and paste (Cmd V). WhatsApp then lets you add the words: paste them in the caption box.</p>
-    <p class="status" id="wa-status" role="status"></p>
+    <p class="status" id="wad-status" role="status"></p>
     <div class="acts"><button class="btn" value="cancel">Close</button></div>
   </form>
 </dialog>
@@ -355,6 +356,10 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
       <h3 style="margin:0;font-size:15px">GitHub (builds the special pictures)</h3>
       <p class="status" id="drv-gh"></p>
       <div class="acts" style="justify-content:flex-start"><button class="btn" id="drv-gh-btn" type="button">Connect GitHub</button></div></div>
+    <div id="was-row" style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px;display:flex;flex-direction:column;gap:8px">
+      <h3 style="margin:0;font-size:15px">WhatsApp send (Send to Darpan’s Assistant)</h3>
+      <p class="hint" style="font-size:13.5px" id="was-state"></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><input type="text" id="was-code" placeholder="https://script.google.com/macros/s/…/exec#…" aria-label="Send link from your 2pm send script" style="flex:1 1 260px;min-width:0"><button class="btn" id="was-save" type="button">Connect</button><button class="btn" id="was-off" type="button">Disconnect</button></div></div>
     <p class="status" id="drv-status" role="status"></p>
     <div class="acts"><button class="btn" value="cancel">Close</button></div>
   </form>
@@ -384,7 +389,9 @@ const $ = s => document.querySelector(s);
 const MAROON = '#601420', PLACE = '#582222', IVORY_TOP = '#f8f2e4', IVORY_BOT = '#eadfc8', IVORY_EDGE = '#c4b292';
 const CAP_IVORY = '#faf1de', CAP_GOLD = '#f0d6a0', GOLD = '#ffcf6b';
 const SERIF = '"EB Garamond", Georgia, serif', SANS = '"Arimo", Arial, sans-serif';
-const store = { get(k) { try { return JSON.parse(localStorage.getItem(k)) } catch (e) { return null } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true } catch (e) { return false } } };
+const store = { get(k) { try { return JSON.parse(localStorage.getItem(k)) } catch (e) { return null } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); if (SYNCK.includes(k)) syncTouch(); return true } catch (e) { return false } } };
+// the Studio kept the same on every computer (Darpan, 23 Nov 2026: "update changes on all machine, always keep the most up to date")
+var SYNCK = ['studio-settings-v1', 'studio-dates-v1', 'studio-zoom'], SYNC = { t: 0, on: false, applying: false, busy: false };
 
 // ------------------------------------------------------------ settings
 const LOOKS = {   // background tones, all within the approved maroon and gold
@@ -420,7 +427,7 @@ const stateOf = o => o.years || o.days || o.cards;
 // the photo packs: beside this page when it carries them (claude.ai), otherwise the studio branch on GitHub (tools/studio_packs.py)
 // every date (and month) keeps its own changes, so going to another day and back loses nothing (Darpan, 4 Nov 2026:
 // "remember when I make a change ... before I press save"). Kept on this device in studio-dates-v1.
-const PER = { day: ['years', 'titleAuto', 'title', 'txt'], month: ['days', 'titleAuto', 'title'], special: ['cards', 'titleAuto', 'title', 'txt', 'added', 'extra', 'tl', 'subtitle', 'design'] };   // extra, tl, subtitle kept per day too (17 Nov 2026)
+const PER = { day: ['years', 'titleAuto', 'title', 'txt', 'us'], month: ['days', 'titleAuto', 'title'], special: ['cards', 'titleAuto', 'title', 'txt', 'added', 'extra', 'tl', 'subtitle', 'design'] };   // extra, tl, subtitle kept per day too (17 Nov 2026)
 const dkey = kind => kind + ':' + keyOf(kind);
 function stash(kind) {
   const all = store.get('studio-dates-v1') || {}, o = S[kind];
@@ -779,6 +786,45 @@ const dayWords = (pack, o) => ({
   cal: T(o, 'cal', calAuto(pack, o)), lead: T(o, 'lead', pack.story ? `On this day in ${pack.story.year}` : ''),
   story: T(o, 'story', pack.story ? pack.story.line : ''), tomorrow: T(o, 'tomorrow', pack.tomorrow ? `Tomorrow: ${pack.tomorrow}` : ''),
 });
+// several lines of words under the Daily picture's collage (Darpan, 23 Nov 2026: "need to give me option to add multiple lines
+// of text underneath the collage"; then "full capability of adjusting the text in whatever format we need"). Parts are split
+// by an empty line; Enter alone breaks a line. Each part is a heading, a title or words (chosen, or worked out: a short first
+// part a heading, a short second one a title), and each kind has its own size, colour, font, bold, italic, capitals, letter
+// spacing, line spacing and alignment. The block sits under the cards (they get smaller to make room) or anywhere he drags it.
+const US_COL = { gold: GOLD, light: CAP_GOLD, ivory: CAP_IVORY, white: '#ffffff', saffron: '#f5a14a', rose: '#f3b7a8' };
+const US_DEF = () => ({ place: 'under', x: 0, y: 0, w: 2300, gap: 10, roles: [],
+  head: { size: 24, color: 'light', font: 'sans', bold: true, italic: false, upper: true, track: 5, align: 'center', lh: 1.2 },
+  title: { size: 34, color: 'gold', font: 'serif', bold: true, italic: false, upper: false, track: 0, align: 'center', lh: 1.2 },
+  body: { size: 27, color: 'ivory', font: 'serif', bold: false, italic: false, upper: false, track: 0, align: 'center', lh: 1.32 } });
+const usOf = o => { const d = US_DEF(), u = o.us || {}; return Object.assign(d, u, { head: Object.assign(d.head, u.head), title: Object.assign(d.title, u.title), body: Object.assign(d.body, u.body), roles: u.roles || [] }) };
+const usParas = text => String(text || '').replace(/\r/g, '').split(/\n\s*\n/).map(p => p.replace(/^\n+|\n+$/g, '')).filter(p => p.trim());
+const usRole = (paras, i, u) => u.roles[i] || (i === 0 && paras[i].length <= 40 && paras.length > 1 ? 'head' : i <= 1 && paras[i].length <= 90 && paras.length > 1 && !(i === 1 && paras[0].length > 40) ? 'title' : 'body');
+let UBHIT = null;
+function underBlock(ctx, text, W, H, o) {
+  const paras = usParas(text); if (!paras.length) return null;
+  const u = usOf(o || {}), maxW = clamp(+u.w || 2300, 400, W - 80);
+  const lay = k => { const out = []; let h = 0;
+    paras.forEach((p, i) => { const role = usRole(paras, i, u), st = u[role], sz = Math.round(st.size * k);
+      const font = `${st.italic ? 'italic ' : ''}${st.bold ? 700 : 500} ${sz}px ${st.font === 'sans' ? SANS : SERIF}`, tr = (+st.track || 0) * k;
+      ctx.font = font; const wOf = t => tr ? spacedW(ctx, t, tr) : ctx.measureText(t).width, lines = [];
+      p.split('\n').forEach(seg => { seg = st.upper ? seg.toUpperCase() : seg; let line = ''; const ws = seg.split(/\s+/).filter(Boolean);
+        if (!ws.length) { lines.push({ t: '', end: true }); return }
+        ws.forEach(w => { const t = line ? line + ' ' + w : w; if (line && wOf(t) > maxW) { lines.push({ t: line }); line = w } else line = t }); lines.push({ t: line, end: true }) });
+      const lh = sz * (+st.lh || 1.2); if (out.length) h += Math.round(u.gap * k); out.push({ st, sz, font, tr, lines, lh, y: h, wOf }); h += lines.length * lh });
+    return { out, h } };
+  let k = 1, L = lay(k); while (u.place === 'under' && L.h > H * .45 && k > .5) { k -= .02; L = lay(k) }
+  const h = Math.ceil(L.h);
+  return { h, k, u, draw: y0 => {
+    const left = W / 2 - maxW / 2 + (+u.x || 0), top = y0 + (+u.y || 0);
+    if (ctx.canvas === view) UBHIT = { x: left, y: top, w: maxW, h };
+    ctx.save(); ctx.textBaseline = 'alphabetic';
+    L.out.forEach(b => { ctx.font = b.font; ctx.fillStyle = US_COL[b.st.color] || (/^#[0-9a-f]{6}$/i.test(b.st.color) ? b.st.color : CAP_IVORY);
+      b.lines.forEach((ln, i) => { const y = top + b.y + i * b.lh + b.sz * .9, l = ln.t; if (!l) return; const w = b.wOf(l), a = b.st.align;
+        if (a === 'justify' && !ln.end && !b.tr) { const ws = l.split(' '); if (ws.length > 1) { ctx.textAlign = 'left'; const sp = (maxW - ws.reduce((s2, x) => s2 + ctx.measureText(x).width, 0)) / (ws.length - 1); let x = left; ws.forEach(x2 => { ctx.fillText(x2, x, y); x += ctx.measureText(x2).width + sp }); return } }
+        const x = a === 'left' || a === 'justify' ? left : a === 'right' ? left + maxW - w : left + (maxW - w) / 2;
+        if (b.tr) { ctx.textAlign = 'left'; spacedText(ctx, l, x, y, b.tr) } else { ctx.textAlign = 'left'; ctx.fillText(l, x, y) } }) });
+    ctx.restore() } };
+}
 function drawDay(ctx, pack, o, hits) {
   const W = 2796, H = 1290, L = pack.layout || {}, dress = S.mode === 'special' ? L.dress : null;
   background(ctx, W, H, o);
@@ -805,7 +851,8 @@ function drawDay(ctx, pack, o, hits) {
   }
   const cols = per[0], M = lay.M; let gap = o.gap;
   const footerOn = o.showFooter || (o.showStory && (pack.story || T(o, 'story', ''))) || o.showCal;
-  const top = o.oneTitle ? 162 : 190, bottom = H - (footerOn ? 46 : 18);
+  if (ctx.canvas === view) UBHIT = null; const UB = S.mode === 'day' ? underBlock(ctx, T(o, 'under', ''), W, H, o) : null;   // his own lines under the collage: the cards make room
+  const top = o.oneTitle ? 162 : 190, bottom = H - (footerOn ? 46 : 18) - (UB && UB.u.place === 'under' ? UB.h + 16 : 0);
   const lh = o.capSize * 1.2, below = o.captions !== 'none' ? 2 * lh + 22 : 0;
   const B_ = .035, BB_ = (o.showYear || o.showPlace) ? .17 : .035;
   const pw_w = Math.min(440, ((W - 2 * M - gap * (cols - 1)) / cols) / (1 + 2 * B_));
@@ -856,6 +903,7 @@ function drawDay(ctx, pack, o, hits) {
     });
     later.forEach(f => f());
   });
+  if (UB) UB.draw(H - (footerOn ? 46 : 18) - UB.h - 4);
   // footer
   ctx.textAlign = 'left';
   const wd = dayWords(pack, o), hasStory = !!(wd.lead || wd.story);
@@ -2065,6 +2113,26 @@ setTimeout(() => {   // the designer's own hands on the picture (its functions a
 view.addEventListener('dragover', e => { if (isDesign() && e.dataTransfer.types.includes('text/x-photo')) e.preventDefault() });
 view.addEventListener('drop', e => { if (!isDesign()) return; const d = e.dataTransfer.getData('text/x-photo'); if (!d) return; e.preventDefault(); dAddPhoto(JSON.parse(d), dPt(e)) });
 view.addEventListener('pointerdown', dDown);
+// drag the words under the Daily picture anywhere (Darpan, 23 Nov 2026)
+let USDRAG = null;
+view.addEventListener('pointerdown', e => {
+  if (S.mode !== 'day' || isDesign() || !UBHIT || e.button !== 0) return;
+  const r = view.getBoundingClientRect(), x = (e.clientX - r.left) * view.width / r.width, y = (e.clientY - r.top) * view.height / r.height;
+  if (x < UBHIT.x - 10 || x > UBHIT.x + UBHIT.w + 10 || y < UBHIT.y - 10 || y > UBHIT.y + UBHIT.h + 10) return;
+  const o = cur(), u = usOf(o); e.stopPropagation(); view.setPointerCapture(e.pointerId);
+  USDRAG = { x, y, ux: +u.x || 0, uy: +u.y || 0, place: u.place, moved: false, k: view.width / r.width };
+});
+view.addEventListener('pointermove', e => {
+  if (S.mode === 'day' && !isDesign() && !USDRAG && UBHIT) { const r = view.getBoundingClientRect(), x = (e.clientX - r.left) * view.width / r.width, y = (e.clientY - r.top) * view.height / r.height; view.style.cursor = x >= UBHIT.x && x <= UBHIT.x + UBHIT.w && y >= UBHIT.y && y <= UBHIT.y + UBHIT.h ? 'move' : '' }
+  if (!USDRAG) return;
+  const r = view.getBoundingClientRect(), x = (e.clientX - r.left) * view.width / r.width, y = (e.clientY - r.top) * view.height / r.height;
+  if (!USDRAG.moved && Math.hypot(x - USDRAG.x, y - USDRAG.y) < 6) return;
+  const o = cur(), U = o.us = o.us || {};
+  if (!USDRAG.moved) { USDRAG.moved = true; if (USDRAG.place === 'under') { const top = UBHIT.y; U.place = 'free'; render(); USDRAG.uy += top - UBHIT.y; U.y = USDRAG.uy } }
+  U.x = Math.round(USDRAG.ux + x - USDRAG.x); U.y = Math.round(USDRAG.uy + y - USDRAG.y); render();
+});
+const usEnd = () => { if (!USDRAG) return; const m = USDRAG.moved; USDRAG = null; DRAGGED = true; if (m) build(); else { S.tab = 'words'; FE = false; build(); setTimeout(() => { const t = document.getElementById('d-t-under'); if (t) t.scrollIntoView({ block: 'center', behavior: 'smooth' }) }, 50) } };
+view.addEventListener('pointerup', usEnd); view.addEventListener('pointercancel', usEnd);
 view.addEventListener('pointermove', dMove);
 view.addEventListener('pointerup', dUp); view.addEventListener('pointercancel', dUp);
 view.addEventListener('pointerleave', () => { if (DHOVER && !DDRAG) { DHOVER = null; render() } });
@@ -2235,7 +2303,71 @@ const TABS = { day: [['card', 'Photo'], ['words', 'Years and words'], ['layout',
 function seg(id, value, opts) { return `<div class="seg" role="group" id="${id}">${opts.map(([v, l]) => `<button data-v="${v}" aria-pressed="${String(v) === String(value)}">${l}</button>`).join('')}</div>` }
 function range(id, label, v, min, max, step, fmt = x => x) { return `<div class="row"><label for="${id}">${label}<output id="${id}-o">${fmt(v)}</output></label><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${v}"></div>` }
 function check(id, label, v) { return `<label class="check"><input type="checkbox" id="${id}" ${v ? 'checked' : ''}> ${label}</label>` }
-function text(id, label, v, ph = '') { return `<div class="row"><label for="${id}">${label}</label><input type="text" id="${id}" value="${esc(v)}" placeholder="${esc(ph)}"></div>` }
+// every words box gets a small ↺ that brings back what was there first (Darpan, 23 Nov 2026: "in case things get deleted by accident")
+const RS_IDS = new Set(['d-title', 'd-sub', 'd-footer', 'd-t-cal', 'd-t-lead', 'd-t-story', 'd-t-tomorrow']);
+const rsBtn = id => `<button type="button" class="btn small rs" data-rs="${id}" title="Back to what was there first" aria-label="Back to what was there first" style="flex:0 0 auto;padding:4px 9px">↺</button>`;
+// what each words box held first, shown under it when it has been changed (Darpan, 23 Nov 2026: "how do i know what the original text was for today?")
+function origOf(id) {
+  const o = cur(), pack = P[S.mode] || {}, D = { day: DAY_DEFAULT, month: MONTH_DEFAULT, special: SPECIAL_DEFAULT }[S.mode];
+  if (id === 'd-title') return pack.title || ''; if (id === 'd-sub') return S.mode === 'special' ? (pack.subtitle || '') : D.subtitle; if (id === 'd-footer') return D.footer;
+  const f = id.slice(4); if (!id.startsWith('d-t-')) return null;
+  try { return S.mode === 'day' ? (dayWords(pack, Object.assign({}, o, { txt: {} }))[f] ?? '') : f === 'cal' ? calAuto(pack, o) : null } catch (e) { return null }
+}
+function text(id, label, v, ph = '') {
+  if (!RS_IDS.has(id)) return `<div class="row"><label for="${id}">${label}</label><input type="text" id="${id}" value="${esc(v)}" placeholder="${esc(ph)}"></div>`;
+  const og = origOf(id), changed = og != null && String(v ?? '') !== String(og);
+  return `<div class="row"><label for="${id}">${label}</label><div style="display:grid;gap:3px;min-width:0"><div style="display:flex;gap:6px;align-items:center;min-width:0"><input type="text" id="${id}" value="${esc(v)}" placeholder="${esc(ph)}" style="flex:1 1 auto;min-width:0">${rsBtn(id)}</div>${changed ? `<span class="hint" style="font-size:12.5px">Original: ${og ? `<i>${esc(og)}</i>` : '(empty)'}</span>` : ''}</div></div>`;
+}
+function wireResets(o) {
+  const D = { day: DAY_DEFAULT, month: MONTH_DEFAULT, special: SPECIAL_DEFAULT }[S.mode], pack = P[S.mode] || {};
+  const act = { 'd-title': () => { o.title = pack.title || '' }, 'd-sub': () => { o.subtitle = S.mode === 'special' ? '' : D.subtitle }, 'd-footer': () => { o.footer = D.footer },
+    'd-t-under': () => { if (o.txt && o.txt.underBak != null) { o.txt.under = o.txt.underBak; delete o.txt.underBak } } };
+  ['cal', 'lead', 'story', 'tomorrow'].forEach(f => { act['d-t-' + f] = () => { if (o.txt) delete o.txt[f] } });
+  document.querySelectorAll('[data-rs]').forEach(b => b.addEventListener('click', () => { const f = act[b.dataset.rs]; if (f) { f(); build() } }));
+}
+
+// the controls for the words under the Daily picture (Darpan, 23 Nov 2026: "full capability of adjusting the text")
+let USK = 'body';
+function usPanel(o) {
+  const u = usOf(o), txt = T(o, 'under', ''), paras = usParas(txt), st = u[USK];
+  const KIND = [['head', 'Heading'], ['title', 'Title'], ['body', 'Words']];
+  const cols = Object.keys(US_COL).map(c => `<button type="button" class="sw" data-uscol="${c}" title="${c}" aria-label="${c}" aria-pressed="${st.color === c}" style="background:${US_COL[c]};width:26px;height:26px;border-radius:50%;border:2px solid ${st.color === c ? 'var(--fg)' : 'var(--line)'}"></button>`).join('');
+  const bak = o.txt && o.txt.underBak != null && o.txt.underBak !== txt;
+  return `<div class="row"><label for="d-t-under">Words under the picture, as many lines as you like${bak ? ' ' + rsBtn('d-t-under') : ''}</label><textarea id="d-t-under" rows="7" style="width:100%" placeholder="GADHADA I-3&#10;&#10;Remembering the Divine Actions and Incidents of God&#10;&#10;On the night of Māgshar sudi 6…">${esc(txt)}</textarea></div>
+    <p class="hint">Enter starts a new line. An empty line starts a new part. Drag the words on the picture to move them.</p>
+    ${paras.length ? `<div class="row"><label>Each part is</label><div style="display:grid;gap:4px">${paras.map((pp, i) => `<div style="display:flex;gap:6px;align-items:center;min-width:0"><select data-usrole="${i}" aria-label="Part ${i + 1}">${KIND.map(([v, l]) => `<option value="${v}" ${usRole(paras, i, u) === v ? 'selected' : ''}>${l}</option>`).join('')}</select><span class="hint" style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${esc(pp.slice(0, 60))}</span></div>`).join('')}</div></div>` : ''}
+    <div class="row"><label>Change the look of</label>${seg('us-kind', USK, KIND)}</div>
+    ${range('us-size', 'Size', st.size, 12, 90, 1)}
+    <div class="row"><label>Colour</label><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${cols}<input type="color" id="us-hex" value="${/^#/.test(st.color) ? st.color : US_COL[st.color] || '#faf1de'}" aria-label="Any colour" title="Any colour"></div></div>
+    <div class="row"><label>Font</label>${seg('us-font', st.font, [['serif', 'Serif'], ['sans', 'Sans']])}</div>
+    <div class="row"><label>Style</label><div class="seg" role="group"><button type="button" id="us-b" aria-pressed="${!!st.bold}"><b>B</b></button><button type="button" id="us-i" aria-pressed="${!!st.italic}"><i>I</i></button><button type="button" id="us-u" aria-pressed="${!!st.upper}">CAPS</button></div></div>
+    <div class="row"><label>Line up</label>${seg('us-align', st.align, [['left', 'Left'], ['center', 'Centre'], ['right', 'Right'], ['justify', 'Justify']])}</div>
+    ${range('us-lh', 'Line spacing', st.lh, .9, 2.2, .02)}
+    ${range('us-track', 'Letter spacing', st.track, 0, 20, .5)}
+    <div class="row"><label>Where</label>${seg('us-place', u.place, [['under', 'Under the cards (they make room)'], ['free', 'Anywhere (drag it)']])}</div>
+    ${range('us-w', 'Width of the words', u.w, 400, 2700, 10)}
+    ${range('us-gap', 'Space between parts', u.gap, 0, 80, 1)}
+    ${range('us-x', 'Left and right', u.x, -1300, 1300, 2)}
+    ${range('us-y', 'Up and down', u.y, -1200, 400, 2)}
+    <div class="seg"><button class="btn small" id="us-reset" type="button">Back to the usual look</button></div>`;
+}
+function wireUs(o) {
+  const on = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn) };
+  const U = () => (o.us = o.us || {}), P_ = () => (U()[USK] = U()[USK] || {});
+  const live = (id, f, key) => on(id, 'input', e => { f()[key] = +e.target.value; const out = document.getElementById(id + '-o'); if (out) out.textContent = e.target.value; render() });
+  document.querySelectorAll('#us-kind button').forEach(b => b.addEventListener('click', () => { USK = b.dataset.v; build() }));
+  document.querySelectorAll('[data-usrole]').forEach(sel => sel.addEventListener('change', () => { const r = U().roles = (U().roles || []).slice(); r[+sel.dataset.usrole] = sel.value; USK = sel.value; build() }));
+  document.querySelectorAll('[data-uscol]').forEach(b => b.addEventListener('click', () => { P_().color = b.dataset.uscol; build() }));
+  on('us-hex', 'input', e => { P_().color = e.target.value; render() }); on('us-hex', 'change', () => build());
+  document.querySelectorAll('#us-font button').forEach(b => b.addEventListener('click', () => { P_().font = b.dataset.v; build() }));
+  document.querySelectorAll('#us-align button').forEach(b => b.addEventListener('click', () => { P_().align = b.dataset.v; build() }));
+  document.querySelectorAll('#us-place button').forEach(b => b.addEventListener('click', () => { U().place = b.dataset.v; build() }));
+  const tog = (id, key) => on(id, 'click', () => { const st = usOf(o)[USK]; P_()[key] = !st[key]; build() });
+  tog('us-b', 'bold'); tog('us-i', 'italic'); tog('us-u', 'upper');
+  live('us-size', P_, 'size'); live('us-lh', P_, 'lh'); live('us-track', P_, 'track');
+  live('us-w', U, 'w'); live('us-gap', U, 'gap'); live('us-x', U, 'x'); live('us-y', U, 'y');
+  on('us-reset', 'click', () => { delete o.us; build() });
+}
 
 let SPNEXT = null;
 function queuePanel() {
@@ -2398,14 +2530,17 @@ function paneWords() {
       ${check('d-tom', 'Tomorrow’s festival in the corner', o.showTomorrow)} ${check('d-foot', 'Project name', o.showFooter)}
       ${o.showFooter ? text('d-footer', 'Name', o.footer) : ''}
       ${(() => { const wd = dayWords(pack, o); return text('d-t-cal', 'BAPS calendar line', wd.cal) + text('d-t-lead', 'Story start', wd.lead, 'On this day in 1999') + text('d-t-story', 'Story', wd.story) + text('d-t-tomorrow', 'Corner (tomorrow)', wd.tomorrow) })()}
+      ${usPanel(o)}
       <div class="seg"><button class="btn small" id="d-t-reset">Back to the automatic words</button></div>
       <p class="hint">${Object.keys(o.txt || {}).length ? 'You changed some of these words for this day.' : 'These are the automatic words for this day. Type over any of them.'}</p></div>
     <div class="group"><h3>2pm WhatsApp message</h3>
       <div class="row"><label for="d-intro">Top line, under the picture</label><textarea id="d-intro" rows="3" style="width:100%" placeholder="Usual: a different line each day, for example “${esc(introExample(o.date))}”">${esc(introText())}</textarea></div>
+      ${(m => m ? `<p class="hint warn">Your top line has its own “Day ${esc(m[1])}” line, but the send already puts the right one under it by itself (today ${esc(longDate(o.date))} is Day ${dayN(o.date)}). Yours stays at ${esc(m[1])}, so it goes out of date and shows twice. <button class="btn small" id="d-intro-noday" type="button">Take my Day line out</button> then press Save the words for the 2pm send.</p>` : '')(/\bDay\s+(\d+)\s+of the Smruti Project/i.exec(introText()))}
       ${check('d-introday', 'Just for this day (otherwise every day from now on)', introDay())}
       <p class="hint">${introChanged() ? (introDay() ? `Your own top line for ${esc(longDate(o.date))}.` : 'Your own top line, for every day.') : 'Empty = the usual words: one of 28 lines, picked by the send, so nothing of yours is sent unless you type here.'} You can write {DAY} and {MONTH}, filled in as “${esc(ordinal(new Date(o.date + 'T12:00').getDate()))}” and “${esc(new Date(o.date + 'T12:00').toLocaleString('en-GB', { month: 'long' }))}”.</p>
       <div class="row"><label for="d-wa">Words under the top line and Day N</label>
       <textarea id="d-wa" rows="6" aria-label="WhatsApp caption" placeholder="${o.wa[o.date]?.whole ? 'Your whole 2pm message, without the Day line: the send adds “Day N of the Smruti Project” itself' : 'No extra words today'}" style="width:100%">${esc(waText())}</textarea></div>
+      ${!o.wa[o.date] && /Tomorrow, .+, is |Reminder: tomorrow/.test(waText()) ? '<p class="hint">These words are written by the builder, not typed by anyone: the day before a festival or Ekadashi, the 2pm message reminds everyone of tomorrow, taken from the BAPS calendar. Change or empty them here if you like.</p>' : !o.wa[o.date] && waText() ? '<p class="hint">These are the builder’s own words for this day. Change them here if you like.</p>' : ''}
       ${check('d-wawhole', 'Replace my whole message (the top line too; the send still adds its Day N line)', !!o.wa[o.date]?.whole)}
       ${o.wa[o.date]?.whole && /\bDay \d+ of the Smruti Project/i.test(waText()) ? '<p class="hint warn">Take the “Day … of the Smruti Project” line out of the box: the send adds it again, so it would go out twice.</p>' : ''}
       <div class="seg"><button class="btn small primary" id="d-wasave">Save the words for the 2pm send</button><button class="btn small" id="d-wareset">Back to the usual words</button></div>
@@ -2478,6 +2613,7 @@ function build() {
   if (!((day && WANT) || (S.mode === 'month' && WANTM))) $('#want').hidden = true;
   const waiting = (day && !!WANT && !P.day) || (S.mode === 'month' && !!WANTM && !P.month) || (sp && !pack && !!o.date);   // no old picture behind the 'being made' note, nor behind a day with no special pack
   $('#wa-open').hidden = S.mode !== 'day'; $('#wa-open').disabled = waiting || !P.day; showProg();
+  $('#wa-assist').hidden = !assistTime(); $('#wa-assist').disabled = waiting || !P.day; if (assistTime()) $('#wa-open').hidden = true;   // after 2pm the one press takes its place
   $('#easel').style.display = waiting ? 'none' : ''; $('#tip').style.display = waiting ? 'none' : ''; $('#exp-open').disabled = waiting;
   $('#pick').innerHTML = list.map(([k, l]) => `<option value="${k}" ${k === now ? 'selected' : ''}>${l}</option>`).join('');
   $('#pick').setAttribute('aria-label', S.mode === 'month' ? 'Which month' : 'Which day');
@@ -2521,6 +2657,7 @@ function wire() {
   const segOn = (id, key, num) => document.querySelectorAll(`#${id} button`).forEach(b => b.addEventListener('click', () => { o[key] = num ? +b.dataset.v : b.dataset.v; build() }));
   document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => { S.tab = b.dataset.t; build() }));
   if (!P[S.mode]) { wireChoices(); return }
+  wireResets(o);
   if (S.tab === 'design' && isDesign()) wireDesign();
   // the chosen card
   const k = o.sel, ks = shownKeys(), go = d => { o.sel = ks[(ks.indexOf(k) + d + ks.length) % ks.length]; build() };
@@ -2554,6 +2691,7 @@ function wire() {
     on('d-wawhole', 'input', e => { const w = o.wa[o.date] || (o.wa[o.date] = { text: waText(), whole: false }); w.whole = e.target.checked; build() });
     on('d-wareset', 'click', () => { delete o.wa[o.date]; o.intro = ''; keep(); build() });
     const keep = () => saveState();
+    on('d-intro-noday', 'click', () => { const v = introText().split('\n').filter(l => !/\bDay\s+\d+\s+of the Smruti Project/i.test(l)).join('\n').trim(); if (introDay()) o.wa[o.date].intro = v; else o.intro = v; keep(); build() });   // Darpan, 23 Nov 2026: "wrong day number"
     on('d-intro', 'input', e => { const v = e.target.value; if (introDay()) o.wa[o.date].intro = v; else o.intro = v; keep(); $('#wa-preview').textContent = waPreview() });
     on('d-introday', 'input', e => { if (e.target.checked) { const w = o.wa[o.date] || (o.wa[o.date] = { text: waText(), whole: false }); w.intro = introText() } else if (o.wa[o.date]) { delete o.wa[o.date].intro } keep(); build() });
     on('d-wa', 'input', () => { $('#wa-preview').textContent = waPreview() });
@@ -2574,8 +2712,10 @@ function wire() {
     segOn('d-rows', 'rows', 1); segOn('d-hang', 'hang'); segOn('d-peg', 'peg'); segOn('d-caps', 'captions');
     bind('d-shape', 'shape', 1); bind('d-sag', 'sag', 1); bind('d-cord', 'cord', 1); bind('d-gap', 'gap', 1); bind('d-tilt', 'tilt', 1); bind('d-capsize', 'capSize', 1);
     bind('d-tauto', 'titleAuto', 0, 1); bind('d-title', 'title'); bind('d-festt', 'festTitle'); bind('d-one', 'oneTitle'); bind('d-sub', 'subtitle');
-    ['cal', 'lead', 'story', 'tomorrow'].forEach(f => on('d-t-' + f, 'input', e => { (o.txt = o.txt || {})[f] = e.target.value; render() }));
-    on('d-t-reset', 'click', () => { o.txt = {}; build() });
+    wireUs(o); on('d-t-under', 'change', () => build());
+    on('d-t-under', 'focus', e => { const t = e.target.value; if (t.trim()) (o.txt = o.txt || {}).underBak = t });   // what was there when he started typing, for ↺   // the parts list follows once he leaves the box
+    ['cal', 'lead', 'story', 'tomorrow', 'under'].forEach(f => on('d-t-' + f, 'input', e => { (o.txt = o.txt || {})[f] = e.target.value; render() }));
+    on('d-t-reset', 'click', () => { o.txt = o.txt && o.txt.under ? { under: o.txt.under } : {}; build() });   // his own lines under the picture stay
     bind('d-year', 'showYear'); bind('d-place', 'showPlace'); bind('d-fest', 'festTags'); bind('d-story', 'showStory'); bind('d-cal', 'showCal'); bind('d-tom', 'showTomorrow'); bind('d-foot', 'showFooter', 0, 1); bind('d-footer', 'footer');
     document.querySelectorAll('.w-on').forEach(b => b.addEventListener('change', () => { bag(b.dataset.k).on = b.checked; b.closest('.w').classList.toggle('off', !b.checked); render(); $('#meta').querySelectorAll('span')[S.mode === 'special' ? 1 : 0].textContent = S.mode === 'special' ? `${dayCards(P.special, o).length} of ${P.special.cards.length} cards on the picture` : `${dayCards(P.day, o).length} of ${P.day.years.length} years on the picture` }));
     const setAll = f => { groupsOf(P[S.mode]).forEach(y => { bag(y.key).on = f(y.year) }); build() };
@@ -3041,6 +3181,13 @@ async function saveChoices(how, where, quiet) {
     chSay('ok', 'Saved. The 2pm picture project reads your choices at bapas-diary.com/special-days.json.');
     if (how) logChange(how, where);
     remakeSoon(chDate());
+    // a newly added special builds by itself about 90 seconds later, with special 1 (Darpan, 23 Nov 2026: "in the background, the
+    // studio should automatically be making those two posts as special posters for me"); Take it off within the 90 seconds stops it
+    const d = chDate(), p = progOf(d);
+    if (how === 'Special picture chosen' && d && d >= todayLondon() && canAsk() && p && p.step === 'saved') {
+      progSet(d, 'saved', { note: 'Your new special starts building by itself in about 90 seconds, together with special 1. Press Final to start it now.' });
+      REMAKE_T = setTimeout(() => askRemake(d), 90e3);
+    }
   } catch (e) { chSay('warn', 'Kept on this device, but not saved on the website: ' + ((e && e.message) || e) + '. It is sent again the next time you choose.') }
 }
 const dayData = async mmdd => { if (DAYD[mmdd] !== undefined) return DAYD[mmdd]; DAYD[mmdd] = null; try { const r = await fetch(`/data/day/${mmdd}.json`, { cache: 'force-cache' }); if (r.ok) DAYD[mmdd] = await r.json() } catch (e) {} if (S.tab === 'choose') build(); return DAYD[mmdd] };
@@ -3284,7 +3431,24 @@ async function sendToDrive(mode, png, jpg) {
 }
 function fillDrive() {
   const dc = driveCode();
-  $('#drv-on').hidden = !dc; $('#drv-off').hidden = !!dc; ghLine();
+  $('#drv-on').hidden = !dc; $('#drv-off').hidden = !!dc; ghLine(); wasLine();
+}
+// the 2pm send script's own web app, so Send to Darpan’s Assistant sends the moment he presses it (Darpan, 23 Nov 2026: "I want
+// to be able to trigger it myself"). Kept on this device like the Drive code; the script itself is the Daily WhatsApp project's
+const waSendCode = () => store.get('studio-wa-send') || '';
+function wasLine() {
+  const on = !!waSendCode();
+  $('#was-state').textContent = on ? '● Connected on this device. Send to Darpan’s Assistant sends the moment you press it.' : 'Once on each device: in your 2pm send script, run the send link part the Daily WhatsApp project gives you, and paste the line it shows here.';
+  $('#was-off').hidden = !on; $('#was-code').hidden = on; $('#was-save').hidden = on;
+}
+$('#was-save').addEventListener('click', () => { const v = $('#was-code').value.trim(); if (!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec#.+/.test(v)) { $('#drv-status').className = 'status warn'; $('#drv-status').textContent = 'That does not look like the line from your send script (it starts https://script.google.com and has a # in it).'; return } store.set('studio-wa-send', v); $('#was-code').value = ''; wasLine(); $('#drv-status').className = 'status ok'; $('#drv-status').textContent = 'WhatsApp send connected on this device.' });
+$('#was-off').addEventListener('click', () => { store.set('studio-wa-send', ''); wasLine() });
+async function askWaSend(payload) {
+  const [url, key] = waSendCode().split('#');
+  let body = ''; try { body = await (await fetch(url, { method: 'POST', body: JSON.stringify(Object.assign({ key }, payload)) })).text() } catch (e) { throw new Error('The Studio could not reach your 2pm send script. Check it is deployed as a web app open to Anyone.') }
+  let ans = null; try { ans = JSON.parse(body) } catch (e) {}
+  if (!ans) throw new Error('Your 2pm send script has no Send now part yet. Give it the note for the Daily WhatsApp project.');
+  return ans;
 }
 $('#drive-chip').addEventListener('click', () => { fillDrive(); $('#drv-status').textContent = ''; $('#drv').showModal() });
 $('#drive-off').addEventListener('click', () => { setDrive(''); fillDrive(); build(); const st = $('#drv-status'); st.className = 'status'; st.textContent = 'Disconnected from Google Drive on this device.' });
@@ -3359,7 +3523,33 @@ function fillExport() {
 // route of how to get that picture into my WhatsApp ... I don't really want to use the scripts"). Nothing here touches the 2pm send.
 let WAJPG = null, WAPNG = null;
 const waMessage = () => { const o = S.day, w = o.wa[o.date], d = `_Day ${dayN(o.date)} of the Smruti Project_`; if (w && w.whole) return `${waText()}\n${d}`.trim(); return `${introChanged() ? fillIntro(introText(), o.date) : introExample(o.date)}\n${d}\n\n${waText()}`.trim() };
-const waSay = (cls, m) => { const el = $('#wa-status'); el.className = 'status ' + cls; el.textContent = m };
+const waSay = (cls, m) => { const el = $('#wad-status'); el.className = 'status ' + cls; el.textContent = m };
+// after 2pm, one press (Darpan, 23 Nov 2026): the full size PNG and the 2pm words into the Bapa's Diary folder (the same
+// 'replace' the Export uses), then his 2pm send script is asked to send that day's picture and words to the Darpan’s Assistant
+// group only, right then (nothing checks or sends by itself)
+const assistTime = () => S.mode === 'day' && S.day.date === todayLondon() && hourLondon() >= 14;
+setInterval(() => { const b = $('#wa-assist'); if (b && P.day && b.hidden === assistTime()) build() }, 60000);
+$('#wa-assist').addEventListener('click', async () => {
+  const btn = $('#wa-assist');
+  if (!waSendCode()) { fillDrive(); const st = $('#drv-status'); st.className = 'status warn'; st.textContent = 'Connect your WhatsApp send once on this device first, then press Send to Darpan’s Assistant again.'; $('#drv').showModal(); $('#was-row').scrollIntoView(); return }
+  btn.disabled = true;
+  try {
+    if (!driveCode()) throw new Error('Connect Google Drive first: press Connect Google Drive at the top.');
+    say('', 'Fetching the full size photos and drawing the picture…'); await allReady(true);
+    say('', 'Checking your script…'); await checkDrive();
+    const png = await blobOf(drawAt(5635), 'image/png'), jpg = await blobOf(drawAt(4096), 'image/jpeg', .93);
+    say('', `Putting the picture and its words in your Bapa’s Diary folder (${((png.size + jpg.size) / 1e6).toFixed(0)} MB)…`);
+    const ans = await askDrive(Object.assign({ mode: 'replace', date: S.day.date, png: await toBase64(png), jpg: await toBase64(jpg) }, waNow()));
+    if (!ans.ok) throw new Error(ans.error);
+    const words = String(waText() || '').trim();
+    if (words && 'caption' in ans && !ans.caption) throw new Error(`${ans.name} is in ${ans.folder}, but the words did not save, so nothing was sent. Press Send to Darpan’s Assistant again.`);
+    say('', 'Sending it to the Darpan’s Assistant group…');
+    const sent = await askWaSend({ mode: 'assistant', date: S.day.date });
+    if (!sent.ok) throw new Error(`The picture is in ${ans.folder}, but WhatsApp did not send: ${sent.error || 'no reason given'}`);
+    say('ok', `Sent (${sent.time || ans.time}): the full size picture${words ? ' and its words' : ''} went to the Darpan’s Assistant group only.`);
+    remember('Sent to the Darpan’s Assistant group', ans.name); logChange('Sent to the Darpan’s Assistant group', ans.name);
+  } catch (e) { say('warn', `Not sent. ${(e && e.message) || e}`) } finally { btn.disabled = false }
+});
 $('#wa-open').addEventListener('click', async () => {
   if (!P.day) return; waSay('', 'Drawing the picture…'); $('#wa-words').value = waMessage(); $('#wa-share').hidden = true; $('#wad').showModal();
   try {
@@ -3616,23 +3806,72 @@ function sideBySide() {
 // backup on the website (Darpan, 9 Nov 2026: a new laptop or a cleared browser must lose nothing): every export also
 // saves this device's whole Studio memory to /darpan/api/settings, and Restore brings it back
 const SETAPI = '/darpan/api/settings';
-async function backupSettings() {
+async function backupSettings() { await syncPush(true) }
+// every change goes to the website a few seconds after it is made, and every computer takes the newest copy when the
+// Studio opens, when he comes back to it, and every 45 seconds while it sits open (newest wins; the copy it replaced is
+// kept so one click takes this computer's own back)
+function syncSig() {
+  const st = Object.assign({}, store.get('studio-settings-v1') || {}); ['at', 'mode', 'tab', 'pane'].forEach(f => delete st[f]);
+  return JSON.stringify([st, store.get('studio-dates-v1'), store.get('studio-zoom')]);
+}
+function syncTouch() {
+  if (SYNC.applying) return;
+  try { localStorage.setItem('studio-edit-at', String(Date.now())) } catch (x) {}
+  if (!SYNC.on) return; clearTimeout(SYNC.t); SYNC.t = setTimeout(() => syncPush(), 3000);
+}
+async function syncPush(always) {
+  clearTimeout(SYNC.t); SYNC.t = 0;
+  const sig = syncSig(); if (!always && sig === store.get('studio-sync-sig')) return true;
   const body = { at: new Date().toISOString(), settings: store.get('studio-settings-v1'), dates: store.get('studio-dates-v1'), zoom: store.get('studio-zoom'), log: (store.get('studio-log') || []).slice(0, 100) };
-  try { const r = await fetch(SETAPI, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); if (r.ok) { const j = await r.json(); if (j.ok) store.set('studio-backup-at', body.at) } } catch (x) {}
-  backupNote();
+  let ok = false;
+  try { const r = await fetch(SETAPI, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); if (r.ok) { const j = await r.json(); if (j.ok) { store.set('studio-backup-at', body.at); store.set('studio-sync-sig', sig); ok = true } } } catch (x) {}
+  backupNote(); return ok;
+}
+const syncIdle = () => !document.querySelector('dialog[open]') && !(document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) && Date.now() - (+localStorage.getItem('studio-edit-at') || 0) > 15000;
+async function syncPull(first) {
+  if (SYNC.busy || document.hidden) return; SYNC.busy = true;
+  try {
+    if (SYNC.t) await syncPush();
+    const r = await fetch(SETAPI, { cache: 'no-store' }); if (!r.ok) return; const j = await r.json();
+    const lastAt = store.get('studio-backup-at'), lastSig = store.get('studio-sync-sig'), mine = syncSig();
+    if (!j.at) { if (j.store !== false) await syncPush(true); return }   // nothing on the website yet: this computer's copy goes up
+    if (j.at === lastAt && mine === lastSig) return;                    // already the same
+    const st = Object.assign({}, j.settings || {}); ['at', 'mode', 'tab', 'pane'].forEach(f => delete st[f]);
+    const theirs = JSON.stringify([st, j.dates, j.zoom]);
+    if (theirs === mine) { store.set('studio-backup-at', j.at); store.set('studio-sync-sig', mine); backupNote(); return }
+    const myEdit = lastSig != null ? +localStorage.getItem('studio-edit-at') || 0 : SAVED_AT;   // first time here: when he last worked on this computer
+    const dirty = mine !== lastSig;
+    if (dirty && myEdit > Date.parse(j.at)) { await syncPush(true); return }      // this computer has the newer work
+    if (!first && !syncIdle()) return;                                            // never swap the picture while he is in the middle of something
+    store.set('studio-before-sync', { at: new Date().toISOString(), settings: store.get('studio-settings-v1'), dates: store.get('studio-dates-v1'), zoom: store.get('studio-zoom') });
+    syncApply(j, true);
+  } catch (x) {} finally { SYNC.busy = false }
+}
+function syncApply(j, fromWeb) {
+  SYNC.applying = true;
+  const here = store.get('studio-settings-v1') || {};
+  if (j.settings) store.set('studio-settings-v1', Object.assign({}, j.settings, { mode: here.mode || j.settings.mode, tab: here.tab || j.settings.tab, pane: here.pane ?? j.settings.pane }));
+  if (j.dates) store.set('studio-dates-v1', j.dates); if (j.zoom != null) store.set('studio-zoom', j.zoom);
+  if (j.log) { const mine = store.get('studio-log') || [], seen = new Set(mine.map(e => e.at)); store.set('studio-log', [...mine, ...j.log.filter(e => !seen.has(e.at))].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 500)) }
+  if (fromWeb) { store.set('studio-backup-at', j.at); store.set('studio-sync-sig', syncSig()) } else { store.set('studio-sync-sig', ''); localStorage.setItem('studio-edit-at', String(Date.now())) }
+  try { sessionStorage.setItem('studio-synced', fromWeb ? 'web' : 'own') } catch (x) {}
+  location.reload();
 }
 async function backupNote() {
   const when = t => new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   let at = store.get('studio-backup-at');
-  try { const r = await fetch(SETAPI, { cache: 'no-store' }); if (r.ok) { const j = await r.json(); at = j.at || at; $('#backup-note').innerHTML = j.at ? `Your settings and changes are backed up on the website (${esc(when(j.at))}). <button class="btn small" id="restore">Restore them on this device</button>` : 'Your settings are not backed up yet: they are saved on the website with your next export.' } } catch (x) { $('#backup-note').textContent = '' }
+  let just = ''; try { just = sessionStorage.getItem('studio-synced') || ''; sessionStorage.removeItem('studio-synced') } catch (x) {}
+  if (just) SYNC.just = just;
+  const bak = store.get('studio-before-sync'), undo = bak && SYNC.just === 'web' ? ` <span class="gold">Updated with your newest changes from your other computer.</span> <button class="btn small" id="sync-undo">Keep this computer's own instead</button>` : SYNC.just === 'own' ? ' <span class="gold">This computer\'s own changes are back, and every computer now gets them.</span>' : '';
+  try { const r = await fetch(SETAPI, { cache: 'no-store' }); if (r.ok) { const j = await r.json(); at = j.at || at; $('#backup-note').innerHTML = j.at ? `Every change is kept on the website and on all your computers by itself (newest ${esc(when(j.at))}).${undo} <button class="btn small" id="restore">Take the website copy now</button>` : 'Your changes go to the website, and to your other computers, a few seconds after you make them.' } } catch (x) { $('#backup-note').textContent = '' }
   const b = $('#restore'); if (b) b.addEventListener('click', restoreSettings);
+  const u = $('#sync-undo'); if (u) u.addEventListener('click', () => { const k = store.get('studio-before-sync'); if (!k) return; store.set('studio-before-sync', null); syncApply(k, false) });
 }
 async function restoreSettings() {
   try {
     const j = await (await fetch(SETAPI, { cache: 'no-store' })).json(); if (!j.at) return;
-    if (j.settings) store.set('studio-settings-v1', j.settings); if (j.dates) store.set('studio-dates-v1', j.dates); if (j.zoom != null) store.set('studio-zoom', j.zoom);
-    const mine = store.get('studio-log') || [], seen = new Set(mine.map(e => e.at)); store.set('studio-log', [...mine, ...(j.log || []).filter(e => !seen.has(e.at))].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 500));
-    location.reload();
+    store.set('studio-before-sync', { at: new Date().toISOString(), settings: store.get('studio-settings-v1'), dates: store.get('studio-dates-v1'), zoom: store.get('studio-zoom') });
+    syncApply(j, true);
   } catch (x) { say('warn', 'Could not read the backup from the website. Try again.') }
 }
 // the queue of special pictures (Darpan, 9 Nov 2026: the next 2 or 3 always ready in the Special picture list)
@@ -3671,6 +3910,10 @@ async function showLog() {
     : '<li>Nothing yet. Each time you export, what you changed and why is kept here.</li>';
 }
 showLog(); backupNote();
+SYNC.on = true; syncPull(true);
+setInterval(() => syncPull(), 45000);
+addEventListener('focus', () => syncPull()); document.addEventListener('visibilitychange', () => { if (!document.hidden) syncPull() });
+addEventListener('pagehide', () => { if (SYNC.t) syncPush() });
 $('#exp-go').addEventListener('click', async () => {
   const btn = $('#exp-go'); btn.disabled = true; say('', 'Fetching the full size photos and drawing the picture…');
   await allReady(true);   // the export always uses the full size copies (<year>-best.jpg), whatever the screen showed
