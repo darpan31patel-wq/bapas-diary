@@ -378,7 +378,9 @@ const $ = s => document.querySelector(s);
 const MAROON = '#601420', PLACE = '#582222', IVORY_TOP = '#f8f2e4', IVORY_BOT = '#eadfc8', IVORY_EDGE = '#c4b292';
 const CAP_IVORY = '#faf1de', CAP_GOLD = '#f0d6a0', GOLD = '#ffcf6b';
 const SERIF = '"EB Garamond", Georgia, serif', SANS = '"Arimo", Arial, sans-serif';
-const store = { get(k) { try { return JSON.parse(localStorage.getItem(k)) } catch (e) { return null } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true } catch (e) { return false } } };
+const store = { get(k) { try { return JSON.parse(localStorage.getItem(k)) } catch (e) { return null } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); if (SYNCK.includes(k)) syncTouch(); return true } catch (e) { return false } } };
+// the Studio kept the same on every computer (Darpan, 23 Nov 2026: "update changes on all machine, always keep the most up to date")
+var SYNCK = ['studio-settings-v1', 'studio-dates-v1', 'studio-zoom'], SYNC = { t: 0, on: false, applying: false, busy: false };
 
 // ------------------------------------------------------------ settings
 const LOOKS = {   // background tones, all within the approved maroon and gold
@@ -3566,23 +3568,72 @@ function sideBySide() {
 // backup on the website (Darpan, 9 Nov 2026: a new laptop or a cleared browser must lose nothing): every export also
 // saves this device's whole Studio memory to /darpan/api/settings, and Restore brings it back
 const SETAPI = '/darpan/api/settings';
-async function backupSettings() {
+async function backupSettings() { await syncPush(true) }
+// every change goes to the website a few seconds after it is made, and every computer takes the newest copy when the
+// Studio opens, when he comes back to it, and every 45 seconds while it sits open (newest wins; the copy it replaced is
+// kept so one click takes this computer's own back)
+function syncSig() {
+  const st = Object.assign({}, store.get('studio-settings-v1') || {}); ['at', 'mode', 'tab', 'pane'].forEach(f => delete st[f]);
+  return JSON.stringify([st, store.get('studio-dates-v1'), store.get('studio-zoom')]);
+}
+function syncTouch() {
+  if (SYNC.applying) return;
+  try { localStorage.setItem('studio-edit-at', String(Date.now())) } catch (x) {}
+  if (!SYNC.on) return; clearTimeout(SYNC.t); SYNC.t = setTimeout(() => syncPush(), 3000);
+}
+async function syncPush(always) {
+  clearTimeout(SYNC.t); SYNC.t = 0;
+  const sig = syncSig(); if (!always && sig === store.get('studio-sync-sig')) return true;
   const body = { at: new Date().toISOString(), settings: store.get('studio-settings-v1'), dates: store.get('studio-dates-v1'), zoom: store.get('studio-zoom'), log: (store.get('studio-log') || []).slice(0, 100) };
-  try { const r = await fetch(SETAPI, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); if (r.ok) { const j = await r.json(); if (j.ok) store.set('studio-backup-at', body.at) } } catch (x) {}
-  backupNote();
+  let ok = false;
+  try { const r = await fetch(SETAPI, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); if (r.ok) { const j = await r.json(); if (j.ok) { store.set('studio-backup-at', body.at); store.set('studio-sync-sig', sig); ok = true } } } catch (x) {}
+  backupNote(); return ok;
+}
+const syncIdle = () => !document.querySelector('dialog[open]') && !(document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) && Date.now() - (+localStorage.getItem('studio-edit-at') || 0) > 15000;
+async function syncPull(first) {
+  if (SYNC.busy || document.hidden) return; SYNC.busy = true;
+  try {
+    if (SYNC.t) await syncPush();
+    const r = await fetch(SETAPI, { cache: 'no-store' }); if (!r.ok) return; const j = await r.json();
+    const lastAt = store.get('studio-backup-at'), lastSig = store.get('studio-sync-sig'), mine = syncSig();
+    if (!j.at) { if (j.store !== false) await syncPush(true); return }   // nothing on the website yet: this computer's copy goes up
+    if (j.at === lastAt && mine === lastSig) return;                    // already the same
+    const st = Object.assign({}, j.settings || {}); ['at', 'mode', 'tab', 'pane'].forEach(f => delete st[f]);
+    const theirs = JSON.stringify([st, j.dates, j.zoom]);
+    if (theirs === mine) { store.set('studio-backup-at', j.at); store.set('studio-sync-sig', mine); backupNote(); return }
+    const myEdit = lastSig != null ? +localStorage.getItem('studio-edit-at') || 0 : SAVED_AT;   // first time here: when he last worked on this computer
+    const dirty = mine !== lastSig;
+    if (dirty && myEdit > Date.parse(j.at)) { await syncPush(true); return }      // this computer has the newer work
+    if (!first && !syncIdle()) return;                                            // never swap the picture while he is in the middle of something
+    store.set('studio-before-sync', { at: new Date().toISOString(), settings: store.get('studio-settings-v1'), dates: store.get('studio-dates-v1'), zoom: store.get('studio-zoom') });
+    syncApply(j, true);
+  } catch (x) {} finally { SYNC.busy = false }
+}
+function syncApply(j, fromWeb) {
+  SYNC.applying = true;
+  const here = store.get('studio-settings-v1') || {};
+  if (j.settings) store.set('studio-settings-v1', Object.assign({}, j.settings, { mode: here.mode || j.settings.mode, tab: here.tab || j.settings.tab, pane: here.pane ?? j.settings.pane }));
+  if (j.dates) store.set('studio-dates-v1', j.dates); if (j.zoom != null) store.set('studio-zoom', j.zoom);
+  if (j.log) { const mine = store.get('studio-log') || [], seen = new Set(mine.map(e => e.at)); store.set('studio-log', [...mine, ...j.log.filter(e => !seen.has(e.at))].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 500)) }
+  if (fromWeb) { store.set('studio-backup-at', j.at); store.set('studio-sync-sig', syncSig()) } else { store.set('studio-sync-sig', ''); localStorage.setItem('studio-edit-at', String(Date.now())) }
+  try { sessionStorage.setItem('studio-synced', fromWeb ? 'web' : 'own') } catch (x) {}
+  location.reload();
 }
 async function backupNote() {
   const when = t => new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   let at = store.get('studio-backup-at');
-  try { const r = await fetch(SETAPI, { cache: 'no-store' }); if (r.ok) { const j = await r.json(); at = j.at || at; $('#backup-note').innerHTML = j.at ? `Your settings and changes are backed up on the website (${esc(when(j.at))}). <button class="btn small" id="restore">Restore them on this device</button>` : 'Your settings are not backed up yet: they are saved on the website with your next export.' } } catch (x) { $('#backup-note').textContent = '' }
+  let just = ''; try { just = sessionStorage.getItem('studio-synced') || ''; sessionStorage.removeItem('studio-synced') } catch (x) {}
+  if (just) SYNC.just = just;
+  const bak = store.get('studio-before-sync'), undo = bak && SYNC.just === 'web' ? ` <span class="gold">Updated with your newest changes from your other computer.</span> <button class="btn small" id="sync-undo">Keep this computer's own instead</button>` : SYNC.just === 'own' ? ' <span class="gold">This computer\'s own changes are back, and every computer now gets them.</span>' : '';
+  try { const r = await fetch(SETAPI, { cache: 'no-store' }); if (r.ok) { const j = await r.json(); at = j.at || at; $('#backup-note').innerHTML = j.at ? `Every change is kept on the website and on all your computers by itself (newest ${esc(when(j.at))}).${undo} <button class="btn small" id="restore">Take the website copy now</button>` : 'Your changes go to the website, and to your other computers, a few seconds after you make them.' } } catch (x) { $('#backup-note').textContent = '' }
   const b = $('#restore'); if (b) b.addEventListener('click', restoreSettings);
+  const u = $('#sync-undo'); if (u) u.addEventListener('click', () => { const k = store.get('studio-before-sync'); if (!k) return; store.set('studio-before-sync', null); syncApply(k, false) });
 }
 async function restoreSettings() {
   try {
     const j = await (await fetch(SETAPI, { cache: 'no-store' })).json(); if (!j.at) return;
-    if (j.settings) store.set('studio-settings-v1', j.settings); if (j.dates) store.set('studio-dates-v1', j.dates); if (j.zoom != null) store.set('studio-zoom', j.zoom);
-    const mine = store.get('studio-log') || [], seen = new Set(mine.map(e => e.at)); store.set('studio-log', [...mine, ...(j.log || []).filter(e => !seen.has(e.at))].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 500));
-    location.reload();
+    store.set('studio-before-sync', { at: new Date().toISOString(), settings: store.get('studio-settings-v1'), dates: store.get('studio-dates-v1'), zoom: store.get('studio-zoom') });
+    syncApply(j, true);
   } catch (x) { say('warn', 'Could not read the backup from the website. Try again.') }
 }
 // the queue of special pictures (Darpan, 9 Nov 2026: the next 2 or 3 always ready in the Special picture list)
@@ -3621,6 +3672,10 @@ async function showLog() {
     : '<li>Nothing yet. Each time you export, what you changed and why is kept here.</li>';
 }
 showLog(); backupNote();
+SYNC.on = true; syncPull(true);
+setInterval(() => syncPull(), 45000);
+addEventListener('focus', () => syncPull()); document.addEventListener('visibilitychange', () => { if (!document.hidden) syncPull() });
+addEventListener('pagehide', () => { if (SYNC.t) syncPush() });
 $('#exp-go').addEventListener('click', async () => {
   const btn = $('#exp-go'); btn.disabled = true; say('', 'Fetching the full size photos and drawing the picture…');
   await allReady(true);   // the export always uses the full size copies (<year>-best.jpg), whatever the screen showed
