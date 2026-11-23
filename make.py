@@ -1710,7 +1710,7 @@ LAYOUT = {'H2': dict(M=70, min_gap=14, row_gap=40, lines=2, cap=360, top=212, bo
 FRAME_ASPECT = {'W': 1 / .75, 'W1': 1 / .74, 'W2': 1 / .9, 'W3': 1.5}   # photo width / height per style; the tall live cards work out at about .69 on a full day
 
 
-def under_card(x, card, gap, f, lh, style, rnd):
+def under_card(x, card, gap, f, lh, style, rnd, n=None):
     cf_size = f.size
     """Style F: a small ivory paper tag on a short thread under the polaroid.
     Style H: ivory caption on a soft dark plate under the polaroid."""
@@ -1730,11 +1730,11 @@ def under_card(x, card, gap, f, lh, style, rnd):
         for i, line in enumerate(lines):
             d.text((cx, 24 + 14 + (i + .8) * lh), line, font=f, fill=YEAR_C2, anchor='ms')
         return im.rotate(rnd.uniform(-2.5, 2.5), resample=Image.BICUBIC, expand=True), 2
-    n = WIDE.get(style, LAYOUT.get(style, {})).get('lines', 3)
-    text, maxw = shown_caption(x), card.CW + min(gap, px(30)) - px(40)
-    half = max(3, len(text.split()) * 2 // 3)
-    # the whole caption first, then a touch smaller; only then a natural cut, keeping at least two thirds of it; a shorter cut last
-    for shrink, extra, cut, keep in ((1, 0, False, 0), (.9, 0, False, 0), (.82, 0, False, 0), (.82, 0, True, half), (.82, 0, True, 0)):
+    n = n or WIDE.get(style, LAYOUT.get(style, {})).get('lines', 3)
+    text, maxw = shown_caption(x), pill_width(card, gap)
+    # Darpan, 23 Nov 2026 ('you are shortening the extra information for the captions too much'): every word of the
+    # caption, never a natural cut. The whole caption, then a touch smaller, then on as many more lines as it needs
+    for shrink, extra, cut, keep in ((1, 0, False, 0), (.9, 0, False, 0), (.82, 0, False, 0)):
         f2 = garamond(f.size * shrink, 500) if shrink < 1 else f
         lines = wrap(probe, text, f2, maxw, n + extra, shorten=cut, min_words=keep)
         if not lines[-1].endswith('…'):
@@ -1742,8 +1742,8 @@ def under_card(x, card, gap, f, lh, style, rnd):
             break
     else:   # no whole sentence fits in n lines: the whole caption on one more line rather than trailing off (Darpan, 28 Oct 2026)
         f = garamond(f.size * .82, 500)
-        for more in ((1, 2, 3, 4) if WIDE.get(style, {}).get('whole') else (1,)):   # 'whole': as many lines as the caption needs (the UK and Europe backups)
-            lines = wrap(probe, text, f, maxw, n + more)
+        for more in (1, 2, 3, 4, 5, 6):   # as many lines as the caption needs (was one more line, then a cut)
+            lines = wrap(probe, text, f, maxw, n + more, shorten=False)
             if not lines[-1].endswith('…'):
                 break
     lh = lh * f.size / cf_size
@@ -1757,6 +1757,18 @@ def under_card(x, card, gap, f, lh, style, rnd):
     for i, line in enumerate(lines):
         d.text((W4 / 2, (px(8) + (i + .5) * lh) * K), line, font=fk, fill=CAPTION_IVORY, anchor='mm')
     return im.resize((round(tw), round(th)), Image.LANCZOS), 14
+
+
+def pill_width(card, gap):
+    return card.CW + min(gap, px(30)) - px(40)
+
+
+def pill_lines(photos, card, gap, f):
+    """How many lines the longest caption needs under its card at the size under_card then sets it (the room under
+    every card is made that tall, so no word is ever left off)."""
+    probe = ImageDraw.Draw(Image.new('L', (1, 1)))
+    f2 = garamond(f.size * .82, 500)
+    return max([len(wrap(probe, shown_caption(x), f2, pill_width(card, gap), 99, shorten=False)) for x in photos if shown_caption(x)] or [0])
 
 
 # wide polaroids (photos wider than tall) on three or four cords, so the width of the picture is used and little hangs below the cards
@@ -1895,14 +1907,23 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
     if lay.get('lift'):   # the cord's lowest point (the middle) sits at the top line and its ends rise into the free corners beside the title
         top_space, bottom_space = px(lay['lift']), H - px(46)
     cf_a, lh_a = garamond(px(CAPTION_SIZE), 500), round(px(CAPTION_SIZE * 1.2))
-    below = (lay.get('pill', 0) * lh_a + px(22)) if lay.get('pill') and CAPTIONS != 'none' else 0   # no captions: the cards take that room
-    probe = WideCard(100, lay['ratio'], lay['band'])
-    pw_w = min(px(440), ((W - 2 * M - gap * (cols - 1)) / cols) / (probe.CW / 100))   # as wide as the row allows
-    row_h = (bottom_space - top_space - (nrows - 1) * row_gap - nrows * below) / nrows
-    ph = min(pw_w * lay['ratio'], row_h - (probe.CH - probe.PH) / 100 * pw_w)     # as tall as the rows allow
-    pw = min(pw_w, ph / lay.get('min_ratio', .6))            # a photo is never wider than 16:9 ish, so shrink the card if it would be
-    card = WideCard(pw, ph / pw, lay['band'])
-    gap = min(px(60), (W - 2 * M - cols * card.CW) / max(1, cols - 1))
+    n_pill, gap0 = lay.get('pill', 0), gap
+    for _ in range(4):   # Darpan, 23 Nov 2026: the room under the cards is as tall as the longest caption needs, every word in
+        gap = gap0
+        below = (lay.get('pill', 0) * lh_a + (n_pill - lay.get('pill', 0)) * lh_a * .82 + px(22)) if lay.get('pill') and CAPTIONS != 'none' else 0   # no captions: the cards take that room
+        probe = WideCard(100, lay['ratio'], lay['band'])
+        pw_w = min(px(440), ((W - 2 * M - gap * (cols - 1)) / cols) / (probe.CW / 100))   # as wide as the row allows
+        row_h = (bottom_space - top_space - (nrows - 1) * row_gap - nrows * below) / nrows
+        ph = min(pw_w * lay['ratio'], row_h - (probe.CH - probe.PH) / 100 * pw_w)     # as tall as the rows allow
+        pw = min(pw_w, ph / lay.get('min_ratio', .6))            # a photo is never wider than 16:9 ish, so shrink the card if it would be
+        card = WideCard(pw, ph / pw, lay['band'])
+        gap = min(px(60), (W - 2 * M - cols * card.CW) / max(1, cols - 1))
+        if not lay.get('pill') or CAPTIONS == 'none':
+            break
+        need = pill_lines(photos, card, gap, cf_a)
+        if need <= n_pill:
+            break
+        n_pill = need
     pitch = card.CH + below + row_gap
     block = (nrows - 1) * pitch + card.CH + below
     if lay.get('fill') and nrows > 1:   # spare height goes between the rows rather than above and below them
@@ -1939,7 +1960,7 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
                     if cx != hx:
                         later.append(lambda cx=cx, cy=cy: peg(img, cx, cy, s, short=.72))
                 if lay.get('pill') and shown_caption(hx_card):
-                    tag, pos = under_card(hx_card, hcard, gap, cf_a, lh_a, style, rnd)
+                    tag, pos = under_card(hx_card, hcard, gap, cf_a, lh_a, style, rnd, n=lay.get('pill'))
                     later.append(lambda tag=tag, hx=hx, by=qy + hcard.CH: img.paste(tag, (int(hx - tag.width / 2), int(by + px(6))), tag))
         x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
         slots = list(range(len(row)))
@@ -1963,7 +1984,7 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
             img.paste(hung, (int(mx - hung.width / 2), int(my - hung.height / 2)), hung)
             later.append(lambda cx=cx: peg(img, cx, sag(cx) + px(4), s, short=.72))
             if lay.get('pill') and shown_caption(x):
-                tag, pos = under_card(x, card, gap, cf_a, lh_a, style, rnd)
+                tag, pos = under_card(x, card, gap, cf_a, lh_a, style, rnd, n=lay.get('pill'))
                 bx, by = qx + card.CH * np.sin(t), qy + card.CH * np.cos(t)
                 later.append(lambda tag=tag, bx=bx, by=by: img.paste(tag, (int(bx - tag.width / 2), int(by + px(6))), tag))
         for f in later:
@@ -2246,7 +2267,7 @@ def tg_day(day, items):
         away = abs((datetime.date(2000, *map(int, e['date'][5:].split('-'))) - datetime.date(2000, day.month, day.day)).days)
         away = min(away, 366 - away)
         own = lambda n: (e.get('cards') or {}).get(str(n)) or {}   # the UK diary's photos carry their own caption ('Evening sabha – London')
-        extra += [{'y': y, 'd': e['date'], 'p': own(n).get('place') or e.get('place') or '', 'c': own(n).get('card') or e['card'], 'i': u,
+        extra += [{'y': y, 'd': e['date'], 'p': own(n).get('place') or e.get('place') or '', 'c': own(n).get('card') or e.get('line') or e['card'], 'i': u,
                    'tg': True, 'post': e.get('url'), 'guru': e.get('guru', False), 'unframe': sat,
                    'boost': (TG_GAP_BOOST if gap else 0) - .2 * away - (1 if e.get('guru') else .01) * k}
                   for k, (n, u) in enumerate(urls)]   # the channel's lead photo first (for an earlier guru, well first), the very day before a nearby one
@@ -2655,7 +2676,7 @@ def _day_line(v, doing=False):
     said = sentences(' '.join(v.get('w') or []))
     travel = lambda s: bool(re.match(r"(?:\S+\s+){0,8}?Swamishri (?:then |also )?(?:arrived|departed|left|reached|returned|travelled)\b", s))
     for s in [s for s in said if not travel(s)]:   # what he did, never how he got there ('Departs for Khambhda village to perform...' is not the moment, 17 Nov 2026)
-        if not (MOMENT.search(s) or doing) or len(s) > (260 if not doing else 200) or re.search(r'[“”"]', s):
+        if not (MOMENT.search(s) or doing) or len(s) > 260 or re.search(r'[“”"]', s):
             continue
         if GUEST.search(s) and not western(s):   # meeting and honouring guests is every day (Darpan, 20 Oct 2026)
             continue
@@ -2720,6 +2741,13 @@ def day_extras(day, items):
         print(f'  + {len(extra)} photos of Bapa from the old BAPS website, {n} photos given the old website\'s own caption')
 
 
+def fuller(c, line):
+    """True when line tells the caption c's moment in more words: nearly every word of c that matters is in it."""
+    key = lambda t: {re.sub(r'(?:es|s|ed|ing)$', '', w) for w in re.findall(r'[a-z]{4,}', t.lower().replace('-', ' '))} - {'with', 'from', 'that', 'this', 'bapa', 'during', 'their'}
+    mine, its = key(c), key(line)
+    return len(line) > len(c) + 15 and bool(mine) and len(mine & its) >= .75 * len(mine)
+
+
 def tell_days(day, photos):
     """Darpan, 16 Nov 2026 ('for each year you show, look at that date in all of the above and try to bring the day's
     story into the picture and its words'): a card of the very day whose own caption says nothing of that day ('Darshan',
@@ -2732,7 +2760,15 @@ def tell_days(day, photos):
             continue
         c = caption(x)
         if c and c != DARSHAN and (MOMENT.search(c) or SPECIAL.search(c) or not EVERYDAY.search(c) and not JUST_A_FACE.search(c)):
-            continue   # (16 Nov 2026: 'Blesses the murti-pratishtha assembly' is a moment of its own and keeps its words)
+            # (16 Nov 2026: 'Blesses the murti-pratishtha assembly' is a moment of its own and keeps its words.) Darpan,
+            # 23 Nov 2026 ('you are shortening the extra information too much'): when the day report tells the same
+            # moment in more words ('Performs murti-pratishtha rituals' -> '...of the murtis for new BAPS hari mandirs in
+            # Charvi, Jamalpor and Nimeta'), the card says the report's whole sentence
+            full = next((l for l in (day_line(v), day_line(v, doing=True)) if l and not caption_fault(l) and fuller(c, l)), '')
+            if full and same_town(place(x), v.get('pl') or []):
+                print(f"  {x['y']} card says the day's story in full: '{full}' (its own caption: '{c}')")
+                x['cap'], x['told'] = full, True
+            continue
         line = next((l for l in (day_line(v), day_line(v, doing=True), *(v.get('yt') or [])) if l and not caption_fault(l)), '')
         if not line or not same_town(place(x), v.get('pl') or []):
             continue
@@ -3401,6 +3437,15 @@ def every_festival(day, cache):
     print(f'  every {name}:', ', '.join(f'{x["y"]} ({x["fday"]})' for x in photos))
     return img, (name, photos[0]['y'], photos[-1]['y'])
 
+def whole_line(e):
+    """A story's line for 'Also on this day' in its fullest saved sentence (Darpan, 23 Nov 2026: 'you are shortening
+    the extra information too much'): 'Shastriji Maharaj writes a historic letter to the devotees of East Africa' becomes
+    'Shastriji Maharaj wrote a historic letter to the devotees of East Africa explaining Gunatitanand Swami as Aksharbrahma'."""
+    line = (e.get('line') or '').strip().rstrip('.')
+    w = re.sub(r'^On this day in \d{4},?\s*', '', (e.get('whatsapp') or '').strip()).rstrip('.')
+    return w if len(w) > len(line) + 10 and '\n' not in w else line
+
+
 def tg_caption(ev, evs=None):
     """Idea 4: the story for the 2pm WhatsApp message, added under Darpan's own caption by his script."""
     text = ev.get('whatsapp') or f'On this day in {ev["date"][:4]}, {ev["line"]}.'
@@ -3412,7 +3457,7 @@ def tg_caption(ev, evs=None):
     for e in sorted(evs or [], key=lambda e: (e['date'], not e.get('video'))):   # Darpan, 19 Oct 2026: as much history as possible,
         if town(e) not in seen:                                                  # so every other story of the day, once each
             seen.add(town(e))
-            more.append(f'{e["date"][:4]} {e["line"]}' + (f' \U0001F3A5 {e["video"]}' if e.get('video') else ''))
+            more.append(f'{e["date"][:4]} {whole_line(e)}' + (f' \U0001F3A5 {e["video"]}' if e.get('video') else ''))
     if more:
         text += '\n\n\U0001F4DC Also on this day\n' + '\n'.join(more)
     return text + '\n'
@@ -3512,7 +3557,7 @@ def story_block(dr, paras, tw, room, sizes=(36, 34, 32, 30, 28, 26)):
 
 def balanced(d, text, f, maxw, lines):
     """The words in as few lines as wrap() needs, each line as near the same length as the words allow."""
-    out = wrap(d, text, f, maxw, lines)
+    out = wrap(d, text, f, maxw, lines, shorten=False)
     words = text.split()
     if len(out) < 2 or len(out) > lines or ' '.join(out) != text.strip():
         return out
@@ -4067,8 +4112,11 @@ def compose_drawn(ev, day, ims, plain, lab, most, lead=None, src=None):
     # biggest while the whole story still fits
     for hw, smax, sizes in ((1180, 330, (36, 34, 32, 30)), (1000, 270, (32, 30, 28)), (860, 230, (28, 27, 26, 25, 24)), (760, 200, (24, 23, 22)), (660, 170, (22, 21, 20, 19))):   # the last step for a long News story (16 Nov 2026: the Canada visit lost its end)
         x0 = px(hw + 180); tw = W - x0 - px(90)
-        hf = garamond(px(60 if hw > 900 else 52), 700)
-        heads = balanced(dr, head, hf, tw, 3)
+        for hs in ((60, 3), (54, 3), (48, 3), (44, 4), (40, 5)) if hw > 900 else ((52, 3), (48, 3), (44, 4), (40, 5)):   # Darpan, 23 Nov 2026: the whole title, smaller rather than cut
+            hf = garamond(px(hs[0]), 700)
+            heads = balanced(dr, head, hf, tw, hs[1])
+            if not heads[-1].endswith('…'):
+                break
         y0 = px(300 if hw == 1180 else 270) + hf.size * 1.2 * len(heads) + px(34)   # where the story's first line starts (its top)
         # every number of rows, each with the biggest cards that still leave room for the whole story; the biggest
         # cards win (fewer rows when equal). Cards smaller than a third of the first size: the next step instead
