@@ -19,6 +19,27 @@ FAINT = ('<script id="menu-faint">(function(){var n=document.querySelector("nav.
          'addEventListener("scroll",function(e){var t=e.target.nodeType===9?document.scrollingElement:e.target;'
          'if(t&&t.scrollHeight>innerHeight*.6)n.classList.toggle("faint",t.scrollTop>40)},{passive:true,capture:true})})()</script>')
 
+# Darpan, 23 Nov 2026 ("throoughly test this, then we can go live yes", mockup 17 Nov): one gold ring glides between the
+# tabs and stretches to fit each name (live/menu.css .tab-glide): to the tab under the mouse, back to the page's own tab
+# when the mouse leaves, to a tab as it is tapped or reached with the keyboard. Phones: the highlight slides along the bar.
+GLIDE = ('<script id="menu-glide">(function(){var n=document.querySelector("nav.site-menu");if(!n||!window.ResizeObserver)return;'
+         'var g=document.createElement("span"),on=n.querySelector("a.on"),at=on,ph=matchMedia("(max-width: 760px)");'
+         'g.className="tab-glide";g.setAttribute("aria-hidden","true");n.insertBefore(g,n.firstChild);'
+         'function put(a,now){if(!a||!a.offsetWidth)a=on;if(!a||!a.offsetWidth){g.style.opacity=0;at=null;return}'
+         'var N=n.getBoundingClientRect(),r=a.getBoundingClientRect(),x=r.left-N.left+n.scrollLeft,y=r.top-N.top,w=r.width,h=r.height;'
+         'if(!ph.matches&&a!==on){var o=on&&on.offsetWidth?on.getBoundingClientRect().height:h+11;x-=13;w+=26;y+=(h-o)/2;h=o}'
+         'if(now)g.classList.add("now");g.style.opacity="";g.style.width=w+"px";g.style.height=h+"px";g.style.transform="translate("+x+"px,"+y+"px)";'
+         'if(now){g.offsetWidth;g.classList.remove("now")}at=a;n.classList.toggle("away",a!==on);'
+         '[].forEach.call(n.querySelectorAll("a"),function(l){l.classList.toggle("lit",l===a&&a!==on)})}'
+         'put(on,1);n.classList.add("glide");'
+         'var ro=new ResizeObserver(function(){put(at,1)});ro.observe(n);[].forEach.call(n.querySelectorAll("a"),function(l){ro.observe(l)});'
+         'n.addEventListener("pointerover",function(e){if(e.pointerType==="touch")return;var a=e.target.closest&&e.target.closest("a");if(a&&n.contains(a))put(a)});'
+         'n.addEventListener("pointerleave",function(){put(on)});'
+         'n.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(a)put(a)});'
+         'n.addEventListener("focusin",function(e){if(e.target.tagName==="A")put(e.target)});'
+         'n.addEventListener("focusout",function(){put(on)});'
+         'addEventListener("pageshow",function(){put(on,1)})})()</script>')
+
 
 def reorder(m):
     tabs = {href: a.group(0) for a in TAB.finditer(m.group(2)) for href in [a.group(1)]}
@@ -44,6 +65,8 @@ def main(root):
                 t = NAV.sub(reorder, s)
                 if 'id="menu-faint"' not in t:
                     t = NAV.sub(lambda m: m.group(0) + FAINT, t, count=1)
+                if 'id="menu-glide"' not in t:
+                    t = NAV.sub(lambda m: m.group(0) + GLIDE, t, count=1)
                 if v:
                     t = re.sub(r'href="/menu\.css(\?v=[0-9a-f]+)?"', f'href="/menu.css?v={v}"', t)
                 if t != s:

@@ -89,3 +89,22 @@ nav.site-menu a.on { color: #fff3cf; background: rgba(255, 211, 107, .16); borde
   nav.site-menu a + a::before { content: ""; position: absolute; top: 50%; left: calc(var(--tab-gap) / -2 - .1em); width: 1px; height: 14px;
     margin-top: -7px; background: rgba(217, 164, 65, .45); pointer-events: none; }
 }
+/* Darpan, 23 Nov 2026 ("throoughly test this, then we can go live yes", mockup 17 Nov): one gold ring that glides between
+   the tabs and stretches to fit each name, instead of jumping. tools/site_menu.py adds the few lines (id menu-glide) that
+   move it; without them the page's own tab keeps its ring as before. Phones: the highlight slides along the tab bar. */
+nav.site-menu .tab-glide { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; box-sizing: border-box; border-radius: 999px;
+  background: rgba(255, 211, 107, .16); border: 1px solid rgba(255, 211, 107, .65); box-shadow: 0 0 18px rgba(255, 211, 107, .18); opacity: 0;
+  transition: transform .5s cubic-bezier(.3, 1.35, .45, 1), width .5s cubic-bezier(.3, 1.35, .45, 1), height .4s ease, opacity .3s ease; }
+nav.site-menu.glide .tab-glide { opacity: 1; }
+nav.site-menu.glide .tab-glide.now { transition: none; }
+nav.site-menu.glide a { position: relative; z-index: 1; transition: color .35s ease, text-shadow .35s ease; }
+nav.site-menu.glide a.on { background: transparent; border-color: transparent; }
+nav.site-menu.glide a:hover { border-bottom-color: transparent; }
+nav.site-menu.glide.away a.on { color: #d9a441; text-shadow: none; }
+nav.site-menu.glide a.lit { color: #fff3cf; text-shadow: 0 0 12px rgba(255, 211, 107, .55); }
+@media (max-width: 760px) {
+  nav.site-menu .tab-glide { border: 0; border-radius: 14px; background: rgba(217, 164, 65, .16); box-shadow: none; }
+  nav.site-menu.glide.away a.on { color: #c9a56a; }
+  nav.site-menu.glide a.lit { color: #ffe296; text-shadow: none; }
+}
+@media (prefers-reduced-motion: reduce) { nav.site-menu .tab-glide, nav.site-menu.glide a { transition: none; } }
