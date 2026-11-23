@@ -1710,7 +1710,7 @@ LAYOUT = {'H2': dict(M=70, min_gap=14, row_gap=40, lines=2, cap=360, top=212, bo
 FRAME_ASPECT = {'W': 1 / .75, 'W1': 1 / .74, 'W2': 1 / .9, 'W3': 1.5}   # photo width / height per style; the tall live cards work out at about .69 on a full day
 
 
-def under_card(x, card, gap, f, lh, style, rnd, n=None, room=None):
+def under_card(x, card, gap, f, lh, style, rnd):
     cf_size = f.size
     """Style F: a small ivory paper tag on a short thread under the polaroid.
     Style H: ivory caption on a soft dark plate under the polaroid."""
@@ -1730,25 +1730,22 @@ def under_card(x, card, gap, f, lh, style, rnd, n=None, room=None):
         for i, line in enumerate(lines):
             d.text((cx, 24 + 14 + (i + .8) * lh), line, font=f, fill=YEAR_C2, anchor='ms')
         return im.rotate(rnd.uniform(-2.5, 2.5), resample=Image.BICUBIC, expand=True), 2
-    n = n or WIDE.get(style, LAYOUT.get(style, {})).get('lines', 3)
-    text, maxw = shown_caption(x), pill_width(card, gap)
-    # Darpan, 23 Nov 2026 ('you are shortening the extra information for the captions too much'): every word of the
-    # caption, never a natural cut. The whole caption, then a touch smaller, then on as many more lines as it needs
-    for shrink, extra, cut, keep in ((1, 0, False, 0), (.9, 0, False, 0), (.82, 0, False, 0)):
+    n = WIDE.get(style, LAYOUT.get(style, {})).get('lines', 3)
+    text, maxw = shown_caption(x), card.CW + min(gap, px(30)) - px(40)
+    half = max(3, len(text.split()) * 2 // 3)
+    # the whole caption first, then a touch smaller; only then a natural cut, keeping at least two thirds of it; a shorter cut last
+    for shrink, extra, cut, keep in ((1, 0, False, 0), (.9, 0, False, 0), (.82, 0, False, 0), (.82, 0, True, half), (.82, 0, True, 0)):
         f2 = garamond(f.size * shrink, 500) if shrink < 1 else f
         lines = wrap(probe, text, f2, maxw, n + extra, shorten=cut, min_words=keep)
         if not lines[-1].endswith('…'):
             f = f2
             break
-    else:   # no whole caption fits in n lines: every word on the lines of room under the cards, smaller if need be, never cut
-        room = max(n + 1, room or n + 1)
-        for shrink in (.82, .76, .7, .64, .58, .52):
-            f = garamond(f.size * shrink / (f.size / cf_size), 500)
-            lines = wrap(probe, text, f, maxw, room, shorten=False)
+    else:   # no whole sentence fits in n lines: the whole caption on one more line rather than trailing off (Darpan, 28 Oct 2026)
+        f = garamond(f.size * .82, 500)
+        for more in ((1, 2, 3, 4) if WIDE.get(style, {}).get('whole') else (1,)):   # 'whole': as many lines as the caption needs (the UK and Europe backups)
+            lines = wrap(probe, text, f, maxw, n + more)
             if not lines[-1].endswith('…'):
                 break
-        else:
-            lines = wrap(probe, text, f, maxw, 99, shorten=False)
     lh = lh * f.size / cf_size
     # drawn four times bigger and shrunk: small text then keeps the font's true letter spacing (no 'Perform s') and smooth edges
     K = 4; fk = garamond(f.size * K, 500)
@@ -1760,21 +1757,6 @@ def under_card(x, card, gap, f, lh, style, rnd, n=None, room=None):
     for i, line in enumerate(lines):
         d.text((W4 / 2, (px(8) + (i + .5) * lh) * K), line, font=fk, fill=CAPTION_IVORY, anchor='mm')
     return im.resize((round(tw), round(th)), Image.LANCZOS), 14
-
-
-PILL_MAX = 4   # the most lines of room under the cards; a longer caption is set smaller to fit it (Darpan, 23 Nov 2026)
-
-
-def pill_width(card, gap):
-    return card.CW + min(gap, px(30)) - px(40)
-
-
-def pill_lines(photos, card, gap, f):
-    """How many lines the longest caption needs under its card at the size under_card then sets it (the room under
-    every card is made that tall, so no word is ever left off)."""
-    probe = ImageDraw.Draw(Image.new('L', (1, 1)))
-    f2 = garamond(f.size * .82, 500)
-    return max([len(wrap(probe, shown_caption(x), f2, pill_width(card, gap), 99, shorten=False)) for x in photos if shown_caption(x)] or [0])
 
 
 # wide polaroids (photos wider than tall) on three or four cords, so the width of the picture is used and little hangs below the cards
@@ -1916,24 +1898,14 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
     if lay.get('lift'):   # the cord's lowest point (the middle) sits at the top line and its ends rise into the free corners beside the title
         top_space, bottom_space = px(lay['lift']), H - px(46)
     cf_a, lh_a = garamond(px(CAPTION_SIZE), 500), round(px(CAPTION_SIZE * 1.2))
-    n_pill, gap0 = lay.get('pill', 0), gap
-    for _ in range(2):   # Darpan, 23 Nov 2026: the room under the cards is as tall as the longest caption needs, every word in
-        gap = gap0
-        below = (lay.get('pill', 0) * lh_a + (n_pill - lay.get('pill', 0)) * lh_a * .82 + px(22)) if lay.get('pill') and CAPTIONS != 'none' else 0   # no captions: the cards take that room
-        probe = WideCard(100, lay['ratio'], lay['band'])
-        pw_w = min(px(440), ((W - 2 * M - gap * (cols - 1)) / cols) / (probe.CW / 100))   # as wide as the row allows
-        row_h = (bottom_space - top_space - (nrows - 1) * row_gap - nrows * below) / nrows
-        ph = min(pw_w * lay['ratio'], row_h - (probe.CH - probe.PH) / 100 * pw_w)     # as tall as the rows allow
-        pw = min(pw_w, ph / lay.get('min_ratio', .6))            # a photo is never wider than 16:9 ish, so shrink the card if it would be
-        card = WideCard(pw, ph / pw, lay['band'])
-        gap = min(px(60), (W - 2 * M - cols * card.CW) / max(1, cols - 1))
-        if not lay.get('pill') or CAPTIONS == 'none':
-            break
-        need = min(PILL_MAX, pill_lines(photos, card, gap, cf_a))   # measured once on the usual cards, so the cards never shrink much
-        if need <= n_pill:
-            break
-        n_pill = need
-    lay = dict(lay, room=n_pill)
+    below = (lay.get('pill', 0) * lh_a + px(22)) if lay.get('pill') and CAPTIONS != 'none' else 0   # no captions: the cards take that room
+    probe = WideCard(100, lay['ratio'], lay['band'])
+    pw_w = min(px(440), ((W - 2 * M - gap * (cols - 1)) / cols) / (probe.CW / 100))   # as wide as the row allows
+    row_h = (bottom_space - top_space - (nrows - 1) * row_gap - nrows * below) / nrows
+    ph = min(pw_w * lay['ratio'], row_h - (probe.CH - probe.PH) / 100 * pw_w)     # as tall as the rows allow
+    pw = min(pw_w, ph / lay.get('min_ratio', .6))            # a photo is never wider than 16:9 ish, so shrink the card if it would be
+    card = WideCard(pw, ph / pw, lay['band'])
+    gap = min(px(60), (W - 2 * M - cols * card.CW) / max(1, cols - 1))
     pitch = card.CH + below + row_gap
     block = (nrows - 1) * pitch + card.CH + below
     if lay.get('fill') and nrows > 1:   # spare height goes between the rows rather than above and below them
@@ -1970,7 +1942,7 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
                     if cx != hx:
                         later.append(lambda cx=cx, cy=cy: peg(img, cx, cy, s, short=.72))
                 if lay.get('pill') and shown_caption(hx_card):
-                    tag, pos = under_card(hx_card, hcard, gap, cf_a, lh_a, style, rnd, n=lay.get('pill'), room=lay.get('room'))
+                    tag, pos = under_card(hx_card, hcard, gap, cf_a, lh_a, style, rnd)
                     later.append(lambda tag=tag, hx=hx, by=qy + hcard.CH: img.paste(tag, (int(hx - tag.width / 2), int(by + px(6))), tag))
         x0 = (W - (len(row) * card.CW + (len(row) - 1) * gap)) / 2
         slots = list(range(len(row)))
@@ -1994,7 +1966,7 @@ def compose_wide(photos, day, seed, style, history=None, title=None, cal=None, h
             img.paste(hung, (int(mx - hung.width / 2), int(my - hung.height / 2)), hung)
             later.append(lambda cx=cx: peg(img, cx, sag(cx) + px(4), s, short=.72))
             if lay.get('pill') and shown_caption(x):
-                tag, pos = under_card(x, card, gap, cf_a, lh_a, style, rnd, n=lay.get('pill'), room=lay.get('room'))
+                tag, pos = under_card(x, card, gap, cf_a, lh_a, style, rnd)
                 bx, by = qx + card.CH * np.sin(t), qy + card.CH * np.cos(t)
                 later.append(lambda tag=tag, bx=bx, by=by: img.paste(tag, (int(bx - tag.width / 2), int(by + px(6))), tag))
         for f in later:
