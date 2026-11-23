@@ -191,6 +191,7 @@ jobs:
           STUDIO_GITHUB_TOKEN: ${{ secrets.STUDIO_GITHUB_TOKEN }}
           STUDIO_READ_KEY: ${{ secrets.STUDIO_READ_KEY }}
           CF_ANALYTICS_TOKEN: ${{ secrets.CF_ANALYTICS_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           # the email sign up (/api/weekly, functions/ next to out/) needs the Resend key as a Pages secret (Darpan: ALL GOOD, 26 Oct)
           if [ -n "$RESEND_API_KEY" ]; then printf %s "$RESEND_API_KEY" | npx --yes wrangler@3.114.0 pages secret put RESEND_API_KEY --project-name "$PROJECT" > /dev/null && echo "Resend key: set"; fi
@@ -231,6 +232,8 @@ jobs:
           if [ -n "$STUDIO_GITHUB_TOKEN" ]; then printf %s "$STUDIO_GITHUB_TOKEN" | npx --yes wrangler@3.114.0 pages secret put STUDIO_GITHUB_TOKEN --project-name "$PROJECT" > /dev/null && echo "Studio GitHub token: set"; else echo "Studio GitHub token: add a GitHub secret STUDIO_GITHUB_TOKEN so special picture choices reach archive/special-days.json on main"; fi
           # the 2pm picture project's weekly script reads the Studio's changes log at /api/studio-log with this key (17 Nov 2026)
           if [ -n "$STUDIO_READ_KEY" ]; then printf %s "$STUDIO_READ_KEY" | npx --yes wrangler@3.114.0 pages secret put STUDIO_READ_KEY --project-name "$PROJECT" > /dev/null && echo "Studio log read key: set"; else echo "Studio log read key: add a GitHub secret STUDIO_READ_KEY so the weekly learning can read /api/studio-log"; fi
+          # Ask Claude in the Search bar (functions/api/ask.js, Darpan 23 Nov 2026): his Claude key, copied from the GitHub secret, never in a page
+          if [ -n "$ANTHROPIC_API_KEY" ]; then printf %s "$ANTHROPIC_API_KEY" | npx --yes wrangler@3.114.0 pages secret put ANTHROPIC_API_KEY --project-name "$PROJECT" > /dev/null && echo "Claude key: set"; else echo "Claude key: add a GitHub secret ANTHROPIC_API_KEY so Search can answer in plain words"; fi
           npx --yes wrangler@3.114.0 pages deploy out --project-name "$PROJECT" --branch main --commit-dirty=true
       - name: Keep a ready made copy of the site outside Cloudflare (Darpan, 9 Nov 2026 backups)
         # the exact files just deployed, zipped with functions/, to Google Drive and the private R2 bucket
