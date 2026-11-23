@@ -1,5 +1,6 @@
 <meta charset="utf-8">
 <link rel="stylesheet" href="{{MENU_CSS}}">
+<script>/* the gentle opening plays on the first visit of each day only (Darpan, 23 Nov 2026) */(function(){try{var d=new Date(),k=d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(),h=document.documentElement;if(matchMedia("(prefers-reduced-motion: reduce)").matches||localStorage.getItem("bd-opening")===k)return;localStorage.setItem("bd-opening",k);h.classList.add("bd-opening");setTimeout(function(){h.classList.remove("bd-opening")},4000)}catch(e){}})()</script>
 <title>Bapa's Diary</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
@@ -492,6 +493,61 @@ a.ss-big { text-decoration: none; }
   background:radial-gradient(circle at 40% 30%,rgba(255,255,255,.55),var(--c,#ff9f1c) 60%);opacity:.75;animation:fall var(--t,16s) linear infinite;animation-delay:var(--d,0s)}
 @keyframes fall{0%{transform:translate(0,-5vh) rotate(0)}50%{transform:translate(var(--s,30px),50vh) rotate(200deg)}100%{transform:translate(0,108vh) rotate(400deg)}}
 @media (prefers-reduced-motion:reduce){.diya .flame,.diya .glow,.bulb,.petal,.star{animation:none}.fw,.ember,.puff{display:none}}
+/* ===== Moving touches (Darpan, 23 Nov 2026: "throoughly test this, then we can go live yes"; mockup 17 Nov) =====
+   A year card unfolds: the photo lifts off the rope into a big polaroid and a maroon page opens beside it with that
+   year's photos as a stack to drag, swipe or tap through. And a gentle opening, once a day. */
+html.bd-opening header, html.bd-opening .board { opacity: 0; }
+.uf-back { position: fixed; inset: 0; z-index: 2147482000; background: radial-gradient(ellipse at 50% 40%, rgba(66, 16, 28, .82), rgba(12, 3, 6, .93));
+  -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); opacity: 0; transition: opacity .45s ease; }
+.uf-back.on { opacity: 1; }
+.uf { position: fixed; z-index: 2147482001; left: 50%; top: 50%; width: min(940px, calc(100vw - 48px)); translate: -50% -50%;
+  display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); perspective: 1600px; pointer-events: none; }
+.uf.live { pointer-events: auto; }
+.uf-side { position: relative; padding: 34px 30px 34px 34px; }
+.uf-stack { position: relative; width: 100%; aspect-ratio: 4 / 5; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.uf-ph { position: absolute; inset: 0; box-sizing: border-box; padding: 4.5% 4.5% 13%; cursor: grab; will-change: transform;
+  background: linear-gradient(var(--ivory-top), var(--ivory-bot)); border: 1px solid var(--ivory-edge);
+  box-shadow: 0 18px 34px rgba(0, 0, 0, .45), 0 3px 6px rgba(0, 0, 0, .3); transition: transform .55s cubic-bezier(.25, 1.2, .4, 1), opacity .4s ease; }
+.uf-ph:active { cursor: grabbing; }
+.uf-ph.drag { transition: none; }
+.uf-ph img { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; -webkit-user-drag: none; background: #2a0a12; }
+.uf-ph .uf-pc { position: absolute; left: 6%; right: 6%; bottom: 3.2%; height: 7%; display: flex; align-items: center; justify-content: center;
+  font: italic 500 clamp(13px, 1.3vw, 16px)/1.2 var(--lora, var(--serif)); color: var(--maroon-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.uf-info { position: relative; box-sizing: border-box; align-self: center; min-height: 420px; display: flex; flex-direction: column;
+  padding: 40px 40px 34px; color: var(--cream); background: linear-gradient(180deg, #3a0d18, #1c060b); border: 1px solid rgba(217, 164, 65, .6);
+  box-shadow: 0 0 0 4px #1c060b, 0 0 0 5px rgba(217, 164, 65, .35), 0 30px 70px rgba(0, 0, 0, .55);
+  transform-origin: 0 50%; transform: rotateY(-92deg); opacity: 0; }
+.uf-info.open { transition: transform .75s cubic-bezier(.2, .9, .25, 1.06), opacity .25s ease; transform: none; opacity: 1; }
+.uf-info.shut { transition: transform .32s ease-in, opacity .32s ease-in; transform: rotateY(-92deg); opacity: 0; }
+.uf-info h2 { margin: 0; font: 700 clamp(46px, 5vw, 64px)/1 var(--lora, var(--serif)); color: var(--gold-hi); }
+.uf-info .uf-pl { margin-top: 10px; font: 600 15px/1.2 var(--poppins, var(--sans)); letter-spacing: .24em; text-transform: uppercase; color: var(--gold-soft); }
+.uf-info .uf-dt { margin-top: 6px; font: italic 500 17px/1.3 var(--lora, var(--serif)); color: #e8c98a; }
+.uf-info hr { border: 0; height: 1px; width: 100%; margin: 22px 0 18px; background: linear-gradient(90deg, rgba(217, 164, 65, .7), rgba(217, 164, 65, 0)); }
+.uf-info .uf-cap { font: 500 21px/1.4 var(--serif); color: var(--cream); min-height: 2.8em; transition: opacity .3s ease; }
+.uf-info .uf-n { margin-top: 10px; font: 500 13px/1.3 var(--poppins, var(--sans)); letter-spacing: .14em; text-transform: uppercase; color: #c9a46a; }
+.uf-info .uf-dots { display: flex; gap: 7px; margin-top: 14px; flex-wrap: wrap; }
+.uf-info .uf-dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(217, 164, 65, .3); transition: background .3s, transform .3s; }
+.uf-info .uf-dots i.on { background: var(--gold-hi); transform: scale(1.35); }
+.uf-info .uf-hint { margin: auto 0 0; padding-top: 22px; font: 400 14px/1.45 var(--poppins, var(--sans)); color: rgba(250, 241, 222, .62); }
+.uf-info .uf-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
+.uf-info .uf-all { font: italic 500 17px/1.3 var(--lora, var(--serif)); color: var(--gold-hi); text-decoration: none; border-bottom: 1px solid rgba(217, 164, 65, .55); }
+.uf-fly { position: fixed; z-index: 2147482002; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; }
+.uf-fly .uf-ph { position: absolute; inset: 0; transition: none; }
+@media (min-width: 761px) and (max-height: 820px) { .uf { width: min(880px, calc(100vw - 48px)); grid-template-columns: minmax(0, 390px) minmax(0, 1fr); } }
+@media (max-width: 760px) {
+  .uf { top: max(12px, env(safe-area-inset-top, 0px)); translate: -50% 0; width: calc(100vw - 24px); grid-template-columns: 1fr; }
+  .uf-side { padding: 14px 13vw 12px; }
+  .uf-stack { width: min(100%, calc((100svh - 340px - var(--ph-bar, 62px)) * .8)); margin: 0 auto; }
+  .uf-info { min-height: 0; padding: 18px 20px 16px; transform-origin: 50% 0; transform: rotateX(-92deg); }
+  .uf-info.shut { transform: rotateX(-92deg); }
+  .uf-info h2 { font-size: 38px; }
+  .uf-info .uf-pl { margin-top: 6px; font-size: 13px; }
+  .uf-info .uf-dt { font-size: 15px; }
+  .uf-info hr { margin: 12px 0 10px; }
+  .uf-info .uf-cap { font-size: 18px; min-height: 0; }
+  .uf-info .uf-hint { padding-top: 10px; font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) { .uf-info.open, .uf-info.shut, .uf-ph { transition-duration: .01s; } }
 </style>
 
 <nav class="site-menu" aria-label="Website tabs"><a href="/" class="on" aria-current="page">Today</a><a href="/calendar/">Calendar</a><a href="{{SEARCH}}">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/about/">About</a></nav>
@@ -976,6 +1032,7 @@ function render() {
   $('all').hidden = !n;
   sparkle();
   requestAnimationFrame(cords);
+  requestAnimationFrame(() => requestAnimationFrame(opening));   // the first visit of the day opens gently
   start();
 }
 
@@ -987,7 +1044,8 @@ function card(y, {Y, place, stories}, want = true) {
   const slot = document.createElement('div'); slot.className = 'slot';
   const el = document.createElement('a'); el.className = 'card';
   el.href = '#y' + y;
-  el.addEventListener('click', e => { e.preventDefault(); const g = $('y' + y); if (g) g.scrollIntoView({behavior: reduce ? 'auto' : 'smooth'}); else if (photos.length) view(0); });
+  // a card with photos unfolds into its year's stack (Darpan, 23 Nov 2026); a year with none goes down to its words as before
+  el.addEventListener('click', e => { e.preventDefault(); if (unfold(c)) return; const g = $('y' + y); if (g) g.scrollIntoView({behavior: reduce ? 'auto' : 'smooth'}); else if (photos.length) view(0); });
   el.setAttribute('aria-label', photos.length ? `${y}, ${where}: see all ${photos.length} photos` : `${y}, ${where}`);
   const ph = document.createElement('div'); ph.className = 'photo';
   const c = {y, el, slot, photos, k: -1, imgs: [], cur: 0, rest: hang(y), at: 0};
@@ -1869,6 +1927,166 @@ addEventListener('keydown', e => {
 });
 // today only: a date in the address (an old shared link, #10-24) is dropped and today opens
 addEventListener('hashchange', () => { if (/^#\d\d-\d\d$/.test(location.hash)) open(TODAY, true); });
+
+// ===== Moving touches (Darpan, 23 Nov 2026: "throoughly test this, then we can go live yes"; mockup 17 Nov) =====
+// A year card unfolds: its photo lifts off the rope into a big polaroid and a maroon page opens beside it, holding that
+// year's photos of Bapa as a stack to drag aside, swipe or tap through. The English date only, never the tithi.
+function unfold(c) {
+  if (document.querySelector('.uf')) return true;
+  const list = everyPhoto.map((e, i) => Object.assign({i}, e)).filter(e => e.y === c.y);
+  if (!list.length) return false;
+  const shown = c.imgs && c.imgs[c.cur] && c.imgs[c.cur].currentSrc || '';
+  const k = list.findIndex(e => shown.endsWith('/' + e.p[0] + '/' + e.p[1]));
+  if (k > 0) list.unshift(list.splice(k, 1)[0]);
+  const n = list.length, y = c.y, where = list[0].where || '', phone = innerWidth <= 760;
+  const when = e => e.trip ? tripText(e.trip) + ' ' + y : e.d ? `${longDate(e.d)} ${y}` : `${DAY.title} ${y}`;
+  const back = document.createElement('div'); back.className = 'uf-back';
+  const box = document.createElement('div'); box.className = 'uf';
+  box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-label', `${y}, ${where}`);
+  box.innerHTML = `<div class="uf-side"><div class="uf-stack"></div></div><div class="uf-info"><h2>${y}</h2><div class="uf-pl">${esc(where)}</div>` +
+    `<div class="uf-dt"></div><hr><div class="uf-cap"></div><div class="uf-n"></div>` +
+    (n > 1 && n <= 24 ? `<div class="uf-dots">${list.map(() => '<i></i>').join('')}</div>` : '') +
+    `<p class="uf-hint">${n > 1 ? (phone ? 'Swipe the photo, or tap it, to see the next.' : 'Drag the photo aside, or click it, to see the next.') : 'One photo from this day.'}</p>` +
+    `<div class="uf-foot"><a class="uf-all" href="#y${y}">See all ${n} ${n === 1 ? 'photo' : 'photos'} from ${y} &rsaquo;</a>` +
+    `<button class="pill solid uf-close" type="button">Close</button></div></div>`;
+  document.body.append(back, box);
+  const stack = box.querySelector('.uf-stack'), info = box.querySelector('.uf-info');
+  const tilt = list.map((_, i) => i ? ((i * 37) % 9 - 4) * 1.1 : 0);
+  const els = list.map(e => {
+    const d = document.createElement('div'); d.className = 'uf-ph';
+    d.innerHTML = `<img alt="${esc(e.p[2] || 'Darshan')}" decoding="async" style="object-position:${focus(e.p)}"><div class="uf-pc">${y} · ${esc(where.split(',')[0])}</div>`;
+    const im = d.firstChild; im.onerror = () => { if (im.src !== SRC.photo(e.p)) im.src = SRC.photo(e.p); };
+    stack.append(d); return d;
+  });
+  const load = j => { const im = els[j].firstChild; if (!im.getAttribute('src')) im.src = SRC.big(list[j].p) || SRC.photo(list[j].p); };
+  let order = list.map((_, j) => j);
+  const place = () => order.forEach((j, d) => {
+    const el = els[j]; if (d < 4) load(j);
+    el.style.zIndex = 100 - d; el.style.opacity = d < 4 ? 1 : 0;
+    el.style.transform = d ? `translate(${d * 7}px, ${-d * 5}px) rotate(${tilt[j]}deg) scale(${1 - d * .025})` : `rotate(${tilt[j] * .3}deg)`;
+  });
+  const words = () => {
+    const j = order[0], e = list[j], cap = box.querySelector('.uf-cap');
+    cap.style.opacity = 0; setTimeout(() => { cap.textContent = e.p[2] || 'Darshan'; cap.style.opacity = 1; }, 160);
+    box.querySelector('.uf-dt').textContent = when(e);
+    box.querySelector('.uf-n').textContent = `Photo ${j + 1} of ${n}`;
+    box.querySelectorAll('.uf-dots i').forEach((dot, m) => dot.classList.toggle('on', m === j));
+  };
+  // start: every photo under the top one, which flies in from the card on the rope
+  els.forEach((el, d) => { el.style.transition = 'none'; el.style.zIndex = 100 - d; el.style.opacity = 0; el.style.transform = 'none'; });
+  load(0); if (n > 1) load(1);
+  const top = els[0]; top.firstChild.src = shown || top.firstChild.src;   // the very photo on the card, already loaded
+  const big = SRC.big(list[0].p); if (shown && big && big !== shown) { const hi = new Image(); hi.onload = () => top.firstChild.src = big; hi.src = big; }
+  words();
+  document.body.style.overflow = 'hidden';
+  const fr = top.getBoundingClientRect(), cr = c.el.getBoundingClientRect();
+  const ang = parseFloat(((c.slot.style.transform || '').match(/rotate\(([-\d.]+)deg/) || [0, 0])[1]) || 0;
+  const fly = document.createElement('div'); fly.className = 'uf-fly';
+  Object.assign(fly.style, {left: fr.left + 'px', top: fr.top + 'px', width: fr.width + 'px', height: fr.height + 'px'});
+  const clone = top.cloneNode(true); clone.style.cssText = ''; fly.append(clone); document.body.append(fly);
+  const from = `translate(${cr.left - fr.left}px, ${cr.top - fr.top}px) scale(${cr.width / fr.width}, ${cr.height / fr.height}) rotate(${ang}deg)`;
+  c.el.style.visibility = 'hidden';
+  requestAnimationFrame(() => back.classList.add('on'));
+  fly.animate([{transform: from}, {transform: 'none'}], {duration: reduce ? 10 : 680, easing: 'cubic-bezier(.2,.8,.2,1)'}).finished.then(() => {
+    top.style.opacity = 1; fly.remove();
+    requestAnimationFrame(() => { els.forEach(el => el.style.transition = ''); place(); info.classList.add('open'); box.classList.add('live'); box.querySelector('.uf-close').focus({preventScroll: true}); });
+  });
+  const next = dir => {
+    const j = order[0], el = els[j], w = stack.clientWidth;
+    el.style.transition = 'transform .32s cubic-bezier(.3,.6,.4,1), opacity .32s';
+    el.style.transform = `translate(${dir * w * 1.15}px, -20px) rotate(${dir * 16}deg)`;
+    order.push(order.shift()); words();
+    setTimeout(() => { el.style.transition = ''; place(); }, 300);
+  };
+  let st = null;
+  stack.addEventListener('pointerdown', e => {
+    if (!box.classList.contains('live') || n < 2) return;
+    const el = els[order[0]]; if (!el.contains(e.target)) return;
+    st = {x: e.clientX, y: e.clientY, t: performance.now(), el, dx: 0, dy: 0}; el.classList.add('drag');
+    try { el.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  stack.addEventListener('pointermove', e => {
+    if (!st) return; st.dx = e.clientX - st.x; st.dy = e.clientY - st.y;
+    st.el.style.transform = `translate(${st.dx}px, ${st.dy * .35}px) rotate(${st.dx / 14}deg)`;
+  });
+  const up = e => {
+    if (!st) return; const {el, dx, t} = st; st = null; el.classList.remove('drag');
+    const v = Math.abs(dx) / Math.max(1, performance.now() - t);
+    if (e.type === 'pointercancel') place();
+    else if (Math.abs(dx) < 6) next(-1);
+    else if (Math.abs(dx) > stack.clientWidth * .22 || v > .55) next(Math.sign(dx));
+    else place();
+  };
+  stack.addEventListener('pointerup', up); stack.addEventListener('pointercancel', up);
+  const key = e => {
+    if (e.key === 'Escape') close();
+    else if (n > 1 && (e.key === 'ArrowRight' || (e.key === ' ' && e.target === document.body))) { e.preventDefault(); next(-1); }
+    else if (n > 1 && e.key === 'ArrowLeft') next(1);
+    else if (e.key === 'Tab') {   // keep the keyboard inside the open card
+      const f = [...box.querySelectorAll('a, button')]; if (!f.length) return;
+      if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+      else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+    }
+  };
+  addEventListener('keydown', key);
+  let closing = false;
+  function close(after) {
+    if (closing) return; closing = true; removeEventListener('keydown', key);
+    box.classList.remove('live'); info.classList.remove('open'); info.classList.add('shut');
+    order.slice(1).forEach(j => { els[j].style.opacity = 0; els[j].style.transform = 'none'; });
+    setTimeout(() => {
+      back.classList.remove('on');
+      const el = els[order[0]]; el.style.transition = 'none'; el.style.transform = 'none'; el.style.transformOrigin = '0 0';
+      const r = el.getBoundingClientRect(), q = c.el.getBoundingClientRect();
+      const to = `translate(${q.left - r.left}px, ${q.top - r.top}px) scale(${q.width / r.width}, ${q.height / r.height}) rotate(${ang}deg)`;
+      el.animate([{transform: 'none'}, {transform: to, opacity: .9}], {duration: reduce ? 10 : 520, easing: 'cubic-bezier(.5,0,.3,1)', fill: 'forwards'}).finished.then(() => {
+        c.el.style.visibility = ''; box.remove(); back.remove(); document.body.style.overflow = '';
+        if (after) after(); else c.el.focus({preventScroll: true});
+      });
+    }, reduce ? 10 : 260);
+  }
+  back.addEventListener('click', () => close());
+  box.addEventListener('click', e => { if (e.target === box || e.target.classList.contains('uf-side')) close(); });
+  box.querySelector('.uf-close').addEventListener('click', () => close());
+  box.querySelector('.uf-all').addEventListener('click', e => {
+    e.preventDefault();
+    close(() => { const g = $('y' + y); if (g) g.scrollIntoView({behavior: reduce ? 'auto' : 'smooth'}); });
+  });
+  return true;
+}
+
+// The gentle opening, the first visit of the day only: the date fades up, the gold line draws out, the side boxes come
+// in, the rope draws across and the cards drop onto their pegs with a small swing. No petals.
+let openingDone = false;
+function opening() {
+  const html = document.documentElement;
+  if (openingDone) return; openingDone = true;
+  if (!html.classList.contains('bd-opening')) return;
+  const go = (el, kf, o) => el && el.animate(kf, Object.assign({fill: 'backwards', easing: 'cubic-bezier(.2,.75,.25,1)'}, o));
+  const vw = innerWidth, vh = innerHeight, head = document.querySelector('header');
+  go($('title'), [{opacity: 0, transform: 'translateY(18px)', filter: 'blur(8px)'}, {opacity: 1, transform: 'none', filter: 'blur(0)'}], {duration: 1100, delay: 100});
+  go($('subtitle'), [{opacity: 0, clipPath: 'inset(0 50% 0 50%)'}, {opacity: 1, clipPath: 'inset(0 0 0 0)'}], {duration: 1000, delay: 450});
+  let d = 700;
+  if (head) [...head.children].forEach(el => {
+    if (el.id === 'title' || el.id === 'subtitle' || el.tagName === 'STYLE' || el.tagName === 'SCRIPT') return;
+    const r = el.getBoundingClientRect(); if (r.top > vh) return;   // a line still filling in (the stories) fades in too
+    const mid = r.width ? (r.left + r.width / 2) / vw : .5;
+    if (vw > 760 && mid < .3) go(el, [{opacity: 0, transform: 'translateX(-26px)'}, {opacity: 1, transform: 'none'}], {duration: 900, delay: 550});
+    else if (vw > 760 && mid > .7) go(el, [{opacity: 0, transform: 'translateX(26px)'}, {opacity: 1, transform: 'none'}], {duration: 900, delay: 650});
+    else { go(el, [{opacity: 0, transform: 'translateY(10px)'}, {opacity: 1, transform: 'none'}], {duration: 800, delay: d}); d += 110; }
+  });
+  const rope = 950;
+  ['cords', 'lights', 'stars'].forEach(id => go($(id), [{clipPath: 'inset(-60px 100% -60px 0)'}, {clipPath: 'inset(-60px 0 -60px 0)'}], {duration: 1300, delay: rope, easing: 'cubic-bezier(.45,.05,.3,1)'}));
+  cards.forEach(c => {
+    const r = c.slot.getBoundingClientRect();
+    if (r.top > vh + 40 || r.left > vw + 40 || r.right < -40) return;
+    const at = rope + 250 + Math.max(0, Math.min(1, (r.left + r.width / 2) / vw)) * 1000 + (r.top > vh * .75 ? 350 : 0);
+    go(c.el, [{opacity: 0, transform: 'translateY(-34px) rotate(-7deg)'}, {opacity: 1, transform: 'translateY(2px) rotate(4deg)', offset: .45},
+      {transform: 'rotate(-2deg)', offset: .7}, {transform: 'rotate(.8deg)', offset: .87}, {opacity: 1, transform: 'none'}], {duration: 1500, delay: at, easing: 'ease-out'});
+    go(c.cap, [{opacity: 0}, {opacity: 1}], {duration: 700, delay: at + 600});
+  });
+  html.classList.remove('bd-opening');
+}
 
 open(TODAY, true);
 // left open overnight (a tablet on a stand), today's page moves on to the new day at midnight, like the TV player
