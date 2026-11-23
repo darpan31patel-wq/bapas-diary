@@ -32,7 +32,7 @@ Writes into OUT_FOLDER:
   All other website pages.csv   every page from the other BAPS websites with its words, headings, dates and place
   All writings.csv              every Daily Satsang prasang, essay, lekhmala and the rest with full text
 """
-import argparse, collections, csv, datetime, glob, json, os, re, shutil, sqlite3
+import argparse, collections, csv, datetime, glob, json, os, re, shutil, sqlite3, urllib.parse
 
 import openpyxl
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
@@ -173,7 +173,8 @@ def load_writings(paths):
     rows, pics = [], []
     for fn in paths:
         kind = {'dailysatsang': 'Daily Satsang', 'essays': 'Enlightening Essay', 'lekhmala': 'Satsang lekhmala',
-                'wallpapers': 'Wallpaper', 'pramukhswami': 'pramukhswami.org'}.get(
+                'wallpapers': 'Wallpaper', 'pramukhswami': 'pramukhswami.org',
+                'vicharan': 'Vicharan report'}.get(
                     os.path.splitext(os.path.basename(fn))[0].lower(), os.path.splitext(os.path.basename(fn))[0])
         raw = json.load(open(fn, encoding='utf-8'))
         items = raw.items() if isinstance(raw, dict) else ((x.get('date') if kind == 'Daily Satsang' and x.get('date')
@@ -200,11 +201,14 @@ def load_writings(paths):
                              else m[4].strip(' ()')) or None
                 except ValueError:
                     pass
+            place = place or v.get('place')
+            written = written or v.get('label')
             imgs = v.get('imgs') or v.get('photos') or []
             imgs = [[i.get('src'), i.get('alt'), i.get('title')] if isinstance(i, dict) else i for i in imgs]
             rows.append([own or page_day, page_day if own and own != page_day else None, written or v.get('date'),
                          'the prasang\'s own date' if own else ('the page date' if page_day else None), place, kind,
-                         ' by '.join(x for x in [v.get('head') or v.get('title'), v.get('author')] if x) or None, text or None, v.get('en') or v.get('english'), len(imgs) or None,
+                         ' by '.join(x for x in [v.get('head') or v.get('title') or v.get('label'), v.get('author')] if x) or None,
+                         (text + ('\n\nUntil ' + v['date_to'] if v.get('date_to') and v.get('date_to') != page_day else '')) or None, v.get('en') or v.get('english'), len(imgs) or None,
                          '\n'.join(('https://www.baps.org' if str(x).startswith('/') else '') + str(x)
                                    for x in ((i[0] if isinstance(i, list) else i) for i in imgs) if x) or None, url or None])
             for i in imgs:
@@ -216,9 +220,11 @@ def load_writings(paths):
                 pd = f'{mm[2]}-{MONTHS[mm[1][:3].lower()]:02d}' if mm else page_day
                 pics.append(dict(site='baps.org ' + kind, photo_url=src, caption=cap, alt=alt, date=pd,
                                  date_written=mm.group(0) if mm else None,
-                                 date_from='the caption' if mm else 'the day the page showed it',
-                                 place=(re.search(r',\s*([A-Z][A-Za-z ]{2,30})\s*$', cap or '') or [None, None])[1],
-                                 place_from='the caption', page_url=url, page_title=v.get('head') or v.get('title'),
+                                 date_from='the caption' if mm else ('the day the page showed it' if kind == 'Daily Satsang'
+                                                                      else f'the {kind} date'),
+                                 place=(re.search(r',\s*([A-Z][A-Za-z ]{2,30})\s*$', cap or '') or [None, None])[1] or v.get('place'),
+                                 place_from='the caption' if re.search(r',\s*([A-Z][A-Za-z ]{2,30})\s*$', cap or '')
+                                 else (f'the {kind}' if v.get('place') else None), page_url=url, page_title=v.get('head') or v.get('title'),
                                  heading=kind))
     rows.sort(key=lambda r: (r[0] or '9999', r[5] or ''))
     return rows, pics
@@ -365,7 +371,11 @@ def main():
                       + extra('baps.org', x['url'], x['title'], x.get('written'), 'the News story', 'the News story', gal, alt))
     # photos copied from the other BAPS websites and from baps.org writings, each with every detail its page gave
     today = datetime.date.today().isoformat()
+    GI = re.compile(r'/GalleryImages/(\d+)/(?:WebImages|FullSizeImages|Thumbnails?)/([^/?#]+)$', re.I)
     for q in site_photos + writing_pics:
+        g = GI.search(q.get('photo_url') or '')
+        if g and (g[1], urllib.parse.unquote(g[2])) in have:   # already a row from the database: no second copy
+            continue
         day = q.get('date') or None
         if day and day > today:   # a two figure year read the wrong way ("04 May 30"): keep it as written, no date
             q = dict(q, date=None, date_to=None, date_from=f"{q.get('date_from') or ''} (read as {day}, which is in the future, so left without a date)")
