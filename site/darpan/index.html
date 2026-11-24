@@ -444,6 +444,7 @@ const RAW = 'https://raw.githubusercontent.com/darpan31patel-wq/bapas-diary/stud
 // the same packs, copied every night to R2 by the backups (Darpan, 13 Nov 2026: the Studio must still open if GitHub is lost)
 const R2PACKS = 'https://photos.bapas-diary.com/studio/packs/';
 let ROOT = '', INDEX = { days: [], months: [], specials: [] };
+const LINK_DATE = new URLSearchParams(location.search).get('date'), LINK_SPECIAL = new URLSearchParams(location.search).get('special');   // read once; the address is cleared after opening
 const PACKS_BRANCH = new URLSearchParams(location.search).get('packs');   // ?packs=<branch> reads that branch's packs (a test run)
 async function loadIndex() {
   for (const root of PACKS_BRANCH ? [RAW.replace('/studio/', `/${PACKS_BRANCH}/`)] : ['', 'packs/', RAW, R2PACKS]) {
@@ -3975,16 +3976,25 @@ $('#exp-go').addEventListener('click', async () => {
   try {
     await loadIndex();
     const today = todayLondon();
-    const recent = SAVED_AT > 0;   // Darpan, 13 Nov 2026: "It forgets where I was": always the same day, tab and picture as he left them
-    if (!recent && S.day.date !== today && INDEX.days.includes(today)) { S.day.date = today; unstash('day') }
+    const recent = SAVED_AT > 0;   // Darpan, 13 Nov 2026: "It forgets where I was": the same tab and picture as he left them
+    // but always on TODAY's date (Darpan, 23 and 24 Nov 2026: "when refreshing the page, still doesnt go to todays date as
+    // defualt"); the day he was on keeps its changes for when he picks it again
+    if (S.day.date !== today && INDEX.days.includes(today)) { if (S.day.date) stash('day'); S.day.date = today; unstash('day') }
+    // a date in the address (?date= or ?special=) is a link he clicked: it opens once, then leaves the address, so a
+    // refresh, the Back button or a restored tab opens on today again
+    const nav = (performance.getEntriesByType && performance.getEntriesByType('navigation')[0] || {}).type || 'navigate';
+    const linked = nav === 'navigate', qs = new URLSearchParams(location.search);
+    if (qs.has('date') || qs.has('special')) { qs.delete('date'); qs.delete('special'); try { history.replaceState(null, '', location.pathname + (qs.toString() ? '?' + qs : '') + location.hash) } catch (x) {} }
     if (!INDEX.days.includes(S.day.date)) { S.day.date = INDEX.days.includes(today) ? today : INDEX.days.at(-1); unstash('day') }
-    const want = new URLSearchParams(location.search).get('date');   // studio/?date=2026-11-23 opens that day
+    const want = linked && LINK_DATE;   // studio/?date=2026-11-23 opens that day
     if (want && /^\d{4}-\d\d-\d\d$/.test(want) && want !== S.day.date) { S.mode = 'day'; return openDate(want) }
+    const thisMonth = today.slice(0, 7);   // the month poster opens on this month too (24 Nov 2026)
+    if (S.month.month !== thisMonth && INDEX.months.includes(thisMonth)) { if (S.month.month) stash('month'); S.month.month = thisMonth; unstash('month') }
     if (!INDEX.months.includes(S.month.month) && !(recent && S.month.month)) { S.month.month = INDEX.months.at(-1); unstash('month') }
     // the special picture opens on today's date (Darpan, 17 Nov 2026: "the special picture page needs to open to todays date by default");
     // the day he was on keeps its changes for when he picks it again
     if (S.special.date !== today) { if (S.special.date) stash('special'); S.special.date = today; unstash('special') }
-    const wantSp = new URLSearchParams(location.search).get('special');   // studio/?special=2026-11-08 opens that special picture
+    const wantSp = linked && LINK_SPECIAL;   // studio/?special=2026-11-08 opens that special picture
     if (wantSp && INDEX.specials.includes(wantSp)) { S.mode = 'special'; S.special.date = wantSp; unstash('special') }
     if (S.mode === 'special' && !S.special.date) S.mode = 'day';
     if (S.mode === 'special' && !INDEX.specials.includes(S.special.date)) { S.tab = 'choose'; build(); return }   // a day he chose that has no special pack yet
