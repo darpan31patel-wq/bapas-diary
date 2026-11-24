@@ -204,7 +204,7 @@ PY
   [ -s signups.json ] && { gzip -f signups.json; rclone copyto signups.json.gz "$DRIVE/signups/$DAY signups.json.gz" && drive_keep signups || problem "Sign up list copy to Drive failed"; }
 fi
 
-step "Standby website on Netlify (only when the site has changed)"
+step "Standby website on Netlify (only when the site has changed, at most every 5 days)"
 # Darpan, 13 Nov 2026: a second home for the pages, so bapas-diary.netlify.app (or bapas-diary-standby) is always ready to
 # take over if Cloudflare ever fails. The plain pages work there; the Studio, sign up and feedback need Cloudflare.
 if [ -n "${NETLIFY_TOKEN:-}" ]; then
@@ -220,12 +220,19 @@ if [ -n "${NETLIFY_TOKEN:-}" ]; then
   fi
   if [ -z "$SITE_ID" ]; then problem "Netlify would not open with the NETLIFY_TOKEN secret"
   elif rclone copyto "$DRIVE/site/latest site.zip" site.zip; then
-    NOW=$(md5sum site.zip | cut -c1-32); WAS=$(rclone cat "$DRIVE/site/netlify.txt" 2>/dev/null)
+    # Darpan, 24 Nov 2026 (Netlify said 75% of the free 300 credits were used): "only update every few days".
+    # Each Netlify deploy costs credits, so the standby is updated at most once every NETLIFY_DAYS days.
+    NOW=$(md5sum site.zip | cut -c1-32); LAST=$(rclone cat "$DRIVE/site/netlify.txt" 2>/dev/null)
+    WAS=${LAST%% *}; WHEN=$(printf %s "$LAST" | awk '{print $2}')
+    AGE=999; [ -n "$WHEN" ] && AGE=$(( ( $(date -u +%s) - $(date -u -d "$WHEN" +%s 2>/dev/null || echo 0) ) / 86400 ))
+    [ -z "$WHEN" ] && [ -n "$WAS" ] && AGE=0   # the old file (md5 only, no date): count it as fresh, so the first wait starts now
     if [ "$NOW" = "$WAS" ]; then echo "Netlify standby already has this site"
+    elif [ "$AGE" -lt "${NETLIFY_DAYS:-5}" ]; then echo "Netlify standby updated $AGE days ago; next update after ${NETLIFY_DAYS:-5} days (saves Netlify credits)"
+      if [ -z "$WHEN" ]; then printf '%s %s' "$WAS" "$(date -u +%F)" | rclone rcat "$DRIVE/site/netlify.txt"; fi
     else
       rm -rf standby && mkdir standby && unzip -q site.zip 'out/*' -d standby && (cd standby/out && zip -qr ../../standby.zip .)
       URL=$(nl -X POST -H 'Content-Type: application/zip' --data-binary @standby.zip --max-time 1800 "$NAPI/sites/$SITE_ID/deploys" | jq -r '.ssl_url // .url // empty')
-      if [ -n "$URL" ]; then echo "Netlify standby updated: $URL"; printf %s "$NOW" | rclone rcat "$DRIVE/site/netlify.txt"
+      if [ -n "$URL" ]; then echo "Netlify standby updated: $URL"; printf '%s %s' "$NOW" "$(date -u +%F)" | rclone rcat "$DRIVE/site/netlify.txt"
       else problem "Netlify standby update failed"; fi
       rm -rf standby standby.zip
     fi
