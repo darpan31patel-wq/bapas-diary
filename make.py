@@ -4252,7 +4252,7 @@ def compose_drawn(ev, day, ims, plain, lab, most, lead=None, src=None):
     # smaller small cards and smaller words, in that order, until every word is in; only then is anything left off.
     # Darpan, 17 Nov 2026: up to 20 photos. Many small cards go in rows under the story, as many rows as keeps them
     # biggest while the whole story still fits
-    for hw, smax, sizes in ((1180, 330, (36, 34, 32, 30)), (1000, 270, (32, 30, 28)), (860, 230, (28, 27, 26, 25, 24)), (760, 200, (24, 23, 22)), (660, 170, (22, 21, 20, 19))):   # the last step for a long News story (16 Nov 2026: the Canada visit lost its end)
+    for hw, smax, sizes in ((1180, 330, (36, 34, 32, 30)), (1000, 270, (32, 30, 28)), (860, 230, (28, 27, 26, 25, 24)), (760, 200, (24, 23, 22)), (660, 170, (22, 21, 20, 19)), (560, 150, (18, 17, 16))):   # the last steps for a long News story (16 Nov 2026: the Canada visit lost its end; 24 Nov 2026: the Shri Swaminarayan Arti post with its whole arti)
         x0 = px(hw + 180); tw = W - x0 - px(90)
         for hs in ((60, 3), (54, 3), (48, 3), (44, 4), (40, 5)) if hw > 900 else ((52, 3), (48, 3), (44, 4), (40, 5)):   # Darpan, 23 Nov 2026: the whole title, smaller rather than cut
             hf = garamond(px(hs[0]), 700)
@@ -4271,7 +4271,7 @@ def compose_drawn(ev, day, ims, plain, lab, most, lead=None, src=None):
             top_sw = min(px(smax), (tw - gap * (per - 1) - px(24)) / per) if small else 0
             for f in ((1, .9, .8, .7, .6, .5, .42, .36) if small else (1,)):
                 sw = top_sw * f
-                if small and sw < px(smax) * .36 and hw > 660:
+                if small and sw < px(smax) * .36 and hw > 560:
                     break
                 cards_h = grid(rows, sw)[1] if small else 0
                 floor = H - px(90) - cards_h
@@ -4285,7 +4285,7 @@ def compose_drawn(ev, day, ims, plain, lab, most, lead=None, src=None):
         whole = best is not None
         if whole:
             sw, rows, per, gap, floor, (lines, bf, lh, gap_p, whole), _ = best
-        elif hw == 660:   # nothing fits whole even at the smallest: the last try, as before
+        elif hw == 560:   # nothing fits whole even at the smallest: the last try, as before
             sw, rows, per, gap = top_sw, 1, len(small), px(36)
             floor = H - px(90) - (grid(1, sw)[1] if small else 0)
             lines, bf, lh, gap_p, whole = story_block(dr, paras, tw * .98, floor - y0, sizes) if paras else ([], None, 0, 0, True)
