@@ -94,6 +94,49 @@ def send(cmd, out):
     return False
 
 
+def redo(db, have, todo, done):
+    """Photos whose full size copy reached R2 but whose smaller copies did not (Darpan, 19 Nov 2026: 901 News photos
+    showed as empty tiles). tools/hires_redo.txt lists ALBUM/FILE, one per line. Any whose 480 px copy is still missing
+    is made again from Drive: it is taken out of have, and its year goes back on the to do list. Returns the years that
+    are on the list only for these photos, so they are not marked finished when they are not."""
+    import urllib.parse, urllib.request
+    from concurrent.futures import ThreadPoolExecutor
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'hires_redo.txt')
+    if not os.path.exists(path):
+        return set()
+    keys = [l.strip() for l in open(path, encoding='utf-8') if '/' in l.strip()]
+
+    def missing(k):
+        al, f = k.split('/', 1)
+        url = f'https://photos.bapas-diary.com/s/{al}/{urllib.parse.quote(f)}'
+        for _ in range(3):
+            try:
+                req = urllib.request.Request(url, method='HEAD', headers={'User-Agent': 'bapas-diary-build'})
+                with urllib.request.urlopen(req, timeout=20):
+                    return False
+            except urllib.error.HTTPError as e:
+                if e.code == 404:
+                    return True
+            except Exception:
+                pass
+        return False   # could not tell: leave it for the next run
+
+    with ThreadPoolExecutor(16) as ex:
+        again = [k for k, m in zip(keys, ex.map(missing, keys)) if m]
+    years = set()
+    for k in again:
+        have.discard(f'o/{k}')
+        al, f = k.split('/', 1)
+        r = db.execute('SELECT year FROM photos WHERE album = ? AND file = ?', (al, f)).fetchone()
+        if r and r[0]:
+            years.add(r[0])
+    print(f'Smaller copies missing for {len(again)} of {len(keys)} listed photos; making them again ({sorted(years)})',
+          flush=True)
+    keep = {y for y in years if y not in todo and y not in done}   # not finished in Drive yet: never mark it done
+    todo[:0] = [y for y in sorted(years) if y not in todo]
+    return keep
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--db', default='bapas.db')
@@ -132,6 +175,9 @@ def main():
         todo = [y for y in todo if y in mine]
     if a.years:
         todo = [y for y in todo if str(y) in a.years.split(',')]
+    keep = set()
+    if a.shard == 0 and a.part == 0 and not a.years:
+        keep = redo(db, have, todo, done)
     print(f'Drive archive finished: {sorted(ready)}; already in R2 at full size: {sorted(done)}; to do now: {todo}', flush=True)
     inbox, out = os.path.join(a.work, 'in'), os.path.join(a.work, 'out')
     with ProcessPoolExecutor() as pool:
@@ -164,6 +210,9 @@ def main():
                 print(f'  {year}: {min(i + a.chunk, len(rows)):,} of {len(rows):,} ({len(part) - len(jobs)} not in Drive)', flush=True)
             if lost > max(20, len(rows) // 50):   # more than baps.org ever refused: Drive was not answering, try again next run
                 print(f'{year}: {lost} photos did not come from Drive; the next run tries them again')
+                continue
+            if year in keep:   # only a few photos made again, the year itself is not finished yet
+                print(f'{year}: photos made again', flush=True)
                 continue
             subprocess.run(a.year_done, shell=True, check=True, env={**os.environ, 'YEAR': str(year)})
             print(f'{year} finished', flush=True)

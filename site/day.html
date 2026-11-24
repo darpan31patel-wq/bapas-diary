@@ -1,5 +1,6 @@
 <meta charset="utf-8">
 <link rel="stylesheet" href="{{MENU_CSS}}">
+<script>/* the gentle opening plays on the first visit of each day only (Darpan, 23 Nov 2026) */(function(){try{var d=new Date(),k=d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(),h=document.documentElement;if(matchMedia("(prefers-reduced-motion: reduce)").matches||localStorage.getItem("bd-opening")===k)return;localStorage.setItem("bd-opening",k);h.classList.add("bd-opening");setTimeout(function(){h.classList.remove("bd-opening")},4000)}catch(e){}})()</script>
 <title>Bapa's Diary</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
@@ -69,6 +70,8 @@ h1{font:700 clamp(46px,9vw,100px)/1 var(--serif);margin:0;background:linear-grad
   html:not([style^="zoom"]):not([style*=" zoom"]) .count{grid-row:5;margin:12px auto 0;font-size:19px;white-space:nowrap}
   html:not([style^="zoom"]):not([style*=" zoom"]) .yir{grid-row:7}
   html:not([style^="zoom"]):not([style*=" zoom"]) #mocknote{grid-row:8}
+  html:not([style^="zoom"]):not([style*=" zoom"]) #momentsline{grid-row:7;margin-top:10px}
+  html:not([style^="zoom"]):not([style*=" zoom"]) #storiesline{grid-row:8;margin-top:6px}   /* the special moments line first, the stories line under it */
   html:not([style^="zoom"]):not([style*=" zoom"]) header .bapa-now{grid-area:1/3/7/4;justify-self:stretch;align-self:stretch;width:auto;margin:0;max-width:none;min-width:0;padding:14px 22px 14px 16px;gap:clamp(16px,2vw,28px)}
   html:not([style^="zoom"]):not([style*=" zoom"]) header .bapa-now svg{width:clamp(120px,11vw,164px);height:clamp(120px,11vw,164px)}
   html:not([style^="zoom"]):not([style*=" zoom"]) header .side{grid-area:1/1/7/2;justify-self:end;align-self:stretch;width:100%;max-width:400px;min-width:0;display:flex;flex-direction:column;
@@ -156,6 +159,11 @@ a.ss-big { text-decoration: none; }
 .photo .words.off{opacity:0}
 .photo.story{display:grid;place-items:center;padding:12%;background:radial-gradient(circle at 50% 40%,#5a1626,var(--maroon-deep))}
 .photo.story p{margin:0;font:500 clamp(14px,1.3vw,16px)/1.35 var(--serif);font-style:italic;color:var(--gold-hi);text-wrap:balance}
+/* a year with no photo: the year on its frame and a box of what was written that day (Darpan, 16 Nov 2026) */
+.photo.story{padding:9%}
+.photo.story .box{width:100%;max-height:100%;overflow:hidden;padding:12px 12px 14px;border:1px solid rgba(232,199,122,.45);border-radius:3px;background:rgba(0,0,0,.18);text-align:center}   /* centred words (Darpan, 16 Nov 2026: "center this text") */
+.photo.story .sk{display:block;margin-bottom:7px;font:700 9.5px var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--gold-soft)}
+.photo.story .box p{font-size:clamp(12.5px,1.05vw,14.5px);line-height:1.42;color:var(--cream);text-wrap:pretty;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:9;overflow:hidden}
 .label{padding:9px 2px 10px;color:var(--maroon-ink)}
 .yr{font:700 clamp(24px,2.3vw,30px)/1 var(--serif)}
 .pl{margin-top:6px;font:800 clamp(12.5px,1.1vw,15px)/1.2 var(--sans);letter-spacing:.11em;text-transform:uppercase;color:var(--maroon-ink);text-wrap:balance;overflow-wrap:anywhere}   /* year and place are the biggest words on a card (Darpan, 26 Oct 2026) */
@@ -317,6 +325,35 @@ a.ss-big { text-decoration: none; }
 .controls label{font:700 10px var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--gold-soft)}
 
 /* every photo of the day */
+.stories{margin-top:48px;border-top:1px solid rgba(217,164,65,.22);padding-top:28px}
+.stories>h2{margin:0;text-align:center;font:700 clamp(24px,3.4vw,36px)/1.15 var(--serif);color:var(--gold-hi);text-wrap:balance}
+.stories>p{text-align:center;color:var(--mist);margin:8px 0 0;font-size:15px}
+.stories ol{list-style:none;margin:22px auto 0;padding:0;max-width:1200px;columns:3 340px;column-gap:40px}
+.stories li{break-inside:avoid;margin:0 0 4px}
+.stories a{display:flex;gap:14px;align-items:baseline;padding:7px 4px;border-bottom:1px solid rgba(217,164,65,.14);text-decoration:none;color:var(--cream);font:500 16px/1.4 var(--serif)}
+.stories a b{flex:none;font:700 15px var(--serif);color:var(--gold);font-variant-numeric:tabular-nums}
+.stories a span{text-decoration:underline;text-decoration-color:rgba(217,164,65,.3);text-underline-offset:3px}
+.stories a:hover span,.stories a:focus-visible span{color:var(--gold-hi);text-decoration-color:var(--gold-hi)}
+/* the special moments of the day: the deep search of every caption, story, calendar day and News story (Darpan, 13 Nov 2026) */
+.moments{margin-top:48px;border-top:1px solid rgba(217,164,65,.22);padding-top:28px;scroll-margin-top:16px}
+.moments>h2{margin:0;text-align:center;font:700 clamp(28px,4vw,42px)/1.1 var(--serif);color:var(--gold-hi);text-wrap:balance}
+.moments>p{text-align:center;color:var(--mist);margin:8px auto 0;font-size:15px;max-width:760px;text-wrap:balance}
+.moments ol{list-style:none;margin:24px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,440px),1fr));gap:4px 34px}
+.moments li[hidden]{display:none}
+.mo{display:flex;gap:16px;align-items:flex-start;padding:12px 4px;border-bottom:1px solid rgba(217,164,65,.14);text-decoration:none;color:var(--cream);cursor:pointer}
+.mo .mi{flex:none;width:104px;height:104px;border-radius:3px;overflow:hidden;background:#2a0b10;box-shadow:0 0 0 1.5px rgba(217,164,65,.7),0 4px 10px rgba(0,0,0,.35)}
+.mo .mi img{display:block;width:100%;height:100%;object-fit:cover}
+.mo .mt{min-width:0}
+.mo .my{display:flex;align-items:baseline;gap:4px 12px;flex-wrap:wrap}
+.mo .my b{font:700 28px/1 var(--serif);color:var(--gold-hi);font-variant-numeric:tabular-nums}
+.mo .my .caps{color:var(--gold-soft)}
+.mo .mk{display:block;margin-top:6px;font:700 10.5px/1.2 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+.mo .ml{display:block;margin-top:4px;font:500 18px/1.4 var(--serif);overflow-wrap:anywhere}
+.mo .ms{display:block;margin-top:4px;font:italic 500 14px/1.3 var(--serif);color:var(--mist)}
+.mo:hover .ml,.mo:focus-visible .ml{color:var(--gold-hi)}
+.moments .momore{text-align:center;margin-top:20px}
+.moments .momore .go{background:none;cursor:pointer}
+@media (max-width:560px){.mo{gap:12px}.mo .mi{width:76px;height:76px}.mo .my b{font-size:23px}.mo .ml{font-size:16.5px}}
 .all{margin-top:56px;border-top:1px solid rgba(217,164,65,.22);padding-top:30px}
 .all>h2{margin:0;text-align:center;font:700 clamp(28px,4vw,42px)/1.1 var(--serif);color:var(--gold-hi);text-wrap:balance}
 .all>p{text-align:center;color:var(--mist);margin:8px 0 0;font-size:15px}
@@ -327,6 +364,9 @@ a.ss-big { text-decoration: none; }
 .yhead .it{font:500 16px var(--serif);font-style:italic;color:var(--cream)}
 .yhead .fest{margin:0;background:var(--gold-soft);color:var(--maroon-out)}
 .yhead a{margin-left:auto}
+.artline{margin:9px 0 0;font:italic 500 15px/1.4 var(--serif);color:var(--gold-soft)}
+.artline a{margin:0;color:var(--gold-hi);text-decoration:underline;text-decoration-color:rgba(217,164,65,.45);text-underline-offset:3px}
+.artline a:hover,.artline a:focus-visible{text-decoration-color:var(--gold-hi)}
 /* the gold Photos button: that day's photos in Search (Darpan, 28 Oct 2026) */
 .go{display:inline-block;padding:6px 13px;border:1px solid var(--go,var(--gold-soft));border-radius:999px;color:var(--go,var(--gold-soft));font:600 11.5px/1.2 var(--sans);letter-spacing:.08em;text-transform:uppercase;text-decoration:none;white-space:nowrap}
 .go:hover,.go:focus-visible{background:var(--go,var(--gold-soft));color:var(--go-on,var(--maroon-out));outline:none}
@@ -343,6 +383,11 @@ a.ss-big { text-decoration: none; }
 .day-story .paras{max-width:70ch}
 .day-story .paras.many{max-width:none;columns:34ch 3;column-gap:40px}   /* a long story uses the whole width on a wide screen (Darpan, 26 Oct 2026) */
 .day-story .more{margin:0;padding-top:8px;font:400 15px/1.55 var(--serif);color:var(--cream);opacity:.88;break-inside:avoid}
+/* baps.org Daily Satsang prasang, English first with a small quiet switch to the Gujarati (Darpan, 13 Nov 2026) */
+.bpr .flip{margin-left:10px;padding:0;border:0;background:none;font:500 13px var(--serif);font-style:normal;color:var(--gold-soft);text-decoration:underline;text-decoration-color:rgba(217,164,65,.45);text-underline-offset:3px;cursor:pointer}
+.bpr .flip:hover,.bpr .flip:focus-visible{color:var(--gold-hi)}
+.bpr .src,.bpr .paras .src{margin:6px 0 0;font:400 12px/1.4 var(--sans);color:var(--cream);opacity:.6}
+.bpr .src a{color:inherit}
 .day-story .diary{margin:8px 0 0;padding:0;list-style:none;max-width:70ch}
 .day-story .diary li{position:relative;margin:0 0 5px;padding-left:16px;font:400 15px/1.45 var(--serif);color:var(--cream);opacity:.9}
 .day-story .diary li::before{content:"";position:absolute;left:2px;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--gold-soft)}
@@ -448,6 +493,61 @@ a.ss-big { text-decoration: none; }
   background:radial-gradient(circle at 40% 30%,rgba(255,255,255,.55),var(--c,#ff9f1c) 60%);opacity:.75;animation:fall var(--t,16s) linear infinite;animation-delay:var(--d,0s)}
 @keyframes fall{0%{transform:translate(0,-5vh) rotate(0)}50%{transform:translate(var(--s,30px),50vh) rotate(200deg)}100%{transform:translate(0,108vh) rotate(400deg)}}
 @media (prefers-reduced-motion:reduce){.diya .flame,.diya .glow,.bulb,.petal,.star{animation:none}.fw,.ember,.puff{display:none}}
+/* ===== Moving touches (Darpan, 23 Nov 2026: "throoughly test this, then we can go live yes"; mockup 17 Nov) =====
+   A year card unfolds: the photo lifts off the rope into a big polaroid and a maroon page opens beside it with that
+   year's photos as a stack to drag, swipe or tap through. And a gentle opening, once a day. */
+html.bd-opening header, html.bd-opening .board { opacity: 0; }
+.uf-back { position: fixed; inset: 0; z-index: 2147482000; background: radial-gradient(ellipse at 50% 40%, rgba(66, 16, 28, .82), rgba(12, 3, 6, .93));
+  -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); opacity: 0; transition: opacity .45s ease; }
+.uf-back.on { opacity: 1; }
+.uf { position: fixed; z-index: 2147482001; left: 50%; top: 50%; width: min(940px, calc(100vw - 48px)); translate: -50% -50%;
+  display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); perspective: 1600px; pointer-events: none; }
+.uf.live { pointer-events: auto; }
+.uf-side { position: relative; padding: 34px 30px 34px 34px; }
+.uf-stack { position: relative; width: 100%; aspect-ratio: 4 / 5; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.uf-ph { position: absolute; inset: 0; box-sizing: border-box; padding: 4.5% 4.5% 13%; cursor: grab; will-change: transform;
+  background: linear-gradient(var(--ivory-top), var(--ivory-bot)); border: 1px solid var(--ivory-edge);
+  box-shadow: 0 18px 34px rgba(0, 0, 0, .45), 0 3px 6px rgba(0, 0, 0, .3); transition: transform .55s cubic-bezier(.25, 1.2, .4, 1), opacity .4s ease; }
+.uf-ph:active { cursor: grabbing; }
+.uf-ph.drag { transition: none; }
+.uf-ph img { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; -webkit-user-drag: none; background: #2a0a12; }
+.uf-ph .uf-pc { position: absolute; left: 6%; right: 6%; bottom: 3.2%; height: 7%; display: flex; align-items: center; justify-content: center;
+  font: italic 500 clamp(13px, 1.3vw, 16px)/1.2 var(--lora, var(--serif)); color: var(--maroon-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.uf-info { position: relative; box-sizing: border-box; align-self: center; min-height: 420px; display: flex; flex-direction: column;
+  padding: 40px 40px 34px; color: var(--cream); background: linear-gradient(180deg, #3a0d18, #1c060b); border: 1px solid rgba(217, 164, 65, .6);
+  box-shadow: 0 0 0 4px #1c060b, 0 0 0 5px rgba(217, 164, 65, .35), 0 30px 70px rgba(0, 0, 0, .55);
+  transform-origin: 0 50%; transform: rotateY(-92deg); opacity: 0; }
+.uf-info.open { transition: transform .75s cubic-bezier(.2, .9, .25, 1.06), opacity .25s ease; transform: none; opacity: 1; }
+.uf-info.shut { transition: transform .32s ease-in, opacity .32s ease-in; transform: rotateY(-92deg); opacity: 0; }
+.uf-info h2 { margin: 0; font: 700 clamp(46px, 5vw, 64px)/1 var(--lora, var(--serif)); color: var(--gold-hi); }
+.uf-info .uf-pl { margin-top: 10px; font: 600 15px/1.2 var(--poppins, var(--sans)); letter-spacing: .24em; text-transform: uppercase; color: var(--gold-soft); }
+.uf-info .uf-dt { margin-top: 6px; font: italic 500 17px/1.3 var(--lora, var(--serif)); color: #e8c98a; }
+.uf-info hr { border: 0; height: 1px; width: 100%; margin: 22px 0 18px; background: linear-gradient(90deg, rgba(217, 164, 65, .7), rgba(217, 164, 65, 0)); }
+.uf-info .uf-cap { font: 500 21px/1.4 var(--serif); color: var(--cream); min-height: 2.8em; transition: opacity .3s ease; }
+.uf-info .uf-n { margin-top: 10px; font: 500 13px/1.3 var(--poppins, var(--sans)); letter-spacing: .14em; text-transform: uppercase; color: #c9a46a; }
+.uf-info .uf-dots { display: flex; gap: 7px; margin-top: 14px; flex-wrap: wrap; }
+.uf-info .uf-dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(217, 164, 65, .3); transition: background .3s, transform .3s; }
+.uf-info .uf-dots i.on { background: var(--gold-hi); transform: scale(1.35); }
+.uf-info .uf-hint { margin: auto 0 0; padding-top: 22px; font: 400 14px/1.45 var(--poppins, var(--sans)); color: rgba(250, 241, 222, .62); }
+.uf-info .uf-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
+.uf-info .uf-all { font: italic 500 17px/1.3 var(--lora, var(--serif)); color: var(--gold-hi); text-decoration: none; border-bottom: 1px solid rgba(217, 164, 65, .55); }
+.uf-fly { position: fixed; z-index: 2147482002; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; }
+.uf-fly .uf-ph { position: absolute; inset: 0; transition: none; }
+@media (min-width: 761px) and (max-height: 820px) { .uf { width: min(880px, calc(100vw - 48px)); grid-template-columns: minmax(0, 390px) minmax(0, 1fr); } }
+@media (max-width: 760px) {
+  .uf { top: max(12px, env(safe-area-inset-top, 0px)); translate: -50% 0; width: calc(100vw - 24px); grid-template-columns: 1fr; }
+  .uf-side { padding: 14px 13vw 12px; }
+  .uf-stack { width: min(100%, calc((100svh - 340px - var(--ph-bar, 62px)) * .8)); margin: 0 auto; }
+  .uf-info { min-height: 0; padding: 18px 20px 16px; transform-origin: 50% 0; transform: rotateX(-92deg); }
+  .uf-info.shut { transform: rotateX(-92deg); }
+  .uf-info h2 { font-size: 38px; }
+  .uf-info .uf-pl { margin-top: 6px; font-size: 13px; }
+  .uf-info .uf-dt { font-size: 15px; }
+  .uf-info hr { margin: 12px 0 10px; }
+  .uf-info .uf-cap { font-size: 18px; min-height: 0; }
+  .uf-info .uf-hint { padding-top: 10px; font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) { .uf-info.open, .uf-info.shut, .uf-ph { transition-duration: .01s; } }
 </style>
 
 <nav class="site-menu" aria-label="Website tabs"><a href="/" class="on" aria-current="page">Today</a><a href="/calendar/">Calendar</a><a href="{{SEARCH}}">Search</a><a href="/travels/">Travels</a><a href="/through-the-years/">Through the years</a><a href="/about/">About</a></nav>
@@ -490,6 +590,10 @@ a.ss-big { text-decoration: none; }
         p.hidden = false;
       })();
     </script>
+    <!-- every baps.org News story of this date, in the list under the cards (Darpan, 6 Nov 2026: "somewhere at the top that
+         says what happened, stories from BAPS around the world on this day") -->
+    <p class="yir" id="momentsline" hidden><a href="#moments"></a></p>
+    <p class="yir" id="storiesline" hidden><a href="#stories"></a></p>
     <div id="mocknote"></div>
 <!-- Computers: the left card, Screensaver and the email sign up (Darpan, 30 Oct 2026); on phones only its insides show.
      Three distinct buttons, one above the other: Screensaver, Latest vicharan, Email Me (Darpan, 30 Oct 2026; 18:43 no card title, "Email Me") -->
@@ -585,6 +689,19 @@ a.ss-big { text-decoration: none; }
     <a class="pill" id="search-day" target="_blank" rel="noopener">Search this date</a>
   </div>
 
+  <section class="moments" id="moments" hidden>
+    <h2>Special moments on this day</h2>
+    <p id="moments-count"></p>
+    <ol id="momentlist"></ol>
+    <p class="momore" id="momore" hidden><button class="go" id="momore-btn" type="button">See more &rsaquo;</button></p>
+  </section>
+
+  <section class="stories" id="stories" hidden>
+    <h2>Stories from BAPS around the world on this day</h2>
+    <p id="stories-count"></p>
+    <ol id="storylist"></ol>
+  </section>
+
   <div class="dw" id="dw" hidden></div>
 
   <section class="all" id="all" hidden>
@@ -648,17 +765,17 @@ const FESTIVE = {
   diwali: {re: /^diwali$/i, many: 'Diwalis', line: 'Every Diwali with Bapa, each year on its own Indian date. Happy Diwali 🪔',
     sky: ['fireworks'], rope: ['bulbs'], foot: 'diyas'},
   annakut: {re: /annakut/i, many: 'Annakuts', line: 'Every Annakut with Bapa, the thal, the sweets and the offering, each year on its own Indian date. Nutan Varshabhinandan 🙏🏽',
-    bg: SAFFRON, fe: '#e8891c', fy: '#a23a10', sky: ['fall', ['#ff9f1c', '#ffb020']], rope: ['beads', MARIGOLD, 1], foot: 'thal'},
+    bg: SAFFRON, fe: '#e8891c', fy: '#a23a10', rope: ['beads', MARIGOLD, 1], foot: 'thal'},   // no falling petals (Darpan, 6 Nov 2026)
   // the other Diwali days (Darpan, 5 Nov 2026: "Yes to all 1-4"): Dhanteras in gold, falling gold and a pot of gold
   // coins; Kali Chaudas a dark night of stars, saffron beads and Hanumanji's gada; Bhai Bij marigold and a puja thali
   dhanteras: {re: /dhan ?teras|dhan ?trayodashi|lakshmi pujan/i, line: 'Every Dhanteras with Bapa, the Lakshmi Pujan and the first diyas of Diwali, each year on its own Indian date. Happy Dhanteras 🙏🏽',
     bg: 'radial-gradient(ellipse 70% 36% at 50% 0%,rgba(255,205,70,.28),transparent 70%),radial-gradient(ellipse 90% 70% at 50% 30%,#4c1418,var(--maroon-out)) no-repeat',
-    fe: '#d4a017', fy: '#7a5a0c', sky: ['fall', ['#ffd56a', '#ffe9a8', '#e6b450']], rope: ['beads', ['#ffd56a', '#e6b450', '#fff1b8'], 1], foot: 'coins'},
+    fe: '#d4a017', fy: '#7a5a0c', rope: ['beads', ['#ffd56a', '#e6b450', '#fff1b8'], 1], foot: 'coins'},
   kalichaudas: {re: /kali ?ch?au?dash?/i, line: "Every Kali Chaudas with Bapa, the day of Hanumanji's puja, each year on its own Indian date. 🙏🏽",
     bg: 'radial-gradient(ellipse 60% 35% at 50% 0%,rgba(255,120,40,.22),transparent 70%),linear-gradient(#0d0712,#22080c 45%,var(--maroon-out)) no-repeat',
     fe: '#e0561b', fy: '#9b2f0a', sky: ['stars'], rope: ['beads', ['#ff6a1a', '#ffb020', '#ff6a1a']], foot: 'gada'},
   bhaibij: {re: /bhai ?b(ee|i)j/i, line: 'Every Bhai Bij with Bapa, the second day of the New Year, each year on its own Indian date. 🙏🏽',
-    bg: SAFFRON, fe: '#d01f3c', fy: '#8f1a2e', sky: ['fall', ['#ff9f1c', '#ffd56a', '#ff8fab']], rope: ['beads', ['#d01f3c', '#ffd56a', '#ff9a1a'], 1], foot: 'puja'},
+    bg: SAFFRON, fe: '#d01f3c', fy: '#8f1a2e', rope: ['beads', ['#d01f3c', '#ffd56a', '#ff9a1a'], 1], foot: 'puja'},
   janmashtami: {re: /janmashtami/i, line: 'Every Janmashtami with Bapa, each year on its own Indian date. Happy Janmashtami 🙏🏽',
     bg: 'radial-gradient(ellipse 60% 35% at 50% 0%,rgba(80,120,220,.22),transparent 70%),linear-gradient(#070b1f,#12102a 40%,var(--maroon-out)) no-repeat',
     fe: '#1f7a8c', fy: '#1b3f7a', sky: ['stars'], rope: ['feathers'], foot: 'matki'},
@@ -671,7 +788,7 @@ const FESTIVE = {
     rope: ['beads', ['#ff3d7f', '#ffd400', '#35c759', '#3db7ff', '#ff8a1a']], foot: 'colours'},
   gurupurnima: {re: /guru purnima/i, line: 'Every Guru Purnima with Bapa, each year on its own Indian date. 🙏🏽',
     bg: MOONLIT, fe: '#c9a227', fy: '#7a5a0c', sky: ['moon'], rope: ['beads', JASMINE, 1], foot: 'lotus'},
-  harinom: {re: /hari-?nom|hari navmi|swaminarayan jayanti/i, line: "Every Swaminarayan Jayanti with Bapa, Shriji Maharaj's birthday, each year on its own Indian date. 🙏🏽",
+  harinom: {re: /hari-?nom|(?<!shri )hari navmi|swaminarayan jayanti/i, line: "Every Swaminarayan Jayanti with Bapa, Shriji Maharaj's birthday, each year on its own Indian date. 🙏🏽",
     bg: SAFFRON, fe: '#e8891c', fy: '#a23a10', sky: ['fall', ROSES], rope: ['beads', MARIGOLD, 1], foot: 'kalash'},
   vasant: {re: /vasant panch/i, line: 'Every Vasant Panchami with Bapa, each year on its own Indian date. 🙏🏽',
     bg: 'radial-gradient(ellipse 70% 36% at 50% 0%,rgba(255,215,0,.22),transparent 70%),radial-gradient(ellipse 90% 70% at 50% 30%,var(--maroon-in),var(--maroon-out)) no-repeat',
@@ -687,6 +804,11 @@ const FESTIVE = {
   msm: {re: /mahant swami maharaj('?s)? (janma )?jayanti(?! celebration)/i, line: 'Every birthday of Mahant Swami Maharaj with Bapa, each year on its own Indian date. 🙏🏽',
     bg: SAFFRON, fe: '#c9a227', fy: '#7a3a10', sky: ['fall', ['#e0245e', '#ff8fab', '#ffd56a']], rope: ['beads', ROSES, 1], foot: 'garland'},
 };
+// Festival specials paused (Darpan, 18 Nov 2026: "just pause on all festivals for now, till i confirm. only one to keep is
+// pramukh swami on 7 dec"): no festival board, no Diwali days dress or sections, until he confirms each one again.
+// The one kept is Pramukh Swami Maharaj's birthday board on 7 December. To bring one back, add its key here.
+const FEST_ON = ['psm'];
+const DATE_ONLY = ['dhanteras', 'kalichaudas', 'diwali', 'annakut', 'bhaibij'];
 const festKey = c => {
   const parts = c ? [c[1], c[2]].filter(Boolean).join(';').split(/[;,\/]| and /).map(x => x.trim()).filter(Boolean) : [];
   return Object.keys(FESTIVE).find(k => parts.some(x => FESTIVE[k].re.test(x))) || '';
@@ -740,7 +862,7 @@ const tithiOf = c => c ? c[0] : '';
 // and a card's own year keeps the stories it tells in Y.day = [[line, title, [words], diary], ...] and Y.ti
 const said = t => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 const tail = line => String(line || '').replace(/^[^:]{0,60}\bin [^:]+:\s*/, '');   // 'Pramukh Swami Maharaj in London: Dhanteras'
-const told = (Y, stories) => (Y && Y.day || []).concat((stories || []).filter(s => s[3]).map(s => [s[2], s[3].h || '', s[3].w || [], s[3].l || 0]));
+const told = (Y, stories) => (Y && Y.day || []).concat((stories || []).filter(s => s[3]).map(s => [s[2], s[3].h || '', s[3].w || [], s[3].l || 0, s[3].k || '']));
 const dayTi = (Y, stories) => (Y && Y.ti) || ((stories || []).find(s => s[3] && s[3].ti) || [, , , {}])[3].ti || '';
 // the day's occasion, for the card's frame: the post's title, its line, or the next thing done that day, whichever the
 // photo captions don't already say
@@ -752,10 +874,10 @@ function occasion(Y, stories, photos) {
   return '';
 }
 // the whole story, for under the year's photos and in the wide view
-function storyHTML(line, h, w, l) {
+function storyHTML(line, h, w, l, k) {
   const top = h || tail(line) || line;
   const rest = (w || []).filter(t => said(t) !== said(top) && said(t) !== said(tail(line)));
-  return `<div class="day-story"><p class="story-line"><b>On this day</b>${esc(top)}</p>` +
+  return `<div class="day-story"><p class="story-line"><b>${k ? esc(k) : 'On this day'}</b>${esc(top)}</p>` +
     (rest.length ? (l ? `<ul class="diary">${rest.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : `<div class="paras${rest.length > 2 ? ' many' : ''}">${rest.map(t => `<p class="more">${esc(t)}</p>`).join('')}</div>`) : '') + '</div>';
 }
 function storyShort(Y, stories, photo) {   // a few words for the wide view: what else the post says about the day
@@ -790,15 +912,61 @@ async function open(mmdd, push) {
   try { data = await SRC.day(mmdd); } catch (e) { $('loading').textContent = 'This day could not be opened. Please try again in a moment.'; return; }
   if (showing !== mmdd) return;
   DAY = pastOnly(data);
+  // the Diwali days keep the English date, every year's same day as on any other day; their festival parts only open
+  // under the board (Darpan, 6 Nov 2026: "I want to carry on showing the English date as we normally have been")
   const key = festKey(data.cal && data.cal[now.getFullYear()]);
-  if (key) try {   // a festival day: every year's festival, each on its own Indian date, never this year's own
+  if (key && FEST_ON.includes(key) && !DATE_ONLY.includes(key)) try {   // a festival day: every year's festival, each on its own Indian date, never this year's own
     const F = await SRC.fest(key), y = now.getFullYear();
     if (showing !== mmdd) return;
     F.years = F.years.filter(Y => Y.y < y);
     if (F.years.length) DAY = Object.assign({}, F, {date: data.date, fest: key, cal: Object.assign({}, F.cal, {[y]: data.cal[y]}), stories: []});
   } catch (e) {}   // its festival page could not be opened: the date as on any other day
+  if (!DAY.fest) {   // the day's written reports and prasangs, so a year with no photo still has its card (16 Nov 2026)
+    const [R, B] = await Promise.all([written('reports', mmdd), written('bprasang', mmdd)]);
+    if (showing !== mmdd) return;
+    // the old website's own day reports and prasangs only: the Jivan Charitra's lines there ('jc', 'm') are for the
+    // Calendar's day box, and its days already come to Today as stories with their own name
+    const keep = (o, f = () => true) => Object.fromEntries(Object.entries(o || {}).filter(([y]) => mmdd < TODAY || +y < now.getFullYear())
+      .map(([y, l]) => [y, (l || []).filter(f)]).filter(([, l]) => l.length));
+    DAY = Object.assign({}, DAY, {rep: keep(R, r => !r.k || r.k === 'p'), bpr: keep(B)});
+    BPR[mmdd] = Promise.resolve(B || {});
+  }
   $('loading').hidden = true;
   render();
+}
+// What was written about each year of this date (Darpan, 16 Nov 2026: "Even if there isn't a media, it can just be the
+// year with a box show with a summary text"): the old BAPS website's day reports and prasangs, 1999 to 2011
+// (/data/reports/, tools/sorg_reports.py), and the Daily Satsang prasangs (/data/bprasang/, tools/web_bprasang.py)
+const WROTE = {};
+const written = (kind, md) => WROTE[kind + md] = WROTE[kind + md] || fetch('{{DATA}}../' + kind + '/' + md + '.json').then(r => r.ok ? r.json() : {}).catch(() => ({}));
+const towns = pl => (pl || []).filter((p, i, a) => i === 0 || p !== a[i - 1]).join(', ');
+// a few lines for the card: the first sentence or two, cut at a word, "Swamishri" named by the date
+function gist(t, d, max = 190) {
+  t = String(t || '').replace(/\s+/g, ' ').trim().replace(/\bSwamishri\b/, guruOn(d));
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max), end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+  return end > 70 ? cut.slice(0, end + 1) : cut.replace(/\s+\S*$/, '') + '…';
+}
+// what a year with no photo of Bapa shows on its card: its day report, else its On this day story, else its prasang
+function summary(y, stories) {
+  const d = y + '-' + DAY.date, R = (DAY.rep || {})[y] || [], B = (DAY.bpr || {})[y] || [];
+  const v = R.find(r => r.k !== 'p'), rp = R.find(r => r.k === 'p'), b = B.find(p => p[3] && p[3].length);
+  if (v) return ['Vicharan', gist([v.o, ...(v.w || [])].filter(Boolean).join('. ').replace(/\.\./g, '.'), d)];
+  if (stories && stories[0]) return [stories[0][3] && stories[0][3].k || 'On this day', gist(stories[0][3] && stories[0][3].h || stories[0][2], d)];
+  if (rp) return ['Prasang', gist((rp.t ? rp.t + ': ' : '') + (rp.w || []).join(' '), d)];
+  if (b) return ['Prasang', gist((b[2] ? b[2] + ': ' : '') + b[3].join(' '), d)];
+  return ['', ''];
+}
+const placeOfText = y => { const r = ((DAY.rep || {})[y] || [])[0], b = ((DAY.bpr || {})[y] || [])[0]; return r && r.pl && r.pl[0] || b && b[0] || ''; };
+// the day report and prasangs of the old website, under the year's heading, in full
+function reportHTML(y) {
+  const d = y + '-' + DAY.date;
+  return ((DAY.rep || {})[y] || []).map(r => {
+    const where = towns(r.pl), w = r.w || [];
+    const top = r.k === 'p' ? [r.t, where].filter(Boolean).join(', ') : [where, r.o].filter(Boolean).join(' · ') || longDate(d) + ' ' + y;
+    return `<div class="day-story rep"><p class="story-line"><b>${r.k === 'p' ? 'Prasang' : 'Vicharan'}</b>${esc(top)}</p>` +
+      `<div class="paras${w.length > 2 ? ' many' : ''}">${w.map(t => `<p class="more">${esc(t)}</p>`).join('')}</div></div>`;
+  }).join('');
 }
 
 function render() {
@@ -818,13 +986,14 @@ function render() {
     const b = byYear[y] = byYear[y] || {Y: null, place, stories: []};
     if (!b.stories.some(o => o[2] === line)) b.stories.push(s);
   });
+  Object.keys(Object.assign({}, D.rep, D.bpr)).map(Number).forEach(y => { byYear[y] = byYear[y] || {Y: null, place: placeOfText(y), stories: []}; });
   const years = Object.keys(byYear).map(Number).sort((a, b) => a - b);
   everyPhoto = [];
   const n = D.years.reduce((s, Y) => s + Y.p.length + (Y.t || []).length, 0);
   const shown = D.years.filter(Y => Y.p.length || (Y.t || []).length).length;
   const F = D.fest && FESTIVE[D.fest];
   $('count').textContent = F ? `${shown} ${F.many || 'years of ' + D.title} and ${n.toLocaleString()} photos with Bapa.`
-                        : n ? `${shown} years and ${n.toLocaleString()} photos from this day.`
+                        : n ? `${years.length} years and ${n.toLocaleString()} photos from this day.`
                              : `${years.length} years remembered on this day.`;
   const page = document.querySelector('.page');
   [...page.classList].filter(c => c === 'festday' || c.startsWith('fest-')).forEach(c => page.classList.remove(c));
@@ -837,17 +1006,24 @@ function render() {
   if (window.MOCK && MOCK.note && MOCK.note(D.date)) $('mocknote').innerHTML = `<p class="mocknote">${MOCK.note(D.date)}</p>`;
 
   $('cards').innerHTML = ''; $('groups').innerHTML = '';
-  // a card only for a year with photos of Bapa; a year with only its On this day lines lists them below, with no empty
-  // card on the rope (Darpan, 26 Oct 2026)
+  // every year has its card: its photos of Bapa, or, with no photo, the year and a box of what was written that day
+  // (Darpan, 16 Nov 2026: "Even if there isn't a media, it can just be the year with a box show with a summary text")
   const hasPhotos = b => b.Y && (b.Y.p.length || (b.Y.t || []).length);
   // the first impression is a mix: about half the cards open on a close up, half on an activity photo, shuffled at
-  // each visit (Darpan, 26 Oct 2026)
-  const withPhotos = years.filter(y => hasPhotos(byYear[y]));
-  const order = withPhotos.map((_, i) => i).sort(() => Math.random() - .5), closeUp = new Set(order.slice(0, Math.ceil(order.length / 2)));
-  cards = withPhotos.map((y, i) => card(y, byYear[y], closeUp.has(i)));
+  // each visit (Darpan, 26 Oct 2026); and never a row of close ups side by side: along the rope a close up, then Bapa
+  // doing something, then a close up again, from whichever the visit starts on (Darpan, 16 Nov 2026: "too many close up
+  // together, mix with action shots"). A year with only one kind shows it, and the next year takes the other kind.
+  let lastClose = Math.random() < .5;
+  cards = years.map(y => {
+    const c = card(y, byYear[y], !lastClose);
+    if (hasPhotos(byYear[y]) && c.close !== undefined) lastClose = c.close;
+    return c;
+  });
   under = null; SKY.row = -1; SKY.x = 1e9; SKY.wait = 1.5;   // the star sets off along the first rope
-  years.filter(y => !hasPhotos(byYear[y])).forEach(y => group(y, null, byYear[y].place, DAY.cal && DAY.cal[y], byYear[y].stories));
   [...$('groups').children].sort((a, b) => a.id.slice(1) - b.id.slice(1)).forEach(g => $('groups').append(g));
+  storyLines();
+  storyList();
+  moments();
   $('board').hidden = $('controls').hidden = false;
   $('search-day').href = D.fest ? '{{SEARCH}}#q=' + encodeURIComponent(D.title) : SRC.search(D.date);
   $('search-day').textContent = D.fest ? 'Search ' + D.title : 'Search this date';
@@ -856,9 +1032,11 @@ function render() {
   $('all').hidden = !n;
   sparkle();
   requestAnimationFrame(cords);
+  requestAnimationFrame(() => requestAnimationFrame(opening));   // the first visit of the day opens gently
   start();
 }
 
+const CLOSE_UP = .25, WIDE = .2;
 function card(y, {Y, place, stories}, want = true) {
   const photos = Y ? (Y.p.length ? Y.p : Y.t || []) : [];
   const where = Y ? Y.place : place;
@@ -866,7 +1044,8 @@ function card(y, {Y, place, stories}, want = true) {
   const slot = document.createElement('div'); slot.className = 'slot';
   const el = document.createElement('a'); el.className = 'card';
   el.href = '#y' + y;
-  el.addEventListener('click', e => { e.preventDefault(); const g = $('y' + y); if (g) g.scrollIntoView({behavior: reduce ? 'auto' : 'smooth'}); else if (photos.length) view(0); });
+  // a card with photos unfolds into its year's stack (Darpan, 23 Nov 2026); a year with none goes down to its words as before
+  el.addEventListener('click', e => { e.preventDefault(); if (unfold(c)) return; const g = $('y' + y); if (g) g.scrollIntoView({behavior: reduce ? 'auto' : 'smooth'}); else if (photos.length) view(0); });
   el.setAttribute('aria-label', photos.length ? `${y}, ${where}: see all ${photos.length} photos` : `${y}, ${where}`);
   const ph = document.createElement('div'); ph.className = 'photo';
   const c = {y, el, slot, photos, k: -1, imgs: [], cur: 0, rest: hang(y), at: 0};
@@ -880,11 +1059,13 @@ function card(y, {Y, place, stories}, want = true) {
     });
     c.imgs = c.layers.map(l => l.lastChild); c.bgs = c.layers.map(l => l.firstChild);
   } else {
-    ph.classList.add('story'); ph.innerHTML = `<p>${esc(stories[0] ? stories[0][2] : '')}</p>`;
+    const [kind, text] = summary(y, stories);
+    ph.classList.add('story'); ph.innerHTML = `<div class="box"><span class="sk">${esc(kind)}</span><p>${esc(text)}</p></div>`;
+    c.kind = kind;
   }
   el.innerHTML = '<div class="peg"></div>';
   el.append(ph);
-  const fest = festOf(cal), ti = Y && Y.d ? longDate(Y.d) : tithiOf(cal) || dayTi(Y, stories), ev = occasion(Y, stories, photos);
+  const fest = festOf(cal), ti = Y && Y.d ? longDate(Y.d) : tithiOf(cal) || dayTi(Y, stories), ev = photos.length ? occasion(Y, stories, photos) : '';   // a year with no photo says it in its box, once
   const lab = document.createElement('div'); lab.className = 'label';
   // the Indian date from the post itself in years the BAPS calendar doesn't cover, and the day's occasion (29 Oct 2026)
   lab.innerHTML = `<div class="yr">${y}</div><div class="pl">${esc(where || '')}</div>` +
@@ -893,7 +1074,7 @@ function card(y, {Y, place, stories}, want = true) {
   el.append(lab);
   if (DAY.fest) el.insertAdjacentHTML('beforeend', dressOf(DAY.fest));   // diyas at its feet, or a thal of sweets, a lotus ...
   const cap = document.createElement('div'); cap.className = 'cap';
-  cap.textContent = photos.length ? '' : 'On this day';
+  cap.textContent = photos.length ? '' : 'Read the whole day';
   slot.append(el, cap); $('cards').append(slot);
   if (Y && Y.v) slot.insertAdjacentHTML('beforeend', watchVideo(Y.v, 'vid'));
   Object.assign(c, {cap, of: lab.querySelector('.of'), ph});
@@ -920,9 +1101,13 @@ function card(y, {Y, place, stories}, want = true) {
     });
     el.addEventListener('pointerleave', evClose);
   }
-  const close = p => !!(p[4] && p[4][7]);   // want: this card opens on a close up (true) or an activity photo (false)
-  const first = photos.findIndex(p => p[3] && close(p) === want);
-  if (photos.length) show(c, first >= 0 ? first : Math.max(0, photos.findIndex(p => p[3])), true);   // open on a darshan of Bapa
+  // want: this card opens on a close up (true) or an activity photo (false). A close up = his face a quarter of the
+  // photo's height or more; an activity photo = a wide one, his face under a fifth of the height, so what he is doing
+  // shows (arti, reading, writing), but never a tiny far figure (under a twelfth of the height)
+  const h = p => p[4] ? p[4][5] : 0, close = p => h(p) >= CLOSE_UP, doing = p => h(p) >= .08 && h(p) < WIDE;
+  let first = photos.findIndex(p => p[3] && (want ? close(p) : doing(p)));
+  if (first < 0) first = Math.max(0, photos.findIndex(p => p[3]));   // open on a darshan of Bapa
+  if (photos.length) { show(c, first, true); c.close = !doing(photos[first]); }
   if (photos.length > 1) (c.pre = new Image()).src = SRC.photo(photos[(c.k + 1) % photos.length]);   // its next photo loads straight away, ready for the first fade
   group(y, Y, where, cal, stories);
   return c;
@@ -1384,7 +1569,7 @@ function diwaliDays() {
   return {newYear: TODAY === d[1], after: TODAY >= d[1], diwali: TODAY === d[3]};
 }
 function sparkle() {
-  const S = diwaliDays(), page = document.querySelector('.page');
+  const S = FEST_ON.includes('diwali') ? diwaliDays() : null, page = document.querySelector('.page');   // paused (FEST_ON)
   DIPA = !!S;
   $('board').classList.toggle('dipa', DIPA);
   page.classList.toggle('newyear', !!(S && S.newYear));
@@ -1509,20 +1694,159 @@ function seasonSections(J, S) {
   });
   requestAnimationFrame(even);
   if (!window.dwEven) { window.dwEven = true; addEventListener('resize', () => requestAnimationFrame(even)); }
-  const order = S.after ? ['ashi', 'ann', 'diwali', 'chop'] : S.diwali ? ['chop', 'diwali', 'ashi', 'ann'] : ['diwali', 'chop', 'ashi', 'ann'];
+  // Bapa's Diwali every year and Chopda Pujan with Bapa only on Diwali day itself, the New Year ashirwad and the Annakut
+  // gallery only on the New Year's day, and on the other Diwali days Today is as on any day (Darpan, 6 Nov 2026: "only
+  // live on diwali ... only live on new years day ... otherwise normaly on this day")
+  const order = S.diwali ? ['chop', 'diwali'] : S.newYear ? ['ashi', 'ann'] : [];
   $('dw').innerHTML = order.map(k => out[k] || '').join('');
   $('dw').hidden = !$('dw').innerHTML;
 }
 
+// the baps.org News story of that day (tools/web_articles.py, from every News article read 4 to 6 Nov 2026): a gold line
+// under the year's heading that opens the story on baps.org (Darpan, 4 Nov 2026: "link these articles to the calender or today")
+const ART = {};
+// the baps.org Daily Satsang prasang of that day (tools/web_bprasang.py): under the year's heading, in English with a small
+// switch to the Gujarati as baps.org wrote it (Darpan, 13 Nov 2026: "keep a little button nearby that can translate ...
+// back into Gujarati"); opens in Gujarati when the whole site is in Gujarati
+const BPR = {};
+const prasangHTML = (d, [place, who, title, en, gu, src]) => {
+  const guFirst = !en.length || !!(window.BapaGujarati && BapaGujarati.on()), ps = l => l.map(t => `<p class="more">${esc(t)}</p>`).join('');
+  return `<div class="day-story bpr" translate="no"><p class="story-line"><b>Prasang</b>${esc([place, longDate(d) + ' ' + d.slice(0, 4)].filter(Boolean).join(', '))}` +
+    (en.length ? `<button type="button" class="flip">${guFirst ? 'English' : 'ગુજરાતી'}</button>` : '') + '</p>' +
+    `<div class="paras" lang="en"${guFirst ? ' hidden' : ''}>${ps(en)}<p class="src">English translation</p></div><div class="paras" lang="gu"${guFirst ? '' : ' hidden'}>${ps(gu)}</div></div>`;
+};
+document.addEventListener('click', e => {
+  const b = e.target.closest('.bpr .flip'); if (!b) return;
+  const box = b.closest('.bpr'), [en, gu] = box.querySelectorAll('.paras');
+  const toGu = gu.hidden; en.hidden = toGu; gu.hidden = !toGu; b.textContent = toGu ? 'English' : 'ગુજરાતી';
+});
+async function prasangs(el, d) {
+  const md = d.slice(5);
+  const B = await (BPR[md] = BPR[md] || fetch('{{DATA}}../bprasang/' + md + '.json').then(r => r.ok ? r.json() : {}).catch(() => ({})));
+  el.parentNode.querySelectorAll('.bpr').forEach(x => x.remove());
+  el.insertAdjacentHTML('afterend', (B[d.slice(0, 4)] || []).map(p => prasangHTML(d, p)).join(''));
+}
+function storyLines() {
+  document.querySelectorAll('#groups .arts[data-d]').forEach(el => prasangs(el, el.dataset.d.slice(0, 4) + '-' + DAY.date));   // the card's own date, never a nearby day it borrowed
+  document.querySelectorAll('#groups .arts[data-d]').forEach(async el => {
+    const d = el.dataset.d, md = d.slice(5);
+    const A = await (ART[md] = ART[md] || fetch('{{DATA}}../articles/' + md + '.json').then(r => r.ok ? r.json() : {}).catch(() => ({})));
+    el.innerHTML = (A[d.slice(0, 4)] || []).slice(0, 2).map(([t, u]) =>
+      `<p class="artline">On this day within BAPS: <a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a></p>`).join('');
+  });
+}
+
+// all of this date's stories, newest year first, each opening on baps.org; a line at the top leads down to them
+async function storyList() {
+  const md = DAY.date, mine = showing;
+  const A = await (ART[md] = ART[md] || fetch('{{DATA}}../articles/' + md + '.json').then(r => r.ok ? r.json() : {}).catch(() => ({})));
+  if (showing !== mine) return;
+  const rows = Object.keys(A).sort((a, b) => b - a).flatMap(y => A[y].map(([t, u]) => [y, t, u]));
+  $('stories').hidden = $('storiesline').hidden = !rows.length;
+  if (!rows.length) return;
+  const n = rows.length, yrs = Object.keys(A).length;
+  $('storiesline').firstChild.textContent = `${n} ${n === 1 ? 'story' : 'stories'} from BAPS around the world on this day`;
+  $('stories-count').textContent = `${n} ${n === 1 ? 'story' : 'stories'} from ${yrs} ${yrs === 1 ? 'year' : 'years'}, each opens on baps.org`;
+  $('storylist').innerHTML = rows.map(([y, t, u]) =>
+    `<li><a href="${esc(u)}" target="_blank" rel="noopener"><b>${y}</b><span>${esc(t)}</span></a></li>`).join('');
+}
+
+// The special moments of the day (Darpan, 13 Nov 2026: "a deep search for all the captions, all the articles, all the
+// news, all the history, all the calendar festivals, all the significant moments"): every photo caption of every year,
+// every On this day story and diary line, every baps.org News story of the date and the BAPS calendar's festivals,
+// looked through for what makes a moment special. The same search as the Studio's "Special moments found this day",
+// with the everyday words left out that a public page would call special by mistake (a shawl "honor", "Lord
+// Harikrishna Maharaj", a plain "celebration", the daily abhishek, arrivals, sabhas). Strongest first; a photo moment
+// opens that photo, a story moment its year below, a News story baps.org. Only photos with Bapa, as everywhere on Today.
+const MOMENT_WORDS = [
+  [/(?<!satsang )\bdiksha|initiat(ed|ion) into|parshadi diksha/i, 'Diksha', 5], [/pratishtha|consecrat/i, 'Murti pratishtha', 5],
+  [/inaugurat|opening ceremony|udghatan|newly built/i, 'Inauguration', 4],
+  [/shila?n?y[aã]s|foundation stone|ground.?breaking|bh[ou]o?mi ?pujan/i, 'Foundation stone', 4],
+  [/janma ?jayanti|birthday|birth anniversary|pragatya|janmotsav/i, 'Jayanti', 4],
+  [/mahotsav|centenary|shatabdi|jubilee|anniversary|patotsav/i, 'Celebration', 3],
+  [/annakut|diwali|deepavali|\bholi\b|janmashtami|ram navami|hanuman jayanti|sharad pu?rnima|sharad punam|raksha ?bandhan|guru pu?rnima|dhanteras|chopda|new year|uttarayan|navratri|dussehra|shivratri|fuldol|pushpadol|kali chaudas|bhai bij|vasant panch|rath ?yatra/i, 'Festival', 3],
+  [/president|prime minister|\bminister\b|governor|\bking\b|\bqueen\b|\bprince|princess|ambassador|\bmayor|parliament|buckingham palace|royal palace|rashtrapati bhavan|white house|10 downing|senator|congress(wo)?man|\bpope\b|dalai lama|archbishop|\broyal|high commissioner|chancellor|house of lords|\bduke\b|\bduchess\b/i, 'Dignitary', 5],
+  [/\bMPs?\b|\bMLAs?\b|\bLord [A-Z][a-z]+ of\b/, 'Dignitary', 5],
+  [/first time|first ever|historic|guinness|world record|largest|biggest/i, 'Historic', 4],
+  [/\baward|felicitat|conferred|doctorate|honorary|civic reception|key to the city|recogni[sz]ed/i, 'Honour', 3],
+  [/\byagna\b|\byajna\b|mahapuja|vishwa shanti/i, 'Yagna', 3], [/rath ?yatra|shobha ?yatra|nagar ?yatra|procession/i, 'Procession', 3],
+  [/samadhi|akshar ?nivas|passes away|passed away|return to akshardham|tribute|smruti ?sabha|antyeshti/i, 'Remembrance', 6],
+];
+// its weight: the strongest kind it is, and one more for each other kind (a festival with a prime minister: 5 + 1)
+const momentOf = t => { const f = []; let w = 0; for (const [re, name, k] of MOMENT_WORDS) if (re.test(t || '') && !f.includes(name)) { w = f.length ? Math.max(w, k) + 1 : k; f.push(name) } return {f, w} };
+const SHOW_MOMENTS = 8;
+async function moments() {
+  const D = DAY, mine = showing, y0 = now.getFullYear(), out = [], seen = new Set();
+  const placeOf = y => (D.years.find(Y => Y.y === y) || {}).place || (D.stories.find(s => s[0] === y) || [])[1] || '';
+  const add = m => {   // once: a photo's caption and the News story's title often say the same, the title with its place after
+    const k = said(m.text); if (!k || [...seen].some(o => o === k || (Math.min(o.length, k.length) > 11 && (o.startsWith(k) || k.startsWith(o))))) return;
+    seen.add(k); out.push(m);
+  };
+  // 1 the photo captions: each year's strongest photo of each kind of moment, at most two a year
+  D.years.forEach(Y => {
+    const best = {};
+    Y.p.forEach(p => { const s = momentOf(p[2]); if (s.w < 3 || String(p[2]).length < 12) return; const k = s.f[0]; if (!best[k] || s.w > best[k].s.w) best[k] = {p, s} });
+    Object.values(best).sort((a, b) => b.s.w - a.s.w).slice(0, 2).forEach(({p, s}) => add({y: Y.y, place: Y.place, kind: s.f, w: s.w + 1, text: p[2], p}));
+  });
+  // 2 the On this day stories, and each line of a diary day
+  const byYear = {};
+  D.years.forEach(Y => byYear[Y.y] = {Y, stories: []});
+  (D.stories || []).forEach(s => { const b = byYear[s[0]] = byYear[s[0]] || {Y: null, stories: []}; if (!b.stories.some(o => o[2] === s[2])) b.stories.push(s) });
+  Object.keys(byYear).forEach(k => {
+    const y = +k, {Y, stories} = byYear[k], at = (stories[0] || [])[1] || placeOf(y);   // a story says its own place
+    told(Y, stories).forEach(([line, h, w, l]) => {
+      const top = h || tail(line) || line;
+      if (l) (w || []).concat(top).map(t => [t, momentOf(t)]).filter(([, s]) => s.w >= 3).sort((a, b) => b[1].w - a[1].w).slice(0, 2)
+        .forEach(([t, s]) => add({y, place: at, kind: s.f, w: s.w + 3, text: t, story: 1}));
+      else { const s = momentOf([line, h].concat(w || []).join(' ')); if (s.w >= 3) add({y, place: at, kind: s.f, w: s.w + 3, text: top, story: 1}) }
+    });
+  });
+  // 3 the BAPS calendar: a festival on this date in a year with photos of Bapa (not on a festival day's own page,
+  // which is all that festival already)
+  if (!D.fest) D.years.forEach(Y => {
+    const names = festsOf(D.cal && D.cal[Y.y]).filter(n => n !== 'Ekadashi');
+    if (!names.length || !Y.p.length || out.some(m => m.y === Y.y && m.kind.includes('Festival'))) return;
+    add({y: Y.y, place: Y.place, kind: ['Festival'], w: 4, text: `${names.join(' and ')} with Bapa in ${Y.place || 'the year ' + Y.y}`, p: Y.p[0]});
+  });
+  // 4 the baps.org News stories of the date
+  const A = D.fest ? {} : await (ART[D.date] = ART[D.date] || fetch('{{DATA}}../articles/' + D.date + '.json').then(r => r.ok ? r.json() : {}).catch(() => ({})));
+  if (showing !== mine) return;
+  Object.keys(A).filter(y => D.date < TODAY || +y < y0).forEach(y => A[y].forEach(([t, u]) => {
+    const s = momentOf(t); if (s.w >= 3) add({y: +y, place: '', kind: s.f, w: s.w, text: t, url: u});
+  }));
+  out.sort((a, b) => b.w - a.w || b.y - a.y);
+  $('moments').hidden = $('momentsline').hidden = !out.length;
+  if (!out.length) return;
+  const n = out.length;
+  $('momentsline').firstChild.textContent = `${n} special ${n === 1 ? 'moment' : 'moments'} on this day`;
+  $('moments-count').textContent = `Found in every photo caption, every story, the BAPS calendar and the baps.org News of ${D.title}, through the years`;
+  $('momentlist').innerHTML = out.map((m, i) => {
+    const url = m.p && SRC.photo(m.p), where = m.place ? `<span class="caps">${esc(m.place)}</span>` : '';
+    const attr = m.url ? `href="${esc(m.url)}" target="_blank" rel="noopener"` : `href="#y${m.y}" data-m="${i}"`;
+    return `<li${i >= SHOW_MOMENTS ? ' hidden' : ''}><a class="mo" ${attr}>${url ? `<span class="mi"><img loading="lazy" decoding="async" alt="" src="${esc(url)}" style="object-position:${focus(m.p)}"></span>` : ''}` +
+      `<span class="mt"><span class="my"><b>${m.y}</b>${where}</span><span class="mk">${esc(m.kind.slice(0, 2).join(' · '))}</span>` +
+      `<span class="ml">${esc(String(m.text).replace(/[\s,;:.-]+$/, ''))}</span>${m.url ? '<span class="ms">On this day within BAPS</span>' : ''}</span></a></li>`;
+  }).join('');
+  $('momentlist').querySelectorAll('.mo[data-m]').forEach(a => a.addEventListener('click', e => {
+    const m = out[+a.dataset.m], i = m.p ? everyPhoto.findIndex(x => x.p === m.p) : -1;
+    e.preventDefault();
+    if (i >= 0) return view(i);
+    const g = $('y' + m.y); if (g) g.scrollIntoView({behavior: reduce ? 'auto' : 'smooth'});
+  }));
+  $('momore').hidden = n <= SHOW_MOMENTS;
+  $('momore-btn').onclick = () => { $('momentlist').querySelectorAll('li[hidden]').forEach(li => li.hidden = false); $('momore').hidden = true };
+}
+
 // every photo of the day, year by year
 function group(y, Y, where, cal, stories) {
-  if (!Y && !stories.length) return;
+  if (!Y && !stories.length && !(DAY.rep || {})[y] && !(DAY.bpr || {})[y]) return;
   const g = document.createElement('section'); g.className = 'yeargroup'; g.id = 'y' + y;
   const fest = festOf(cal), ti = Y && Y.d ? longDate(Y.d) : tithiOf(cal) || dayTi(Y, stories), day = Y && Y.d || y + '-' + DAY.date;
   g.innerHTML = `<div class="yhead"><h3>${y}</h3><span class="caps">${esc(where || '')}</span>` +
     (ti ? `<span class="it">${esc(ti)}</span>` : '') + (fest ? `<span class="fest">${esc(fest)}</span>` : '') +
-    `<a class="go" href="${esc(SRC.search(day))}">See more &rsaquo;</a>${Y && Y.v ? watchVideo(Y.v, 'go vgo') : ''}</div>` +
-    told(Y, stories).map(t => storyHTML(...t)).join('');
+    `<a class="go" href="${esc(SRC.search(day))}">See more &rsaquo;</a>${Y && Y.v ? watchVideo(Y.v, 'go vgo') : (stories.find(s => s[3] && s[3].v) ? watchVideo(stories.find(s => s[3] && s[3].v)[3].v, 'go vgo') : '')}</div>` +
+    `<div class="arts" data-d="${esc(day)}"></div>` +
+    told(Y, stories).map(t => storyHTML(...t)).join('') + reportHTML(y);
   const add = (list, note) => {
     if (!list || !list.length) return;
     if (note) g.insertAdjacentHTML('beforeend', `<p class="tripnote">${note}</p>`);
@@ -1603,6 +1927,166 @@ addEventListener('keydown', e => {
 });
 // today only: a date in the address (an old shared link, #10-24) is dropped and today opens
 addEventListener('hashchange', () => { if (/^#\d\d-\d\d$/.test(location.hash)) open(TODAY, true); });
+
+// ===== Moving touches (Darpan, 23 Nov 2026: "throoughly test this, then we can go live yes"; mockup 17 Nov) =====
+// A year card unfolds: its photo lifts off the rope into a big polaroid and a maroon page opens beside it, holding that
+// year's photos of Bapa as a stack to drag aside, swipe or tap through. The English date only, never the tithi.
+function unfold(c) {
+  if (document.querySelector('.uf')) return true;
+  const list = everyPhoto.map((e, i) => Object.assign({i}, e)).filter(e => e.y === c.y);
+  if (!list.length) return false;
+  const shown = c.imgs && c.imgs[c.cur] && c.imgs[c.cur].currentSrc || '';
+  const k = list.findIndex(e => shown.endsWith('/' + e.p[0] + '/' + e.p[1]));
+  if (k > 0) list.unshift(list.splice(k, 1)[0]);
+  const n = list.length, y = c.y, where = list[0].where || '', phone = innerWidth <= 760;
+  const when = e => e.trip ? tripText(e.trip) + ' ' + y : e.d ? `${longDate(e.d)} ${y}` : `${DAY.title} ${y}`;
+  const back = document.createElement('div'); back.className = 'uf-back';
+  const box = document.createElement('div'); box.className = 'uf';
+  box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-label', `${y}, ${where}`);
+  box.innerHTML = `<div class="uf-side"><div class="uf-stack"></div></div><div class="uf-info"><h2>${y}</h2><div class="uf-pl">${esc(where)}</div>` +
+    `<div class="uf-dt"></div><hr><div class="uf-cap"></div><div class="uf-n"></div>` +
+    (n > 1 && n <= 24 ? `<div class="uf-dots">${list.map(() => '<i></i>').join('')}</div>` : '') +
+    `<p class="uf-hint">${n > 1 ? (phone ? 'Swipe the photo, or tap it, to see the next.' : 'Drag the photo aside, or click it, to see the next.') : 'One photo from this day.'}</p>` +
+    `<div class="uf-foot"><a class="uf-all" href="#y${y}">See all ${n} ${n === 1 ? 'photo' : 'photos'} from ${y} &rsaquo;</a>` +
+    `<button class="pill solid uf-close" type="button">Close</button></div></div>`;
+  document.body.append(back, box);
+  const stack = box.querySelector('.uf-stack'), info = box.querySelector('.uf-info');
+  const tilt = list.map((_, i) => i ? ((i * 37) % 9 - 4) * 1.1 : 0);
+  const els = list.map(e => {
+    const d = document.createElement('div'); d.className = 'uf-ph';
+    d.innerHTML = `<img alt="${esc(e.p[2] || 'Darshan')}" decoding="async" style="object-position:${focus(e.p)}"><div class="uf-pc">${y} · ${esc(where.split(',')[0])}</div>`;
+    const im = d.firstChild; im.onerror = () => { if (im.src !== SRC.photo(e.p)) im.src = SRC.photo(e.p); };
+    stack.append(d); return d;
+  });
+  const load = j => { const im = els[j].firstChild; if (!im.getAttribute('src')) im.src = SRC.big(list[j].p) || SRC.photo(list[j].p); };
+  let order = list.map((_, j) => j);
+  const place = () => order.forEach((j, d) => {
+    const el = els[j]; if (d < 4) load(j);
+    el.style.zIndex = 100 - d; el.style.opacity = d < 4 ? 1 : 0;
+    el.style.transform = d ? `translate(${d * 7}px, ${-d * 5}px) rotate(${tilt[j]}deg) scale(${1 - d * .025})` : `rotate(${tilt[j] * .3}deg)`;
+  });
+  const words = () => {
+    const j = order[0], e = list[j], cap = box.querySelector('.uf-cap');
+    cap.style.opacity = 0; setTimeout(() => { cap.textContent = e.p[2] || 'Darshan'; cap.style.opacity = 1; }, 160);
+    box.querySelector('.uf-dt').textContent = when(e);
+    box.querySelector('.uf-n').textContent = `Photo ${j + 1} of ${n}`;
+    box.querySelectorAll('.uf-dots i').forEach((dot, m) => dot.classList.toggle('on', m === j));
+  };
+  // start: every photo under the top one, which flies in from the card on the rope
+  els.forEach((el, d) => { el.style.transition = 'none'; el.style.zIndex = 100 - d; el.style.opacity = 0; el.style.transform = 'none'; });
+  load(0); if (n > 1) load(1);
+  const top = els[0]; top.firstChild.src = shown || top.firstChild.src;   // the very photo on the card, already loaded
+  const big = SRC.big(list[0].p); if (shown && big && big !== shown) { const hi = new Image(); hi.onload = () => top.firstChild.src = big; hi.src = big; }
+  words();
+  document.body.style.overflow = 'hidden';
+  const fr = top.getBoundingClientRect(), cr = c.el.getBoundingClientRect();
+  const ang = parseFloat(((c.slot.style.transform || '').match(/rotate\(([-\d.]+)deg/) || [0, 0])[1]) || 0;
+  const fly = document.createElement('div'); fly.className = 'uf-fly';
+  Object.assign(fly.style, {left: fr.left + 'px', top: fr.top + 'px', width: fr.width + 'px', height: fr.height + 'px'});
+  const clone = top.cloneNode(true); clone.style.cssText = ''; fly.append(clone); document.body.append(fly);
+  const from = `translate(${cr.left - fr.left}px, ${cr.top - fr.top}px) scale(${cr.width / fr.width}, ${cr.height / fr.height}) rotate(${ang}deg)`;
+  c.el.style.visibility = 'hidden';
+  requestAnimationFrame(() => back.classList.add('on'));
+  fly.animate([{transform: from}, {transform: 'none'}], {duration: reduce ? 10 : 680, easing: 'cubic-bezier(.2,.8,.2,1)'}).finished.then(() => {
+    top.style.opacity = 1; fly.remove();
+    requestAnimationFrame(() => { els.forEach(el => el.style.transition = ''); place(); info.classList.add('open'); box.classList.add('live'); box.querySelector('.uf-close').focus({preventScroll: true}); });
+  });
+  const next = dir => {
+    const j = order[0], el = els[j], w = stack.clientWidth;
+    el.style.transition = 'transform .32s cubic-bezier(.3,.6,.4,1), opacity .32s';
+    el.style.transform = `translate(${dir * w * 1.15}px, -20px) rotate(${dir * 16}deg)`;
+    order.push(order.shift()); words();
+    setTimeout(() => { el.style.transition = ''; place(); }, 300);
+  };
+  let st = null;
+  stack.addEventListener('pointerdown', e => {
+    if (!box.classList.contains('live') || n < 2) return;
+    const el = els[order[0]]; if (!el.contains(e.target)) return;
+    st = {x: e.clientX, y: e.clientY, t: performance.now(), el, dx: 0, dy: 0}; el.classList.add('drag');
+    try { el.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  stack.addEventListener('pointermove', e => {
+    if (!st) return; st.dx = e.clientX - st.x; st.dy = e.clientY - st.y;
+    st.el.style.transform = `translate(${st.dx}px, ${st.dy * .35}px) rotate(${st.dx / 14}deg)`;
+  });
+  const up = e => {
+    if (!st) return; const {el, dx, t} = st; st = null; el.classList.remove('drag');
+    const v = Math.abs(dx) / Math.max(1, performance.now() - t);
+    if (e.type === 'pointercancel') place();
+    else if (Math.abs(dx) < 6) next(-1);
+    else if (Math.abs(dx) > stack.clientWidth * .22 || v > .55) next(Math.sign(dx));
+    else place();
+  };
+  stack.addEventListener('pointerup', up); stack.addEventListener('pointercancel', up);
+  const key = e => {
+    if (e.key === 'Escape') close();
+    else if (n > 1 && (e.key === 'ArrowRight' || (e.key === ' ' && e.target === document.body))) { e.preventDefault(); next(-1); }
+    else if (n > 1 && e.key === 'ArrowLeft') next(1);
+    else if (e.key === 'Tab') {   // keep the keyboard inside the open card
+      const f = [...box.querySelectorAll('a, button')]; if (!f.length) return;
+      if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+      else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+    }
+  };
+  addEventListener('keydown', key);
+  let closing = false;
+  function close(after) {
+    if (closing) return; closing = true; removeEventListener('keydown', key);
+    box.classList.remove('live'); info.classList.remove('open'); info.classList.add('shut');
+    order.slice(1).forEach(j => { els[j].style.opacity = 0; els[j].style.transform = 'none'; });
+    setTimeout(() => {
+      back.classList.remove('on');
+      const el = els[order[0]]; el.style.transition = 'none'; el.style.transform = 'none'; el.style.transformOrigin = '0 0';
+      const r = el.getBoundingClientRect(), q = c.el.getBoundingClientRect();
+      const to = `translate(${q.left - r.left}px, ${q.top - r.top}px) scale(${q.width / r.width}, ${q.height / r.height}) rotate(${ang}deg)`;
+      el.animate([{transform: 'none'}, {transform: to, opacity: .9}], {duration: reduce ? 10 : 520, easing: 'cubic-bezier(.5,0,.3,1)', fill: 'forwards'}).finished.then(() => {
+        c.el.style.visibility = ''; box.remove(); back.remove(); document.body.style.overflow = '';
+        if (after) after(); else c.el.focus({preventScroll: true});
+      });
+    }, reduce ? 10 : 260);
+  }
+  back.addEventListener('click', () => close());
+  box.addEventListener('click', e => { if (e.target === box || e.target.classList.contains('uf-side')) close(); });
+  box.querySelector('.uf-close').addEventListener('click', () => close());
+  box.querySelector('.uf-all').addEventListener('click', e => {
+    e.preventDefault();
+    close(() => { const g = $('y' + y); if (g) g.scrollIntoView({behavior: reduce ? 'auto' : 'smooth'}); });
+  });
+  return true;
+}
+
+// The gentle opening, the first visit of the day only: the date fades up, the gold line draws out, the side boxes come
+// in, the rope draws across and the cards drop onto their pegs with a small swing. No petals.
+let openingDone = false;
+function opening() {
+  const html = document.documentElement;
+  if (openingDone) return; openingDone = true;
+  if (!html.classList.contains('bd-opening')) return;
+  const go = (el, kf, o) => el && el.animate(kf, Object.assign({fill: 'backwards', easing: 'cubic-bezier(.2,.75,.25,1)'}, o));
+  const vw = innerWidth, vh = innerHeight, head = document.querySelector('header');
+  go($('title'), [{opacity: 0, transform: 'translateY(18px)', filter: 'blur(8px)'}, {opacity: 1, transform: 'none', filter: 'blur(0)'}], {duration: 1100, delay: 100});
+  go($('subtitle'), [{opacity: 0, clipPath: 'inset(0 50% 0 50%)'}, {opacity: 1, clipPath: 'inset(0 0 0 0)'}], {duration: 1000, delay: 450});
+  let d = 700;
+  if (head) [...head.children].forEach(el => {
+    if (el.id === 'title' || el.id === 'subtitle' || el.tagName === 'STYLE' || el.tagName === 'SCRIPT') return;
+    const r = el.getBoundingClientRect(); if (r.top > vh) return;   // a line still filling in (the stories) fades in too
+    const mid = r.width ? (r.left + r.width / 2) / vw : .5;
+    if (vw > 760 && mid < .3) go(el, [{opacity: 0, transform: 'translateX(-26px)'}, {opacity: 1, transform: 'none'}], {duration: 900, delay: 550});
+    else if (vw > 760 && mid > .7) go(el, [{opacity: 0, transform: 'translateX(26px)'}, {opacity: 1, transform: 'none'}], {duration: 900, delay: 650});
+    else { go(el, [{opacity: 0, transform: 'translateY(10px)'}, {opacity: 1, transform: 'none'}], {duration: 800, delay: d}); d += 110; }
+  });
+  const rope = 950;
+  ['cords', 'lights', 'stars'].forEach(id => go($(id), [{clipPath: 'inset(-60px 100% -60px 0)'}, {clipPath: 'inset(-60px 0 -60px 0)'}], {duration: 1300, delay: rope, easing: 'cubic-bezier(.45,.05,.3,1)'}));
+  cards.forEach(c => {
+    const r = c.slot.getBoundingClientRect();
+    if (r.top > vh + 40 || r.left > vw + 40 || r.right < -40) return;
+    const at = rope + 250 + Math.max(0, Math.min(1, (r.left + r.width / 2) / vw)) * 1000 + (r.top > vh * .75 ? 350 : 0);
+    go(c.el, [{opacity: 0, transform: 'translateY(-34px) rotate(-7deg)'}, {opacity: 1, transform: 'translateY(2px) rotate(4deg)', offset: .45},
+      {transform: 'rotate(-2deg)', offset: .7}, {transform: 'rotate(.8deg)', offset: .87}, {opacity: 1, transform: 'none'}], {duration: 1500, delay: at, easing: 'ease-out'});
+    go(c.cap, [{opacity: 0}, {opacity: 1}], {duration: 700, delay: at + 600});
+  });
+  html.classList.remove('bd-opening');
+}
 
 open(TODAY, true);
 // left open overnight (a tablet on a stand), today's page moves on to the new day at midnight, like the TV player

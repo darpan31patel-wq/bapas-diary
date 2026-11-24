@@ -23,7 +23,7 @@ FIRST, LAST = 1940, 2009
 MONTHS = ['Chaitra', 'Vaishakh', 'Jeth', 'Ashadh', 'Shravan', 'Bhadarvo', 'Aso', 'Kartak', 'Magshar', 'Posh', 'Maha', 'Fagan']
 TITHI = ['Padvo', 'Bij', 'Trij', 'Choth', 'Pancham', 'Chhath', 'Satam', 'Atham', 'Nom', 'Dasham', 'Ekadashi', 'Baras', 'Teras', 'Chaudas']
 LAT, LON = '23.03', '72.58'   # Ahmedabad
-WHENS = ['sunrise', 'aparahna', 'pradosh', 'night']
+WHENS = ['sunrise', 'aparahna', 'pradosh', 'night']   # learn() picks among these; tools/old_calendar.py also tries 'midday'
 # festivals whose day the sums could not find reliably (half or less right on the BAPS calendar), left out
 SKIP = {'Nrusinh Jayanti', 'Sam Shravani', 'Vagh Baras', 'Shastriji Maharaj Smruti Parva', 'Rang Panchami', 'Bhim Ekadashi'}
 
@@ -64,7 +64,7 @@ def sun_times(day):
 
 def moment(day, when):
     rise, sets = sun_times(day)
-    return {'sunrise': rise, 'aparahna': rise + (sets - rise) * 0.7, 'pradosh': sets + 0.0625, 'night': sets + 0.2}[when]
+    return {'sunrise': rise, 'midday': (rise + sets) / 2, 'aparahna': rise + (sets - rise) * 0.7, 'pradosh': sets + 0.0625, 'night': sets + 0.2}[when]
 
 
 @functools.lru_cache(None)

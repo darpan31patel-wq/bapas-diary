@@ -10,6 +10,8 @@ Writes a folder that works as it is on any web host (Cloudflare Pages, or opened
                          "p": [[group, file, caption, tags, bapa], ...]}   tags: what is happening in it, e.g. "smiling, garland"    every photo, nothing cut out
                                                                     bapa: 1 when Bapa is in the photo (is_bapa), else 0
   data/stories.json   every On this day story (the Telegram channel posts, shown without any Telegram links): [[date, place, text, mandir?], ...]
+  data/reads.json     the written things from baps.org, from --reads (tools/web_reads.py): the Daily Satsang prasangs, later the
+                      essays and lekhmala: [[date, place, kind, title, [English], [Gujarati], source address, page date], ...]
   data/calendar.json  every BAPS calendar day, when the database has the calendar table:
                         [[date, weekday, vikram_samvat, indian_date, festivals, festival_about, notes, source], ...]
   data/undated.json   darshan with no date (Darpan, 30 Oct 2026), from --undated (release undated-build, tools/undated_build.py on branch 8ib4kr):
@@ -178,6 +180,9 @@ def main():
     ap.add_argument('--start-year', default='', help="the year the page opens on, or 'today' for this day in every year")
     ap.add_argument('--image', help='folder with the Search by photo model and photo numbers (release image-search)')
     ap.add_argument('--undated', help='undated-search.json from release undated-build: the darshan with no date')
+    ap.add_argument('--news-ready', help="news-ready.txt from tools/news_ready.py: the News albums whose photos are in the photo "
+                    "store; the other News photos wait until they arrive")
+    ap.add_argument('--reads', help='reads.json from tools/web_reads.py: the Daily Satsang prasangs and other written things')
     a = ap.parse_args()
     os.makedirs(os.path.join(a.out, 'data'), exist_ok=True)
     db = sqlite3.connect(a.db)
@@ -186,9 +191,12 @@ def main():
     if a.deep_tags and os.path.exists(a.deep_tags):
         tags = with_deep(tags, json.load(open(a.deep_tags)))
     years, counts = {}, {}
-    rows = db.execute("SELECT year, date, date_from, date_to, place, album, file, caption, is_bapa FROM photos "
-                      "ORDER BY coalesce(date, date_from), album, file")
-    for y, date, d0, d1, place, album, file, cap, bapa in rows:
+    ready = set(open(a.news_ready).read().split()) if a.news_ready and os.path.exists(a.news_ready) else None
+    rows = db.execute("SELECT year, date, date_from, date_to, place, album, file, caption, is_bapa, source FROM photos "
+                      "ORDER BY coalesce(date, date_from), source = 'news', album, file")   # a day's own photos first, then its News stories' (one gallery a day, Darpan 12 Nov 2026)
+    for y, date, d0, d1, place, album, file, cap, bapa, source in rows:
+        if source == 'news' and ready is not None and album not in ready:
+            continue   # a News photo not in the photo store yet
         yr = years.setdefault(y, {'g': [], 'p': [], 'at': {}})
         key = (date or d0, '' if date else (d1 or ''), place or '', album)
         if not date and mandir(cap):
@@ -214,6 +222,11 @@ def main():
               "WHERE trim(coalesce(text, '')) != '' ORDER BY coalesce(date, posted)")]
     tg = one_of_each(tg)
     write(os.path.join(a.out, 'data', 'stories.json'), tg)
+
+    # the Daily Satsang prasangs (Darpan, 13 Nov 2026: "about 5,000 days of prasangs ... searchable, each linked to its date")
+    reads = json.load(open(a.reads, encoding='utf-8')) if a.reads and os.path.exists(a.reads) else []
+    if reads:
+        write(os.path.join(a.out, 'data', 'reads.json'), reads)
 
     # BAPS calendar days (table `calendar`, when the database has it): one row per date, nothing cut out
     cal = []
@@ -252,7 +265,7 @@ def main():
 
     built = dict(db.execute("SELECT key, value FROM about"))
     write(os.path.join(a.out, 'data', 'about.json'),
-          {'built': built.get('built'), 'years': sorted(counts), 'photos': counts, 'stories': len(tg), 'calendar': len(cal),
+          {'built': built.get('built'), 'years': sorted(counts), 'photos': counts, 'stories': len(tg), 'reads': len(reads), 'calendar': len(cal),
            'undated': len(undated['p']) if undated else 0})
 
     body = open(PAGE, encoding='utf-8').read().replace('{{PHOTOS}}', a.photos).replace('{{START_YEAR}}', a.start_year)

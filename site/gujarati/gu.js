@@ -59,6 +59,9 @@
     [/^Go to (\d{4})$/, m => `${m[1]} પર જાઓ`],
     [/^Bapa aged (\d+)$/, m => `બાપાની ઉંમર ${m[1]} વર્ષ`],
     [/^See all (\d[\d,]*) photos from this day$/, m => `આ દિવસના બધા ${m[1]} ફોટા જુઓ`],
+    // Today's year card that unfolds into its photo stack (23 Nov 2026)
+    [/^Photo (\d+) of (\d+)$/, m => `ફોટો ${m[1]} / ${m[2]}`],
+    [/^See all (\d[\d,]*) photos? from (\d{4}) ›$/, m => `${m[2]}ના બધા ${m[1]} ફોટા જુઓ ›`],
     [/^Day (\d+) of (\d+) with a close darshan$/, m => `નજીકનાં દર્શનનો દિવસ ${m[1]} / ${m[2]}`],
     [/^(Pramukh Swami Maharaj|Mahant Swami Maharaj) on (.+)$/, m => `${tr(m[2])}ના રોજ ${tr(m[1])}`],
     [/^(\d+) a second$/, m => `સેકન્ડમાં ${m[1]}`],

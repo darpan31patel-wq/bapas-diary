@@ -6,7 +6,8 @@ name: website-deploy
 on:
   push:
     branches: ['claude/**']
-    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/search-people.js', 'site/search-image.js', 'tools/search_people.py', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'site/darpan/**', 'tools/web_offline.py', 'tools/web_secure.py', 'tools/web_tiny.py', 'tools/web_tablet.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/site_menu.py', 'functions/**', 'site/weekly/**', '.github/workflows/website-deploy.yml', 'tools/web_type.py', 'tools/web_notranslate.py', 'site/screensaver/**', 'tools/web_screensaver.py', 'tools/screensaver/**', 'tools/web_year.py', 'site/year/**', 'tools/web_bapa_now.py', 'tools/web_darshan.py', 'tools/web_festival.py', 'tools/web_places.py', 'tools/web_videos.py', 'tools/web_diwali.py', 'tools/youtube/**', 'data/youtube/**']
+    paths: ['live/**', 'site/day.html', 'tools/web_day.py', 'tools/web_rules.py', 'site/search.html', 'site/search-ask.js', 'site/search-people.js', 'site/search-image.js', 'tools/search_people.py', 'site/art/**', 'tools/web_share.py', 'tools/web_head.py', 'tools/web_seo.py', 'site/404.html', 'site/extras/**', 'tools/web_extras.py', 'site/player/**', 'tools/web_player.py', 'tools/web_dayshare.py', 'site/phone/**', 'tools/web_phone.py', 'tools/web_faces.py', 'tools/web_bapa_rules.py', 'site/offline/**', 'site/darpan/**', 'tools/web_offline.py', 'tools/web_secure.py', 'tools/web_tiny.py', 'tools/web_tablet.py', 'site/gujarati/**', 'tools/web_gujarati.py', 'tools/build_search.py', 'tools/web_reads.py', 'tools/news_ready.py', 'tools/web_studio_days.py', 'tools/site_menu.py', 'functions/**', 'site/weekly/**', '.github/workflows/website-deploy.yml', 'tools/web_type.py', 'tools/web_notranslate.py', 'site/screensaver/**', 'tools/web_screensaver.py', 'tools/screensaver/**', 'tools/web_year.py', 'site/year/**', 'tools/web_bapa_now.py', 'tools/web_darshan.py', 'tools/web_festival.py', 'tools/web_places.py', 'tools/web_videos.py', 'tools/web_articles.py', 'tools/web_diwali.py', 'tools/web_bprasang.py', 'data/baps/**', 'tools/youtube/**', 'data/youtube/**', 'tools/old_calendar.py', 'calendar/worked-out-calendar.json', 'tools/sorg_travels.py', 'tools/sorg_reports.py', 'tools/sorg_photos.py', 'tools/web_bio.py', 'data/bio/**', 'tools/web_old_calendar.py', 'tools/web_years_look.py', 'tools/web_open_today.py']
+  workflow_dispatch:   # a deploy by hand from the Actions page, for a commit that landed with [skip ci] by mistake (12 Nov 2026)
   workflow_call:   # website-hires (on main) rebuilds the site when a year of full size photos is in R2
 concurrency: website-deploy
 jobs:
@@ -25,7 +26,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PROJECT: bapas-diary
       DOMAIN: bapas-diary.com
-      CAL_COMMIT: 9d0e952d170abfdaecfea4548f714bccb2532a8e   # 8fab292 (tbkjl3: look C plus a day's photos in a box) plus the schedule's dates for the stay Bapa is in now and bigger festival words on tablets (branch claude/project-thread-q7xtjj)
+      CAL_COMMIT: 3730887d12497cd670f56088ee55dbde44cb406d   # 3730887 (kx7dyb: each day of an album takes its own photo of Bapa, Darpan 16 Nov 2026 "yes calendar different photos"); before that 9d0e952d170abfdaecfea4548f714bccb2532a8e, 8fab292 (tbkjl3: look C plus a day's photos in a box) plus the schedule's dates for the stay Bapa is in now and bigger festival words on tablets (branch claude/project-thread-q7xtjj)
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,8 +43,23 @@ jobs:
           mkdir out && rsync -a --exclude README.md live/ out/
           gh release download legacy-auto -p more.json -D out/then-and-now 2>/dev/null || echo '[]' > out/then-and-now/more.json   # weekly Legacy pairs (Darpan: just go live, 28 Oct)
           gh release download database -p bapas.db.gz -O - | gunzip > bapas.db
+          # the old BAPS website's photos (swaminarayan.org) join this build's copy only, without the ones baps.org already gave us
+          # (Darpan, 15 Nov 2026: "Yes push old photos"); Today, the Calendar squares and Through the years take them only when
+          # the face check finds Bapa, a clicked day and Search show them all. The shared database release is not changed.
+          if gh release download swaminarayan-org-web -p sorg-rows.json -p sorg-have.txt -p sorg-captions.json -p sorg-same.json 2>/dev/null; then
+            python3 tools/sorg_photos.py add --rows sorg-rows.json --db bapas.db --have sorg-have.txt --captions sorg-captions.json --same sorg-same.json
+          fi
+          # the Indian date, festivals and yearly days for every day from 1970 to 2009, worked out from the moon and the sun
+          # (baps.org's calendars start in 2010); only this build's copy, never over a BAPS calendar day (Darpan, 13 Nov 2026)
+          python3 tools/old_calendar.py add --db bapas.db
+          # News story photos (source 'news', 132,136 from 6 Nov 2026) join every page only once their files are in the photo store:
+          # until then they come out of this build's copy of the database, so no page shows an empty tile (Darpan, 9 Nov 2026)
+          python3 tools/news_ready.py --db bapas.db --out news-ready.txt --prune
           # before 13 Aug 2016 Swamishri is Pramukh Swami Maharaj: mends 335 1999 captions that said Mahant Swami Maharaj (Darpan, 31 Oct 2026)
           python3 tools/guru_names.py --db bapas.db
+          # captions that carry on from the photo before ('... with Swamishri after their performance') written out in full,
+          # never 'Swamishri with Swamishri' (Darpan, 14 Nov 2026: a 2006 London card said 'Bapa with Bapa')
+          python3 tools/caption_mend.py apply --db bapas.db
           # a place that is a year or a date ('2004, Los Angeles', '15 June 2012') becomes its town on every page (Darpan's Today, 19 June)
           python3 tools/web_places.py --db bapas.db
           # Bapa's own pages (Today, Calendar, share pictures) show only photos with Bapa in them; Search keeps every photo
@@ -52,6 +68,7 @@ jobs:
           # recognised, best darshan first; years whose faces are not looked at yet keep the caption based choice (is_bapa = 1)
           pip install -q -r requirements.txt
           mkdir faces && gh release download website-faces -p 'face2-*.json.gz' -D faces
+          gh release download swaminarayan-org-web -p 'face2-*-sorg.json.gz' -D faces 2>/dev/null || true   # the old site's photos, face checked
           python3 tools/web_faces.py pick --db bapas.db --faces faces --out bapa.db --top bapa-top.db
           # the On this day picture's rules (Darpan, 25 Oct 2026, tools/web_rules.py): captions say what Bapa does
           python3 tools/web_rules.py captions --db bapa.db --db bapa-top.db
@@ -70,16 +87,28 @@ jobs:
           # (4 Nov 2026, Today years, Darpan "yes push"; Did you mean on Search went out 5 Nov) the list made by the new tg code, tg-cards-xes1hy.json (2,743 darshans, with the
           # ones the 2pm picture used), is the one Today uses; the older tg-cards.json stays in the release untouched as the fallback
           gh release download website-rules -p tg-cards-xes1hy.json -O tg-cards.json || gh release download website-rules -p tg-cards.json || echo '{}' > tg-cards.json
-          python3 tools/web_rules.py day --day day/data/day --db bapa.db --faces faces --tg tg-cards.json
+          # the 2pm picture's day lists and its picks, from main, so a card names the town the picture names for the same photo
+          # (Darpan, 6 Nov 2026: "2002 on the website say gondal but on the 2pm picture it says ramod")
+          mkdir -p picture && git fetch --depth 1 origin main && git archive FETCH_HEAD archive/memories archive/shown.json | tar -x -C picture --strip-components=1 || echo "picture lists: not read"
+          python3 tools/web_rules.py day --day day/data/day --db bapa.db --faces faces --tg tg-cards.json --picture picture
           # festival days: every year's Diwali and Annakut on its own Indian date, for Today on those days (Darpan, 30 Oct 2026)
           python3 tools/web_festival.py --day day/data/day --db bapa.db --deep-tags deep-tags.json --out day/data/fest
           rsync -a day/ out/ && test -f out/index.html && ls out/data/day | wc -l
+          # every photo of each day for the private Studio, behind its password, not only the face checked Today ones
+          # (Darpan, 18 Nov 2026: the Studio said '2000, 1 photo of this day' for a story with 90 photos)
+          python3 tools/web_studio_days.py --db bapas.db --public out/data/day --out out/darpan/days
           # BAPS Guruhari Darshan videos on YouTube, by the day in each title: a gold "Watch the video" under that year's card
           # (Darpan, 30 Oct 2026). The playlist list is read fresh each build; if YouTube says no, the saved list is used.
           pip install -q yt-dlp && yt-dlp --flat-playlist --print "%(id)s	%(title)s	%(duration)s" "https://www.youtube.com/playlist?list=PLOX7n0cygMYA7GIUE7qs6pridW_xknWPo" > yt.tsv \
             && [ "$(wc -l < yt.tsv)" -gt 2000 ] && mv yt.tsv data/youtube/flat.tsv || echo "playlist not refreshed, using the saved list"
           python3 tools/youtube/match.py
           python3 tools/web_videos.py --videos data/youtube/days.json --site out out/data/day out/data/fest   # and data/videos/ for Calendar, Search, Travels and the emails (Darpan, 31 Oct 2026)
+          # each day's baps.org News stories, for the gold "From the baps.org story" line on Today and in the Calendar day box
+          # (every News article, read in Darpan's Chrome 4 to 6 Nov 2026, kept on the database branch; Darpan, 4 Nov 2026)
+          git fetch -q --depth 1 origin refs/heads/database && git show FETCH_HEAD:crawl/news/articles.json > articles.json || echo '{}' > articles.json
+          python3 tools/web_articles.py --articles articles.json --out out/data/articles
+          # the baps.org Daily Satsang prasangs under the day each happened, English with the Gujarati a tap away (Darpan, 13 Nov 2026: "Yes to all")
+          python3 tools/web_bprasang.py --prasang data/baps/prasang.json --out out/data/bprasang
           # the Diwali days' own sections on Today: Bapa's Diwali every year, his New Year ashirwad, the Annakut gallery (Darpan, 31 Oct 2026)
           python3 tools/web_diwali.py --db bapas.db --bapa bapa.db --deep-tags deep-tags.json --fest out/data/fest
           # years with photos in R2: site/photo-years.txt plus every year website-hires has finished
@@ -87,10 +116,27 @@ jobs:
           echo "photo years: $(tr '\n' ' ' < photo-years.txt)"
           # The scrolling years calendar (its own thread, branch pinned to the approved commit; Darpan: "perfect go live")
           git fetch -q --depth 1 origin "$CAL_COMMIT" && mkdir calsrc && git archive "$CAL_COMMIT" tools/web_calendar.py site/calendar.html fonts | tar -x -C calsrc
+          sed -i 's/^FIRST = (1999, 1)/FIRST = (1981, 1)/' calsrc/tools/web_calendar.py   # the Calendar from 1981, the old site's first festival year (Darpan, 15 Nov 2026)
           git fetch -q --depth 1 origin refs/heads/database && git show FETCH_HEAD:crawl/schedule/latest.json > schedule.json || echo '{}' > schedule.json   # where Bapa will be (Future Vicharan)
-          python3 calsrc/tools/web_calendar.py --db bapa-top.db --site cal --photos-url https://photos.bapas-diary.com/ --search-url /search/ --photo-years photo-years.txt --pool bapa.db --sigs calendar-looks.json --faces faces --schedule schedule.json   # a different looking photo each day, and the days ahead (Darpan: yes perfect go live, 26 Oct)
+          python3 calsrc/tools/web_calendar.py --db bapa-top.db --all bapas.db --site cal --photos-url https://photos.bapas-diary.com/ --search-url /search/ --photo-years photo-years.txt --pool bapa.db --sigs calendar-looks.json --faces faces --schedule schedule.json   # a different looking photo each day, and the days ahead (Darpan: yes perfect go live, 26 Oct)
           python3 tools/web_rules.py calfaces --site cal --faces faces   # Bapa's whole head in each Calendar photo (Darpan, 25 Oct 2026)
           rsync -a cal/ out/ && test -f out/calendar/index.html
+          # what Bapa did each day and where he was, from the old site's travelogue: under the photos of a clicked Calendar day,
+          # the Calendar's journey for days with no photo, and Travels stays for the days with no photo (Darpan, 13 Nov 2026)
+          # (only the reports and towns, Darpan 14 Nov 2026: "yes push old reports"; the old site's photos wait for their own mockup)
+          if gh release download swaminarayan-org-web -p sorg-reports.tgz -p sorg-days.json -p sorg-geo.json 2>/dev/null; then
+            mkdir -p out/data/reports && tar -xzf sorg-reports.tgz -C out/data/reports
+            python3 tools/sorg_travels.py calendar --days sorg-days.json --cal out/data/calendar.json
+            python3 tools/sorg_travels.py add --days sorg-days.json --geo sorg-geo.json --travels out/travels/index.html
+            python3 tools/build_places.py --travels out/travels/index.html --menu live/menu.css --out out/travels/places/index.html
+          fi
+          # Pramukh Swami Maharaj's Jivan Charitra 1921 to 1975, from the three study PDFs (Darpan, 16 Nov 2026: "yes jivan charitra"):
+          # its days on Today and the day box, its videos, and 1971 to 1975 on Travels (after the old site's reports, so nothing they give moves)
+          python3 tools/web_bio.py --bio data/bio/bio.json --out out
+          python3 tools/build_places.py --travels out/travels/index.html --menu live/menu.css --out out/travels/places/index.html
+          # the festivals of 1970 to 2009 on Travels (a gold line under each stay's dates) and Legacy (each photo's Indian date,
+          # and both gurus at the same festival from the festival cards) (after every tool that adds stays; Darpan, 16 Nov 2026: "legacy is the tab that is called legacy")
+          python3 tools/web_old_calendar.py --db bapa.db --fest out/data/fest --deep-tags deep-tags.json --out out
           # Year in review: one page for each whole year (/year/2025/ ...), Bapa in person only, towns from the Travels page (Darpan, 29 Oct 2026)
           python3 tools/web_year.py --db bapa.db --faces faces --travels out/travels/index.html --out out
           sqlite3 bapas.db 'SELECT count(*) FROM calendar'
@@ -99,7 +145,14 @@ jobs:
           gh release download image-search -p image-search.tgz && tar -xzf image-search.tgz   # -> image/
           # Darshan with no date (Darpan, 30 Oct 2026): only in Search, after every dated photo; photos in R2 under undated/
           gh release download undated-build -p undated-search.json || echo '{"album": "undated", "p": []}' > undated-search.json
-          python3 tools/build_search.py --db bapas.db --out out/search --tags tags.json --deep-tags deep-tags.json --people-faces people-faces.json --start-year today --image image --undated undated-search.json
+          # Daily Satsang prasangs in Search (Darpan, 13 Nov 2026), only those with their English translation
+          # (data/baps/prasang.json); Darpan, 14 Nov 2026: "Wait for English", so no Gujarati only prasangs
+          # and the old BAPS website's day reports and prasangs, and akshardham.com's dated stories (Darpan, 16 Nov 2026:
+          # "I would also like all this information to be on the search page")
+          gh release download database -p akshardham-com-pages.jsonl 2>/dev/null || true
+          python3 tools/web_reads.py --prasang data/baps/prasang.json --reports out/data/reports --akshardham akshardham-com-pages.jsonl --out reads.json
+          python3 tools/web_bio.py --bio data/bio/bio.json --reads reads.json   # and the Jivan Charitra days (Darpan, 16 Nov 2026)
+          python3 tools/build_search.py --db bapas.db --out out/search --tags tags.json --deep-tags deep-tags.json --people-faces people-faces.json --start-year today --image image --undated undated-search.json --news-ready news-ready.txt --reads reads.json
           python3 tools/web_darshan.py --db bapas.db --out out   # the Darshan tab's Indian dates and festivals (Darpan: yes Darshan tab, 29 Oct)
           python3 tools/site_menu.py out   # every page's tabs in the same order
           # share look (Darpan: yes share look): WhatsApp preview picture, icons, per page titles and lines, home screen manifest
@@ -118,6 +171,8 @@ jobs:
           python3 tools/web_tablet.py --out out   # Calendar shows all seven days on an upright tablet (tablet check, 28 Oct)
           python3 tools/web_secure.py --out out   # the globe's helper scripts from our own site (whole website review, 28 Oct)
           python3 tools/web_type.py --out out   # Lora headings, Poppins subtitles, labels and buttons (Darpan, 28 Oct)
+          python3 tools/web_years_look.py --out out   # Through the years in the site's maroon and gold (Darpan, 18 Nov 2026: FIX)
+          python3 tools/web_open_today.py --out out   # every tab opens on today, London time, not the build day or an old date in the address (Darpan, 23 Nov 2026)
           python3 tools/web_offline.py --out out --photo-years photo-years.txt   # works with no internet, Save for travelling (Darpan: yes offline)
           python3 tools/web_gujarati.py --out out   # again, for the page the offline step just added
           python3 tools/web_notranslate.py --out out   # browsers never translate our pages by themselves: Chrome made Bapa's Diary "Dad's diary" (Darpan, 28 Oct)
@@ -136,6 +191,7 @@ jobs:
           STUDIO_GITHUB_TOKEN: ${{ secrets.STUDIO_GITHUB_TOKEN }}
           STUDIO_READ_KEY: ${{ secrets.STUDIO_READ_KEY }}
           CF_ANALYTICS_TOKEN: ${{ secrets.CF_ANALYTICS_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           # the email sign up (/api/weekly, functions/ next to out/) needs the Resend key as a Pages secret (Darpan: ALL GOOD, 26 Oct)
           if [ -n "$RESEND_API_KEY" ]; then printf %s "$RESEND_API_KEY" | npx --yes wrangler@3.114.0 pages secret put RESEND_API_KEY --project-name "$PROJECT" > /dev/null && echo "Resend key: set"; fi
@@ -176,7 +232,31 @@ jobs:
           if [ -n "$STUDIO_GITHUB_TOKEN" ]; then printf %s "$STUDIO_GITHUB_TOKEN" | npx --yes wrangler@3.114.0 pages secret put STUDIO_GITHUB_TOKEN --project-name "$PROJECT" > /dev/null && echo "Studio GitHub token: set"; else echo "Studio GitHub token: add a GitHub secret STUDIO_GITHUB_TOKEN so special picture choices reach archive/special-days.json on main"; fi
           # the 2pm picture project's weekly script reads the Studio's changes log at /api/studio-log with this key (17 Nov 2026)
           if [ -n "$STUDIO_READ_KEY" ]; then printf %s "$STUDIO_READ_KEY" | npx --yes wrangler@3.114.0 pages secret put STUDIO_READ_KEY --project-name "$PROJECT" > /dev/null && echo "Studio log read key: set"; else echo "Studio log read key: add a GitHub secret STUDIO_READ_KEY so the weekly learning can read /api/studio-log"; fi
+          # Ask Claude in the Search bar (functions/api/ask.js, Darpan 23 Nov 2026): his Claude key, copied from the GitHub secret, never in a page
+          if [ -n "$ANTHROPIC_API_KEY" ]; then printf %s "$ANTHROPIC_API_KEY" | npx --yes wrangler@3.114.0 pages secret put ANTHROPIC_API_KEY --project-name "$PROJECT" > /dev/null && echo "Claude key: set"; else echo "Claude key: add a GitHub secret ANTHROPIC_API_KEY so Search can answer in plain words"; fi
           npx --yes wrangler@3.114.0 pages deploy out --project-name "$PROJECT" --branch main --commit-dirty=true
+      - name: Keep a ready made copy of the site outside Cloudflare (Darpan, 9 Nov 2026 backups)
+        # the exact files just deployed, zipped with functions/, to Google Drive and the private R2 bucket
+        # bapas-diary-backups: if Cloudflare or GitHub ever fail, this zip goes straight onto another host. Never stops a deploy.
+        continue-on-error: true
+        env:
+          TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          CLIENT_ID: ${{ secrets.RCLONE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.RCLONE_CLIENT_SECRET }}
+        run: |
+          DAY=$(date -u +%F-%H%M); zip -qr site.zip out functions && ls -la site.zip
+          id=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .result.id)
+          key=$(printf %s "$CLOUDFLARE_API_TOKEN" | sha256sum | cut -d' ' -f1); echo "::add-mask::$id"; echo "::add-mask::$key"
+          R2=https://$CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com
+          for k in "site/$DAY-site.zip" site/latest-site.zip; do
+            AWS_ACCESS_KEY_ID=$id AWS_SECRET_ACCESS_KEY=$key AWS_DEFAULT_REGION=auto aws s3 cp site.zip "s3://bapas-diary-backups/$k" --endpoint-url "$R2" --only-show-errors && echo "R2: $k"
+          done
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null
+          git fetch -q --depth 1 origin main && git show FETCH_HEAD:tools/rclone_conf.py > "$RUNNER_TEMP/rclone_conf.py"
+          mkdir -p ~/.config/rclone && python3 "$RUNNER_TEMP/rclone_conf.py" > ~/.config/rclone/rclone.conf
+          D="gdrive:Bapa's Diary backups/Everything/site"
+          rclone copyto site.zip "$D/$DAY site.zip" && rclone copyto site.zip "$D/latest site.zip" && echo "Drive: $DAY site.zip"
+          rclone lsf "$D" --include '20*' | sort | head -n -7 | while read -r f; do rclone deletefile "$D/$f"; done   # last 7 deploys
       - name: bapas-diary.com and www point at the site
         run: |
           api() { curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' "$@"; }
