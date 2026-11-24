@@ -1714,8 +1714,10 @@ function dSpecials() {
   if (!CH) loadChoices().then(() => isDesign() && dSpecials());
   const rest = mine.filter(e => !(pack.choose && sameEntry(e, pack.choose))), ops = (pack.options || []).filter(op => op.choose && !mine.some(m => sameEntry(m, op.choose)));
   const opOf = e => (pack.options || []).findIndex(op => op.choose && sameEntry(e, op.choose));   // a chosen special that is one of the ready made ones has its picture
+  // a chosen special the Collage builder has drawn: packs/special/<day>/<n>/real.jpg, listed in pack.more (Darpan, 24 Nov 2026: "still can't see special 2?")
+  const builtOf = n => { const m = (pack.more || []).find(x => +x.special === n); return m ? pack.base + String(m.pack || `${n}/pack.json`).replace(/pack\.json$/, 'real.jpg') : '' };
   el.innerHTML = `<div class="spcard on"><img src="${esc(pack.base + (pack.real || 'real.jpg'))}" alt="See special 1 big" data-sp-big="1" title="See it big"><div><b>Special 1</b><span>${esc(pack.headline || pack.title)}</span><span class="hint">being designed here</span><button class="btn small" data-sp-big="1" type="button">See it big</button></div></div>
-    ${rest.map((e, i) => { const k = opOf(e); return `<div class="spcard">${k >= 0 ? `<img src="${esc(pack.base + (pack.options[k].picture || `option-${k + 2}.jpg`))}" alt="See special ${i + 2} big" data-sp-big="r${i}" title="See it big" loading="lazy">` : ''}<div><b>Special ${i + 2}</b><span>${esc(chWords(e))}</span><span class="hint">built by the Collage builder, goes after special 1</span><span class="seg"><button class="btn small" data-sp-big="r${i}" type="button">See it big</button><button class="btn small" data-sp-off="${i}">Take it off</button></span></div></div>` }).join('')}
+    ${rest.map((e, i) => { const k = opOf(e), built = builtOf(i + 2); return `<div class="spcard">${built || k >= 0 ? `<img src="${esc(built || pack.base + (pack.options[k].picture || `option-${k + 2}.jpg`))}" alt="See special ${i + 2} big" data-sp-big="r${i}" title="See it big" loading="lazy">` : ''}<div><b>Special ${i + 2}</b><span>${esc(chWords(e))}</span><span class="hint">${built ? 'drawn by the Collage builder, goes after special 1' : 'being drawn by the Collage builder (a few minutes), goes after special 1'}</span><span class="seg"><button class="btn small" data-sp-big="r${i}" type="button">See it big</button><button class="btn small" data-sp-off="${i}">Take it off</button></span></div></div>` }).join('')}
     ${ops.map((op, i) => `<div class="spcard ready"><img src="${esc(pack.base + (op.picture || `option-${i + 2}.jpg`))}" alt="See this ready made special big" data-sp-big="o${i}" title="See it big" loading="lazy"><div><b>Ready made</b><span>${esc(op.headline || '')}</span><span class="seg"><button class="btn small primary" data-sp-add="${i}">Add as special ${rest.length + 2}</button><button class="btn small" data-sp-use="${i}">Use instead of special 1</button></span></div></div>`).join('')}
     <div class="spcard more"><button class="btn primary" id="sp-more" type="button">+ Make another special</button>${!ops.length ? '<span class="hint">No ready made ones for this day yet.</span>' : ''}<label class="hint"><input type="checkbox" id="sp-none" ${off ? 'checked' : ''}> No special picture this day</label></div>`;
   const on = (sel, fn) => el.querySelectorAll(sel).forEach(b => b.addEventListener('click', () => fn(b)));
@@ -1735,7 +1737,8 @@ function spBig(which, rest, ops) {
   else if (which[0] === 'r') {
     const i = +which.slice(1), e = rest[i]; if (!e) return; const k = (pack.options || []).findIndex(op => op.choose && sameEntry(e, op.choose));
     $('#spv-h').textContent = `Special ${i + 2}: ${chWords(e)}`;
-    h = k >= 0 ? img(pack.base + (pack.options[k].picture || `option-${k + 2}.jpg`)) : '<p class="hint" style="font-size:15px">The Collage builder draws this one when you press Final, so there is no picture of it yet. It goes after special 1.</p>';
+    const m = (pack.more || []).find(x => +x.special === i + 2), built = m ? pack.base + String(m.pack || `${i + 2}/pack.json`).replace(/pack\.json$/, 'real.jpg') : '';
+    h = built ? img(built) : k >= 0 ? img(pack.base + (pack.options[k].picture || `option-${k + 2}.jpg`)) : '<p class="hint" style="font-size:15px">The Collage builder is drawing this one (it starts by itself about 90 seconds after you add it, or when you press Final) and it shows here when it is done. It goes after special 1.</p>';
     a = `<button class="btn" type="button" id="spv-off">Take it off</button><button class="btn primary" value="cancel">Close</button>`;
   } else {
     const i = +which.slice(1), op = ops[i]; if (!op) return;
@@ -3159,7 +3162,11 @@ function waitForS(date) {
         const a = asked(); delete a['s:' + date]; store.set('studio-asked', a);
         const rm = store.get('studio-remade') || {}; rm[date] = Date.now(); store.set('studio-remade', rm);
         let late = false; try { const rj = await ghr('/contents/packs/special/remake.json?ref=studio', { headers: { Accept: 'application/vnd.github.raw+json' } }); if (rj.ok) { const x = await rj.json(); late = x.date === date && /late/.test(x.drive || '') } } catch (e) {}
-        progSet(date, 'ready', { late, fail: '' });   // made after 1:50pm is still made: ready, and the hint says the 2pm send had gone (Darpan, 18 Nov 2026: it showed as 'did not finish')
+        const again = (progOf(date) || {}).again;
+        progSet(date, 'ready', { late, fail: '', again: false });   // made after 1:50pm is still made: ready, and the hint says the 2pm send had gone (Darpan, 18 Nov 2026: it showed as 'did not finish')
+        // a special added while this one was being built goes straight into a second build (24 Nov 2026: special 2 was added 4
+        // seconds after a build started, so it was never drawn)
+        if (again && canAsk()) setTimeout(() => askRemake(date), 1500);
         await freshIndex();
         if (S.mode === 'special' && S.special.date === date) { P.special = null; load('special') }
         return;
@@ -3228,6 +3235,7 @@ async function saveChoices(how, where, quiet) {
     // a newly added special builds by itself about 90 seconds later, with special 1 (Darpan, 23 Nov 2026: "in the background, the
     // studio should automatically be making those two posts as special posters for me"); Take it off within the 90 seconds stops it
     const d = chDate(), p = progOf(d);
+    if (how === 'Special picture chosen' && d && d >= todayLondon() && canAsk() && p && p.step && !['saved', 'ready'].includes(p.step) && !p.fail) progSet(d, null, { again: true, note: 'Your new special is drawn straight after the build that is running now.' });
     if (how === 'Special picture chosen' && d && d >= todayLondon() && canAsk() && p && p.step === 'saved') {
       progSet(d, 'saved', { note: 'Your new special starts building by itself in about 90 seconds, together with special 1. Press Final to start it now.' });
       REMAKE_T = setTimeout(() => askRemake(d), 90e3);
