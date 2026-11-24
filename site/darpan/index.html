@@ -213,6 +213,8 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
 .libgrid button img, .libgrid button i { width: 100%; height: 100%; object-fit: cover; display: block }
 .libgrid button:hover { border-color: var(--gold) }
 .libst { border-top: 1px solid var(--line); padding: 8px 0; display: grid; gap: 4px } .libst p { margin: 0 }
+.libph { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px } .libph button { padding: 0; border: 1px solid var(--line); border-radius: 4px; background: none; cursor: grab; aspect-ratio: 1; overflow: hidden } .libph img { width: 100%; height: 100%; object-fit: cover; display: block }
+.libsrc { font-size: 12px; color: var(--gold) } .spcard.flash { animation: spflash 1.2s ease 3; border-color: var(--gold) } @keyframes spflash { 50% { box-shadow: 0 0 0 4px var(--gold) } }
 .dbar { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 0 0 8px; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2) }
 .dbar .grp { display: flex; gap: 2px; padding-right: 8px; border-right: 1px solid var(--line) }
 .dbar select { font: inherit; font-size: 13px; background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px }
@@ -1454,13 +1456,15 @@ function dDayFix() {   // every photo not from this day swapped for an unused on
 // "Use as the main story" switches the whole picture to that post (Darpan, 17 Nov 2026: "it only changes the text, not the
 // pictures"): its headline, its words, and its own photos of that day, that year and that place on the photo cards
 async function useMain(it) {
-  const pack = P.special, date = S.special.date, mmdd = date.slice(5), place = String(it.p || '').split(',')[0].trim().toLowerCase();
+  const pack = P.special, date = S.special.date, mmdd = date.slice(5), place = placeOk(it.p, it.t) ? String(it.p || '').split(',')[0].trim().toLowerCase() : '';
   const same = pl => !place || !pl || String(pl).toLowerCase().includes(place) || place.includes(String(pl).toLowerCase());
   const photos = [];
   groupsOf(pack).forEach(g => { const y = +(g.year || String(pack.story_date || '').slice(0, 4)); if (y !== +it.y) return;
     g.cands.forEach((c, i) => { if (dayOk(pack, g, c) && same(c.place) && !photos.some(p => p.g === g.key && p.pick === i) && !photos.some(p => c.src && p.srcKey === c.src)) photos.push({ g: g.key, pick: i, year: y, place: c.place || '', srcKey: c.src || '' }) }) });
   const dd = await dayData(mmdd);
-  (dd ? dd.years : []).filter(Y => +Y.y === +it.y && same(Y.place)).forEach(Y => Y.p.forEach(p => { const src = photoAddr(p); if (!photos.some(x => x.src === src)) photos.push({ src, year: Y.y, place: Y.place || '', caption: p[2] || '', date: `${Y.y}-${mmdd}` }) }));
+  if (it.e && it.e.kind === 'news') { if (postYear(+it.y) === null) await new Promise(r => { const t = setInterval(() => { if (POSTS[+it.y] !== null) { clearInterval(t); r() } }, 150); setTimeout(() => { clearInterval(t); r() }, 8000) });
+    const own = postPhotos(it, mmdd).own.sort((a, b) => b.bapa - a.bapa); photos.unshift(...own.map(p => ({ src: p.src, year: p.year, place: p.place, caption: p.caption, date: p.date }))) }   // the post's own photos first, Bapa's first
+  (dd ? dd.years : []).filter(Y => +Y.y === +it.y && (same(Y.place) || !(dd.years.some(Z => +Z.y === +it.y && same(Z.place))))).forEach(Y => Y.p.forEach(p => { const src = photoAddr(p); if (!photos.some(x => x.src === src)) photos.push({ src, year: Y.y, place: Y.place || '', caption: p[2] || '', date: `${Y.y}-${mmdd}` }) }));
   const items = dItems(), h = items.find(x => x.role === 'headline'), st = items.find(x => x.role === 'story');
   if (h) h.text = it.t; if (st) st.text = it.s || st.text; if (!h && !st) { dAddStory(it.t, it.s, it.src); return }
   const slots = items.filter(x => x.t === 'photo');
@@ -1554,6 +1558,19 @@ function spBig(which, rest, ops) {
   go('spv-off', () => chToggle(date, rest[+which.slice(1)], false));
   go('spv-add', () => addSpecial(date, ops[+which.slice(1)].choose));
   go('spv-use', () => chInstead(date, Object.assign({}, ops[+which.slice(1)].choose)));
+}
+// after Make it another special, show plainly what happened (Darpan, 24 Nov 2026: "ive clicked make it another special
+// picture but nothing is happening"): the new box at the top flashes, and a line says what it is and when it goes
+function spAdded(date, title) {
+  setTimeout(() => {
+    const cards = [...document.querySelectorAll('#dspec .spcard:not(.on):not(.ready):not(.more)')], c = cards[cards.length - 1];
+    if (c) { c.classList.add('flash'); c.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' }); const top = $('#dspec'); if (top) top.scrollIntoView({ behavior: 'smooth', block: 'center' }) }
+    const n = cards.length + 1, today = todayLondon();
+    const when = date < today ? 'That day’s 2pm has already gone, so it is kept for you to see and save.'
+      : date === today && hourLondon() >= 14 ? 'It is after 2pm, so it will not go in today’s 2pm send.'
+      : 'It goes at 2pm, after special 1.';
+    const st = $('#status'); st.className = 'status ok'; st.textContent = `Added: “${title}” is now special ${n} (the box at the top). It builds by itself in about 90 seconds. ${when}`;
+  }, 700);
 }
 function addSpecial(date, e) {   // special 1 (this picture) is kept first, so another special always goes after it
   const pack = P.special;
@@ -1761,10 +1778,10 @@ function dLibrary() {
   } else {
     const items = [];
     uniqStories((HISTORY || []).filter(h => h.d.slice(5) === mmdd).map(h => ({ h }))).forEach(({ h }) => items.push({ y: +h.d.slice(0, 4), t: h.l, s: h.s || '', p: h.p || '', src: h.u || '', e: { kind: 'story', ref: h.d, note: h.l } }));
-    (ARTICLES || []).filter(a => a.d && a.d.slice(5) === mmdd).forEach(a => items.push({ y: a.y, t: a.t, s: a.s || '', p: a.p || '', src: a.u || '', e: { kind: 'news', ref: newsPath(a.u), note: a.t } }));
+    (ARTICLES || []).filter(a => a.d && a.d.slice(5) === mmdd).forEach(a => items.push({ y: a.y, d: a.d, t: a.t, s: a.s || '', p: a.p || '', src: a.u || '', e: { kind: 'news', ref: newsPath(a.u), note: a.t } }));
     if (pack.headline) items.push({ y: +String(pack.story_date || date).slice(0, 4), t: pack.headline, s: pack.story || '', p: pack.story_place || '', src: 'pack', own: true });
     items.sort((a, b) => b.y - a.y || (b.own ? 1 : 0) - (a.own ? 1 : 0));
-    body = items.length ? items.map((it, i) => `<div class="libst"><p><b>${esc(it.t)}</b><br><span class="hint">${esc([it.y, it.p].filter(Boolean).join(' · '))}${it.own ? ' · this picture’s story' : ''}</span></p>${it.s ? `<p class="hint">${esc(it.s.slice(0, 220))}${it.s.length > 220 ? '…' : ''}</p>` : ''}
+    body = items.length ? items.map((it, i) => `<div class="libst"><p><b>${esc(it.t)}</b><br><span class="hint">${esc([it.y, placeOk(it.p, it.t) ? it.p : ''].filter(Boolean).join(' · '))}${it.own ? ' · this picture’s story' : ''}</span></p>${it.s ? `<p class="hint">${esc(it.s.slice(0, 220))}${it.s.length > 220 ? '…' : ''}</p>` : ''}${postPhotosHtml(it, mmdd, i)}${/^https?:/.test(it.src || '') ? `<a class="libsrc" href="${esc(it.src)}" target="_blank" rel="noopener">${/baps\.org/.test(it.src) ? 'Open this post on baps.org ↗' : 'Open the post ↗'}</a>` : ''}
       <div class="seg"><button type="button" class="btn small" data-libmain="${i}" title="The headline, words and this post's own photos">Use for special 1</button><button type="button" class="btn small" data-libst="${i}" title="Its heading and words as one more box on this picture">Add as a story box</button>${it.own ? '' : `<button type="button" class="btn small" data-libjoin="${i}" title="Its words added to the end of the chosen story box (or the main story), so several stories read as one">Join to the story</button>`}${it.e && !it.own ? (CH && chHave(date, it.e) ? '<span class="gold">✓ a special</span>' : `<button type="button" class="btn small ${MAKEMORE ? 'primary' : ''}" data-libsp="${i}" title="A separate special picture of its own, after special 1">Make it another special</button>`) : ''}</div></div>`).join('')
       : `<p class="hint">${HISTORY ? 'No stories of ' + esc(day) + ' yet.' : 'Loading the stories…'}</p>`;
     lib._items = items;
@@ -1775,9 +1792,35 @@ function dLibrary() {
   lib.querySelectorAll('#libtabs button').forEach(b => b.addEventListener('click', () => { LIBTAB = b.dataset.v; dLibrary() }));
   lib.querySelectorAll('[data-lib]').forEach(b => { b.addEventListener('click', () => dAddPhoto(JSON.parse(b.dataset.lib))); b.addEventListener('dragstart', e => { e.dataTransfer.setData('text/x-photo', b.dataset.lib); e.dataTransfer.effectAllowed = 'copy' }) });
   lib.querySelectorAll('[data-libst]').forEach(b => { const it = lib._items[+b.dataset.libst]; b.addEventListener('click', () => dAddStory(it.t, it.s, it.src)) });
-  lib.querySelectorAll('[data-libsp]').forEach(b => { const it = lib._items[+b.dataset.libsp]; b.addEventListener('click', async () => { await loadChoices(); MAKEMORE = false; addSpecial(date, it.e) }) });
+  lib.querySelectorAll('[data-libsp]').forEach(b => { const it = lib._items[+b.dataset.libsp]; b.addEventListener('click', async () => { await loadChoices(); MAKEMORE = false; addSpecial(date, it.e); spAdded(date, it.t) }) });
   lib.querySelectorAll('[data-libjoin]').forEach(b => { const it = lib._items[+b.dataset.libjoin]; b.addEventListener('click', () => dJoinStory(it)) });
   lib.querySelectorAll('[data-libmain]').forEach(b => { const it = lib._items[+b.dataset.libmain]; b.addEventListener('click', () => useMain(it)) });
+  lib.querySelectorAll('[data-liball]').forEach(b => b.addEventListener('click', () => { LIBALL[b.dataset.liball] = !LIBALL[b.dataset.liball]; dLibrary() }));
+}
+// every story in the library carries its own photos (Darpan, 24 Nov 2026: "no where on my studio all the pictures associated
+// with the post ... each story post should include a link to the source"): a News post's own gallery photos from
+// posts/YYYY.json (tools/studio_post_photos.py), or, when the post has none, Bapa's photos of that very day that year
+const POSTS = {}, LIBALL = {};
+function postYear(y) {
+  if (POSTS[y] !== undefined) return POSTS[y]; POSTS[y] = null;
+  const RAWB = 'https://raw.githubusercontent.com/darpan31patel-wq/bapas-diary/claude/project-thread-02nrr0/site/darpan/';
+  (async () => { for (const u of [`posts/${y}.json`, `${RAWB}posts/${y}.json`]) { try { const r = await fetch(u, { cache: 'force-cache' }); if (r.ok) { POSTS[y] = await r.json(); break } } catch (e) {} } if (!POSTS[y]) POSTS[y] = {}; if (isDesign()) dLibrary() })();
+  return null;
+}
+// a few posts carry their title where the place should be ('Shri Swaminarayan Mahapuja and Shri Sahajanand Namavali')
+const placeOk = (p, t) => !!p && p.length < 40 && !String(t || '').includes(p);
+function postPhotos(it, mmdd) {
+  const y = +it.y, out = { own: [], day: [] }; if (!y) return out;
+  if (it.e && it.e.kind === 'news') { const py = postYear(y); if (py === null) out.loading = true; else (py[it.e.ref] || []).forEach(([al, f, b]) => out.own.push({ src: `${PHOTOS}m/${al}/${f}`, thumb: `${PHOTOS}s/${al}/${f}`, year: y, place: placeOk(it.p, it.t) ? it.p : '', caption: it.t, date: it.d || `${y}-${mmdd}`, bapa: b })) }
+  const dd = DAYD[mmdd]; (dd ? dd.years : []).filter(Y => +Y.y === y).forEach(Y => Y.p.forEach(p => out.day.push({ src: photoAddr(p), thumb: photoAddr(p), year: y, place: Y.place || '', caption: p[2] || '', date: `${y}-${mmdd}` })));
+  return out;
+}
+function postPhotosHtml(it, mmdd, i) {
+  if (it.own) return '';
+  const ph = postPhotos(it, mmdd), list = ph.own.length ? ph.own : ph.day, k = String(i), all = LIBALL[k], show = all ? list : list.slice(0, 8);
+  const head = ph.own.length ? `${ph.own.length} photo${ph.own.length > 1 ? 's' : ''} in this post` : ph.loading ? 'Looking for this post’s photos…'
+    : ph.day.length ? `${it.e && it.e.kind === 'news' ? 'No photos in this post. ' : ''}${ph.day.length} photo${ph.day.length > 1 ? 's' : ''} of Bapa on this day in ${it.y}${ph.day[0].place ? ' (' + esc(ph.day[0].place) + ')' : ''}` : `No photos of this post or of ${it.y} on this day in the archive yet.`;
+  return `<p class="hint" style="margin:2px 0 0">${head}${list.length ? ', click one to add it or drag it on' : ''}</p>${show.length ? `<div class="libph">${show.map(p => `<button type="button" draggable="true" data-lib="${esc(JSON.stringify({ src: p.src, year: p.year, place: p.place, caption: p.caption, date: p.date }))}" title="${esc(p.caption || '')}"><img src="${esc(p.thumb)}" alt="" loading="lazy" onerror="this.parentNode.remove()"></button>`).join('')}</div>` : ''}${list.length > 8 ? `<button type="button" class="btn small" data-liball="${k}">${all ? 'Show fewer' : `Show all ${list.length}`}</button>` : ''}`;
 }
 
 // ------------------------------------------------------------ a pack that carries its own design (Darpan, 10 Nov 2026: the Annakut
