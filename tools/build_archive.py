@@ -11,6 +11,7 @@ Tables (every photo, nothing cut out):
                news    every baps.org News article's galleries, read in his Chrome 4 to 6 Nov 2026 (crawl/news/articles.json)
   articles       every baps.org News article (4,805, 1974 to 2026): date, place, title, full words, its galleries
   article_photos which photos belong to which article (join on album, file to photos)
+  article_files  a News article's PDFs (with cover pictures) and audio links, when the crawl kept them
   tg_posts   every post of both Telegram channels (history = Today in BAPS History, satpurush = Satpurush in UK & Europe)
   tg_events  the dated stories read out of those posts
   tg_cards   the older guru cards made from the channel
@@ -97,6 +98,7 @@ CREATE INDEX articles_date ON articles (date);
 CREATE INDEX articles_day ON articles (substr(date, 6, 5));
 CREATE TABLE article_photos (path TEXT, album TEXT, file TEXT, gallery TEXT, PRIMARY KEY (path, album, file));
 CREATE INDEX article_photos_photo ON article_photos (album, file);
+CREATE TABLE article_files (path TEXT, kind TEXT, title TEXT, url TEXT, cover TEXT, PRIMARY KEY (path, url));
 CREATE TABLE tg_posts (
   channel TEXT, id INTEGER, posted TEXT, date TEXT, place TEXT, text TEXT, photos INTEGER, videos INTEGER,
   files INTEGER, forwarded_from TEXT, links TEXT, url TEXT, local_folder TEXT, PRIMARY KEY (channel, id));
@@ -212,6 +214,30 @@ def news(rows, crawl):
     return arts, links, out
 
 
+def article_files(crawl):
+    """Darpan, 24 Nov 2026: a News post's PDFs (with their cover pictures) and audio, kept with the article so they can
+    be shown and used (24 Nov 2018's Shri Swaminarayan Arti post has no photo gallery, only PDFs and audio). Read from
+    each article's 'files' in crawl/news/articles.json and from crawl/news/files.json ({article path: [files]}), each file
+    {kind: pdf | audio, title, url, cover}. Nothing is read from baps.org here."""
+    found = {}
+    for path, a in load_json(os.path.join(crawl, 'news', 'articles.json'), {}).items():
+        found.setdefault(path, []).extend(a.get('files') or [])
+    for path, fs in load_json(os.path.join(crawl, 'news', 'files.json'), {}).items():
+        found.setdefault(path, []).extend(fs or [])
+    out = []
+    for path, fs in found.items():
+        for f in fs:
+            if not isinstance(f, dict) or not f.get('url'):
+                continue
+            url = str(f['url']).strip()
+            url = 'https://www.baps.org' + url if url.startswith('/') else url
+            kind = f.get('kind') or ('audio' if re.search(r'\.(mp3|m4a|wav|ogg)(\?|$)', url, re.I) else 'pdf' if re.search(r'\.pdf(\?|$)', url, re.I) else 'link')
+            cover = str(f.get('cover') or '').strip() or None
+            cover = 'https://www.baps.org' + cover if cover and cover.startswith('/') else cover
+            out.append((path, kind, (f.get('title') or '').strip() or None, url, cover))
+    return out
+
+
 def webnext(rows, crawl):
     """The photos of baps.org's new style News pages (crawl/news/webnext.json: per article its photos' full addresses on
     static.wn.baps-apps.org, read in Darpan's Chrome), saved in Drive and R2 by tools/webnext_copy.py under album
@@ -285,6 +311,7 @@ def main():
     rows += [r[:10] + r[11:] for r in wn]
     db.executemany('INSERT OR IGNORE INTO articles VALUES (?,?,?,?,?,?,?,?,?)', arts)
     db.executemany('INSERT OR IGNORE INTO article_photos VALUES (?,?,?,?)', links)
+    db.executemany('INSERT OR IGNORE INTO article_files VALUES (?,?,?,?,?)', article_files(a.crawl))
     seen = {}
     for r in rows:
         seen[r[-1].lower()] = seen.get(r[-1].lower(), 0) + 1
@@ -319,7 +346,7 @@ def main():
          '; '.join(f['about'] for f in c.get('festivals', []) if f.get('about')), '; '.join(c.get('notes', [])),
          int(bool(c.get('ekadashi'))), int(bool(c.get('punam'))), int(bool(c.get('amas'))), c.get('source')) for c in cal])
 
-    counts = {t: db.execute(f'SELECT count(*) FROM {t}').fetchone()[0] for t in ('photos', 'articles', 'article_photos', 'tg_posts', 'tg_events', 'tg_cards', 'diary', 'calendar')}
+    counts = {t: db.execute(f'SELECT count(*) FROM {t}').fetchone()[0] for t in ('photos', 'articles', 'article_photos', 'article_files', 'tg_posts', 'tg_events', 'tg_cards', 'diary', 'calendar')}
     counts['photos_by_source'] = dict(db.execute('SELECT source, count(*) FROM photos GROUP BY source').fetchall())
     db.executemany('INSERT INTO about VALUES (?,?)', [
         ('built', datetime.date.today().isoformat()),

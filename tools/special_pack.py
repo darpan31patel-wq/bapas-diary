@@ -366,6 +366,10 @@ def story_pack(day, ev, lead, sp, source, out, items):
     # have, each drawn and with the entry that makes it the day's special once it is put in archive/special-days.json
     ev['article'] = ev.get('article')
     pack.update(story_kind=ev.get('kind', 'story'), choose=choice(day, ev), options=[])
+    if ev.get('files'):   # a News post's PDFs (their covers) and audio, to show and use (Darpan, 24 Nov 2026)
+        pack['files'] = ev['files']
+    if ev.get('day_photos'):   # a News post with no gallery of its own: its cards are Bapa's photos of that day from the vicharan pages
+        pack['photos_from'] = 'vicharan'
     # Darpan, 17 Nov 2026 (idea 6): the same special in two or three looks, each checked (idea 7), and a phone
     # version (idea 8); picking one puts its 'look' in the choice
     pack['looks'] = []

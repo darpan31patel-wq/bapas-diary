@@ -2369,6 +2369,8 @@ def chosen_specials(day, items=()):
                     ev.update(urls=d['urls'], paths=d['paths'], kind='year', paras=([ev['story']] if ev.get('story') else []) + ([d['line']] + d['paras'] if d else []))
         elif kind == 'news':
             ev = news_story(ref)
+            if ev and not ev.get('urls'):
+                news_day_photos(ev, day, items)
         elif kind == 'year':
             y = int(c.get('year') or 0)
             ev = year_story(y, day, list(items))
@@ -2537,6 +2539,78 @@ def daily_specials(day, items, photos, tg_evs):
     return out
 
 
+TITLE_WORDS = re.compile(r'\b(?:and|of|the|for|is|in|on|with|says|celebrat\w*|shibirs?|camps?|inaugurations?|mahotsavs?|festivals?|'
+                         r'conventions?|assembl\w*|exhibitions?|namavali|mahapuja|arti|parayan|katha|sabha|samaiyo|yatra)\b', re.I)
+
+
+def news_place(place, title=''):
+    """A News article's place as a town, or '' when it is not one. The crawl takes the place from the end of the title
+    after its first comma, so a title with a comma and no town gave words of the title as the place (24 Nov 2018:
+    'Shri Swaminarayan Mahapuja and Shri Sahajanand Namavali', Darpan 24 Nov 2026: not to be printed as a place)."""
+    parts = [p.strip() for p in (place or '').split(',') if p.strip()]
+    keep = [p for p in parts if not TITLE_WORDS.search(p) and not re.search(r'\d|[\'"‘’“”]', p) and len(p.split()) <= 3]
+    if not keep or (title and len(keep) < len(parts) and parts[0] in title):
+        return ''
+    return ', '.join(keep)
+
+
+def news_day_photos(ev, day, items=(), most=None):
+    """Darpan, 24 Nov 2026: a News post he chose as a special that has no photo gallery of its own (24 Nov 2018, the Shri
+    Swaminarayan Arti, Mahapuja and Sahajanand Namavali: PDFs and audio only) is drawn with Bapa's photos of that very
+    day from the vicharan pages, with the post's own title and words, so it is still special 2, 3... and in the pack."""
+    when, most = ev['date'][:10], most or MOST_PHOTOS
+    own = [x for x in items if not x.get('tg') and str(x.get('d', ''))[:10] == when]
+    mine = [x for x in own if not x.get('news')] or own   # the vicharan pages first, another News gallery of the day only when they have none
+    urls, places = [x['i'] for x in mine], [x.get('p') or '' for x in mine]
+    if not urls and os.path.exists(ARCHIVE_DB):   # a post of another day than the picture's: that day's vicharan photos with Bapa
+        db = sqlite3.connect(ARCHIVE_DB)
+        try:
+            rows = db.execute("SELECT album, file, place FROM photos WHERE date = ? AND source != 'news' AND is_bapa = 1 "
+                              'ORDER BY rowid', (when,)).fetchall()
+        except sqlite3.Error:
+            rows = []
+        finally:
+            db.close()
+        urls = [f'https://www.baps.org/Data/Sites/1/Media/GalleryImages/{a}/WebImages/{f}' for a, f, _ in rows]
+        places = [p or '' for _, _, p in rows]
+    if not urls:
+        return ev
+    ev['urls'], ev['bapa'], ev['day_photos'] = urls[:most], len(urls), True
+    if not ev.get('place'):
+        ev['place'] = town_of(next((p for p in places if town_of(p)), '')) or ''
+    print(f"  News post {ev.get('article')}: no gallery of its own, {len(urls)} vicharan photos of {when}" + (f" ({ev['place']})" if ev['place'] else ''))
+    return ev
+
+
+def verses(text):
+    """A News post's verses (an arti, a kirtan, a prayer: four or more short lines in a row that end in no full stop) as
+    paragraphs of their own, a verse each (its number at the end left off), and the rest of the text. Without this the
+    whole Shri Swaminarayan Arti ran into the post's first sentence (24 Nov 2018)."""
+    lines, out, rest, k = [l.strip() for l in (text or '').split('\n')], [], [], 0
+    short = lambda l: l and len(l) < 100 and not re.search(r'[.!?:;]["”’)]?$', l)
+    while k < len(lines):
+        j = k
+        while j < len(lines) and short(lines[j]):
+            j += 1
+        if j - k >= 4 and sum(bool(re.search(r'(…|\.\.\.)\s*\d*$', l)) for l in lines[k:j]) >= 2:   # a verse block: a heading (lines ending in a letter) then verses ending in '…' or their number
+            head, cur = [], []
+            for l in lines[k:j]:
+                if not cur and not head and re.search(r'[A-Za-z\u0100-\u017f]$', l) or head and not cur and re.search(r'[A-Za-z\u0100-\u017f]$', l):
+                    head.append(l); continue
+                if head:
+                    out.append(' '.join(head)); head = []
+                cur.append(l)
+                if re.search(r'(…|\.\.\.)\s*\d*$', l) and not re.search(r',\s*$', l):
+                    out.append(re.sub(r'\s+\d+$', '', ' '.join(cur))); cur = []
+            out += [' '.join(head)] if head else []
+            out += [re.sub(r'\s+\d+$', '', ' '.join(cur))] if cur else []
+            k = j
+        else:
+            rest += lines[k:max(j, k + 1)]
+            k = max(j, k + 1)
+    return out, '\n'.join(rest)
+
+
 def news_story(path):
     """A baps.org News article as a special picture's story: its saved line (archive/news/lines.json) or its title,
     its place and its gallery photos, from the archive's database."""
@@ -2554,7 +2628,7 @@ def news_story(path):
     try:
         row = db.execute('SELECT date, place, title FROM articles WHERE path = ?', (path,)).fetchone()
         if row and not ev:
-            ev = {'date': row[0][:10], 'place': row[1] or '', 'line': row[2] or ''}
+            ev = {'date': row[0][:10], 'place': news_place(row[1], row[2]), 'line': row[2] or ''}
         if ev:
             # photos with Bapa in them first (the archive's own mark), in the gallery's order
             rows = db.execute('SELECT a.album, a.file, COALESCE(p.is_bapa, 0) FROM article_photos a LEFT JOIN photos p '
@@ -2563,7 +2637,19 @@ def news_story(path):
             ev['urls'] = [f'https://www.baps.org/Data/Sites/1/Media/GalleryImages/{a}/WebImages/{f}' for a, f, _ in rows[:8]]
             ev['bapa'] = sum(1 for r in rows if r[2])
             ev['kind'] = 'news'; ev['article'] = path
+            try:   # its PDFs (with their covers) and audio, when the crawl kept them (tools/build_archive.py article_files)
+                ev['files'] = [dict(kind=k, title=t, url=u, cover=c) for k, t, u, c in
+                               db.execute('SELECT kind, title, url, cover FROM article_files WHERE path = ? ORDER BY rowid', (path,))]
+            except sqlite3.Error:   # a database from before 24 Nov 2026
+                pass
             text = (db.execute('SELECT text FROM articles WHERE path = ?', (path,)).fetchone() or [''])[0] or ''
+            # the picture's words are English: a line in Gujarati or Hindi script is left out (its English translation is
+            # in the post too), and so is the title said again and the site's own note of things still to come
+            title = (row[2] if row else '') or ''
+            indic = lambda l: len(re.findall(r'[\u0900-\u0AFF]', l)) > .3 * max(1, len(re.findall(r'\w', l)))
+            text = '\n'.join(l for l in text.split('\n') if not indic(l) and l.strip() != title.strip()
+                             and not re.match(r'\s*\(?Please Note\b', l, re.I))
+            verse, text = verses(text)
             text = re.sub(r'^\s*Photo Gallery\b', '', text)
             text = re.sub(r'[^.()]{0,80}\(\d+ photos?\)', ' ', text)   # the gallery links at its top ('Chopada Pujan (42 photos)')
             text = re.sub(r'^\s*Introduction\b', '', ' '.join(text.split()))
@@ -2578,7 +2664,7 @@ def news_story(path):
                 cur = (cur + ' ' + sent).strip()
                 if len(cur) > 260:
                     paras.append(cur); cur = ''
-            paras += [cur] if cur else []
+            paras = verse + paras + ([cur] if cur else [])
             if paras:
                 ev['paras'] = paras
     finally:
@@ -4166,7 +4252,7 @@ def compose_drawn(ev, day, ims, plain, lab, most, lead=None, src=None):
     # smaller small cards and smaller words, in that order, until every word is in; only then is anything left off.
     # Darpan, 17 Nov 2026: up to 20 photos. Many small cards go in rows under the story, as many rows as keeps them
     # biggest while the whole story still fits
-    for hw, smax, sizes in ((1180, 330, (36, 34, 32, 30)), (1000, 270, (32, 30, 28)), (860, 230, (28, 27, 26, 25, 24)), (760, 200, (24, 23, 22)), (660, 170, (22, 21, 20, 19))):   # the last step for a long News story (16 Nov 2026: the Canada visit lost its end)
+    for hw, smax, sizes in ((1180, 330, (36, 34, 32, 30)), (1000, 270, (32, 30, 28)), (860, 230, (28, 27, 26, 25, 24)), (760, 200, (24, 23, 22)), (660, 170, (22, 21, 20, 19)), (560, 150, (18, 17, 16))):   # the last steps for a long News story (16 Nov 2026: the Canada visit lost its end; 24 Nov 2026: the Shri Swaminarayan Arti post with its whole arti)
         x0 = px(hw + 180); tw = W - x0 - px(90)
         for hs in ((60, 3), (54, 3), (48, 3), (44, 4), (40, 5)) if hw > 900 else ((52, 3), (48, 3), (44, 4), (40, 5)):   # Darpan, 23 Nov 2026: the whole title, smaller rather than cut
             hf = garamond(px(hs[0]), 700)
@@ -4185,7 +4271,7 @@ def compose_drawn(ev, day, ims, plain, lab, most, lead=None, src=None):
             top_sw = min(px(smax), (tw - gap * (per - 1) - px(24)) / per) if small else 0
             for f in ((1, .9, .8, .7, .6, .5, .42, .36) if small else (1,)):
                 sw = top_sw * f
-                if small and sw < px(smax) * .36 and hw > 660:
+                if small and sw < px(smax) * .36 and hw > 560:
                     break
                 cards_h = grid(rows, sw)[1] if small else 0
                 floor = H - px(90) - cards_h
@@ -4199,7 +4285,7 @@ def compose_drawn(ev, day, ims, plain, lab, most, lead=None, src=None):
         whole = best is not None
         if whole:
             sw, rows, per, gap, floor, (lines, bf, lh, gap_p, whole), _ = best
-        elif hw == 660:   # nothing fits whole even at the smallest: the last try, as before
+        elif hw == 560:   # nothing fits whole even at the smallest: the last try, as before
             sw, rows, per, gap = top_sw, 1, len(small), px(36)
             floor = H - px(90) - (grid(1, sw)[1] if small else 0)
             lines, bf, lh, gap_p, whole = story_block(dr, paras, tw * .98, floor - y0, sizes) if paras else ([], None, 0, 0, True)
