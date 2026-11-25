@@ -214,6 +214,8 @@ dialog .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wr
 .libgrid button img, .libgrid button i { width: 100%; height: 100%; object-fit: cover; display: block }
 .libgrid button:hover { border-color: var(--gold) }
 .libst { border-top: 1px solid var(--line); padding: 8px 0; display: grid; gap: 4px } .libst p { margin: 0 }
+.libph { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px } .libph button { padding: 0; border: 1px solid var(--line); border-radius: 4px; background: none; cursor: grab; aspect-ratio: 1; overflow: hidden } .libph img { width: 100%; height: 100%; object-fit: cover; display: block }
+.libsrc { font-size: 12px; color: var(--gold) } .spcard.flash { animation: spflash 1.2s ease 3; border-color: var(--gold) } @keyframes spflash { 50% { box-shadow: 0 0 0 4px var(--gold) } }
 .dbar { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 0 0 8px; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2) }
 .dbar .grp { display: flex; gap: 2px; padding-right: 8px; border-right: 1px solid var(--line) }
 .dbar .storybar { flex: 1 1 100%; flex-wrap: wrap; gap: 6px; align-items: center; border-right: 0; padding: 0 0 6px; border-bottom: 1px solid var(--line) }
@@ -444,6 +446,7 @@ const RAW = 'https://raw.githubusercontent.com/darpan31patel-wq/bapas-diary/stud
 // the same packs, copied every night to R2 by the backups (Darpan, 13 Nov 2026: the Studio must still open if GitHub is lost)
 const R2PACKS = 'https://photos.bapas-diary.com/studio/packs/';
 let ROOT = '', INDEX = { days: [], months: [], specials: [] };
+const LINK_DATE = new URLSearchParams(location.search).get('date'), LINK_SPECIAL = new URLSearchParams(location.search).get('special');   // read once; the address is cleared after opening
 const PACKS_BRANCH = new URLSearchParams(location.search).get('packs');   // ?packs=<branch> reads that branch's packs (a test run)
 async function loadIndex() {
   for (const root of PACKS_BRANCH ? [RAW.replace('/studio/', `/${PACKS_BRANCH}/`)] : ['', 'packs/', RAW, R2PACKS]) {
@@ -1642,13 +1645,15 @@ function dDayFix() {   // every photo not from this day swapped for an unused on
 // "Use as the main story" switches the whole picture to that post (Darpan, 17 Nov 2026: "it only changes the text, not the
 // pictures"): its headline, its words, and its own photos of that day, that year and that place on the photo cards
 async function useMain(it) {
-  const pack = P.special, date = S.special.date, mmdd = date.slice(5), place = String(it.p || '').split(',')[0].trim().toLowerCase();
+  const pack = P.special, date = S.special.date, mmdd = date.slice(5), place = placeOk(it.p, it.t) ? String(it.p || '').split(',')[0].trim().toLowerCase() : '';
   const same = pl => !place || !pl || String(pl).toLowerCase().includes(place) || place.includes(String(pl).toLowerCase());
   const photos = [];
   groupsOf(pack).forEach(g => { const y = +(g.year || String(pack.story_date || '').slice(0, 4)); if (y !== +it.y) return;
     g.cands.forEach((c, i) => { if (dayOk(pack, g, c) && same(c.place) && !photos.some(p => p.g === g.key && p.pick === i) && !photos.some(p => c.src && p.srcKey === c.src)) photos.push({ g: g.key, pick: i, year: y, place: c.place || '', srcKey: c.src || '' }) }) });
   const dd = await dayData(mmdd);
-  (dd ? dd.years : []).filter(Y => +Y.y === +it.y && same(Y.place)).forEach(Y => Y.p.forEach(p => { const src = photoAddr(p); if (!photos.some(x => x.src === src)) photos.push({ src, year: Y.y, place: Y.place || '', caption: p[2] || '', date: `${Y.y}-${mmdd}` }) }));
+  if (it.e && it.e.kind === 'news') { if (postYear(+it.y) === null) await new Promise(r => { const t = setInterval(() => { if (POSTS[+it.y] !== null) { clearInterval(t); r() } }, 150); setTimeout(() => { clearInterval(t); r() }, 8000) });
+    const own = postPhotos(it, mmdd).own.sort((a, b) => b.bapa - a.bapa); photos.unshift(...own.map(p => ({ src: p.src, year: p.year, place: p.place, caption: p.caption, date: p.date }))) }   // the post's own photos first, Bapa's first
+  (dd ? dd.years : []).filter(Y => +Y.y === +it.y && (same(Y.place) || !(dd.years.some(Z => +Z.y === +it.y && same(Z.place))))).forEach(Y => Y.p.forEach(p => { const src = photoAddr(p); if (!photos.some(x => x.src === src)) photos.push({ src, year: Y.y, place: Y.place || '', caption: p[2] || '', date: `${Y.y}-${mmdd}` }) }));
   const items = dItems(), h = items.find(x => x.role === 'headline'), st = items.find(x => x.role === 'story');
   if (h) h.text = it.t; if (st) st.text = it.s || st.text; if (!h && !st) { dAddStory(it.t, it.s, it.src); return }
   const slots = items.filter(x => x.t === 'photo');
@@ -1709,8 +1714,10 @@ function dSpecials() {
   if (!CH) loadChoices().then(() => isDesign() && dSpecials());
   const rest = mine.filter(e => !(pack.choose && sameEntry(e, pack.choose))), ops = (pack.options || []).filter(op => op.choose && !mine.some(m => sameEntry(m, op.choose)));
   const opOf = e => (pack.options || []).findIndex(op => op.choose && sameEntry(e, op.choose));   // a chosen special that is one of the ready made ones has its picture
+  // a chosen special the Collage builder has drawn: packs/special/<day>/<n>/real.jpg, listed in pack.more (Darpan, 24 Nov 2026: "still can't see special 2?")
+  const builtOf = n => { const m = (pack.more || []).find(x => +x.special === n); return m ? pack.base + String(m.pack || `${n}/pack.json`).replace(/pack\.json$/, 'real.jpg') : '' };
   el.innerHTML = `<div class="spcard on"><img src="${esc(pack.base + (pack.real || 'real.jpg'))}" alt="See special 1 big" data-sp-big="1" title="See it big"><div><b>Special 1</b><span>${esc(pack.headline || pack.title)}</span><span class="hint">being designed here</span><button class="btn small" data-sp-big="1" type="button">See it big</button></div></div>
-    ${rest.map((e, i) => { const k = opOf(e); return `<div class="spcard">${k >= 0 ? `<img src="${esc(pack.base + (pack.options[k].picture || `option-${k + 2}.jpg`))}" alt="See special ${i + 2} big" data-sp-big="r${i}" title="See it big" loading="lazy">` : ''}<div><b>Special ${i + 2}</b><span>${esc(chWords(e))}</span><span class="hint">built by the Collage builder, goes after special 1</span><span class="seg"><button class="btn small" data-sp-big="r${i}" type="button">See it big</button><button class="btn small" data-sp-off="${i}">Take it off</button></span></div></div>` }).join('')}
+    ${rest.map((e, i) => { const k = opOf(e), built = builtOf(i + 2); return `<div class="spcard">${built || k >= 0 ? `<img src="${esc(built || pack.base + (pack.options[k].picture || `option-${k + 2}.jpg`))}" alt="See special ${i + 2} big" data-sp-big="r${i}" title="See it big" loading="lazy">` : ''}<div><b>Special ${i + 2}</b><span>${esc(chWords(e))}</span><span class="hint">${built ? 'drawn by the Collage builder, goes after special 1' : noPics(e) ? 'this post has no photos, so the Collage builder cannot draw it: press Use for special 1 on it in the library to design it here' : 'being drawn by the Collage builder (a few minutes), goes after special 1'}</span><span class="seg"><button class="btn small" data-sp-big="r${i}" type="button">See it big</button><button class="btn small" data-sp-off="${i}">Take it off</button></span></div></div>` }).join('')}
     ${ops.map((op, i) => `<div class="spcard ready"><img src="${esc(pack.base + (op.picture || `option-${i + 2}.jpg`))}" alt="See this ready made special big" data-sp-big="o${i}" title="See it big" loading="lazy"><div><b>Ready made</b><span>${esc(op.headline || '')}</span><span class="seg"><button class="btn small primary" data-sp-add="${i}">Add as special ${rest.length + 2}</button><button class="btn small" data-sp-use="${i}">Use instead of special 1</button></span></div></div>`).join('')}
     <div class="spcard more"><button class="btn primary" id="sp-more" type="button">+ Make another special</button>${!ops.length ? '<span class="hint">No ready made ones for this day yet.</span>' : ''}<label class="hint"><input type="checkbox" id="sp-none" ${off ? 'checked' : ''}> No special picture this day</label></div>`;
   const on = (sel, fn) => el.querySelectorAll(sel).forEach(b => b.addEventListener('click', () => fn(b)));
@@ -1730,7 +1737,8 @@ function spBig(which, rest, ops) {
   else if (which[0] === 'r') {
     const i = +which.slice(1), e = rest[i]; if (!e) return; const k = (pack.options || []).findIndex(op => op.choose && sameEntry(e, op.choose));
     $('#spv-h').textContent = `Special ${i + 2}: ${chWords(e)}`;
-    h = k >= 0 ? img(pack.base + (pack.options[k].picture || `option-${k + 2}.jpg`)) : '<p class="hint" style="font-size:15px">The Collage builder draws this one when you press Final, so there is no picture of it yet. It goes after special 1.</p>';
+    const m = (pack.more || []).find(x => +x.special === i + 2), built = m ? pack.base + String(m.pack || `${i + 2}/pack.json`).replace(/pack\.json$/, 'real.jpg') : '';
+    h = built ? img(built) : k >= 0 ? img(pack.base + (pack.options[k].picture || `option-${k + 2}.jpg`)) : '<p class="hint" style="font-size:15px">The Collage builder is drawing this one (it starts by itself about 90 seconds after you add it, or when you press Final) and it shows here when it is done. It goes after special 1.</p>';
     a = `<button class="btn" type="button" id="spv-off">Take it off</button><button class="btn primary" value="cancel">Close</button>`;
   } else {
     const i = +which.slice(1), op = ops[i]; if (!op) return;
@@ -1742,6 +1750,19 @@ function spBig(which, rest, ops) {
   go('spv-off', () => chToggle(date, rest[+which.slice(1)], false));
   go('spv-add', () => addSpecial(date, ops[+which.slice(1)].choose));
   go('spv-use', () => chInstead(date, Object.assign({}, ops[+which.slice(1)].choose)));
+}
+// after Make it another special, show plainly what happened (Darpan, 24 Nov 2026: "ive clicked make it another special
+// picture but nothing is happening"): the new box at the top flashes, and a line says what it is and when it goes
+function spAdded(date, title) {
+  setTimeout(() => {
+    const cards = [...document.querySelectorAll('#dspec .spcard:not(.on):not(.ready):not(.more)')], c = cards[cards.length - 1];
+    if (c) { c.classList.add('flash'); c.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' }); const top = $('#dspec'); if (top) top.scrollIntoView({ behavior: 'smooth', block: 'center' }) }
+    const n = cards.length + 1, today = todayLondon();
+    const when = date < today ? 'That day’s 2pm has already gone, so it is kept for you to see and save.'
+      : date === today && hourLondon() >= 14 ? 'It is after 2pm, so it will not go in today’s 2pm send.'
+      : 'It goes at 2pm, after special 1.';
+    const st = $('#status'); st.className = 'status ok'; st.textContent = `Added: “${title}” is now special ${n} (the box at the top). It builds by itself in about 90 seconds. ${when}`;
+  }, 700);
 }
 function addSpecial(date, e) {   // special 1 (this picture) is kept first, so another special always goes after it
   const pack = P.special;
@@ -1950,10 +1971,10 @@ function dLibrary() {
   } else {
     const items = [];
     uniqStories((HISTORY || []).filter(h => h.d.slice(5) === mmdd).map(h => ({ h }))).forEach(({ h }) => items.push({ y: +h.d.slice(0, 4), t: h.l, s: h.s || '', p: h.p || '', src: h.u || '', e: { kind: 'story', ref: h.d, note: h.l } }));
-    (ARTICLES || []).filter(a => a.d && a.d.slice(5) === mmdd).forEach(a => items.push({ y: a.y, t: a.t, s: a.s || '', p: a.p || '', src: a.u || '', e: { kind: 'news', ref: newsPath(a.u), note: a.t } }));
+    (ARTICLES || []).filter(a => a.d && a.d.slice(5) === mmdd).forEach(a => items.push({ y: a.y, d: a.d, t: a.t, s: a.s || '', p: a.p || '', src: a.u || '', e: { kind: 'news', ref: newsPath(a.u), note: a.t } }));
     if (pack.headline) items.push({ y: +String(pack.story_date || date).slice(0, 4), t: pack.headline, s: pack.story || '', p: pack.story_place || '', src: 'pack', own: true });
     items.sort((a, b) => b.y - a.y || (b.own ? 1 : 0) - (a.own ? 1 : 0));
-    body = items.length ? items.map((it, i) => `<div class="libst"><p><b>${esc(it.t)}</b><br><span class="hint">${esc([it.y, it.p].filter(Boolean).join(' · '))}${it.own ? ' · this picture’s story' : ''}</span></p>${it.s ? `<p class="hint">${esc(it.s.slice(0, 220))}${it.s.length > 220 ? '…' : ''}</p>` : ''}
+    body = items.length ? items.map((it, i) => `<div class="libst"><p><b>${esc(it.t)}</b><br><span class="hint">${esc([it.y, placeOk(it.p, it.t) ? it.p : ''].filter(Boolean).join(' · '))}${it.own ? ' · this picture’s story' : ''}</span></p>${it.s ? `<p class="hint">${esc(it.s.slice(0, 220))}${it.s.length > 220 ? '…' : ''}</p>` : ''}${postPhotosHtml(it, mmdd, i)}${/^https?:/.test(it.src || '') ? `<a class="libsrc" href="${esc(it.src)}" target="_blank" rel="noopener">${/baps\.org/.test(it.src) ? 'Open this post on baps.org ↗' : 'Open the post ↗'}</a>` : ''}
       <div class="seg"><button type="button" class="btn small" data-libmain="${i}" title="The headline, words and this post's own photos">Use for special 1</button><button type="button" class="btn small" data-libst="${i}" title="Its heading and words as one more box on this picture">Add as a story box</button>${it.own ? '' : `<button type="button" class="btn small" data-libjoin="${i}" title="Its words added to the end of the chosen story box (or the main story), so several stories read as one">Join to the story</button>`}${it.e && !it.own ? (CH && chHave(date, it.e) ? '<span class="gold">✓ a special</span>' : `<button type="button" class="btn small ${MAKEMORE ? 'primary' : ''}" data-libsp="${i}" title="A separate special picture of its own, after special 1">Make it another special</button>`) : ''}</div></div>`).join('')
       : `<p class="hint">${HISTORY ? 'No stories of ' + esc(day) + ' yet.' : 'Loading the stories…'}</p>`;
     lib._items = items;
@@ -1964,9 +1985,38 @@ function dLibrary() {
   lib.querySelectorAll('#libtabs button').forEach(b => b.addEventListener('click', () => { LIBTAB = b.dataset.v; dLibrary() }));
   lib.querySelectorAll('[data-lib]').forEach(b => { b.addEventListener('click', () => dAddPhoto(JSON.parse(b.dataset.lib))); b.addEventListener('dragstart', e => { e.dataTransfer.setData('text/x-photo', b.dataset.lib); e.dataTransfer.effectAllowed = 'copy' }) });
   lib.querySelectorAll('[data-libst]').forEach(b => { const it = lib._items[+b.dataset.libst]; b.addEventListener('click', () => S.special.design ? dAddChapter(it) : dAddStory(it.t, it.s, it.src)) });
-  lib.querySelectorAll('[data-libsp]').forEach(b => { const it = lib._items[+b.dataset.libsp]; b.addEventListener('click', async () => { await loadChoices(); MAKEMORE = false; addSpecial(date, it.e) }) });
+  lib.querySelectorAll('[data-libsp]').forEach(b => { const it = lib._items[+b.dataset.libsp]; b.addEventListener('click', async () => { await loadChoices(); MAKEMORE = false; addSpecial(date, it.e); spAdded(date, it.t) }) });
   lib.querySelectorAll('[data-libjoin]').forEach(b => { const it = lib._items[+b.dataset.libjoin]; b.addEventListener('click', () => dJoinStory(it)) });
   lib.querySelectorAll('[data-libmain]').forEach(b => { const it = lib._items[+b.dataset.libmain]; b.addEventListener('click', () => S.special.design ? dAddChapter(it, true) : useMain(it)) });
+  lib.querySelectorAll('[data-liball]').forEach(b => b.addEventListener('click', () => { LIBALL[b.dataset.liball] = !LIBALL[b.dataset.liball]; dLibrary() }));
+}
+// every story in the library carries its own photos (Darpan, 24 Nov 2026: "no where on my studio all the pictures associated
+// with the post ... each story post should include a link to the source"): a News post's own gallery photos from
+// posts/YYYY.json (tools/studio_post_photos.py), or, when the post has none, Bapa's photos of that very day that year
+const POSTS = {}, LIBALL = {};
+// a chosen News post with no photos of its own: the Collage builder's compose_special draws nothing for it (24 Nov 2026, the
+// 2018 Arti post), so the Studio says so instead of 'being drawn' for ever
+function noPics(e) { if (!e || e.kind !== 'news') return false; const m = String(e.ref || '').match(/\/News\/(\d{4})\//); if (!m) return false; const py = postYear(+m[1]); return !!py && !(py[e.ref] || []).length }
+function postYear(y) {
+  if (POSTS[y] !== undefined) return POSTS[y]; POSTS[y] = null;
+  const RAWB = 'https://raw.githubusercontent.com/darpan31patel-wq/bapas-diary/claude/project-thread-02nrr0/site/darpan/';
+  (async () => { for (const u of [`posts/${y}.json`, `${RAWB}posts/${y}.json`]) { try { const r = await fetch(u, { cache: 'force-cache' }); if (r.ok) { POSTS[y] = await r.json(); break } } catch (e) {} } if (!POSTS[y]) POSTS[y] = {}; if (isDesign()) { dLibrary(); dSpecials() } })();
+  return null;
+}
+// a few posts carry their title where the place should be ('Shri Swaminarayan Mahapuja and Shri Sahajanand Namavali')
+const placeOk = (p, t) => !!p && p.length < 40 && !String(t || '').includes(p);
+function postPhotos(it, mmdd) {
+  const y = +it.y, out = { own: [], day: [] }; if (!y) return out;
+  if (it.e && it.e.kind === 'news') { const py = postYear(y); if (py === null) out.loading = true; else (py[it.e.ref] || []).forEach(([al, f, b]) => out.own.push({ src: `${PHOTOS}m/${al}/${f}`, thumb: `${PHOTOS}s/${al}/${f}`, year: y, place: placeOk(it.p, it.t) ? it.p : '', caption: it.t, date: it.d || `${y}-${mmdd}`, bapa: b })) }
+  const dd = DAYD[mmdd]; (dd ? dd.years : []).filter(Y => +Y.y === y).forEach(Y => Y.p.forEach(p => out.day.push({ src: photoAddr(p), thumb: photoAddr(p), year: y, place: Y.place || '', caption: p[2] || '', date: `${y}-${mmdd}` })));
+  return out;
+}
+function postPhotosHtml(it, mmdd, i) {
+  if (it.own) return '';
+  const ph = postPhotos(it, mmdd), list = ph.own.length ? ph.own : ph.day, k = String(i), all = LIBALL[k], show = all ? list : list.slice(0, 8);
+  const head = ph.own.length ? `${ph.own.length} photo${ph.own.length > 1 ? 's' : ''} in this post` : ph.loading ? 'Looking for this post’s photos…'
+    : ph.day.length ? `${it.e && it.e.kind === 'news' ? 'No photos in this post. ' : ''}${ph.day.length} photo${ph.day.length > 1 ? 's' : ''} of Bapa on this day in ${it.y}${ph.day[0].place ? ' (' + esc(ph.day[0].place) + ')' : ''}` : `No photos of this post or of ${it.y} on this day in the archive yet.`;
+  return `<p class="hint" style="margin:2px 0 0">${head}${list.length ? ', click one to add it or drag it on' : ''}</p>${show.length ? `<div class="libph">${show.map(p => `<button type="button" draggable="true" data-lib="${esc(JSON.stringify({ src: p.src, year: p.year, place: p.place, caption: p.caption, date: p.date }))}" title="${esc(p.caption || '')}"><img src="${esc(p.thumb)}" alt="" loading="lazy" onerror="this.parentNode.remove()"></button>`).join('')}</div>` : ''}${list.length > 8 ? `<button type="button" class="btn small" data-liball="${k}">${all ? 'Show fewer' : `Show all ${list.length}`}</button>` : ''}`;
 }
 
 // ------------------------------------------------------------ a pack that carries its own design (Darpan, 10 Nov 2026: the Annakut
@@ -3115,7 +3165,11 @@ function waitForS(date) {
         const a = asked(); delete a['s:' + date]; store.set('studio-asked', a);
         const rm = store.get('studio-remade') || {}; rm[date] = Date.now(); store.set('studio-remade', rm);
         let late = false; try { const rj = await ghr('/contents/packs/special/remake.json?ref=studio', { headers: { Accept: 'application/vnd.github.raw+json' } }); if (rj.ok) { const x = await rj.json(); late = x.date === date && /late/.test(x.drive || '') } } catch (e) {}
-        progSet(date, 'ready', { late, fail: '' });   // made after 1:50pm is still made: ready, and the hint says the 2pm send had gone (Darpan, 18 Nov 2026: it showed as 'did not finish')
+        const again = (progOf(date) || {}).again;
+        progSet(date, 'ready', { late, fail: '', again: false });   // made after 1:50pm is still made: ready, and the hint says the 2pm send had gone (Darpan, 18 Nov 2026: it showed as 'did not finish')
+        // a special added while this one was being built goes straight into a second build (24 Nov 2026: special 2 was added 4
+        // seconds after a build started, so it was never drawn)
+        if (again && canAsk()) setTimeout(() => askRemake(date), 1500);
         await freshIndex();
         if (S.mode === 'special' && S.special.date === date) { P.special = null; load('special') }
         return;
@@ -3184,13 +3238,14 @@ async function saveChoices(how, where, quiet) {
     // a newly added special builds by itself about 90 seconds later, with special 1 (Darpan, 23 Nov 2026: "in the background, the
     // studio should automatically be making those two posts as special posters for me"); Take it off within the 90 seconds stops it
     const d = chDate(), p = progOf(d);
+    if (how === 'Special picture chosen' && d && d >= todayLondon() && canAsk() && p && p.step && !['saved', 'ready'].includes(p.step) && !p.fail) progSet(d, null, { again: true, note: 'Your new special is drawn straight after the build that is running now.' });
     if (how === 'Special picture chosen' && d && d >= todayLondon() && canAsk() && p && p.step === 'saved') {
       progSet(d, 'saved', { note: 'Your new special starts building by itself in about 90 seconds, together with special 1. Press Final to start it now.' });
       REMAKE_T = setTimeout(() => askRemake(d), 90e3);
     }
   } catch (e) { chSay('warn', 'Kept on this device, but not saved on the website: ' + ((e && e.message) || e) + '. It is sent again the next time you choose.') }
 }
-const dayData = async mmdd => { if (DAYD[mmdd] !== undefined) return DAYD[mmdd]; DAYD[mmdd] = null; try { const r = await fetch(`/data/day/${mmdd}.json`, { cache: 'force-cache' }); if (r.ok) DAYD[mmdd] = await r.json() } catch (e) {} if (S.tab === 'choose') build(); return DAYD[mmdd] };
+const dayData = async mmdd => { if (DAYD[mmdd] !== undefined) return DAYD[mmdd]; DAYD[mmdd] = null; try { let r = await fetch(`/darpan/days/${mmdd}.json`, { cache: 'no-cache' }); if (!r.ok) r = await fetch(`/data/day/${mmdd}.json`, { cache: 'force-cache' }); if (r.ok) DAYD[mmdd] = await r.json() } catch (e) {} if (S.tab === 'choose') build(); return DAYD[mmdd] };
 const PHOTOS = 'https://photos.bapas-diary.com/';
 // his own pick of photos (kind photos): ticked on the Choose tab under a year, sent as photos.bapas-diary.com addresses
 // (s/<album>/<file>, the archive's group and file name in bapas.db) with the year and place
@@ -3257,7 +3312,7 @@ function paneChoose() {
   const put = (y, item) => (byYear[y] = byYear[y] || []).push(item);
   uniqStories((HISTORY || []).filter(h => h.d.slice(5) === mmdd).map(h => ({ h }))).forEach(({ h }) => put(+h.d.slice(0, 4), { e: { kind: 'story', ref: h.d, note: h.l }, title: h.l, sub: [h.p, h.ch === 'satpurush' ? 'Satpurush UK diary' : 'Today in BAPS history', h.n ? h.n + (h.n > 1 ? ' photos' : ' photo') : ''].filter(Boolean).join(' · '), more: h.s, pic: '', url: h.u, special: !!h.x }));
   (ARTICLES || []).filter(a => a.d && a.d.slice(5) === mmdd).forEach(a => put(a.y, { e: { kind: 'news', ref: newsPath(a.u), note: a.t }, title: a.t, sub: [a.p, 'baps.org News', a.n ? a.n + ' photos' : 'no photos'].filter(Boolean).join(' · '), more: a.s, pic: '', url: a.u, special: a.b }));
-  (dd ? dd.years : []).forEach(Y => { const best = Y.p.find(p => p[3]) || Y.p[0], found = [...new Set(Y.p.flatMap(p => specialIn(p[2]).f))]; put(Y.y, { pics: Y.p, place: Y.place || '', e: { kind: 'year', year: Y.y, note: `${Y.y} ${Y.place || ''}`.trim() }, title: `${Y.y}, ${Y.place || 'place unknown'}`, sub: `${Y.p.length} photo${Y.p.length > 1 ? 's' : ''} of this day${best && best[2] ? ' · ' + best[2] : ''}${found.length ? ' · captions mention ' + found.slice(0, 4).join(', ') : ''}`, pic: best ? `${PHOTOS}s/${best[0]}/${best[1]}` : '', special: found.length > 0 }) });
+  (dd ? dd.years : []).forEach(Y => { const best = Y.p.find(p => p[3]) || Y.p[0], found = [...new Set(Y.p.flatMap(p => specialIn(p[2]).f))]; put(Y.y, { pics: Y.p, place: Y.place || '', e: { kind: 'year', year: Y.y, note: `${Y.y} ${Y.place || ''}`.trim() }, title: `${Y.y}, ${Y.place || 'place unknown'}`, sub: `${Y.p.length} photo${Y.p.length > 1 ? 's' : ''} of this day${Y.p.some(p => p.length > 6) ? ' (' + Y.p.filter(p => p[6]).length + ' with Bapa\'s face found)' : ''}${best && best[2] ? ' · ' + best[2] : ''}${found.length ? ' · captions mention ' + found.slice(0, 4).join(', ') : ''}`, pic: best ? `${PHOTOS}s/${best[0]}/${best[1]}` : '', special: found.length > 0 }) });
   if (!dd && pack && pack.kind !== 'story') groupsOf(pack).forEach(g => { if (!g.year || byYear[g.year]) return; const c = g.cands[0]; put(+g.year, { e: { kind: 'year', year: +g.year, note: `${g.year} ${c && c.place || ''}`.trim() }, title: `${g.year}, ${c && c.place || ''}`, sub: `${g.cands.length} photos`, pic: '' }) });
   const years = Object.keys(byYear).map(Number).sort((a, b) => b - a);
   const kindWords = pack ? (pack.kind === 'story' ? CHKINDS[pack.story_kind] || 'a day in BAPS history' : `Every ${pack.festival || ''}`) : '';
@@ -3975,16 +4030,25 @@ $('#exp-go').addEventListener('click', async () => {
   try {
     await loadIndex();
     const today = todayLondon();
-    const recent = SAVED_AT > 0;   // Darpan, 13 Nov 2026: "It forgets where I was": always the same day, tab and picture as he left them
-    if (!recent && S.day.date !== today && INDEX.days.includes(today)) { S.day.date = today; unstash('day') }
+    const recent = SAVED_AT > 0;   // Darpan, 13 Nov 2026: "It forgets where I was": the same tab and picture as he left them
+    // but always on TODAY's date (Darpan, 23 and 24 Nov 2026: "when refreshing the page, still doesnt go to todays date as
+    // defualt"); the day he was on keeps its changes for when he picks it again
+    if (S.day.date !== today && INDEX.days.includes(today)) { if (S.day.date) stash('day'); S.day.date = today; unstash('day') }
+    // a date in the address (?date= or ?special=) is a link he clicked: it opens once, then leaves the address, so a
+    // refresh, the Back button or a restored tab opens on today again
+    const nav = (performance.getEntriesByType && performance.getEntriesByType('navigation')[0] || {}).type || 'navigate';
+    const linked = nav === 'navigate', qs = new URLSearchParams(location.search);
+    if (qs.has('date') || qs.has('special')) { qs.delete('date'); qs.delete('special'); try { history.replaceState(null, '', location.pathname + (qs.toString() ? '?' + qs : '') + location.hash) } catch (x) {} }
     if (!INDEX.days.includes(S.day.date)) { S.day.date = INDEX.days.includes(today) ? today : INDEX.days.at(-1); unstash('day') }
-    const want = new URLSearchParams(location.search).get('date');   // studio/?date=2026-11-23 opens that day
+    const want = linked && LINK_DATE;   // studio/?date=2026-11-23 opens that day
     if (want && /^\d{4}-\d\d-\d\d$/.test(want) && want !== S.day.date) { S.mode = 'day'; return openDate(want) }
+    const thisMonth = today.slice(0, 7);   // the month poster opens on this month too (24 Nov 2026)
+    if (S.month.month !== thisMonth && INDEX.months.includes(thisMonth)) { if (S.month.month) stash('month'); S.month.month = thisMonth; unstash('month') }
     if (!INDEX.months.includes(S.month.month) && !(recent && S.month.month)) { S.month.month = INDEX.months.at(-1); unstash('month') }
     // the special picture opens on today's date (Darpan, 17 Nov 2026: "the special picture page needs to open to todays date by default");
     // the day he was on keeps its changes for when he picks it again
     if (S.special.date !== today) { if (S.special.date) stash('special'); S.special.date = today; unstash('special') }
-    const wantSp = new URLSearchParams(location.search).get('special');   // studio/?special=2026-11-08 opens that special picture
+    const wantSp = linked && LINK_SPECIAL;   // studio/?special=2026-11-08 opens that special picture
     if (wantSp && INDEX.specials.includes(wantSp)) { S.mode = 'special'; S.special.date = wantSp; unstash('special') }
     if (S.mode === 'special' && !S.special.date) S.mode = 'day';
     if (S.mode === 'special' && !INDEX.specials.includes(S.special.date)) { S.tab = 'choose'; build(); return }   // a day he chose that has no special pack yet
