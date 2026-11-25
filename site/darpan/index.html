@@ -2437,10 +2437,20 @@ function paneCard() {
   const offWords = d => { const n = daysOff(d); return n === 0 ? 'this very day' : `${Math.abs(n)} day${Math.abs(n) > 1 ? 's' : ''} ${n < 0 ? 'before' : 'after'} this day` };
   const dateTag = i => { const d = g.cands[i].date; return thisDay && d && d !== thisDay ? `<span class="off">${new Date(d + 'T12:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }).toUpperCase()}</span>` : '' };
   const dates = thisDay ? [...new Set(g.cands.map(c2 => c2.date).filter(Boolean))].sort() : [];
-  const dayNote = !thisDay || !dates.length ? '' : dates.length === 1 && dates[0] === thisDay
-    ? `<p class="hint ok">All ${g.cands.length} were taken on ${niceDay(thisDay)}, this very day.</p>`
-    : dates.length === 1 ? `<p class="hint warn">None of these are filed under this day. All ${g.cands.length} come from an album baps.org filed under ${niceDay(dates[0])}, ${offWords(dates[0])}. A whole visit or festival is often filed under one date, so they may be from a few days around it.</p>`
-    : `<p class="hint warn">Mixed dates: ${dates.map(d => `${g.cands.filter(c2 => c2.date === d).length} from ${niceDay(d)} (${offWords(d)})`).join(', ')}. Photos not from this very day carry their date.</p>`;
+  // one truthful date line per lot of photos, never two that disagree (Darpan, 25 Nov 2026: "how can there be 2 sets of
+  // informations about when the photos were taken"). A photo from a baps.org page covering several days has that page's days,
+  // not this day, even when the pack files it under this day.
+  const niceSpan = (a, b) => { const A = new Date(a + 'T12:00'), B = new Date(b + 'T12:00'), o = { day: 'numeric' };
+    return A.getFullYear() !== B.getFullYear() ? `${niceDay(a)} to ${niceDay(b)}` : A.getMonth() !== B.getMonth() ? `${A.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })} to ${niceDay(b)}` : `${A.toLocaleDateString('en-GB', o)} to ${niceDay(b)}` };
+  const spanOf = c2 => c2.album_from && c2.album_to && c2.album_from !== c2.album_to ? [c2.album_from, c2.album_to] : null;
+  const lots = []; g.cands.forEach(c2 => { const sp2 = spanOf(c2), kk = (c2.place || '') + '|' + (sp2 ? sp2.join('|') : c2.date || ''); let l = lots.find(l2 => l2.kk === kk); if (!l) lots.push(l = { kk, place: c2.place || '', span: sp2, date: c2.date || '', n: 0 }); l.n++ });
+  const lotLine = l => { const at = l.place ? ` at ${esc(l.place)}` : '', who = lots.length === 1 ? (l.n > 1 ? `All ${l.n}` : 'This photo') : `${l.n} photo${l.n > 1 ? 's' : ''}`;
+    if (l.span) return `<p class="hint warn">${who}${at}: baps.org shows ${l.n > 1 ? 'them' : 'it'} on one page for ${niceSpan(l.span[0], l.span[1])}, so ${l.n > 1 ? 'each is' : 'it is'} from one of those days, not surely ${thisDay ? niceDay(thisDay) : 'this day'}.</p>`;
+    if (!l.date) return `<p class="hint warn">${who}${at}: baps.org gives no day.</p>`;
+    if (l.date === thisDay) return `<p class="hint ok">${who}${at}: taken on ${niceDay(l.date)}, this very day.</p>`;
+    return `<p class="hint warn">${who}${at}: taken on ${niceDay(l.date)}, ${offWords(l.date)}.</p>` };
+  const dayNote2 = thisDay ? lots.map(lotLine).join('') : '', albumNote = '';
+  const whenOf = c2 => { const sp2 = spanOf(c2); return sp2 ? `one day of ${niceSpan(sp2[0], sp2[1])}` : c2.date || '' };
   const newsTag = i => g.cands[i].news ? '<span class="news">NEWS</span>' : '';
   const tags = i => dateTag(i) + newsTag(i) + (day ? (i === 0 ? `<span>${S.mode === 'special' ? 'ON THE PICTURE' : 'DAILY PICK'}</span>` : g.cands[i].special ? '<span>SPECIAL</span>' : '')
     : [['A', 'CLOSE'], ['B', 'ACTIVITY'], ['M', 'MIXED']].filter(([o2]) => optPick(g, o2) === i && (o2 !== 'M' || g.pickM != null)).map(([, l]) => `<span>${l}</span>`).join('').replace(/<\/span><span>/g, ' · '));
@@ -2450,11 +2460,6 @@ function paneCard() {
   const offN = S.mode === 'special' ? g.cands.filter(c2 => !dayOk(pack, g, c2)).length : 0;
   const grid = g.cands.map((_, i) => S.mode === 'special' && !dayOk(pack, g, g.cands[i]) && i !== x.pick ? '' : (i === firstRest && i > 0 ? `<p class="hint" style="grid-column:1/-1;margin:6px 0 0">The other ${rest} photo${rest > 1 ? 's' : ''} from ${esc(label(k))} (Bapa’s face not found automatically)</p>` : '') + cell(i)).join('');
   const changed = kk => { const b = stateOf(o)[kk]; return b && Object.keys(b).some(f => f !== 'on') };
-  // Darpan, 9 Nov 2026: plain words on the album each photo comes from, now the packs carry the album's first and last day
-  const spans = {}; g.cands.forEach(c2 => { if (c2.album_from && c2.album_to && c2.album_from !== c2.album_to) { const kk = c2.album_from + '|' + c2.album_to; spans[kk] = (spans[kk] || 0) + 1 } });
-  const spanAll = Object.values(spans).reduce((a2, b2) => a2 + b2, 0) === g.cands.length && Object.keys(spans).length === 1;
-  const albumNote = Object.entries(spans).map(([kk, n]) => { const [f, t] = kk.split('|'); return `<p class="hint warn">${spanAll ? 'All' : n + ' of these'} are filed under ${thisDay ? niceDay(thisDay) : 'this day'}, but baps.org's album covers ${niceDay(f)} to ${niceDay(t)}, so they may be from any of those days.</p>` }).join('');
-  const dayNote2 = spanAll && dates.length === 1 ? '' : dayNote;
   const lastPanel = lastTime(k);
   const chip = kk => S.mode === 'special' ? String((groupsOf(pack).find(g2 => g2.key === kk) || {}).year ?? kk) : kk;
   // on the special picture the photo tools come first, above the posts (Darpan, 17 Nov 2026: "this section needs to be much much higher")
@@ -2485,7 +2490,7 @@ function paneCard() {
       ${offN ? `<p class="hint">${offN} photo${offN > 1 ? 's' : ''} from another day or another place ${offN > 1 ? 'are' : 'is'} left out, so only ${esc(niceDay(`${g.year || String(pack.story_date || '').slice(0, 4)}-${pack.date.slice(5)}`))}${pack.kind === 'story' && spPlace(pack) ? ' in ' + esc(spPlace(pack).replace(/\b\w/g, m => m.toUpperCase())) : ''} shows.</p>` : ''}
       ${S.mode === 'special' && c && !dayOk(pack, g, c) ? `<p class="hint warn"><b>This card is not from this day.</b> Its photo is from ${esc([c.place, c.date ? niceDay(c.date) : ''].filter(Boolean).join(', '))}. Choose one of the photos below, or take the card off.</p>` : ''}
       <div class="thumbs" id="c-thumbs">${grid}</div>
-      <p class="hint">${c ? esc([c.place, c.date || (day ? g.year : ''), c.festival].filter(Boolean).join(' · ')) : ''}${day ? '' : ' · ' + esc([g.tithi, ...g.fest].join(' · '))}</p>` : '<p class="hint">No photo for this day yet.</p>'}</div>
+      <p class="hint">${c ? esc([c.place, whenOf(c) || (day ? g.year : ''), c.festival].filter(Boolean).join(' · ')) : ''}${day ? '' : ' · ' + esc([g.tithi, ...g.fest].join(' · '))}</p>` : '<p class="hint">No photo for this day yet.</p>'}</div>
     ${sp ? '' : storiesPanel(g, pack)}
     <div class="group"><h3>Place, caption${S.mode === 'special' ? ' and year' : ', year and festival tag'}</h3>
       <div class="row"><label for="c-place">Place${day ? ' on the card' : ' (bubbles)'}</label><input type="text" class="place" id="c-place" data-f="place" data-k="${k}" value="${esc(x.place)}"></div>
