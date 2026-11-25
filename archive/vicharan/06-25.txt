@@ -1,16 +1,14 @@
 # Every captioned photo of Bapa on baps.org's 25 June vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 3156|Mahelav, India|1999-06-27
-67_TP_1999_06_27|Swamishri in a divine mood
-#2000 3461|Lisbon, Manchester
+#2000 3461|Leicester
 107-20f|Akshar Marching Band welcomes Swamishri on his arrival
 107-24f|doing darshan of Thakorji in mandir
 107-26f|Despite the delay Swamishri blesses the assembly
 107-27f|Shree Swaminarayan Mandir, Leicester
 107-28f|was welcomed by all Hindu organizations in an evening assembly
 107-33f|Blessing the assembly with a message of pure living
-#2000 3462|Lisbon, Manchester
+#2000 3462|Lisbon, Manchester, Preston, Leicester, London
 108-10f|Thakorji and Swamishri are welcomed with a shower of flower petals in the Shibir
 108-12f,108-14f|Children's Session - Swamishri takes up 323 balaks on his lap! - offering a pillow signed by 323 balaks symbolizes their presence on Swamishri's lap
 108-16f,108-19f|inaugurates the Family Shibir by lighting the lamp and then shares a few words with the participants
@@ -27,14 +25,14 @@ I-1f,I-2f,I-3f,I-4f,I-5f|entertains boy trying to grab a packet of prasad
 110-19f|Next day, Swamishri explains the other verses in "Podhe Prabhu Sakalmuni ke Shyam ..."
 110-25f,110-27f,110-28f|Ruchi Quiz: Swamishri points an arrow in the laptop and reveals his answer to each question posed to him during the Family Shibir. The youths then see whether their answers match with that of Swamishri's wishes
 110-36f,111-8f,111-34f|In a jovial, illustrious mood during an outdoor session
-#2000 3504|Lisbon, Manchester
+#2000 3504|Lisbon
 103-27f|performing arti of Thakorji at Shri Swaminarayan Mandir
 103-35f|shree Swaminarayan Mandir, Lisbon
 103-19f|President of Portugal and EEC, H.E. George Sampaiao, greets Swamishri in the presidential palace
 106-2f|Swamshri meeting Bernadino, once a deaf and dumb boy is now normal through Swamishri's blessings
 106-4f|The Mayor of Lisbon welcomes Swamishri with a bouquet of flowers
 104-26f|addressing an assembly in Lisbon
-#2000 3505|Lisbon, Manchester
+#2000 3505|Lisbon, Manchester, Preston, Leicester, Nottingham, London
 108-10f|Thakorji and Swamishri are welcomed with a shower of flower petals in the Shibir
 108-12f,108-14f|Children's Session - Swamishri takes up 323 balaks on his lap! - offering a pillow signed by 323 balaks symbolizes their presence on Swamishri's lap
 108-16f,108-19f|inaugurates the Family Shibir by lighting the lamp and then shares a few words with the participants
@@ -59,7 +57,7 @@ I-1f,I-2f,I-3f,I-4f,I-5f|entertains boy trying to grab a packet of prasad
 60-24f|performs
 60-27f|Evening satsang assembly in a marquee
 60-14f,60-21f,60-16f|during his morning walk
-#2002 4053|Tithal, Manor
+#2002 4053|Tithal, Manor, Mumbai
 102-35af,103-1f,103-3f|Swamishri in transit at Manor on his way from Tithal to Mumbai
 #2004 2752|2004, Los Angeles
 losangelesjune25001-f|Shri Harikrishna Maharaj
@@ -69,7 +67,7 @@ losangelesjune25004-f,losangelesjune25005-f|Yuvaks sing a kirtan in qawali style
 losangelesjune25006-f|Pujya Viveksagar Swami relays personal experiences with Yogiji Maharaj
 losangelesjune25007-f|Yuvaks perform a drama
 losangelesjune25009-f|closely looks at a shawl presented to him embroidered with the 64 characteristics of a true saint
-#2005 2328|Gondal, Bhadra|2005-06-26
+#2005 2328|Gondal, Bhadra, Dangara, Rajkot|2005-06-26
 0504808f|
 #2007 2178|Houston|2007-06-24
 houston02-f|BAPS Shri Swaminarayan Mandir, Houston
@@ -92,8 +90,6 @@ y080625-29af|From Smruti Mandir towards assembly hall for morning puja
 y080625-34f,y080625-35f|blesses sadhus
 #2009 1908|Mumbai|2009-06-24
 DSC_0096f,DSC_0010f,IMG_3252f,IMG_3460f,IMG_3483f,DSC_0160f,IMG_3432f,IMG_3434f,IMG_3494f,DSC_0390f,IMG_3520f,IMG_3521f,IMG_3724f,IMG_3545f,DSC_0276f,IMG_3742f,IMG_3716f,IMG_3730f,IMG_3592f,IMG_3622f,IMG_3662f,IMG_3689f,DSC_0511f,IMG_3703f,IMG_3750f,DSC_0314f,DSC_0353f|Rath Yatra Celebration
-#2011 4487|Sankari, India
-20110625-012f,20110625-011f|BAPS Shri Swaminarayan Mandir, Sankari
 #2011 4492|Sankari, India
 20110625-014f|Lush grounds of BAPS Shri Swaminarayan Mandir, Sankari
 20110625-032f|blesses devotees
@@ -109,11 +105,10 @@ DSC_0096f,DSC_0010f,IMG_3252f,IMG_3460f,IMG_3483f,DSC_0160f,IMG_3432f,IMG_3434f,
 006-25-6f,007-25-6f,009-25-6f,020-25-6f,027-25-6f,028-25-6f,031-25-6f|bids Jai Swaminarayan
 008-25-6f,010-25-6f,011-25-6f,013-25-6f|blesses devotees
 012-25-6f|bids Jai Swaminarayan to sadhus and devotees
-014-25-6f|Devotees doing darshan of Swamishri
+014-25-6f,021-1-25-6f,021-25-6f|Devotees doing darshan of Swamishri
 015-25-6f,023-25-6f|Swamishri in the mandir for darshan
 016-25-6f,017-25-6f,033-25-6f|Swamishri in a divine mood
 018-25-6f,019-25-6f|Swamishri in a divine, jovial mood
-021-1-25-6f,021-25-6f|Devotees doing darshan of Swamishri
 022-25-6f|doing darshan of Shastriji Maharaj in the mandir
 024-25-6f,025-25-6f|doing darshan of Thakorji in mandir
 026-25-6f|engrossed in darshan of Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami

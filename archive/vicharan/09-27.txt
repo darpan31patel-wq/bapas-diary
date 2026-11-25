@@ -1,29 +1,39 @@
 # Every captioned photo of Bapa on baps.org's 27 September vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 3165|Badalpur, India|1999-09-26
-06_TP_1999_09_26|visits Pramukh Swami Sarvoday Vidyalay, Badalpur
-#1999 25175|Mwanza, Tanzania|1999-09-26
-TP_1999_101_08|Children and youths of the Mwanza Satsang Band welcome Swamishri
-TP_1999_101_09|arrives at the BAPS Shri Swaminarayan Mandir, Mwanza
-TP_1999_101_12|performs the bhumi pujan rituals for the new university
-TP_1999_101_13|performs the bhumi pujan rituals
-TP_1999_101_14|Pujya Keshavjivan Swami (Mahant Swami) splits a coconut
-TP_1999_101_18|during the assembly in the Lake Secondary School
-TP_1999_101_19|Shri Harikrishna Maharaj
-TP_1999_101_21,TP_1999_101_34|Students during the assembly
-TP_1999_101_25,TP_1999_102_05,TP_1999_102_06|blesses the assembly
-TP_1999_102_02|Sadhus sing kirtans in the kirtan aradhana
-TP_1999_102_04|Devotees during the kirtan aradhana
-TP_1999_102_07|performs pujan of Shri Harikrishna Maharaj
-TP_1999_102_12|engrossed in darshan of Shri Harikrishna Maharaj
-TP_1999_102_15|Devotees with Swamishri
-TP_1999_102_18|Children and youths of Mwanza Satsang Band with Swamishri
-TP_1999_102_22|plays a drum
-TP_1999_102_27|blesses a child
-TP_1999_102_28|Murtis of the BAPS Swaminarayan Mandir, Mwanza
-TP_1999_102_29|engrossed in darshan of Thakorji
-#2000 4165|San Jose, Dallas
+#1999 25176|Kampala, Uganda
+TP_1999_102_31|arrives at the Kampala
+TP_1999_102_33|performs pujan of the kalashes in the old mandir
+TP_1999_102_34|Nagar Yatra - a procession of the murtis through the streets of Kampala
+TP_1999_102_35,TP_1999_103_07,TP_1999_103_10,TP_1999_103_11,TP_1999_103_12,TP_1999_103_17,TP_1999_103_31,TP_1999_103_32|A procession of the murtis through the streets of Kampala
+TP_1999_102_36,TP_1999_103_01,TP_1999_103_03|Sadhus and devotees during the procession
+TP_1999_103_04,TP_1999_103_18,TP_1999_103_19|Traditional African folk dance during the procession
+TP_1999_103_35|Sadhus sing kirtans in the Nagar Yatra assembly
+TP_1999_104_07|Sadhus and devotees during the assembly
+TP_1999_104_06|Children perform a traditional dance
+TP_1999_104_15,TP_1999_104_19|African youths with Swamishri
+TP_1999_104_13|blesses an african youth
+TP_1999_104_08|Ambassador of India to Uganda meets Swamishri
+TP_1999_104_09,TP_1999_104_11|Swamishri in a divine mood
+TP_1999_104_22,TP_1999_104_23,TP_1999_104_28,TP_1999_104_31,TP_1999_104_32,TP_1999_104_33|performs the murti-pratishtha rituals
+TP_1999_104_30|performs pujan of the murtis
+TP_1999_104_35|performs the pratishtha arti
+TP_1999_104_36|Devotees perform the arti
+TP_1999_105_01,TP_1999_105_20,TP_1999_106_20,TP_1999_106_23|Bhagwan Swaminarayan and Aksharbrahma Gunatitanand Swami
+TP_1999_105_02|Shri Radha-Krishna Dev
+TP_1999_105_03|honors an ambassador of India to Uganda with a garland
+TP_1999_105_06|Annakut offered to Thakorji
+TP_1999_105_09|BAPS Shri Swaminarayan Mandir, Kampala
+TP_1999_105_15|Swamishri in the mandir campus
+TP_1999_105_19|Swamishri in conversation with a devotee
+TP_1999_105_21,TP_1999_105_23|performs a tree plantation
+TP_1999_105_27|blesses an African youth
+TP_1999_105_28|gives prasad to Pujya Bhaktipriya Swami (Kothari Swami)
+TP_1999_105_31|gives prasad to Pujya Keshavjivan Swami (Mahant Swami)
+TP_1999_106_07|gives prasad to an African youth
+TP_1999_106_17,TP_1999_106_18|blesses the assembly
+TP_1999_106_19|Sadhus and parshads with Swamishri
+#2000 4165|Orlando
 174-19af|Thakorji at the Shree Swaminarayan Mandir, Orlando
 174-17af|Shri Akshar Purushottam Maharaj
 174-18af|Shri Radha Krishna Dev
@@ -43,7 +53,7 @@ TP_1999_102_29|engrossed in darshan of Thakorji
 176-4af,176-3af|The National Youth Convention
 175-27f|explains the aims of the shibir in the inaugural session
 176-7af,176-9af,176-11af,176-13af,176-14af,176-15af|Swamishri in a humorous mood during the youth convention
-#2001 3671|Gadhada, Botad
+#2001 3671|Gadhada, Botad, Sarangpur, Ahmedabad, Mahesana, Siddhapur
 109-34f|The holy Bindu Sarovar
 110-1af|A mandir with the murti of Devhuti Mata on its periphery
 110-3af|A mandir dedicated to Shri Kapil Dev
@@ -60,9 +70,9 @@ TP_1999_102_29|engrossed in darshan of Thakorji
 110-31af|blesses the assembly
 110-32af|The huge evening Satsang assembly
 110-33af|Drama performers with Swamishri
-#2002 3964|Sarangpur, Ahmedabad|2002-09-29
+#2002 3964|Sarangpur, Ahmedabad, Gandhinagar|2002-09-29
 128-29f,129-10f,129-16f,129-24f,129-34f,129-6f,130-14f,130-16f,130-23f,130-25f,130-29f,130-32f,130-5f,131-10f,131-11f,131-12f,131-13f,131-14f,131-16f,131-19f,131-21f,131-24f,131-26f,131-33f,131-34f,131-35f,131-3f,131-6f,131-8f,132-14f,132-30f,132-3f,132-4f|
-#2002 3966|Sarangpur, Ahmedabad|2002-09-29
+#2002 3966|Gandhinagar|2002-09-29
 132-19f|does darshan of Thakorji at the Hari Mandir, Gandhinagar
 132-25f|Prior to attending the condolence meeting, Swamishri does darshan of Bhagwan Swaminarayan at the Akshardham Monument, Gandhinagar
 132-26f|meets Head of Gita Mandir Pujya Mangalanandji Maharaj, Pujya Ramdasji of Santram Mandir, Karamsad and Pujya Keshav Bhavaniji of Mai Mandir, Nadiad in the monument
@@ -117,7 +127,7 @@ pic_2_19_f|A young Kenyan balak receives blessing from Swamishri after reciting 
 pic_2_21_f|attending letters from devotees
 pic_3_4_f,pic_3_5_f|Celebration of Jal Jilhilni on the banks of Lake Victoria
 pic_3_6_f|Melodious kirtan aradhana performance by sadhus
-#2007 1914|New York, Edison
+#2007 1914|New York, Edison, London
 s_4f|Shri Harikrishna Maharaj
 s_1f|Shri Harikrishna Maharaj and Shri Radha-Krishna Dev
 s_2f|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami
@@ -272,8 +282,6 @@ img_9820f,img_9815f|has the sanctified dudhpak
 2015_09_27_018_Sarangpur_f,2015_09_27_019_Sarangpur_f|A skit presentation by youths before Swamishri
 2015_09_27_020_Sarangpur_f|Sadhus and devotees doing darshan of Swamishri
 2015_09_27_021_Sarangpur_f|is honored with garland
-#2016 12516|Bochasan, India|2016-09-28
-BAPS_HH_Mahant_Swami_Maharaj_83_Janmajaynti_Celebration_21|HH Mahant Swami Maharaj's 83rd Birth Anniversary Assembly - Click here to see more photos
 #2016 12530|Bochasan, India|2016-09-28
 2016_09_28_001_Bochasan|Param Pujya Mahant Swami performs prostrations to Thakorji, 28 Sep 2016
 2016_09_28_002_Bochasan|Param Pujya Mahant Swami and Pujya Tyagvallabh Swami perform abhishek of Shri Nilkanth Varni, 28 Sep 2016

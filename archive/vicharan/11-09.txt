@@ -1,9 +1,10 @@
 # Every captioned photo of Bapa on baps.org's 9 November vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 4289|Karamsad, India
-05_TP_1999_11_09|Shri Ashok Bhatt, Health Minister of Gujarat, honors Swamishri with a garland
-#2000 3314|London, New Delhi
+#1999 3193|Bhadra, India|1999-11-11
+TP_1999_126_31|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami, BAPS Shri Swaminarayan Mandir, Bhadra
+TP_1999_126_33|performs pradakshina at Aksharbrahman Gunatitanand Swami janmasthan
+#2000 3314|New Delhi
 199-6af|Swamishri in a humble gesture after being honored with a garland for his historic Satsang tour abroad
 199-8af|Darshan of Thakorji at the Shree Swaminarayan Mandir, New Delhi
 199-14af|Understanding details of the Shilanyas arrangements for Akshardham
@@ -15,19 +16,22 @@
 211-10f|after a meeting with the Board of Trustees at the Akshardham site
 9_17af|Doing pujan of the shilas (stones) symbolizing the gods of earth with rice grains, kumkum and flowers
 207f|Akshardham Shilnyas Vidhi, Delhi, India
-#2001 3594|Gondal, Mumbai|2001-11-11
+#2001 3594|Mumbai|2001-11-11
 130-36f|arrives for darshan of Thakorji from Mumbai
+#2001 3594|Gondal, Mumbai, Rajkot|2001-11-11
 130-31f,130-30f|Shri Ghanshyam Maharaj
-131-2af|Shri Swaminarayan Mandir, Rajkot
 130-34f|Shri Harikrishna Maharaj and Shri Radha Krishna Dev
 130-33f|Shri Dham, Dhami and Mukta
 131-1af|blesses a youth
 131-13af,131-15af|A giant evening satsang assembly on the mandir ground
 131-11af|blesses the satsang assembly
+#2001 3594|Rajkot|2001-11-11
+131-2af|Shri Swaminarayan Mandir, Rajkot
+#2001 3594|Gondal|2001-11-11
 131-17af|takes leave for Gondal
-#2002 3875|Gondal, Ramod|2002-11-11
+#2002 3875|Gondal, Ramod, Gadhada, Tajpur, Sarangpur|2002-11-11
 165-27f,165-28f|addresses the devotees on site of the under construction mandir
-#2003 2995|Dholka, Purushottampura(Lat)
+#2003 2995|Bochasan
 114-23f,114-28f,114-30f|Shri Swaminarayan Mandir, Bochasan
 113-29af|Annakut offered on Dev Diwali to Shri Harikrishna Maharaj and Shri Lakshmi Narayan Dev
 113-26af|Annakut offered on Dev Diwali to Shri Akshar Purushottam Maharaj
@@ -38,7 +42,7 @@
 114-15f,114-14f|blesses the Kartak Punam assembly
 114-18f|during the lunar eclipse assembly,from 5:00 a.m. till 8:35 a.m.
 114-20f|during the lunar eclipse assembly
-#2004 2490|New Delhi, Rajkot|2004-11-10
+#2004 2490|Rajkot|2004-11-10
 147-16f|BAPS Shri Swaminarayan Mandir, Rajkot
 154-33f|Shri Harikrishna Maharaj and Shri Radha Krishna Dev
 154-34f|Bhagwan Swaminarayan, Aksharbrahma Gunatitanand Swami and Shri Gopalanand Swami

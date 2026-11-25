@@ -1,14 +1,12 @@
 # Every captioned photo of Bapa on baps.org's 4 November vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 4289|Karamsad, India|1999-11-03
-01_TP_1999_11_03|Swamishri and dignitaries pay respects at the memorial of Shri H. M. Patel
 #1999 25583|Jetpur, India|1999-11-03
 TP_1999_121_05|Swaminarayan Mandir, Jetpur, The shrine where Ramanand Swami appointed Sahajanand Swami as the Head of the Sampradaya
 TP_1999_121_06|visits Jetpur
 TP_1999_121_07|showers flowers
 TP_1999_121_08|Devotees during the assembly
-#2000 3310|London, New Delhi
+#2000 3310|London
 197-19f|Lord Ghanshyam Maharaj
 197-15f|Shri Dham, Dhami and Mukta
 197-20f|Lord Harikrishna Maharaj and Shri Radha Krishna Dev
@@ -33,7 +31,7 @@ TP_1999_121_08|Devotees during the assembly
 198-34f|After the dance, the kishores are blessed by Swamishri
 198-36f|Yogesh Patel (r) and Tarun Patel with Swamishri holding the Guinness World Record Certificate for the world's largest Annakut at the Shri Swaminarayan Mandir in London
 199-2af|'Podhe Prabhu Sakal Muni ...' Shri Dham, Dhami and Mukta attired in night
-#2001 3585|Gondal, Mumbai|2001-11-02
+#2001 3585|Gondal, Mumbai, Rajkot|2001-11-02
 127-6f|engaged in darshan at Akshar Deri on Sharad Purnima
 127-4f|Akshar Deri: The holiest of holy shrines where Gunatitanand Swami was cremated
 127-8f|offers prayers
@@ -67,11 +65,13 @@ TP_1999_121_08|Devotees during the assembly
 129-14f|Swamishri and senior sadhus on the main stage during the festival
 129-9f|Sadhus and devotees during the festival
 129-4f,129-20f,129-5f|Youths enact the story of Uga Khuman of Juna Savar village who had beaten Gunatitanand Swami and sadhus and subsequently his transformation after a son was born to him by the prayers of Gunatitanand Swami
-129-10f|A thrilling, energetic folk dance presented by kishores of Gondal
 129-12f,129-21f|blesses the Sharad Purnima assembly
 129-23f,129-16f,129-24f|Performs the fifth and final arti of Thakorji in the festival
+#2001 3585|Gondal|2001-11-02
+129-10f|A thrilling, energetic folk dance presented by kishores of Gondal
+#2001 3585|Mumbai|2001-11-02
 129-31f,129-34f,129-36f|prays in Akshar Deri and does darshan of Thakorji before leaving for Mumbai for a medical check-up
-#2002 3859|Gondal, Ramod|2002-11-03
+#2002 3859|Ramod|2002-11-03
 161-16f|Aksharbrahma Gunatitanand Swami, Bhagwan Swaminarayan and Shri Gopalanand Swami
 161-11f|Bhagwan Swaminarayan and Aksharbrahma Gunatitanand Swami
 161-12f,161-30f|Shri Ghanshyam Maharaj
@@ -122,7 +122,7 @@ TP_1999_121_08|Devotees during the assembly
 165-18f,165-12f|It is time for Swamishri to retire at night, but as usual he is still engrossed in his work
 165-24f,165-23f|performs the rites of asthi (bone relics) of the late Amra Bapu of Paliyad
 165-4f,165-5f|The small boy comes to see Swamishri's 'nightdress' and was blessed when Swamishri placed his gatariyu on him
-#2003 2991|Dholka, Purushottampura(Lat)
+#2003 2991|Dholka, Purushottampura(Lat), Radhu, Bochasan, Mahesana, Mt. Abu, Sarupganj, Sivera, Pindwara
 111-12af,111-15af,111-16af|performs pujan and arti of Thakorji on the 1st murti-pratishtha anniversary (patotsav)
 111-22af|Devotees during Swamishri's welcome assembly
 111-20af|blesses the assembly
@@ -133,7 +133,7 @@ TP_1999_121_08|Devotees during the assembly
 111-29af|Shri Harikrishna Maharaj and Shri Radha Krishna Dev
 111-27af|Shri Ghanshyam Maharaj
 111-31af|performs a special arti to Thakorji on the occasion of annakut of fresh vegetables (Shakotsav
-#2003 2992|Dholka, Purushottampura(Lat)
+#2003 2992|Purushottampura(Lat)
 112-25f|BAPS Swaminarayan Mandir, Purushottampura
 112-10f|performs the Shakotsav arti on Dev Uthi Ekadashi
 112-8f|Blesses the assembly
@@ -151,8 +151,10 @@ TP_1999_121_08|Devotees during the assembly
 113-18af|explains the glory of another tree sanctified by Brahmaswarup Shastriji Maharaj
 #2005 2318|New Delhi
 img_0518f,img_0508f,img_9263f,img_9149f,yc8i2229f,xz0t2478f,xz0t2475f,xz0t2493f,xz0t2495f,xz0t2510f,img_0514f,img_9270f,img_0512f|performs the prelude rituals of the pratishtha yagna for the murtis of Swaminarayan Akshardham at the Bhakti Mandapam on the precincts of Swaminarayan Nagar
-#2007 1793|Gondal, Rajkot|2007-11-05
-Y071105-3f|Aso Vad 14 - Hanuman Jayanti offering pushpanjali to Shri Hanumanji
+#2007 1791|Gondal, Rajkot
+Y071108-01f|Devotees by the mandir steps, Gondal
+Y071110-18f,Y071107-2f|doing pradakshina at Shri Yogi Smruti Mandir
+Y071108-06f|Swamishri in a happy mood
 #2008 1766|Gondal
 y081104-03f|blesses devotees
 y081104-02f|engaged in darshan at Akshar Deri
@@ -712,82 +714,6 @@ A09I6355|performs the arti
 2025_11_04_115_Gondal|Students doing darshan of the arti
 2025_11_04_116_Gondal|observes a banner
 2025_11_04_117_Gondal|Students and devotees doing darshan of Swamishri
-#2002 3639|Gondal, India||news
-023f|doing pradakshina in Yogiji Maharaj's room
-025f|doing pradakshina in Shastriji Maharaj's room
-029f|engaged in darshan of Shastriji Maharaj in Akshar Deri
-031f|absorbed in darshan of Yogiji Maharaj in Akshar Deri
-034f|Swamishri in Akshar Deri
-036f|performs pradakshina in Akshar Deri
-039f|being taken up the mandir steps
-060f|Aksharbrahma Gunatitanand Swami, Bhagwan Swaminarayan and Shri Gopalanand Swami
-057f|Bhagwan Swaminarayan and Aksharbrahma Gunatitanand Swami
-054f|Shri Ghanshyam Maharaj
-046f,047f|engaged in darshan of Thakorji
-017f|daily puja
-083f|Shri Harikrishna Maharaj in Swamishri's puja
-065f|engrossed in meditation
-064f|invites Maharaj in his puja
-071f,087f|chanting the Swaminarayan mantra in his puja
-089f|chanting the Swaminarayan mantra in his puja
-107f|'Raj mare din din Diwali re ...' bhajans being sung during puja
-097f|Devotees during puja
-102f|Beseeches Maharaj to accept thal
-110f,117f|gives Diwali blessings after his puja
-116f,127f|gives Diwali blessings after his puja
-131f|gives Diwali blessings after his puja
-136f,138f|Going towards Yogi Smruti Mandir
-140f|Going towards Yogi Smruti Mandir
-150f|Swamishri at Yogi Smruti Mandir
-159f|performs pradakshina of Yogiji Maharaj's murti in Yogi Smruti Mandir
-163f|offers prostrations to the shrine of Yogiji Maharaj
-167f,169f|arriving towards his room
-170f|arriving towards his room
-#2002 3654|Gondal, India||news
-296f,303f|Shri Swaminarayan Mandir, Gondal
-304f|Shri Swaminarayan Mandir, Gondal
-305f|Akshar Dwar
-310f,318f|Shri Harikrishna Maharaj during Chopada pujan
-322f|during Chopada pujan ritual
-330f,343f|engaged in Chopada pujan ritual
-381f,384f|engaged in Chopada pujan ritual
-424f,425f|engaged in Chopada pujan ritual
-427f,430f|engaged in Chopada pujan ritual
-442f,444f|engaged in Chopada pujan ritual
-462f|engaged in Chopada pujan ritual
-345f,353f|performs the various rituals of Chopada pujan
-357f,364f|performs the various rituals of Chopada pujan
-371f|performs the various rituals of Chopada pujan
-360f|Devotees during Chopada pujan rituals
-396f,398f|ceremoniously bathes Shri Harikrishna Maharaj with panchamrut during the rituals
-399f,401f|ceremoniously bathes Shri Harikrishna Maharaj with panchamrut during the rituals
-405f,411f|ceremoniously bathes Shri Harikrishna Maharaj with panchamrut during the rituals
-414f|ceremoniously bathes Shri Harikrishna Maharaj with panchamrut during the rituals
-418f,420f|Shri Harikrishna Maharaj
-422f|offers prayers during the Chopada pujan ritual
-428f|offers prayers to Thakorji during the Chopada pujan rituals
-429f|offering thal to Thakorji
-453f|Pujya Balmukund Swami engaged in Chopada pujan rituals
-437f,438f|offering prayers to Thakorji
-440f,446f|performs Chopada pujan arti
-451f|performs Chopada pujan arti
-454f|Account books during Chopada pujan
-465f,468f|offers mantra pushpanjali
-471f|blesses the devotees and sadhus by showering rice grains
-476f,485f|showers sanctified flower petals on the account books
-486f,489f|showers sanctified flower petals on the account books
-490f|The sanctified account books
-493f,495f|writes his blessings in the mandir account book
-501f,504f|writes his blessings in the account book
-507f|writes his blessings in the account book
-515f|blessings in the account book
-518f|inaugurates 'Shrimad Bhagwatam' cassette collection of 27 audio cassettes by Pujya Viveksagar Swami
-526f,522f|blesses the assembly
-524f|blesses the assembly
-537f|arrives for darshan at Akshar Deri
-538f|engaged in darshan at Akshar Deri
-542f|prostrates before Akshar Deri
-543f|sanctifies the administrative office with Thakorji
 #2006 1601|London, UK||newstitle
 kk_1f,kk_2f|Satsang Shikshan Pariksha Din
 kk_3f,kk_4f|Satsang Shikshan Pariksha Din

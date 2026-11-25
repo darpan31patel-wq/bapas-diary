@@ -1,7 +1,7 @@
 # Every captioned photo of Bapa on baps.org's 17 October vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#2000 3376|Detroit, Cleveland
+#2000 3376|Detroit, Cleveland, Munster, Chicago
 185-22af,185-23af,185-25af|Swamishri in a smiling, illustrious mood
 185-26af|in an attentive, lively mood
 185-28af|Congressman Mr. Sherrod Brown presents a bouquet and honors Swamishri
@@ -10,19 +10,19 @@
 185-31af|re-consecrates the murtis of Shri Akshar Purushottam Maharaj
 186-5f|Swamishri and devotees perform arti
 186-8f|Performs arti of Thakorji
-#2001 3617|Porbandar, Kutiyana|2001-10-18
+#2001 3617|Kutiyana|2001-10-18
 118-13f|Shri Swaminarayan Mandir, Kutiyana
 118-11f|performs the murti-pratishtha ceremony
 118-14f|Swamishri and devotees perform the murti-pratishtha arti
 118-16f|A public satsang assembly
 118-15f|blesses the assembly
 118-21f|having lunch at a devotee's home
-#2002 3955|Surendranagar, Bhuj
+#2002 3955|Sukhpur
 153-27f|Old Shri Swaminarayan Mandir, Sukhpur
 153-26f|engrossed in darshan of the murtis
 153-28f|visits the new assembly hall being built on the upper floor
 153-31f|departs after darshan
-#2002 3956|Surendranagar, Bhuj
+#2002 3956|Surendranagar, Bhuj, Halvad, Gandhidham, Mandvi, Koday, Talvana, Khakhar, Khavda, Gunatitnagar (Modpar), Yoginagar (Ukhadmora), Anjar, Kukma, Sukhpur, Narayan Nagar, Shrijinagar, Gadhshisha
 154-10f,154-8f,154-9f|Views of the BAPS-reconstructed village of Narayannagar
 154-6f|BAPS Shri Swaminarayan Mandir, Narayannagar
 153-33f|performs the murti pratishtha rituals
@@ -34,7 +34,7 @@
 153-36f|performs the murti pratishtha arti
 154-13f|The murti pratishtha assembly
 154-17f|blesses the assembly Next
-#2002 3958|Surendranagar, Bhuj
+#2002 3958|Shrijinagar
 154-24f,154-18f,154-23f|Satsang assembly held on a local farm
 154-25f|BAPS Swaminarayan Mandir, Shrijinagar
 154-30f|performs the murti pratishtha ceremony
@@ -43,7 +43,7 @@
 154-33f,154-36f|performs the murti pratishtha arti
 155-4f|blesses the murti pratishtha assembly
 154-26f,154-27f,154-28f|Various views of the BAPS-reconstructed village of Shrijinagar
-#2002 3959|Surendranagar, Bhuj
+#2002 3959|Surendranagar, Bhuj, Halvad, Gandhidham, Mandvi, Koday, Talvana, Khakhar, Khavda, Gunatitnagar (Modpar), Yoginagar (Ukhadmora), Anjar, Kukma, Sukhpur, Narayan Nagar, Shrijinagar, Gadhshisha
 155-7f|Public satsang assembly
 155-9f|blesses the devotees seated in the assembly
 155-10f|A view of the stage and evening assembly
@@ -58,16 +58,21 @@ psm_14f|humbly engaged in Thakorji's darshan
 psm_15f,psm_16f|bids Jai Swaminarayan to all devotees in the assembly hall
 psm_17f|during the welcome assembly
 psm_20f,psm_23f|blesses the assembly
-#2007 1881|London|2007-10-15
-viday_1f|Shri Harikrishna Maharaj
-viday_2f|Shri Harikrishna Maharaj and Shri Radha-Krishna Dev
-viday_3f|Bhagwan Swaminarayan, Aksharbrahma Gunatitanand Swami and Shri Gopalanand Swami
-viday_4f|Shri Ghanshyam Maharaj
-viday_5f,viday_6f,viday_7f|Sadhus honor Swamishri with shawl and garlands
-viday_8f|performs abhishek of Shri Nilkanth Varni
-viday_9f|arrives for Thakorji's darshan
-viday_10f|engaged in Thakorji's darshan
-viday_11f|departs from London
+#2007 1849|Mumbai, Gondal
+IMG_0105f|Shri Harikrishna Maharaj and Shri Radha-Krishna Dev
+IMG_0093f|Bhagwan Swaminarayan, Aksharbrahma Gunatitanand Swami and Shri Gopalanand Swami
+IMG_0097f|Shri Ghanshyam Maharaj
+DSC_0145f|engaged in darshan of Thakorji
+DSC_0053f|morning puja
+WALK2f|blesses the the kids who pilgrimaged by foot from Vadodara District to Dadar Mandir
+IMG_4797f|Entrance to the Celebration Assembly ground
+IMG_3727f|Assembly stage
+IMG_4881f|Devotees and well-wishers
+IMG_3725f|Senior sadhus on the stage
+IMG_1229f,IMG_4847f|on the assembly stage
+IMG_4859f,IMG_1232f|Celebration Assembly
+IMG_4901f|Sadhus honor Swamishri with a garland
+IMG_4930f,IMG_4935f|Swamishri, senior sadhus and devotees perform the arti of Thakorji
 #2008 1750|Gondal|2008-10-16
 y081016-2f,y081016-3f|engaged in darshan of Akshar Deri
 y081016-6f|on his way for darshan of Yogi Smruti Mandir
@@ -79,8 +84,6 @@ y091017-14f,y091017-15f,y091017-16f,y091017-24f,y091017-25f,y091017-26f,y091017-
 y091017-20f,y091017-23f|Devotees in Swamishri's puja darshan
 y091017-21f|engaged in his morning puja
 y091017-17f|Shri Harikrishna Maharaj
-#2010 4141|Junagadh, India
-y101017-10f|engaged in darshan of Ganeshji
 #2010 4143|Junagadh, India
 y101017-04f,y101017-01f,y101017-07f,y101017-03f,y101017-02f,y101017-08f,y101017-05f,y101017-06f,y101017-09f|Annakut offered to Thakorji at the BAPS Shri Swaminarayan Mandir
 y101017-14f,y101017-13f,y101017-15f|Satsang assembly

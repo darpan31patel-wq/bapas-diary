@@ -1,9 +1,7 @@
 # Every captioned photo of Bapa on baps.org's 10 September vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 3156|Mahelav, India|1999-09-09
-99_TP_1999_09_09|BAPS Shri Swaminarayan Mandir, Mahelav
-#2000 3391|Los Angeles, Houston|2000-09-09
+#2000 3391|Los Angeles, Houston, San Antonio|2000-09-09
 162-16f|Lord Harikrishna Maharaj during the Jaljilani festival
 162-29f|blesses the festival assembly in a park
 162-30f|Devotees during the festival assembly
@@ -23,7 +21,7 @@
 164-35f|Humbly praying to Thakorji
 164-36f|blesses the congregation
 165-2f,165-4f,165-5f|happily responds with gestures during the singing of a bhajan that describes the water - leela of Shriji Maharaj in Amdavad: "Rang Bharela Lalji, Jalma Jhile Balvir ..."
-#2002 3975|Atladara (Vadodara), Mahelav|2002-09-11
+#2002 3975|Mahelav|2002-09-11
 112-23f|bows before the murti of Shastriji Maharaj installed on his birthplace
 112-24f|The mandir at the birthplace
 112-25f|walks through the streets and allies of Mahelav
@@ -33,7 +31,7 @@
 113-7af|Shri Harikrishna Maharaj and Shri Laxmi Narayan Dev
 113-8af|Shri Akshar Purushottam Maharaj
 112-35f|descends the mandir steps after darshan
-#2003 3039|Mahelav, Virol
+#2003 3039|Sarangpur
 07-000f,07-001f,07-002f|Shri Harikrishna Maharaj and Thakorji beautifully adorned in traditional rural wear
 07-003f,07-004f|Shri Ghanshyam Maharaj and Shri Dharmakul adorned in traditional rural wear
 07-005f|writes letters during an assembly
@@ -106,13 +104,13 @@
 0609107f,0609109f,0609112f|blesses the assembly
 0609117f|sanctifies dudhpak with rose petals to be distributed as prasadam on Shastriji Maharaj Smruti Din
 0609118f,0609119f|Senior sadhus give the prasadam to sadhus and devotees in the presence of Swamishri
-#2007 1968|Dallas, San Jose|2007-09-09
+#2007 1968|Los Angeles|2007-09-09
 05f,06f,07f|arrives at BAPS Shri Swaminarayan Mandir, Los Angeles
 10f,11f|performs opening rituals of newly built Sant Nivas
 12f|Welcome
 01f|Shri Harikrishna Maharaj
 02f,04f,03f|morning puja
-#2007 1972|Dallas, San Jose|2007-09-09
+#2007 1972|Dallas, San Jose, Los Angeles|2007-09-09
 01f,02f,03f,04f,07f,09f|Kishores perform cultural program in the Kishore Din assembly
 13f,12f,17f,19f|blesses kishores
 15f|Kishores with Swamishri
@@ -243,10 +241,6 @@ jp__1491f|Shri Harikrishna Maharaj
 2015_09_10_021_Sarangpur_f,2015_09_10_024_Sarangpur_f|blesses all
 2015_09_10_022_Sarangpur_f|arrives in the mandir grounds in the evening
 2015_09_10_023_Sarangpur_f,2015_09_10_025_Sarangpur_f|waves a chhadi
-#2016 12388|New Delhi, India
-E74A6762|Param Pujya Mahant Swami blesses devotees, 7 Sep 2016
-#2016 12390|New Delhi, India
-Pramukh_Swami_Maharaj_Tribute_Assembly_Delhi_07|Param Pujya Mahant Swami Maharaj and dignitaries during the tribute assembly - For further details
 #2016 12391|New Delhi, India
 2016_09_10_001_Delhi|Shri Ghanshyam Maharaj, 10 Sep 2016
 2016_09_10_002_Delhi_001|Bhagwan Swaminarayan and Aksharbrahman Gunatitanand Swami, 10 Sep 2016

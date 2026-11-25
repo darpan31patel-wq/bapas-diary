@@ -1419,8 +1419,17 @@ def is_town(t):
     return bool(t) and t.lower() not in COUNTRIES and not re.fullmatch(r'[A-Z]{2}', t) and not re.search(r'\d|Vicharan|Maharaj', t)
 
 
+def on_tour(p):
+    """A tour page's whole list of towns ('Gondal, Dholka, Limbdi, Bochasan'): the photo's caption named none of them."""
+    return sum(1 for t in (p or '').split(',') if is_town(t)) > 2
+
+
 def town_of(p):
-    """'Ahmedabad, India' -> 'Ahmedabad', '2004, London' -> 'London', 'India' -> ''."""
+    """'Ahmedabad, India' -> 'Ahmedabad', '2004, London' -> 'London', 'India' -> ''.
+    A whole tour ('Gondal, Dholka, Limbdi, Bochasan') -> '' (Darpan, 25 Nov 2026: its first town is not where the photo is
+    from; 2001 Dholka and Bochasan photos said GONDAL). The card then shows no town rather than a wrong one."""
+    if on_tour(p):
+        return ''
     return next((re.sub(r'\s*\(.*?\)', '', t).strip() for t in (p or '').split(',') if is_town(t)), '')
 
 
@@ -1458,7 +1467,7 @@ def settle_places(items, mmdd):
     """A photo whose place is only a country (or nothing) takes the town of the nearest day that has one."""
     found = {}
     for x in items:
-        if place(x):
+        if place(x) or on_tour(x.get('p')):   # a tour photo whose caption names no town: no town is better than a nearby day's guess
             continue
         try:
             when = datetime.date.fromisoformat((x.get('d') or '')[:10])

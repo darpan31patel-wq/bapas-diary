@@ -1,18 +1,24 @@
 # Every captioned photo of Bapa on baps.org's 11 July vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 3156|Mahelav, India|1999-07-10
-73_TP_1999_07_10|Swamishri and devotees perform the arti
-#2001 3785|Ahmedabad, Dabhasi
+#1999 24680|Vadtal|1999-07-09
+01___TP_1999_66_11f|visits the Swaminarayan Mandir, Vadtal
+02___TP_1999_66_15f|visits the Akshar Bhuvan
+03___TP_1999_66_17f|Bhagwan Swaminarayan
+04___TP_1999_66_18f,08___TP_1999_66_25f|Swamishri in the mandir grounds
+05___TP_1999_66_19f,06___TP_1999_66_22f,07___TP_1999_66_23f|engrossed in darshan
+09___TP_1999_66_29f|visits the Gomti Talav
+10___TP_1999_66_32f,11___TP_1999_66_33f,12___TP_1999_66_36f|showers sacred water of the Gomti Talav
+#2001 3785|Ahmedabad, Dabhasi, Bochasan, Ras
 72-30f|Shri Swaminarayan Mandir, Dabhaasi
 72-32f|performs arti of Thakorji
 72-35f|blesses the devotees
-#2003 3115|Ahmedabad, Traj
+#2003 3115|Traj
 traj1f|arrives at the Swaminarayan Mandir, Traj
 traj2f|Traj- Shri Akshar Purushottam Maharaj and Guru Parampara
 traj3f|Traj- Performs arti of Thakorji
 traj4f|Addresses the satsang assembly
-#2003 3116|Ahmedabad, Traj
+#2003 3116|Ahmedabad, Traj, Vadadla-Kaniya, Bochasan
 Vadadala3f|Performs pujan of Shri Akshar Purushottam Maharaj at the Swaminarayan Mandir, Vadadala
 Vadadala1f|Performs arti of Thakorji
 Vadadala4f|Shri Akshar Purushottam Maharaj and Guru Parampara
@@ -81,8 +87,10 @@ jacksonville73f,jacksonville75f,jacksonville78f,jacksonville79f,jacksonville80f,
 y080711-3f|having a dialogue with sadhus
 y080711-5f,y080711-6f,y080711-7f|Students of Vidyamandir stage a mock wrestling match
 y080711-2f|Swamishri with BAPS youths from UK
-#2009 1898|Bochasan
-y090711-2f,y090711-3f,y090711-1f|BAPS Shri Swaminarayan Mandir, Bochasan
+#2009 1899|Bochasan|2009-07-12
+y090712-5f|engaged in his morning puja
+y090712-6f|Shri Harikrishna Maharaj in a decorative hindolo
+y090712-2f,y090712-3f|Shri Akshar-Purushottam Maharaj
 #2010 2001|New Delhi, India
 hv100711-022f|Shri Ghanshyam Maharaj
 hv100711-017f|Shri Akshar-Purushottam Maharaj

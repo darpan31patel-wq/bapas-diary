@@ -1,23 +1,34 @@
 # Every captioned photo of Bapa on baps.org's 23 February vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 3156|Mahelav, India
-22_TP_1999_02_23|performs pradakshina
-#2002 4029|Auckland, Singapore|2002-02-24
+#1999 4295|Khedbrahma, India
+01_TP_1999_17_07|performs the arti
+02_TP_1999_17_08,04_TP_1999_17_19|Tribal devotees welcome Swamishri
+03_TP_1999_17_11|Devotees doing darshan of Swamishri
+05_TP_1999_17_20|sanctifies an instrument
+06_TP_1999_17_27|Tribal devotees perform a tribal dance before Swamishri
+07_TP_1999_17_30|A tribal devotees perform a tribal dance in the assembly
+08_TP_1999_17_34|doing a mala
+09_TP_1999_18_05|blesses the assembly
+10_TP_1999_18_08,11_TP_1999_18_10,12_TP_1999_18_12|gives clothes to tribal children
+13_TP_1999_18_14|blesses tribal devotees
+14_TP_1999_18_18|gives clothes to tribal devotees
+15_TP_1999_18_19|inaugurates a medical dispensary van in the service of the tribal natives
+#2002 4029|Singapore|2002-02-24
 47-32f,47-33f|On the flight from Auckland to Singapore Swamishri discourses to the sadhus
 47-36f|After saying the chesta on flight Swamishri retires for rest
 48-3f|retires for sleep after saying the chesta
 48-4f,48-11f|performs his morning puja at a devotee's home
 48-16f,48-12f,48-15f|Swamishri in an illustrious mood at the international airport in Singapore prior to departure
 48-13f|Swamishri at the airport in Singapore
-#2003 3054|Dhule, Varkhede
+#2003 3054|Sankari
 42-20af|Shri Swaminarayan Mandir, Sankari
 42-16af|Shri Harikrishna Maharaj and Shri Laxmi Narayan Dev
 42-17af|Bhagwan Swaminarayan and Aksharbrahma Gunatitanand Swami
 42-18af|Shri Ghanshyam Maharaj
 41-10af,41-23af,41-12af,41-14af,41-18af|After his arrival Swamishri addresses the assembly from the mandir roopchoki (porch)
 42-12af|blesses the assembly
-#2004 2642|Dangara, Junagadh
+#2004 2642|Dangara, Junagadh, Ahmedabad
 19-30f|A view of the foundation-stone laying ceremony for the BAPS shikharbaddh mandir on the birthplace of Aksharbrahma Gunatitanand Swami
 19-32f|A closer view of the rituals
 19-36f|performs dhyan
@@ -34,11 +45,11 @@
 20-31af|chants the Swaminarayan dhun during the assembly
 20-32af|Pujya Dharmakuvar Swami, the local Kothari, honors Swamishri with a garland
 20-33af|blesses the assembly
-#2005 2144|Poshina, Himmatnagar|2005-02-24
+#2005 2144|Poshina|2005-02-24
 0501518f,0501520f,0501521f,0501515f,0501524f,0501523f,0501527f,0501519f,0501533f,0501522f,0501636f,0501720f,0501616f,0501629f,0501611f,0501612f,0501614f,0501625f,0501623f,0501635f,0501619f,0501606f,0501803af,0501603f,0501536af,0501622f,0501712f,0501702f,0501709f,0501710f,0501704f,0501705f,0501707f,0501715f,0501716f,0501718f,0501725f,0501722f,0501733f,0501807af,0501805af,0501806af|Poshina -
-#2005 2145|Poshina, Himmatnagar|2005-02-24
+#2005 2145|Khedbrahma|2005-02-24
 0501814af,0501815af,0501810af,0501812af,0501818af,0501820af,0501821af|Khedbrahma -
-#2006 2133|Anand, Bochasan|2006-02-26
+#2006 2133|Narsanda|2006-02-26
 0602113f|BAPS Shri Swaminarayan Mandir, Narsanda
 0602108f|Thakorji
 0602107f|performs pujan of Thakorji
@@ -82,18 +93,6 @@ y090223-08f,y090223-05f,y090223-10f,y090223-07f,y090223-06f,y090223-09f,y090223-
 #2010 1700|Gandhinagar, India|2010-02-20
 gh20100220-07f|A skit presentation before Swamishri
 kk20100220-16f,kk20100220-48f|Swamishri in a divine, jovial mood
-#2010 1705|Sarangpur, India|2010-02-20
-gg20100220-09f|Devotees during the Pushpadolotsav assembly
-gg20100220-13f|Swamishri and senior sadhus on stage
-gg20100220-80f|during the assembly
-gg20100220-43f,gg20100220-34f|Swamishri and devotees during the assembly
-gg20100220-94f|Senior sadhus honor Swamishri
-gg20100220-206f|blesses the assembly
-gg20100220-217f,gg20100220-212f,gg20100220-218f|Swamishri and senior sadhus perform arti of Shri Harikrishna Maharaj
-gg20100220-228f|performs pujan of Shri Harikrishna Maharaj
-gg20100220-330f,gg20100220-278f,gg20100220-281f|showers sanctified colored water on devotees
-gg20100220-386f,gg20100220-362f,gg20100220-376f|showers sanctified colored water on sadhus
-gg20100220-407f|Bids Jai Swaminarayan to all
 #2012 5102|Mumbai, India|2012-02-22
 20120222-004f|Shri Ghanshyam Maharaj
 20120222-002f|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami

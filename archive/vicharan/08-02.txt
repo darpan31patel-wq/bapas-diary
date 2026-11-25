@@ -1,8 +1,6 @@
 # Every captioned photo of Bapa on baps.org's 2 August vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 3156|Mahelav, India
-87_TP_1999_08_02|performs the murti-pratishtha rituals
 #1999 24797|Lenasia, South Africa
 03____,04____|visits the Shayona store run by volunteers
 05____|Volunteers with Swamishri
@@ -19,7 +17,12 @@
 13____|Youths with Swamishri
 02____|blesses the assembly
 12____|Devotees perform the arti
-#2000 4158|London, Toronto|2000-07-31
+#1999 24812|Mayfair, Johannesburg
+01___TP_1999_71_02___01|arrives at the airport, Johannesburg
+05___TP_1999_72_07___05,06___TP_1999_72_09___06|BAPS Shri Swaminarayan Mandir, Johannesburg
+02___TP_1999_71_36___02|performs dandavats
+03___TP_1999_72_01___03,04___TP_1999_72_05___04|Swamishri in a divine mood
+#2000 4158|Augusta|2000-07-31
 134-1f|Shree Swaminarayan Mandir, Augusta
 134-3f|engrossed in Thakorji's darshan
 134-5f|Welcoming assembly
@@ -34,7 +37,7 @@
 134-23f|MUrti Pratishtha-Darshan of Shri Akshar Purushottam Maharaj after murti pratishtha ceremony
 134-24f|MUrti Pratishtha-Darshan of Shri Radha Krishna Dev after murti pratishtha ceremony
 134-25f|MUrti Pratishtha-Annakut before Thakorji
-#2001 3711|Anand, Kanjari
+#2001 3711|Anand, Kanjari, Bhalej, Nadiad, Sankarda, Atladara (Vadodara)
 80-13af|Shri Ghanshyam Maharaj
 80-10af|Shri Akshar Purushottam Maharaj
 80-11af|Shri Harikrishna Maharaj and Laxmi Narayan Dev
@@ -44,7 +47,7 @@
 80-6af|A drama presentation by youths
 80-9af|After performing a folk dance the balaks pose with Swamishri
 80-17af|blesses the assembly
-#2003 3064|Anand, Nadiad|2003-08-03
+#2003 3064|Anand, Nadiad, Bharuch|2003-08-03
 106-33f|Shri Harikrishna Maharaj and Shri Laxmi Narayan Dev
 106-32f|Bhagwan Swaminarayan and Aksharbrahma Gunatitanand Swami
 106-34f|Shri Ghanshyam Maharaj
@@ -473,8 +476,7 @@ dsc_3929f,dsc_3915f,dsc_3930f|blesses all
 2024_08_02_Bochasan_090|displays a message
 2024_08_02_Bochasan_091,2024_08_02_Bochasan_095|during the assembly
 2024_08_02_Bochasan_092,2024_08_02_Bochasan_099,2024_08_02_Bochasan_101|Devotees during the assembly
-2024_08_02_Bochasan_093,2024_08_02_Bochasan_102|Devotees present before Swamishri
-2024_08_02_Bochasan_096|Devotees present before Swamishri
+2024_08_02_Bochasan_093,2024_08_02_Bochasan_096,2024_08_02_Bochasan_102|Devotees present before Swamishri
 2024_08_02_Bochasan_097|listens attentively
 2024_08_02_Bochasan_098|Swamis, parshads and sadhaks during the assembly
 2024_08_02_Bochasan_100|A devotee during the assembly

@@ -1,9 +1,25 @@
 # Every captioned photo of Bapa on baps.org's 16 November vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 4290|Vadtal|1999-11-15
-01_TP_1999_11_15|visits the Swaminarayan Mandir, Vadtal
-#2002 3846|Himmatnagar, Umreth
+#1999 3199|Gadhada, India|1999-11-15
+128-18af|Bhagwan Swaminarayan, Aksharbrahma Gunatitanand Swami and Shri Gopalanand Swami
+TP_1999_128_16,TP_1999_128_18|Shri Harikrishna Maharaj, Shri Gopinath Dev and Shri Radhikaji
+TP_1999_128_07|honored with a garland
+TP_1999_128_20|descends the mandir steps
+TP_1999_128_22,TP_1999_128_32|Swamishri in the mandir campus
+TP_1999_128_08|blesses the assembly
+TP_1999_128_14|Devotees during the assembly
+128-12af,128-10af|performs his daily puja
+TP_1999_128_15|Devotees doing Swamishri's puja darshan
+TP_1999_128_25,TP_1999_128_26,TP_1999_128_28,TP_1999_128_29|visits the master plan construction site
+TP_1999_128_30|observes a construction plan
+TP_1999_128_05|touches water from the holy River Ghela
+128-34af|reverentially touches the trunk of the sacred neem tree
+128-35af|performs dandavats at the Laxmivadi
+TP_1999_129_01|descends the mandir steps at the Laxmivadi
+TP_1999_128_33|descends the mandir steps at Swaminarayan Mandir
+TP_1999_128_34|visits the old Swaminarayan Mandir
+#2002 3846|Himmatnagar
 171-33f,171-35f,171-36f|performs Shakotsav arti of Thakorji at the Swaminarayan mandir in Himmatnagar
 170-7f|Members of Himmatnagar Municipal Corporation honor Swamishri with a citation on stage
 170-10f|Utsav murti of Shri Akshar Purushottam Maharaj
@@ -41,15 +57,15 @@
 175-8f,175-11f,175-6f|performs the murti-pratishtha arti of murtis for Hari mandirs
 175-21f,175-22f,175-23f|The devotees of Himmatnagar festively carry out a procession to honor Shri Harikrishna Maharaj in the evening assembly
 175-24f|performs pujan of Shri Harikrishna Maharaj
-#2003 2952|Sirohi, Ajmer
+#2003 2952|Sirohi, Ajmer, Pali, Jaipur, Dausa, Manpur, Sikandra, New Delhi
 122-17f|Swamishri with the leading local devotees
 122-9f,122-11f|during a satsang assembly
 122-14f|blesses a satsang assembly
 122-16f|Children of the local Bal Mandal during a satsang assembly
-#2003 2968|Sirohi, Ajmer
+#2003 2968|Dausa
 54580024f|Dausa- Swamishri arrives in Dausa and sanctifies the BAPS mandir site
 54580025f,54580026f|arrives in Dausa and sanctifies the BAPS mandir site
-#2004 2493|New Delhi, Rajkot
+#2004 2493|Gondal
 157-15f|Bhagwan Swaminarayan, Aksharbrahma Gunatitanand Swami and Shri Gopalanand Swami
 157-14f|Shri Akshar Purushottam Maharaj
 157-13f|Shri Ghanshyam Maharaj
@@ -64,7 +80,7 @@
 157-32f|initiates (vartman) a child
 157-11f|sanctifies the asthi (ashes) of a devotee, prior to its immersion in river Gondali with flowers and rice grains offered to Shri Harikrishna Maharaj
 157-36f|Akshar Mandir, Gondal
-#2004 2476|Sarangpur, Bochasan
+#2004 2476|Gadhada
 160-10f|BAPS Shri Swaminarayan Mandir, Gadhada
 158-13f|Shri Harikrishna Maharaj and Shri Gopinath Dev
 158-12f|Bhagwan Swaminarayan, Aksharbrahma Gunatitanand Swami and Shri Gopalanand Swami
@@ -106,8 +122,6 @@ y091116-1f,y091116-2f|BAPS Shri Swaminarayan Mandir, Bochasan
 y091116-3f,y091116-4f|Shri Ghanshyam Maharaj
 y091116-5f|Shri Akshar Purushottam Maharaj
 y091116-6f|Shri Harikrishna Maharaj and Shri Lakshmi-Narayan Dev
-#2009 1699|Bochasan
-y091116-2pf|BAPS Shri Swaminarayan Mandir, Bochasan
 #2011 4691|Mumbai, India
 20111116-003f|Shri Ghanshyam Maharaj
 20111116-002f|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami
@@ -534,8 +548,8 @@ Pb150589f|After doing darshan, with Akshar Dwar in the background
 Pb150595f,Pb150594f|meditates on Shriji Maharaj and gurus during his morning puja
 Pb150591f,Pb150592f|prays to Thakorji
 Pb150604f,Pb150590f|While Pujya Balmukund Swami presides over the mahapuja ...
-Pb150611f|chants the holy name of Swaminarayan in his puja
-Pb150607f,Pb150605f|swamishri chants the holy name of Swaminarayan in his puja
+Pb150611f,Pb150607f|chants the holy name of Swaminarayan in his puja
+Pb150605f|chants the holy name of Swaminarayan in his puja
 Pb150613f|Chanting the holy name of Swaminarayan
 Pb150550-1f|Shri Harikrishna Maharaj
 Pb150618f|puja and mahapuja were held simultaneously
@@ -544,8 +558,8 @@ Pb150551-1f|reads the Shikshapatri
 Pb150552-1f|After concluding his puja, Swamishri humbly bows to all sadhus and devotees
 Pb150562f,Pb150555f|Swamishi performs the mahapuja arti of Shri Harikrishna Maharaj
 Pb150558f|Swamishi performs the mahapuja arti of Shri Harikrishna Maharaj
-Pb150564-1f,Pb150567f|offering mantra pushpanjali
-Pb150573f|showering rice grains towards the devotees as a blessing
+Pb150564-1f,Pb150567f|Swamishi offering mantra pushpanjali
+Pb150573f|Swamishi showering rice grains towards the devotees as a blessing
 Pb150622f|Sadhus doing darshan during puja
 Pb150623f,Pb150635f|Devotees during Swamishri's puja
 #2001 4117|Gondal, India||news

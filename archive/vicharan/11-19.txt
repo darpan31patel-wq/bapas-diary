@@ -1,9 +1,11 @@
 # Every captioned photo of Bapa on baps.org's 19 November vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 4291|Dabhan, India
-01_TP_1999_11_19|visits sacred sites in Dabhan
-#2000 3296|Mumbai, Sahara Lake City
+#1999 25600|Khambhada, India|1999-11-20
+TP_1999_133_07|visits the Khambhada village
+#1999 25587|Dholka, India|1999-11-20
+TP_1999_133_08|visits the new mandir construction site, Dholka
+#2000 3296|Mumbai
 213-2f|Lord Harikrishna Maharaj...
 213-3f|Shree Dham, Dhami, Mukta
 213-5f|Shree Ghanshyam Maharaj
@@ -17,12 +19,12 @@
 214-14f|performs arti
 214-19f|The mandir assembly hall
 214-17f|Annakut offered to the Lord
-#2003 2971|Sirohi, Ajmer
+#2003 2971|Sirohi, Ajmer, Pali, Jaipur, Dausa, Manpur, Sikandra, New Delhi
 54580027f,54580028f,54580030f|observes the work don e at the BAPS workshop
-#2003 2973|Sirohi, Ajmer
+#2003 2973|Sikandra
 54570003f,54570009f,54570016f,54570019f,54570029f,54570034f,54570036f,54520007f,54520015f,54520018f,54520022f|visits the workshop in Sikandra
 54520027f,54520028f,54520031f,54520036f,54470001f,54520034f,54470017f,54470003f|addresses the craftsmen
-#2004 2479|Sarangpur, Bochasan
+#2004 2479|Sarangpur
 160-24f|Doing Thakorji's darshan
 164-18af|Shri Varninath and Shri Gopinath Dev
 164-19af|Bhagwan Swaminarayan, Aksharbrahma Gunatitanand Swami and Shri Gopalanand Swami
@@ -42,9 +44,9 @@
 164-0af,164-11af,164-12af,164-5af,164-9af,164-13af|Morning puja at Yagnapurush Smruti Mandir
 161-5f|doing darshan and pradakshina at the holy shrine in the mandir grounds
 161-13f|doing darshan and pradakshina atthe holy shrine in the mandir grounds
-#2007 1759|Sarangpur, Bochasan
-y071119-1f|After darshan of Thakorji, Swamishri on his way to darshan at Shri Yagnapurush Smruti Mandir
-y071119-2f|Swamishri in the mandir pradakshina
+#2007 1758|Sarangpur, Bochasan|2007-11-18
+y071118-01f|Shri Harikrishna Maharaj
+y071118-03f|Bhagwan Swaminarayan, Aksharbrahma Gunatitanand Swami and Shri Gopalanand Swami
 #2008 1707|Sankari, Tithal
 y081119-04f|Shri Akshar Purushottam Maharaj adorned with flowers
 y081119-02f|Shri Harikrishna Maharaj

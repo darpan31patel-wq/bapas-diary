@@ -1,9 +1,7 @@
 # Every captioned photo of Bapa on baps.org's 29 September vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 3165|Badalpur, India|1999-09-30
-07_TP_1999_09_30|Devotees welcome Swamishri in the Badalpur village
-#1999 25176|Kampala, Uganda|1999-09-30
+#1999 25176|Kampala, Uganda
 TP_1999_102_31|arrives at the Kampala
 TP_1999_102_33|performs pujan of the kalashes in the old mandir
 TP_1999_102_34|Nagar Yatra - a procession of the murtis through the streets of Kampala
@@ -35,27 +33,7 @@ TP_1999_105_31|gives prasad to Pujya Keshavjivan Swami (Mahant Swami)
 TP_1999_106_07|gives prasad to an African youth
 TP_1999_106_17,TP_1999_106_18|blesses the assembly
 TP_1999_106_19|Sadhus and parshads with Swamishri
-#1999 25177|Jinja, Uganda|1999-09-30
-jinjaf|BAPS Shri Swaminarayan Mandir, Jinja
-TP_1999_106_24,TP_1999_107_31|performs the arti
-TP_1999_106_25|Devotees during the arti
-TP_1999_106_27|on the street of Jinja
-TP_1999_106_28|greets a well-wisher with 'Jai Swaminarayan'
-TP_1999_106_32|African child with a tilak and chandlo
-TP_1999_106_35|Children perform a traditional dance
-TP_1999_107_04|Children with Swamishri
-TP_1999_107_05|honors a minister of Uganda with a garland
-TP_1999_107_06,TP_1999_107_34|Sadhus and devotees during the assembly
-TP_1999_107_07|Ministers of Uganda with Swamishri
-TP_1999_107_10|gives arti to Mustafa, Pujari of the Sanatan Mandir, Jinja
-TP_1999_107_15|Swamishri in conversation with Mustafa
-TP_1999_107_16|Swamishri with Shri Harikrishna Maharaj
-TP_1999_107_18|during his visit of Jinja
-TP_1999_107_21|Sadhus and parshads with Swamishri
-TP_1999_107_27|Local Africans with Swamishri
-TP_1999_107_30|Sadhus with Swamishri
-TP_1999_107_36|blesses the assembly
-#2000 4165|San Jose, Dallas
+#2000 4165|Orlando
 174-19af|Thakorji at the Shree Swaminarayan Mandir, Orlando
 174-17af|Shri Akshar Purushottam Maharaj
 174-18af|Shri Radha Krishna Dev
@@ -75,16 +53,16 @@ TP_1999_107_36|blesses the assembly
 176-4af,176-3af|The National Youth Convention
 175-27f|explains the aims of the shibir in the inaugural session
 176-7af,176-9af,176-11af,176-13af,176-14af,176-15af|Swamishri in a humorous mood during the youth convention
-#2001 3667|Gadhada, Botad|2001-09-28
+#2001 3667|Gadhada, Botad, Sarangpur, Ahmedabad, Mahesana, Siddhapur|2001-09-28
 109-31f|Shri Swaminarayan Mandir,
 109-29f|The green mandir precincts
 109-28f|Swamishri in the mandir
 109-23f|Shri Dham, Dhami and Mukta
 109-24f|Shri Ghanshyam Maharaj
 109-20f|performing arti of Thakorji
-#2002 3964|Sarangpur, Ahmedabad
+#2002 3964|Sarangpur, Ahmedabad, Gandhinagar
 128-29f,129-10f,129-16f,129-24f,129-34f,129-6f,130-14f,130-16f,130-23f,130-25f,130-29f,130-32f,130-5f,131-10f,131-11f,131-12f,131-13f,131-14f,131-16f,131-19f,131-21f,131-24f,131-26f,131-33f,131-34f,131-35f,131-3f,131-6f,131-8f,132-14f,132-30f,132-3f,132-4f|
-#2002 3966|Sarangpur, Ahmedabad
+#2002 3966|Gandhinagar
 132-19f|does darshan of Thakorji at the Hari Mandir, Gandhinagar
 132-25f|Prior to attending the condolence meeting, Swamishri does darshan of Bhagwan Swaminarayan at the Akshardham Monument, Gandhinagar
 132-26f|meets Head of Gita Mandir Pujya Mangalanandji Maharaj, Pujya Ramdasji of Santram Mandir, Karamsad and Pujya Keshav Bhavaniji of Mai Mandir, Nadiad in the monument
@@ -126,9 +104,9 @@ p6r6p1f|departs from Bhavnagar
 01f|Darshan of deities after the pratishtha rituals
 02f|Shri Akshar Purushottam Maharaj
 04f|Pujya Doctor Swami with balaks after their performance
-#2007 1917|New York, Edison
+#2007 1917|New York, Edison, London
 m_1f,m_2f,m_3f,m_4f,m_6f,m_7f,m_5f,m_8f,m_9f,m_11f,m_12f|The Mahila Din assembly in which women devotees present cultural programs and speeches
-#2007 1918|New York, Edison
+#2007 1918|New York, Edison, London
 jjap_1f|Shri Harikrishna Maharaj and Shri Radha-Krishna Dev
 jjap_2f|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami
 jjap_3f|Shri Ghanshyam Maharaj
@@ -743,8 +721,8 @@ B0002743_HDR|Tapomurti Shri Nilkanth Varni Maharaj
 2026_09_29_131_London|blesses Bhadreshdas Swami
 #2017 14599|London, UK||news
 YOG_5195|The Swaminarayan School Day was reflected in the decoration of each mandir shrine...
-IMG_7448|as well as in Harikrishna Maharaj's adornments...
-AE2I5097|the backdrop at the Abhishek Mandap
+IMG_7448|The Swaminarayan School Day was reflected in the decoration of each mandir shrine as well as in Harikrishna Maharaj's adornments
+AE2I5097|The Swaminarayan School Day was reflected in the decoration of each mandir shrine as well as in Harikrishna Maharaj's adornments and the backdrop at the Abhishek Mandap
 AE2I5293|Pupils of The Swaminarayan School greeted Mahant Swami Maharaj early in the morning
 AE2I5319|En route to his puja, Swamishri inscribed an inspiring message for the pupils
 AE2I5420|The Swaminarayan School, the first independent Hindu school in the West, was founded by Pramukh Swami Maharaj in 1992

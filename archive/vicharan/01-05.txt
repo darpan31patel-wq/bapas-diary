@@ -1,8 +1,6 @@
 # Every captioned photo of Bapa on baps.org's 5 January vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 3156|Mahelav, India
-03_TP_1999_01_05|visits the Mahelav village
 #2000 3272|Bengaluru, India
 4-10f|A public assembly of devotees and renowned medical professionals
 4-11f|Blessing an ailing devotee with the darshan of Harikrishna Maharaj
@@ -12,7 +10,7 @@
 #2001 3511|Rajkot, India
 Dsc00078f,Dsc00100f|Lord Ghanshyam Maharaj in a beautiful attire
 Dsc00070f|Listening attentively
-#2002 3862|Ahmedabad, Gadhada|2002-01-06
+#2002 3862|Ahmedabad, Gadhada, Sarangpur, Bhavnagar|2002-01-06
 2-26f|The murtis of Shri Mulji Brahmachari, Shri Harikrishna Maharaj, Shri Gopinathji and Shri Radhaji
 2-25f|Aksharbrahma Gunatitanand Swami, Bhagwan Swaminarayan and Shri Gopalanand Swami
 2-23f|Shri Ghanshyam Maharaj
@@ -23,7 +21,7 @@ Dsc00070f|Listening attentively
 2-7f,2-12f|Opening of the relocated and newly constructed gaushala (cattle shed)
 2-17f|A view of the new gaushala buildings
 3-7f,3-8f,3-13f|blesses the welcome assembly
-#2002 3872|Ahmedabad, Gadhada|2002-01-06
+#2002 3872|Ahmedabad, Gadhada, Sarangpur, Bhavnagar|2002-01-06
 3-17af|The murtis of Ichharambhai, Shriji Maharaj and Raghuvirji Maharaj in the mandir at Lakshmi Vadi
 3-16af|prostrates to the murtis
 3-19af|Descending the steps of the Lakshmi Vadi mandir
@@ -49,42 +47,6 @@ T0500202f,T0500205f,T0500207f|visits the BAPS Shri Swaminarayan Vidyamandir (sch
 T0500209f|Evening satsang assembly held in the compound of Pramukh Swami Institute of Information Technology (PIIT) and Swaminarayan Vidyamandir
 T0500214f|blesses the assembly
 T0500210f|Tribal devotees garland Swamishri
-#2005 1922|Surat, Bhimpore
-0511230f|Bhagwan Swaminarayan, Aksharbrahma Gunatitanand Swami and Shri Gopalanand Swami
-0511232f|Bhagwan Swaminarayan
-0511233f,0511234f,0600119f|Shri Ghanshyam Maharaj
-0511228f|Shri Harikrishna Maharaj and Shri Radha Krishna Dev
-0511229f|Shri Harikrishna Maharaj
-0511203f,0511205f|Devotees of Surat welcome Swamishri
-0511206f|Welcome assembly
-0511209f,0511211f|Welcome dance by BAPS Kishore Mandal, Surat
-0511216f|blesses the assembly
-0511219f,0511222f,0511223f|blesses an ailing old devotee
-0511224f|performs abhishek of Shri Nilkanth Varni
-0600104f|Engaged in darshan of Guru Parampara
-0511301f|After Thakorji's darshan Swamishri proceeds to perform his daily puja
-0511303f,0511308f,0511302f|performs patotsav arti of Surat mandir
-0511309f,0511310f|Shri Ghanshyam Maharaj adorned for the patotsav
-0511307f|Shri Harikrishna Maharaj and Shri Radha Krishna Dev adorned for the patotsav
-0511312f,0511324f,0600231af,0511323f,0511315f,0511316f|blesses the Gramya Din assembly
-0511329f,0511333f|A drama performed by Surat Bal mandal
-0600101f|Children participants of drama with Swamishri
-0600121f|Engaged in darshan of Guru Parampara on Youth Day celebration
-0600123f|After Thakorji's darshan Swamishri proceeds to perform his daily puja while youths wave flags
-0600133f|BAPS youths perform a cultural program on Youth Day celebration
-0600124f|during the celebration assembly
-0600129f|Youth participants of drama with Swamishri
-0600126f,0600128f,0600127f|during Youth Day celebration assembly
-0600212af,0600213af|blesses youths who performed a debate on Chhatralay Din
-0600220af|Shri Ghanshyam Maharaj adorned for symbolic Makarsankranti(Joli) festival
-0600221af|humbly bows to devotees
-0600224af,0600226af|Swamishri in mandir pradakshina bows to Guru Parampara
-0600229af|Morning puja
-0600303f,0600306f,0600304f,0600232af,0600228af,0600234af|performs morning puja on symbolic Makarsankranti festival day
-0600307f|performs murti-pratishtha pujan of murtis for BAPS Swaminarayan Mandir, Pandesara
-0600308f|Evening satsang assembly
-0600311f|Kishore mandal perform a dance
-0600318f,0600313f,0600320f|traditionally proclaims the joli call, 'Narayan Hare Sacchidanand Prabho', with two jolis on both shoulders on symbolic Makarsankranti festival
 #2008 2049|Mumbai, India
 Y080105-3f,Y080105-4f|Despite ill health Swamishri reads and replies to devotees' letters
 #2009 2063|Surat
@@ -113,10 +75,9 @@ y100105-6f|blesses devotees
 017-04-01-13f|views a photograph
 023-04-01-13f,024-04-01-13f|sanctifies a decorative flower
 025-04-01-13f,027-04-01-13f,030-04-01-13f|Devotees doing darshan of Swamishri
-026-04-01-13f|Sadhus and devotees doing darshan of Swamishri
+026-04-01-13f,035-04-01-13f,036-04-01-13f,037-04-01-13f|Sadhus and devotees doing darshan of Swamishri
 028-04-01-13f,029-04-01-13f,033-04-01-13f|greets devotees with 'Jai Swaminarayan'
 031-04-01-13f,032-04-01-13f,034-04-01-13f|Youths from Africa perform a dance before Swamishri
-035-04-01-13f,036-04-01-13f,037-04-01-13f|Sadhus and devotees doing darshan of Swamishri
 038-04-01-13f|greets sadhus with 'Jai Swaminarayan'
 #2014 7639|Sarangpur, India
 2014_01_05_007f|Shri Yagnapurush Smruti Mandir, Sarangpur

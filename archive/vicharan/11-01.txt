@@ -1,9 +1,20 @@
 # Every captioned photo of Bapa on baps.org's 1 November vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 4288|Anand, India
-04_TP_1999_11_01|blesses an ailing devotee
-#2001 3585|Gondal, Mumbai
+#1999 3190|Junagadh, India
+TP_1999_120_08,TP_1999_120_09|performs the patotsav mahapuja rituals
+TP_1999_120_13|blesses all devotees
+120-9af|performs the patotsav arti
+120-6af|meets Mahant Shri Gopalanandji
+TP_1999_120_05|Children perform a traditional dance
+TP_1999_120_06|Children with Swamishri
+TP_1999_121_02|Devotees during the assembly
+TP_1999_120_14|honors Shri Keshubhai Patel, Chief Minister of Gujarata, with a garland
+TP_1999_120_22|Thakorji at the Shri Swaminarayan Mandir, Junagadh
+TP_1999_120_27,TP_1999_120_32,TP_1999_120_20,TP_1999_120_35|Murtis at the mandir
+120-35af|decsends the mandir steps
+TP_1999_121_01|visits the sacred place sanctified by Aksharbrahma Gunatitanand Swami
+#2001 3585|Gondal, Mumbai, Rajkot
 127-6f|engaged in darshan at Akshar Deri on Sharad Purnima
 127-4f|Akshar Deri: The holiest of holy shrines where Gunatitanand Swami was cremated
 127-8f|offers prayers
@@ -37,11 +48,13 @@
 129-14f|Swamishri and senior sadhus on the main stage during the festival
 129-9f|Sadhus and devotees during the festival
 129-4f,129-20f,129-5f|Youths enact the story of Uga Khuman of Juna Savar village who had beaten Gunatitanand Swami and sadhus and subsequently his transformation after a son was born to him by the prayers of Gunatitanand Swami
-129-10f|A thrilling, energetic folk dance presented by kishores of Gondal
 129-12f,129-21f|blesses the Sharad Purnima assembly
 129-23f,129-16f,129-24f|Performs the fifth and final arti of Thakorji in the festival
+#2001 3585|Gondal
+129-10f|A thrilling, energetic folk dance presented by kishores of Gondal
+#2001 3585|Mumbai
 129-31f,129-34f,129-36f|prays in Akshar Deri and does darshan of Thakorji before leaving for Mumbai for a medical check-up
-#2002 3859|Gondal, Ramod
+#2002 3859|Ramod
 161-16f|Aksharbrahma Gunatitanand Swami, Bhagwan Swaminarayan and Shri Gopalanand Swami
 161-11f|Bhagwan Swaminarayan and Aksharbrahma Gunatitanand Swami
 161-12f,161-30f|Shri Ghanshyam Maharaj
@@ -149,16 +162,13 @@ y091101-02f|Devotees of Amalner
 y101101-1f|Shri Ghanshyam Maharaj
 y101101-5f|performs pujan of kalashas and flagstaffs of new guru shikhars for Gondal Mandir
 y101101-6f,y101101-7f,y101101-8f|Swamishri in a divine, jovial mood
-#2011 4689|Mumbai, India|2011-10-31
-20111031-021f|Shri Ghanshyam Maharaj
-20111031-020f|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami
-20111031-019f|Shri Harikrishna Maharaj and Shri Radha-Krishna Dev
-20111031-003f|Shri Harikrishna Maharaj
-20111031-036f,20111031-035f|blesses devotees
-20111031-008f|A skit presentation before Swamishri
-20111031-018f,20111031-037f|bids Jai Swaminarayan to sadhus and devotees
-20111031-043f,20111031-048f,20111031-047f|Swamishri in a divine, jovial mood
-20111031-052f|Senior sadhus honor Swamishri with a garland
+#2011 4667|Mumbai, India
+20111001-003f|Shri Ghanshyam Maharaj
+20111001-002f|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami
+20111001-001f|Shri Harikrishna Maharaj and Shri Radha-Krishna Dev
+20111001-004f|Shri Harikrishna Maharaj
+20111001-015f,20111002-001f|engaged in darshan of Thakorji
+20111001-016f,20111001-019f,20111001-021f|blesses devotees
 #2012 5904|Ahmedabad, India
 001-01-11f|Shri Ghanshyam Maharaj
 002-01-11f|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami

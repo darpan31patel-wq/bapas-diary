@@ -1,9 +1,15 @@
 # Every captioned photo of Bapa on baps.org's 4 October vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 3165|Badalpur, India
-TP_1999_10_04|Swamisrhi performs pradakshina of Thakorji
-#2000 3406|Miami, Clifton
+#1999 25507|Eldoret, Kenya
+TP_1999_109_07|arrives at the BAPS Shri Swaminarayan Mandir, Eldoret
+eldoret|performs the arti at the BAPS Shri Swaminarayan Mandir, Eldoret
+TP_1999_109_05|performs his daily puja
+TP_1999_109_03|Sadhus and devotees during the assembly
+TP_1999_108_27|Swamishri, senior sadhus and well-wishers on the stage during the assembly
+TP_1999_108_30|Children with Swamishri
+TP_1999_108_31,TP_1999_109_01|African children chant a prayer
+#2000 3406|Miami, Clifton, Edison, Jersey City, Atlantic City
 176-19f,176-22f|performing the murti pratishtha
 176-18f|Devotees participating in the mahapuja ceremony
 176-24f|Shri Akshar Purushottam Maharaj
@@ -21,10 +27,10 @@ TP_1999_10_04|Swamisrhi performs pradakshina of Thakorji
 179-1af|Mayor of Boynton Beach, Mr. Gerald Broening, presenting 'Key to the City' to Swamishri
 179-2af|On behalf of The president of Florida Atlantic University, Dr. Strong honouring Swamishri
 179-6af|The murti of Lord Swaminarayan presiding on stage
-#2000 3418|Miami, Clifton
+#2000 3418|Miami, Clifton, Edison, Jersey City, Atlantic City
 180-12f|Shri Akshar Purushottam Maharaj
 180-9f,180-10f|blesses and presents a rosary to the Mayor of Sayerville, Mr. Kennedy O'Brian
-#2002 3916|Surendranagar, Bhuj|2002-10-07
+#2002 3916|Surendranagar|2002-10-07
 140-26f|BAPS Swaminarayan Mandir, Surendranagar
 140-31f|Shri Harikrishna Maharaj and Shri Radha Krishna Dev
 140-32f|Shri Harikrishna Maharaj
@@ -32,7 +38,7 @@ TP_1999_10_04|Swamisrhi performs pradakshina of Thakorji
 140-22f|blesses a young boy
 140-27f|on stage during the Satsang assembly
 140-34f|A devotee holds out a murti for his ghar mandir for Swamishri to sanctify
-#2002 3924|Surendranagar, Bhuj|2002-10-07
+#2002 3924|Surendranagar, Bhuj, Halvad, Gandhidham, Mandvi, Koday, Talvana, Khakhar, Khavda, Gunatitnagar (Modpar), Yoginagar (Ukhadmora), Anjar, Kukma, Sukhpur, Narayan Nagar, Shrijinagar, Gadhshisha|2002-10-07
 141-3f,141-5f,141-8f|blesses the devotees on his arrival
 141-10f|inspects ongoing mandir construction work prior to his departure
 #2003 2964|Gadhada, Gondal
@@ -880,7 +886,7 @@ Mahant_Swami_Maharaj_s_93rd_Birthday_Celebration_London_2026___151_,Mahant_Swami
 Mahant_Swami_Maharaj_s_93rd_Birthday_Celebration_London_2026___155_,Mahant_Swami_Maharaj_s_93rd_Birthday_Celebration_London_2026___159_|Mahant Swami Maharaj's 93rd Janma Jayanti Mahotsav
 #2026 37005|London, UK||news
 Mahant_Swami_Maharaj_s_93rd_Birthday_Celebration_London_2026___116_|Carl Saville, Official Adjudicator for Guinness World Records, announced that...
-Mahant_Swami_Maharaj_s_93rd_Birthday_Celebration_London_2026___117_|the 13-volume biography of Pramukh Swami Maharaj, authored by Sadhu Adarshjivandas, is officially recognised as the ‘Longest Biography by a Single Author'
+Mahant_Swami_Maharaj_s_93rd_Birthday_Celebration_London_2026___117_|Carl Saville, Official Adjudicator for Guinness World Records, announced that, the 13-volume biography of Pramukh Swami Maharaj, authored by Sadhu Adarshjivandas, is officially recognised as the ‘Longest Biography by a Single Author'
 Mahant_Swami_Maharaj_s_93rd_Birthday_Celebration_London_2026___119_|Carl Saville noted that the work comprises 2,146,447 words across 8,848 pages, representing “years of scholarship, research, documentation, and dedication”
 Mahant_Swami_Maharaj_s_93rd_Birthday_Celebration_London_2026___120_|Carl Saville presenting the Guinness World Records certificate to Mahant Swami Maharaj
 Mahant_Swami_Maharaj_s_93rd_Birthday_Celebration_London_2026___122_|Carl Saville expressing to Mahant Swami Maharaj what a great honour it was for him to share this announcement on this auspicious occasion
@@ -892,7 +898,7 @@ Mahant_Swami_Maharaj_s_93rd_Birthday_Celebration_London_2026___115_,Mahant_Swami
 01_20_51_34_Dhruv_Edison_2026_10_04_21782|The finale begins: “A circle has no end; it is infinite… This janma jayanti doesn't end today, Bapa”
 23_Mahant_Swami_Maharaj_s_93rd_Birthday_Celebration_London_2026___147_|Sadguru Tyagvallabhdas Swami offers a prayer on Swamishri's birthday – “Janma divase karu prārthnā, he guruhari Mahant Swami”
 29_Mahant_Swami_Maharaj_s_93rd_Birthday_Celebration_London_2026___153_|Sadguru Bhaktipriyadas Swami (Kothari Swami) leads the sankalp dhun...
-24_Mahant_Swami_Maharaj_s_93rd_Birthday_Celebration_London_2026___148_|as he prays for Swamishri's health and the well-being of all devotees and people around the world
+24_Mahant_Swami_Maharaj_s_93rd_Birthday_Celebration_London_2026___148_|Sadguru Bhaktipriyadas Swami (Kothari Swami) leads the sankalp dhun as he prays for Swamishri's health and the well-being of all devotees and people around the world
 30_Mahant_Swami_Maharaj_s_93rd_Birthday_Celebration_London_2026___154_|Brahmaviharidas Swami makes a special announcement before Swamishri
 33_Mahant_Swami_Maharaj_s_93rd_Birthday_Celebration_London_2026___156_|Brahmaviharidas Swami announces the opening of ‘Akshardham Museum' at Swaminarayan Akshardham, Robbinsville, USA, on Sunday 11 October 2026
 32_Mahant_Swami_Maharaj_s_93rd_Birthday_Celebration_London_2026___157_|Anandswarupdas Swami offers Swamishri a golden kalash to mark the inauguration announcement of Akshardham Museum
