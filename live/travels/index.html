@@ -571,15 +571,20 @@ body.dragging { -webkit-user-select: none; user-select: none; }
     Y0 = +YEARS[0]; NM = YEARS.length * 12;
   }
   let PX = 80;   // pixels per month
+  // the tape holds only the years of the journey, side by side: 1975 runs straight on into 1999 (Darpan, 25 Nov 2026: the
+  // slider read 1992 and 1993 while the card said 1999, because the tape counted every year from 1971 as if none were missing)
+  const yearAt = i => +YEARS[Math.min(YEARS.length - 1, Math.floor(i / 12))];
   const monthsOf = d => { const x = new Date(d), y = x.getUTCFullYear(), m = x.getUTCMonth();
-    const a = Date.UTC(y, m, 1), b = Date.UTC(y, m + 1, 1); return (y - Y0) * 12 + m + (d - a) / (b - a); };
-  const dateOf = mf => { mf = Math.max(0, Math.min(NM - 1e-6, mf)); const i = Math.floor(mf), y = Y0 + Math.floor(i / 12), m = i % 12;
+    let k = YEARS.length - 1; while (k > 0 && +YEARS[k] > y) k--;
+    if (+YEARS[k] !== y) return +YEARS[k] < y ? (k + 1) * 12 - 1e-6 : 0;   // a year with no stops (the flight across the gap): the gap's edge
+    const a = Date.UTC(y, m, 1), b = Date.UTC(y, m + 1, 1); return k * 12 + m + (d - a) / (b - a); };
+  const dateOf = mf => { mf = Math.max(0, Math.min(NM - 1e-6, mf)); const i = Math.floor(mf), y = yearAt(i), m = i % 12;
     const a = Date.UTC(y, m, 1), b = Date.UTC(y, m + 1, 1); return a + (mf - i) * (b - a); };
   function buildTape() {
     PX = innerWidth > 760 ? 38 : 28;   // shorter months, so more of the years fit on the screen (Darpan, 28 Oct 2026)
     tape.style.width = NM * PX + 'px'; $('bar').style.width = NM * PX + 'px';
     let h = '';
-    for (let i = 0; i < NM; i++) { const m = i % 12, y = Y0 + Math.floor(i / 12);
+    for (let i = 0; i < NM; i++) { const m = i % 12, y = yearAt(i);
       h += `<div class="mo${m ? '' : ' jan'}" style="left:${i * PX}px;width:${PX}px">${m ? '' : `<b>${y}</b>`}${MONTHS[m].slice(0, 3)}</div>`; }
     tape.querySelectorAll('.mo').forEach(e => e.remove());
     tape.insertAdjacentHTML('afterbegin', h);
@@ -592,13 +597,14 @@ body.dragging { -webkit-user-select: none; user-select: none; }
     const d = dateAtT(tNow);
     railM = monthsOf(d);
     tape.style.transform = `translateX(${$('track').clientWidth / 2 - railM * PX}px)`;
-    const y = new Date(d).getUTCFullYear();
+    let y = new Date(d).getUTCFullYear();
+    if (!YEARS.includes(String(y))) y = (st.flying ? stops[st.i + 1] : s).year;   // flying across the missing years: the year it lands in
     if (y !== railYear) {
       railYear = y;
       // years of this journey already passed are full saffron, so the row reads as one progress bar (Darpan, 28 Oct 2026)
       yearsEl.querySelectorAll('.yr').forEach(b => { const by = +b.dataset.y, on = by === y; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
         b.classList.toggle('done', by < y && YEARS.includes(b.dataset.y)); if (!on) b.style.removeProperty('--fill'); });
-      $('track').setAttribute('aria-valuetext', MONTHS[new Date(d).getUTCMonth()] + ' ' + y);
+      $('track').setAttribute('aria-valuetext', MONTHS[new Date(d).getUTCFullYear() === y ? new Date(d).getUTCMonth() : 0] + ' ' + y);
       railFill = -1;
     }
     // the year you are in fills with saffron from left to right as the journey moves through it (Darpan, 28 Oct 2026)
