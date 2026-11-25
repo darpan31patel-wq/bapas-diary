@@ -1,29 +1,7 @@
 # Every captioned photo of Bapa on baps.org's 26 September vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 3165|Badalpur, India
-06_TP_1999_09_26|visits Pramukh Swami Sarvoday Vidyalay, Badalpur
-#1999 25175|Mwanza, Tanzania
-TP_1999_101_08|Children and youths of the Mwanza Satsang Band welcome Swamishri
-TP_1999_101_09|arrives at the BAPS Shri Swaminarayan Mandir, Mwanza
-TP_1999_101_12|performs the bhumi pujan rituals for the new university
-TP_1999_101_13|performs the bhumi pujan rituals
-TP_1999_101_14|Pujya Keshavjivan Swami (Mahant Swami) splits a coconut
-TP_1999_101_18|during the assembly in the Lake Secondary School
-TP_1999_101_19|Shri Harikrishna Maharaj
-TP_1999_101_21,TP_1999_101_34|Students during the assembly
-TP_1999_101_25,TP_1999_102_05,TP_1999_102_06|blesses the assembly
-TP_1999_102_02|Sadhus sing kirtans in the kirtan aradhana
-TP_1999_102_04|Devotees during the kirtan aradhana
-TP_1999_102_07|performs pujan of Shri Harikrishna Maharaj
-TP_1999_102_12|engrossed in darshan of Shri Harikrishna Maharaj
-TP_1999_102_15|Devotees with Swamishri
-TP_1999_102_18|Children and youths of Mwanza Satsang Band with Swamishri
-TP_1999_102_22|plays a drum
-TP_1999_102_27|blesses a child
-TP_1999_102_28|Murtis of the BAPS Swaminarayan Mandir, Mwanza
-TP_1999_102_29|engrossed in darshan of Thakorji
-#2000 4164|San Jose, Dallas
+#2000 4164|Tampa
 171-23aF|performs the maha-puja ceremony
 171-25af|Performs arti at the conclusion of the ceremony
 171-26af|Performs 'mantra pushpanjali' as part of the maha-puja ceremony
@@ -41,7 +19,7 @@ TP_1999_102_29|engrossed in darshan of Thakorji
 172-20f|chants the Swaminarayan dhun for success of the mandir construction
 172-24f|Drama presentation 'Mokshanu Dwar' by kishores
 172-26f,172-27f|blesses the assembly, "For moksha, God and His realized sadhu are necessary ..."
-#2001 3665|Gadhada, Botad
+#2001 3665|Gadhada, Botad, Sarangpur, Ahmedabad, Mahesana, Siddhapur
 108-9aF|performs the murti-pratishtha ceremony at the Swaminarayan Sanskardham in Jivraj Park (Amdavad)
 108-10af|performing the murti-pratishtha arti of Thakorji
 108-12af|was welcomed with garlands
@@ -59,16 +37,16 @@ TP_1999_102_29|engrossed in darshan of Thakorji
 109-7f|blesses a doctor
 109-14F|sanctifies the 'Pramukh Swami Institute of Information Technology' (PIIT)
 109-11f|The faculty explains the PIIT curriculum
-#2001 3667|Gadhada, Botad
+#2001 3667|Gadhada, Botad, Sarangpur, Ahmedabad, Mahesana, Siddhapur
 109-31f|Shri Swaminarayan Mandir,
 109-29f|The green mandir precincts
 109-28f|Swamishri in the mandir
 109-23f|Shri Dham, Dhami and Mukta
 109-24f|Shri Ghanshyam Maharaj
 109-20f|performing arti of Thakorji
-#2002 3964|Sarangpur, Ahmedabad|2002-09-29
+#2002 3964|Sarangpur, Ahmedabad, Gandhinagar|2002-09-29
 128-29f,129-10f,129-16f,129-24f,129-34f,129-6f,130-14f,130-16f,130-23f,130-25f,130-29f,130-32f,130-5f,131-10f,131-11f,131-12f,131-13f,131-14f,131-16f,131-19f,131-21f,131-24f,131-26f,131-33f,131-34f,131-35f,131-3f,131-6f,131-8f,132-14f,132-30f,132-3f,132-4f|
-#2002 3966|Sarangpur, Ahmedabad|2002-09-29
+#2002 3966|Gandhinagar|2002-09-29
 132-19f|does darshan of Thakorji at the Hari Mandir, Gandhinagar
 132-25f|Prior to attending the condolence meeting, Swamishri does darshan of Bhagwan Swaminarayan at the Akshardham Monument, Gandhinagar
 132-26f|meets Head of Gita Mandir Pujya Mangalanandji Maharaj, Pujya Ramdasji of Santram Mandir, Karamsad and Pujya Keshav Bhavaniji of Mai Mandir, Nadiad in the monument
@@ -123,7 +101,7 @@ pic_2_19_f|A young Kenyan balak receives blessing from Swamishri after reciting 
 pic_2_21_f|attending letters from devotees
 pic_3_4_f,pic_3_5_f|Celebration of Jal Jilhilni on the banks of Lake Victoria
 pic_3_6_f|Melodious kirtan aradhana performance by sadhus
-#2007 1914|New York, Edison|2007-09-27
+#2007 1914|New York, Edison, London|2007-09-27
 s_4f|Shri Harikrishna Maharaj
 s_1f|Shri Harikrishna Maharaj and Shri Radha-Krishna Dev
 s_2f|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami
@@ -235,8 +213,6 @@ s_7f|engaged in chanting the dhun
 2015_09_26_023_Sarangpur_f,2015_09_26_028_Sarangpur_f,2015_09_26_029_Sarangpur_f,2015_09_26_032_Sarangpur_f|Swamishri in a divine, jovial mood
 2015_09_26_025_Sarangpur_f|blesses all
 2015_09_26_030_Sarangpur_f|Sadhus doing darshan of Swamishri
-#2016 12516|Bochasan, India|2016-09-28
-BAPS_HH_Mahant_Swami_Maharaj_83_Janmajaynti_Celebration_21|HH Mahant Swami Maharaj's 83rd Birth Anniversary Assembly - Click here to see more photos
 #2016 12530|Bochasan, India|2016-09-28
 2016_09_28_001_Bochasan|Param Pujya Mahant Swami performs prostrations to Thakorji, 28 Sep 2016
 2016_09_28_002_Bochasan|Param Pujya Mahant Swami and Pujya Tyagvallabh Swami perform abhishek of Shri Nilkanth Varni, 28 Sep 2016
@@ -752,11 +728,11 @@ National_BM_Shibir_34|National Bal-Balika Mandal Shibir
 #2017 14592|London, UK||news
 20170926_London_CommunityDay__17_|Guests arrive at London Mandir for the Community Day assembly
 20170926_London_CommunityDay__16_|Guests include local civic leaders and public officers...
-20170926_London_CommunityDay__15_|to captains of industry and community leaders
+20170926_London_CommunityDay__15_|Guests include local civic leaders and public officers to captains of industry and community leaders
 20170926_London_CommunityDay__8_|A volunteer leads the proceedings
 20170926_London_CommunityDay__5_,20170926_London_CommunityDay__6_|Hundreds of guests and well-wishers had gathered
 20170926_London_CommunityDay__19_|It was an occasion to thank them for their support of the Mandir's activities...
-20170926_London_CommunityDay__18_|to introduce them to Mahant Swami Maharaj
+20170926_London_CommunityDay__18_|It was an occasion to thank them for their support of the Mandir's activities and to introduce them to Mahant Swami Maharaj
 20170926_London_CommunityDay__7_a|BAPS UK Trustee, Dr Mayank Shah, formally welcomed the distinguished guests
 20170926_London_CommunityDay__2_a|Senior swamis presided over the assembly
 20170926_London_CommunityDay__9_|Brahmaviharidas Swami delivered the keynote address on Pramukh Swami Maharaj's life-motto, 'In the joy of others lies our own'

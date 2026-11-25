@@ -288,7 +288,12 @@ def main():
     ap.add_argument('--crawl', required=True, help='folder with bapas-diary-YYYY.json and bapas-diary-fixes.json')
     ap.add_argument('--scan', help="album_scan.py's scan.json: photos no page lists")
     ap.add_argument('--out', default='bapas.db')
+    ap.add_argument('--paths', help="the last bapas.db: every photo it knew keeps its Drive path (local_path), so nothing already in Bapa's Archive moves")
     a = ap.parse_args()
+    kept = {}
+    if a.paths and os.path.exists(a.paths):
+        kept = {(al, f): p for al, f, p in sqlite3.connect(a.paths).execute('SELECT album, file, local_path FROM photos WHERE local_path IS NOT NULL')}
+        print(len(kept), 'Drive paths kept from', a.paths)
 
     if os.path.exists(a.out):
         os.remove(a.out)
@@ -317,6 +322,10 @@ def main():
         seen[r[-1].lower()] = seen.get(r[-1].lower(), 0) + 1
     rows = [r[:-1] + (re.sub(r' \((.*)\)(\.\w+)$', lambda m: f' ({r[5]} {m[1]}){m[2]}', r[-1]) if seen[r[-1].lower()] > 1 else r[-1],)
             for r in rows]
+    # Darpan, 25 Nov 2026: the reader now gives the right day and town to about 16,000 photos (file name dates that don't fit
+    # their page, '04-06 October 2016' pages, whole tours). Their database rows change, but their files stay where they are in
+    # Drive, so archive_download.py fetches nothing again and the website's hi res copies still find them.
+    rows = [r[:-1] + (kept.get((r[5], r[6]), r[-1]),) for r in rows]
     db.executemany('INSERT OR IGNORE INTO photos VALUES (?,?,?,?,?,?,?,?,?,?,?)', rows)
 
     for ch, (name, folder, title) in CHANNELS.items():

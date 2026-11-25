@@ -1,8 +1,6 @@
 # Every captioned photo of Bapa on baps.org's 27 November vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 4284|Nadiad, India
-02_TP_1999_11_27|blesses the assembly
 #1999 25585|Bhadaran, India
 TP_1999_134_20|blesses devotees in the Swaminarayan Mandir
 TP_1999_134_24|Swamishri in conversation
@@ -14,11 +12,14 @@ TP_1999_134_29|The school
 TP_1999_134_32|reinaugurates the school
 TP_1999_134_33|Swamishri in the school campus
 TP_1999_134_34|Devotees during the assembly
-#2000 3304|Mumbai, Sahara Lake City
+#1999 25586|Vasna, India
+TP_1999_134_35|arrives at the BAPS Shri Swaminarayan Mandir, Vasna (Borsad)
+TP_1999_134_36|visits the mandir campus
+#2000 3304|Anand
 219-19f|blesses the audience after the performance of 'Sant Param Hitkari' at the Town Hall, Anand
 219-18f|More than 40,000 schoolchildren enjoyed the cultural program, spread over 20 days.
 219-27f|reviews the mandir before it's inauguration, Anand
-#2001 3575|Gondal, Dholka
+#2001 3575|Bochasan
 143-6aF|Shri Swaminarayan Mandir, Bochasan, decorated with lights
 141-9af|On the occasion of the 199th anniversary of the arti 'Jai Sadguru Swami ...' composed by Muktanand Swami in Kalvani, wamishri performs arti of Thakorji in the mandir
 141-22af|Swamishri and devotees perform arti in the assembly hall to commemorate the 199th arti anniversary
@@ -55,7 +56,7 @@ photo-01f|Shri Swaminarayan Mandir, Khanpur
 143-17af|After giving 'janoi' Swamishri advises the kishore
 143-23af|during the Kartiki Purnima assembly
 143-26af,143-28af,143-27af|addresses the Kartiki Purnima assembly of more than 15,000 devotees
-#2002 3852|Himmatnagar, Umreth|2002-11-29
+#2002 3852|Umreth|2002-11-29
 176-25f|Shri Swaminarayan Mandir, Umreth
 176-12f|performs murti-pratishtha of Shri Dham, Dhami and Mukta. Gopalanand Swami had often stayed in Umreth
 176-15f|Swamishri and devotees perform the murti-pratishtha arti
@@ -68,7 +69,7 @@ photo-01f|Shri Swaminarayan Mandir, Khanpur
 176-23f|visits the Amreshwar Mandir for darshan
 178-18f|at the old Swaminarayan Mandir for darshan
 178-17f|also visits the Santram Mandir
-#2003 2986|Sirohi, Ajmer
+#2003 2986|Sirohi, Ajmer, Pali, Jaipur, Dausa, Manpur, Sikandra, New Delhi
 130-34f,130-32f,130-33f|is elated at the singing of a bhajan on the guru's glory by a Sikh
 130-35f|A Sikh boy performs Bhangda during the bhajan
 131-6f|joins in the singing of bhajan...
@@ -186,8 +187,43 @@ y071127-3f|Bhagwan Swaminarayan and Aksharbrahma Gunatitanand Swami
 y071127-2f,y071127-1f|Shri Ghanshyam Maharaj
 y071127-4f|Shri Harikrishna Maharaj and Shri Lakshmi-Narayan Dev
 y071127-5f|visits shrine of Swami Purushottamdas Khandeshi
-#2008 1719|Sankari, Tithal|2008-11-26
-y081126-1f|blesses ailing devotees
+#2008 1710|Sankari, Tithal
+y081122-15f,y081123-14f,y081123-12f,y081125-08f|BAPS Shri Swaminarayan Mandir, Tithal
+y081122-16f,y081123-04f,y081125-05f|engaged in Thakorji's darshan
+y081122-17f|arrives at Tithal Mandir
+y081122-18f,y081122-21f,y081122-22f|Swamishri in a divine and jovial mood
+y081123-02f|Shri Akshar-Purushottam Maharaj
+y081123-03f|Shri Ghanshyam Maharaj
+y081123-01f|Shri Harikrishna Maharaj and Shri Radha-Krishna Dev
+y081123-09f,y081123-10f,y081123-08f|Satsang assembly
+y081123-19f|Devotees engaged in Swamishri's puja darshan
+y081123-15f|Murtis to be consecrated in various mandirs
+y081123-06f,y081123-07f,y081123-16f,y081123-17f|engaged in his morning puja
+y081123-21f|performs pujan of the murtis
+y081123-22f|performs murti-pratishtha rituals of BAPS mandir for Nani Vahiyal
+y081123-23f|lilapor
+y081123-24f|fadvel
+y081123-25f|shirpur
+y081123-26f,y081123-27f|magod
+y081123-28f|marlakutir
+y081123-29f|Swamsihri performs murti-pratishtha arti
+y081123-31f,y081123-32f,y081123-30f|Devotees perform arti
+y081125-02f,y081125-03f,y081125-04f|Annakut offered to Thakorji
+y081125-07f|performs arti
+y081125-11f,y081125-12f|Shri Nilkanth Varni
+y081125-10f|Shri Guru Parampara
+y081125-09f|Devotees engaged in mahapuja
+y081125-16f,y081125-13f,y081125-14f,y081125-15f,y081125-17f,y081125-18f,y081125-19f,y081125-20f|performs murti-pratishtha rituals of Shri Nilkanth Varni
+y081125-21f,y081125-22f,y081125-23f|performs murti-pratishtha rituals of Shri Guru Parampara
+y081125-24f|performs abhishek of Shri Nilkanth Varni
+y081125-25f,y081125-26f|Swamishri and devotees perform pratishtha arti
+y081125-27f|performs pratishtha arti
+y081125-29f|Brahmaswarup Bhagatji Maharaj
+y081125-30f|Brahmaswarup Shastriji Maharaj
+y081125-31f|Brahmaswarup Yogiji Maharaj
+y081125-32f|Pragat Brahmaswarup Pramukh Swami Maharaj
+y081125-37f|Devotees during the pratishtha assembly
+y081125-33f,y081125-35f,y081125-36f,y081125-38f,y081125-34f,y081125-39f|blesses the assembly
 #2009 1696|Bochasan
 y091127-02f|Murtis to be consecrated for new BAPS hari mandir at Sarbhan
 y091127-01f|Amalsadi
@@ -277,23 +313,6 @@ y091127-16f,y091127-18f|blesses a child
 2015_11_27_023_Sarangpur_f|Swamishri in a divine mood
 #2016 13135|Surat, India
 2016_11_27_018_Surat|Param Pujya Mahant Swami Maharaj, senior sadhus, Deputy Chief Minister of Gujarat Nitinbhai Patel and dignitaries perform opening ritual of Swaminarayan Nagar
-012016_12_04_012_Surat___Copy|Devotees and well-wishers visit the Swaminarayan Nagar
-032016_12_04_001_Surat___Copy|perform arti of Thakorji
-042016_11_30_003_Surat|performs his morning puja
-052016_11_27_009_Surat|Pujya Swayamprakash Swami (Pujya Doctor Swami), Pujya Tyagvallabh Swami, Pujya Viveksagar Swami and Ghanshyamcharan Swami doing darshan of Param Pujya Mahant Swami Maharaj
-062016_11_27_010_Surat|Sadhus doing darshan of Param Pujya Mahant Swami Maharaj's morning puja
-072016_12_02_013_Surat|blesses the morning satsang assembly
-082016_12_02_014_Surat|honored with a garland
-092016_12_02_016_Surat|greets senior sadhus with 'Jai Swaminarayan'
-102016_12_01_011_Surat|Devotees during the morning satsang assembly
-112016_11_29_013_Surat,122016_11_29_012_Surat|visits exhibitions
-132016_11_28_012_Surat|Light & sound show in the evening at Swaminarayan Nagar
-142016_12_01_032_Surat|watches light & sound show
-162016_12_03_015_Surat|Param Pujya Mahant Swami Maharaj and senior sadhus perform yagna rituals
-152016_12_02_020_Surat|Param Pujya Mahant Swami and Pujya Doctor Swami perform yagna rituals
-182016_11_28_022_Surat|Param Pujya Mahant Swami during the cultural program
-192016_12_04_024_Surat|blesses participants of cultural program
-202016_12_04_025_Surat|blesses participants of cultural programMore details
 #2017 15135|Anand, India
 2017_11_27_001_Anand|Shri Ghanshyam Maharaj
 2017_11_27_002_Anand|Bhagwan Swaminarayan and Aksharbrahman Gunatitanand Swami

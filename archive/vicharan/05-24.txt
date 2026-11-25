@@ -1,8 +1,6 @@
 # Every captioned photo of Bapa on baps.org's 24 May vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 3156|Mahelav, India|1999-05-22
-44_TP_1999_05_22|performs pradakshina of holy charnarvind of Bhagwan Swaminarayan
 #2000 3465|Dabhoi
 87-5f|The modern, well equipped Pramukh Swami Hospital
 87-11f|The modern, well equipped Pramukh Swami Hospital Opening of Hospital by Swamishri and Chief Minister Shri Keshubhai Patel (right) with Health Minister Shri Ashok Bhatt (left)
@@ -12,9 +10,8 @@
 85-21Af,87-9f|And devotionally recites the ashtaks (prayers)
 85-26Af|prostrates before the Lord
 85-27Af|Pujya Viveksagar Swami addresses the small assembly...
-85-29Af|During which Swamishri is engrossed in reading letters in the dim light
-85-30Af|During which Swamishri is engrossed in reading letters in the dim light
-#2002 4072|Vadhwan, Bochasan
+85-29Af,85-30Af|During which Swamishri is engrossed in reading letters in the dim light
+#2002 4072|Bharuch
 92-12f|Shri Swaminarayan Mandir, Bharuch
 95-10f|Shri Harikrishna Maharaj adorned in chandan and Shri Radha Krishna Dev
 95-11f|Beautifully adorned Shri Akshar Purushottam Maharaj
@@ -89,7 +86,7 @@ edisonmay24004-f,edisonmay24005-f,edisonmay24006-f|Youths perform a humorous dra
 edisonmay24007-f|responding to the letters sent by devotees
 edisonmay24008-f|sings along during a kirtan
 edisonmay24009-f|blesses the assembly
-#2007 2238|Kampala, Dar-es-Salaam
+#2007 2238|Kampala, Dar-es-Salaam, Mombasa
 67f,68f|Thakorji in the murti-pratishtha mahapuja rituals
 69f,70f,74f,73f|performs murti-pratishtha rituals
 71f,72f|Pujya Viveksagar Swami and Pujya Ishwarcharan Swami perform murti-pratishtha rituals Shri Radha Krishna Dev and Shri Guru Parampara
@@ -204,24 +201,6 @@ y100524-4f|Shri Sukhshaiya
 2015_05_23_001_Sarangpur__16f,2015_05_23_001_Sarangpur__17f,2015_05_23_001_Sarangpur__20f|Devotees doing darshan of Swamishri
 2015_05_23_001_Sarangpur__18f|arrives in the mandir grounds in the evening
 2015_05_23_001_Sarangpur__21f,2015_05_23_001_Sarangpur__22f|Swamishri in a divine, jovial mood
-#2015 10155|Sarangpur, India|2015-05-23
-2015_05_23_001_Sarangpur_f|Shri Varninath Maharaj and Shri Gopinath Dev
-2015_05_23_002_Sarangpur_f,2015_05_23_007_Sarangpur_f|Shri Harikrishna Maharaj
-2015_05_23_003_Sarangpur_f|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami
-2015_05_23_004_Sarangpur_f|Shri Ghanshyam Maharaj
-2015_05_23_005_Sarangpur_f|Shri Dharmakul
-2015_05_23_006_Sarangpur_f|Brahmaswarup Shastriji Maharaj
-2015_05_23_008_Sarangpur_f,2015_05_23_009_Sarangpur_f,2015_05_23_010_Sarangpur_f|performs his morning puja
-2015_05_23_011_Sarangpur_f,2015_05_23_024_Sarangpur_f,2015_05_23_025_Sarangpur_f|Swamishri in a divine, jovial mood
-2015_05_23_012_Sarangpur_f|Swamishri in a divine mood
-2015_05_23_013_Sarangpur_f|arrives in the mandir grounds in the morning with Shri Harikrishna Maharaj
-2015_05_23_014_Sarangpur_f|Murtis to be consecrated for BAPS Shri Swaminarayan Mandir, Edmonton, Canada
-2015_05_23_015_Sarangpur_f|performs pratishtha rituals of murtis
-2015_05_23_016_Sarangpur_f,2015_05_23_018_Sarangpur_f|offers mantra-pushpanjali
-2015_05_23_017_Sarangpur_f,2015_05_23_020_Sarangpur_f|waves a chhadi
-2015_05_23_019_Sarangpur_f,2015_05_23_021_Sarangpur_f,2015_05_23_026_Sarangpur_f|Sadhus and devotees doing darshan of Swamishri
-2015_05_23_022_Sarangpur_f|arrives in the mandir grounds in the evening
-2015_05_23_023_Sarangpur_f|Devotees doing darshan of Swamishri
 #2017 13989|Ahmedabad, India
 2017_05_24_001_Ahmedabad|Bhagwan Swaminarayan, 24 May 2017
 2017_05_24_002_Ahmedabad|Shri Harikrishna Maharaj adorned in chandan garments, 24 May 2017

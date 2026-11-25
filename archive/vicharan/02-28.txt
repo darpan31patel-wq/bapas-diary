@@ -1,8 +1,6 @@
 # Every captioned photo of Bapa on baps.org's 28 February vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 3156|Mahelav, India
-25_TP_1999_02_28|visits the Mahelav village
 #2001 8376|Kadi, India|2001-02-27
 4_4f|Morning puja
 4_9f|is welcomed to the newly built Swaminarayan Mandir
@@ -15,7 +13,7 @@
 1_25f|Balaks with Swamishri after performing a welcome dance
 1_31f,1_29f,1_35f|blesses the assembly
 1_33f|A large gathering of devotees in the assembly
-#2002 4034|Auckland, Singapore
+#2002 4034|Auckland, Singapore, New Delhi
 51-7f,49-36f|The construction work of the main Akshardham monument
 49-29f|To the east of Akshardham monument a high observation mud-ramp was constructed for Swamishri. The makeshift mud-ramp is on the proposed location of the main entrance to the monument
 49-17f,49-27f,49-19f|views the ongoing construction of monument from the mud-ramp
@@ -46,16 +44,16 @@
 51-24f,51-29f,51-33f|stands before the proposed entrance to the monument with the artisans in the background
 51-34f,51-36f|descends the main monument
 52-5f,52-11f,52-12f|Adjacent to the monument, Swamishri visits the construction site of the shikharbaddh mandir
-#2003 3062|Dhule, Varkhede
+#2003 3062|Dhule, Varkhede, Japi, Songir, Kusumba, Chopda, Amalner, Galvada, Mohadi, Ukai, Sankari, Kosindra, Dabhoi
 44-33af|performs bhumi pujan for a devotee's new factory
-#2004 2908|Sarangpur, Jetpur|2004-03-01
+#2004 2908|Jetpur|2004-03-01
 23-28f,23-33f,23-34f,23-26f,23-27f,23-29f,23-32f,24-3f,24-5f|Jetpur -
 23-35f|
 23-36f|A memorial shrine commemorating Ramanand Swami's appointment of Sahajanand Swami as his successor (pattabhishek)
 24-1f|prostrates to Thakorji with the pattabhishek shrine on the right
-#2005 2151|Poshina, Himmatnagar|2005-02-27
+#2005 2151|Kheralu|2005-02-27
 0501914f,0501823af,0501825af,0501829af,0501832af,0501907f,0501908f,0501911f,0501904f,0501902f,0501834af,0501915f|Kheralu -
-#2006 2136|Anand, Bochasan
+#2006 2136|Nadiad
 0602119f|arrives at BAPS Shri Swaminarayan Mandir, Nadiad
 0602123f|Bhagwan Swaminarayan and Aksharbrahma Gunatitanand Swami
 0602122f,0602136f|Shri Harikrishna Maharaj and Shri Radha Krishna Dev
@@ -98,18 +96,21 @@ img_8041f|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopala
 img_8043f|Shri Ghanshyam Maharaj
 img_8049f|Shri Dharmakul
 img_8057f|Brahmaswarup Shastriji Maharaj at Yagnapurush Smruti Mandir
-vv20100301-140f,img_8148f|Swamishri and senior sadhus on stage
-img_8092f,img_8090f,img_8089f|Devotees during the Pushpadolotsav assembly
-vv20100301-144f,img_8133f,vv20100301-43f,vv20100301-151f,vv20100301-12f|during the assembly
-img_8111f|Swamishri and devotees during the assembly
+gg20100220-09f,img_8092f,img_8090f,img_8089f|Devotees during the Pushpadolotsav assembly
+vv20100301-140f,img_8148f,gg20100220-13f|Swamishri and senior sadhus on stage
+vv20100301-144f,gg20100220-80f,img_8133f,vv20100301-43f,vv20100301-151f,vv20100301-12f|during the assembly
+img_8111f,gg20100220-43f,gg20100220-34f|Swamishri and devotees during the assembly
 img_8175f,img_8209f,img_8189f|inaugurates new publications by Swaminarayan Aksharpith
-img_8235f,img_8257f|Senior sadhus honor Swamishri
+img_8235f,img_8257f,gg20100220-94f|Senior sadhus honor Swamishri
 img_8288f,img_8286f,vv20100301-165f|Swamishri and devotees in a divine mood during a kirtan
 vv20100301-172f,vv20100301-183f,vv20100301-159f|divine gestures during kirtan
-img_8314f,vv20100301-220f|blesses the assembly
-vv20100301-235f|performs pujan of Shri Harikrishna Maharaj
+gg20100220-206f,img_8314f,vv20100301-220f|blesses the assembly
+gg20100220-217f,gg20100220-212f,gg20100220-218f|Swamishri and senior sadhus perform arti of Shri Harikrishna Maharaj
+gg20100220-228f,vv20100301-235f|performs pujan of Shri Harikrishna Maharaj
 img_8346f|first showers fragrant colored water on Shri Harikrishna Maharaj
-img_8370f,img_8366f,img_8372f,img_8420f,img_8422f,img_8441f,img_8489f,img_8472f|showers sanctified colored water on devotees
+img_8370f,img_8366f,img_8372f,img_8420f,img_8422f,img_8441f,gg20100220-330f,gg20100220-278f,gg20100220-281f,img_8489f,img_8472f|showers sanctified colored water on devotees
+gg20100220-386f,gg20100220-362f,gg20100220-376f|showers sanctified colored water on sadhus
+gg20100220-407f|Bids Jai Swaminarayan to all
 #2011 4345|Atladara (Vadodara), India
 dsc_0422f|Shri Ghanshyam Maharaj
 dsc_0410f|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami
@@ -214,6 +215,12 @@ mumbaif|Devotees engaged in darshan of Swamishri
 2016_02_28_019_Sarangpurf|arrives in the mandir grounds in the evening
 2016_02_28_024_Sarangpurf|Youths rejoice before Swamishri
 2016_02_28_027_Sarangpurf|Children doing darshan of Swamishri
+#2017 13552|Jalandhar, India
+Jalandhar_Mandir_Murti_Pratishtha_Nagar_Yatra_016|Nagar Yatra, 26 Feb 2017for more photos
+BAPS_Jalandhar_Mandir_Pratishtha_Vastu_018|Vastu - Mandir Pravesh, 27 Feb 2017for more photos
+Jalandhar_Mandir_Murti_Pratishtha_Yagna_025|Vishwa Shanti Mahayaag, 28 Feb 2017for more photos
+BAPS_Jalandhar_Mandir_Murti_Pratishtha_020_f|Murti-Pratishtha, 1 March 2017for more photos
+BAPS_Jalandhar_Mandir_Murti_Pratishtha_Sabha_003|Murti-Pratishtha Assembly, 1 March 2017for more photos
 #2017 13540|Jalandhar, India
 Jalandhar_Mandir_Murti_Pratishtha_Nagar_Yatra_001|BAPS Shri Swaminarayan Mandir, Jalandhar
 Jalandhar_Mandir_Murti_Pratishtha_Nagar_Yatra_003,Jalandhar_Mandir_Murti_Pratishtha_Nagar_Yatra_005|performs his morning puja

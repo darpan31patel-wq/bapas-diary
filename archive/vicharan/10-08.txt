@@ -1,9 +1,34 @@
 # Every captioned photo of Bapa on baps.org's 8 October vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 3165|Badalpur, India|1999-10-09
-01_TP_1999_10_09|inaugurates Pramukh Swami Computer Center, Badalpur
-#2000 3429|Miami, Clifton
+#1999 25509|Kisumu, Kenya
+TP_1999_109_12|Children with Swamishri in the welcome assembly
+TP_1999_109_14|doing a mala
+TP_1999_109_16,TP_1999_109_17,TP_1999_109_19,TP_1999_109_22,TP_1999_109_24,TP_1999_109_26,TP_1999_109_29,TP_1999_109_30|Swamishri in conversation with children
+TP_1999_109_33,TP_1999_110_03,TP_1999_110_06,TP_1999_110_10,TP_1999_110_36,TP_1999_110_36_1|performs his daily puja
+TP_1999_110_05|Sadhus doing Swamishri's puja darshan
+TP_1999_110_11|Shri Harikrishna Maharaj in Swamishri's puja
+TP_1999_110_15|Sadhus and devotees doing Swamishri's puja darshan
+TP_1999_110_17|holds a lotus flower
+TP_1999_110_26|holds flowers
+TP_1999_110_30,TP_1999_111_13|Sadhus and devotees during the assembly
+TP_1999_111_0a,TP_1999_111_21|engrossed in darshan of Shri Harikrishna Maharaj
+TP_1999_111_01|greets all with folded hands
+TP_1999_111_02|Shri Harikrishna Maharaj in a decorative hindola
+TP_1999_111_03|seated in decorative hindolo
+TP_1999_111_04,TP_1999_111_09|Swamishri in a divine mood
+TP_1999_111_14,TP_1999_111_16,TP_1999_111_17|blesses the assembly
+TP_1999_111_18|sprays saffron-scented water on Shri Harikrishna Maharaj
+TP_1999_111_22,TP_1999_111_24|Devotees during the assembly
+TP_1999_111_25,TP_1999_111_30|showers sanctified saffron-scented water on devotees
+TP_1999_111_33|Children and devotees joyously doing darshan of Swamishri
+TP_1999_111_34|performs abhishek at the Sarvadev Mandir
+TP_1999_111_35|honored with a shawl
+TP_1999_112_01|Swamishri and Pujya Bhaktipriya Swami sing thals
+TP_1999_112_06|blesses children
+TP_1999_112_07|during his evening walk
+TP_1999_112_08,TP_1999_112_09|A well-wisher doing darshan of Shri Harikrishna Maharaj
+#2000 3429|Clifton
 181-7f|Youths performing a taditional dance during the evening assembly
 181-14f,181-15f,181-17f|performing the murti pratishtha ceremony
 181-21f|Devotees participating in the murti pratishtha mahapooja ceremony
@@ -14,7 +39,7 @@
 181-29f|blessing the devotees
 181-30f|leaving the mandir
 181-26f|An outside view of the Clifton mandir
-#2002 3927|Surendranagar, Bhuj
+#2002 3927|Surendranagar, Bhuj, Halvad, Gandhidham, Mandvi, Koday, Talvana, Khakhar, Khavda, Gunatitnagar (Modpar), Yoginagar (Ukhadmora), Anjar, Kukma, Sukhpur, Narayan Nagar, Shrijinagar, Gadhshisha
 141-23f|performs the Vedic murti pratishtha rituals of the Hari Mandir
 141-26f|performs the murti pratishtha arti
 141-19f,141-20f|performs the ground-breaking ceremony for the new mandir
@@ -22,9 +47,6 @@
 141-11f,141-12f|enjoys a light moment with sadhus and devotees
 141-17f|blesses a local kishore
 141-27f|seated in the public assembly Next
-#2003 2964|Gadhada, Gondal|2003-10-11
-11-20031011f|Swamishri and Shri Bhupendrasinh Chudasama plant a sapling during the ceremony
-03-2-20031011f|After darshan Swamishri descends the mandir steps
 #2005 2349|Jaipur|2005-10-07
 0508503f|Shri Harikrishna Maharaj and Shri Radha-Govind
 0508502f|Bhagwan Swaminarayan and Aksharbrahma Gunatitanand Swami
@@ -62,7 +84,7 @@ Y081008-75f,Y081008-74f,Y081008-73f,Y081008-84f,Y081008-85f,Y081008-86f,Y081008-
 y091008-1f|Swamishri in Akshar Deri
 y091008-4apf|Swamishri in a divine, jovial mood
 #2010 4140|Junagadh, India
-y101008-2f,y101008-4f,y101008-5f|Moods of BAPS Shri Swaminarayan Mandir, Junagadh
+y101010-15f,y101010-18f,y101010-17f,y101013-6f,y101013-7f,y101013-2f,y101013-3f,y101013-4f,y101013-5f,y101008-2f,y101008-4f,y101008-5f|Moods of BAPS Shri Swaminarayan Mandir, Junagadh
 #2010 4141|Junagadh, India
 y101008-3f|After his arrival Swamishri is engaged in darshan of Thakorji
 y101008-6f|Devotees during the evening welcome assembly

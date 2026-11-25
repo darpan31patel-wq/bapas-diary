@@ -1,9 +1,7 @@
 # Every captioned photo of Bapa on baps.org's 25 September vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 3165|Badalpur, India|1999-09-26
-06_TP_1999_09_26|visits Pramukh Swami Sarvoday Vidyalay, Badalpur
-#1999 25175|Mwanza, Tanzania|1999-09-26
+#1999 25175|Mwanza, Tanzania
 TP_1999_101_08|Children and youths of the Mwanza Satsang Band welcome Swamishri
 TP_1999_101_09|arrives at the BAPS Shri Swaminarayan Mandir, Mwanza
 TP_1999_101_12|performs the bhumi pujan rituals for the new university
@@ -23,7 +21,7 @@ TP_1999_102_22|plays a drum
 TP_1999_102_27|blesses a child
 TP_1999_102_28|Murtis of the BAPS Swaminarayan Mandir, Mwanza
 TP_1999_102_29|engrossed in darshan of Thakorji
-#2000 4164|San Jose, Dallas
+#2000 4164|Tampa
 171-23aF|performs the maha-puja ceremony
 171-25af|Performs arti at the conclusion of the ceremony
 171-26af|Performs 'mantra pushpanjali' as part of the maha-puja ceremony
@@ -41,7 +39,7 @@ TP_1999_102_29|engrossed in darshan of Thakorji
 172-20f|chants the Swaminarayan dhun for success of the mandir construction
 172-24f|Drama presentation 'Mokshanu Dwar' by kishores
 172-26f,172-27f|blesses the assembly, "For moksha, God and His realized sadhu are necessary ..."
-#2001 3665|Gadhada, Botad
+#2001 3665|Gadhada, Botad, Sarangpur, Ahmedabad, Mahesana, Siddhapur
 108-9aF|performs the murti-pratishtha ceremony at the Swaminarayan Sanskardham in Jivraj Park (Amdavad)
 108-10af|performing the murti-pratishtha arti of Thakorji
 108-12af|was welcomed with garlands
@@ -83,7 +81,7 @@ TP_1999_102_29|engrossed in darshan of Thakorji
 39f|Kishores perform a traditional dance
 09f|greets Minister of Food, Mr. Kariyuki
 18f|gives a maize food packet as part of BAPS's contribution of 2000 bags of maize for the famine in Kenya to Mr. Kariyuki
-#2007 1911|New York, Edison|2007-09-24
+#2007 1911|London|2007-09-24
 ad_1f|Auspicious kalash laid at the entrance of the mandir to welcome Swamishri
 ad_4f|arrives at London mandir
 ad_5f|performs abhishek of Shri Nilkanth Varni
@@ -178,18 +176,63 @@ Y070924-6f|
 2015_09_25_021_Sarangpur_f|A child doing darshan of Swamishri
 2015_09_25_023_Sarangpur_f,2015_09_25_024_Sarangpur_f|A skit presentation by youths before Swamishri
 2015_09_25_025_Sarangpur_f|Sadhus and devotees doing darshan of Swamishri
-#2016 12466|Sarangpur, India|2016-09-22
-2016_09_22_001_Sarangpur|Param Pujya Mahant Swami reverentially touches sacred stone, 22 Sep 2016
-2016_09_22_002_Sarangpur|Students of BAPS Swaminarayan Vidyamandir, Sarangpur, doing darshan of Param Pujya Mahant Swami, 22 Sep 2016
-2016_09_22_003_Sarangpur|Students of BAPS Swaminarayan Sanskrit Mahavidyalay, Sarangpur, doing darshan of Param Pujya Mahant Swami, 22 Sep 2016
-2016_09_22_004_Sarangpur|Param Pujya Mahant Swami performs arti, 22 Sep 2016
-2016_09_22_005_Sarangpur|Param Pujya Mahant Swami converses with sadhus in the mandir pradakshina, 22 Sep 2016
-2016_09_22_006_Sarangpur,2016_09_22_007_Sarangpur|Param Pujya Mahant Swami performs his morning puja, 22 Sep 2016
-2016_09_22_008_Sarangpur|Param Pujya Mahant Swami blesses the morning assembly, 22 Sep 2016
-2016_09_22_009_Sarangpur|Param Pujya Mahant Swami during his evening walk, 22 Sep 2016
-2016_09_22_010_Sarangpur,2016_09_22_011_Sarangpur|Param Pujya Mahant Swami engrossed in darshan, 22 Sep 2016
-2016_09_22_012_Sarangpur|Param Pujya Mahant Swami engrossed in darshan at Brahmaswarup Pramukh Swami Maharaj's samadhi sthal, 22 Sep 2016
-2016_09_22_013_Sarangpur|Param Pujya Mahant Swami departs from Sarangpur, 22 Sep 2016
+#2016 12514|Bochasan, India
+2016_10_22_001_Bochasan|BAPS Shri Swaminarayan Mandir, Bochasan, 22 Sep 2016
+2016_10_22_002_Bochasan|Shri Ghanshyam Maharaj, 22 Sep 2016
+2016_10_22_003_Bochasan|Bhagwan Swaminarayan and Aksharbrahman Gunatitanand Swami, 22 Sep 2016
+2016_10_22_004_Bochasan|Shri Harikrishna Maharaj and Shri Lakshmi-Narayan Dev, 22 Sep 2016
+2016_10_22_005_Bochasan|Param Pujya Mahant Swami arrives at BAPS Shri Swaminarayan Mandir, Bochasan, 22 Sep 2016
+2016_10_22_006_Bochasan|Param Pujya Mahant Swami engrossed in darshan, 22 Sep 2016
+2016_10_22_007_Bochasan|Param Pujya Mahant Swami performs abhishek of Shri Nilkanth Varni, 22 Sep 2016
+2016_10_22_008_Bochasan|Children welcome Param Pujya Mahant Swami with flower petals, 22 Sep 2016
+2016_10_22_009_Bochasan|Param Pujya Mahant Swami and Pujya Tyagvallabh Swami during the welcome assembly, 22 Sep 2016
+2016_10_22_010_Bochasan|Pujya Tyagvallabh Swami and Vedagna Swami welcome Param Pujya Mahant Swami with a garland, 22 Sep 2016
+2016_10_22_011_Bochasan|Param Pujya Mahant Swami blesses the welcome assembly, 22 Sep 2016
+#2016 12515|Bochasan, India
+2016_10_23_001_Bochasan|Shri Harikrishna Maharaj, 23 Sep 2016
+2016_10_23_002_Bochasan|Param Pujya Mahant Swami engrossed in darshan, 23 Sep 2016
+2016_10_23_003_Bochasan|Param Pujya Mahant Swami visits shrine of Swami Purushottamdas (Khandeshi), 23 Sep 2016
+2016_10_23_004_Bochasan,2016_10_23_005_Bochasan|Param Pujya Mahant Swami performs his morning puja, 23 Sep 2016
+2016_10_23_006_Bochasan|Sadhus honor Param Pujya Mahant Swami with garlands, 23 Sep 2016
+2016_10_23_007_Bochasan|Param Pujya Mahant Swami blesses the morning satsang assembly, 23 Sep 2016
+2016_10_23_008_Bochasan,2016_10_23_009_Bochasan|Param Pujya Mahant Swami in a divine, jovial mood, 23 Sep 2016
+2016_10_23_010_Bochasan|Param Pujya Mahant Swami during his evening walk, 23 Sep 2016
+#2016 12516|Bochasan, India
+BAPS_HH_Mahant_Swami_Maharaj_83_Janmajaynti_Celebration_21|HH Mahant Swami Maharaj's 83rd Birth Anniversary Assembly - Click here to see more photos
+#2016 12517|Bochasan, India
+2016_10_25_001_Bochasan|Shri Harikrishna Maharaj, 25 Sep 2016
+2016_10_25_002_Bochasan|Param Pujya Mahant Swami engrossed in darshan, 25 Sep 2016
+2016_10_25_003_Bochasan,2016_10_25_004_Bochasan|Param Pujya Mahant Swami greets devotees with 'Jai Swaminarayan', 25 Sep 2016
+2016_10_25_005_Bochasan|Param Pujya Mahant Swami engrossed in darshan of Brahmaswarup Bhagatji Maharaj, 25 Sep 2016
+2016_10_25_006_Bochasan|Param Pujya Mahant Swami in a divine, jovial mood, 25 Sep 2016
+2016_10_25_007_Bochasan|A skit presentation by youths before Param Pujya Mahant Swami, 25 Sep 2016
+2016_10_25_008_Bochasan|Param Pujya Mahant Swami engrossed in darshan in the room sanctified by Shastriji Maharaj and Yogiji Maharaj, 25 Sep 2016
+2016_10_25_009_Bochasan|Param Pujya Mahant Swami visits shrine of Swami Purushottamdas (Khandeshi), 25 Sep 2016
+2016_10_25_010_Bochasan,2016_10_25_011_Bochasan|Param Pujya Mahant Swami performs his morning puja, 25 Sep 2016
+2016_10_25_013_Bochasan|Param Pujya Mahant Swami in a divine mood, 25 Sep 2016
+2016_10_25_014_Bochasan|Param Pujya Mahant Swami blesses the morning satsang assembly, 25 Sep 2016
+2016_10_25_012_Bochasan|Murtis to be consecrated for BAPS Shri Swaminarayan Mandir, Minkuchchh, Navsari, 25 Sep 2016
+2016_10_25_015_Bochasan|Param Pujya Mahant Swami performs pratishtha rituals of murtis, 25 Sep 2016
+2016_10_25_016_Bochasan|Param Pujya Mahant Swami performs pratishtha arti, 25 Sep 2016
+2016_10_25_020_Bochasan|Param Pujya Mahant Swami and Pujya Tyagvallabh Swami engrossed in darshan of Thakorji during the sandhya arti, 25 Sep 2016
+#2016 12518|Bochasan, India
+2016_10_26_001_Bochasan|Shri Harikrishna Maharaj, 26 Sep 2016
+2016_10_26_002_Bochasan|Shri Nilkanth Varni Maharaj, 26 Sep 2016
+2016_10_26_003_Bochasan|Param Pujya Mahant Swami performs arti, 26 Sep 2016
+2016_10_26_004_Bochasan|Param Pujya Mahant Swami performs abhishek of Shri Nilkanth Varni, 26 Sep 2016
+2016_10_26_005_Bochasan|Param Pujya Mahant Swami engrossed in darshan, 26 Sep 2016
+2016_10_26_006_Bochasan|Param Pujya Mahant Swami in the mandir grounds after darshan of Thakorji, 26 Sep 2016
+2016_10_26_007_Bochasan|Param Pujya Mahant Swami engrossed in darshan in the room sanctified by Shastriji Maharaj and Yogiji Maharaj, 26 Sep 2016
+2016_10_26_008_Bochasan_001|Param Pujya Mahant Swami performs pradakshina at the spot sanctified by Shri Nilkanth Varni in Bochasan village, 26 Sep 2016
+2016_10_26_009_Bochasan,2016_10_26_010_Bochasan,2016_10_26_011_Bochasan,2016_10_26_012_Bochasan|Param Pujya Mahant Swami performs his morning puja, 26 Sep 2016
+2016_10_26_013_Bochasan|Param Pujya Mahant Swami greets devotees with 'Jai Swaminarayan', 26 Sep 2016
+2016_10_26_014_Bochasan|Sadhus honor Param Pujya Mahant Swami with a garland, 26 Sep 2016
+#2016 12519|Bochasan, India
+2016_10_27_001_Bochasan,2016_10_27_002_Bochasan|Devotees doing darshan of Param Pujya Mahant Swami, 27 Sep 2016
+2016_10_27_003_Bochasan,2016_10_27_004_Bochasan|Param Pujya Mahant Swami performs his morning puja, 27 Sep 2016
+2016_10_27_005_Bochasan|Param Pujya Mahant Swami blesses the morning assembly, 27 Sep 2016
+2016_10_27_006_Bochasan|Param Pujya Mahant Swami sanctifies photos, 27 Sep 2016
+2016_10_27_007_Bochasan|Param Pujya Mahant Swami blesses the satsang assembly, 27 Sep 2016
 #2017 14589|London, UK
 001|Parabrahma Bhagwan Swaminarayan, Aksharbrahma Gunatitanand Swami and Aksharmukta Gopalanand Swami
 002|Shri Ghanshyam Maharaj

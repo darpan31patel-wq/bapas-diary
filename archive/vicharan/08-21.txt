@@ -1,8 +1,6 @@
 # Every captioned photo of Bapa on baps.org's 21 August vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 3156|Mahelav, India
-93_TP_1999_08_21|performs the pratishtha arti
 #1999 24803|Harare
 01___TP_1999_77_01|gives an interview to Zimbabwe Broadcasting Corporation
 02___TP_1999_77_02,03___TP_1999_77_08|Swamishri in the garden of a devotee's home
@@ -11,7 +9,7 @@
 06___TP_1999_77_17|performs the arti
 07___TP_1999_77_18|Devotees participate in the mahapuja rituals
 08___TP_1999_77_19|Pujya Viveksagar Swami and devotees participate in the mahapuja rituals
-#2000 3454|Washington DC, Philadelphia
+#2000 3454|Philadelphia
 152-0af,152-2af,152-3af|performs the rituals of the murti-pratishtha ceremony at the mandir in Philadelphia
 152-5af|performs pratishtha of Shri Ganapatiji
 152-15af|perform the murti-pratishtha arti
@@ -61,12 +59,16 @@ y090818-3f|Devotees sing bhajans in the mandir pradakshina
 y090818-4f|Swamishri in a jovial mood
 y090818-5f|Jai Swaminarayan
 #2010 1825|Bochasan, India|2010-08-23
-y100823-19f,y100823-21f,y100823-27f,y100823-23f,y100823-25f,y100823-29f,y100823-22f,y100823-15f,y100823-16f,y100823-13f,y100823-11f,y100823-14f,y100823-10f|Moods of BAPS Shri Swaminarayan Mandir, Bhavnagar
+y100901-09f,y100901-10f,y100823-19f,y100823-21f,y100823-27f,y100823-23f,y100823-25f,y100823-29f,y100823-22f,y100823-15f,y100823-16f,y100823-13f,y100823-11f,y100823-14f,y100823-10f,y100901-08f,y100901-11f,y100901-12f,y100828-6f|Moods of BAPS Shri Swaminarayan Mandir, Bhavnagar
 y100823-01f,y100823-02f,y100823-03f|arrives at BAPS Swaminarayan Mandir, Bhavnagar
 y100823-04f,y100823-05f|blesses devotees from the mandir podium
 y100823-06f|engaged in Thakorji's darshan
+y100825-3f,y100825-4f|Shri Akshar-Purushottam Maharaj
+y100825-5f|Shri Ghanshyam Maharaj
+y100825-2f|Shri Harikrishna Maharaj and Shri Radha-Krishna Dev
 y100823-07f,y100823-08f|Swamishri in the mandir complex
 y100823-09f|bids Jai Swaminarayan to devotees
+y100831-10f,y100831-08f|performs abhishek of Shri Nilkanth Varni
 #2011 4515|Mumbai, India|2011-08-20
 20110820-015f|Shri Ghanshyam Maharaj
 20110820-014f|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami
@@ -141,18 +143,36 @@ y100823-09f|bids Jai Swaminarayan to devotees
 2015_08_21_010_Sarangpur_f|waves a BAPS flag
 2015_08_21_011_Sarangpur_f,2015_08_21_013_Sarangpur_f|Sadhus and devotees doing darshan of Swamishri
 2015_08_21_012_Sarangpur_f|Children take Swamishri's blessings for a De-Addiction Campaign as part of Sarangpur Mandir's Centenary Celebration
-#2016 12238|Sarangpur, India
-2016_08_21_001_Sarangpur|Param Pujya Mahant Swami delivers a discourse, 21 Aug 2016
-2016_08_21_002_Sarangpur|Sadhus honor Param Pujya Mahant Swami with a garland, 21 Aug 2016
-2016_08_21_003_Sarangpur|Param Pujya Mahant Swami sanctifies malas, 21 Aug 2016
+#2016 12237|Sarangpur, India|2016-08-20
+2016_08_20_001_Sarangpur|Param Pujya Mahant Swami performs arti of Thakorji, 20 Aug 2016
+2016_08_20_003_Sarangpur,2016_08_20_004_Sarangpur,2016_08_20_005_Sarangpur,2016_08_20_006_Sarangpur,2016_08_20_007_Sarangpur|Param Pujya Mahant Swami performs his morning puja, 20 Aug 2016
+2016_08_20_008_Sarangpur|Param Pujya Mahant Swami delivers a discourse, 20 Aug 2016
+2016_08_20_009_Sarangpur|Pujya Bhaktipriya Swami (Pujya Kothari Swami) honors Param Pujya Mahant Swami with a garland, 20 Aug 2016
 #2017 14437|Dallas, TX
+2017_08_13_Vicharan__Dallas_01|Murti Darshan at BAPS Shri Swaminarayan Mandir, Dallas, TX
+2017_08_13_Vicharan__Dallas_02|Shri Akshar Purushottam Maharaj
+2017_08_13_Vicharan__Dallas_21|Shri Harikrishna Maharaj
+2017_08_13_Vicharan__Dallas_03|engrossed in the darshan of Thakorji
+2017_08_13_Vicharan__Dallas_04|performs the morning arti
+2017_08_13_Vicharan__Dallas_05,2017_08_13_Vicharan__Dallas_07,2017_08_13_Vicharan__Dallas_11|Devotees engrossed in Swamishri's darshan
+2017_08_13_Vicharan__Dallas_06|performs abhishek of Shri Nilkanth Varni Maharaj
+2017_08_13_Vicharan__Dallas_08|meditates during morning puja
+2017_08_13_Vicharan__Dallas_09|Swamis and devotees sing kirtans before Swamishri during his puja
+2017_08_13_Vicharan__Dallas_10,2017_08_13_Vicharan__Dallas_12|engrossed in morning puja
+2017_08_13_Vicharan__Dallas_13|offers thal to Shri Harikrishna Maharaj
+2017_08_13_Vicharan__Dallas_15|reads the shikshapatri to conclude morning puja
+2017_08_13_Vicharan__Dallas_16|greets the devotees in the audience with folded hands
+2017_08_13_Vicharan__Dallas_17|addresses the assembly
+2017_08_13_Vicharan__Dallas_18|meets the Former Mayor of the City of Irving, Herbert Gears
+2017_08_13_Vicharan__Dallas_19|Devotees garland Swamishri
+2017_08_13_Vicharan__Dallas_20|arrives for the grahan (eclipse) assembly
 2017_08_21_Vicharan__dallas_24,2017_08_21_Vicharan__dallas_27,Dallas_GrahanSabha_13|engaged in the grahan assembly
 2017_08_21_Vicharan__dallas_25|interacts with a child
 2017_08_21_Vicharan__dallas_33|Devotees perform a skit before Swamishri
+2017_08_13_Vicharan__Dallas_22,Events08222017_52017_08_21_Vicharan__dallas_26|Swamishri in a divine mood
 2017_08_21_Vicharan__dallas_30|responds to letters from devotees during the grahan assembly
 2017_08_21_Vicharan__dallas_31|Swamishri in a jovial mood
 2017_08_21_Vicharan__dallas_32|Devotees engaged in Swamishri's darshan
-Events08222017_52017_08_21_Vicharan__dallas_26|Swamishri in a divine mood
 2017_08_21_Vicharan__dallas_34|engaged in bhajan bhakti during the grahan assembly
 #2018 16474|Atladara (Vadodara), India
 2018_08_21_001_Atladra|Shri Ghanshyam Maharaj, BAPS Shri Swaminarayan Mandir, Atladra

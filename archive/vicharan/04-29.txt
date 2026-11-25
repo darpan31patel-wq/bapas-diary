@@ -1,8 +1,15 @@
 # Every captioned photo of Bapa on baps.org's 29 April vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 3156|Mahelav, India|1999-04-28
-51_TP_1999_04_28|blesses the assembly
+#1999 4321|Bajipura, India|1999-04-30
+02_TP_1999_49_34,03_TP_1999_49_35|performs his daily puja
+01_TP_1999_49_33,04_TP_1999_49_36|Sadhus and devotees doing Swamishri's puja darshan
+05_TP_1999_50_01|BAPS Shri Swaminarayan Mandir, Bajipura
+06_TP_1999_50_0a|performs the murti-pratishtha rituals
+07_TP_1999_50_03|Swamishri, sadhus and devotees perform the arti
+08_TP_1999_50_04|Children with Swamishri
+09_TP_1999_45_05|engrossed in darshan
+10_TP_1999_50_08|during his vicharan
 #2000 3410|Mahelav, India
 76-19f|Lord Harikrishna Maharaj and Radha Krishna Dev
 76-18f|Shri Akshar Purushottam Maharaj
@@ -66,7 +73,7 @@ EAFV3711_f,EAFV3715_f,EAFV3710_f|garlands two young schoolchildren
 0605435af|Newly built BAPS Shri Swaminarayan Mandir, Junagadh, Girnar mountain in background
 0605430af,0605220af,0604905f,0605335f,0604726f,0605334f,0604832f,0605218af,0604727f,0604723f,0604820f,0604728f,0604806f,0604821f,0604808f|Newly built BAPS Shri Swaminarayan Mandir, Junagadh
 0604904f,0604707f,0604705f,0604815f,0604809f,0604703f,0604810f,0604802f,0604827f,0604803f,0604733f,0604816f,0604830f,0604732f,0604729f,0604731f|BAPS Shri Swaminarayan Mandir, Junagadh
-#2007 2292|Ahmedabad, Gandhinagar|2007-05-02
+#2007 2292|Ahmedabad, Gandhinagar, Nairobi|2007-05-02
 img_8240f|Newly consecrated murti of Pramukh Swami Maharaj in rang mandap of Amdavad mandir
 img_8283f,img_8281f,img_8291f|performs abhishek of Bhagwan Swaminarayan
 img_8304f,img_8299f,img_8327f,img_8307f,img_8309f,img_8311f|blesses the devotees in mandir complex
@@ -214,25 +221,39 @@ dsc_0093f|blesses kids who have arrived for Bal Vikas Parva
 2017_04_29_006_Ahmedabad|arrives at BAPS Shri Swaminarayan Mandir, Ahmedabad, 29 Apr 2017
 2017_04_29_007_Ahmedabad|performs abhishek of Bhagwan Swaminarayan (abhishek murti), 29 Apr 2017
 2017_04_29_008_Ahmedabad|engrossed in darshan of holy relics, 29 Apr 2017
-#2018 16075|New Delhi, India
-2018_04_29_001_Delhi|Shri Ghanshyam Maharaj
-2018_04_29_002_Delhi|Bhagwan Swaminarayan and Aksharbrahman Gunatitanand Swami
-2018_04_29_003_Delhi|Shri Harikrishna Maharaj adorned in chandan garments
-2018_04_29_004_Delhi|on his way for Thakorji's darshan
-2018_04_29_005_Delhi,2018_04_29_011_Delhi,2018_04_29_021_Delhi,2018_04_29_022_Delhi|blesses children
-2018_04_29_006_Delhi|engrossed in darshan of Brahmaswarup Shastriji Maharaj
-2018_04_29_007_Delhi,2018_04_29_014_Delhi|performs his morning puja
-2018_04_29_008_Delhi,2018_04_29_009_Delhi|Devotees doing Swamishri's puja darshan
-2018_04_29_010_Delhi|Children present before Swamishri
-2018_04_29_013_Delhi|offers thal to Shri Harikrishna Maharaj
-2018_04_29_015_Delhi|greets devotees with 'Jai Swaminarayan'
-2018_04_29_016_Delhi|Children doing darshan of Swamishri
-2018_04_29_017_Delhi|greets children with 'Jai Swaminarayan'
-2018_04_29_018_Delhi|lights the inaugural lamp for Satsang Shibir: Gruhshanti ka Rajmarg - Ghar Sabha
-2018_04_29_019_Delhi|blesses the assembly
-2018_04_29_020_Delhi|Sadhus honor Swamishri with a shawl
-2018_04_29_024_Delhi|greets devotees with 'Jai Swaminarayan' in the evening satsang assembly
-2018_04_29_025_Delhi,2018_04_29_026_Delhi|blesses devotees
+#2018 16071|New Delhi, India|2018-04-28
+2018_04_28_017_Delhi|Shri Ghanshyam Maharaj
+2018_04_28_018_Delhi|Bhagwan Swaminarayan and Aksharbrahman Gunatitanand Swami
+2018_04_28_019_Delhi|Brahmaswarup Shastriji Maharaj
+2018_04_28_020_Delhi|Shri Harikrishna Maharaj adorned in chandan garments
+2018_04_28_021_Delhi|on his way for Thakorji's darshan
+2018_04_28_022_Delhi|engrossed in darshan of Shri Ghanshyam Maharaj
+2018_04_28_023_Delhi_1|performs the morning arti
+2018_04_28_024_Delhi|Sadhus and devotees doing darshan of arti
+2018_04_28_025_Delhi|Youths present before Swamishri
+2018_04_28_026_Delhi|sanctifies prayers written by youths
+2018_04_28_027_Delhi|Shri Harikrishna Maharaj in Swamishri's morning puja
+2018_04_28_028_Delhi,2018_04_28_035_Delhi|performs his morning puja
+2018_04_28_029_Delhi,2018_04_28_030_Delhi,2018_04_28_031_Delhi,2018_04_28_032_Delhi|Devotees doing Swamishri's puja darshan
+2018_04_28_033_Delhi|Youths sing kirtans in Swamishri's morning puja
+2018_04_28_034_Delhi|Children present before Swamishri
+2018_04_28_036_Delhi|reads the Shikshapatri
+2018_04_28_037_Delhi|Children doing darshan of Swamishri
+2018_04_28_038_Delhi|greets all with 'Jai Swaminarayan'
+2018_04_28_039_Delhi|blesses invited guests
+2018_04_28_040_Delhi_1|blesses children
+2018_04_28_041_Delhi|blesses youths
+2018_04_28_042_Delhi|Youths with Swamishri
+2018_04_28_043_Delhi|Youths perform a skit in the evening Yuva Din assembly
+2018_04_28_044_Delhi|Youths perform a skit
+2018_04_28_045_Delhi|during the assembly
+2018_04_28_046_Delhi|A youth presents before Swamishri
+2018_04_28_047_Delhi|A youth prays before Swamishri
+2018_04_28_048_Delhi|blesses the assembly
+2018_04_28_049_Delhi|performs the evening arti
+2018_04_28_050_Delhi|observes a garland
+2018_04_28_051_Delhi|Sadhus honor Swamishri with a garland
+2018_04_28_053_Delhi_1|Youths perform before Swamishri
 #2019 19516|Dubai, UAE
 2019_04_29_001_Dubai|Shri Harikrishna Maharaj
 2019_04_29_002_Dubai_2|meditates in his daily puja

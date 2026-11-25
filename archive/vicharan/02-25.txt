@@ -1,8 +1,10 @@
 # Every captioned photo of Bapa on baps.org's 25 February vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 3156|Mahelav, India
-24_TP_1999_02_25|after the visit of old Swaminarayan Mandir, Mahelav
+#1999 24335|Himmatnagar, India
+01_TP_1999_18_21|BAPS Shri Swaminarayan Mandir, Himmatnagar
+02_TP_1999_18_22_001,03_TP_1999_18_26|performs the rituals
+04_TP_1999_18_27|unties nadachhadi
 #2001 8376|Kadi, India
 4_4f|Morning puja
 4_9f|is welcomed to the newly built Swaminarayan Mandir
@@ -15,21 +17,21 @@
 1_25f|Balaks with Swamishri after performing a welcome dance
 1_31f,1_29f,1_35f|blesses the assembly
 1_33f|A large gathering of devotees in the assembly
-#2002 4029|Auckland, Singapore
+#2002 4029|Singapore
 47-32f,47-33f|On the flight from Auckland to Singapore Swamishri discourses to the sadhus
 47-36f|After saying the chesta on flight Swamishri retires for rest
 48-3f|retires for sleep after saying the chesta
 48-4f,48-11f|performs his morning puja at a devotee's home
 48-16f,48-12f,48-15f|Swamishri in an illustrious mood at the international airport in Singapore prior to departure
 48-13f|Swamishri at the airport in Singapore
-#2003 3054|Dhule, Varkhede
+#2003 3054|Sankari
 42-20af|Shri Swaminarayan Mandir, Sankari
 42-16af|Shri Harikrishna Maharaj and Shri Laxmi Narayan Dev
 42-17af|Bhagwan Swaminarayan and Aksharbrahma Gunatitanand Swami
 42-18af|Shri Ghanshyam Maharaj
 41-10af,41-23af,41-12af,41-14af,41-18af|After his arrival Swamishri addresses the assembly from the mandir roopchoki (porch)
 42-12af|blesses the assembly
-#2004 2645|Dangara, Junagadh
+#2004 2645|Dangara, Junagadh, Ahmedabad
 21-30f|A view of the ongoing construction of a grand BAPS shikharbaddh mandir in the shadow of Siddhachal (Mt. Girnar)
 21-31f|Devotees engaged in the mahapuja rituals for the first pillar-placing ceremony
 21-33f|Model of shikharbaddh mandir
@@ -43,11 +45,11 @@
 22-28af,22-29af|blesses the devotees
 22-30af|Divine blessings
 22-31af,22-33af|expresses satisfaction after observing the mandir construction work
-#2005 2144|Poshina, Himmatnagar|2005-02-24
+#2005 2144|Poshina|2005-02-24
 0501518f,0501520f,0501521f,0501515f,0501524f,0501523f,0501527f,0501519f,0501533f,0501522f,0501636f,0501720f,0501616f,0501629f,0501611f,0501612f,0501614f,0501625f,0501623f,0501635f,0501619f,0501606f,0501803af,0501603f,0501536af,0501622f,0501712f,0501702f,0501709f,0501710f,0501704f,0501705f,0501707f,0501715f,0501716f,0501718f,0501725f,0501722f,0501733f,0501807af,0501805af,0501806af|Poshina -
-#2005 2145|Poshina, Himmatnagar|2005-02-24
+#2005 2145|Khedbrahma|2005-02-24
 0501814af,0501815af,0501810af,0501812af,0501818af,0501820af,0501821af|Khedbrahma -
-#2006 2133|Anand, Bochasan|2006-02-26
+#2006 2133|Narsanda|2006-02-26
 0602113f|BAPS Shri Swaminarayan Mandir, Narsanda
 0602108f|Thakorji
 0602107f|performs pujan of Thakorji
@@ -87,8 +89,6 @@ Y080224-23f,Y080224-25f,Y080224-24f|performs the pratishtha arti
 Y080224-18f,Y080224-19f,Y080224-20f,Y080224-22f|blesses devotees
 Y080224-01f,Y080224-03f|Shri Ghanshyam Maharaj
 Y080224-07f,Y080224-04f,Y080224-06f|bids Jai Swaminarayan to the devotees
-#2008 2025|Mumbai, Bhavnagar|2008-02-24
-y080224-02f,y080224-03f|Shri Ghanshyam Maharaj
 #2009 2040|New Delhi
 y090225-03f|Bhagwan Swaminarayan and Aksharbrahman Gunatitanand Swami
 y090225-02f|Shri Ghanshyam Maharaj
@@ -171,15 +171,8 @@ y090225-04f|Shri L. K. Advani meets Swamishri
 2017_02_25_006_Delhi|Sadhus honor Param Pujya Mahant Swami Maharaj with a garland, 25 Feb 2017
 2017_02_25_009_Delhi,2017_02_25_008_Delhi|blesses volunteers, 25 Feb 2017
 2017_02_25_013_Delhi|Volunteers with Param Pujya Mahant Swami Maharaj, 25 Feb 2017
-IMG_8111|blesses devotees, 25 Feb 2017
-IMG_8141|departs from Delhi, 25 Feb 2017
 #2017 13552|Jalandhar, India
 2017_02_25_003_Jalandhar|Swagat, 25 Feb 2017for more photos
-Jalandhar_Mandir_Murti_Pratishtha_Nagar_Yatra_016|Nagar Yatra, 26 Feb 2017for more photos
-BAPS_Jalandhar_Mandir_Pratishtha_Vastu_018|Vastu - Mandir Pravesh, 27 Feb 2017for more photos
-Jalandhar_Mandir_Murti_Pratishtha_Yagna_025|Vishwa Shanti Mahayaag, 28 Feb 2017for more photos
-BAPS_Jalandhar_Mandir_Murti_Pratishtha_020_f|Murti-Pratishtha, 1 March 2017for more photos
-BAPS_Jalandhar_Mandir_Murti_Pratishtha_Sabha_003|Murti-Pratishtha Assembly, 1 March 2017for more photos
 #2017 13539|Jalandhar, India
 2017_02_25_002_Jalandhar|Youths in traditional dress welcome Param Pujya Mahant Swami Maharaj
 2017_02_25_003_Jalandhar|welcomed with a garland

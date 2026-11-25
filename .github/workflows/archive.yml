@@ -45,7 +45,8 @@ jobs:
       - name: Build bapas.db (the day pages, the screensaver button's pages, and the album scan's finds)
         run: |
           gh release download database -p scan.json 2>/dev/null || echo '{}' > scan.json
-          python tools/build_archive.py --crawl crawl --scan scan.json --out bapas.db
+          gh release download database -p bapas.db.gz -O last.db.gz && gunzip -f last.db.gz || echo 'no earlier bapas.db'
+          python tools/build_archive.py --crawl crawl --scan scan.json --paths last.db --out bapas.db
           gzip -9 -c bapas.db > bapas.db.gz
           cp tools/archive_download.py archive_download.py
       - name: Put it in the release for the Mac to collect

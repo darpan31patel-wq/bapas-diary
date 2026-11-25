@@ -47,20 +47,30 @@ def file_date(name, year):
 
 
 def page_dates(path, title, year):
-    """(first, last) day a page covers, from its title or address; None if it names no day."""
+    """(first, last) day a page covers, from its title or address; None if it names no day.
+    Reads '15 to 23 January 1999', '30 March to 1 April 1999', '04-06 October 2016' and '29 December 2016-02 January 2017'
+    (Darpan, 25 Nov 2026: the last two were read as one day only). Two day numbers need a word or dash between them, so
+    '19 November' is never '1 to 9 November'."""
     s = (path.rsplit('/', 1)[-1].replace('.aspx', '').replace('-', ' ') + ' | ' + title).lower()
     s = re.sub(r'\s+', ' ', s)
-    m = re.search(rf'(\d{{1,2}}){ORD} {MON} (?:to|–|-) (\d{{1,2}}){ORD} {MON}', s)
-    if m:
-        a, b = d(year, MONTHS.index(m[2]) + 1, int(m[1])), d(year, MONTHS.index(m[4]) + 1, int(m[3]))
-        if a and b and a <= b:
-            return a, b
-    m = re.search(rf'(\d{{1,2}}){ORD} (?:to|–|-|and|&) (\d{{1,2}}){ORD} {MON}', s)
-    if m:
-        mo = MONTHS.index(m[3]) + 1
-        a, b = d(year, mo, int(m[1])), d(year, mo, int(m[2]))
-        if a and b and a <= b:
-            return a, b
+    t = re.sub(r'\s+', ' ', title.lower())
+    # '29 December 2016-02 January 2017', '30 March to 1 April 1999': two months, each maybe with its own year
+    for m in [re.search(rf'(?<!\d)(\d{{1,2}}){ORD} {MON},? ?(\d{{4}})? ?(?:to|–|-) ?(\d{{1,2}}){ORD} {MON},? ?(\d{{4}})?', x) for x in (t, s)]:
+        if m:
+            ya, yb = int(m[3]) if m[3] else None, int(m[6]) if m[6] else None
+            a = d(ya or yb or year, MONTHS.index(m[2]) + 1, int(m[1]))
+            b = d(yb or ya or year, MONTHS.index(m[5]) + 1, int(m[4]))
+            if a and b and a > b and not (ya and yb):   # 'December to January' with one year named: the year turns in between
+                a, b = (d(a.year - 1, a.month, a.day), b) if yb else (a, d(b.year + 1, b.month, b.day))
+            if a and b and a <= b:
+                return a, b
+    # '15 to 23 January 1999', '1 & 2 February 1999', '04-06 October 2016'
+    for m in [re.search(rf'(?<!\d)(\d{{1,2}}){ORD} ?(?:to|–|-|and|&) ?(\d{{1,2}}){ORD} {MON}', x) for x in (t, s)]:
+        if m:
+            mo = MONTHS.index(m[3]) + 1
+            a, b = d(year, mo, int(m[1])), d(year, mo, int(m[2]))
+            if a and b and a <= b:
+                return a, b
     m = re.search(rf'(\d{{1,2}}){ORD} (?:to )?{MON}', s) or re.search(rf'{MON} (\d{{1,2}}){ORD}\b', s)
     if m:
         g = m.groups()
@@ -71,7 +81,15 @@ def page_dates(path, title, year):
     return None
 
 
+NOT_PLACE = {'india', 'uk', 'usa', 'canada', 'kenya', 'uganda', 'tanzania', 'south africa', 'australia', 'new zealand', 'uae',
+             'europe', 'uk & europe', 'north america', 'africa', 'asia pacific', 'gujarat', 'england', 'east africa', 'middle east'}
+
+
 def place_of(title):
+    """The page's place: 'Kanad, Surat' (its first two names, as before), or every town of a tour page.
+    Darpan, 25 Nov 2026: 'Gondal, Dholka, Limbdi, Bochasan' (2001 albums 3572, 3575) was cut to 'Gondal, Dholka', and the
+    picture then said Gondal under photos whose captions say Dholka. A tour page now keeps every town (photo_place picks
+    the one its caption names). 'Robbinsville, NJ, USA' style places keep their two part form."""
     t = re.sub(r'\s+', ' ', title)
     if 'Vicharan, ' in t:
         t = t.split('Vicharan, ', 1)[1]
@@ -80,7 +98,31 @@ def place_of(title):
     elif ', ' in t:
         t = t.split(', ', 1)[1]
     parts = [p.strip() for p in t.split(',') if p.strip()]
+    core = list(parts)
+    while core and (core[-1].lower() in NOT_PLACE or re.fullmatch(r'[A-Z]{2}', core[-1])):
+        core.pop()
+    if len(core) > 2 and not any(re.search(r'\d', p) for p in core):
+        return ', '.join(dict.fromkeys(core))      # a tour: every town once, in the page's order
     return ', '.join(parts[:2])
+
+
+def is_tour(place):
+    return (place or '').count(',') >= 2
+
+
+def photo_place(place, cap):
+    """On a tour page, the one town the caption names; the whole list when it names none (or more than one)."""
+    if not is_tour(place) or not cap:
+        return place
+    named = [p for p in place.split(', ') if any(re.search(r'\b' + re.escape(n.strip()) + r'\b', cap, re.I)
+                                                 for n in re.split(r'[()]', p) if len(n.strip()) > 2)]
+    return named[0] if len(named) == 1 else place
+
+
+def fits(day, span):
+    """A file name's date counts only when it falls in its page's own days, one day either side (Darpan, 25 Nov 2026:
+    album 4291 of the 10 February 1999 Dabhan page has files named 01_TP_1999_11_19, and was filed under 19 November)."""
+    return not span or span[0] - datetime.timedelta(1) <= day <= span[1] + datetime.timedelta(1)
 
 
 def about_bapa(c, day):
@@ -227,13 +269,22 @@ def load(folder, fixes=None):
             # are Pramukh Swami Maharaj's tours, and before 13 Aug 2016 Swamishri is always Pramukh Swami Maharaj. Turning it into
             # 'Mahant Swami Maharaj' there (24 Oct 2026) put the wrong guru's name on 335 photos (Darpan, 31 Oct 2026).
             place = place_of(p.get('t', ''))
+            # an album of a tour page whose captions all name the same one town of the tour: its other photos are from there too
+            named = collections.defaultdict(set)
+            if is_tour(place):
+                for album, file, cap in rows:
+                    named[album].add(photo_place(place, cap))
             for album, file, cap in rows:
                 key = (album, file)
-                day = file_date(file, y) or (span[0] if span and span[0] == span[1] else None)
+                fd = file_date(file, y)
+                day = (fd if fd and fits(fd, span) else None) or (span[0] if span and span[0] == span[1] else None)
+                where = photo_place(place, cap)
+                if where == place and len(named[album] - {place}) == 1:
+                    where = next(iter(named[album] - {place}))
                 old = seen.get(key)
                 # a photo can show up on a report page and its gallery page: keep the most exact date and a caption
                 if old is None or (day and not old[0]) or (span and not old[1] and not old[0]) or (cap and not old[4] and (day or not old[0])):
-                    seen[key] = (day, span if span and span[0] != span[1] else None, album, file, cap or (old[4] if old else ''), place or (old[5] if old else ''))
+                    seen[key] = (day, span if span and span[0] != span[1] else None, album, file, cap or (old[4] if old else ''), where or (old[5] if old else ''))
         out[y] = list(seen.values())
     return out
 
@@ -270,6 +321,8 @@ def bapa_towns(years):
     out = collections.defaultdict(set)
     for photos in years.values():
         for day, span, album, file, cap, place in photos:
+            if is_tour(place):     # a tour page's photo whose caption names no town of the tour: it doesn't say where Bapa was that day
+                continue
             if day:
                 out[day] |= towns(place)
             elif span and (span[1] - span[0]).days <= 31:

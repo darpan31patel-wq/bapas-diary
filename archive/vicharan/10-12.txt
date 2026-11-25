@@ -1,9 +1,7 @@
 # Every captioned photo of Bapa on baps.org's 12 October vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 3165|Badalpur, India|1999-10-13
-TP_1999_10_13|blesses the assembly
-#1999 25510|Nakuru, Kenya|1999-10-13
+#1999 25510|Nakuru, Kenya
 TP_1999_112_12|Sadhus and devotees during the assembly
 TP_1999_112_13|descends the mandir step
 TP_1999_112_14|inaugurates the new BAPS Shri Swaminarayan Mandir, Nakuru
@@ -12,7 +10,7 @@ TP_1999_112_18,TP_1999_112_19|performs the murti-pratishtha rituals
 TP_1999_112_22|Devotees perform the pratishtha rituals
 TP_1999_112_23,TP_1999_112_24|BAPS Shri Swaminarayan Mandir, Nakuru
 TP_1999_112_27|during his evening walk
-#2000 3438|Miami, Clifton
+#2000 3438|Miami, Clifton, Edison, Jersey City, Atlantic City
 182-23af,182-25af,182-27af|Swamishri in a jovial mood during an assembly
 183-2f|blessing the assembly of devoees
 183-4f|His Divine Holiness Pramukh Swami Maharaj
@@ -29,7 +27,7 @@ TP_1999_112_27|during his evening walk
 183-36f|Annakut ,Swamishri presents a kalash to Mr. Nitin Desai, General Secretary of EcoSoc, UNO
 184-2f|Annakut ,Swamishri presents a kalash to Mr. Bawa Jain, General Secretary of Millennium World Peace Summit
 184-6f|Annakut ,Swamishri presents a gift to Mr. Jacob Chacko, Chief Security Officer, UNO
-#2002 3942|Surendranagar, Bhuj
+#2002 3942|Khavda
 149-10f|Locals welcome Swamishri by playing the dhol and sharnai
 149-12f|BAPS Swaminarayan Mandir, Khavda
 148-27f|performs the murti pratishtha of the murtis of Shri Akshar Purushottam Maharaj
@@ -43,9 +41,6 @@ TP_1999_112_27|during his evening walk
 149-14f|Shri Jadavjibhai, a leading devotee of Khavda, honors Swamishr
 149-15f|A representative of the Muslim community honors Swamishri
 149-30f|A view of the BAPS-reconstructed village of Khavda
-#2003 2964|Gadhada, Gondal|2003-10-11
-11-20031011f|Swamishri and Shri Bhupendrasinh Chudasama plant a sapling during the ceremony
-03-2-20031011f|After darshan Swamishri descends the mandir steps
 #2004 2775|Nairobi, Kenya
 069f|Welcome assembly at Hindu Shivalay Mandir
 074f,076f|performs his morning puja, Bamburi Beach
@@ -85,10 +80,9 @@ y081013-15f|Pujya Balmukund Swami welcomes Swamishri
 y081013-16f|Pujya Kothari Swami welcomes Swamishri
 #2009 1769|Gondal
 y091012-1f|engaged in darshan at Yogi Smruti Mandir
-#2010 4140|Junagadh, India|2010-10-13
-y101013-6f,y101013-7f,y101013-2f,y101013-3f,y101013-4f,y101013-5f|Moods of BAPS Shri Swaminarayan Mandir, Junagadh
-#2010 4143|Junagadh, India|2010-10-13
-y101013-1f|Shri Ghanshyam Maharaj
+#2010 4141|Junagadh, India|2010-10-10
+y101010-20f,y101010-21f,y101010-19f|In the evening satsang assembly youths perform a cultural program
+y101010-22f,y101010-25f,y101010-26f|blesses the satsang assembly
 #2011 4620|Mumbai, India|2011-10-11
 20111011-095f|BAPS Shri Swaminarayan Mandir, Mumbai
 20111011-069f|Shri Ghanshyam Maharaj adorned in flowers

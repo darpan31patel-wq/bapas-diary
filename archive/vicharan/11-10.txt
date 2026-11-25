@@ -1,26 +1,30 @@
 # Every captioned photo of Bapa on baps.org's 10 November vicharan pages, from the full crawl of every year (tools/build_db.py).
 # "#year album prefix|place|date" starts a group (date only when the photo is from a nearby day of the same trip). Each line: photo ids|caption.
 # A caption starting lower case means "Swamishri ...". Every photo is listed, murtis and devotees too; make.py picks.
-#1999 4288|Anand, India
-05_TP_1999_11_10|performs the ground-breaking ceremony mahapuja rituals for the Kheti Vadi Utpanna Bazar Samiti, Anand
-#2001 3594|Gondal, Mumbai|2001-11-11
+#1999 3193|Bhadra, India|1999-11-11
+TP_1999_126_31|Bhagwan Swaminarayan, Aksharbrahman Gunatitanand Swami and Shri Gopalanand Swami, BAPS Shri Swaminarayan Mandir, Bhadra
+TP_1999_126_33|performs pradakshina at Aksharbrahman Gunatitanand Swami janmasthan
+#2001 3594|Mumbai|2001-11-11
 130-36f|arrives for darshan of Thakorji from Mumbai
+#2001 3594|Gondal, Mumbai, Rajkot|2001-11-11
 130-31f,130-30f|Shri Ghanshyam Maharaj
-131-2af|Shri Swaminarayan Mandir, Rajkot
 130-34f|Shri Harikrishna Maharaj and Shri Radha Krishna Dev
 130-33f|Shri Dham, Dhami and Mukta
 131-1af|blesses a youth
 131-13af,131-15af|A giant evening satsang assembly on the mandir ground
 131-11af|blesses the satsang assembly
+#2001 3594|Rajkot|2001-11-11
+131-2af|Shri Swaminarayan Mandir, Rajkot
+#2001 3594|Gondal|2001-11-11
 131-17af|takes leave for Gondal
-#2002 3875|Gondal, Ramod|2002-11-11
+#2002 3875|Gondal, Ramod, Gadhada, Tajpur, Sarangpur|2002-11-11
 165-27f,165-28f|addresses the devotees on site of the under construction mandir
-#2003 2997|Dholka, Purushottampura(Lat)|2003-11-12
+#2003 2997|Mahesana|2003-11-12
 115-4af|Shri Swaminarayan Mandir, Mahesana
 115-1af|Shri Harikrishna Maharaj and Shri Radha Krishna Dev
 115-2af|Shri Ghanshyam Maharaj
 115-3af|departs from Mahesana
-#2004 2490|New Delhi, Rajkot
+#2004 2490|Rajkot
 147-16f|BAPS Shri Swaminarayan Mandir, Rajkot
 154-33f|Shri Harikrishna Maharaj and Shri Radha Krishna Dev
 154-34f|Bhagwan Swaminarayan, Aksharbrahma Gunatitanand Swami and Shri Gopalanand Swami
@@ -41,10 +45,6 @@ cc_12f|inaugurates a new publication
 cc_10f,cc_11f|waves a BAPS flag for the Sanstha's Centenary Celebration
 cc_18f,cc_22f,cc_19f|blesses the assembly
 cc_27f|Senior devotees present a globe to Swamishri with a prayer of peace to prevail in the world
-#2007 1791|Gondal, Rajkot
-Y071110-18f|doing pradakshina at Shri Yogi Smruti Mandir
-#2007 1793|Gondal, Rajkot
-Y071110-08f|engaged in darshan of a ghar-mandir
 #2007 1802|Gondal, Rajkot
 Y071110-03f|BAPS Shri Swaminarayan Mandir, Gondal
 Y071110-01f|Shri Akshar Deri
@@ -56,6 +56,7 @@ Y071110-11f|performs arti of Thakorji...
 Y071110-12f|engaged in darshan at Shri Akshar Deri
 Y071110-13f|Devotees engaged in darshan of Swamishri
 Y071110-16f|Devotees during Swamishri's morning puja
+Y071102-2f|Kids sing bhajans
 Y071110-14f|performs New Year mahapuja arti
 Y071110-15f|Arti
 Y071110-19f|on his way for darshan at Shri Yogi Smruti Mandir
