@@ -2505,7 +2505,7 @@ function paneCard() {
       ${seg('d-style', o.photoStyle, [['auto', 'As the daily run picks'], ['close', 'Close ups of Bapa'], ['action', 'What Bapa is doing']])}
       <p class="hint">Changing this resets every year’s photo choice. Places and captions you typed stay.</p></div>` : ''}`;
 }
-const waText = () => { const o = S.day, w = o.wa[o.date]; return w ? w.text : (P.day?.whatsapp || '') };
+const waText = () => { const o = S.day, w = o.wa[o.date]; return noDayLine(w ? w.text : (P.day?.whatsapp || '')) };
 // the top line under the picture in WhatsApp (Darpan, 12 Nov 2026: "i want those words on my dashboard", "editabel"). The
 // sender adds its usual words; the Studio shows them, and a changed line goes to the folder with the caption: for every day
 // (intro_all) or just this day. Empty box = the sender's own words.
@@ -2520,13 +2520,20 @@ const fillIntro = (t, date) => { const d = new Date(date + 'T12:00'); return t.r
 const DAY_ONE = '2026-10-14';
 const introExample = date => fillIntro(INTRO_LINES[(new Date(date + 'T12:00').getDate() * 7) % INTRO_LINES.length], date);
 const dayN = date => Math.round((new Date(date + 'T12:00') - new Date(DAY_ONE + 'T12:00')) / 864e5) + 1;
-const introText = () => { const o = S.day, w = o.wa[o.date]; return w && w.intro != null ? w.intro : (o.intro || '') };   // '' = the usual words
+// a typed "Day 41 of the Smruti Project" line is always taken out: the send adds today's own Day line (Darpan, 25 Nov 2026:
+// "way to confusing", his saved top line still carried Day 41 on Day 43)
+const noDayLine = t => String(t || '').split('\n').filter(l => !/\bDay\s+\d+\s+of\s+the\s+Smruti\s+Project/i.test(l)).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+const introText = () => { const o = S.day, w = o.wa[o.date]; return noDayLine(w && w.intro != null ? w.intro : (o.intro || '')) };   // '' = the usual words   // '' = the usual words
 const introDay = () => { const w = S.day.wa[S.day.date]; return !!(w && w.intro != null) };
 const introChanged = () => !!introText();
-const waNow = () => Object.assign({ caption: waText(), whole: !!S.day.wa[S.day.date]?.whole }, introChanged() ? { intro: introText(), intro_all: !introDay() } : {});
+const waNow = () => ({ caption: waText(), whole: false, intro: introText(), intro_all: true });   // an empty top line bins the saved one, so the usual line comes back
 // "Replace my whole message" (Darpan, 14 Nov 2026: "this line is repeated twice now"): the send still puts its own
 // "_Day N of the Smruti Project_" line under whatever is saved, so the preview shows it and the box must not repeat it.
-const waPreview = () => { const o = S.day, w = o.wa[o.date]; if (w && w.whole) return `${waText()}\n_Day ${dayN(o.date)} of the Smruti Project_   (the send adds this line)`.trim(); const top = introChanged() ? fillIntro(introText(), o.date) : introExample(o.date) + '   (a different line each day, the send picks it)'; return `${top}\n_Day ${dayN(o.date)} of the Smruti Project_\n\n${waText()}`.trim() };
+const waPreview = () => { const o = S.day, top = introChanged() ? fillIntro(introText(), o.date) : introExample(o.date); return `${top}\n_Day ${dayN(o.date)} of the Smruti Project_\n\n${waText()}`.trim() };
+// the one box: the top line, an empty line, then the words for this day
+const waBox = () => `${introText()}\n\n${waText()}`.replace(/^\n+/, '\n\n').replace(/\n+$/, '');
+function waFromBox(v) { const o = S.day, t = String(v || '').replace(/\r/g, ''), i = t.search(/\n\s*\n/), top = noDayLine(i < 0 ? t : t.slice(0, i)), words = i < 0 ? '' : noDayLine(t.slice(i));
+  o.intro = top; const w = o.wa[o.date] || (o.wa[o.date] = { text: '', whole: false }); w.text = words; w.whole = false; delete w.intro }
 function paneWords() {
   const day = S.mode !== 'month', pack = P[S.mode], o = cur();
   const list = keys().map(k => {
@@ -2589,19 +2596,13 @@ function paneWords() {
       <div class="seg"><button class="btn small" id="d-t-reset">Back to the automatic words</button></div>
       <p class="hint">${Object.keys(o.txt || {}).length ? 'You changed some of these words for this day.' : 'These are the automatic words for this day. Type over any of them.'}</p></div>
     <div class="group"><h3>2pm WhatsApp message</h3>
-      <div class="row"><label for="d-intro">Top line, under the picture</label><textarea id="d-intro" rows="3" style="width:100%" placeholder="Usual: a different line each day, for example “${esc(introExample(o.date))}”">${esc(introText())}</textarea></div>
-      ${(m => m ? `<p class="hint warn">Your top line has its own “Day ${esc(m[1])}” line, but the send already puts the right one under it by itself (today ${esc(longDate(o.date))} is Day ${dayN(o.date)}). Yours stays at ${esc(m[1])}, so it goes out of date and shows twice. <button class="btn small" id="d-intro-noday" type="button">Take my Day line out</button> then press Save the words for the 2pm send.</p>` : '')(/\bDay\s+(\d+)\s+of the Smruti Project/i.exec(introText()))}
-      ${check('d-introday', 'Just for this day (otherwise every day from now on)', introDay())}
-      <p class="hint">${introChanged() ? (introDay() ? `Your own top line for ${esc(longDate(o.date))}.` : 'Your own top line, for every day.') : 'Empty = the usual words: one of 28 lines, picked by the send, so nothing of yours is sent unless you type here.'} You can write {DAY} and {MONTH}, filled in as “${esc(ordinal(new Date(o.date + 'T12:00').getDate()))}” and “${esc(new Date(o.date + 'T12:00').toLocaleString('en-GB', { month: 'long' }))}”.</p>
-      <div class="row"><label for="d-wa">Words under the top line and Day N</label>
-      <textarea id="d-wa" rows="6" aria-label="WhatsApp caption" placeholder="${o.wa[o.date]?.whole ? 'Your whole 2pm message, without the Day line: the send adds “Day N of the Smruti Project” itself' : 'No extra words today'}" style="width:100%">${esc(waText())}</textarea></div>
-      ${!o.wa[o.date] && /Tomorrow, .+, is |Reminder: tomorrow/.test(waText()) ? '<p class="hint">These words are written by the builder, not typed by anyone: the day before a festival or Ekadashi, the 2pm message reminds everyone of tomorrow, taken from the BAPS calendar. Change or empty them here if you like.</p>' : !o.wa[o.date] && waText() ? '<p class="hint">These are the builder’s own words for this day. Change them here if you like.</p>' : ''}
-      ${check('d-wawhole', 'Replace my whole message (the top line too; the send still adds its Day N line)', !!o.wa[o.date]?.whole)}
-      ${o.wa[o.date]?.whole && /\bDay \d+ of the Smruti Project/i.test(waText()) ? '<p class="hint warn">Take the “Day … of the Smruti Project” line out of the box: the send adds it again, so it would go out twice.</p>' : ''}
-      <div class="seg"><button class="btn small primary" id="d-wasave">Save the words for the 2pm send</button><button class="btn small" id="d-wareset">Back to the usual words</button></div>
-      <p class="status" id="wa-status" role="status"></p>
-      <p class="hint">As it goes out at 2pm:</p><pre class="preview" id="wa-preview">${esc(waPreview())}</pre>
-      <p class="hint">Save here, or Export with “Use for the 2pm send”, which saves the words with the picture.</p></div>`;
+      <textarea id="d-wabox" rows="7" style="width:100%" aria-label="Your 2pm WhatsApp message" placeholder="Leave the first line empty for the usual top line, a different one each day.&#10;&#10;Words for this day go under an empty line.">
+${esc(waBox())}</textarea>
+      <p class="hint">First line: your top line, kept for every day (leave it empty for the usual one). Under an empty line: words for this day only. The Day line is added for you, so any you type is taken out.</p>
+      <p class="hint">Exactly what goes out at 2pm:</p><pre class="preview" id="wa-preview">${esc(waPreview())}</pre>
+      ${introChanged() ? '' : '<p class="hint">The top line here is an example: the send picks one of its 28 usual lines.</p>'}
+      <div class="seg"><button class="btn small primary" id="d-wasave">Save for the 2pm send</button><button class="btn small" id="d-wareset">Back to the usual words</button></div>
+      <p class="status" id="wa-status" role="status"></p></div>`;
   return `
     <div class="group"><h3>Every day: place and caption</h3>
       <div class="words">${list}</div>
@@ -2742,14 +2743,9 @@ function wire() {
     on('d-t-full', 'click', () => { (o.txt = o.txt || {}).story = pk.story || ''; build() });
     on('d-t-short', 'click', () => { (o.txt = o.txt || {}).story = pk.story_short || String(pk.story || '').split(/(?<=[.!?])\s/)[0]; build() });
     document.querySelectorAll('#d-style button').forEach(b => b.addEventListener('click', () => { o.photoStyle = b.dataset.v; Object.values(stateOf(o)).forEach(y => { delete y.pick; delete y.crop }); build() }));
-    on('d-wa', 'input', e => { const w = o.wa[o.date] || (o.wa[o.date] = { text: '', whole: false }); w.text = e.target.value; saveState() });
-    on('d-wawhole', 'input', e => { const w = o.wa[o.date] || (o.wa[o.date] = { text: waText(), whole: false }); w.whole = e.target.checked; build() });
-    on('d-wareset', 'click', () => { delete o.wa[o.date]; o.intro = ''; keep(); build() });
     const keep = () => saveState();
-    on('d-intro-noday', 'click', () => { const v = introText().split('\n').filter(l => !/\bDay\s+\d+\s+of the Smruti Project/i.test(l)).join('\n').trim(); if (introDay()) o.wa[o.date].intro = v; else o.intro = v; keep(); build() });   // Darpan, 23 Nov 2026: "wrong day number"
-    on('d-intro', 'input', e => { const v = e.target.value; if (introDay()) o.wa[o.date].intro = v; else o.intro = v; keep(); $('#wa-preview').textContent = waPreview() });
-    on('d-introday', 'input', e => { if (e.target.checked) { const w = o.wa[o.date] || (o.wa[o.date] = { text: waText(), whole: false }); w.intro = introText() } else if (o.wa[o.date]) { delete o.wa[o.date].intro } keep(); build() });
-    on('d-wa', 'input', () => { $('#wa-preview').textContent = waPreview() });
+    on('d-wareset', 'click', () => { delete o.wa[o.date]; o.intro = ''; keep(); build() });
+    on('d-wabox', 'input', e => { waFromBox(e.target.value); keep(); $('#wa-preview').textContent = waPreview() });
     on('d-wasave', 'click', async () => {
       const st = $('#wa-status'), btn = $('#d-wasave');
       if (!driveCode()) { st.className = 'status warn'; st.textContent = 'Not saved: connect Google Drive first (the button at the top).'; return }
@@ -2759,7 +2755,7 @@ function wire() {
         const ans = await askDrive(Object.assign({ mode: 'caption', date: o.date }, waNow()));
         if (!ans.ok) throw new Error(ans.error);
         if (ans.mode !== 'caption') throw new Error('Your “gets 2pm picture ready” script is an older one that can’t save the words. Paste the newest script, then: ' + REDEPLOY);
-        st.className = 'status ok'; st.textContent = `Saved for ${longDate(o.date)} in ${ans.folder || 'Bapa’s Diary'} (${ans.time || ''}).${introChanged() && !ans.intro ? ' The caption is saved, but your script kept no top line: paste the newest script from the Daily WhatsApp project, then make a new deployment version.' : introChanged() ? (introDay() ? ' Your top line goes with that day.' : ' Your top line goes with every day from now on.') : ''}`;
+        st.className = 'status ok'; st.textContent = `Saved for ${longDate(o.date)} in ${ans.folder || 'Bapa’s Diary'} (${ans.time || ''}).${introChanged() && !ans.intro ? ' The caption is saved, but your script kept no top line: paste the newest script from the Daily WhatsApp project, then make a new deployment version.' : introChanged() ? ' Your top line goes with every day from now on.' : ''}`;
         logChange('Saved the 2pm words', longDate(o.date));
       } catch (e) { st.className = 'status warn'; st.textContent = 'Not saved. ' + ((e && e.message) || e) }
       finally { btn.disabled = false }
