@@ -84,6 +84,7 @@ button { font: inherit; color: inherit }
 .btn { color: var(--fg); background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; cursor: pointer }
 .btn:hover { border-color: var(--gold-deep) }
 a.btn { text-decoration: none; display: inline-block }
+.libmore summary { cursor: pointer; list-style: none } .libmore summary::-webkit-details-marker { display: none } .libmore[open] summary { display: none }
 .btn.primary { background: var(--gold); border-color: var(--gold); color: #2a0d14; font-weight: 700; padding: 9px 20px; font-size: 15px }
 .btn.primary:disabled { opacity: .5; cursor: wait }
 .btn.small { padding: 3px 9px; font-size: 12.5px }
@@ -1405,7 +1406,13 @@ function dOrder(step) {   // +1 forward, -1 back, +99 to the front, -99 to the b
 }
 function dTurn(d) { dSel().filter(it => !it.locked).forEach(it => { let a = (it.rot || 0) + d; if (a > 180) a -= 360; if (a < -180) a += 360; it.rot = Math.round(a * 10) / 10 }); build() }
 function dCopy() { const items = dItems(), add = dSel().map(it => Object.assign(JSON.parse(JSON.stringify(it)), { id: dNewId(), x: it.x + 40, y: it.y + 40, locked: false })); items.push(...add); SEL = add.map(it => it.id); build() }
-function dBin() { const keep = dItems().filter(it => !SEL.includes(it.id) || it.locked); S.special.design.items = keep; SEL = SEL.filter(id => dItem(id)); build() }
+function dBin() {
+  const d = S.special.design, gone = dItems().filter(it => SEL.includes(it.id) && !it.locked), keep = dItems().filter(it => !gone.includes(it));
+  d.items = keep; SEL = SEL.filter(id => dItem(id));
+  // a designed photo taken off stays off, and the picture closes the gap (Darpan, 25 Nov 2026: photos must sit neatly, never overlap)
+  const photos = gone.filter(it => it.t === 'photo' && it.auto); if (photos.length && Array.isArray(d.chapters)) { d.dropped = [...new Set([...(d.dropped || []), ...photos.flatMap(it => [it.src || `${it.g}:${it.pick}`, (it.g && (dCand(it) || {}).src) || ''].filter(Boolean))])]; (d.chapters || []).forEach(c => { c.pics = (c.pics || []).filter(p => !d.dropped.includes(p.src || `${p.g}:${p.pick}`)) }); dRedesign(DPLAN); return }
+  build();
+}
 function dLock() { const all = dSel().every(it => it.locked); dSel().forEach(it => { it.locked = !all }); build() }
 function dAddText(story) {
   const it = { id: dNewId(), t: 'text', role: story ? 'story' : 'text', name: story ? 'Story box' : 'Text box', text: story ? 'Type the story here' : 'Type here', x: 1400, y: 560, w: 900, h: 0, size: story ? 30 : 44, font: 'serif', weight: story ? 500 : 700, color: story ? 'ivory' : 'gold', lh: story ? 1.38 : 1.18, pg: .55, ind: 0, align: 'center' };
@@ -1430,6 +1437,21 @@ function dJoinStory(it) {
   const st = $('#status'); if (st) { st.className = 'status ok'; st.textContent = `Joined to the story: ${head.slice(0, 60)}. Ctrl Z takes it out again.` }
 }
 function dAddPhoto(ph, at) {   // ph: {g, pick} of the pack, or {src, year, place, caption, date} of the archive
+  // a designed picture makes room for it (Darpan, 25 Nov 2026: "there no option for me to add more images ... which dynamically
+  // position themselves neatly, they just slap themselves on randomly overlapping other information"): dropped on a photo it
+  // takes that photo's place; otherwise it joins its story's photos and the whole picture is laid out again
+  const d = S.special.design;
+  if (d && Array.isArray(d.chapters) && d.chapters.length) {
+    const g0 = ph.g ? groupsOf(P.special).find(x2 => x2.key === ph.g) : null, c0 = g0 ? g0.cands[ph.pick] : null, py = +(ph.year || (g0 && (g0.year || String(P.special.story_date || '').slice(0, 4))) || 0);
+    const pic = ph.g ? { g: ph.g, pick: ph.pick, year: String(py || ''), place: (c0 && c0.place) || '' } : { src: ph.src, date: ph.date, caption: ph.caption || '', year: String(ph.year || ''), place: ph.place || '' }, key = pic.src || `${pic.g}:${pic.pick}`;
+    d.dropped = (d.dropped || []).filter(k => k !== key);
+    const on = at && dItems().slice().reverse().find(it => it.t === 'photo' && !it.hidden && at[0] >= it.x && at[0] <= it.x + it.w && at[1] >= it.y && at[1] <= it.y + it.h);
+    if (on) { delete on.g; delete on.pick; delete on.src; Object.assign(on, ph.g ? { g: ph.g, pick: ph.pick } : { src: ph.src, date: ph.date, caption: ph.caption || '' }, { year: pic.year || on.year, place: pic.place || on.place, hand: true }); const f = faceFocus(pic, on.w - 24, on.h); on.fx = f.fx; on.fy = f.fy; if (c0) photoOf(P.special, c0, true).then(render); SEL = [on.id]; build(); dSay('Swapped in that photo. Ctrl Z undoes.'); return }
+    const chs = d.chapters, i = Math.max(0, chs.findIndex(c => +c.y === py)), c = chs[i];
+    c.pics = (c.pics || []).filter(p => (p.src || `${p.g}:${p.pick}`) !== key); c.pics.push(pic);
+    if (c0) photoOf(P.special, c0, true).then(render);
+    dRedesign(); return;
+  }
   const w = 420, h = Math.round((w - 24) * .74 + 24 + (w - 24) * .1), x = at ? at[0] - w / 2 : 1400 + (dItems().length % 5) * 40, y = at ? at[1] - h / 2 : 600 + (dItems().length % 5) * 30;
   const g = ph.g ? groupsOf(P.special).find(x2 => x2.key === ph.g) : null, c = g ? g.cands[ph.pick] : null;
   const it = Object.assign({ id: dNewId(), t: 'photo', name: `${ph.year || (g && g.year) || ''} ${ph.place || (c && c.place) || ''}`.trim() || 'Photo', x: Math.round(x), y: Math.round(y), w, h, rot: 0, frame: true, label: true, added: true,
@@ -1445,6 +1467,39 @@ function dAddPhoto(ph, at) {   // ph: {g, pick} of the pack, or {src, year, plac
 // Anything Darpan moved, sized or typed himself (it.hand) stays exactly where he put it.
 let DALT = [], DPLAN = '', DWORDS = {};   // the plans tried last time (best first), the plan on the picture, Claude's words by story
 const chKey = c => `${c.y}|${String(c.head || '').slice(0, 80)}`;
+const wKey = (c, n) => `${chKey(c)}|${Math.min(n || 1, 3)}`;   // the words differ for one story, two, or three and more
+// the whole post (Darpan, 25 Nov 2026: "there was this much information but you only decided to use this small amount on the
+// special picture?"): the library and the builder carry a cut copy of a history post (about 250 letters, ending …); the day's
+// data has every paragraph and every highlight. The cut copy's own start is kept (the day data leaves out dates like "on 25 November").
+function fullStory(y, head, s) {
+  const dd = DAYD[S.special.date.slice(5)], norm = t => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const sts = ((dd && dd.stories) || []).filter(x => +x[0] === +y && x[3] && Array.isArray(x[3].w) && x[3].w.length);
+  const hit = sts.find(x => norm(x[2]) === norm(head) || norm(x[3].h) === norm(head)) || (sts.length === 1 && norm(head).split(' ').filter(w => w.length > 3 && norm(sts[0][2] + ' ' + sts[0][3].h).includes(w)).length >= 2 ? sts[0] : null);
+  if (!hit) return s || '';
+  const paras = hit[3].w.map(x => String(x).trim()).filter(Boolean);
+  if (!/…\s*$/.test(s || '')) { const h = (HISTORY || []).find(x => +x.d.slice(0, 4) === +y && norm(x.l) === norm(head)); if (h && /…\s*$/.test(h.s || '')) s = h.s }
+  const cut = String(s || '').replace(/\s*…\s*$/, '').replace(/\s+\S*$/, '').trim(), anchor = cut.split(/\s+/).slice(-4).join(' ');
+  if (cut && anchor && paras[0]) { const i = paras[0].indexOf(anchor); if (i > 0) paras[0] = cut + paras[0].slice(i + anchor.length) }
+  const whole = paras.join('\n\n');
+  return whole.length > String(s || '').replace(/…\s*$/, '').length ? whole : s;
+}
+// a post's highlights ("• 8.1 million people visited the festival grounds over 37 days."): the figure big, the rest small
+const BULLET = /^\s*(?:[•●▪◦\-*–]|\d{1,2}[.)])\s+/;
+function storyParts(full) {
+  const paras = String(full || '').split(/\n\s*\n|\n(?=\s*[•●▪◦])/).map(x => x.trim()).filter(Boolean);
+  const facts = [], words = []; let label = '';
+  paras.forEach(p => { if (BULLET.test(p)) { const t = p.replace(BULLET, '').replace(/\.$/, ''); const m = t.match(/^(?:more than |over |about |nearly |some )?[\d][\d,.]*(?:\s?(?:million|billion|lakh|crore|thousand|hundred)\b)?(?:\s?(?:cc|km|kg|%)|-acre|-day|-year)?/i);
+      facts.push(m && m[0].length < 24 ? { big: m[0].trim(), small: t.slice(m[0].length).trim().replace(/^[,:]\s*/, '') } : { big: '', small: t }) }
+    else if (/^[^.!?]{3,40}:$/.test(p)) label = p.replace(/:$/, '').replace(/^\*|\*$/g, '');
+    else if (/^(read|hear|watch|listen|click|see|view|download)\b.*\bhere\b/i.test(p)) {}   // a link line ('Read the Vachanamrut here.') has no link on a picture
+    else words.push(p) });
+  return { words, facts: facts.slice(0, 6), label };
+}
+function paraWords(paras, n) {   // whole sentences, paragraph by paragraph, up to about n words
+  const out = []; let left = n;
+  for (const p of paras) { if (left < 12) break; const w = firstWords(p, left); if (!w) continue; out.push(w); left -= w.split(/\s+/).length; if (w.length < p.replace(/\s+/g, ' ').trim().length - 2) break }
+  return out.join('\n\n');
+}
 function dChapters() {   // the stories on the picture; the first time, the picture's own headline and story
   const d = S.special.design; if (!d) return [];
   if (!Array.isArray(d.chapters)) {
@@ -1471,22 +1526,25 @@ function firstWords(text, n = 55) {
   // a list of photo captions run together ("...blesses the assembly Blesses the satsang assembly Performs arti...") has no full stops:
   // each caption starts with a capital verb after a small word, so it is cut there and the first few kept as sentences
   if (t.split(' ').length > 30 && !/[.!?]\s/.test(t.slice(0, 300))) t = t.split(/\s(?=(?:[A-Z][a-z]+s|In|At|On|During|With)\b)(?<=[a-z)] )/).map(x => x.trim().replace(/[,;:]$/, '')).filter(Boolean).map(x => /[.!?]$/.test(x) ? x : x + '.').join(' '); if (!/[.!?]["”’)]*$/.test(t) && /[.!?]["”’)]*\s/.test(t)) t = t.replace(/[^.!?]*$/, '').trim();   // a cut off last sentence is left out
-  const ss = t.match(/[^.!?]+[.!?]+["”’)]*\s*|[^.!?]+$/g) || [];
+  const ss = t.match(/(?:[^.!?]|[.!?](?=[\w,]))+(?:[.!?]+["”’)]*\s*|$)/g) || [];
   let out = ''; for (const s of ss) { const next = (out + s).trim(); if (out && next.split(' ').length > n) break; out = next + ' ' }
   return out.trim() || String(text || '').split(/\s+/).slice(0, n).join(' ');
 }
-const chText = (c, n = 1) => { const w = DWORDS[chKey(c)]; return { head: (w && w.heading) || (c.head.split(' ').length > 10 && /^[^:]{12,}:/.test(c.head) ? c.head.split(':')[0] : c.head), short: (w && w.short) || c.short || firstWords(c.full || c.head, n === 1 ? 55 : n === 2 ? 45 : 30), quote: (w && w.quote) || '' } };
+const chText = (c, n = 1) => { const w = DWORDS[wKey(c, n)], parts = storyParts(c.full || c.head), facts = n === 1 ? parts.facts : [];
+  return { head: (w && w.heading) || (c.head.split(' ').length > 10 && /^[^:]{12,}:/.test(c.head) ? c.head.split(':')[0] : c.head),
+    short: (w && w.short) || paraWords(parts.words.length ? parts.words : [c.head], n === 1 ? (facts.length ? 95 : 150) : n === 2 ? 60 : 35),
+    quote: (w && w.quote) || '', facts: n === 1 ? ((w && Array.isArray(w.facts) && w.facts.length ? w.facts : facts).filter(f => f && (f.big || f.small)).slice(0, 6)) : [], label: parts.label || 'Highlights' } };
 let DASKED = new Set();
 async function dAskWords(chs) {   // Claude shortens the stories it has not shortened yet (functions/darpan/api/shorten.js)
-  const want = chs.filter(c => !DWORDS[chKey(c)] && !DASKED.has(chKey(c)) && (c.full || '').split(/\s+/).length > 12);
+  const want = chs.filter(c => !DWORDS[wKey(c, chs.length)] && !DASKED.has(wKey(c, chs.length)) && (c.full || '').split(/\s+/).length > 12);
   if (!want.length) return false;
-  want.forEach(c => DASKED.add(chKey(c)));
+  want.forEach(c => DASKED.add(wKey(c, chs.length)));
   dSay(`Claude is writing short words for ${want.length === 1 ? 'the story' : want.length + ' stories'}…`, 'busy');
   try {
     const r = await fetch('api/shorten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stories: want.map(c => ({ year: c.y, place: c.place, heading: c.head, words: String(c.full).slice(0, 12000) })), count: chs.length }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !Array.isArray(j.stories)) { dSay(j.why || 'The short words are the first sentences of each story (Claude is not set up on the website yet).', 'warn'); return false }
-    j.stories.forEach((w, i) => { if (want[i] && w) DWORDS[chKey(want[i])] = w });
+    j.stories.forEach((w, i) => { if (want[i] && w) DWORDS[wKey(want[i], chs.length)] = w });
     return true;
   } catch (e) { dSay('Could not reach Claude, so the short words are the first sentences of each story.', 'warn'); return false }
 }
@@ -1495,10 +1553,13 @@ async function dAskWords(chs) {   // Claude shortens the stories it has not shor
 // for that year first; a photo he added by hand goes to a story that has none
 function dChapterPhotos(chs) {
   const pack = P.special, items = dItems(), used = new Set(), out = chs.map(() => []);
-  const keyOf = p => p.src || `${p.g}:${p.pick}`;
+  const keyOf = p => p.src || `${p.g}:${p.pick}`, keys = p => [keyOf(p), p.g ? (dCand(p) || {}).src : ''].filter(Boolean);   // the same photo can sit in several cards of a pack
+  const fresh = p => !keys(p).some(k => used.has(k)), take = p => keys(p).forEach(k => used.add(k));
   const same = (a, b) => !a || !b || String(a).toLowerCase().includes(String(b).toLowerCase()) || String(b).toLowerCase().includes(String(a).toLowerCase());
+  (S.special.design && S.special.design.dropped || []).forEach(k => used.add(k));
   chs.forEach((c, i) => {
-    items.filter(x => x.t === 'photo' && !x.hidden && +x.year === +c.y && same(x.place, c.place)).forEach(x => { const p = x.g ? { g: x.g, pick: x.pick } : { src: x.src, date: x.date, caption: x.caption }; if (!used.has(keyOf(p))) { used.add(keyOf(p)); out[i].push(Object.assign(p, { year: x.year, place: x.place })) } });
+    (c.pics || []).forEach(p => { if (fresh(p)) { take(p); out[i].push(Object.assign({}, p)) } });
+    items.filter(x => x.t === 'photo' && !x.hidden && +x.year === +c.y && same(x.place, c.place)).forEach(x => { const p = x.g ? { g: x.g, pick: x.pick } : { src: x.src, date: x.date, caption: x.caption }; if (fresh(p)) { take(p); out[i].push(Object.assign(p, { year: x.year, place: x.place })) } });
     groupsOf(pack).forEach(g => g.cands.forEach((cd, k) => { const y = +(g.year || String(pack.story_date || '').slice(0, 4)); if (y !== +c.y || !dayOk(pack, g, cd) || !same(cd.place, c.place)) return; const p = { g: g.key, pick: k, year: String(y), place: cd.place || c.place }; if (!used.has(keyOf(p)) && !(cd.src && used.has(cd.src))) { used.add(keyOf(p)); if (cd.src) used.add(cd.src); out[i].push(p) } }));
     const dd = DAYD[S.special.date.slice(5)];
     (dd ? dd.years : []).filter(Y => +Y.y === +c.y && same(Y.place, c.place)).forEach(Y => Y.p.forEach(p => { const src = photoAddr(p); if (!used.has(src)) { used.add(src); out[i].push({ src, year: String(Y.y), place: Y.place || c.place, caption: p[2] || '', date: `${Y.y}-${S.special.date.slice(5)}` }) } }));
@@ -1520,11 +1581,12 @@ const natW = p => { const c = p.g ? (groupsOf(P.special).find(g => g.key === p.g
 // ------------------------------------------------------------ the plans: each lays the stories out in boxes, then is scored
 function dPlans(n, photos) {
   const many = (photos[0] || []).length >= 4;
-  if (n <= 1) return (photos[0] || []).length ? ['hero', 'hero-right', ...(many ? ['hero-strip'] : [])] : ['hero'];
+  if (n <= 1) return (photos[0] || []).length > 1 ? ['feature', 'hero-right', 'hero'] : (photos[0] || []).length ? ['hero', 'hero-right'] : ['hero'];
   if (n === 2) return ['pair', 'rows'];
   return ['columns', 'rows'];
 }
 function dPlanItems(plan, chs, photos, words, keepTitle) {
+  words = words.map(w => Object.assign({}, w));   // each plan trims its own copy
   const cx = document.createElement('canvas').getContext('2d'), items = [], notes = { soft: 0, small: 0, over: 0, empty: 0 };
   const T = (p) => Object.assign({ id: dNewId(), t: 'text', h: 0, font: 'serif', weight: 500, color: 'ivory', lh: 1.3, pg: .55, ind: 0, align: 'left', rot: 0 }, p);
   const fit = (it, maxH, from, to) => { for (it.size = from; it.size > to && dLayout(cx, it).height > maxH; it.size -= 1); const h = dLayout(cx, it).height; if (h > maxH + 2) notes.over += 1; return h };
@@ -1535,8 +1597,8 @@ function dPlanItems(plan, chs, photos, words, keepTitle) {
     const wd = words[i], eb = T({ auto: `c${i}-eb`, role: 'text', name: 'Year and place', text: [c.y, c.place].filter(Boolean).join('  ·  '), x, w, size: big ? 26 : 22, font: 'sans', weight: 700, color: 'light', upper: true, track: big ? 7 : 5 });
     const hl = T({ auto: `c${i}-hl`, role: i ? 'heading' : 'headline', name: i ? 'Heading' : 'Headline', text: wd.head, x, w, weight: 700, color: 'gold', lh: 1.12, balance: true });
     const st = T({ auto: `c${i}-st`, role: 'story', name: 'Story', text: wd.short, x, w, lh: 1.4 });
-    const q = wd.quote && big ? T({ auto: `c${i}-q`, role: 'text', name: 'Quote', text: `“${wd.quote.replace(/^["“]|["”]$/g, '')}”`, x: x + 30, w: w - 60, weight: 700, color: 'gold', lh: 1.25 }) : null;
-    const eH = dLayout(cx, eb).height, hH = fit(hl, big ? 210 : 170, big ? 84 : 60, big ? 54 : 40), qH = q ? fit(q, 150, 46, 36) : 0;
+    const q = wd.quote && big && !(wd.facts || []).length ? T({ auto: `c${i}-q`, role: 'text', name: 'Quote', text: `“${wd.quote.replace(/^["“]|["”]$/g, '')}”`, x: x + 30, w: w - 60, weight: 700, color: 'gold', lh: 1.25 }) : null;
+    const eH = dLayout(cx, eb).height, hH = big && maxH < 620 ? fit(hl, 150, 68, 46) : fit(hl, big ? 210 : 170, big ? 84 : 60, big ? 54 : 40), qH = q ? fit(q, 150, 46, 36) : 0;
     const sH = fit(st, maxH - eH - hH - (q ? qH + 50 : 0) - 70, big ? 42 : 38, big ? 30 : 27);
     if (st.size < 30) notes.small += 1;
     return { list: [eb, hl, st, q].filter(Boolean), parts: [[eb, eH, 24], [hl, hH, 32], [st, sH, q ? 50 : 0], ...(q ? [[q, qH, 0]] : [])], hH, tall: eH + 24 + hH + 32 + sH + (q ? 50 + qH : 0) };
@@ -1551,48 +1613,82 @@ function dPlanItems(plan, chs, photos, words, keepTitle) {
   items.push(T({ auto: 'title', role: 'title', name: 'Title', text: title, x: DW / 2 - 900, y: 40, w: 1800, size: 66, weight: 700, color: 'gold', lh: 1.18, align: 'center', deco: true }));
   items.push(T({ auto: 'subtitle', role: 'subtitle', name: 'Subtitle', text: sub, x: DW / 2 - 900, y: 130, w: 1800, size: 23, font: 'sans', weight: 700, color: 'light', align: 'center', upper: true, track: 7 }));
   const TOP = 236, BOT = DH - 110;
-  if (plan.startsWith('hero')) {
-    const c = chs[0], ps = photos[0], strip = plan === 'hero-strip', right = plan === 'hero-right';
-    const PW = strip ? 960 : 1060, PHh = strip ? 700 : 800, cardH = PHh + 24 + (PW - 24) * .1, x0 = right ? DW - 110 - PW : 110, tx = right ? 130 : x0 + PW + 110, tw = DW - PW - 110 - 110 - 130;
-    if (!ps[0]) {   // no photo of that day and year: the words alone, in the middle, the year above them
-      const b = block(c, 0, DW / 2 - 900, 1800, BOT - TOP - 260, true); b.list.forEach(x => { x.align = 'center' }); items.push(yearMark(c, 'c0-y', DW / 2 - 400, TOP, 800, 260)); items.push(...b.list); place(b, TOP + 260 + Math.max(0, (BOT - TOP - 260 - b.tall) / 2));
-      notes.empty += right ? 5 : 0;   // one plan is enough without a photo
+  // a set of photos in one box, neatly, never on top of each other: one big; two side by side or one above the other;
+  // three as one big and two small; four as a grid (Darpan, 25 Nov 2026: more photos, placed neatly)
+  const cardBox = (p, key, x, y, w, h) => card(p, key, x, y, w, Math.max(80, h - 24 - (w - 24) * .1));
+  const photoSet = (ps, i, x, y, w, h, max) => { const n = Math.min(ps.length, max), G = 34, k = j => `c${i}-p${j}`; if (!n) return; const from = items.length;
+    if (n === 1) items.push(cardBox(ps[0], k(0), x, y, w, h));
+    else if (n === 2) { if (w >= h * 1.15) [0, 1].forEach(j => items.push(cardBox(ps[j], k(j), x + j * (w + G) / 2, y, (w - G) / 2, h))); else [0, 1].forEach(j => items.push(cardBox(ps[j], k(j), x, y + j * (h + G) / 2, w, (h - G) / 2))) }
+    else if (n === 3) { if (w >= h) { const bw = (w - G) * .62; items.push(cardBox(ps[0], k(0), x, y, bw, h)); [1, 2].forEach(j => items.push(cardBox(ps[j], k(j), x + bw + G, y + (j - 1) * (h + G) / 2, w - bw - G, (h - G) / 2))) }
+      else { const bh = (h - G) * .6; items.push(cardBox(ps[0], k(0), x, y, w, bh)); [1, 2].forEach(j => items.push(cardBox(ps[j], k(j), x + (j - 1) * (w + G) / 2, y + bh + G, (w - G) / 2, h - bh - G))) } }
+    else [0, 1, 2, 3].forEach(j => items.push(cardBox(ps[j], k(j), x + (j % 2) * (w + G) / 2, y + Math.floor(j / 2) * (h + G) / 2, (w - G) / 2, (h - G) / 2)));
+    items.slice(from + 1).forEach(it => { if (!ps.find(p => (p.src || `${p.g}:${p.pick}`) === (it.src || `${it.g}:${it.pick}`) && p.date && p.date.slice(0, 4) === String(ps[0].year))) it.label = false });
+  };
+  // the highlights of a post as a row of figures: "8.1 million" big in gold, "people visited the festival grounds over 37 days" under it
+  const factsAt = (fs, label, x, y, w, maxH) => {
+    if (!fs.length) return 0;
+    const cols = fs.length <= 3 ? fs.length : fs.length === 4 ? 2 : 3, rows = Math.ceil(fs.length / cols), G = 40, tw = (w - G * (cols - 1)) / cols;
+    const lab = T({ auto: 'facts-l', role: 'text', name: 'Highlights title', text: label, x, y, w, size: 22, font: 'sans', weight: 700, color: 'light', upper: true, track: 6 });
+    const labH = dLayout(cx, lab).height + 20; items.push(lab);
+    const rowH = (maxH - labH - 28 * (rows - 1)) / rows, tiles = fs.map((f, j) => {
+      const x0 = x + (j % cols) * (tw + G), y0 = y + labH + Math.floor(j / cols) * (rowH + 28);
+      const big = f.big ? T({ auto: `fact${j}-b`, role: 'text', name: 'Highlight figure', text: f.big, x: x0, y: y0, w: tw, size: 58, weight: 700, color: 'gold', lh: 1.05 }) : null;
+      const sm = T({ auto: `fact${j}-s`, role: 'text', name: 'Highlight', text: f.small || '', x: x0, y: y0, w: tw, size: 25, font: 'sans', color: 'ivory', lh: 1.3 });
+      if (big) fit(big, rowH * .42, 58, 34); return { big, sm, y0 } });
+    const bs = Math.min(...tiles.filter(t => t.big).map(t => t.big.size), 58);
+    tiles.forEach(t => { if (t.big) t.big.size = bs; const bh = t.big ? dLayout(cx, t.big).height + 6 : 0; t.sm.y = Math.round(t.y0 + bh); fit(t.sm, rowH - bh, 25, 19) });
+    const ss = Math.min(...tiles.map(t => t.sm.size)); if (ss < 20) notes.small += 1;
+    tiles.forEach(t => { t.sm.size = ss; if (t.big) items.push(t.big); items.push(t.sm) });
+    return maxH;
+  };
+  if (plan === 'feature' || plan.startsWith('hero')) {
+    const c = chs[0], ps = photos[0], right = plan === 'hero-right', many = plan === 'feature' || right ? 4 : 1, wd = words[0], fs = wd.facts || [];
+    const PW = ps.length > 1 && many > 1 ? 1180 : 1060, x0 = right ? DW - 100 - PW : 100, tx = right ? 120 : x0 + PW + 100, tw = DW - PW - 100 - 100 - 120;
+    const rows = fs.length ? Math.ceil(fs.length / (fs.length <= 3 ? fs.length : fs.length === 4 ? 2 : 3)) : 0, factsH = rows ? 42 + rows * 180 + (rows - 1) * 28 : 0;
+    if (!ps[0]) {   // no photo of that day and year: the words in the middle, the year above them, the highlights under them
+      const b = block(c, 0, DW / 2 - 900, 1800, BOT - TOP - 240 - (factsH ? factsH + 50 : 0), true); b.list.forEach(x => { x.align = 'center' }); items.push(yearMark(c, 'c0-y', DW / 2 - 400, TOP, 800, 240)); items.push(...b.list);
+      const y0 = TOP + 240 + Math.max(0, (BOT - TOP - 240 - b.tall - (factsH ? factsH + 50 : 0)) / 2); place(b, y0); factsAt(fs, wd.label, DW / 2 - 900, y0 + b.tall + 50, 1800, factsH);
+      notes.empty += plan === 'hero' ? 0 : 5;   // one plan is enough without a photo
     } else {
-    items.push(card(ps[0], 'c0-p0', x0, TOP, PW, PHh));
-    const roomH = strip ? cardH - 330 : cardH, b = block(c, 0, tx, tw, roomH, true); items.push(...b.list); place(b, TOP + Math.max(0, (roomH - b.tall) / 2));
-    if (strip) { const sm = ps.slice(1, 5), sw = Math.min(300, (tw - 30 * (sm.length - 1)) / sm.length); sm.forEach((p, k) => items.push(card(p, `c0-p${k + 1}`, tx + k * (sw + 30), TOP + cardH - (sw - 24) * .74 - 24 - (sw - 24) * .1, sw, (sw - 24) * .74))) }
-    if (!strip && ps.length > 1) notes.empty += 0;   // the other photos stay in the library
-    if (TOP + cardH < BOT - 120) notes.empty += 1;
+      photoSet(ps, 0, x0, TOP, PW, BOT - TOP - 10, many);
+      const room = BOT - TOP - (factsH ? factsH + 50 : 0), over0 = notes.over; let b = block(c, 0, tx, tw, room, true);
+      for (let k = 0; b.tall > room + 2 && k < 5; k++) {   // too many words for the room: whole sentences fewer, never smaller than phone size
+        const n = Math.round(wd.short.split(/\s+/).length * .85); wd.short = paraWords(wd.short.split(/\n\s*\n/), n); notes.over = over0; b = block(c, 0, tx, tw, room, true) }
+      items.push(...b.list);
+      const y0 = TOP + Math.max(0, (BOT - TOP - b.tall - (factsH ? factsH + 50 : 0)) / 2); place(b, y0); factsAt(fs, wd.label, tx, y0 + b.tall + 50, tw, factsH);
+      if (ps.length > 1 && many === 1) notes.empty += 1;   // photos left out
+      if (b.tall + factsH < (BOT - TOP) * .45) notes.empty += 1;
     }
   } else if (plan === 'pair') {
     const M = 80, G = 120, CW = (DW - 2 * M - G) / 2, PW = 600, PHh = 780, cardH = PHh + 24 + (PW - 24) * .1, blocks = [];
     chs.forEach((c, i) => { const x0 = M + i * (CW + G), p = photos[i][0];
-      items.push(p ? card(p, `c${i}-p0`, x0, TOP, PW, PHh) : yearMark(c, `c${i}-y`, x0, TOP, PW, cardH));
+      if (p) photoSet(photos[i], i, x0, TOP, PW, cardH, 2); else items.push(yearMark(c, `c${i}-y`, x0, TOP, PW, cardH));
       const b = block(c, i, x0 + PW + 60, CW - PW - 60, cardH - 60, false); blocks.push(b); items.push(...b.list) });
     sameSize(blocks); const tall = Math.max(...blocks.map(b => b.tall)), hMax = Math.max(...blocks.map(b => b.hH)); blocks.forEach(b => place(b, TOP + Math.max(0, (cardH - 60 - tall) / 2), hMax));
     items.push(T({ auto: 'divider', role: 'text', name: 'Divider', text: '◆', x: DW / 2 - 40, y: TOP + cardH / 2 - 20, w: 80, size: 30, color: 'gold', align: 'center' }));
   } else if (plan === 'rows') {
     const n = chs.length, blocks = [], RH = (BOT - TOP - 40 * (n - 1)) / n, PW = Math.min(760, (RH - 24) / .84 * 1.25), PHh = RH - 24 - (PW - 24) * .1;
     chs.forEach((c, i) => { const y0 = TOP + i * (RH + 40), left = i % 2 === 0, x0 = left ? 160 : DW - 160 - PW, p = photos[i][0];
-      items.push(p ? card(p, `c${i}-p0`, x0, y0, PW, PHh) : yearMark(c, `c${i}-y`, x0, y0, PW, RH));
+      if (p) photoSet(photos[i], i, x0, y0, PW, RH, 2); else items.push(yearMark(c, `c${i}-y`, x0, y0, PW, RH));
       const tx = left ? x0 + PW + 90 : 160, b = block(c, i, tx, DW - PW - 160 - 160 - 90, RH, false); b.y0 = y0; blocks.push(b); items.push(...b.list) });
     sameSize(blocks); blocks.forEach(b => place(b, b.y0 + Math.max(0, (RH - b.tall) / 2)));
   } else {   // columns: a photo on top, the words under it, across the years
     const n = chs.length, M = 90, G = 70, CW = (DW - 2 * M - G * (n - 1)) / n, PHh = Math.min(CW * .58, n > 3 ? 380 : 430), cardH = PHh + 24 + (CW - 24) * .1, blocks = [];
     chs.forEach((c, i) => { const x0 = M + i * (CW + G), p = photos[i][0];
-      items.push(p ? card(p, `c${i}-p0`, x0, TOP, CW, PHh) : yearMark(c, `c${i}-y`, x0, TOP, CW, cardH));
+      if (p) photoSet(photos[i], i, x0, TOP, CW, cardH, 2); else items.push(yearMark(c, `c${i}-y`, x0, TOP, CW, cardH));
       const b = block(c, i, x0, CW, BOT - TOP - cardH - 40, false); blocks.push(b); items.push(...b.list) });
     sameSize(blocks); const hMax = Math.max(...blocks.map(b => b.hH)); blocks.forEach(b => place(b, TOP + cardH + 40, hMax));
   }
   const ft = dItems().find(x => x.role === 'footer'); items.push(ft ? Object.assign({}, ft, { auto: 'footer' }) : T({ auto: 'footer', role: 'footer', name: 'Footer', text: P.special.footer || 'Darpan’s Smruti Project', x: DW / 2 - 600, y: DH - 64, w: 1200, size: 24, color: 'light', align: 'center', deco: true }));
-  const score = 100 - notes.over * 40 - notes.small * 12 - notes.soft * 10 - notes.empty * 8 + (plan === 'hero' || plan === 'pair' || plan === 'columns' ? 3 : 0);
+  const score = 100 - notes.over * 40 - notes.small * 12 - notes.soft * 10 - notes.empty * 8 + (plan === 'feature' ? 6 : plan === 'hero' || plan === 'pair' || plan === 'columns' ? 3 : 0);
   return { plan, items, score, notes };
 }
-const PLAN_WORDS = { hero: 'Big photo on the left', 'hero-right': 'Big photo on the right', 'hero-strip': 'Big photo and a strip', pair: 'Side by side', rows: 'One under the other', columns: 'In a row across the years' };
+const PLAN_WORDS = { feature: 'Photos, story and highlights', hero: 'Big photo on the left', 'hero-right': 'Big photo on the right', 'hero-strip': 'Big photo and a strip', pair: 'Side by side', rows: 'One under the other', columns: 'In a row across the years' };
 function dRedesign(only) {
   const d = S.special.design; if (!d) return;
   const mmdd = S.special.date.slice(5); if (DAYD[mmdd] === undefined || DAYD[mmdd] === null && !dRedesign.waited) { dRedesign.waited = true; dayData(mmdd).then(() => dRedesign(only)); return } dRedesign.waited = false;   // the day's photos first
   const chs = dChapters().filter(c => c.head || c.full); if (!chs.length) { dSay('Add a story from Stories and posts first.', 'warn'); return }
+  chs.forEach(c => { c.full = fullStory(c.y, c.head, c.full) });
   chs.sort((a, b) => (+a.y || 9999) - (+b.y || 9999)); d.chapters = chs;   // oldest first, as the day unfolded through history
   const photos = dChapterPhotos(chs), words = chs.map(c => chText(c, chs.length)), old = dItems();
   const keepTitle = { title: (old.find(x => x.role === 'title' && x.hand) || {}).text, subtitle: (old.find(x => x.role === 'subtitle' && x.hand) || {}).text };
@@ -1970,11 +2066,11 @@ function dLibrary() {
       <div class="libgrid">${byY[y].list.map(p => `<button type="button" draggable="true" data-lib="${esc(JSON.stringify(p.d))}" title="${esc(p.tip)}">${p.html}</button>`).join('')}</div></details>`).join('') : `<p class="hint">${dd === null ? 'Loading the photos of ' + esc(day) + '…' : 'No photos of ' + esc(day) + ' yet.'}</p>`;
   } else {
     const items = [];
-    uniqStories((HISTORY || []).filter(h => h.d.slice(5) === mmdd).map(h => ({ h }))).forEach(({ h }) => items.push({ y: +h.d.slice(0, 4), t: h.l, s: h.s || '', p: h.p || '', src: h.u || '', e: { kind: 'story', ref: h.d, note: h.l } }));
+    uniqStories((HISTORY || []).filter(h => h.d.slice(5) === mmdd).map(h => ({ h }))).forEach(({ h }) => items.push({ y: +h.d.slice(0, 4), t: h.l, s: fullStory(+h.d.slice(0, 4), h.l, h.s || ''), p: h.p || '', src: h.u || '', e: { kind: 'story', ref: h.d, note: h.l } }));
     (ARTICLES || []).filter(a => a.d && a.d.slice(5) === mmdd).forEach(a => items.push({ y: a.y, d: a.d, t: a.t, s: a.s || '', p: a.p || '', src: a.u || '', e: { kind: 'news', ref: newsPath(a.u), note: a.t } }));
-    if (pack.headline) items.push({ y: +String(pack.story_date || date).slice(0, 4), t: pack.headline, s: pack.story || '', p: pack.story_place || '', src: 'pack', own: true });
+    if (pack.headline) items.push({ y: +String(pack.story_date || date).slice(0, 4), t: pack.headline, s: fullStory(+String(pack.story_date || date).slice(0, 4), pack.headline, pack.story || ''), p: pack.story_place || '', src: 'pack', own: true });
     items.sort((a, b) => b.y - a.y || (b.own ? 1 : 0) - (a.own ? 1 : 0));
-    body = items.length ? items.map((it, i) => `<div class="libst"><p><b>${esc(it.t)}</b><br><span class="hint">${esc([it.y, placeOk(it.p, it.t) ? it.p : ''].filter(Boolean).join(' · '))}${it.own ? ' · this picture’s story' : ''}</span></p>${it.s ? `<p class="hint">${esc(it.s.slice(0, 220))}${it.s.length > 220 ? '…' : ''}</p>` : ''}${postPhotosHtml(it, mmdd, i)}${/^https?:/.test(it.src || '') ? `<a class="libsrc" href="${esc(it.src)}" target="_blank" rel="noopener">${/baps\.org/.test(it.src) ? 'Open this post on baps.org ↗' : 'Open the post ↗'}</a>` : ''}
+    body = items.length ? items.map((it, i) => `<div class="libst"><p><b>${esc(it.t)}</b><br><span class="hint">${esc([it.y, placeOk(it.p, it.t) ? it.p : ''].filter(Boolean).join(' · '))}${it.own ? ' · this picture’s story' : ''}</span></p>${it.s ? (it.s.length > 260 ? `<details class="libmore"><summary class="hint">${esc(it.s.slice(0, 220).replace(/\s+\S*$/, ''))}… <b class="gold">Read all ${it.s.split(/\s+/).length} words</b></summary><p class="hint" style="white-space:pre-line">${esc(it.s)}</p></details>` : `<p class="hint" style="white-space:pre-line">${esc(it.s)}</p>`) : ''}${postPhotosHtml(it, mmdd, i)}${/^https?:/.test(it.src || '') ? `<a class="libsrc" href="${esc(it.src)}" target="_blank" rel="noopener">${/baps\.org/.test(it.src) ? 'Open this post on baps.org ↗' : 'Open the post ↗'}</a>` : ''}
       <div class="seg"><button type="button" class="btn small" data-libmain="${i}" title="The headline, words and this post's own photos">Use for special 1</button><button type="button" class="btn small" data-libst="${i}" title="Its heading and words as one more box on this picture">Add as a story box</button>${it.own ? '' : `<button type="button" class="btn small" data-libjoin="${i}" title="Its words added to the end of the chosen story box (or the main story), so several stories read as one">Join to the story</button>`}${it.e && !it.own ? (CH && chHave(date, it.e) ? '<span class="gold">✓ a special</span>' : `<button type="button" class="btn small ${MAKEMORE ? 'primary' : ''}" data-libsp="${i}" title="A separate special picture of its own, after special 1">Make it another special</button>`) : ''}</div></div>`).join('')
       : `<p class="hint">${HISTORY ? 'No stories of ' + esc(day) + ' yet.' : 'Loading the stories…'}</p>`;
     lib._items = items;
@@ -2006,17 +2102,21 @@ function postYear(y) {
 // a few posts carry their title where the place should be ('Shri Swaminarayan Mahapuja and Shri Sahajanand Namavali')
 const placeOk = (p, t) => !!p && p.length < 40 && !String(t || '').includes(p);
 function postPhotos(it, mmdd) {
-  const y = +it.y, out = { own: [], day: [] }; if (!y) return out;
+  const y = +it.y, out = { own: [], pack: [], day: [] }; if (!y) return out;
   if (it.e && it.e.kind === 'news') { const py = postYear(y); if (py === null) out.loading = true; else (py[it.e.ref] || []).forEach(([al, f, b]) => out.own.push({ src: `${PHOTOS}m/${al}/${f}`, thumb: `${PHOTOS}s/${al}/${f}`, year: y, place: placeOk(it.p, it.t) ? it.p : '', caption: it.t, date: it.d || `${y}-${mmdd}`, bapa: b })) }
+  // the post's own photos that the Collage builder put in this day's special pack (25 Nov 2026: the 1995 Amrut Mahotsav post's
+  // four photos were in the pack and on the Daily picture, but the card said "No photos of this post")
+  const pack = P.special, seen = new Set(), same = (a, b) => !a || !b || String(a).toLowerCase().includes(String(b).toLowerCase()) || String(b).toLowerCase().includes(String(a).toLowerCase());
+  if (pack) [...groupsOf(pack), ...(pack.spares || [])].forEach(g => g.cands.forEach((c, i) => { const gy = +(g.year || String(pack.story_date || '').slice(0, 4)); if (gy !== y || !dayOk(pack, g, c) || !same(c.place, placeOk(it.p, it.t) ? it.p : '')) return; const k = c.src || (c.f + ':' + (c.at ? c.at[0] : i)); if (seen.has(k)) return; seen.add(k); out.pack.push({ g: g.key, pick: i, html: thumb(pack, g, i), year: y, place: c.place || '', caption: c.caption || '' }) }));
   const dd = DAYD[mmdd]; (dd ? dd.years : []).filter(Y => +Y.y === y).forEach(Y => Y.p.forEach(p => out.day.push({ src: photoAddr(p), thumb: photoAddr(p), year: y, place: Y.place || '', caption: p[2] || '', date: `${y}-${mmdd}` })));
   return out;
 }
 function postPhotosHtml(it, mmdd, i) {
   if (it.own) return '';
-  const ph = postPhotos(it, mmdd), list = ph.own.length ? ph.own : ph.day, k = String(i), all = LIBALL[k], show = all ? list : list.slice(0, 8);
+  const ph = postPhotos(it, mmdd), list = ph.own.length ? ph.own : [...ph.pack, ...ph.day], k = String(i), all = LIBALL[k], show = all ? list : list.slice(0, 8);
   const head = ph.own.length ? `${ph.own.length} photo${ph.own.length > 1 ? 's' : ''} in this post` : ph.loading ? 'Looking for this post’s photos…'
-    : ph.day.length ? `${it.e && it.e.kind === 'news' ? 'No photo gallery in this post. ' : ''}${ph.day.length} photo${ph.day.length > 1 ? 's' : ''} of Bapa on this day in ${it.y}${ph.day[0].place ? ' (' + esc(ph.day[0].place) + ')' : ''}` : `No photos of this post or of ${it.y} on this day in the archive yet.`;
-  return `<p class="hint" style="margin:2px 0 0">${head}${list.length ? ', click one to add it or drag it on' : ''}</p>${show.length ? `<div class="libph">${show.map(p => `<button type="button" draggable="true" data-lib="${esc(JSON.stringify({ src: p.src, year: p.year, place: p.place, caption: p.caption, date: p.date }))}" title="${esc(p.caption || '')}"><img src="${esc(p.thumb)}" alt="" loading="lazy" onerror="this.parentNode.remove()"></button>`).join('')}</div>` : ''}${list.length > 8 ? `<button type="button" class="btn small" data-liball="${k}">${all ? 'Show fewer' : `Show all ${list.length}`}</button>` : ''}`;
+    : list.length ? `${it.e && it.e.kind === 'news' ? 'No photo gallery in this post. ' : ''}${list.length} photo${list.length > 1 ? 's' : ''} of this day in ${it.y}${list[0].place ? ' (' + esc(list[0].place) + ')' : ''}` : `No photos of this post or of ${it.y} on this day in the archive yet.`;
+  return `<p class="hint" style="margin:2px 0 0">${head}${list.length ? ', click one to add it or drag it on' : ''}</p>${show.length ? `<div class="libph">${show.map(p => p.g ? `<button type="button" draggable="true" data-lib="${esc(JSON.stringify({ g: p.g, pick: p.pick }))}" title="${esc(p.caption || '')}">${p.html}</button>` : `<button type="button" draggable="true" data-lib="${esc(JSON.stringify({ src: p.src, year: p.year, place: p.place, caption: p.caption, date: p.date }))}" title="${esc(p.caption || '')}"><img src="${esc(p.thumb)}" alt="" loading="lazy" onerror="this.parentNode.remove()"></button>`).join('')}</div>` : ''}${list.length > 8 ? `<button type="button" class="btn small" data-liball="${k}">${all ? 'Show fewer' : `Show all ${list.length}`}</button>` : ''}`;
 }
 
 // ------------------------------------------------------------ a pack that carries its own design (Darpan, 10 Nov 2026: the Annakut
