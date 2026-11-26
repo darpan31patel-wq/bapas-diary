@@ -4,7 +4,7 @@
 
 site is a copy of the studio branch. Makes a day pack (tools/dashboard_pack.py) for today and the next days that
 don't have one yet, plus any dates asked for, drops day packs more than 3 days old (unless asked for by date, which
-stay 60 days), and writes site/packs/index.json listing what the Studio can open. Read only for the daily picture.
+stay 14 days after they were asked), and writes site/packs/index.json listing what the Studio can open. Read only for the daily picture.
 A day the morning run makes a special picture on (Every Diwali, Every Annakut, a day in BAPS history) also gets a
 special pack (tools/special_pack.py) in site/packs/special/<date>/, kept as long as its day pack (Darpan, 6 Nov 2026);
 packs/special/checked.json remembers the days already looked at, so a day with no special picture isn't looked at again.
@@ -194,8 +194,9 @@ def main():
             except ValueError:
                 continue
             old = (today - d).days > 3
-            if name in asked:
-                old = (today - datetime.date.fromisoformat(asked[name])).days > 60
+            if name in asked:   # a day asked for by date stays 14 days after it was asked (was 60: by 24 Nov 2026 the studio
+                # branch held 2.4 GB, over GitHub's 2 GB a push, so the packs stopped saving)
+                old = old and (today - datetime.date.fromisoformat(asked[name])).days > 14
             if old:
                 shutil.rmtree(os.path.join(folder, name))
     for name in list(asked):
