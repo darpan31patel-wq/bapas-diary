@@ -1852,7 +1852,7 @@ function spBig(which, rest, ops) {
 function spAdded(date, title) {
   setTimeout(() => {
     const cards = [...document.querySelectorAll('#dspec .spcard:not(.on):not(.ready):not(.more)')], c = cards[cards.length - 1];
-    if (c) { c.classList.add('flash'); c.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' }); const top = $('#dspec'); if (top) top.scrollIntoView({ behavior: 'smooth', block: 'center' }) }
+    if (c) { c.classList.add('flash'); const row = c.parentElement; if (row && row.scrollWidth > row.clientWidth) row.scrollLeft = Math.max(0, c.offsetLeft - row.offsetLeft - 8) }   // the page stays still (Darpan, 26 Nov 2026)
     const n = cards.length + 1, today = todayLondon();
     const when = date < today ? 'That day’s 2pm has already gone, so it is kept for you to see and save.'
       : date === today && hourLondon() >= 14 ? 'It is after 2pm, so it will not go in today’s 2pm send.'
@@ -2796,6 +2796,19 @@ function build() {
   buildEditor(); wire(); render();
   restorePane();
 }
+// a press inside the photo list, the stories and posts or the years must not throw that list back to the top or move
+// the page (Darpan, 26 Nov 2026): every redraw puts back each scrolled box and the page where they were
+let KS_DEPTH = 0;
+const ksKey = el => { const parts = []; for (let e = el; e && e !== document.body && e !== document.documentElement; e = e.parentElement) { if (e.id) { parts.unshift('#' + e.id); break } const p = e.parentElement, cls = [...e.classList].filter(c => !/^(flash|on|ready|more|off|nob)$/.test(c)).sort().join('.'); parts.unshift(e.tagName + '.' + cls + ':' + (p ? [...p.children].filter(x => x.tagName === e.tagName).indexOf(e) : 0)) } return parts.join('>') };
+const ksView = () => { try { const o = cur(); return [S.mode, S.tab, o.date || o.month || '', typeof LIBTAB === 'undefined' ? '' : LIBTAB].join('|') } catch (e) { return '' } };
+function ksSnap() { const els = []; document.querySelectorAll('body *').forEach(e => { if (e.scrollTop > 0 || e.scrollLeft > 0) els.push([ksKey(e), e.scrollTop, e.scrollLeft]) }); return { x: scrollX, y: scrollY, els, view: ksView() } }
+function ksPut(k, late) {
+  if (!k || k.view !== ksView()) return;
+  if (k.els.length) { const want = new Map(k.els.map(([key, t, l]) => [key, [t, l]])); document.querySelectorAll('body *').forEach(e => { if (e.scrollHeight <= e.clientHeight && e.scrollWidth <= e.clientWidth) return; const w = want.get(ksKey(e)); if (!w) return; if (e.scrollTop < w[0] - 1) e.scrollTop = w[0]; if (e.scrollLeft < w[1] - 1) e.scrollLeft = w[1] }) }
+  if (!late && (Math.abs(scrollY - k.y) > 1 || Math.abs(scrollX - k.x) > 1)) window.scrollTo(k.x, k.y);
+}
+const keepScroll = fn => function (...a) { if (KS_DEPTH) return fn.apply(this, a); KS_DEPTH++; let k = null; try { k = ksSnap() } catch (e) {} try { return fn.apply(this, a) } finally { KS_DEPTH--; ksPut(k); requestAnimationFrame(() => ksPut(k)); setTimeout(() => ksPut(k, true), 300); setTimeout(() => ksPut(k, true), 1200) } };
+build = keepScroll(build); dLibrary = keepScroll(dLibrary); dSpecials = keepScroll(dSpecials);
 // where he was in the side panel comes back too (Darpan, 13 Nov 2026: "It forgets where I was")
 let PANE_AT = (saved && saved.tab === S.tab && saved.pane) || null, PANE_KEEP = (saved && saved.pane) || 0, PANE_T = 0;
 let PANE_BUILT = 0;
