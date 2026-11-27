@@ -58,6 +58,8 @@ def albums(db):
     """{album: (numbers known, [(day, place) most used first])} for every album with guessable names."""
     known, names = collections.defaultdict(set), collections.defaultdict(collections.Counter)
     for album, file in db.execute('SELECT album, file FROM photos'):
+        if not str(album).isdigit():   # News albums ('webnext-24827') aren't in GalleryImages, skip them
+            continue
         m = NUMBER.match(file)
         if m:
             known[album].add(int(m[1]))
@@ -82,7 +84,7 @@ def scan_album(album, nums, prefixes, pool, past=PAST_LAST):
 
 def new_albums(db, state, pool, today):
     """Albums newer than any the database knows, found by trying recent days and places (like the screensaver)."""
-    last = max(int(a) for a, in db.execute('SELECT DISTINCT album FROM photos'))
+    last = max(int(a) for a, in db.execute('SELECT DISTINCT album FROM photos') if str(a).isdigit())
     last = max(last, state.get('newest_album', 0), *(int(x['album']) for x in state['extra'] if x.get('how') == 'new album'))
     newest = db.execute('SELECT max(date) FROM photos').fetchone()[0]
     since = (datetime.date.fromisoformat(newest) - datetime.timedelta(30)).isoformat()
@@ -118,6 +120,15 @@ def main():
     ap.add_argument('--hours', type=float, default=5)
     a = ap.parse_args()
     stop_at = time.time() + a.hours * 3600
+    # GitHub often starts the 23:00 run hours late. Leave baps.org alone in the picture's morning (04:30 to 07:30 UTC).
+    now = datetime.datetime.now(datetime.timezone.utc)
+    quiet = now.replace(hour=4, minute=30, second=0, microsecond=0)
+    if quiet <= now < quiet + datetime.timedelta(hours=3):
+        print('Started in the morning quiet time (04:30 to 07:30 UTC), so no scan tonight')
+        return
+    if now >= quiet:
+        quiet += datetime.timedelta(days=1)
+    stop_at = min(stop_at, quiet.timestamp() - 600)
     state = json.load(open(a.scan)) if os.path.exists(a.scan) else {}
     state.setdefault('extra', []); state.setdefault('done', {})
     db = sqlite3.connect(a.db)
