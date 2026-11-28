@@ -8,7 +8,7 @@ name: Album scan
 
 on:
   schedule:
-    - cron: '0 23 * * *'    # 11pm or midnight UK
+    - cron: '17 19 * * *'   # 7pm UK; GitHub often starts it hours late, and the scan stops by 04:20 UTC
   workflow_dispatch:
     inputs:
       probe:
